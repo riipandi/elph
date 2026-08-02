@@ -7,10 +7,9 @@ use inquire::Select;
 
 use super::help;
 use super::interactive;
-use crate::agent::provider::provider_config;
 use crate::platform::{EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths};
 use crate::tui::provider_connect_dialog::{
-    ProviderAuthMethod, ProviderConfigStatus, ProviderOption, get_provider_config_status_at, get_provider_options,
+    ProviderAuthMethod, ProviderConfigStatus, ProviderOption, get_provider_options,
 };
 use crate::tui::provider_credential_store::save_provider_credential;
 use crate::tui::provider_credential_store::save_provider_env_ref;
@@ -175,8 +174,8 @@ fn handle_list(json: &bool) -> ExitCode {
             let padded = format!("{:<width$}", display_name, width = max_name_len);
             println!(
                 "  {} {}  {}{}{}",
-                format!("{}✓{}", STYLE_OK.render(), STYLE_OK.render_reset()),
-                format!("{}{}{}", STYLE_BOLD.render(), padded, STYLE_BOLD.render_reset()),
+                format_args!("{}✓{}", STYLE_OK.render(), STYLE_OK.render_reset()),
+                format_args!("{}{}{}", STYLE_BOLD.render(), padded, STYLE_BOLD.render_reset()),
                 STYLE_MUTED.render(),
                 status,
                 STYLE_MUTED.render_reset(),
@@ -495,7 +494,7 @@ fn handle_disconnect(provider: Option<&str>) -> ExitCode {
         };
 
         let auth_store = auth_store_path.clone();
-        let name_for_closure = name.clone();
+        let name_for_closure = name;
         let pid_for_closure = pid.clone();
         match run_async(move || {
             let rt = new_rt();

@@ -181,28 +181,27 @@ impl AuthStoreFile {
 
         // Check if the file is a sealed v2 envelope (legacy format from before the
         // per-field enc: migration). If so, unseal it and parse the inner JSON.
-        if let Ok(top) = serde_json::from_slice::<serde_json::Value>(bytes) {
-            if top.get("v").and_then(|x| x.as_u64()) == Some(2)
-                && top.get("ciphertext").is_some()
-                && top.get("nonce").is_some()
+        if let Ok(top) = serde_json::from_slice::<serde_json::Value>(bytes)
+            && top.get("v").and_then(|x| x.as_u64()) == Some(2)
+            && top.get("ciphertext").is_some()
+            && top.get("nonce").is_some()
+        {
+            let envelope: super::envelope::AuthStoreEnvelope = serde_json::from_slice(bytes)
+                .map_err(|e| AuthError::InternalError(format!("parse auth envelope: {e}")))?;
+            let plain = super::envelope::unseal_store(key, &envelope)
+                .map_err(|e| AuthError::InternalError(format!("unseal legacy auth store: {e}")))?;
+            let mut json: serde_json::Value = serde_json::from_slice(&plain)
+                .map_err(|e| AuthError::InternalError(format!("parse unsealed auth payload: {e}")))?;
+            // Normalize "providers" (plural, legacy) to "provider" (singular, camelCase)
+            if json.get("providers").is_some()
+                && json.get("provider").is_none()
+                && let Some(obj) = json.as_object_mut()
+                && let Some(v) = obj.remove("providers")
             {
-                let envelope: super::envelope::AuthStoreEnvelope = serde_json::from_slice(bytes)
-                    .map_err(|e| AuthError::InternalError(format!("parse auth envelope: {e}")))?;
-                let plain = super::envelope::unseal_store(key, &envelope)
-                    .map_err(|e| AuthError::InternalError(format!("unseal legacy auth store: {e}")))?;
-                let mut json: serde_json::Value = serde_json::from_slice(&plain)
-                    .map_err(|e| AuthError::InternalError(format!("parse unsealed auth payload: {e}")))?;
-                // Normalize "providers" (plural, legacy) to "provider" (singular, camelCase)
-                if json.get("providers").is_some() && json.get("provider").is_none() {
-                    if let Some(obj) = json.as_object_mut() {
-                        if let Some(v) = obj.remove("providers") {
-                            obj.insert("provider".to_string(), v);
-                        }
-                    }
-                }
-                return serde_json::from_value(json)
-                    .map_err(|e| AuthError::InternalError(format!("parse unsealed auth payload: {e}")));
+                obj.insert("provider".to_string(), v);
             }
+            return serde_json::from_value(json)
+                .map_err(|e| AuthError::InternalError(format!("parse unsealed auth payload: {e}")));
         }
 
         let mut json: serde_json::Value =
@@ -210,40 +209,40 @@ impl AuthStoreFile {
 
         // Normalize "providers" (plural, legacy) to "provider" (singular, camelCase)
         // so serde rename_all = "camelCase" on AuthStoreFile can deserialize it.
-        if json.get("providers").is_some() && json.get("provider").is_none() {
-            if let Some(obj) = json.as_object_mut() {
-                if let Some(v) = obj.remove("providers") {
-                    obj.insert("provider".to_string(), v);
-                }
-            }
+        if json.get("providers").is_some()
+            && json.get("provider").is_none()
+            && let Some(obj) = json.as_object_mut()
+            && let Some(v) = obj.remove("providers")
+        {
+            obj.insert("provider".to_string(), v);
         }
 
         // Decrypt provider values (serialized as "provider" due to rename_all = "camelCase")
         if let Some(providers) = json.get_mut("provider").and_then(|v| v.as_object_mut()) {
             for (_, val) in providers.iter_mut() {
-                if let Some(s) = val.as_str() {
-                    if let Ok(plain) = decrypt_string_sync(key, s) {
-                        *val = Value::String(plain);
-                    }
-                    // other prefixes (env:, plain) are left as-is
+                if let Some(s) = val.as_str()
+                    && let Ok(plain) = decrypt_string_sync(key, s)
+                {
+                    *val = Value::String(plain);
                 }
+                // other prefixes (env:, plain) are left as-is
             }
         }
 
         // Decrypt mcp values (JSON objects were serialized to string then encrypted)
         if let Some(mcp) = json.get_mut("mcp").and_then(|v| v.as_object_mut()) {
             for (_, val) in mcp.iter_mut() {
-                if let Some(s) = val.as_str() {
-                    if let Ok(plain) = decrypt_string_sync(key, s) {
-                        // Try to parse as JSON object (StoredCredentials)
-                        if let Ok(obj) = serde_json::from_str::<Value>(&plain) {
-                            *val = obj;
-                        } else {
-                            *val = Value::String(plain);
-                        }
+                if let Some(s) = val.as_str()
+                    && let Ok(plain) = decrypt_string_sync(key, s)
+                {
+                    // Try to parse as JSON object (StoredCredentials)
+                    if let Ok(obj) = serde_json::from_str::<Value>(&plain) {
+                        *val = obj;
+                    } else {
+                        *val = Value::String(plain);
                     }
-                    // other prefixes (env:, plain) are left as-is
                 }
+                // other prefixes (env:, plain) are left as-is
             }
         }
 
@@ -268,12 +267,13 @@ impl AuthStoreFile {
         // Encrypt non-env provider values
         if let Some(providers) = json.get_mut("provider").and_then(|v| v.as_object_mut()) {
             for (_, val) in providers.iter_mut() {
-                if let Some(s) = val.as_str() {
-                    if !s.starts_with(ENV_REF_PREFIX) && !is_encrypted_value(s) {
-                        let encrypted = encrypt_string_sync(key, s)
-                            .map_err(|e| AuthError::InternalError(format!("encrypt provider value: {e}")))?;
-                        *val = Value::String(encrypted);
-                    }
+                if let Some(s) = val.as_str()
+                    && !s.starts_with(ENV_REF_PREFIX)
+                    && !is_encrypted_value(s)
+                {
+                    let encrypted = encrypt_string_sync(key, s)
+                        .map_err(|e| AuthError::InternalError(format!("encrypt provider value: {e}")))?;
+                    *val = Value::String(encrypted);
                 }
             }
         }

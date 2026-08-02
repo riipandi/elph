@@ -543,7 +543,7 @@ impl PendingModelSelector {
     }
 
     /// Apply sort order to a model list in place.
-    fn apply_sort(models: &mut Vec<ModelRow>, order: SortOrder) {
+    fn apply_sort(models: &mut [ModelRow], order: SortOrder) {
         match order {
             SortOrder::Default => {
                 // Keep existing order (grouped by provider, then name)

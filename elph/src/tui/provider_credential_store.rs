@@ -25,43 +25,43 @@ async fn load_auth_file_with_fallback(path: &Path) -> anyhow::Result<AuthStoreFi
             // load failed for a real reason (wrong key, corruption). Falling back to
             // plain JSON parsing would return an empty store and cause data loss when
             // the caller saves.
-            if let Ok(content) = tokio::fs::read_to_string(path).await {
-                if !elph_agent::looks_like_envelope(content.as_bytes()) {
-                    log::warn!("auth store sealed load failed ({}): {e}; trying plain JSON", path.display());
-                    if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-                        let mut file = AuthStoreFile::default();
-                        // Try nested format: "provider" (camelCase) or "providers" (snake_case)
-                        let providers_obj = json
-                            .get("provider")
-                            .or_else(|| json.get("providers"))
-                            .and_then(|v| v.as_object());
-                        if let Some(providers) = providers_obj {
-                            for (pid, val) in providers {
-                                if let Some(s) = val.as_str() {
-                                    file.set_provider_credential(pid, s.to_string());
-                                }
+            if let Ok(content) = tokio::fs::read_to_string(path).await
+                && !elph_agent::looks_like_envelope(content.as_bytes())
+            {
+                log::warn!("auth store sealed load failed ({}): {e}; trying plain JSON", path.display());
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+                    let mut file = AuthStoreFile::default();
+                    // Try nested format: "provider" (camelCase) or "providers" (snake_case)
+                    let providers_obj = json
+                        .get("provider")
+                        .or_else(|| json.get("providers"))
+                        .and_then(|v| v.as_object());
+                    if let Some(providers) = providers_obj {
+                        for (pid, val) in providers {
+                            if let Some(s) = val.as_str() {
+                                file.set_provider_credential(pid, s.to_string());
                             }
-                        } else {
-                            // Try flat format: { "id": "cred" }
-                            if let Some(obj) = json.as_object() {
-                                for (pid, val) in obj {
-                                    if let Some(s) = val.as_str() {
-                                        // Skip known meta keys that aren't provider IDs
-                                        if pid != "mcp"
-                                            && pid != "v"
-                                            && pid != "alg"
-                                            && pid != "nonce"
-                                            && pid != "ciphertext"
-                                        {
-                                            file.set_provider_credential(pid, s.to_string());
-                                        }
+                        }
+                    } else {
+                        // Try flat format: { "id": "cred" }
+                        if let Some(obj) = json.as_object() {
+                            for (pid, val) in obj {
+                                if let Some(s) = val.as_str() {
+                                    // Skip known meta keys that aren't provider IDs
+                                    if pid != "mcp"
+                                        && pid != "v"
+                                        && pid != "alg"
+                                        && pid != "nonce"
+                                        && pid != "ciphertext"
+                                    {
+                                        file.set_provider_credential(pid, s.to_string());
                                     }
                                 }
                             }
                         }
-                        log::debug!("Loaded auth store as plain JSON (legacy format)");
-                        return Ok(file);
                     }
+                    log::debug!("Loaded auth store as plain JSON (legacy format)");
+                    return Ok(file);
                 }
             }
             Err(anyhow::anyhow!("read auth store: {e}"))

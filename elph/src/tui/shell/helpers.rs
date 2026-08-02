@@ -43,19 +43,6 @@ pub(crate) async fn restored_thinking_level_for_session(session: &Arc<CodingAgen
     thinking_level_from_agent(session.harness().get_thinking_level().await)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn restored_thinking_level_converts_agent_value() {
-        assert_eq!(
-            thinking_level_from_agent(elph_agent::AgentThinkingLevel::High),
-            ThinkingLevel::High
-        );
-    }
-}
-
 /// Publish chrome stats when they change. Returns `true` if values were updated.
 ///
 /// Callers that need a footer/header repaint even when values are unchanged
@@ -640,5 +627,18 @@ pub(crate) async fn apply_bootstrap_ui_event(
             chrome_refresh_pending.set(true);
             palette_refresh_pending.set(true);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn restored_thinking_level_converts_agent_value() {
+        assert_eq!(
+            thinking_level_from_agent(elph_agent::AgentThinkingLevel::High),
+            ThinkingLevel::High
+        );
     }
 }

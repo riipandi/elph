@@ -231,14 +231,15 @@ fn format_context_breakdown(total_tokens: u64, context_limit: u64, breakdown: &C
         }
     }
 
-    let mut rows: Vec<(&str, &str, u64)> = Vec::new(); // (section, label, value)
-
-    // Always show all categories (including zero) for detailed view.
-    rows.push(("System", "System Prompt", breakdown.system));
-    rows.push(("User Context", "User Messages", breakdown.user_messages));
-    rows.push(("User Context", "Assistant Replies", breakdown.assistant));
-    rows.push(("User Context", "Tool Results", breakdown.tool_results));
-    rows.push(("User Context", "Files", breakdown.files));
+    let rows: Vec<(&str, &str, u64)> = vec![
+        // (section, label, value)
+        // Always show all categories (including zero) for detailed view.
+        ("System", "System Prompt", breakdown.system),
+        ("User Context", "User Messages", breakdown.user_messages),
+        ("User Context", "Assistant Replies", breakdown.assistant),
+        ("User Context", "Tool Results", breakdown.tool_results),
+        ("User Context", "Files", breakdown.files),
+    ];
 
     if rows.is_empty() {
         return String::new();
@@ -418,7 +419,7 @@ async fn format_tools_info(session: &CodingAgentSession) -> String {
     } else {
         format!("{total} tools")
     };
-    format!("{detail}")
+    detail.to_string()
 }
 
 /// Loaded skills summary line (count and names when few enough).

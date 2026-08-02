@@ -123,23 +123,6 @@ pub async fn resolve_model(
     ))
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn selection_from_model_preserves_model_identity() {
-        let model = get_builtin_model("openai", "gpt-5.6-luna").expect("builtin model should exist");
-        let models = elph_ai::builtin_models(None).into_arc();
-        let selection = selection_from_model(&model, models);
-
-        assert_eq!(selection.provider, model.provider);
-        assert_eq!(selection.model_id, model.id);
-        assert_eq!(selection.display_name, model.name);
-        assert_eq!(selection.model.id, model.id);
-    }
-}
-
 /// Try to load a plain JSON auth file (legacy format without sealed envelope).
 ///
 /// Returns `Some(AuthStoreFile)` with the providers parsed from the JSON,
@@ -173,10 +156,14 @@ async fn try_load_plain_json_auth(path: &Path) -> Option<elph_agent::AuthStoreFi
     } else if let Some(obj) = json.as_object() {
         // Try flat format: { "id": "cred" }
         for (pid, val) in obj {
-            if let Some(s) = val.as_str() {
-                if pid != "mcp" && pid != "v" && pid != "alg" && pid != "nonce" && pid != "ciphertext" {
-                    file.set_provider_credential(pid, s.to_string());
-                }
+            if let Some(s) = val.as_str()
+                && pid != "mcp"
+                && pid != "v"
+                && pid != "alg"
+                && pid != "nonce"
+                && pid != "ciphertext"
+            {
+                file.set_provider_credential(pid, s.to_string());
             }
         }
     }
@@ -242,4 +229,21 @@ async fn load_credentials_from_auth_json(auth_store_path: Option<&Path>) -> Resu
     }
 
     Ok(store)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn selection_from_model_preserves_model_identity() {
+        let model = get_builtin_model("openai", "gpt-5.6-luna").expect("builtin model should exist");
+        let models = elph_ai::builtin_models(None).into_arc();
+        let selection = selection_from_model(&model, models);
+
+        assert_eq!(selection.provider, model.provider);
+        assert_eq!(selection.model_id, model.id);
+        assert_eq!(selection.display_name, model.name);
+        assert_eq!(selection.model.id, model.id);
+    }
 }

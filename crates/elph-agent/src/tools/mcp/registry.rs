@@ -308,115 +308,133 @@ impl McpToolRegistry {
         continue_on_error_override: Option<bool>,
         timeout_override: Option<Duration>,
     ) -> Result<()> {
-        if *self.tools_discovered.read() {
-            return Ok(());
-        }
-        let mut discovered = self.tools_discovered.write();
-        if *discovered {
-            return Ok(());
-        }
-
-        let enabled: Vec<(String, McpServerConfig)> = self
-            .config
-            .enabled_servers()
-            .map(|(n, c)| (n.to_string(), c.clone()))
-            .collect();
-        let skipped = self.config.server_count().saturating_sub(enabled.len());
-        let pending: Vec<(String, McpServerConfig)> = enabled
-            .into_iter()
-            .filter(|(n, _)| !self.is_server_discovered(n))
-            .collect();
-
-        if pending.is_empty() {
-            *self.report.write() = McpLoadReport {
-                servers_skipped: skipped,
-                ..Default::default()
-            };
+        // Exclusive claim: serialize concurrent discovery runs through the write
+        // lock, then drop the guard before the (potentially long) awaits below.
+        {
+            let mut discovered = self.tools_discovered.write();
+            if *discovered {
+                return Ok(());
+            }
             *discovered = true;
-            return Ok(());
         }
 
-        let options = self.load_options.read();
-        let opts = options.as_ref();
-        let concurrency = concurrency_override.unwrap_or_else(|| opts.map_or(4, |o| o.max_concurrency.max(1)));
-        let continue_on_error =
-            continue_on_error_override.unwrap_or_else(|| opts.map_or(true, |o| o.continue_on_error));
-        let discover_rp = opts.map_or(true, |o| o.discover_resources_and_prompts);
-        let progress_tx = progress_override.or_else(|| opts.and_then(|o| o.progress_tx.clone()));
-        let discovery_timeout = timeout_override.or_else(|| opts.and_then(|o| o.discovery_timeout));
-        drop(options);
+        let result: Result<()> = async {
+            let enabled: Vec<(String, McpServerConfig)> = self
+                .config
+                .enabled_servers()
+                .map(|(n, c)| (n.to_string(), c.clone()))
+                .collect();
+            let skipped = self.config.server_count().saturating_sub(enabled.len());
+            let pending: Vec<(String, McpServerConfig)> = enabled
+                .into_iter()
+                .filter(|(n, _)| !self.is_server_discovered(n))
+                .collect();
 
-        let total = pending.len();
-        let results: Vec<ServerDiscovery> = stream::iter(pending.into_iter().enumerate())
-            .map(|(index, (name, server_config))| {
-                let pool = Arc::clone(&self.pool);
-                let progress_tx = progress_tx.clone();
-                async move {
-                    if let Some(ref tx) = progress_tx {
-                        let _ = tx.send(McpServerLoadProgress::Started {
-                            name: name.clone(),
-                            index: index + 1,
-                            total,
-                        });
+            if pending.is_empty() {
+                *self.report.write() = McpLoadReport {
+                    servers_skipped: skipped,
+                    ..Default::default()
+                };
+                return Ok(());
+            }
+
+            let (concurrency, continue_on_error, discover_rp, progress_tx, discovery_timeout) = {
+                let options = self.load_options.read();
+                let opts = options.as_ref();
+                (
+                    concurrency_override.unwrap_or_else(|| opts.map_or(4, |o| o.max_concurrency.max(1))),
+                    continue_on_error_override.unwrap_or_else(|| opts.is_none_or(|o| o.continue_on_error)),
+                    opts.is_none_or(|o| o.discover_resources_and_prompts),
+                    progress_override.or_else(|| opts.and_then(|o| o.progress_tx.clone())),
+                    timeout_override.or_else(|| opts.and_then(|o| o.discovery_timeout)),
+                )
+            };
+
+            let total = pending.len();
+            let results: Vec<ServerDiscovery> = stream::iter(pending.into_iter().enumerate())
+                .map(|(index, (name, server_config))| {
+                    let pool = Arc::clone(&self.pool);
+                    let progress_tx = progress_tx.clone();
+                    async move {
+                        if let Some(ref tx) = progress_tx {
+                            let _ = tx.send(McpServerLoadProgress::Started {
+                                name: name.clone(),
+                                index: index + 1,
+                                total,
+                            });
+                        }
+                        let result = discover_one(&pool, &name, server_config, discovery_timeout, discover_rp).await;
+                        if let Some(ref tx) = progress_tx {
+                            let _ = tx.send(server_discovery_progress(&result));
+                        }
+                        if matches!(result, ServerDiscovery::Ok { .. }) {
+                            self.discovered_servers.write().push(name.clone());
+                        }
+                        result
                     }
-                    let result = discover_one(&pool, &name, server_config, discovery_timeout, discover_rp).await;
-                    if let Some(ref tx) = progress_tx {
-                        let _ = tx.send(server_discovery_progress(&result));
-                    }
-                    if matches!(result, ServerDiscovery::Ok { .. }) {
-                        self.discovered_servers.write().push(name.clone());
-                    }
-                    result
+                })
+                .buffer_unordered(concurrency)
+                .collect()
+                .await;
+            let (
+                new_tools,
+                new_resources,
+                new_prompts,
+                new_resource_capable,
+                new_prompt_capable,
+                new_task_capable,
+                report,
+            ) = build_catalogs_from_results(self.config.clone(), results, skipped, continue_on_error)?;
+
+            // Merge newly discovered items into existing catalogs (preserve prior discoveries).
+            {
+                let mut tools = self.tools.write();
+                for tool in &new_tools {
+                    tools.retain(|t| t.server_name != tool.server_name);
                 }
-            })
-            .buffer_unordered(concurrency)
-            .collect()
-            .await;
-        let (new_tools, new_resources, new_prompts, new_resource_capable, new_prompt_capable, new_task_capable, report) =
-            build_catalogs_from_results(self.config.clone(), results, skipped, continue_on_error)?;
+                tools.extend(new_tools);
+            }
+            // Resources: retain entries for servers not in the newly discovered set.
+            {
+                let mut resources = self.resources.write();
+                resources.retain(|r| !new_resource_capable.contains(&r.server_name));
+                resources.extend(new_resources);
+            }
+            {
+                let mut prompts = self.prompts.write();
+                prompts.retain(|p| !new_prompt_capable.contains(&p.server_name));
+                prompts.extend(new_prompts);
+            }
+            // Capabilities: add new, avoid duplicates.
+            for server in &new_resource_capable {
+                let mut caps = self.resource_capable.write();
+                if !caps.contains(server) {
+                    caps.push(server.clone());
+                }
+            }
+            for server in &new_prompt_capable {
+                let mut caps = self.prompt_capable.write();
+                if !caps.contains(server) {
+                    caps.push(server.clone());
+                }
+            }
+            for server in &new_task_capable {
+                let mut caps = self.task_capable.write();
+                if !caps.contains(server) {
+                    caps.push(server.clone());
+                }
+            }
+            // Update total report counts.
+            *self.report.write() = report;
+            Ok(())
+        }
+        .await;
 
-        // Merge newly discovered items into existing catalogs (preserve prior discoveries).
-        {
-            let mut tools = self.tools.write();
-            for tool in &new_tools {
-                tools.retain(|t| t.server_name != tool.server_name);
-            }
-            tools.extend(new_tools);
+        if result.is_err() {
+            // A failed discovery must not block a later retry.
+            *self.tools_discovered.write() = false;
         }
-        // Resources: retain entries for servers not in the newly discovered set.
-        {
-            let mut resources = self.resources.write();
-            resources.retain(|r| !new_resource_capable.contains(&r.server_name));
-            resources.extend(new_resources);
-        }
-        {
-            let mut prompts = self.prompts.write();
-            prompts.retain(|p| !new_prompt_capable.contains(&p.server_name));
-            prompts.extend(new_prompts);
-        }
-        // Capabilities: add new, avoid duplicates.
-        for server in &new_resource_capable {
-            let mut caps = self.resource_capable.write();
-            if !caps.contains(server) {
-                caps.push(server.clone());
-            }
-        }
-        for server in &new_prompt_capable {
-            let mut caps = self.prompt_capable.write();
-            if !caps.contains(server) {
-                caps.push(server.clone());
-            }
-        }
-        for server in &new_task_capable {
-            let mut caps = self.task_capable.write();
-            if !caps.contains(server) {
-                caps.push(server.clone());
-            }
-        }
-        // Update total report counts.
-        *self.report.write() = report;
-        *discovered = true;
-        Ok(())
+        result
     }
 
     /// Discover a single server on-demand (lazy mode friendly).
@@ -439,11 +457,14 @@ impl McpToolRegistry {
             anyhow::bail!("MCP server \"{server_name}\" is disabled");
         }
 
-        let options = self.load_options.read();
-        let opts = options.as_ref();
-        let discover_rp = opts.map_or(true, |o| o.discover_resources_and_prompts);
-        let discovery_timeout = opts.and_then(|o| o.discovery_timeout);
-        drop(options);
+        let (discover_rp, discovery_timeout) = {
+            let options = self.load_options.read();
+            let opts = options.as_ref();
+            (
+                opts.is_none_or(|o| o.discover_resources_and_prompts),
+                opts.and_then(|o| o.discovery_timeout),
+            )
+        };
 
         let result = discover_one(&self.pool, server_name, server_config, discovery_timeout, discover_rp).await;
 
@@ -479,26 +500,23 @@ impl McpToolRegistry {
         }
         {
             let mut caps = self.resource_capable.write();
-            if new_resource_capable.contains(&server_name.to_string()) {
-                if !caps.contains(&server_name.to_string()) {
-                    caps.push(server_name.to_string());
-                }
+            let name = server_name.to_string();
+            if new_resource_capable.contains(&name) && !caps.contains(&name) {
+                caps.push(name);
             }
         }
         {
             let mut caps = self.prompt_capable.write();
-            if new_prompt_capable.contains(&server_name.to_string()) {
-                if !caps.contains(&server_name.to_string()) {
-                    caps.push(server_name.to_string());
-                }
+            let name = server_name.to_string();
+            if new_prompt_capable.contains(&name) && !caps.contains(&name) {
+                caps.push(name);
             }
         }
         {
             let mut caps = self.task_capable.write();
-            if new_task_capable.contains(&server_name.to_string()) {
-                if !caps.contains(&server_name.to_string()) {
-                    caps.push(server_name.to_string());
-                }
+            let name = server_name.to_string();
+            if new_task_capable.contains(&name) && !caps.contains(&name) {
+                caps.push(name);
             }
         }
         // Update total report counts.
@@ -1216,12 +1234,9 @@ enum ServerDiscovery {
     },
 }
 
-fn build_catalogs_from_results(
-    config: McpConfig,
-    results: Vec<ServerDiscovery>,
-    skipped: usize,
-    continue_on_error: bool,
-) -> Result<(
+/// Catalogs produced by [`build_catalogs_from_results`]:
+/// (tools, resources, prompts, resource_capable, prompt_capable, task_capable, report).
+type DiscoveredCatalogs = (
     Vec<McpToolDescriptor>,
     Vec<McpResourceDescriptor>,
     Vec<McpPromptDescriptor>,
@@ -1229,7 +1244,14 @@ fn build_catalogs_from_results(
     Vec<String>,
     Vec<String>,
     McpLoadReport,
-)> {
+);
+
+fn build_catalogs_from_results(
+    config: McpConfig,
+    results: Vec<ServerDiscovery>,
+    skipped: usize,
+    continue_on_error: bool,
+) -> Result<DiscoveredCatalogs> {
     let mut tools = Vec::new();
     let mut resources = Vec::new();
     let mut prompts = Vec::new();

@@ -35,9 +35,6 @@ const STYLE_SUCCESS: Style = Style::new().bold().fg_color(Some(Color::Ansi(AnsiC
 const STYLE_ERROR: Style = Style::new().bold().fg_color(Some(Color::Ansi(AnsiColor::Red)));
 const STYLE_DIM: Style = Style::new().fg_color(Some(Color::Ansi(AnsiColor::BrightBlack)));
 const STYLE_ACCENT: Style = Style::new().bold().fg_color(Some(Color::Ansi(AnsiColor::Cyan)));
-const STYLE_LABEL: Style = Style::new().bold().fg_color(Some(Color::Ansi(AnsiColor::Blue)));
-const STYLE_CODE: Style = Style::new().bold().fg_color(Some(Color::Ansi(AnsiColor::Yellow)));
-const STYLE_URL: Style = Style::new().underline().fg_color(Some(Color::Ansi(AnsiColor::Cyan)));
 
 // ── Provider display wrapper ─────────────────────────────────────────
 

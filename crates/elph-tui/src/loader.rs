@@ -398,6 +398,12 @@ impl DotsScanner {
     }
 }
 
+impl Default for DotsScanner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Braille spinner frames — Unicode Braille Patterns (U+280B…), one cell each.
 // Pairs with static process glyph `◌` (U+25CC) when animation is off.
