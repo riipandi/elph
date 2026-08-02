@@ -58,17 +58,6 @@ pub async fn discover_mcp_registry_with_progress(
     (registry, mcp_config_warnings)
 }
 
-/// Attach a discovered MCP registry after deferred load (applies tools + notifications).
-pub async fn wire_mcp_into_session(
-    session: &CodingAgentSession,
-    registry: Arc<McpToolRegistry>,
-    config_warnings: Vec<String>,
-) -> Result<()> {
-    session.attach_mcp_registry(registry.clone()).await?;
-    start_mcp_notifications(session, registry, config_warnings);
-    Ok(())
-}
-
 /// Start MCP hot-reload/progress notifications when tools are already on the harness.
 pub fn start_mcp_notifications(
     session: &CodingAgentSession,
@@ -120,7 +109,7 @@ async fn apply_mcp_tools_to_harness(
     harness: &elph_agent::AgentHarness<elph_agent::TursoSessionStorage>,
     registry: &Arc<McpToolRegistry>,
 ) -> Result<()> {
-    let mcp_tools = registry.create_agent_tools();
+    let mcp_tools = registry.create_agent_tools().await;
     let mut kept: Vec<_> = harness
         .get_tools()
         .await

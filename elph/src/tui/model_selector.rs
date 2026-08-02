@@ -7,7 +7,7 @@ use elph_ai::{get_builtin_model, get_builtin_models, get_builtin_providers};
 use elph_tui::components::{DialogChrome, UiTheme, dialog_max_content_height};
 
 use crate::agent::parse_model_value;
-use crate::tui::provider_connect_dialog::{ProviderConfigStatus, get_provider_options};
+use crate::utils::path::AppPaths;
 
 use super::slash_palette::fuzzy::{field_score, max_score};
 use super::slash_palette::list_viewport_cap;
@@ -25,36 +25,55 @@ pub const ALL_PROVIDERS_TAB_INDEX: usize = 0;
 /// Header label for [`ALL_PROVIDERS_TAB_INDEX`].
 pub const ALL_PROVIDERS_TAB_LABEL: &str = "All";
 
-/// Synthetic provider id for the curated Scoped tab (index 1).
+/// Synthetic provider id for the Free tab (index 1).
+pub const FREE_PROVIDERS_TAB_ID: &str = "__free__";
+
+/// Tab index for free models.
+pub const FREE_PROVIDERS_TAB_INDEX: usize = 1;
+
+/// Header label for [`FREE_PROVIDERS_TAB_INDEX`].
+pub const FREE_PROVIDERS_TAB_LABEL: &str = "Free";
+
+/// Synthetic provider id for the curated Scoped tab (index 2).
 pub const SCOPED_PROVIDERS_TAB_ID: &str = "__scoped__";
 
 /// Tab index for settings-backed scoped models.
-pub const SCOPED_PROVIDERS_TAB_INDEX: usize = 1;
+pub const SCOPED_PROVIDERS_TAB_INDEX: usize = 2;
 
 /// Header label for [`SCOPED_PROVIDERS_TAB_INDEX`].
 pub const SCOPED_PROVIDERS_TAB_LABEL: &str = "Scoped";
 
-/// Header label for the Provider scope mode (third scope tab).
+/// Header label for the Provider scope mode (fourth scope tab).
 pub const PROVIDER_SCOPE_TAB_LABEL: &str = "Provider";
 
-/// Index of the Provider scope tab in the 3-tab header (`All` · `Scoped` · `Provider`).
-pub const PROVIDER_SCOPE_TAB_INDEX: usize = 2;
+/// Index of the Provider scope tab in the 4-tab header (`All` · `Free` · `Scoped` · `Provider`).
+pub const PROVIDER_SCOPE_TAB_INDEX: usize = 3;
 
 /// Number of scope tabs shown in the model picker header.
-pub const SCOPE_TAB_COUNT: usize = 3;
+pub const SCOPE_TAB_COUNT: usize = 4;
 
 /// Built-in provider tabs shown per header page (remaining tabs scroll via `‹ N` / `N ›`).
 pub const PROVIDER_HEADER_TABS_PER_PAGE: usize = 4;
 
-/// Catalog index where built-in provider tabs begin (after synthetic All/Scoped tabs).
-pub const BUILTIN_PROVIDERS_START_INDEX: usize = 2;
+/// Catalog index where built-in provider tabs begin (after synthetic All/Free/Scoped tabs).
+pub const BUILTIN_PROVIDERS_START_INDEX: usize = 3;
 
 /// Scope filter for the model picker header.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModelScopeMode {
     All,
+    Free,
     Scoped,
     Provider,
+}
+
+/// Sort order for the model list.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SortOrder {
+    #[default]
+    Default,
+    CostAsc,
+    CostDesc,
 }
 
 /// One provider tab in the model picker.
@@ -66,7 +85,7 @@ pub struct ModelProviderTab {
 }
 
 /// Catalog row with stable selection value (`provider/model_id`).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ModelRow {
     pub value: String,
     pub name: String,
@@ -75,9 +94,12 @@ pub struct ModelRow {
     pub context_k: u32,
     pub reasoning: bool,
     pub images: bool,
+    pub is_free: bool,
+    pub cost_per_m_input: f64,
 }
 
 fn model_row_from_builtin(provider_id: &str, model: &Model) -> ModelRow {
+    let is_free = (model.cost.input == 0.0 && model.cost.output == 0.0) || model.id.contains("free");
     ModelRow {
         value: format!("{provider_id}/{}", model.id),
         name: model.name.clone(),
@@ -86,6 +108,8 @@ fn model_row_from_builtin(provider_id: &str, model: &Model) -> ModelRow {
         context_k: model.context_window / 1000,
         reasoning: model.reasoning,
         images: model.input.iter().any(|cap| cap == "image"),
+        is_free,
+        cost_per_m_input: model.cost.input,
     }
 }
 
@@ -115,7 +139,7 @@ pub fn format_model_capability_label(reasoning: bool, images: bool) -> Option<St
 }
 
 /// Options for building the model picker catalog.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ModelCatalogOptions {
     /// When true, only providers with stored credentials appear in All / Provider tabs.
     pub show_configured_only: bool,
@@ -133,22 +157,16 @@ impl ModelCatalogOptions {
     }
 }
 
-impl Default for ModelCatalogOptions {
-    fn default() -> Self {
-        Self {
-            show_configured_only: true,
-            include_provider_ids: Vec::new(),
-        }
-    }
-}
-
 /// Provider ids that already have credentials in `auth.json`.
 pub fn configured_provider_ids() -> HashSet<String> {
-    get_provider_options()
-        .into_iter()
-        .filter(|p| !matches!(p.config_status, ProviderConfigStatus::Unconfigured))
-        .map(|p| p.id)
-        .collect()
+    // Use paths resolve to find auth.json and read directly from file.
+    // Cannot use get_provider_options() because its config_status is cached as Unconfigured.
+    if let Ok(paths) = crate::platform::Paths::resolve() {
+        let ids = crate::tui::provider_credential_store::list_providers_with_credentials(&paths.auth_store_path());
+        ids.into_iter().collect()
+    } else {
+        HashSet::new()
+    }
 }
 
 /// Built-in model catalog for the picker UI.
@@ -220,6 +238,10 @@ impl ModelCatalogSnapshot {
         let scoped_models = build_scoped_model_rows(scoped_model_items);
         let scoped_count = scoped_models.len();
 
+        // Build free models from all_models
+        let free_models: Vec<ModelRow> = all_models.iter().filter(|row| row.is_free).cloned().collect();
+        let free_count = free_models.len();
+
         providers.insert(
             0,
             ModelProviderTab {
@@ -231,12 +253,21 @@ impl ModelCatalogSnapshot {
         providers.insert(
             1,
             ModelProviderTab {
+                id: FREE_PROVIDERS_TAB_ID.to_string(),
+                label: FREE_PROVIDERS_TAB_LABEL.to_string(),
+                model_count: free_count,
+            },
+        );
+        providers.insert(
+            2,
+            ModelProviderTab {
                 id: SCOPED_PROVIDERS_TAB_ID.to_string(),
                 label: SCOPED_PROVIDERS_TAB_LABEL.to_string(),
                 model_count: scoped_count,
             },
         );
         models_by_provider.insert(ALL_PROVIDERS_TAB_ID.to_string(), all_models.clone());
+        models_by_provider.insert(FREE_PROVIDERS_TAB_ID.to_string(), free_models);
         // Scoped tab models live only in the map (same pattern as per-provider lists).
         models_by_provider.insert(SCOPED_PROVIDERS_TAB_ID.to_string(), scoped_models);
 
@@ -262,17 +293,19 @@ impl ModelCatalogSnapshot {
         self.provider_id(index) == Some(ALL_PROVIDERS_TAB_ID)
     }
 
-    pub fn is_scoped_providers_tab(&self, index: usize) -> bool {
-        self.provider_id(index) == Some(SCOPED_PROVIDERS_TAB_ID)
+    pub fn is_free_providers_tab(&self, index: usize) -> bool {
+        self.provider_id(index) == Some(FREE_PROVIDERS_TAB_ID)
     }
 
-    pub fn shows_provider_in_hint(&self, provider_index: usize) -> bool {
-        self.is_all_providers_tab(provider_index) || self.is_scoped_providers_tab(provider_index)
+    pub fn is_scoped_providers_tab(&self, index: usize) -> bool {
+        self.provider_id(index) == Some(SCOPED_PROVIDERS_TAB_ID)
     }
 
     pub fn scope_mode(&self, provider_index: usize) -> ModelScopeMode {
         if self.is_all_providers_tab(provider_index) {
             ModelScopeMode::All
+        } else if self.is_free_providers_tab(provider_index) {
+            ModelScopeMode::Free
         } else if self.is_scoped_providers_tab(provider_index) {
             ModelScopeMode::Scoped
         } else {
@@ -300,6 +333,7 @@ impl ModelCatalogSnapshot {
 pub fn scope_tab_index(mode: ModelScopeMode) -> usize {
     match mode {
         ModelScopeMode::All => ALL_PROVIDERS_TAB_INDEX,
+        ModelScopeMode::Free => FREE_PROVIDERS_TAB_INDEX,
         ModelScopeMode::Scoped => SCOPED_PROVIDERS_TAB_INDEX,
         ModelScopeMode::Provider => PROVIDER_SCOPE_TAB_INDEX,
     }
@@ -308,6 +342,7 @@ pub fn scope_tab_index(mode: ModelScopeMode) -> usize {
 pub fn scope_mode_from_tab_index(index: usize) -> ModelScopeMode {
     match index {
         ALL_PROVIDERS_TAB_INDEX => ModelScopeMode::All,
+        FREE_PROVIDERS_TAB_INDEX => ModelScopeMode::Free,
         SCOPED_PROVIDERS_TAB_INDEX => ModelScopeMode::Scoped,
         _ => ModelScopeMode::Provider,
     }
@@ -316,13 +351,14 @@ pub fn scope_mode_from_tab_index(index: usize) -> ModelScopeMode {
 pub fn scope_tab_labels() -> [&'static str; SCOPE_TAB_COUNT] {
     [
         ALL_PROVIDERS_TAB_LABEL,
+        FREE_PROVIDERS_TAB_LABEL,
         SCOPED_PROVIDERS_TAB_LABEL,
         PROVIDER_SCOPE_TAB_LABEL,
     ]
 }
 
 pub fn is_synthetic_provider_tab(id: &str) -> bool {
-    id == ALL_PROVIDERS_TAB_ID || id == SCOPED_PROVIDERS_TAB_ID
+    id == ALL_PROVIDERS_TAB_ID || id == FREE_PROVIDERS_TAB_ID || id == SCOPED_PROVIDERS_TAB_ID
 }
 
 pub fn build_scoped_model_rows(scoped_model_items: &[String]) -> Vec<ModelRow> {
@@ -366,6 +402,7 @@ pub struct PendingModelSelector {
     pub filter: String,
     pub stashed_prompt_draft: Option<String>,
     pub input_focus: ModelSelectorFocus,
+    pub sort_order: SortOrder,
 }
 
 impl PendingModelSelector {
@@ -395,6 +432,7 @@ impl PendingModelSelector {
             filter: initial_filter,
             stashed_prompt_draft,
             input_focus: ModelSelectorFocus::Search,
+            sort_order: SortOrder::Default,
         }
     }
 
@@ -482,20 +520,51 @@ impl PendingModelSelector {
     }
 
     pub fn filtered_models(&self) -> Vec<ModelRow> {
-        if !self.filter.trim().is_empty() {
-            return filter_models_fuzzy(&self.catalog.all_models, &self.filter);
-        }
+        // Fuzzy search (and the empty-filter list) stay inside the active tab's category:
+        // All → every model, Free → free only, Scoped → scoped only, Provider → that provider.
         let provider = match self.active_provider_id() {
             Some(id) => id,
             None => return Vec::new(),
         };
-        let models = self
-            .catalog
-            .models_by_provider
-            .get(provider)
-            .cloned()
-            .unwrap_or_default();
-        filter_models_fuzzy(&models, &self.filter)
+        let mut models = if provider == ALL_PROVIDERS_TAB_ID {
+            self.catalog.all_models.clone()
+        } else {
+            self.catalog
+                .models_by_provider
+                .get(provider)
+                .cloned()
+                .unwrap_or_default()
+        };
+        if !self.filter.trim().is_empty() {
+            models = filter_models_fuzzy(&models, &self.filter);
+        }
+        Self::apply_sort(&mut models, self.sort_order);
+        models
+    }
+
+    /// Apply sort order to a model list in place.
+    fn apply_sort(models: &mut [ModelRow], order: SortOrder) {
+        match order {
+            SortOrder::Default => {
+                // Keep existing order (grouped by provider, then name)
+            }
+            SortOrder::CostAsc => {
+                models.sort_by(|a, b| {
+                    a.cost_per_m_input
+                        .partial_cmp(&b.cost_per_m_input)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                        .then_with(|| a.model_id.cmp(&b.model_id))
+                });
+            }
+            SortOrder::CostDesc => {
+                models.sort_by(|a, b| {
+                    b.cost_per_m_input
+                        .partial_cmp(&a.cost_per_m_input)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                        .then_with(|| a.model_id.cmp(&b.model_id))
+                });
+            }
+        }
     }
 
     pub fn selected_model(&self) -> Option<ModelRow> {
@@ -531,6 +600,7 @@ impl PendingModelSelector {
         let provider_target = self.resolved_builtin_provider_index();
         self.provider_index = match mode {
             ModelScopeMode::All => ALL_PROVIDERS_TAB_INDEX,
+            ModelScopeMode::Free => FREE_PROVIDERS_TAB_INDEX,
             ModelScopeMode::Scoped => SCOPED_PROVIDERS_TAB_INDEX,
             ModelScopeMode::Provider => provider_target,
         };
@@ -612,12 +682,18 @@ pub fn global_count_label(catalog: &ModelCatalogSnapshot) -> String {
     }
 }
 
-pub fn model_selector_footer_hint(in_provider_scope: bool) -> String {
-    if in_provider_scope {
+pub fn model_selector_footer_hint(in_provider_scope: bool, sort_order: SortOrder) -> String {
+    let sort_hint = match sort_order {
+        SortOrder::Default => "",
+        SortOrder::CostAsc => " · $ asc",
+        SortOrder::CostDesc => " · $ desc",
+    };
+    let base = if in_provider_scope {
         "↑/↓ model · ←/→ provider · [ ] scope · + add scoped · − remove · / filter · Enter confirm · Esc".to_string()
     } else {
         "↑/↓ model · [ ] scope · + add scoped · − remove · / filter · Enter confirm · Esc".to_string()
-    }
+    };
+    format!("{}{} · $ sort", base, sort_hint)
 }
 
 /// Refresh the Scoped tab after the live scoped list changes (add/remove from picker).
@@ -722,7 +798,20 @@ mod tests {
     }
 
     #[test]
-    fn filter_with_query_searches_all_models_regardless_of_provider_tab() {
+    fn filter_with_query_searches_global_on_non_provider_tab() {
+        let mut pending = PendingModelSelector::open(String::new(), None, &[]);
+        // When on All tab, fuzzy search searches all models globally
+        assert_eq!(pending.scope_mode(), ModelScopeMode::All);
+        pending.filter = "gpt-5.6-luna".to_string();
+        let filtered = pending.filtered_models();
+        assert!(
+            filtered.iter().any(|row| row.model_id == "gpt-5.6-luna"),
+            "expected global fuzzy search to find gpt-5.6-luna from All tab"
+        );
+    }
+
+    #[test]
+    fn filter_with_query_restricts_to_provider_on_provider_tab() {
         let mut pending = PendingModelSelector::open(String::new(), None, &[]);
         let anthropic = pending
             .catalog
@@ -731,12 +820,69 @@ mod tests {
             .position(|tab| tab.id == "anthropic")
             .expect("anthropic provider");
         pending.set_provider_index(anthropic);
-        pending.filter = "big-pickle".to_string();
+        assert!(pending.is_provider_scope_mode());
+        pending.filter = "gpt-5.6-luna".to_string();
         let filtered = pending.filtered_models();
         assert!(
-            filtered.iter().any(|row| row.model_id == "big-pickle"),
-            "expected global fuzzy search to find big-pickle from any provider tab"
+            filtered.iter().all(|row| row.provider_id == "anthropic"),
+            "expected fuzzy search to be restricted to anthropic on provider tab"
         );
+    }
+
+    #[test]
+    fn filter_on_free_tab_only_searches_free_models() {
+        let mut pending = PendingModelSelector::open(String::new(), None, &[]);
+        pending.set_provider_index(FREE_PROVIDERS_TAB_INDEX);
+        assert_eq!(pending.scope_mode(), ModelScopeMode::Free);
+
+        // A paid model must never surface through the Free tab filter.
+        if let Some(paid) = pending.catalog.all_models.iter().find(|row| !row.is_free) {
+            pending.filter = paid.model_id.clone();
+            let filtered = pending.filtered_models();
+            for row in &filtered {
+                assert!(row.is_free, "paid model leaked into Free tab filter: {}", row.value);
+            }
+        }
+
+        // A known free model is still findable on the Free tab.
+        if let Some(free_id) = pending
+            .catalog
+            .all_models
+            .iter()
+            .find(|row| row.is_free)
+            .map(|row| row.model_id.clone())
+        {
+            pending.filter = free_id;
+            let filtered = pending.filtered_models();
+            assert!(!filtered.is_empty());
+            assert!(filtered.iter().all(|row| row.is_free));
+        }
+    }
+
+    #[test]
+    fn filter_on_scoped_tab_only_searches_scoped_models() {
+        let base = ModelCatalogSnapshot::build(&[]);
+        let sample = base.all_models.first().expect("model").value.clone();
+        let mut pending = PendingModelSelector::open(String::new(), None, std::slice::from_ref(&sample));
+        pending.set_provider_index(SCOPED_PROVIDERS_TAB_INDEX);
+        assert_eq!(pending.scope_mode(), ModelScopeMode::Scoped);
+
+        let sample_id = sample.split('/').nth(1).expect("model id");
+        pending.filter = sample_id.to_string();
+        let filtered = pending.filtered_models();
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].value, sample);
+
+        // A query matching a non-scoped model id must not pull it in.
+        if let Some(other) = base.all_models.iter().find(|row| row.value != sample) {
+            pending.filter = other.model_id.clone();
+            let filtered = pending.filtered_models();
+            assert!(
+                filtered.iter().all(|row| row.value == sample),
+                "scoped tab filter leaked non-scoped models: {:?}",
+                filtered.iter().map(|row| row.value.as_str()).collect::<Vec<_>>()
+            );
+        }
     }
 
     #[test]
@@ -749,6 +895,8 @@ mod tests {
             context_k: 200,
             reasoning: false,
             images: false,
+            is_free: false,
+            cost_per_m_input: 0.0,
         }];
         let filtered = filter_models_fuzzy(&rows, "bedrock");
         assert_eq!(filtered.len(), 1);
@@ -765,6 +913,8 @@ mod tests {
                 context_k: 200,
                 reasoning: false,
                 images: false,
+                is_free: false,
+                cost_per_m_input: 0.0,
             },
             ModelRow {
                 value: "anthropic/claude-opus-4".into(),
@@ -774,6 +924,8 @@ mod tests {
                 context_k: 200,
                 reasoning: true,
                 images: true,
+                is_free: false,
+                cost_per_m_input: 0.0,
             },
         ];
         let filtered = filter_models_fuzzy(&rows, "sonnet 4");
@@ -791,6 +943,8 @@ mod tests {
             context_k: 200,
             reasoning: false,
             images: false,
+            is_free: false,
+            cost_per_m_input: 0.0,
         };
         assert_eq!(model_match_score(&sonnet, "opus"), None);
         assert_eq!(model_row_match_score(&sonnet, "opus 4"), None);
@@ -807,6 +961,8 @@ mod tests {
                 context_k: 200,
                 reasoning: false,
                 images: false,
+                is_free: false,
+                cost_per_m_input: 0.0,
             },
             ModelRow {
                 value: "anthropic/claude-opus-4".into(),
@@ -816,6 +972,8 @@ mod tests {
                 context_k: 200,
                 reasoning: true,
                 images: true,
+                is_free: false,
+                cost_per_m_input: 0.0,
             },
         ];
         let filtered = filter_models_fuzzy(&rows, "opus 4");
@@ -834,6 +992,8 @@ mod tests {
                 context_k: 128,
                 reasoning: false,
                 images: false,
+                is_free: false,
+                cost_per_m_input: 0.0,
             },
             ModelRow {
                 value: "a/m2".into(),
@@ -843,6 +1003,8 @@ mod tests {
                 context_k: 128,
                 reasoning: false,
                 images: false,
+                is_free: false,
+                cost_per_m_input: 0.0,
             },
         ];
         assert_eq!(filter_models_fuzzy(&rows, ""), rows);
@@ -859,6 +1021,8 @@ mod tests {
                 context_k: 100,
                 reasoning: false,
                 images: false,
+                is_free: false,
+                cost_per_m_input: 0.0,
             },
             ModelRow {
                 value: "alpha/claude-b".into(),
@@ -868,6 +1032,8 @@ mod tests {
                 context_k: 100,
                 reasoning: false,
                 images: false,
+                is_free: false,
+                cost_per_m_input: 0.0,
             },
             ModelRow {
                 value: "zeta/claude-c".into(),
@@ -877,6 +1043,8 @@ mod tests {
                 context_k: 100,
                 reasoning: false,
                 images: false,
+                is_free: false,
+                cost_per_m_input: 0.0,
             },
             ModelRow {
                 value: "alpha/claude-d".into(),
@@ -886,6 +1054,8 @@ mod tests {
                 context_k: 100,
                 reasoning: false,
                 images: false,
+                is_free: false,
+                cost_per_m_input: 0.0,
             },
         ];
         let filtered = filter_models_fuzzy(&rows, "claude");
@@ -983,18 +1153,25 @@ mod tests {
     }
 
     #[test]
-    fn catalog_places_scoped_tab_after_all() {
+    fn catalog_places_free_tab_after_all_and_before_scoped() {
         let catalog = ModelCatalogSnapshot::build(&[]);
-        assert_eq!(catalog.providers[1].id, SCOPED_PROVIDERS_TAB_ID);
-        assert_eq!(catalog.providers[1].label, SCOPED_PROVIDERS_TAB_LABEL);
-        assert_eq!(
-            catalog
-                .models_by_provider
-                .get(SCOPED_PROVIDERS_TAB_ID)
-                .map(Vec::len)
-                .unwrap_or(0),
-            0
-        );
+        assert_eq!(catalog.providers[0].id, ALL_PROVIDERS_TAB_ID);
+        assert_eq!(catalog.providers[1].id, FREE_PROVIDERS_TAB_ID);
+        assert_eq!(catalog.providers[1].label, FREE_PROVIDERS_TAB_LABEL);
+        assert_eq!(catalog.providers[2].id, SCOPED_PROVIDERS_TAB_ID);
+    }
+
+    #[test]
+    fn catalog_free_tab_contains_exactly_free_models() {
+        let catalog = ModelCatalogSnapshot::build(&[]);
+        let free = catalog
+            .models_by_provider
+            .get(FREE_PROVIDERS_TAB_ID)
+            .expect("free models");
+        for row in free {
+            assert!(row.is_free, "non-free model in Free tab: {}", row.value);
+        }
+        assert_eq!(catalog.providers[1].model_count, free.len());
     }
 
     #[test]
@@ -1002,7 +1179,7 @@ mod tests {
         let base = ModelCatalogSnapshot::build(&[]);
         let sample = base.all_models.first().expect("model").value.clone();
         let catalog = ModelCatalogSnapshot::build(std::slice::from_ref(&sample));
-        assert_eq!(catalog.providers[1].model_count, 1);
+        assert_eq!(catalog.providers[2].model_count, 1);
         let scoped = catalog
             .models_by_provider
             .get(SCOPED_PROVIDERS_TAB_ID)
@@ -1090,13 +1267,15 @@ mod tests {
             Some(model_id),
         );
         assert_eq!(pending.scope_mode(), ModelScopeMode::All);
-        // ] from All → Scoped, then ] → Provider.
+        // ] from All → Free, ] → Scoped, ] → Provider.
+        pending.apply_scope_nav(1);
+        assert_eq!(pending.scope_mode(), ModelScopeMode::Free);
         pending.apply_scope_nav(1);
         assert_eq!(pending.scope_mode(), ModelScopeMode::Scoped);
         pending.apply_scope_nav(1);
         assert_eq!(pending.scope_mode(), ModelScopeMode::Provider);
-        assert!(!pending.catalog.is_scoped_providers_tab(pending.provider_index));
         assert!(!pending.catalog.is_all_providers_tab(pending.provider_index));
+        assert!(!pending.catalog.is_scoped_providers_tab(pending.provider_index));
     }
 
     #[test]
@@ -1109,9 +1288,11 @@ mod tests {
     }
 
     #[test]
-    fn scope_brackets_cycle_all_scoped_provider() {
+    fn scope_brackets_cycle_all_free_scoped_provider() {
         let mut pending = PendingModelSelector::open(String::new(), None, &[]);
         assert_eq!(pending.scope_mode(), ModelScopeMode::All);
+        pending.apply_scope_nav(1);
+        assert_eq!(pending.scope_mode(), ModelScopeMode::Free);
         pending.apply_scope_nav(1);
         assert_eq!(pending.scope_mode(), ModelScopeMode::Scoped);
         pending.apply_scope_nav(1);
@@ -1153,8 +1334,9 @@ mod tests {
         // Filtered catalog never has more providers than full catalog.
         assert!(filtered.total_providers <= full.total_providers);
         assert!(filtered.total_models <= full.total_models);
-        // Synthetic All/Scoped always present.
+        // Synthetic All/Free/Scoped always present.
         assert!(filtered.is_all_providers_tab(ALL_PROVIDERS_TAB_INDEX));
+        assert!(filtered.is_free_providers_tab(FREE_PROVIDERS_TAB_INDEX));
         assert!(filtered.is_scoped_providers_tab(SCOPED_PROVIDERS_TAB_INDEX));
         // Every listed builtin provider is either configured or in include list.
         if empty_allow.show_configured_only {
@@ -1223,6 +1405,8 @@ mod tests {
         let mut pending = PendingModelSelector::open(String::new(), None, &[]);
         pending.last_builtin_provider_index = second;
         pending.apply_scope_nav(1);
+        assert_eq!(pending.scope_mode(), ModelScopeMode::Free);
+        pending.apply_scope_nav(1);
         assert_eq!(pending.scope_mode(), ModelScopeMode::Scoped);
         pending.apply_scope_nav(1);
         assert_eq!(pending.scope_mode(), ModelScopeMode::Provider);
@@ -1242,6 +1426,7 @@ mod tests {
     #[test]
     fn scope_tab_index_maps_modes() {
         assert_eq!(scope_tab_index(ModelScopeMode::All), ALL_PROVIDERS_TAB_INDEX);
+        assert_eq!(scope_tab_index(ModelScopeMode::Free), FREE_PROVIDERS_TAB_INDEX);
         assert_eq!(scope_tab_index(ModelScopeMode::Scoped), SCOPED_PROVIDERS_TAB_INDEX);
         assert_eq!(scope_tab_index(ModelScopeMode::Provider), PROVIDER_SCOPE_TAB_INDEX);
     }

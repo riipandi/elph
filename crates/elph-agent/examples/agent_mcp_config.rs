@@ -52,6 +52,7 @@ fn main() {
         lifecycle: Default::default(),
         mrtr_elicitation: Default::default(),
         policy: None,
+        load_strategy: Default::default(),
     });
     println!("  custom stdio: command=uvx, env=1 var, timeout=120s");
 
@@ -67,6 +68,7 @@ fn main() {
         lifecycle: Default::default(),
         mrtr_elicitation: Default::default(),
         policy: None,
+        load_strategy: Default::default(),
     });
     println!("  is_disabled: {}", disabled.is_disabled());
     servers.insert("deprecated".into(), disabled);
@@ -128,6 +130,7 @@ fn main() {
         lifecycle: Default::default(),
         mrtr_elicitation: Default::default(),
         policy: None,
+        load_strategy: Default::default(),
     });
     let http_server = McpServerConfig::http("https://example.com/mcp");
     println!("  stdio timeout: {:?}", stdio_server.operation_timeout());

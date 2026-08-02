@@ -144,7 +144,7 @@ async fn deepwiki_agent_tools_bridge() {
             .expect("load DeepWiki MCP"),
     );
 
-    let tools = registry.create_agent_tools();
+    let tools = registry.create_agent_tools().await;
     assert!(
         tools.iter().any(|t| t.name() == "mcp_deepwiki__read_wiki_structure"),
         "agent tools missing exposed DeepWiki tool"

@@ -234,11 +234,18 @@ pub const EDITOR_TEXT_DIMMED: Color = Color::Rgb {
 /// Ghostty `cursor-color` `#ffffff`.
 pub const EDITOR_CURSOR: Color = Color::White;
 
-/// Footer chrome dim (turn, brackets, separators, IMG).
+/// Footer chrome dim (turn, brackets, separators).
 pub const FOOTER_DIM_FG: Color = Color::Rgb {
     r: 0x7a,
     g: 0x7e,
     b: 0x85,
+};
+
+/// Image/vision indicator in footer.
+pub const FOOTER_IMG_INDICATOR_FG: Color = Color::Rgb {
+    r: 0x8e,
+    g: 0xb8,
+    b: 0xff,
 };
 
 /// Git additions — palette 2.

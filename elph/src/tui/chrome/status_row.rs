@@ -5,6 +5,7 @@
 
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use elph_tui::components::DotsScannerView;
 use elph_tui::rgb;
 use iocraft::prelude::*;
 
@@ -39,8 +40,7 @@ const TIPS: &[&str] = &[
 ];
 
 use crate::tui::activity::{
-    braille_spinner_glyph_now, format_activity_busy_line, format_session_busy_right_line,
-    format_session_idle_right_line,
+    format_activity_busy_line_dynamic, format_session_busy_right_line, format_session_idle_right_line,
 };
 /// Props for [`StatusRow`].
 ///
@@ -134,9 +134,9 @@ pub fn StatusRow(props: &StatusRowProps, mut hooks: Hooks) -> impl Into<AnyEleme
         }
     });
 
-    // Depend on local paint token so we re-draw; glyph phase is wall-clock (skips lag).
+    // Depend on local paint token so we re-draw; elapsed timer is wall-clock
+    // (dots scanner has its own internal animation tick).
     let _paint = status_frame.get();
-    let spinner_glyph = if props.busy { braille_spinner_glyph_now() } else { " " };
 
     let activity_elapsed_secs = props.activity_started_at.map(format_elapsed_secs).unwrap_or(0.0);
     let turn_elapsed_secs = props.busy_started_at.map(format_elapsed_secs).unwrap_or(0.0);
@@ -146,7 +146,7 @@ pub fn StatusRow(props: &StatusRowProps, mut hooks: Hooks) -> impl Into<AnyEleme
         .idle_notice
         .clone()
         .unwrap_or_else(|| TIPS[tip_index.get() % TIPS.len()].to_string());
-    let activity_line = format_activity_busy_line(&props.activity_label, activity_elapsed_secs);
+    let activity_line = format_activity_busy_line_dynamic(&props.activity_label, activity_elapsed_secs);
     let busy_right_line =
         format_session_busy_right_line(props.session_elapsed_secs, turn_elapsed_secs, props.quit_confirm_pending);
     let idle_right_line = format_session_idle_right_line(IDLE_ACTION_HINT);
@@ -197,10 +197,11 @@ pub fn StatusRow(props: &StatusRowProps, mut hooks: Hooks) -> impl Into<AnyEleme
                             gap: 1,
                             padding: 0,
                         ) {
-                            Text(
-                                color: props.accent,
-                                wrap: TextWrap::NoWrap,
-                                content: spinner_glyph.to_string(),
+                            DotsScannerView(
+                                width: 4u16,
+                                accent: Some(rgb(0x5f, 0xc8, 0x5f)),
+                                active: true,
+                                theme: None,
                             )
                             Text(
                                 color: left_fg,

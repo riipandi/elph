@@ -77,7 +77,7 @@ async fn main() -> anyhow::Result<()> {
     );
     println!();
 
-    let tools = registry.create_agent_tools();
+    let tools = registry.create_agent_tools().await;
     let exposed = expose_tool_name("deepwiki", &args.tool);
     if !tools.iter().any(|t| t.name() == exposed) {
         anyhow::bail!("tool not found after load: {exposed}");

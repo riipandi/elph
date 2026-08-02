@@ -103,7 +103,7 @@ use crate::tui::startup::{
     BootstrapPhase, BootstrapUiEvent, McpFooterLineKind, TuiBootstrapConfig, append_startup_warning,
     apply_mcp_server_progress, apply_mcp_startup_summary_line, begin_agent_startup, begin_mcp_startup,
     bootstrap_activity_label, bootstrap_is_active, classify_mcp_footer_line, mark_agent_startup_failed,
-    mark_agent_startup_ready, mark_mcp_startup_failed, mcp_server_status_label, spawn_bootstrap_worker,
+    mark_agent_startup_ready, mcp_server_status_label, spawn_bootstrap_worker,
 };
 use crate::tui::status_dialog::{
     PromptQueueAction, StatusDialogKind, StatusZone, build_feedback_dialog_kind, build_mcp_auth_dialog_kind,
@@ -131,7 +131,7 @@ use crate::tui::transcript::{
     clear_ephemeral_banner_if_generation, clipboard_notice_banner, expire_ephemeral_banner,
     file_picker_hidden_notice_text, model_set_notice_from_value, model_set_notice_text, prompt_copy_banner,
     prompt_copy_failed_banner, publish_ephemeral_banner, quit_busy_banner, select_mode_off_banner,
-    select_mode_on_banner, theme_mode_banner, toggle_latest_collapsible_detail,
+    select_mode_on_banner, slash_busy_banner, theme_mode_banner, toggle_latest_collapsible_detail,
 };
 use crate::tui::user_question::PendingUserQuestion;
 use crate::tui::user_question::{

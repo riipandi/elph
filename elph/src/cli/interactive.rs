@@ -35,9 +35,6 @@ const STYLE_SUCCESS: Style = Style::new().bold().fg_color(Some(Color::Ansi(AnsiC
 const STYLE_ERROR: Style = Style::new().bold().fg_color(Some(Color::Ansi(AnsiColor::Red)));
 const STYLE_DIM: Style = Style::new().fg_color(Some(Color::Ansi(AnsiColor::BrightBlack)));
 const STYLE_ACCENT: Style = Style::new().bold().fg_color(Some(Color::Ansi(AnsiColor::Cyan)));
-const STYLE_LABEL: Style = Style::new().bold().fg_color(Some(Color::Ansi(AnsiColor::Blue)));
-const STYLE_CODE: Style = Style::new().bold().fg_color(Some(Color::Ansi(AnsiColor::Yellow)));
-const STYLE_URL: Style = Style::new().underline().fg_color(Some(Color::Ansi(AnsiColor::Cyan)));
 
 // ── Provider display wrapper ─────────────────────────────────────────
 
@@ -299,7 +296,7 @@ impl AuthLoginCallbacks for CliAuthCallbacks {
                 if let Some(instructions) = instructions {
                     eprintln!("{}{}", STYLE_DIM.render(), instructions);
                 }
-                eprintln!("{}  {}{}", STYLE_URL.render(), url, STYLE_URL.render_reset(),);
+                eprintln!("  {}", url);
                 match open_url(&url) {
                     Ok(()) => {
                         let line = styled(STYLE_SUCCESS, "✓", "Browser opened. Login in your browser.");
@@ -307,14 +304,7 @@ impl AuthLoginCallbacks for CliAuthCallbacks {
                     }
                     Err(e) => {
                         eprintln!("{} Could not open browser: {e}", err_label());
-                        eprintln!(
-                            "{}  Open manually:{}{}{}{}",
-                            STYLE_DIM.render(),
-                            STYLE_DIM.render_reset(),
-                            STYLE_URL.render(),
-                            url,
-                            STYLE_URL.render_reset(),
-                        );
+                        eprintln!("  Open manually:  {}", url);
                     }
                 }
                 println!();
@@ -331,22 +321,9 @@ impl AuthLoginCallbacks for CliAuthCallbacks {
                     STYLE_ACCENT.render(),
                     STYLE_ACCENT.render_reset(),
                 );
-                eprintln!(
-                    "  {}Open:{}{}  {}{}",
-                    STYLE_LABEL.render(),
-                    STYLE_LABEL.render_reset(),
-                    STYLE_URL.render(),
-                    verification_uri,
-                    STYLE_URL.render_reset(),
-                );
-                eprintln!(
-                    "  {}Code:{}{}  {}{}",
-                    STYLE_LABEL.render(),
-                    STYLE_LABEL.render_reset(),
-                    STYLE_CODE.render(),
-                    user_code,
-                    STYLE_CODE.render_reset(),
-                );
+                eprintln!("  Open:  {}", verification_uri,);
+                eprintln!("  Code:  {}", user_code,);
+                println!();
                 match open_url(&verification_uri) {
                     Ok(()) => {
                         let line = styled(STYLE_SUCCESS, "✓", "Browser opened.");
@@ -354,14 +331,7 @@ impl AuthLoginCallbacks for CliAuthCallbacks {
                     }
                     Err(e) => {
                         eprintln!("{} Could not open browser: {e}", err_label());
-                        eprintln!(
-                            "{}  Open manually:{}{}{}{}",
-                            STYLE_DIM.render(),
-                            STYLE_DIM.render_reset(),
-                            STYLE_URL.render(),
-                            verification_uri,
-                            STYLE_URL.render_reset(),
-                        );
+                        eprintln!("  Open manually:  {}", verification_uri);
                     }
                 }
                 if let Some(interval) = interval_seconds {

@@ -21,6 +21,7 @@ pub use compact::compact;
 pub use estimation::calculate_context_tokens;
 pub use estimation::estimate_context_tokens;
 pub use estimation::estimate_tokens;
+pub use estimation::estimate_tokens_with_system_prompt;
 pub use estimation::find_cut_point;
 pub use estimation::find_turn_start_index;
 pub use estimation::get_last_assistant_usage;

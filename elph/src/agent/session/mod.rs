@@ -7,8 +7,9 @@ use crate::types::AgentMode;
 use anyhow::Result;
 use elph_agent::{AgentHarness, AgentHarnessErrorCode, FileSystem};
 use elph_agent::{GoalRuntime, McpToolRegistry, PlanConfirmationChoice, TursoSessionStorage};
+use elph_ai::{AssistantMessage, StopReason};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicU32, Ordering};
 
 use parking_lot::RwLock;
 use std::time::Instant;
@@ -33,6 +34,8 @@ use std::path::Path;
 const SESSION_TITLE_SYSTEM: &str = include_str!("../../../templates/agent/session_title_system.md");
 /// User prompt template; `{{conversation}}` is replaced with the naming excerpt.
 const SESSION_TITLE_USER: &str = include_str!("../../../templates/agent/session_title_user.md");
+/// Maximum number of background auto-title attempts per session lifetime.
+const SESSION_TITLE_MAX_ATTEMPTS: u32 = 3;
 
 /// Constructor inputs for [`CodingAgentSession::new`] (avoids a long positional arg list).
 pub struct CodingAgentSessionParams {
@@ -80,8 +83,9 @@ pub struct CodingAgentSession {
     preferred_chat_language: String,
     /// Settings `models.compactionModel` (`inherit` or `provider/model_id`).
     compaction_model_ref: String,
-    /// Ensures at most one background auto-title attempt per session instance.
-    title_generation_started: AtomicBool,
+    /// Bounded retry counter for background auto-title generation
+    /// (caps at [`SESSION_TITLE_MAX_ATTEMPTS`] per session instance).
+    title_generation_attempts: Arc<AtomicU32>,
 }
 
 impl CodingAgentSession {
@@ -125,7 +129,11 @@ impl CodingAgentSession {
             title_model,
             preferred_chat_language,
             compaction_model_ref,
-            title_generation_started: AtomicBool::new(already_named),
+            title_generation_attempts: Arc::new(AtomicU32::new(if already_named {
+                SESSION_TITLE_MAX_ATTEMPTS
+            } else {
+                0
+            })),
         };
         session.wire_harness(ui_tx).await?;
         session.apply_agent_mode(agent_mode).await?;
@@ -188,7 +196,7 @@ impl CodingAgentSession {
 
     /// Late-bind MCP tools discovered after the TUI is visible.
     pub async fn attach_mcp_registry(&self, registry: Arc<McpToolRegistry>) -> Result<()> {
-        let mcp_tools = registry.create_agent_tools();
+        let mcp_tools = registry.create_agent_tools().await;
         let mut kept: Vec<_> = self
             .harness
             .get_tools()
@@ -235,6 +243,11 @@ impl CodingAgentSession {
     /// Provider API id for the live model (e.g. `openai-responses`).
     pub fn model_api(&self) -> String {
         self.selection.read().model.api.clone()
+    }
+
+    /// Settings `models.sessionTitleModel` ref (`inherit` or `provider/model_id`).
+    pub fn title_model(&self) -> String {
+        self.title_model.clone()
     }
 
     pub fn session_id(&self) -> &str {
@@ -302,14 +315,23 @@ impl CodingAgentSession {
     /// Start a normal harness turn (blocks until idle, emits `RunCompleted`).
     async fn run_prompt_turn(&self, text: String) -> Result<()> {
         let _guard = self.turn_gate.lock().await;
+        // Pre-prompt guard: when history already exceeds the configured threshold, compact
+        // before sending so the request never runs into the hard context limit.
+        self.maybe_auto_compact(Some(&text)).await;
+
         let started = Instant::now();
-        let result = self.harness.prompt(text, None).await.map(|_| ());
+        let result = self.harness.prompt(text.clone(), None).await;
         match &result {
-            Ok(()) => {
+            Ok(message) => {
                 self.finish_ui_turn(started).await;
+                // A provider error mid-turn (e.g. context overflow) ends the turn with an
+                // error message. Recover by compacting and resuming the same prompt once.
+                if message.stop_reason == StopReason::Error {
+                    self.recover_errored_turn(&text, message).await;
+                }
                 self.maybe_generate_session_title();
-                // Check auto-compaction after a successful turn.
-                self.maybe_auto_compact().await;
+                // Check auto-compaction after every turn (successful or errored).
+                self.maybe_auto_compact(None).await;
             }
             Err(err) if err.code == AgentHarnessErrorCode::Busy => {
                 self.finish_ui_turn_rejected_busy(format!("Error: {err}")).await;
@@ -318,9 +340,47 @@ impl CodingAgentSession {
                 self.finish_ui_turn(started).await;
                 let text = crate::tui::api_error_display::format_user_facing_api_error(&err.to_string());
                 let _ = self.ui_tx.send(AgentUiEvent::Status(text));
+                // Free room after a harness-level failure too, when usage is already over threshold.
+                self.maybe_auto_compact(None).await;
             }
         }
-        result.map_err(|err| anyhow::anyhow!("{err}"))
+        result.map(|_| ()).map_err(|err| anyhow::anyhow!("{err}"))
+    }
+
+    /// After a turn that ended with a provider error, compact when the failure points at a
+    /// context limit, then auto-resume the same prompt once so the interrupted task continues.
+    ///
+    /// Bounded: at most one retry, and only when a compaction actually ran.
+    async fn recover_errored_turn(&self, text: &str, message: &AssistantMessage) {
+        let error_text = message.error_message.as_deref().unwrap_or_default();
+        if !self.recover_from_turn_error(error_text).await {
+            return;
+        }
+        let retry_started = Instant::now();
+        if !self.retry_fits_after_compaction(text).await {
+            let _ = self.ui_tx.send(AgentUiEvent::Status(
+                "Context still exceeds limit after compaction — use /compact or a shorter prompt.".to_string(),
+            ));
+            self.finish_ui_turn(retry_started).await;
+            return;
+        }
+        match self.harness.prompt(text.to_string(), None).await {
+            Ok(retry_message) => {
+                self.finish_ui_turn(retry_started).await;
+                if retry_message.stop_reason == StopReason::Error
+                    && let Some(retry_error) = retry_message.error_message
+                {
+                    let display = crate::tui::api_error_display::format_user_facing_api_error(&retry_error);
+                    let _ = self.ui_tx.send(AgentUiEvent::Status(display));
+                }
+            }
+            Err(err) => {
+                self.finish_ui_turn(retry_started).await;
+                log::warn!("auto-resume after compaction failed: {err}");
+                let display = crate::tui::api_error_display::format_user_facing_api_error(&err.to_string());
+                let _ = self.ui_tx.send(AgentUiEvent::Status(display));
+            }
+        }
     }
 
     // maybe_auto_compact: see compaction.rs
@@ -620,13 +680,11 @@ impl CodingAgentSession {
 
     /// After the first successful user turn, generate and persist a session title in the background.
     ///
-    /// Silent on failure; at most one attempt per session instance (skipped when already named).
+    /// Silent on failure. Bounded retries: a failed or empty attempt does not
+    /// permanently skip naming — later turns retry up to [`SESSION_TITLE_MAX_ATTEMPTS`].
     fn maybe_generate_session_title(&self) {
-        if self
-            .title_generation_started
-            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-            .is_err()
-        {
+        let attempt = self.title_generation_attempts.fetch_add(1, Ordering::SeqCst);
+        if attempt >= SESSION_TITLE_MAX_ATTEMPTS {
             return;
         }
 
@@ -637,28 +695,30 @@ impl CodingAgentSession {
         };
         let inherit_model = self.selection.read().model.clone();
         let title_model_setting = self.title_model.clone();
+        let attempts = self.title_generation_attempts.clone();
 
         tokio::spawn(async move {
-            if let Err(err) =
-                generate_and_store_session_title(harness, models, inherit_model, &title_model_setting).await
-            {
-                log::debug!("auto session title skipped: {err:#}");
+            match generate_and_store_session_title(harness, models, inherit_model, &title_model_setting).await {
+                // Title stored — stop retrying.
+                Ok(Some(_)) => attempts.store(SESSION_TITLE_MAX_ATTEMPTS, Ordering::SeqCst),
+                // Nothing to name yet (or no fallback available) — retry on a later turn.
+                Ok(None) => {}
+                Err(err) => log::debug!("auto session title skipped: {err:#}"),
             }
         });
     }
 }
 
+/// Generate a session title in the background and persist it to the harness.
+///
+/// Returns `Ok(Some(title))` when a title was stored, `Ok(None)` when there is
+/// nothing to name yet (caller may retry on a later turn).
 async fn generate_and_store_session_title(
     harness: Arc<AgentHarness<TursoSessionStorage>>,
     models: Arc<elph_ai::Models>,
     inherit_model: elph_ai::Model,
     title_model_setting: &str,
-) -> Result<()> {
-    // The title_generation_started AtomicBool (set during construction) ensures
-    // this runs at most once per session lifetime, so there is no secondary
-    // "already named" guard here — the memorable ID placeholder set at creation
-    // should be replaced by the LLM-generated title after the first turn.
-
+) -> Result<Option<String>> {
     let branch = harness
         .session_branch_entries()
         .await
@@ -666,12 +726,14 @@ async fn generate_and_store_session_title(
     let context = elph_agent::build_session_context(&branch);
     let conversation = elph_agent::extract_conversation_for_naming(&context.messages);
     if conversation.trim().is_empty() {
-        return Ok(());
+        return Ok(None);
     }
 
-    let model = resolve_title_model(title_model_setting, &inherit_model)?;
+    let model = resolve_title_model(title_model_setting, &inherit_model);
     let user_prompt = SESSION_TITLE_USER.replace("{{conversation}}", &conversation);
-    let Some(title) = elph_agent::generate_session_name_with_prompts(
+    // Naming model call first; fall back to the first user message when it fails
+    // or returns a generic placeholder, so sessions always end up named.
+    let title = elph_agent::generate_session_name_with_prompts(
         &context.messages,
         models.as_ref(),
         &model,
@@ -679,30 +741,49 @@ async fn generate_and_store_session_title(
         &user_prompt,
     )
     .await
-    else {
-        return Ok(());
+    .or_else(|| fallback_session_title(&conversation));
+
+    let Some(title) = title else {
+        return Ok(None);
     };
 
     harness
-        .set_session_name(title)
+        .set_session_name(title.clone())
         .await
         .map_err(|e| anyhow::anyhow!("{e}"))?;
-    Ok(())
+    Ok(Some(title))
 }
 
-fn resolve_title_model(setting: &str, inherit: &elph_ai::Model) -> Result<elph_ai::Model> {
-    compaction::resolve_settings_model_ref(setting, inherit)
+/// Deterministic fallback title when the naming model call fails: the first
+/// user message, sanitized and truncated to [`elph_agent::sanitize_session_name`].
+fn fallback_session_title(conversation: &str) -> Option<String> {
+    let first = conversation.split("\n\n").next()?.trim();
+    let text = first.strip_prefix("User:").map(str::trim).unwrap_or(first);
+    let title = elph_agent::sanitize_session_name(text);
+    if title.is_empty() { None } else { Some(title) }
+}
+
+/// Resolve the session-title model ref, falling back to the session model when
+/// the configured value is invalid or unknown (robustness over aborting naming).
+fn resolve_title_model(setting: &str, inherit: &elph_ai::Model) -> elph_ai::Model {
+    match compaction::resolve_settings_model_ref(setting, inherit) {
+        Ok(model) => model,
+        Err(err) => {
+            log::debug!("session title model ref `{setting}` unresolved, using session model: {err}");
+            inherit.clone()
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::resolve_title_model;
+    use super::{fallback_session_title, resolve_title_model};
     use elph_ai::get_builtin_model;
 
     #[test]
     fn title_model_inherit_uses_session_model() {
         let model = get_builtin_model("openai", "gpt-4o-mini").expect("builtin model");
-        let resolved = resolve_title_model("inherit", &model).expect("resolve");
+        let resolved = resolve_title_model("inherit", &model);
         assert_eq!(resolved.id, model.id);
         assert_eq!(resolved.provider, model.provider);
     }
@@ -710,7 +791,35 @@ mod tests {
     #[test]
     fn title_model_empty_inherits() {
         let model = get_builtin_model("openai", "gpt-4o-mini").expect("builtin model");
-        let resolved = resolve_title_model("  ", &model).expect("resolve");
+        let resolved = resolve_title_model("  ", &model);
         assert_eq!(resolved.id, model.id);
+    }
+
+    #[test]
+    fn title_model_resolves_explicit_ref() {
+        let inherit = get_builtin_model("openai", "gpt-4o-mini").expect("builtin model");
+        let explicit = get_builtin_model("anthropic", "claude-haiku-4-5").expect("builtin model");
+        let resolved = resolve_title_model("anthropic/claude-haiku-4-5", &inherit);
+        assert_eq!(resolved.id, explicit.id);
+        assert_eq!(resolved.provider, explicit.provider);
+    }
+
+    #[test]
+    fn title_model_invalid_ref_falls_back_to_session_model() {
+        let model = get_builtin_model("openai", "gpt-4o-mini").expect("builtin model");
+        let resolved = resolve_title_model("openai/does-not-exist-xyz", &model);
+        assert_eq!(resolved.id, model.id);
+    }
+
+    #[test]
+    fn fallback_title_uses_first_user_message() {
+        let conversation = "User: Fix the login redirect for OAuth flows\n\n[...]\n\nUser: Ship it";
+        assert_eq!(
+            fallback_session_title(conversation).as_deref(),
+            Some("Fix the login redirect for OAuth flows")
+        );
+        // Generic first messages produce no fallback (caller retries later).
+        assert_eq!(fallback_session_title("User: hi"), None);
+        assert_eq!(fallback_session_title(""), None);
     }
 }

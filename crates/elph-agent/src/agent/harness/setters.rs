@@ -12,6 +12,7 @@ use crate::agent::harness::types::ModelUpdateSource;
 use crate::agent::harness::types::PendingSessionWrite;
 use crate::agent::harness::types::SystemPrompt;
 use crate::agent::harness::types::clone_stream_options;
+use crate::prompt::encoding::PromptEncodingConfig;
 use crate::types::{AgentThinkingLevel, AgentTool};
 
 use super::helpers::{session_error, thinking_level_to_session_string, validate_tool_names, validate_unique_names};
@@ -176,6 +177,12 @@ where
 
     pub async fn set_stream_options(&self, stream_options: AgentHarnessStreamOptions) {
         *self.shared.stream_options.lock().await = clone_stream_options(&stream_options);
+    }
+
+    /// Set the TOON prompt-encoding configuration for model-visible tool results.
+    /// `None` falls back to `PromptEncodingConfig::from_env()` (`ELPH_PROMPT_ENCODING*` vars).
+    pub fn set_prompt_encoding(&self, config: Option<PromptEncodingConfig>) {
+        *self.shared.prompt_encoding.lock().unwrap() = config;
     }
 
     pub async fn set_system_prompt(&self, prompt: SystemPrompt<S>) -> HarnessOpResult<()> {

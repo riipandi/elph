@@ -190,14 +190,33 @@ Project overrides **per nested key** (deep merge). Runtime saves write **home on
         "compactionModel": "inherit",
         "treeBranchSummaries": "inherit",
         "defaultThinkingLevel": "high",
-        "showConfiguredOnly": true,
+        "showConfiguredOnly": false,
         "scopedModels": []
     },
+    "promptEncoding": null,
     "maxRetries": 2,
     "defaultTimeout": "120s",
     "memory": {
         "embedModel": "AllMiniLML6V2",
-        "embedQuantized": true
+        "embedQuantized": true,
+        "enabled": true,
+        "autoRecall": true,
+        "autoCaptureWork": true,
+        "autoCaptureExploration": true,
+        "topK": 5,
+        "contextBudgetChars": 3000,
+        "minQueryLength": 15
+    },
+    "notifications": {
+        "enabled": true,
+        "onTurnComplete": true,
+        "onToolPermission": true,
+        "onUserQuestion": true,
+        "onError": true,
+        "onTurnCancel": false,
+        "onStartupReady": true,
+        "minTurnDurationSecs": 5.0,
+        "appName": "Elph"
     },
     "compaction": {
         "thresholdPct": 80,
@@ -211,14 +230,58 @@ Project overrides **per nested key** (deep merge). Runtime saves write **home on
 | **`preferredChatLanguage`** | (top-level)                                                                                                                                 | Language for user-facing chat prose                                                                                                                 |
 | **`maxRetries`**            | (top-level)                                                                                                                                 | LLM HTTP retries on 5xx / network errors                                                                                                            |
 | **`defaultTimeout`**        | (top-level)                                                                                                                                 | LLM stream inactivity / SSE stall limit (e.g. `120s`)                                                                                               |
-| **`ui`**                    | `theme`, `themes`, `showThinking`, …, `filePicker.*`                                                                                        | Appearance + transcript / chrome                                                                                                                    |
+| **`ui`**                    | `theme`, `themes`, `showThinking`, `autoExpandThinking`, `stickyScroll`, `footerTokenDisplay`, `coloredStatusFooter`, `allowModeChangeWhileBusy`, `filePicker.showHiddenFiles` | Appearance + transcript / chrome                                                                                                                    |
 | **`models`**                | `defaultModel`, `defaultThinkingLevel`, `sessionTitleModel`, `compactionModel`, `treeBranchSummaries`, `scopedModels`, `showConfiguredOnly` | Seeds for **new** sessions + catalog prefs. **Not** live model/mode/thinking                                                                        |
-| **`memory`**                | `embedModel`, `embedQuantized`, …                                                                                                           | Floppy / local embeddings                                                                                                                           |
+| **`promptEncoding`**        | `mode`, `minBytes`, `minSavingsRatio`, `delimiter`, `tabularDelimiter`, `targets`, `preamble`                                                 | TOON encoding of model-visible tool results (optional; absent/`null` → `ELPH_PROMPT_ENCODING*` env vars)                                           |
+| **`memory`**                | `embedModel`, `embedQuantized`, `enabled`, `autoRecall`, `autoCaptureWork`, `autoCaptureExploration`, `topK`, `contextBudgetChars`, `minQueryLength` | Floppy memory hooks + retrieval (see [memory.md](./memory.md))                                                                                     |
+| **`notifications`**        | `enabled`, `onTurnComplete`, `onToolPermission`, `onUserQuestion`, `onError`, `onTurnCancel`, `onStartupReady`, `minTurnDurationSecs`, `appName` | Desktop notifications (see [notifications](#notifications-notifications))                                                                          |
 | **`compaction`**            | `thresholdPct`, `keepRecentTokens`                                                                                                          | Auto-compaction **thresholds** only (auto-compact is always available after turns when usage exceeds the threshold; `/compact` is always available) |
 
 Legacy nested `provider: { maxRetries, defaultTimeout }` is lifted to the root on load.
 
 **Per-session state** (active model, thinking level, agent mode) lives on the coding session / Turso session tree so concurrent Elph instances do not race on `settings.json`. New sessions start in agent mode **`build`**. Switching to a model with a smaller context window may auto-compact history so it fits.
+
+### Session titles (`models.sessionTitleModel`)
+
+Sessions get an automatic title after the first user turn, generated in the background by the model in `models.sessionTitleModel` — `"inherit"` (default) uses the session's active model; set it to a `provider/model_id` (e.g. `anthropic/claude-haiku-4-5`) to use a different, usually cheaper, model for naming. Rename manually anytime with `/rename`.
+
+Naming is defensive by design:
+
+- The conversation excerpt keeps the first and most recent user messages (tool results and assistant output are omitted), capped at a small character budget — long sessions don't inflate the naming call.
+- Titles are sanitized: quotes, a leading `Title:`/`Session:` label, and trailing punctuation are stripped; generic placeholders (`"Chat"`, `"Conversation"`, …) are rejected.
+- If the naming model call fails or returns a generic title, the first user message (truncated to 60 characters) is used as a fallback, so sessions always end up named.
+- A failed attempt is retried on later turns (up to 3 tries). An invalid/unknown `sessionTitleModel` ref falls back to the session model instead of skipping naming.
+
+### Prompt encoding (`promptEncoding`)
+
+Optional [TOON](https://github.com/toon-format/toon) encoding compresses large structured JSON in **model-visible** tool results (and MCP `structured_content` details) before the model sees them, reducing input tokens on tabular payloads. See [agent-runtime.md](./agent-runtime.md#toon-prompt-encoding-optional) and [`crates/elph-agent/docs/prompt-encoding.md`](../crates/elph-agent/docs/prompt-encoding.md).
+
+The group is **optional**: when absent or `null`, the agent falls back to the `ELPH_PROMPT_ENCODING*` environment variables (and ultimately `off`). Set the group to override env vars explicitly.
+
+```json
+"promptEncoding": {
+    "mode": "auto",
+    "minBytes": 2048,
+    "minSavingsRatio": 1.0,
+    "delimiter": "comma",
+    "tabularDelimiter": "tab",
+    "targets": {
+        "toolResultText": true,
+        "structuredDetails": true
+    },
+    "preamble": "Data is in TOON format (2-space indent, arrays show length and fields)."
+}
+```
+
+| Field              | Type     | Default                              | Meaning                                                                              |
+| ------------------ | -------- | ------------------------------------ | ------------------------------------------------------------------------------------ |
+| `mode`             | `string` | `"off"`                              | `off` (never), `toon` (all eligible payloads), `auto` (uniform tabular arrays only). Unknown values fall back to `off`. |
+| `minBytes`         | `int`    | `2048`                               | Minimum JSON byte length before encoding applies.                                    |
+| `minSavingsRatio`  | `number` | `1.0`                                | Encode only when TOON is at most this ratio of the JSON size.                        |
+| `delimiter`        | `string` | `"comma"`                            | TOON delimiter for general payloads (`comma` / `tab` / `pipe`).                      |
+| `tabularDelimiter` | `string` | `"tab"`                              | TOON delimiter for tabular arrays.                                                   |
+| `targets`          | `object` | both `true`                          | Which surfaces may be rewritten (`toolResultText`, `structuredDetails`).             |
+| `preamble`         | `string` | built-in TOON hint                   | Preamble above TOON fenced blocks.                                                   |
 
 ### Theme (`ui.theme` / `ui.themes`)
 
@@ -243,6 +306,22 @@ Supported color forms (→ iocraft `Color::Rgb` / named):
 
 Token keys (camelCase): `textPrimary`, `textSecondary`, `textMuted`, `textHint`, `accent`, `accentSoft`, `border`, `borderFocus`, `borderSubtle`, `shellBorder`, `shellBorderDimmed`, `surface`, `codeBlockBg`, `selectionBg`, `dialogSelectionBg`, `success`, `warning`, `error`.
 
+### Desktop notifications (`notifications`)
+
+Optional native OS notifications (macOS Notification Center, Linux D-Bus, Windows Toast). `enabled` is the master switch; individual `on*` flags select which events notify.
+
+| Field                | Type     | Default | Meaning                                                        |
+| -------------------- | -------- | ------- | -------------------------------------------------------------- |
+| `enabled`            | boolean  | `true`  | Master switch — disable all desktop notifications.            |
+| `onTurnComplete`     | boolean  | `true`  | Notify when the agent finishes a turn.                         |
+| `onToolPermission`   | boolean  | `true`  | Notify when the agent requests tool permission.                |
+| `onUserQuestion`     | boolean  | `true`  | Notify when the agent asks a question.                         |
+| `onError`            | boolean  | `true`  | Notify on errors (agent / MCP / bootstrap failure).            |
+| `onTurnCancel`       | boolean  | `false` | Notify when a running turn is canceled.                        |
+| `onStartupReady`     | boolean  | `true`  | Notify when bootstrap / startup completes.                     |
+| `minTurnDurationSecs`| number   | `5.0`   | Minimum turn duration (s) before a turn-complete notification. |
+| `appName`            | string   | `"Elph"`| App name shown in the notification banner.                     |
+
 ## Provider JSON
 
 One file per provider; id = filename without extension.
@@ -262,8 +341,10 @@ Per-model: `reasoning`, `thinkingLevelMap` (required), `compat`, `cost`, `contex
 Priority for **new** sessions:
 
 1. CLI / env (`ELPH_PROVIDER` + `ELPH_MODEL`, or model override)
-2. Merged `models.defaultModel` (`provider/model_id`; project overrides home when set)
-3. Provider fallback default when only a provider is known
+2. TUI only — model last used in the project's most recent session (when it still
+   exists in the catalog), so a fresh session continues where the previous one left off
+3. Merged `models.defaultModel` (`provider/model_id`; project overrides home when set)
+4. Provider fallback default when only a provider is known
 
 Fresh bootstrap leaves `models.defaultModel` and `models.scopedModels` **empty** — the TUI shows “No model selected” until the user picks one (`Ctrl+L` / `/model`). Changing the live model in a session does **not** write `defaultModel` (avoids multi-instance conflicts).
 

@@ -9,21 +9,11 @@ pub fn mode_footer_slug(mode: AgentMode) -> &'static str {
 pub fn mode_tool_guidance(mode: AgentMode) -> &'static str {
     match mode {
         AgentMode::Build => {
-            "Mode: Build — full tool access. Mutating tools (write, edit, shell_exec, create_dir, etc.) may require user approval. \
-             Do NOT request a mode change to Brave from Build — just call the tool and wait for approval. \
-             Approval dialogs are quick and keep safety guardrails in place."
+            "Mode: Build — full tool access; mutating tools run through the approval UI. Do not request Brave from Build."
         }
-        AgentMode::Brave => "Mode: Brave — full tool access without approval prompts. Use mutating tools responsibly.",
-        AgentMode::Plan => {
-            "Mode: Plan — read-only exploration. Use web_search, read_file, grep, and similar tools to research. \
-             Do not write plan files directly — the system saves them automatically when you use \
-             `<proposed_plan>...</proposed_plan>` tags. \
-             When ready to implement, request mode change to Build (not Brave)."
-        }
-        AgentMode::Ask => {
-            "Mode: Ask — read-only exploration. Do not attempt write_file, edit_file, shell_exec, create_dir, or other mutating tools; \
-             they are not available in this mode. If the user asks you to make changes, request mode change to Build (not Brave)."
-        }
+        AgentMode::Brave => "Mode: Brave — full tool access without approval prompts.",
+        AgentMode::Plan => "Mode: Plan — read-only exploration; finish with a `<proposed_plan>` block.",
+        AgentMode::Ask => "Mode: Ask — read-only; answer with grounded findings and cite paths.",
     }
 }
 

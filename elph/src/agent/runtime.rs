@@ -5,14 +5,14 @@ use anyhow::Result;
 use elph_agent::create_goal_tools_with_hook;
 use elph_agent::{
     AgentGraphStore, AgentHarness, AgentHarnessOptions, AgentHarnessStreamOptions, BuiltinToolsBuilder, GoalRuntime,
-    GoalStore, LocalExecutionEnv, McpToolRegistry, QueueMode, RestoreOptions, SubagentBootstrap, SystemPrompt,
+    GoalStore, LocalExecutionEnv, QueueMode, RestoreOptions, SubagentBootstrap, SystemPrompt,
 };
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use super::mcp_bootstrap::{discover_mcp_registry, start_mcp_notifications};
-use super::model_registry::resolve_model;
+use super::model_registry::{resolve_model, selection_from_model};
 use super::prompt::{agents_md_for_cwd, build_coding_system_prompt};
 use super::resource_loader::{LoadResourcesResult, load_resources};
 use super::session::{CodingAgentSession, CodingAgentSessionParams};
@@ -81,10 +81,11 @@ pub async fn create_coding_session_with_events(
     tools.push(super::mode_change::create_mode_change_tool(ui_tx.clone()));
 
     let (mcp_registry, mcp_config_warnings) = if options.defer_mcp_load {
-        (Arc::new(McpToolRegistry::empty()), Vec::new())
+        let (registry, warnings) = discover_mcp_registry(options.paths).await;
+        (registry, warnings)
     } else {
         let (registry, warnings) = discover_mcp_registry(options.paths).await;
-        tools.extend(registry.create_agent_tools());
+        tools.extend(registry.create_agent_tools().await);
         (registry, warnings)
     };
 
@@ -124,6 +125,7 @@ pub async fn create_coding_session_with_events(
         resources: resources.clone(),
         stream_options: stream_options.clone(),
         thinking_level: thinking,
+        prompt_encoding: options.settings.prompt_encoding.clone(),
         agent_graph: Some(agent_graph),
     };
 
@@ -202,6 +204,8 @@ pub async fn create_coding_session_with_events(
     )
     .await
     .map_err(|e| anyhow::anyhow!("{e}"))?;
+    // Host settings → harness prompt encoding (None keeps the env fallback).
+    harness.set_prompt_encoding(options.settings.prompt_encoding.clone());
 
     // Wire automatic memory hooks (per-turn recall, auto-correction, work capture, task lifecycle).
     // Runs best-effort: errors are logged and don't prevent session startup.
@@ -211,12 +215,16 @@ pub async fn create_coding_session_with_events(
     }
 
     let harness = Arc::new(harness);
+    let restored_selection = {
+        let restored_model = harness.get_model().await;
+        selection_from_model(&restored_model, Arc::clone(&selection.models))
+    };
 
     let session = CodingAgentSession::new(CodingAgentSessionParams {
         harness: harness.clone(),
         session_manager,
         session_id,
-        selection,
+        selection: restored_selection,
         agent_mode,
         mode_state: Arc::clone(&mode_state),
         show_thinking: options.settings.ui.show_thinking,
@@ -229,9 +237,7 @@ pub async fn create_coding_session_with_events(
     })
     .await?;
 
-    if !options.defer_mcp_load {
-        start_mcp_notifications(&session, mcp_registry, mcp_config_warnings);
-    }
+    start_mcp_notifications(&session, Arc::clone(&mcp_registry), mcp_config_warnings);
 
     Ok((session, ui_rx))
 }

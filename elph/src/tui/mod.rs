@@ -94,12 +94,8 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
         slash_commands_for_palette(Some(&extension_host.registry().read()), Some(&prompt_templates), Some(&skills));
 
     let session_id = options.resume_id.clone().unwrap_or_else(|| "starting…".to_string());
-    let (default_provider, default_model_id) = match settings.models.default_provider_and_model() {
-        Some((p, m)) => (Some(p), Some(m)),
-        None => (None, None),
-    };
     let (boot_provider, boot_model_id) =
-        resolve_provider_and_model(None, None, default_provider.as_deref(), default_model_id.as_deref())?;
+        resolve_boot_model(&settings, &paths, &cwd, options.resume_id.as_deref()).await?;
     let boot_model = get_builtin_model(&boot_provider, &boot_model_id);
     let context_limit = boot_model
         .as_ref()
@@ -114,6 +110,10 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
         paths: paths.clone(),
         settings: settings.clone(),
         resume_id: options.resume_id.clone(),
+        model_override: options
+            .resume_id
+            .is_none()
+            .then(|| format!("{boot_provider}/{boot_model_id}")),
         preloaded_resources: bootstrap_resources,
     };
 
@@ -165,4 +165,46 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
     .ignore_ctrl_c()
     .await?;
     Ok(())
+}
+
+/// Resolve the `(provider, model)` a fresh session should boot on.
+///
+/// Priority:
+/// 1. Explicit `ELPH_PROVIDER` / `ELPH_MODEL` env vars (already honored by
+///    [`resolve_provider_and_model`]) — always win.
+/// 2. The model last used in this project's sessions, when it still exists in the
+///    catalog — a fresh session continues where the previous one left off.
+/// 3. `models.defaultModel` from settings — used on first run (no saved sessions),
+///    when the last session never recorded a model, or when the remembered model
+///    was removed from the catalog.
+///
+/// `resume_id: Some(..)` short-circuits to settings default: the harness restores
+/// the session's own model from its tree instead.
+pub(crate) async fn resolve_boot_model(
+    settings: &Settings,
+    paths: &Paths,
+    cwd: &std::path::Path,
+    resume_id: Option<&str>,
+) -> Result<(String, String)> {
+    let (default_provider, default_model_id) = match settings.models.default_provider_and_model() {
+        Some((p, m)) => (Some(p), Some(m)),
+        None => (None, None),
+    };
+    let resolved_default =
+        resolve_provider_and_model(None, None, default_provider.as_deref(), default_model_id.as_deref())?;
+
+    if resume_id.is_some() || std::env::var("ELPH_PROVIDER").is_ok() || std::env::var("ELPH_MODEL").is_ok() {
+        return Ok(resolved_default);
+    }
+
+    let manager = crate::agent::SessionManager::new(paths, cwd)?;
+    match manager.last_used_model().await {
+        // Only adopt the remembered model when it still exists in the catalog.
+        Ok(Some((provider, model_id))) if get_builtin_model(&provider, &model_id).is_some() => Ok((provider, model_id)),
+        Ok(Some((provider, model_id))) => {
+            log::warn!("last used model {provider}/{model_id} no longer in catalog; using settings default");
+            Ok(resolved_default)
+        }
+        Ok(None) | Err(_) => Ok(resolved_default),
+    }
 }

@@ -44,8 +44,8 @@
 ╭─────────────────────────────────────────────────────────────────╮
 │ PREFIX_SYMBOL                                                   │   <- INPUT_PROMPT (multiline with ctrl+j or shift+enter)
 ╰─────────────────────────────────────────────────── AGENT_MODE ──╯
-MODEL_NAME | PROVIDER | T: high | IMG      $0.00 | 0k | 0.0% (262k)   <- FOOTER / STATUSLINE (line-clamp if not enough width)
-PROJECT_DIR [abcd12345]                      turn: 0 | main [-N +N]      (PROJECT_DIR only name, not full path)
+MODEL_NAME · PROVIDER · T: high ◐      $0.00 · 0k · 0.0% (262k)   <- FOOTER / STATUSLINE (line-clamp if not enough width)
+PROJECT_DIR [abcd12345]                      turn: 0 · main [-N +N]      (PROJECT_DIR only name, not full path)
 ```
 
 ### Alternatives
@@ -54,12 +54,12 @@ PROJECT_DIR [abcd12345]                      turn: 0 | main [-N +N]      (PROJEC
 ╭───────────────────────────────────────────────────────────────────────────────╮
 │ PREFIX_SYMBOL                                                                 │
 ╰──────────────────────────────────────────────────────────────── PROJECT_DIR ──╯
-Build | PROVIDER/MODEL_NAME (THINKING) | IMG                turn: 0 | [+0/0 -0/0]
+Build · PROVIDER/MODEL_NAME (THINKING) ◐                turn: 0 · [+0/0 -0/0]
 
 ╭───────────────────────────────────────────────────────────────────────────────╮
 │ PREFIX                                                                        │
 ╰─────────────────────────────────────────── ~ my-app (feat/cool-new-feature) ──╯
-Plan | opencode/deepseek-v4-flash | xhigh | IMG             turn: 0 | [+0/0 -0/0]
+Plan · opencode/deepseek-v4-flash · xhigh ◐             turn: 0 · [+0/0 -0/0]
 ```
 
 ### Prefix Symbol
@@ -201,7 +201,7 @@ pending turn (up to **4** images). Files are saved under `~/.local/share/elph/at
 | ---------------- | --------------------------------------------------------------------------- |
 | Input suffix     | `[images: paste_….png, …]` on the prompt line                               |
 | Hint row         | Count + shortcuts; bullet list of relative paths                            |
-| Footer **IMG**   | Shown when `provider.SupportsImageInput(model.Input)` is true               |
+| Footer **◐**   | Shown when `provider.SupportsImageInput(model.Input)` is true               |
 | Non-vision model | Paste blocked with a system message; switch model via **Ctrl+L** / `/model` |
 
 On submit, images are sent as `TurnOptions.UserImages` to the provider API. For non-vision models,
@@ -243,8 +243,8 @@ Paste collapse is always applied for long text payloads (no settings toggle).
 ### Structure (no border)
 
 ```
-MODEL_NAME | PROVIDER | T: level | IMG           $0.00 | 0.0% | 262k
-project_dir [session_id] mode               turn: 0 | branch [+N -N]
+MODEL_NAME · PROVIDER · T: level ◐           $0.00 · 0.0% · 262k
+project_dir [session_id] mode               turn: 0 · branch [+N -N]
 ```
 
 The token display format is configurable via `footerTokenDisplay` setting (see [configuration.md](./configuration.md#settings-reference)). Context limit is always displayed.
@@ -252,6 +252,8 @@ The token display format is configurable via `footerTokenDisplay` setting (see [
 When no actual token usage data is available (e.g., at startup before the first API call), token counts are estimated from the system prompt.
 
 The footer is painted eagerly from the configured model and project snapshot. During asynchronous agent and MCP bootstrap, Elph requests a full terminal redraw after each startup event so output written outside the canvas diff cannot leave the footer hidden until the first keyboard or model event.
+
+**Boot model:** when starting a new session (no `-c` / `--resume`), the footer starts on the model **last used in this project's most recent session** (restored from that session's tree), so a fresh session continues where the previous one left off. First run in a project (no saved sessions) or when the remembered model is no longer in the catalog falls back to `models.defaultModel` from settings; explicit `ELPH_PROVIDER`/`ELPH_MODEL` env vars always win. Resumed sessions restore their own model from the session tree.
 
 | Format       | Example | Description |
 | ------------ | ------- | ----------- |
@@ -264,7 +266,7 @@ The footer is painted eagerly from the configured model and project snapshot. Du
 | Segment     | Color                    | Notes                    |
 | ----------- | ------------------------ | ------------------------ |
 | MODEL_NAME  | `ThinkingColor(level)`   | Adapts to thinking level |
-| `           | PROVIDER                 | T: level                 | IMG`                                                | `dimText` | **IMG** when the active model supports image input (`provider.SupportsImageInput`) |
+| `           · PROVIDER                 · T: level                 ◐`                                                | `dimText` | **◐** when the active model supports image input (`provider.SupportsImageInput`) |
 | `$0.00`     | `ContextUsageColor(pct)` | Cost                     |
 | `X%` or `X% | 262k`or`262k`            | `ContextUsageColor(pct)` | Token usage (configurable via `footerTokenDisplay`) |
 
@@ -390,6 +392,8 @@ When the agent is busy, an activity line shows between the content area and inpu
 
 `Ctrl+L` or `/model` opens a fuzzy overlay. Filter providers with arrow keys; select with Enter. Left/Right (with an empty filter) cycle provider groups. The **Scoped** tab lists models enabled via `/scoped-models` or quick keys in this picker.
 
+Every tab uses the same row layout: `MODEL_ID  PROVIDER  CONTEXT_LENGTH (think|img)` — the provider column stays visible on Provider tabs too, so columns never shift when switching tabs. Fuzzy filtering (and the unfiltered list) only searches the **active tab's category**: All searches every model, Free only free models, Scoped only scoped models, and a Provider tab only that provider's models.
+
 | Key (list focused) | Action                                                                     |
 | ------------------ | -------------------------------------------------------------------------- |
 | `+`                | Add highlighted model to scoped list (`models.scopedModels`, Ctrl+P cycle) |
@@ -398,7 +402,7 @@ When the agent is busy, an activity line shows between the content area and inpu
 | `Enter`            | Confirm model for this session                                             |
 | `[` / `]`          | Cycle scope tabs (All · Scoped · Provider)                                 |
 
-By default (`settings.models.showConfiguredOnly: true`), the **All** list and **Provider** tabs only include providers that already have credentials in `auth.json` (API key, OAuth, or env ref). Set `showConfiguredOnly` to `false` to browse every builtin provider. The active session provider is always included so you can re-select its models.
+By default (`settings.models.showConfiguredOnly: false`), the **All** list and **Provider** tabs include every builtin provider. Set `showConfiguredOnly` to `true` to only show providers that already have credentials in `auth.json` (API key, OAuth, or env ref). The active session provider is always included so you can re-select its models.
 
 ## Scoped models
 

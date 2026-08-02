@@ -7,8 +7,10 @@ use crate::tui::chrome::{
     footer_mode_model_width,
 };
 use crate::tui::labels::GitFooterInfo;
-use crate::tui::labels::{FOOTER_SELECT_MODE_BADGE, footer_mode_label};
-use crate::tui::theme::{FOOTER_DIM_FG, FOOTER_GIT_ADD_FG, FOOTER_GIT_DEL_FG, QUIT_BUSY_NOTICE_FG, rgb_color};
+use crate::tui::labels::{FOOTER_IMG_INDICATOR, FOOTER_SELECT_MODE_BADGE, FOOTER_SEP, footer_mode_label};
+use crate::tui::theme::{
+    FOOTER_DIM_FG, FOOTER_GIT_ADD_FG, FOOTER_GIT_DEL_FG, FOOTER_IMG_INDICATOR_FG, QUIT_BUSY_NOTICE_FG, rgb_color,
+};
 use crate::types::{AgentMode, ThinkingLevel};
 
 #[derive(Clone, Default, Props)]
@@ -33,11 +35,11 @@ pub struct FooterProps {
 struct FooterLeftParts {
     /// Agent mode (`Build`, `Plan`, …) — mode color.
     mode: String,
-    /// ` | ` separator between mode and model — neutral white.
+    /// ` · ` separator between mode and model — dimmed grey.
     sep: String,
     /// `provider/model (thinking)` — thinking-level color (no leading separator).
     model_thinking: String,
-    /// ` | IMG` — always dimmed (includes leading separator when present).
+    /// ` ◐` — dimmed when uncolored, blue when colored (includes leading space).
     img: String,
 }
 
@@ -85,8 +87,8 @@ fn split_footer_status_right(right: &str) -> FooterRightParts {
             select_badge: FOOTER_SELECT_MODE_BADGE.to_string(),
             ..FooterRightParts::default()
         };
-    } else if let Some(after_sel) = right.strip_prefix(&format!("{FOOTER_SELECT_MODE_BADGE} | ")) {
-        (FOOTER_SELECT_MODE_BADGE.to_string(), " | ".to_string(), after_sel)
+    } else if let Some(after_sel) = right.strip_prefix(&format!("{FOOTER_SELECT_MODE_BADGE}{}", FOOTER_SEP)) {
+        (FOOTER_SELECT_MODE_BADGE.to_string(), FOOTER_SEP.to_string(), after_sel)
     } else {
         (String::new(), String::new(), right)
     };
@@ -99,9 +101,9 @@ fn split_footer_status_right(right: &str) -> FooterRightParts {
         };
     }
 
-    let (prefix, stats) = if let Some((turn, after_turn)) = rest.split_once(" | ") {
+    let (prefix, stats) = if let Some((turn, after_turn)) = rest.split_once(FOOTER_SEP) {
         if after_turn.starts_with('[') {
-            (format!("{turn} | "), after_turn)
+            (format!("{}{}", turn, FOOTER_SEP), after_turn)
         } else {
             return FooterRightParts {
                 select_badge,
@@ -143,11 +145,11 @@ fn split_footer_status_right(right: &str) -> FooterRightParts {
     }
 }
 
-/// Split a fitted left footer line into mode / sep / model-thinking / IMG for coloring.
+/// Split a fitted left footer line into mode / sep / model-thinking / ◐ for coloring.
 fn split_footer_status_left(mode: AgentMode, left: &str) -> FooterLeftParts {
     let mode_s = footer_mode_label(mode);
-    let mode_prefix = format!("{mode_s} | ");
-    const IMG_SUFFIX: &str = " | IMG";
+    let mode_prefix = format!("{mode_s}{}", FOOTER_SEP);
+    const VISION_SUFFIX: &str = " ◐";
 
     if left == mode_s {
         return FooterLeftParts {
@@ -159,26 +161,26 @@ fn split_footer_status_left(mode: AgentMode, left: &str) -> FooterLeftParts {
     }
 
     if let Some(after_mode) = left.strip_prefix(&mode_prefix) {
-        if after_mode == "IMG" {
-            // Degenerate: mode + IMG only (no model segment).
+        if after_mode == FOOTER_IMG_INDICATOR {
+            // Degenerate: mode + ◐ only (no model segment).
             return FooterLeftParts {
                 mode: mode_s,
-                sep: " | ".to_string(),
+                sep: FOOTER_SEP.to_string(),
                 model_thinking: String::new(),
-                img: "IMG".to_string(),
+                img: FOOTER_IMG_INDICATOR.to_string(),
             };
         }
-        if let Some(model_part) = after_mode.strip_suffix(IMG_SUFFIX) {
+        if let Some(model_part) = after_mode.strip_suffix(VISION_SUFFIX) {
             return FooterLeftParts {
                 mode: mode_s,
-                sep: " | ".to_string(),
+                sep: FOOTER_SEP.to_string(),
                 model_thinking: model_part.to_string(),
-                img: IMG_SUFFIX.to_string(),
+                img: VISION_SUFFIX.to_string(),
             };
         }
         return FooterLeftParts {
             mode: mode_s,
-            sep: " | ".to_string(),
+            sep: FOOTER_SEP.to_string(),
             model_thinking: after_mode.to_string(),
             img: String::new(),
         };
@@ -194,20 +196,20 @@ fn split_footer_status_left(mode: AgentMode, left: &str) -> FooterLeftParts {
     }
 
     // Fitted string dropped the mode — treat as model/thinking (or bare text), dimmed group color.
-    if let Some(model_part) = left.strip_suffix(IMG_SUFFIX) {
+    if let Some(model_part) = left.strip_suffix(VISION_SUFFIX) {
         return FooterLeftParts {
             mode: String::new(),
             sep: String::new(),
             model_thinking: model_part.to_string(),
-            img: IMG_SUFFIX.to_string(),
+            img: VISION_SUFFIX.to_string(),
         };
     }
-    if left == "IMG" {
+    if left == FOOTER_IMG_INDICATOR {
         return FooterLeftParts {
             mode: String::new(),
             sep: String::new(),
             model_thinking: String::new(),
-            img: "IMG".to_string(),
+            img: FOOTER_IMG_INDICATOR.to_string(),
         };
     }
     FooterLeftParts {
@@ -246,6 +248,11 @@ pub fn Footer(props: &FooterProps) -> impl Into<AnyElement<'static>> {
     };
     let model_color = if colored {
         rgb_color(props.thinking_level.border_rgb())
+    } else {
+        FOOTER_DIM_FG
+    };
+    let img_color = if colored {
+        FOOTER_IMG_INDICATOR_FG
     } else {
         FOOTER_DIM_FG
     };
@@ -289,10 +296,10 @@ pub fn Footer(props: &FooterProps) -> impl Into<AnyElement<'static>> {
                     .into()
                 }))
                 #( (!parts.sep.is_empty()).then(|| -> AnyElement<'static> {
-                    // Separator stays neutral white, independent of agent mode or thinking color.
+                    // Separator stays dimmed grey, independent of agent mode or thinking color.
                     element! {
                         Text(
-                            color: if colored { Color::White } else { FOOTER_DIM_FG },
+                            color: FOOTER_DIM_FG,
                             wrap: TextWrap::NoWrap,
                             content: parts.sep.clone(),
                         )
@@ -307,7 +314,7 @@ pub fn Footer(props: &FooterProps) -> impl Into<AnyElement<'static>> {
                 }))
                 #( (!parts.img.is_empty()).then(|| -> AnyElement<'static> {
                     element! {
-                        Text(color: FOOTER_DIM_FG, wrap: TextWrap::NoWrap, content: parts.img.clone())
+                        Text(color: img_color, wrap: TextWrap::NoWrap, content: parts.img.clone())
                     }
                     .into()
                 }))
@@ -391,16 +398,16 @@ mod tests {
 
     #[test]
     fn split_footer_status_left_keeps_mode_model_and_dimmed_img() {
-        let parts = split_footer_status_left(AgentMode::Plan, "Plan | opencode/deepseek-v4-flash (xhigh) | IMG");
+        let parts = split_footer_status_left(AgentMode::Plan, "Plan · opencode/deepseek-v4-flash (xhigh) ◐");
         assert_eq!(parts.mode, "Plan");
-        assert_eq!(parts.sep, " | ");
+        assert_eq!(parts.sep, " · ");
         assert_eq!(parts.model_thinking, "opencode/deepseek-v4-flash (xhigh)");
-        assert_eq!(parts.img, " | IMG");
+        assert_eq!(parts.img, " ◐");
 
-        let no_img = split_footer_status_left(AgentMode::Build, "Build | opencode/big-pickle (high)");
+        let no_img = split_footer_status_left(AgentMode::Build, "Build · openai/gpt-5.6-luna (high)");
         assert_eq!(no_img.mode, "Build");
-        assert_eq!(no_img.sep, " | ");
-        assert_eq!(no_img.model_thinking, "opencode/big-pickle (high)");
+        assert_eq!(no_img.sep, " · ");
+        assert_eq!(no_img.model_thinking, "openai/gpt-5.6-luna (high)");
         assert!(no_img.img.is_empty());
 
         let mode_only = split_footer_status_left(AgentMode::Ask, "Ask");
@@ -412,8 +419,8 @@ mod tests {
 
     #[test]
     fn split_footer_status_right_colors_git_add_and_del() {
-        let full = split_footer_status_right("turn: 2 | [+3/42 -1/7]");
-        assert_eq!(full.prefix, "turn: 2 | ");
+        let full = split_footer_status_right("turn: 2 · [+3/42 -1/7]");
+        assert_eq!(full.prefix, "turn: 2 · ");
         assert_eq!(full.open, "[");
         assert_eq!(full.added, "+3/42");
         assert_eq!(full.mid, " ");
@@ -431,10 +438,10 @@ mod tests {
         assert_eq!(turn_only.plain, "turn: 3");
         assert!(turn_only.added.is_empty());
 
-        let with_sel = split_footer_status_right("sel | turn: 0 | [+0/0 -0/0]");
+        let with_sel = split_footer_status_right("sel · turn: 0 · [+0/0 -0/0]");
         assert_eq!(with_sel.select_badge, "sel");
-        assert_eq!(with_sel.select_sep, " | ");
-        assert_eq!(with_sel.prefix, "turn: 0 | ");
+        assert_eq!(with_sel.select_sep, " · ");
+        assert_eq!(with_sel.prefix, "turn: 0 · ");
         assert_eq!(with_sel.added, "+0/0");
         assert_eq!(with_sel.deleted, "-0/0");
     }
@@ -461,7 +468,7 @@ mod tests {
             "left missing: {rendered:?}"
         );
         assert!(rendered.contains("turn:"), "right missing: {rendered:?}");
-        assert!(rendered.contains("(xhigh)") || rendered.contains("IMG"), "{rendered:?}");
+        assert!(rendered.contains("(xhigh)") || rendered.contains("◐"), "{rendered:?}");
     }
 
     #[test]
@@ -477,7 +484,7 @@ mod tests {
             Footer(
                 screen_width: 100u16,
                 agent_mode: AgentMode::Build,
-                model_label: "opencode/big-pickle".to_string(),
+                model_label: "openai/gpt-5.6-luna".to_string(),
                 thinking_level: ThinkingLevel::High,
                 supports_images: false,
                 turn: 3u32,
@@ -505,7 +512,7 @@ mod tests {
             Footer(
                 screen_width: 100u16,
                 agent_mode: AgentMode::Build,
-                model_label: "opencode/big-pickle".to_string(),
+                model_label: "openai/gpt-5.6-luna".to_string(),
                 thinking_level: ThinkingLevel::High,
                 supports_images: false,
                 turn: 0u32,

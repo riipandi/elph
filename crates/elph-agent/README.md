@@ -78,7 +78,7 @@ config.servers.insert(
     ]),
 );
 let registry = Arc::new(McpToolRegistry::load(config).await?);
-let mcp_tools = registry.create_agent_tools(); // names: mcp_fs__...
+let mcp_tools = registry.create_agent_tools().await; // names: mcp_fs__...
 ```
 
 Supports **stdio** and **streamable HTTP**, connection pooling with reconnect, and fail-open discovery. Details: [docs/mcp.md](./docs/mcp.md).
@@ -288,7 +288,7 @@ let agent = Agent::new(AgentOptions {
 
 ## TOON prompt encoding
 
-Optional [TOON](https://github.com/toon-format/toon) encoding compresses structured JSON in **model-visible** tool results (and can be used manually in user prompts via `encode_value`). Enabled through `AgentOptions.prompt_encoding` or `ELPH_PROMPT_ENCODING` (`off` | `toon` | `auto`).
+Optional [TOON](https://github.com/toon-format/toon) encoding compresses structured JSON in **model-visible** tool results (and can be used manually in user prompts via `encode_value`). Enabled through `AgentOptions.prompt_encoding`, `AgentHarness::set_prompt_encoding`, or `ELPH_PROMPT_ENCODING` (`off` | `toon` | `auto`). `PromptEncodingConfig` is `Serialize`/`Deserialize` (camelCase) so hosts can parse it from a settings file.
 
 ```rust
 use elph_agent::{PromptEncodingConfig, PromptEncodingMode};

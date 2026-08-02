@@ -10,7 +10,8 @@ pub fn format_skills_for_system_prompt(skills: &[Skill]) -> String {
     }
 
     let mut lines = vec![
-        "Use a skill when the task matches its description. Read its full file first and resolve relative references from the skill directory.".to_string(),
+        "Use a matching skill; read its full file first and resolve relative references from the skill directory."
+            .to_string(),
         String::new(),
         "<available_skills>".to_string(),
     ];

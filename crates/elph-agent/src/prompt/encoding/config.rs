@@ -1,11 +1,14 @@
 //! Configuration for optional TOON prompt encoding.
 
+use serde::{Deserialize, Serialize};
+
 const DEFAULT_MIN_BYTES: usize = 2048;
 const DEFAULT_MIN_SAVINGS_RATIO: f64 = 1.0;
 pub(crate) const DEFAULT_PREAMBLE: &str = "Data is in TOON format (2-space indent, arrays show length and fields).";
 
 /// Delimiter used when encoding TOON tabular arrays.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum PromptEncodingDelimiter {
     #[default]
     Comma,
@@ -33,7 +36,8 @@ impl PromptEncodingDelimiter {
 }
 
 /// When to apply TOON encoding to prompt payloads.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum PromptEncodingMode {
     #[default]
     Off,
@@ -44,10 +48,17 @@ pub enum PromptEncodingMode {
 }
 
 /// Which tool-result surfaces TOON encoding may rewrite for the model.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
 pub struct PromptEncodingTargets {
     pub tool_result_text: bool,
     pub structured_details: bool,
+}
+
+impl Default for PromptEncodingTargets {
+    fn default() -> Self {
+        Self::ALL
+    }
 }
 
 impl PromptEncodingTargets {
@@ -58,16 +69,22 @@ impl PromptEncodingTargets {
 }
 
 /// Optional TOON encoding settings for agent prompt payloads.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
 pub struct PromptEncodingConfig {
+    #[serde(deserialize_with = "deserialize_mode")]
     pub mode: PromptEncodingMode,
+    #[serde(default = "default_min_bytes")]
     pub min_bytes: usize,
     /// Encode only when `toon_len <= json_len * min_savings_ratio`.
+    #[serde(default = "default_min_savings_ratio")]
     pub min_savings_ratio: f64,
     pub delimiter: PromptEncodingDelimiter,
     /// Delimiter override for tabular payloads; defaults to tab per TOON LLM guide.
+    #[serde(default = "default_tabular_delimiter")]
     pub tabular_delimiter: Option<PromptEncodingDelimiter>,
     pub targets: PromptEncodingTargets,
+    #[serde(default = "default_preamble")]
     pub preamble: Option<String>,
 }
 
@@ -75,12 +92,12 @@ impl Default for PromptEncodingConfig {
     fn default() -> Self {
         Self {
             mode: PromptEncodingMode::Off,
-            min_bytes: DEFAULT_MIN_BYTES,
-            min_savings_ratio: DEFAULT_MIN_SAVINGS_RATIO,
+            min_bytes: default_min_bytes(),
+            min_savings_ratio: default_min_savings_ratio(),
             delimiter: PromptEncodingDelimiter::Comma,
-            tabular_delimiter: Some(PromptEncodingDelimiter::Tab),
+            tabular_delimiter: default_tabular_delimiter(),
             targets: PromptEncodingTargets::ALL,
-            preamble: Some(DEFAULT_PREAMBLE.to_string()),
+            preamble: default_preamble(),
         }
     }
 }
@@ -139,6 +156,36 @@ fn parse_usize_env(name: &str) -> Option<usize> {
     std::env::var(name).ok()?.parse().ok()
 }
 
+fn default_min_bytes() -> usize {
+    DEFAULT_MIN_BYTES
+}
+
+fn default_min_savings_ratio() -> f64 {
+    DEFAULT_MIN_SAVINGS_RATIO
+}
+
+fn default_tabular_delimiter() -> Option<PromptEncodingDelimiter> {
+    Some(PromptEncodingDelimiter::Tab)
+}
+
+fn default_preamble() -> Option<String> {
+    Some(DEFAULT_PREAMBLE.to_string())
+}
+
+/// Lenient mode parsing for settings.json: unknown values fall back to `Off`
+/// (mirrors [`parse_mode_from_env`]).
+fn deserialize_mode<'de, D>(deserializer: D) -> Result<PromptEncodingMode, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let raw = String::deserialize(deserializer)?;
+    Ok(match raw.to_ascii_lowercase().as_str() {
+        "toon" => PromptEncodingMode::Toon,
+        "auto" => PromptEncodingMode::Auto,
+        _ => PromptEncodingMode::Off,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -154,5 +201,38 @@ mod tests {
     fn tabular_delimiter_defaults_to_tab() {
         let config = PromptEncodingConfig::default();
         assert_eq!(config.tabular_delimiter, Some(PromptEncodingDelimiter::Tab));
+    }
+
+    #[test]
+    fn serde_round_trip_matches_defaults() {
+        let config = PromptEncodingConfig::default();
+        let json = serde_json::to_value(&config).expect("serialize");
+        assert_eq!(json["mode"], "off");
+        assert_eq!(json["minBytes"], 2048);
+        assert_eq!(json["minSavingsRatio"], 1.0);
+        assert_eq!(json["delimiter"], "comma");
+        assert_eq!(json["tabularDelimiter"], "tab");
+        assert_eq!(json["targets"]["toolResultText"], true);
+        assert_eq!(json["targets"]["structuredDetails"], true);
+        let decoded: PromptEncodingConfig = serde_json::from_value(json).expect("deserialize");
+        assert_eq!(config, decoded);
+    }
+
+    #[test]
+    fn serde_partial_object_uses_field_defaults() {
+        let decoded: PromptEncodingConfig =
+            serde_json::from_value(serde_json::json!({ "mode": "auto" })).expect("deserialize partial");
+        let expected = PromptEncodingConfig {
+            mode: PromptEncodingMode::Auto,
+            ..Default::default()
+        };
+        assert_eq!(decoded, expected);
+    }
+
+    #[test]
+    fn serde_unknown_mode_falls_back_to_off() {
+        let decoded: PromptEncodingConfig =
+            serde_json::from_value(serde_json::json!({ "mode": "bogus" })).expect("deserialize");
+        assert_eq!(decoded.mode, PromptEncodingMode::Off);
     }
 }

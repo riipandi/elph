@@ -51,7 +51,7 @@ fn format_skills_for_system_prompt_orders_visible_skills() {
     let formatted = format_skills_for_system_prompt(&[visible_skill(), disabled_skill(), second_skill()]);
 
     let expected = "\
-Use a skill when the task matches its description. Read its full file first and resolve relative references from the skill directory.
+Use a matching skill; read its full file first and resolve relative references from the skill directory.
 
 <available_skills>
   <skill>

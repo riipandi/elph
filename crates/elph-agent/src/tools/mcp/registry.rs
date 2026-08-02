@@ -1,14 +1,28 @@
 //! MCP tool registry — discover remote tools/resources/prompts and bridge them into the agent harness.
 //!
 //! Production path:
-//! 1. [`McpToolRegistry::load`] / [`load_with_options`] discovers catalogs (fail-open by default).
+//! 1. [`McpToolRegistry::load`] / [`load_with_options`] validates config and optionally discovers catalogs.
 //! 2. Sessions are pooled so tool calls reuse stdio processes / HTTP sessions.
-//! 3. [`McpToolRegistry::create_agent_tools`] exposes `mcp_{server}__{tool}` agent tools.
-//! 4. Policy filters deny-listed tools; approval is enforced via [`crate::tools::mcp::policy`].
-//! 5. `tools/list_changed` (and resource/prompt variants) can refresh catalogs in place.
+//! 3. Lazy discovery: [`McpToolRegistry::ensure_server_discovered`] fires discovery exactly once per
+//!    server (with 1 retry on transient failure) on first `call_tool`/`read_resource`/`get_prompt`.
+//!    Results are merged into the catalog — other servers' tools are preserved.
+//! 4. [`McpToolRegistry::create_agent_tools`] exposes `mcp_{server}__{tool}` agent tools. On failure,
+//!    already-discovered tools are still returned (graceful degradation).
+//! 5. Policy filters deny-listed tools; approval is enforced via [`crate::tools::mcp::policy`].
+//! 6. `tools/list_changed` (and resource/prompt variants) can refresh catalogs in place.
+//! 7. The TUI bootstrap (`bootstrap_mcp_for_session`) always attaches tools even when discovery
+//!    has partial failures — partial results are better than no tools.
+//!
+//! ## Call flow (fix for "Requires HTTP transport")
+//!
+//! `call_tool_on_client` uses `call_tool_once` (non-MRTR) instead of the MRTR-aware `call_tool`.
+//! The MRTR variant requires HTTP transport and fails on stdio with `"Requires HTTP transport (--port)"`.
+//! Since the agent harness does not support interactive MRTR rounds (policy: `Decline`), `call_tool_once`
+//! is the correct choice for all transports. Task handles (SEP-2663) are still surfaced via `tasks_get`.
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::{Context, Result};
 use elph_ai::Tool;
@@ -24,7 +38,7 @@ use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult, ToolResultContent};
 
 use super::client::{call_tool_for_server, probe_server_with_auth, validate_server_config};
-use super::config::{McpConfig, McpLoadOptions, McpServerConfig, McpServerLoadProgress};
+use super::config::{McpConfig, McpLoadOptions, McpLoadStrategy, McpServerConfig, McpServerLoadProgress};
 use super::events::McpServerEvent;
 use super::policy::McpPolicyConfig;
 use super::policy::mcp_tool_requires_approval;
@@ -86,9 +100,18 @@ pub struct McpLoadReport {
     pub servers_skipped: usize,
 }
 
+fn should_discover_server(global_strategy: McpLoadStrategy, server_strategy: McpLoadStrategy) -> bool {
+    global_strategy == McpLoadStrategy::Eager || server_strategy == McpLoadStrategy::Eager
+}
+
+fn should_auto_discover_on_startup(global_strategy: McpLoadStrategy, server_strategy: McpLoadStrategy) -> bool {
+    should_discover_server(global_strategy, server_strategy)
+}
+
 /// Registry of MCP servers, pooled sessions, and discovered catalogs.
 pub struct McpToolRegistry {
     config: McpConfig,
+    load_strategy: McpLoadStrategy,
     tools: RwLock<Vec<McpToolDescriptor>>,
     resources: RwLock<Vec<McpResourceDescriptor>>,
     prompts: RwLock<Vec<McpPromptDescriptor>>,
@@ -103,12 +126,19 @@ pub struct McpToolRegistry {
     policy: McpPolicyConfig,
     auth_store_path: Option<PathBuf>,
     event_rx: RwLock<Option<mpsc::UnboundedReceiver<McpServerEvent>>>,
+    /// True once tools (and resources/prompts) have been discovered for this registry.
+    tools_discovered: RwLock<bool>,
+    /// Options used for deferred discovery (lazy mode).
+    load_options: RwLock<Option<McpLoadOptions>>,
+    /// Servers that have already been individually discovered (even if full batch discovery is pending).
+    discovered_servers: RwLock<Vec<String>>,
 }
 
 impl McpToolRegistry {
     pub fn empty() -> Self {
         Self {
             config: McpConfig::default(),
+            load_strategy: McpLoadStrategy::Lazy,
             tools: RwLock::new(Vec::new()),
             resources: RwLock::new(Vec::new()),
             prompts: RwLock::new(Vec::new()),
@@ -120,6 +150,9 @@ impl McpToolRegistry {
             policy: McpPolicyConfig::default(),
             auth_store_path: None,
             event_rx: RwLock::new(None),
+            tools_discovered: RwLock::new(false),
+            load_options: RwLock::new(None),
+            discovered_servers: RwLock::new(Vec::new()),
         }
     }
 
@@ -129,18 +162,21 @@ impl McpToolRegistry {
     }
 
     /// Discover tools (and optionally resources/prompts) from all enabled servers.
+    ///
+    /// When `options.load_strategy` is `lazy` (the default), servers are
+    /// validated but not contacted; call [`McpToolRegistry::discover_tools`] or
+    /// [`McpToolRegistry::create_agent_tools`] to trigger discovery later.
     pub async fn load_with_options(config: McpConfig, options: McpLoadOptions) -> Result<Self> {
         let pool = McpSessionPool::new()
             .with_auth_store_path(options.auth_store_path.clone())
             .with_response_cache(options.response_cache.clone());
-        let (event_tx, event_rx) = if options.enable_list_changed {
+        let (_event_tx, event_rx) = if options.enable_list_changed {
             let (tx, rx) = mpsc::unbounded_channel();
             pool.set_event_sender(tx.clone());
             (Some(tx), Some(rx))
         } else {
             (None, None)
         };
-        let _ = event_tx;
         let pool = Arc::new(pool);
 
         let enabled: Vec<(String, McpServerConfig)> = config
@@ -148,136 +184,87 @@ impl McpToolRegistry {
             .map(|(n, c)| (n.to_string(), c.clone()))
             .collect();
         let skipped = config.server_count().saturating_sub(enabled.len());
-
-        let concurrency = options.max_concurrency.max(1);
-        let pool_for_discovery = Arc::clone(&pool);
-        let discover_rp = options.discover_resources_and_prompts;
-        let progress_tx = options.progress_tx.clone();
-        let total = enabled.len();
-        let results: Vec<ServerDiscovery> = stream::iter(enabled.into_iter().enumerate())
-            .map(|(index, (name, server_config))| {
-                let discovery_timeout = options.discovery_timeout;
-                let pool = Arc::clone(&pool_for_discovery);
-                let progress_tx = progress_tx.clone();
-                async move {
-                    if let Some(ref tx) = progress_tx {
-                        let _ = tx.send(McpServerLoadProgress::Started {
-                            name: name.clone(),
-                            index: index + 1,
-                            total,
-                        });
-                    }
-                    let result = discover_one(&pool, &name, server_config, discovery_timeout, discover_rp).await;
-                    if let Some(ref tx) = progress_tx {
-                        let _ = tx.send(server_discovery_progress(&result));
-                    }
-                    result
-                }
-            })
-            .buffer_unordered(concurrency)
-            .collect()
-            .await;
-
-        let mut tools = Vec::new();
-        let mut resources = Vec::new();
-        let mut prompts = Vec::new();
-        let mut resource_capable = Vec::new();
-        let mut prompt_capable = Vec::new();
-        let mut task_capable = Vec::new();
-        let mut report = McpLoadReport {
-            servers_skipped: skipped,
-            ..Default::default()
-        };
-
-        for result in results {
-            match result {
-                ServerDiscovery::Ok {
-                    name,
-                    transport,
-                    descriptors,
-                    resource_descriptors,
-                    prompt_descriptors,
-                    resources_ok,
-                    prompts_ok,
-                    tasks_ok,
-                    message,
-                } => {
-                    report.servers_ok += 1;
-                    report.tools_loaded += descriptors.len();
-                    report.resources_loaded += resource_descriptors.len();
-                    report.prompts_loaded += prompt_descriptors.len();
-                    report.servers.push(McpServerLoadReport {
-                        name: name.clone(),
-                        ok: true,
-                        transport,
-                        tool_count: descriptors.len(),
-                        resource_count: resource_descriptors.len(),
-                        prompt_count: prompt_descriptors.len(),
-                        message,
-                    });
-                    tools.extend(descriptors);
-                    resources.extend(resource_descriptors);
-                    prompts.extend(prompt_descriptors);
-                    if resources_ok {
-                        resource_capable.push(name.clone());
-                    }
-                    if prompts_ok {
-                        prompt_capable.push(name.clone());
-                    }
-                    if tasks_ok {
-                        task_capable.push(name);
-                    }
-                }
-                ServerDiscovery::Failed { name, transport, error } => {
-                    report.servers_failed += 1;
-                    report.servers.push(McpServerLoadReport {
-                        name: name.clone(),
-                        ok: false,
-                        transport,
-                        tool_count: 0,
-                        resource_count: 0,
-                        prompt_count: 0,
-                        message: error.clone(),
-                    });
-                    if options.continue_on_error {
-                        log::warn!("MCP server discovery failed; continuing: server={name} error={error}");
-                    } else {
-                        anyhow::bail!("MCP server \"{name}\" discovery failed: {error}");
-                    }
-                }
-            }
-        }
-
-        // Apply global policy for requires_approval flags
-        let policy = config.policy.clone();
-        for tool in &mut tools {
-            let server_cfg = config.servers.get(&tool.server_name);
-            let effective = server_cfg
-                .map(|s| config.effective_policy(s))
-                .unwrap_or_else(|| policy.clone());
-            tool.requires_approval = mcp_tool_requires_approval(&effective, &tool.exposed_name);
-            // Drop denied tools
-        }
-        tools.retain(|t| {
-            let server_cfg = config.servers.get(&t.server_name);
-            let effective = server_cfg
-                .map(|s| config.effective_policy(s))
-                .unwrap_or_else(|| policy.clone());
-            effective.is_exposed(&t.exposed_name)
+        let should_discover_any = enabled.iter().any(|(_, server_config)| {
+            should_auto_discover_on_startup(options.load_strategy, server_config.load_strategy())
         });
 
+        let (tools, resources, prompts, resource_capable, prompt_capable, task_capable, report) = if should_discover_any
+        {
+            let concurrency = options.max_concurrency.max(1);
+            let pool_for_discovery = Arc::clone(&pool);
+            let discover_rp = options.discover_resources_and_prompts;
+            let progress_tx = options.progress_tx.clone();
+            let total = enabled.len();
+            let results: Vec<ServerDiscovery> = stream::iter(enabled.into_iter().enumerate())
+                .map(|(index, (name, server_config))| {
+                    let should_discover =
+                        should_auto_discover_on_startup(options.load_strategy, server_config.load_strategy());
+                    let discovery_timeout = options.discovery_timeout;
+                    let pool = Arc::clone(&pool_for_discovery);
+                    let progress_tx = progress_tx.clone();
+                    async move {
+                        if !should_discover {
+                            return None;
+                        }
+                        if let Some(ref tx) = progress_tx {
+                            let _ = tx.send(McpServerLoadProgress::Started {
+                                name: name.clone(),
+                                index: index + 1,
+                                total,
+                            });
+                        }
+                        let result = discover_one(&pool, &name, server_config, discovery_timeout, discover_rp).await;
+                        if let Some(ref tx) = progress_tx {
+                            let _ = tx.send(server_discovery_progress(&result));
+                        }
+                        Some(result)
+                    }
+                })
+                .buffer_unordered(concurrency)
+                .filter_map(|result| async move { result })
+                .collect()
+                .await;
+
+            let (tools, resources, prompts, resource_capable, prompt_capable, task_capable, report) =
+                build_catalogs_from_results(config.clone(), results, skipped, options.continue_on_error)?;
+            (
+                tools,
+                resources,
+                prompts,
+                resource_capable,
+                prompt_capable,
+                task_capable,
+                report,
+            )
+        } else {
+            (
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                McpLoadReport {
+                    servers_skipped: skipped,
+                    ..Default::default()
+                },
+            )
+        };
+
         log::info!(
-            "MCP registry loaded: tools={} resources={} prompts={} ok={} failed={} skipped={}",
+            "MCP registry loaded: tools={} resources={} prompts={} ok={} failed={} skipped={} strategy={}",
             report.tools_loaded,
             report.resources_loaded,
             report.prompts_loaded,
             report.servers_ok,
             report.servers_failed,
-            report.servers_skipped
+            report.servers_skipped,
+            options.load_strategy.as_str()
         );
 
         Ok(Self {
-            config,
+            config: config.clone(),
+            load_strategy: options.load_strategy,
             tools: RwLock::new(tools),
             resources: RwLock::new(resources),
             prompts: RwLock::new(prompts),
@@ -286,10 +273,289 @@ impl McpToolRegistry {
             task_capable: RwLock::new(task_capable),
             pool,
             report: RwLock::new(report),
-            policy,
-            auth_store_path: options.auth_store_path,
+            policy: config.policy.clone(),
+            auth_store_path: options.auth_store_path.clone(),
             event_rx: RwLock::new(event_rx),
+            tools_discovered: RwLock::new(should_discover_any),
+            load_options: RwLock::new(Some(options)),
+            discovered_servers: RwLock::new(Vec::new()),
         })
+    }
+
+    /// Ensure tools have been discovered from all enabled servers.
+    ///
+    /// For `lazy`-loaded registries, this triggers the deferred discovery.
+    /// Subsequent calls are no-ops.
+    pub async fn discover_tools(&self) -> Result<()> {
+        self.discover_tools_with_options(None, None, None, None).await
+    }
+
+    /// Discover tools with an optional progress reporter override.
+    ///
+    /// This is useful for deferred/bootstrap discovery where the caller wants
+    /// progress events without having preconfigured `McpLoadOptions`.
+    pub async fn discover_tools_with_progress(
+        &self,
+        progress_tx: Option<mpsc::UnboundedSender<McpServerLoadProgress>>,
+    ) -> Result<()> {
+        self.discover_tools_with_options(progress_tx, None, None, None).await
+    }
+
+    async fn discover_tools_with_options(
+        &self,
+        progress_override: Option<mpsc::UnboundedSender<McpServerLoadProgress>>,
+        concurrency_override: Option<usize>,
+        continue_on_error_override: Option<bool>,
+        timeout_override: Option<Duration>,
+    ) -> Result<()> {
+        // Exclusive claim: serialize concurrent discovery runs through the write
+        // lock, then drop the guard before the (potentially long) awaits below.
+        {
+            let mut discovered = self.tools_discovered.write();
+            if *discovered {
+                return Ok(());
+            }
+            *discovered = true;
+        }
+
+        let result: Result<()> = async {
+            let enabled: Vec<(String, McpServerConfig)> = self
+                .config
+                .enabled_servers()
+                .map(|(n, c)| (n.to_string(), c.clone()))
+                .collect();
+            let skipped = self.config.server_count().saturating_sub(enabled.len());
+            let pending: Vec<(String, McpServerConfig)> = enabled
+                .into_iter()
+                .filter(|(n, _)| !self.is_server_discovered(n))
+                .collect();
+
+            if pending.is_empty() {
+                *self.report.write() = McpLoadReport {
+                    servers_skipped: skipped,
+                    ..Default::default()
+                };
+                return Ok(());
+            }
+
+            let (concurrency, continue_on_error, discover_rp, progress_tx, discovery_timeout) = {
+                let options = self.load_options.read();
+                let opts = options.as_ref();
+                (
+                    concurrency_override.unwrap_or_else(|| opts.map_or(4, |o| o.max_concurrency.max(1))),
+                    continue_on_error_override.unwrap_or_else(|| opts.is_none_or(|o| o.continue_on_error)),
+                    opts.is_none_or(|o| o.discover_resources_and_prompts),
+                    progress_override.or_else(|| opts.and_then(|o| o.progress_tx.clone())),
+                    timeout_override.or_else(|| opts.and_then(|o| o.discovery_timeout)),
+                )
+            };
+
+            let total = pending.len();
+            let results: Vec<ServerDiscovery> = stream::iter(pending.into_iter().enumerate())
+                .map(|(index, (name, server_config))| {
+                    let pool = Arc::clone(&self.pool);
+                    let progress_tx = progress_tx.clone();
+                    async move {
+                        if let Some(ref tx) = progress_tx {
+                            let _ = tx.send(McpServerLoadProgress::Started {
+                                name: name.clone(),
+                                index: index + 1,
+                                total,
+                            });
+                        }
+                        let result = discover_one(&pool, &name, server_config, discovery_timeout, discover_rp).await;
+                        if let Some(ref tx) = progress_tx {
+                            let _ = tx.send(server_discovery_progress(&result));
+                        }
+                        if matches!(result, ServerDiscovery::Ok { .. }) {
+                            self.discovered_servers.write().push(name.clone());
+                        }
+                        result
+                    }
+                })
+                .buffer_unordered(concurrency)
+                .collect()
+                .await;
+            let (
+                new_tools,
+                new_resources,
+                new_prompts,
+                new_resource_capable,
+                new_prompt_capable,
+                new_task_capable,
+                report,
+            ) = build_catalogs_from_results(self.config.clone(), results, skipped, continue_on_error)?;
+
+            // Merge newly discovered items into existing catalogs (preserve prior discoveries).
+            {
+                let mut tools = self.tools.write();
+                for tool in &new_tools {
+                    tools.retain(|t| t.server_name != tool.server_name);
+                }
+                tools.extend(new_tools);
+            }
+            // Resources: retain entries for servers not in the newly discovered set.
+            {
+                let mut resources = self.resources.write();
+                resources.retain(|r| !new_resource_capable.contains(&r.server_name));
+                resources.extend(new_resources);
+            }
+            {
+                let mut prompts = self.prompts.write();
+                prompts.retain(|p| !new_prompt_capable.contains(&p.server_name));
+                prompts.extend(new_prompts);
+            }
+            // Capabilities: add new, avoid duplicates.
+            for server in &new_resource_capable {
+                let mut caps = self.resource_capable.write();
+                if !caps.contains(server) {
+                    caps.push(server.clone());
+                }
+            }
+            for server in &new_prompt_capable {
+                let mut caps = self.prompt_capable.write();
+                if !caps.contains(server) {
+                    caps.push(server.clone());
+                }
+            }
+            for server in &new_task_capable {
+                let mut caps = self.task_capable.write();
+                if !caps.contains(server) {
+                    caps.push(server.clone());
+                }
+            }
+            // Update total report counts.
+            *self.report.write() = report;
+            Ok(())
+        }
+        .await;
+
+        if result.is_err() {
+            // A failed discovery must not block a later retry.
+            *self.tools_discovered.write() = false;
+        }
+        result
+    }
+
+    /// Discover a single server on-demand (lazy mode friendly).
+    ///
+    /// This is useful when you want to expose tools for one specific server
+    /// without waiting for the full batch discovery. Results are merged into
+    /// the existing catalog (other servers' tools are preserved).
+    pub async fn discover_server(&self, server_name: &str) -> Result<()> {
+        {
+            let discovered = self.discovered_servers.read();
+            if discovered.contains(&server_name.to_string()) {
+                return Ok(());
+            }
+        }
+
+        let Some(server_config) = self.config.servers.get(server_name).cloned() else {
+            anyhow::bail!("MCP server \"{server_name}\" not configured");
+        };
+        if server_config.is_disabled() {
+            anyhow::bail!("MCP server \"{server_name}\" is disabled");
+        }
+
+        let (discover_rp, discovery_timeout) = {
+            let options = self.load_options.read();
+            let opts = options.as_ref();
+            (
+                opts.is_none_or(|o| o.discover_resources_and_prompts),
+                opts.and_then(|o| o.discovery_timeout),
+            )
+        };
+
+        let result = discover_one(&self.pool, server_name, server_config, discovery_timeout, discover_rp).await;
+
+        // Merge discovered items into existing catalogs (preserve other servers).
+        let (
+            new_tools,
+            new_resources,
+            new_prompts,
+            new_resource_capable,
+            new_prompt_capable,
+            new_task_capable,
+            _report,
+        ) = build_catalogs_from_results(self.config.clone(), vec![result], 0, true)?;
+
+        {
+            let mut discovered = self.discovered_servers.write();
+            discovered.push(server_name.to_string());
+        }
+        {
+            let mut tools = self.tools.write();
+            tools.retain(|t| t.server_name != server_name);
+            tools.extend(new_tools);
+        }
+        {
+            let mut resources = self.resources.write();
+            resources.retain(|r| r.server_name != server_name);
+            resources.extend(new_resources);
+        }
+        {
+            let mut prompts = self.prompts.write();
+            prompts.retain(|p| p.server_name != server_name);
+            prompts.extend(new_prompts);
+        }
+        {
+            let mut caps = self.resource_capable.write();
+            let name = server_name.to_string();
+            if new_resource_capable.contains(&name) && !caps.contains(&name) {
+                caps.push(name);
+            }
+        }
+        {
+            let mut caps = self.prompt_capable.write();
+            let name = server_name.to_string();
+            if new_prompt_capable.contains(&name) && !caps.contains(&name) {
+                caps.push(name);
+            }
+        }
+        {
+            let mut caps = self.task_capable.write();
+            let name = server_name.to_string();
+            if new_task_capable.contains(&name) && !caps.contains(&name) {
+                caps.push(name);
+            }
+        }
+        // Update total report counts.
+        {
+            let mut report = self.report.write();
+            report.servers_ok = report.servers_ok.saturating_add(1);
+            report.tools_loaded = self.tools.read().len();
+            report.resources_loaded = self.resources.read().len();
+            report.prompts_loaded = self.prompts.read().len();
+        }
+        Ok(())
+    }
+
+    /// Check whether a specific server has already been discovered.
+    pub fn is_server_discovered(&self, server_name: &str) -> bool {
+        self.discovered_servers.read().contains(&server_name.to_string())
+    }
+
+    /// Count enabled servers that have not yet been discovered.
+    pub fn pending_server_count(&self) -> usize {
+        self.config
+            .enabled_servers()
+            .filter(|(n, _)| !self.is_server_discovered(n))
+            .count()
+    }
+
+    /// Whether the full tool catalog has been discovered at least once.
+    pub fn is_tools_discovered(&self) -> bool {
+        *self.tools_discovered.read()
+    }
+
+    /// Load strategy used by this registry.
+    pub fn load_strategy(&self) -> McpLoadStrategy {
+        self.load_strategy
+    }
+
+    /// Stored load options (if any).
+    pub fn load_options(&self) -> Option<McpLoadOptions> {
+        self.load_options.read().clone()
     }
 
     pub fn config(&self) -> &McpConfig {
@@ -498,7 +764,15 @@ impl McpToolRegistry {
     }
 
     /// Convert discovered MCP tools (+ resource/prompt bridge tools) into harness [`AgentTool`]s.
-    pub fn create_agent_tools(self: &Arc<Self>) -> Vec<AgentTool> {
+    ///
+    /// For lazy-loaded registries, this triggers deferred discovery on first call.
+    /// If discovery fails, already-discovered tools are still returned (graceful degradation).
+    pub async fn create_agent_tools(self: &Arc<Self>) -> Vec<AgentTool> {
+        // Try discovery, but don't let errors wipe out previously discovered tools.
+        if let Err(error) = self.discover_tools().await {
+            log::warn!("MCP lazy discovery failed; using already-discovered tools: {error}");
+            // Continue with whatever tools we already have — don't return empty.
+        }
         let mut out = Vec::new();
 
         for desc in self.tools.read().iter() {
@@ -808,8 +1082,40 @@ impl McpToolRegistry {
         )
     }
 
+    /// Ensure a specific server is discovered before tool call.
+    ///
+    /// Unlike `refresh_server()` (which re-discovers and replaces the session),
+    /// this only triggers discovery if the server has not yet been discovered.
+    /// This is called from the tool/resource/prompt call paths.
+    ///
+    /// Retries once on transient failures before giving up.
+    async fn ensure_server_discovered(&self, server_name: &str) -> Result<()> {
+        if self.is_server_discovered(server_name) {
+            return Ok(());
+        }
+        let max_attempts = 2;
+        for attempt in 1..=max_attempts {
+            match self.discover_server(server_name).await {
+                Ok(()) => return Ok(()),
+                Err(error) if attempt < max_attempts => {
+                    log::warn!(
+                        "MCP server discovery failed; retrying: server={server_name} attempt={attempt}/{max_attempts} error={error}"
+                    );
+                    tokio::time::sleep(Duration::from_millis(500 * 2u64.pow(attempt as u32 - 1))).await;
+                }
+                Err(error) => {
+                    return Err(error).context(format!(
+                        "MCP server \"{server_name}\" unreachable after {max_attempts} attempts"
+                    ));
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Call a tool on a configured server (pooled connection).
     pub async fn call_tool(&self, server: &str, tool_name: &str, args: Value) -> Result<AgentToolResult> {
+        self.ensure_server_discovered(server).await?;
         let Some(server_config) = self.config.servers.get(server).cloned() else {
             anyhow::bail!("MCP server \"{server}\" not configured");
         };
@@ -826,6 +1132,7 @@ impl McpToolRegistry {
     }
 
     pub async fn read_resource(&self, server: &str, uri: &str) -> Result<AgentToolResult> {
+        self.ensure_server_discovered(server).await?;
         let Some(server_config) = self.config.servers.get(server).cloned() else {
             anyhow::bail!("MCP server \"{server}\" not configured");
         };
@@ -843,6 +1150,7 @@ impl McpToolRegistry {
         prompt_name: &str,
         arguments: Option<Value>,
     ) -> Result<AgentToolResult> {
+        self.ensure_server_discovered(server).await?;
         let Some(server_config) = self.config.servers.get(server).cloned() else {
             anyhow::bail!("MCP server \"{server}\" not configured");
         };
@@ -924,6 +1232,122 @@ enum ServerDiscovery {
         transport: String,
         error: String,
     },
+}
+
+/// Catalogs produced by [`build_catalogs_from_results`]:
+/// (tools, resources, prompts, resource_capable, prompt_capable, task_capable, report).
+type DiscoveredCatalogs = (
+    Vec<McpToolDescriptor>,
+    Vec<McpResourceDescriptor>,
+    Vec<McpPromptDescriptor>,
+    Vec<String>,
+    Vec<String>,
+    Vec<String>,
+    McpLoadReport,
+);
+
+fn build_catalogs_from_results(
+    config: McpConfig,
+    results: Vec<ServerDiscovery>,
+    skipped: usize,
+    continue_on_error: bool,
+) -> Result<DiscoveredCatalogs> {
+    let mut tools = Vec::new();
+    let mut resources = Vec::new();
+    let mut prompts = Vec::new();
+    let mut resource_capable = Vec::new();
+    let mut prompt_capable = Vec::new();
+    let mut task_capable = Vec::new();
+    let mut report = McpLoadReport {
+        servers_skipped: skipped,
+        ..Default::default()
+    };
+
+    for result in results {
+        match result {
+            ServerDiscovery::Ok {
+                name,
+                transport,
+                descriptors,
+                resource_descriptors,
+                prompt_descriptors,
+                resources_ok,
+                prompts_ok,
+                tasks_ok,
+                message,
+            } => {
+                report.servers_ok += 1;
+                report.tools_loaded += descriptors.len();
+                report.resources_loaded += resource_descriptors.len();
+                report.prompts_loaded += prompt_descriptors.len();
+                report.servers.push(McpServerLoadReport {
+                    name: name.clone(),
+                    ok: true,
+                    transport,
+                    tool_count: descriptors.len(),
+                    resource_count: resource_descriptors.len(),
+                    prompt_count: prompt_descriptors.len(),
+                    message,
+                });
+                tools.extend(descriptors);
+                resources.extend(resource_descriptors);
+                prompts.extend(prompt_descriptors);
+                if resources_ok {
+                    resource_capable.push(name.clone());
+                }
+                if prompts_ok {
+                    prompt_capable.push(name.clone());
+                }
+                if tasks_ok {
+                    task_capable.push(name);
+                }
+            }
+            ServerDiscovery::Failed { name, transport, error } => {
+                report.servers_failed += 1;
+                report.servers.push(McpServerLoadReport {
+                    name: name.clone(),
+                    ok: false,
+                    transport,
+                    tool_count: 0,
+                    resource_count: 0,
+                    prompt_count: 0,
+                    message: error.clone(),
+                });
+                if continue_on_error {
+                    log::warn!("MCP server discovery failed; continuing: server={name} error={error}");
+                } else {
+                    anyhow::bail!("MCP server \"{name}\" discovery failed: {error}");
+                }
+            }
+        }
+    }
+
+    // Apply global policy for requires_approval flags and drop denied tools.
+    let policy = config.policy.clone();
+    for tool in &mut tools {
+        let server_cfg = config.servers.get(&tool.server_name);
+        let effective = server_cfg
+            .map(|s| config.effective_policy(s))
+            .unwrap_or_else(|| policy.clone());
+        tool.requires_approval = mcp_tool_requires_approval(&effective, &tool.exposed_name);
+    }
+    tools.retain(|t| {
+        let server_cfg = config.servers.get(&t.server_name);
+        let effective = server_cfg
+            .map(|s| config.effective_policy(s))
+            .unwrap_or_else(|| policy.clone());
+        effective.is_exposed(&t.exposed_name)
+    });
+
+    Ok((
+        tools,
+        resources,
+        prompts,
+        resource_capable,
+        prompt_capable,
+        task_capable,
+        report,
+    ))
 }
 
 async fn discover_one(
@@ -1265,6 +1689,20 @@ mod tests {
     }
 
     #[test]
+    fn eager_server_strategy_discover_is_honored() {
+        assert!(should_discover_server(McpLoadStrategy::Lazy, McpLoadStrategy::Eager));
+        assert!(should_discover_server(McpLoadStrategy::Eager, McpLoadStrategy::Lazy));
+        assert!(!should_discover_server(McpLoadStrategy::Lazy, McpLoadStrategy::Lazy));
+    }
+
+    #[test]
+    fn lazy_servers_skip_startup_discovery_until_requested() {
+        assert!(!should_auto_discover_on_startup(McpLoadStrategy::Lazy, McpLoadStrategy::Lazy));
+        assert!(should_auto_discover_on_startup(McpLoadStrategy::Lazy, McpLoadStrategy::Eager));
+        assert!(should_auto_discover_on_startup(McpLoadStrategy::Eager, McpLoadStrategy::Lazy));
+    }
+
+    #[test]
     fn mcp_error_result_is_error_agent_tool() {
         let result = CallToolResult::error(vec![ContentBlock::text("boom")]);
         let agent = mcp_result_to_agent(result);
@@ -1298,5 +1736,42 @@ mod tests {
         assert!(text.contains("truncated"));
         assert!(text.chars().count() < 50_000);
         assert_eq!(agent.details.get("truncated"), Some(&json!(true)));
+    }
+
+    #[test]
+    fn empty_registry_is_lazy_and_undiscovered() {
+        let registry = McpToolRegistry::empty();
+        assert_eq!(registry.load_strategy(), McpLoadStrategy::Lazy);
+        assert!(!registry.is_tools_discovered());
+        assert_eq!(registry.pending_server_count(), 0);
+        assert!(registry.load_options().is_none());
+    }
+
+    #[test]
+    fn pending_count_reflects_individual_discovery() {
+        let mut registry = McpToolRegistry::empty();
+        assert_eq!(registry.pending_server_count(), 0);
+
+        registry.discovered_servers.write().push("fs".to_string());
+        assert_eq!(registry.pending_server_count(), 0);
+
+        // Simulate a configured but not-yet-discovered server.
+        registry
+            .config
+            .servers
+            .insert("web".into(), McpServerConfig::stdio("echo", vec![]));
+        assert_eq!(registry.pending_server_count(), 1);
+
+        registry.discovered_servers.write().push("web".to_string());
+        assert_eq!(registry.pending_server_count(), 0);
+    }
+
+    #[test]
+    fn is_server_discovered_tracks_individual_servers() {
+        let registry = McpToolRegistry::empty();
+        assert!(!registry.is_server_discovered("fs"));
+        registry.discovered_servers.write().push("fs".to_string());
+        assert!(registry.is_server_discovered("fs"));
+        assert!(!registry.is_server_discovered("other"));
     }
 }

@@ -1,3 +1,6 @@
+// Check hyper balance:
+// curl https://hyper.charm.land/v1/credits -H "Authorization: Bearer $HYPER_API_KEY"
+
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 

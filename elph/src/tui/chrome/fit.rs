@@ -1,9 +1,10 @@
 //! Progressive chrome fitting — drops or truncates rightmost segments first.
 
 use crate::tui::labels::{
-    FOOTER_SELECT_MODE_BADGE, GitFooterInfo, context_pct_limit_label, editor_border_project_label, footer_mode_label,
-    footer_model_name, footer_model_thinking_label, footer_status_left_label, footer_status_right_label,
-    footer_status_right_label_with_select, format_token_count, session_header_segments, session_label,
+    FOOTER_IMG_INDICATOR, FOOTER_SELECT_MODE_BADGE, FOOTER_SEP, GitFooterInfo, context_pct_limit_label,
+    editor_border_project_label, footer_mode_label, footer_model_name, footer_model_thinking_label,
+    footer_status_left_label, footer_status_right_label, footer_status_right_label_with_select, format_token_count,
+    session_header_segments, session_label,
 };
 use crate::types::{AgentMode, ThinkingLevel};
 use elph_tui::utils::{display_width, truncate_with_ellipsis};
@@ -137,7 +138,7 @@ pub fn fit_editor_border_project(project_name: &str, branch: Option<&str>, max_w
     pick_fitting_label(&[full, name_only, format!("~ {project_name}")], max_width)
 }
 
-/// Ideal left width for always-visible `MODE | model` (no thinking / IMG).
+/// Ideal left width for always-visible `MODE · model` (no thinking / ◎).
 pub fn footer_mode_model_width(mode: AgentMode, model_label: &str) -> usize {
     let mode_s = footer_mode_label(mode);
     let model_id = footer_model_name(model_label);
@@ -146,7 +147,7 @@ pub fn footer_mode_model_width(mode: AgentMode, model_label: &str) -> usize {
 
 /// Status footer left progressive fit. **Mode and model name always preferred.**
 ///
-/// Drop order when narrowing: thinking → IMG → provider → truncate model.
+/// Drop order when narrowing: thinking → ◎ → provider → truncate model.
 /// Mode label is never dropped before model truncation.
 pub fn fit_footer_status_left(
     mode: AgentMode,
@@ -165,25 +166,28 @@ pub fn fit_footer_status_left(
 
     // Most complete → least optional; every candidate keeps MODE + model.
     let mut candidates = Vec::with_capacity(8);
-    // 1. Full: MODE | provider/model (thinking) [| IMG]
+    // 1. Full: MODE · provider/model (thinking) ◐
     candidates.push(footer_status_left_label(mode, model_label, thinking_level, supports_images));
-    // 2. Drop IMG, keep thinking + provider
-    candidates.push(format!("{mode_s} | {with_thinking}"));
-    // 3. Drop thinking: MODE | provider/model [| IMG]
+    // 2. Drop ◐, keep thinking + provider
+    candidates.push(format!("{mode_s}{}{}", FOOTER_SEP, with_thinking));
+    // 3. Drop thinking: MODE · provider/model ◐
     if supports_images {
-        candidates.push(format!("{mode_s} | {model_label} | IMG"));
+        candidates.push(format!("{}{}{} {}", mode_s, FOOTER_SEP, model_label, FOOTER_IMG_INDICATOR));
     }
-    candidates.push(format!("{mode_s} | {model_label}"));
-    // 4. Drop provider: MODE | model (thinking) [| IMG]
+    candidates.push(format!("{}{}{}", mode_s, FOOTER_SEP, model_label));
+    // 4. Drop provider: MODE · model (thinking) ◐
     if supports_images {
-        candidates.push(format!("{mode_s} | {model_id_thinking} | IMG"));
+        candidates.push(format!(
+            "{}{}{} {}",
+            mode_s, FOOTER_SEP, model_id_thinking, FOOTER_IMG_INDICATOR
+        ));
     }
-    candidates.push(format!("{mode_s} | {model_id_thinking}"));
-    // 5. Drop thinking + provider + IMG: MODE | model (always last non-truncated)
+    candidates.push(format!("{}{}{}", mode_s, FOOTER_SEP, model_id_thinking));
+    // 5. Drop thinking + provider + ◐: MODE · model (always last non-truncated)
     if supports_images {
-        candidates.push(format!("{mode_s} | {model_id} | IMG"));
+        candidates.push(format!("{}{}{} {}", mode_s, FOOTER_SEP, model_id, FOOTER_IMG_INDICATOR));
     }
-    candidates.push(format!("{mode_s} | {model_id}"));
+    candidates.push(format!("{}{}{}", mode_s, FOOTER_SEP, model_id));
     pick_fitting_label(&candidates, max_width)
 }
 
@@ -215,7 +219,7 @@ pub fn fit_footer_status_right_with_select(
     if max_width == 0 {
         return String::new();
     }
-    let turn_s = format!("{FOOTER_SELECT_MODE_BADGE} | turn: {turn}");
+    let turn_s = format!("{}{}turn: {}", FOOTER_SELECT_MODE_BADGE, FOOTER_SEP, turn);
     let full = footer_status_right_label_with_select(turn, git, true);
     let mut candidates = if git.is_some() { vec![full, turn_s] } else { vec![full] };
     candidates.push(FOOTER_SELECT_MODE_BADGE.to_string());
@@ -281,7 +285,7 @@ mod tests {
     fn fit_footer_status_left_always_keeps_mode_and_model() {
         let wide =
             fit_footer_status_left(AgentMode::Plan, "opencode/deepseek-v4-flash", ThinkingLevel::Xhigh, true, 80);
-        assert!(wide.contains("IMG"));
+        assert!(wide.contains("◐"));
         assert!(wide.contains("(xhigh)"));
         assert!(wide.contains("opencode/deepseek-v4-flash"));
         assert!(wide.starts_with("Plan"));
@@ -303,7 +307,7 @@ mod tests {
             fit_footer_status_left(AgentMode::Plan, "opencode/deepseek-v4-flash", ThinkingLevel::Xhigh, true, 12);
         assert!(display_width(&tight) <= 12);
         assert!(tight.starts_with("Plan"), "mode must remain: {tight}");
-        assert!(tight.contains('|') || tight.contains('…'), "model segment: {tight}");
+        assert!(tight.contains('·') || tight.contains('…'), "model segment: {tight}");
     }
 
     #[test]
@@ -328,9 +332,9 @@ mod tests {
         assert!(!tight.contains('['));
 
         let sel_wide = fit_footer_status_right_with_select(0, Some(&git), 48, true);
-        assert_eq!(sel_wide, "sel | turn: 0 | [+3/42 -1/7]");
+        assert_eq!(sel_wide, "sel · turn: 0 · [+3/42 -1/7]");
         let sel_mid = fit_footer_status_right_with_select(0, Some(&git), 18, true);
-        assert_eq!(sel_mid, "sel | turn: 0");
+        assert_eq!(sel_mid, "sel · turn: 0");
     }
 
     #[test]

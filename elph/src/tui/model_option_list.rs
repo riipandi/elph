@@ -299,6 +299,8 @@ mod tests {
             context_k,
             reasoning,
             images,
+            is_free: false,
+            cost_per_m_input: 0.0,
         }
     }
 
@@ -326,18 +328,18 @@ mod tests {
     #[test]
     fn tabular_hints_align_provider_context_and_caps() {
         let rows = vec![
-            sample_row("opencode", "big-pickle", "Big Pickle", 128, true, false),
-            sample_row("opencode", "kimi-k3", "Kimi K3", 1000, true, true),
-            sample_row("kilo", "kilo-auto/free", "Kilo Auto Free", 256, true, false),
+            sample_row("openai", "gpt-5.6-luna", "GPT-5.6 Luna", 128, true, false),
+            sample_row("openai", "gpt-5.4", "GPT-5.4", 1000, true, true),
+            sample_row("anthropic", "claude-haiku-4-5", "Claude Haiku 4.5", 200, true, false),
         ];
         let hints = format_model_hints_tabular(&rows, true);
-        assert_eq!(hints[0], "opencode  128K  (think)");
-        assert_eq!(hints[1], "opencode  1M    (think|img)");
-        assert_eq!(hints[2], "kilo      256K  (think)");
+        assert_eq!(hints[0], "openai     128K  (think)");
+        assert_eq!(hints[1], "openai     1M    (think|img)");
+        assert_eq!(hints[2], "anthropic  200K  (think)");
     }
 
     #[test]
-    fn provider_tab_hints_omit_provider_column() {
+    fn tabular_hints_can_omit_provider_column() {
         let rows = vec![sample_row(
             "anthropic",
             "claude-opus-4",
@@ -353,14 +355,14 @@ mod tests {
     #[test]
     fn id_column_width_uses_model_id_not_name() {
         let rows = vec![sample_row(
-            "opencode",
-            "big-pickle",
+            "openai",
+            "gpt-5.4",
             "A Very Long Display Name That Should Not Drive Width",
             128,
             true,
             false,
         )];
-        // prefix (2) + "big-pickle" (10) = 12, floored by MODEL_ID_MIN_CHARS.
+        // prefix (2) + "gpt-5.4" (7) = 9, floored by MODEL_ID_MIN_CHARS.
         assert_eq!(model_id_column_width(&rows, 80), MODEL_ID_MIN_CHARS as u16);
     }
 

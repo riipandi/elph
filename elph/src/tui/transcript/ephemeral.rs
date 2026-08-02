@@ -20,6 +20,9 @@ pub const AGENT_MODE_NOTICE_KEY: &str = "transient:agent_mode";
 /// Stable key when mode toggle is blocked because a turn is busy.
 pub const AGENT_MODE_BUSY_NOTICE_KEY: &str = "transient:agent_mode_busy";
 
+/// Stable key when a session-querying slash command is blocked because the agent is streaming.
+pub const SLASH_BUSY_NOTICE_KEY: &str = "transient:slash_busy";
+
 /// Stable key for theme mode change banners (Ctrl+Shift+T).
 pub const THEME_MODE_NOTICE_KEY: &str = "transient:theme_mode";
 
@@ -120,6 +123,16 @@ pub fn agent_mode_busy_banner() -> EphemeralBanner {
         key: AGENT_MODE_BUSY_NOTICE_KEY,
         text: agent_mode_busy_notice(),
         kind: EphemeralBannerKind::Notice,
+        expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
+    }
+}
+
+/// Banner when a session-querying slash command is submitted during a busy turn (auto-expires).
+pub fn slash_busy_banner() -> EphemeralBanner {
+    EphemeralBanner {
+        key: SLASH_BUSY_NOTICE_KEY,
+        text: "Agent is still responding — wait for the current turn to finish.".to_string(),
+        kind: EphemeralBannerKind::Warning,
         expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
     }
 }
@@ -237,7 +250,7 @@ pub fn model_set_notice_text(label: &str) -> String {
 
 /// Scoped cycle / catalog notice: `Model set to MODEL_ID (PROVIDER)`.
 ///
-/// `value` is `provider/model_id` (model_id may itself contain `/`, e.g. `kilo/kilo-auto/free`).
+/// `value` is `provider/model_id`; split on the first `/` so model ids that contain `/` still resolve.
 pub fn model_set_notice_from_value(value: &str) -> String {
     match value.split_once('/') {
         Some((provider, model_id)) if !provider.is_empty() && !model_id.is_empty() => {
@@ -349,6 +362,18 @@ mod tests {
     }
 
     #[test]
+    fn slash_busy_banner_is_timed_warning() {
+        let banner = slash_busy_banner();
+        assert_eq!(banner.key, SLASH_BUSY_NOTICE_KEY);
+        assert_eq!(banner.kind, EphemeralBannerKind::Warning);
+        assert!(banner.text.contains("still responding"));
+        assert!(banner.expires_at.is_some());
+        assert!(banner.remaining_ttl().is_some());
+        assert!(!banner.is_expired());
+        assert_eq!(banner.color(), QUIT_BUSY_NOTICE_FG);
+    }
+
+    #[test]
     fn quit_busy_banner_is_sticky_warning() {
         let banner = quit_busy_banner();
         assert_eq!(banner.key, QUIT_BUSY_NOTICE_KEY);
@@ -451,12 +476,12 @@ mod tests {
     #[test]
     fn model_set_notice_from_value_uses_model_id_and_provider() {
         assert_eq!(
-            model_set_notice_from_value("opencode/big-pickle"),
-            "Model set to big-pickle (opencode)"
+            model_set_notice_from_value("openai/gpt-5.6-luna"),
+            "Model set to gpt-5.6-luna (openai)"
         );
         assert_eq!(
-            model_set_notice_from_value("kilo/kilo-auto/free"),
-            "Model set to kilo-auto/free (kilo)"
+            model_set_notice_from_value("provider/model/with-slash"),
+            "Model set to model/with-slash (provider)"
         );
         assert_eq!(model_set_notice_from_value("bare-id"), "Model set to bare-id");
     }

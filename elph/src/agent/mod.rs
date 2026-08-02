@@ -28,15 +28,14 @@ mod tools_catalog;
 mod tools_slash;
 mod workspace_reload;
 
-pub use agents_load::{
-    AgentConflict, WorkspaceAgent, WorkspaceAgents, agent_dir_entries, ensure_global_agents_md,
-    format_agent_conflict_notice, load_workspace_agents,
-};
+pub use agents_load::{AgentConflict, WorkspaceAgent, WorkspaceAgents};
+pub use agents_load::{agent_dir_entries, ensure_global_agents_md};
+pub use agents_load::{format_agent_conflict_notice, load_workspace_agents};
 pub use conflict_notice::{CrossKindConflict, TemplateConflict, format_name_conflicts};
 pub use events::{AgentUiEvent, SubagentUiPhase, ToolApprovalChoice};
 pub use events::{ModeChangeRequest, PlanConfirmationRequest, QueuedPromptItem, QueuedPromptKind};
 pub use events::{ToolApprovalRequest, UserQuestionOption, UserQuestionRequest, UserQuestionStep};
-pub use mcp_bootstrap::{discover_mcp_registry, wire_mcp_into_session};
+pub use mcp_bootstrap::discover_mcp_registry;
 pub use model_registry::ModelSelection;
 pub use model_registry::resolve_model;
 pub use overlays::{list_model_select_items, list_session_select_items, list_tree_select_items, parse_model_value};
@@ -63,6 +62,7 @@ pub use slash_commands::{
 pub use slash_commands::{confetti_mode_from_args, dispatch_slash_command, format_help_message};
 pub use system_prompt_slash::system_prompt_slash_message;
 pub use tool_policy::agent_mode_from_setting;
+pub use tool_policy::from_agent_thinking;
 pub use tool_policy::thinking_level_from_setting;
 pub use tool_policy::to_agent_thinking;
 pub use tools_slash::tools_slash_message;

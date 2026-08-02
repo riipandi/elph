@@ -225,9 +225,14 @@ pub(crate) fn build_shell_view(
         let (lines_added, lines_removed) = crate::utils::git::read_worktree_stats(paths.read().project_dir())
             .map(|stats| (stats.lines_added, stats.lines_deleted))
             .unwrap_or((0, 0));
+        // Best-effort: title resolution is bounded (400 ms) so exiting is never blocked.
+        let session_title = crate::agent::session_title_for_rename(agent_session.as_ref())
+            .ok()
+            .filter(|title| !title.trim().is_empty());
         record_if_active(
             ExitSnapshot {
                 session_id: session_id.clone(),
+                session_title,
                 cost_usd: chrome.cost_usd,
                 api_duration_secs,
                 wall_duration_secs,
@@ -1249,12 +1254,7 @@ pub(crate) fn build_shell_view(
                                 &mut ephemeral_banner,
                                 &mut ephemeral_banner_generation,
                                 &expire_tx,
-                                EphemeralBanner {
-                                    key: "transient:slash_busy",
-                                    text: "Agent is still responding — wait for the current turn to finish.".to_string(),
-                                    kind: EphemeralBannerKind::Warning,
-                                    expires_at: None,
-                                },
+                                slash_busy_banner(),
                             );
                             suppress_enter_newline.set(true);
                             return;

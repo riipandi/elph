@@ -160,7 +160,7 @@ mod tests {
         let paths = Paths::from_dirs(tmp.path().join("config"), tmp.path().join("data"), tmp.path().join("project"));
         std::fs::create_dir_all(paths.config_dir()).expect("config dir");
         let mut settings = Settings::defaults();
-        settings.models.scoped_models = vec!["opencode/big-pickle".into(), "kilo/kilo-auto/free".into()];
+        settings.models.scoped_models = vec!["openai/gpt-5.6-luna".into(), "anthropic/claude-haiku-4-5".into()];
         Settings::save(&paths, &settings).expect("save settings");
 
         let mut session = Vec::new();
@@ -176,12 +176,12 @@ mod tests {
         let paths = Paths::from_dirs(tmp.path().join("config"), tmp.path().join("data"), tmp.path().join("project"));
         std::fs::create_dir_all(paths.config_dir()).expect("config dir");
         let mut settings = Settings::defaults();
-        settings.models.scoped_models = vec!["opencode/big-pickle".into()];
+        settings.models.scoped_models = vec!["openai/gpt-5.6-luna".into()];
         Settings::save(&paths, &settings).expect("save settings");
 
-        let mut session = vec!["kilo/kilo-auto/free".into()];
+        let mut session = vec!["anthropic/claude-haiku-4-5".into()];
         let list = resolve_scoped_cycle_list(&paths, &mut session);
-        assert_eq!(list, vec!["kilo/kilo-auto/free".to_string()]);
-        assert_eq!(session, vec!["kilo/kilo-auto/free".to_string()]);
+        assert_eq!(list, vec!["anthropic/claude-haiku-4-5".to_string()]);
+        assert_eq!(session, vec!["anthropic/claude-haiku-4-5".to_string()]);
     }
 }

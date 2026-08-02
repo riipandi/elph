@@ -381,14 +381,14 @@ mod tests {
         let paths = Paths::from_dirs(tmp.path().join("config"), tmp.path().join("data"), tmp.path().join("repo"));
         Settings::ensure(&paths).expect("ensure");
         let mut scoped = Vec::new();
-        let msg = apply_model_scoped_action(&paths, &mut scoped, "opencode/big-pickle", ModelSelectorScopedAction::Add);
+        let msg = apply_model_scoped_action(&paths, &mut scoped, "openai/gpt-5.6-luna", ModelSelectorScopedAction::Add);
         assert!(msg.unwrap().contains("Added"));
-        assert_eq!(scoped, vec!["opencode/big-pickle".to_string()]);
+        assert_eq!(scoped, vec!["openai/gpt-5.6-luna".to_string()]);
         let again =
-            apply_model_scoped_action(&paths, &mut scoped, "opencode/big-pickle", ModelSelectorScopedAction::Add);
+            apply_model_scoped_action(&paths, &mut scoped, "openai/gpt-5.6-luna", ModelSelectorScopedAction::Add);
         assert!(again.unwrap().contains("Already"));
         let removed =
-            apply_model_scoped_action(&paths, &mut scoped, "opencode/big-pickle", ModelSelectorScopedAction::Remove);
+            apply_model_scoped_action(&paths, &mut scoped, "openai/gpt-5.6-luna", ModelSelectorScopedAction::Remove);
         assert!(removed.unwrap().contains("Removed"));
         assert!(scoped.is_empty());
     }
@@ -449,6 +449,8 @@ mod tests {
     fn scope_nav_from_all_moves_to_scoped() {
         let mut pending = PendingModelSelector::open(String::new(), None, &[]);
         pending.input_focus = ModelSelectorFocus::Search;
+        pending.apply_scope_nav(1);
+        assert_eq!(pending.scope_mode(), ModelScopeMode::Free);
         pending.apply_scope_nav(1);
         assert_eq!(pending.scope_mode(), ModelScopeMode::Scoped);
         assert_eq!(pending.input_focus, ModelSelectorFocus::Search);

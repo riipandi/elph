@@ -9,15 +9,73 @@ use std::path::Path;
 use elph_agent::{AuthStoreFile, ENV_REF_PREFIX, lock_auth_store};
 use serde_json;
 
+/// Load auth file, falling back to plain JSON (legacy format) if sealed load fails.
+/// Only falls back when the file is NOT a sealed v2 envelope — prevents silent data loss
+/// when the sealed file exists but fails to decrypt (e.g. wrong key).
+///
+/// Supports two plain JSON formats:
+/// - `{ "provider": { "id": "cred" } }` — nested (AuthStoreFile shape, camelCase)
+/// - `{ "providers": { "id": "cred" } }` — nested (snake_case fallback)
+/// - `{ "id": "cred" }` — flat key-value
+async fn load_auth_file_with_fallback(path: &Path) -> anyhow::Result<AuthStoreFile> {
+    match AuthStoreFile::load_from_path(path).await {
+        Ok(f) => Ok(f),
+        Err(e) => {
+            // If the file looks like a sealed envelope, do NOT fall back — the sealed
+            // load failed for a real reason (wrong key, corruption). Falling back to
+            // plain JSON parsing would return an empty store and cause data loss when
+            // the caller saves.
+            if let Ok(content) = tokio::fs::read_to_string(path).await
+                && !elph_agent::looks_like_envelope(content.as_bytes())
+            {
+                log::warn!("auth store sealed load failed ({}): {e}; trying plain JSON", path.display());
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+                    let mut file = AuthStoreFile::default();
+                    // Try nested format: "provider" (camelCase) or "providers" (snake_case)
+                    let providers_obj = json
+                        .get("provider")
+                        .or_else(|| json.get("providers"))
+                        .and_then(|v| v.as_object());
+                    if let Some(providers) = providers_obj {
+                        for (pid, val) in providers {
+                            if let Some(s) = val.as_str() {
+                                file.set_provider_credential(pid, s.to_string());
+                            }
+                        }
+                    } else {
+                        // Try flat format: { "id": "cred" }
+                        if let Some(obj) = json.as_object() {
+                            for (pid, val) in obj {
+                                if let Some(s) = val.as_str() {
+                                    // Skip known meta keys that aren't provider IDs
+                                    if pid != "mcp"
+                                        && pid != "v"
+                                        && pid != "alg"
+                                        && pid != "nonce"
+                                        && pid != "ciphertext"
+                                    {
+                                        file.set_provider_credential(pid, s.to_string());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    log::debug!("Loaded auth store as plain JSON (legacy format)");
+                    return Ok(file);
+                }
+            }
+            Err(anyhow::anyhow!("read auth store: {e}"))
+        }
+    }
+}
+
 /// Save a provider API key into the sealed auth store.
 pub async fn save_provider_credential(auth_store_path: &Path, provider_id: &str, api_key: &str) -> anyhow::Result<()> {
     let _guard = lock_auth_store(auth_store_path)
         .await
         .map_err(|e| anyhow::anyhow!("lock auth store: {e}"))?;
 
-    let mut file = AuthStoreFile::load_from_path(auth_store_path)
-        .await
-        .map_err(|e| anyhow::anyhow!("read auth store: {e}"))?;
+    let mut file = load_auth_file_with_fallback(auth_store_path).await?;
 
     file.set_provider_credential(provider_id, api_key.to_string());
 
@@ -35,9 +93,7 @@ pub async fn save_provider_env_ref(auth_store_path: &Path, provider_id: &str, en
         .await
         .map_err(|e| anyhow::anyhow!("lock auth store: {e}"))?;
 
-    let mut file = AuthStoreFile::load_from_path(auth_store_path)
-        .await
-        .map_err(|e| anyhow::anyhow!("read auth store: {e}"))?;
+    let mut file = load_auth_file_with_fallback(auth_store_path).await?;
 
     file.set_provider_credential(provider_id, format!("{ENV_REF_PREFIX}{env_var}"));
 
@@ -55,10 +111,13 @@ pub fn has_provider_credential(auth_store_path: &Path, provider_id: &str) -> boo
     match AuthStoreFile::load_from_path_sync(auth_store_path) {
         Ok(file) => file.get_provider_credential(provider_id).is_some(),
         Err(_) => {
-            // Fallback: try to read as plain JSON (for manually created auth.json files)
+            // Fallback: try to read as plain JSON
             if let Ok(content) = std::fs::read_to_string(auth_store_path)
                 && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
-                && let Some(providers) = json.get("providers").and_then(|v| v.as_object())
+                && let Some(providers) = json
+                    .get("provider")
+                    .or_else(|| json.get("providers"))
+                    .and_then(|v| v.as_object())
             {
                 return providers.get(provider_id).is_some();
             }
@@ -77,10 +136,15 @@ pub async fn delete_provider_credential(auth_store_path: &Path, provider_id: &st
     let encrypted_load = AuthStoreFile::load_from_path(auth_store_path).await;
 
     if encrypted_load.is_err() {
-        // Fallback: try to read as plain JSON (for manually created auth.json files)
+        // Fallback: try to read as plain JSON
         if let Ok(content) = std::fs::read_to_string(auth_store_path)
             && let Ok(mut json) = serde_json::from_str::<serde_json::Value>(&content)
-            && let Some(providers) = json.get_mut("providers").and_then(|v| v.as_object_mut())
+            && let Some(providers) = (if json.get("provider").is_some() {
+                json.get_mut("provider")
+            } else {
+                json.get_mut("providers")
+            })
+            .and_then(|v| v.as_object_mut())
         {
             let removed = providers.remove(provider_id).is_some();
             if removed {
@@ -102,7 +166,7 @@ pub async fn delete_provider_credential(auth_store_path: &Path, provider_id: &st
         .map_err(|e| anyhow::anyhow!("lock auth store: {e}"))?;
     let mut file = encrypted_load.map_err(|e| anyhow::anyhow!("read auth store: {e}"))?;
     let removed = file.remove_provider_credential(provider_id);
-    if file.mcp.is_empty() && file.providers.is_empty() {
+    if file.mcp.is_empty() && file.provider.is_empty() {
         if auth_store_path.exists() {
             let _ = tokio::fs::remove_file(auth_store_path).await;
         }
@@ -123,10 +187,13 @@ pub fn list_providers_with_credentials(auth_store_path: &Path) -> Vec<String> {
     let file = match AuthStoreFile::load_from_path_sync(auth_store_path) {
         Ok(f) => f,
         Err(_) => {
-            // Fallback: try to read as plain JSON (for manually created auth.json files)
+            // Fallback: try to read as plain JSON
             if let Ok(content) = std::fs::read_to_string(auth_store_path)
                 && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
-                && let Some(providers) = json.get("providers").and_then(|v| v.as_object())
+                && let Some(providers) = json
+                    .get("provider")
+                    .or_else(|| json.get("providers"))
+                    .and_then(|v| v.as_object())
             {
                 let mut ids: Vec<String> = providers.keys().cloned().collect();
                 ids.sort();

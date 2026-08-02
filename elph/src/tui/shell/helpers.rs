@@ -35,6 +35,14 @@ pub(crate) fn bump_chrome_ui_revision(chrome_ui_revision: &mut State<u64>) {
     chrome_ui_revision.set(chrome_ui_revision.get().wrapping_add(1));
 }
 
+pub(crate) fn thinking_level_from_agent(level: elph_agent::AgentThinkingLevel) -> ThinkingLevel {
+    crate::agent::from_agent_thinking(level)
+}
+
+pub(crate) async fn restored_thinking_level_for_session(session: &Arc<CodingAgentSession>) -> ThinkingLevel {
+    thinking_level_from_agent(session.harness().get_thinking_level().await)
+}
+
 /// Publish chrome stats when they change. Returns `true` if values were updated.
 ///
 /// Callers that need a footer/header repaint even when values are unchanged
@@ -521,7 +529,7 @@ pub(crate) fn transcript_publish_interval_ms(bootstrap_active: bool, event_burst
 }
 
 #[expect(clippy::too_many_arguments)]
-pub(crate) fn apply_bootstrap_ui_event(
+pub(crate) async fn apply_bootstrap_ui_event(
     event: BootstrapUiEvent,
     bootstrap_phase: &mut Ref<BootstrapPhase>,
     busy: &mut State<bool>,
@@ -537,6 +545,7 @@ pub(crate) fn apply_bootstrap_ui_event(
     ui_events_slot: &mut Ref<Option<Arc<Mutex<UnboundedReceiver<AgentUiEvent>>>>>,
     messages: &mut State<Vec<TranscriptMessage>>,
     prompt_history: &mut Ref<Vec<String>>,
+    thinking_level: &mut State<ThinkingLevel>,
 ) {
     match event {
         BootstrapUiEvent::AgentReady(bootstrap) => {
@@ -554,6 +563,7 @@ pub(crate) fn apply_bootstrap_ui_event(
             }
             agent_session_slot.set(Some(Arc::clone(&bootstrap.session)));
             ui_events_slot.set(Some(Arc::clone(&bootstrap.ui_rx)));
+            thinking_level.set(restored_thinking_level_for_session(&bootstrap.session).await);
             {
                 let mut msgs = messages.write();
                 // Prepend persisted chat history so the transcript shows previous turns on resume.
@@ -617,15 +627,18 @@ pub(crate) fn apply_bootstrap_ui_event(
             chrome_refresh_pending.set(true);
             palette_refresh_pending.set(true);
         }
-        BootstrapUiEvent::McpFailed(err) => {
-            log::warn!("MCP bootstrap failed: {err}");
-            {
-                let mut msgs = messages.write();
-                mark_mcp_startup_failed(&mut msgs, &err);
-            }
-            bootstrap_phase.set(BootstrapPhase::Done);
-            busy.set(false);
-            activity_label.set(String::new());
-        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn restored_thinking_level_converts_agent_value() {
+        assert_eq!(
+            thinking_level_from_agent(elph_agent::AgentThinkingLevel::High),
+            ThinkingLevel::High
+        );
     }
 }

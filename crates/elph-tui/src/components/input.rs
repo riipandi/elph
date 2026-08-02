@@ -58,7 +58,7 @@ pub fn Input(props: &mut InputProps, mut hooks: Hooks) -> impl Into<AnyElement<'
     let inset = props.inset.unwrap_or_else(|| theme.input_inset());
     let mut on_change = props.on_change.take();
 
-    wire_input_shortcuts(&mut hooks, has_focus, value, input_handle);
+    wire_input_shortcuts(&mut hooks, has_focus, value, input_handle, external);
 
     let display = value.read().clone();
     element! {

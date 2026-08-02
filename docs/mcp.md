@@ -19,6 +19,44 @@ Optional [TOON prompt encoding](../crates/elph-agent/docs/prompt-encoding.md) ca
 OAuth tokens live in encrypted `auth.json` (`enc:…`); CLI never prints secrets.
 SSE remotes can use OAuth the same way as Streamable HTTP.
 
+### Tool loading strategy
+
+Per-server field `loadStrategy` (default `lazy`):
+
+| Value   | Behavior                                                                                                                                                                                                                 |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `lazy`  | **(default)** Skip `tools/list` (and resources/prompts discovery) at load time. Tools are discovered on-demand per-server: first `create_agent_tools`, `call_tool`, `read_resource`, or `get_prompt` triggers discovery only for that server. Results are merged into the catalog — other servers stay untouched. |
+| `eager` | Legacy behavior — list all catalogs during `McpToolRegistry::load`.                                                                                                                                                      |
+
+**Key improvements:** lazy-loaded servers now correctly discover on their first tool call:
+
+- **Graceful degradation:** `create_agent_tools()` returns already-discovered tools even when discovery has errors — never returns empty.
+- **Retry:** `ensure_server_discovered()` retries once on transient failure before giving up.
+- **Merge, not replace:** `discover_server()` and `discover_tools_with_options()` merge results into the existing catalog instead of replacing all tools.
+- **Partial attach:** TUI bootstrap (`bootstrap_mcp_for_session`) always attaches tools even when some servers fail — partial results are better than no tools.
+- **No stale refresh:** The old code called `refresh_server()` (drops and re-creates the session) on every tool invocation. Now `ensure_server_discovered()` fires discovery exactly once per server, after which the pooled session handles all subsequent calls.
+
+**Transport note:** `call_tool` now uses `call_tool_once` (non-MRTR) internally, which works with all transports (stdio, HTTP, SSE). The MRTR-aware `call_tool()` requires HTTP transport and fails on stdio with `"Requires HTTP transport (--port)"`. Since the agent harness doesn't support interactive MRTR rounds (the default `MrtrElicitationPolicy::Decline` declines all elicitation), `call_tool_once` is the correct choice.
+
+```json
+{
+    "mcpServers": {
+        "fs": {
+            "type": "stdio",
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+            "loadStrategy": "eager"
+        },
+        "deepwiki": {
+            "type": "http",
+            "url": "https://mcp.deepwiki.com/mcp"
+        }
+    }
+}
+```
+
+The global default is `lazy`. Set a server to `eager` when you need its tools available immediately (e.g. for early system-prompt compilation).
+
 ### Credential conflict: env vs `auth.json`
 
 If both a static bearer (`authToken` / `authTokenEnv`) **and** an OAuth entry in `auth.json`
@@ -84,21 +122,21 @@ elph mcp remove --all name    # both layers
 
 ### Transports
 
-| `type` | Meaning |
-| ------ | ------- |
-| `stdio` | Local child process |
-| `http` | Streamable HTTP (preferred remote transport; MCP 2026-07-28) |
-| `sse` | **Deprecated** HTTP+SSE (2024-11-05). Prefer `http`. Kept for the 12-month offramp. |
+| `type`  | Meaning                                                                             |
+| ------- | ----------------------------------------------------------------------------------- |
+| `stdio` | Local child process                                                                 |
+| `http`  | Streamable HTTP (preferred remote transport; MCP 2026-07-28)                        |
+| `sse`   | **Deprecated** HTTP+SSE (2024-11-05). Prefer `http`. Kept for the 12-month offramp. |
 
 ### Protocol lifecycle (MCP 2026-07-28)
 
 Per-server field `lifecycle` (default `auto`):
 
-| Value | Behavior |
-| ----- | -------- |
-| `auto` | Prefer `server/discover` with protocol `2026-07-28`, fall back to legacy `initialize` |
-| `legacy` | Always use `initialize` / `notifications/initialized` |
-| `discover` | Require `server/discover` only (fails on legacy-only servers) |
+| Value      | Behavior                                                                              |
+| ---------- | ------------------------------------------------------------------------------------- |
+| `auto`     | Prefer `server/discover` with protocol `2026-07-28`, fall back to legacy `initialize` |
+| `legacy`   | Always use `initialize` / `notifications/initialized`                                 |
+| `discover` | Require `server/discover` only (fails on legacy-only servers)                         |
 
 Client identity advertises name `elph`, protocol preference `2026-07-28`, form elicitation, and the Tasks extension. List responses use the rmcp SEP-2549 client cache (configurable via `McpLoadOptions.response_cache`).
 
@@ -106,10 +144,10 @@ Client identity advertises name `elph`, protocol preference `2026-07-28`, form e
 
 `mrtrElicitation` (default `decline`):
 
-| Value | Behavior |
-| ----- | -------- |
-| `decline` | Decline server elicitation during tool calls |
-| `error` | Fail elicitation with a clear error for the agent |
+| Value     | Behavior                                          |
+| --------- | ------------------------------------------------- |
+| `decline` | Decline server elicitation during tool calls      |
+| `error`   | Fail elicitation with a clear error for the agent |
 
 Interactive TUI elicitation is not implemented; use `decline`/`error` for deterministic agent runs.
 
@@ -127,10 +165,10 @@ Auth SEPs from MCP 2026-07-28 (RFC 9207 `iss`, `application_type`, issuer-bound 
 
 ```json
 {
-  "type": "http",
-  "url": "https://example.com/mcp",
-  "oauth": true,
-  "oauthClientMetadataUrl": "https://your.app/.well-known/oauth-client"
+    "type": "http",
+    "url": "https://example.com/mcp",
+    "oauth": true,
+    "oauthClientMetadataUrl": "https://your.app/.well-known/oauth-client"
 }
 ```
 
@@ -169,27 +207,27 @@ clear multi-error message instead of being half-applied.
 
 Same sealed `auth.json` store as the CLI / `/provider connect`.
 
-| Command | Behavior |
-| ------- | -------- |
-| `/mcp` or `/mcp list` | List merged servers (home + project) + OAuth status |
-| `/mcp auth` | Open MCP OAuth dialog — pick a remote server |
-| `/mcp auth figma` | Prefill/filter; **auto-starts** OAuth when the name matches uniquely |
-| `/mcp login` / `/mcp connect` | Aliases for `auth` |
-| `/mcp logout <name>` | Clear OAuth tokens for that server |
+| Command                       | Behavior                                                             |
+| ----------------------------- | -------------------------------------------------------------------- |
+| `/mcp` or `/mcp list`         | List merged servers (home + project) + OAuth status                  |
+| `/mcp auth`                   | Open MCP OAuth dialog — pick a remote server                         |
+| `/mcp auth figma`             | Prefill/filter; **auto-starts** OAuth when the name matches uniquely |
+| `/mcp login` / `/mcp connect` | Aliases for `auth`                                                   |
+| `/mcp logout <name>`          | Clear OAuth tokens for that server                                   |
 
 Example Figma entry in `~/.config/elph/mcp.json` (or project `.elph/mcp.json`):
 
 ```json
 {
-  "mcpServers": {
-    "figma": {
-      "type": "http",
-      "url": "https://mcp.figma.com/mcp",
-      "oauth": true,
-      "oauthScopes": ["mcp:connect"],
-      "oauthClientName": "Elph MCP Client"
+    "mcpServers": {
+        "figma": {
+            "type": "http",
+            "url": "https://mcp.figma.com/mcp",
+            "oauth": true,
+            "oauthScopes": ["mcp:connect"],
+            "oauthClientName": "Elph MCP Client"
+        }
     }
-  }
 }
 ```
 
@@ -208,9 +246,9 @@ Bridge tools (when the server supports the capability):
 - `mcp_{server}__list_prompts`
 - `mcp_{server}__get_prompt`
 - **Tasks (SEP-2663)** when the server advertises `io.modelcontextprotocol/tasks`:
-  - `mcp_{server}__tasks_get` — poll task by `taskId`
-  - `mcp_{server}__tasks_update` — deliver `inputResponses`
-  - `mcp_{server}__tasks_cancel` — cancel task
+    - `mcp_{server}__tasks_get` — poll task by `taskId`
+    - `mcp_{server}__tasks_update` — deliver `inputResponses`
+    - `mcp_{server}__tasks_cancel` — cancel task
 
 If a tool call returns `resultType: "task"`, the agent result includes `taskId` and a hint to poll with `tasks_get`.
 
@@ -234,7 +272,7 @@ use elph_agent::{McpConfig, McpLoadOptions, McpToolRegistry};
 let mut options = McpLoadOptions::default();
 options.auth_store_path = Some(paths.auth_store_path());
 let registry = McpToolRegistry::load_with_options(config, options).await?;
-let tools = registry.create_agent_tools();
+let tools = registry.create_agent_tools().await;
 ```
 
 ## Example: DeepWiki (public, no auth)

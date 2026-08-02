@@ -1,13 +1,17 @@
 //! OAuth 2.1 credential storage and authorization helpers for remote MCP servers.
 //!
-//! Credentials live in a **sealed** AES-256-GCM envelope file (default name
-//! [`DEFAULT_AUTH_FILE_NAME`] = `auth.json`). The master key is kept only in the
-//! OS keychain (zero-trust) — never as `auth.key` beside the store.
+//! Credentials live in a plain JSON file (default name [`DEFAULT_AUTH_FILE_NAME`] =
+//! `auth.json`) where individual string values are encrypted with an `enc:` prefix
+//! (AES-256-GCM). The master key is kept only in the OS keychain (zero-trust) —
+//! never as `auth.key` beside the store.
 //!
-//! Logical payload (after decrypt):
+//! On-disk format:
 //! ```json
-//! { "mcp": { "<server>": { …oauth tokens… } }, "providers": { "<id>": "sk-…" | "env:VAR" } }
+//! { "mcp": { "<server>": "enc:…" | "env:VAR" }, "provider": { "<id>": "enc:…" | "env:VAR" } }
 //! ```
+//!
+//! `env:` references are stored in plaintext — they are not secrets, only references
+//! to environment variables. Every other string value is encrypted at the field level.
 //!
 //! The path is **not** hardcoded — each host passes it via [`AuthStorePathBuilder`] /
 //! [`McpLoadOptions::auth_store_path`](super::config::McpLoadOptions).
@@ -28,7 +32,7 @@ use tokio::net::TcpListener;
 use tokio::sync::RwLock;
 
 use super::crypto::Aes256Key;
-use super::envelope::{looks_like_envelope, seal_store, unseal_store};
+use super::crypto::{decrypt_string_sync, encrypt_string_sync, is_encrypted_value};
 use super::key_provider::load_or_create_master_key;
 use super::store_lock::{atomic_write_private, lock_auth_store};
 
@@ -121,7 +125,8 @@ pub const ENV_REF_PREFIX: &str = "env:";
 
 /// Logical auth store document (plaintext secrets only while in memory).
 ///
-/// On disk this is sealed as an AES-256-GCM envelope; see [`seal_store`].
+/// On disk, individual string values are encrypted with `enc:` prefix (AES-256-GCM)
+/// while `env:` references are stored as-is. The whole file is valid JSON.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AuthStoreFile {
@@ -130,13 +135,13 @@ pub struct AuthStoreFile {
     pub mcp: BTreeMap<String, Value>,
     /// Map of provider ID → API key string or `env:VAR` reference.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub providers: BTreeMap<String, Value>,
+    pub provider: BTreeMap<String, Value>,
 }
 
 impl AuthStoreFile {
-    /// Load and unseal the auth store (OS keychain master key). Missing / empty → empty store.
+    /// Load and decrypt the auth store (OS keychain master key). Missing / empty → empty store.
     ///
-    /// Only format v2 envelopes are accepted (no legacy migration).
+    /// Reads plain JSON with per-field `enc:` values, decrypts them, returns plaintext in memory.
     pub async fn load_from_path(path: &Path) -> Result<Self, AuthError> {
         let key = load_or_create_master_key().map_err(|e| AuthError::InternalError(format!("auth master key: {e}")))?;
         Self::load_from_path_with_key(path, &key).await
@@ -150,7 +155,7 @@ impl AuthStoreFile {
         let bytes = tokio::fs::read(path)
             .await
             .map_err(|e| AuthError::InternalError(format!("read auth store: {e}")))?;
-        Self::from_sealed_bytes(&bytes, key)
+        Self::from_plain_json_bytes(&bytes, key)
     }
 
     /// Sync load (CLI probes) using the OS keychain master key.
@@ -165,39 +170,138 @@ impl AuthStoreFile {
             return Ok(Self::default());
         }
         let bytes = std::fs::read(path).map_err(|e| AuthError::InternalError(format!("read auth store: {e}")))?;
-        Self::from_sealed_bytes(&bytes, key)
+        Self::from_plain_json_bytes(&bytes, key)
     }
 
-    fn from_sealed_bytes(bytes: &[u8], key: &Aes256Key) -> Result<Self, AuthError> {
+    /// Parse plain JSON bytes, decrypting any `enc:` values.
+    fn from_plain_json_bytes(bytes: &[u8], key: &Aes256Key) -> Result<Self, AuthError> {
         if bytes.is_empty() {
             return Ok(Self::default());
         }
-        if !looks_like_envelope(bytes) {
-            return Err(AuthError::InternalError(
-                "auth store is not a sealed v2 envelope (legacy formats are not supported — re-authenticate)".into(),
-            ));
+
+        // Check if the file is a sealed v2 envelope (legacy format from before the
+        // per-field enc: migration). If so, unseal it and parse the inner JSON.
+        if let Ok(top) = serde_json::from_slice::<serde_json::Value>(bytes)
+            && top.get("v").and_then(|x| x.as_u64()) == Some(2)
+            && top.get("ciphertext").is_some()
+            && top.get("nonce").is_some()
+        {
+            let envelope: super::envelope::AuthStoreEnvelope = serde_json::from_slice(bytes)
+                .map_err(|e| AuthError::InternalError(format!("parse auth envelope: {e}")))?;
+            let plain = super::envelope::unseal_store(key, &envelope)
+                .map_err(|e| AuthError::InternalError(format!("unseal legacy auth store: {e}")))?;
+            let mut json: serde_json::Value = serde_json::from_slice(&plain)
+                .map_err(|e| AuthError::InternalError(format!("parse unsealed auth payload: {e}")))?;
+            // Normalize "providers" (plural, legacy) to "provider" (singular, camelCase)
+            if json.get("providers").is_some()
+                && json.get("provider").is_none()
+                && let Some(obj) = json.as_object_mut()
+                && let Some(v) = obj.remove("providers")
+            {
+                obj.insert("provider".to_string(), v);
+            }
+            return serde_json::from_value(json)
+                .map_err(|e| AuthError::InternalError(format!("parse unsealed auth payload: {e}")));
         }
-        let envelope: super::envelope::AuthStoreEnvelope =
-            serde_json::from_slice(bytes).map_err(|e| AuthError::InternalError(format!("parse auth envelope: {e}")))?;
-        let plain =
-            unseal_store(key, &envelope).map_err(|e| AuthError::InternalError(format!("unseal auth store: {e}")))?;
-        serde_json::from_slice(&plain).map_err(|e| AuthError::InternalError(format!("parse auth payload: {e}")))
+
+        let mut json: serde_json::Value =
+            serde_json::from_slice(bytes).map_err(|e| AuthError::InternalError(format!("parse auth JSON: {e}")))?;
+
+        // Normalize "providers" (plural, legacy) to "provider" (singular, camelCase)
+        // so serde rename_all = "camelCase" on AuthStoreFile can deserialize it.
+        if json.get("providers").is_some()
+            && json.get("provider").is_none()
+            && let Some(obj) = json.as_object_mut()
+            && let Some(v) = obj.remove("providers")
+        {
+            obj.insert("provider".to_string(), v);
+        }
+
+        // Decrypt provider values (serialized as "provider" due to rename_all = "camelCase")
+        if let Some(providers) = json.get_mut("provider").and_then(|v| v.as_object_mut()) {
+            for (_, val) in providers.iter_mut() {
+                if let Some(s) = val.as_str()
+                    && let Ok(plain) = decrypt_string_sync(key, s)
+                {
+                    *val = Value::String(plain);
+                }
+                // other prefixes (env:, plain) are left as-is
+            }
+        }
+
+        // Decrypt mcp values (JSON objects were serialized to string then encrypted)
+        if let Some(mcp) = json.get_mut("mcp").and_then(|v| v.as_object_mut()) {
+            for (_, val) in mcp.iter_mut() {
+                if let Some(s) = val.as_str()
+                    && let Ok(plain) = decrypt_string_sync(key, s)
+                {
+                    // Try to parse as JSON object (StoredCredentials)
+                    if let Ok(obj) = serde_json::from_str::<Value>(&plain) {
+                        *val = obj;
+                    } else {
+                        *val = Value::String(plain);
+                    }
+                }
+                // other prefixes (env:, plain) are left as-is
+            }
+        }
+
+        serde_json::from_value(json).map_err(|e| AuthError::InternalError(format!("parse auth payload: {e}")))
     }
 
-    /// Seal and write without taking the store lock (caller must hold [`lock_auth_store`]).
+    /// Encrypt and write without taking the store lock (caller must hold [`lock_auth_store`]).
+    ///
+    /// Writes plain JSON with per-field `enc:` encryption. `env:` references are
+    /// stored as-is (they are not secrets).
     pub async fn save_to_path_unlocked(&self, path: &Path) -> Result<(), AuthError> {
         let key = load_or_create_master_key().map_err(|e| AuthError::InternalError(format!("auth master key: {e}")))?;
         self.save_to_path_unlocked_with_key(path, &key).await
     }
 
-    /// Seal and write with an explicit master key.
+    /// Encrypt and write with an explicit master key.
     pub async fn save_to_path_unlocked_with_key(&self, path: &Path, key: &Aes256Key) -> Result<(), AuthError> {
-        let plain =
-            serde_json::to_vec(self).map_err(|e| AuthError::InternalError(format!("serialize auth payload: {e}")))?;
-        let envelope =
-            seal_store(key, &plain).map_err(|e| AuthError::InternalError(format!("seal auth store: {e}")))?;
-        let bytes = serde_json::to_vec_pretty(&envelope)
-            .map_err(|e| AuthError::InternalError(format!("serialize auth envelope: {e}")))?;
+        // Serialize self to JSON Value
+        let mut json =
+            serde_json::to_value(self).map_err(|e| AuthError::InternalError(format!("serialize auth payload: {e}")))?;
+
+        // Encrypt non-env provider values
+        if let Some(providers) = json.get_mut("provider").and_then(|v| v.as_object_mut()) {
+            for (_, val) in providers.iter_mut() {
+                if let Some(s) = val.as_str()
+                    && !s.starts_with(ENV_REF_PREFIX)
+                    && !is_encrypted_value(s)
+                {
+                    let encrypted = encrypt_string_sync(key, s)
+                        .map_err(|e| AuthError::InternalError(format!("encrypt provider value: {e}")))?;
+                    *val = Value::String(encrypted);
+                }
+            }
+        }
+
+        // Encrypt non-env mcp values (JSON objects get serialized then encrypted)
+        if let Some(mcp) = json.get_mut("mcp").and_then(|v| v.as_object_mut()) {
+            for (_, val) in mcp.iter_mut() {
+                match val {
+                    Value::Object(_) => {
+                        // Serialize object to JSON string, then encrypt
+                        let obj_str = serde_json::to_string(val)
+                            .map_err(|e| AuthError::InternalError(format!("serialize mcp value: {e}")))?;
+                        let encrypted = encrypt_string_sync(key, &obj_str)
+                            .map_err(|e| AuthError::InternalError(format!("encrypt mcp value: {e}")))?;
+                        *val = Value::String(encrypted);
+                    }
+                    Value::String(s) if !s.starts_with(ENV_REF_PREFIX) && !is_encrypted_value(s) => {
+                        let encrypted = encrypt_string_sync(key, s)
+                            .map_err(|e| AuthError::InternalError(format!("encrypt mcp value: {e}")))?;
+                        *val = Value::String(encrypted);
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        let bytes = serde_json::to_vec_pretty(&json)
+            .map_err(|e| AuthError::InternalError(format!("serialize auth JSON: {e}")))?;
         atomic_write_private(path, &bytes)
             .await
             .map_err(|e| AuthError::InternalError(e.to_string()))?;
@@ -225,30 +329,29 @@ impl AuthStoreFile {
     }
 
     /// Set provider credential (API key plaintext or `env:VAR`). Caller must hold the lock.
-    /// Secrets are only protected by the sealed envelope on disk.
+    /// Secrets are encrypted at the field level when written to disk.
     pub fn set_provider_credential(&mut self, provider_id: &str, credential: String) {
-        self.providers
-            .insert(provider_id.to_string(), Value::String(credential));
+        self.provider.insert(provider_id.to_string(), Value::String(credential));
     }
 
     /// Get provider credential string (API key or `env:VAR`).
     pub fn get_provider_credential(&self, provider_id: &str) -> Option<&str> {
-        self.providers.get(provider_id).and_then(|v| v.as_str())
+        self.provider.get(provider_id).and_then(|v| v.as_str())
     }
 
     /// Remove a provider credential. Returns `true` if it existed.
     pub fn remove_provider_credential(&mut self, provider_id: &str) -> bool {
-        self.providers.remove(provider_id).is_some()
+        self.provider.remove(provider_id).is_some()
     }
 
     /// List all provider IDs that have stored credentials.
     pub fn provider_ids(&self) -> Vec<String> {
-        self.providers.keys().cloned().collect()
+        self.provider.keys().cloned().collect()
     }
 
     /// Check if a provider entry is an env-var reference (`env:VAR_NAME`).
     pub fn is_env_ref(&self, provider_id: &str) -> bool {
-        self.providers
+        self.provider
             .get(provider_id)
             .and_then(|v| v.as_str())
             .is_some_and(|s| s.starts_with(ENV_REF_PREFIX))
@@ -256,7 +359,7 @@ impl AuthStoreFile {
 
     /// Extract the env var name from an `env:…` entry, e.g. `"env:OPENAI_API_KEY"` → `"OPENAI_API_KEY"`.
     pub fn env_var_name(&self, provider_id: &str) -> Option<String> {
-        self.providers
+        self.provider
             .get(provider_id)
             .and_then(|v| v.as_str())
             .filter(|s| s.starts_with(ENV_REF_PREFIX))
@@ -268,9 +371,10 @@ impl AuthStoreFile {
 // Per-server CredentialStore backed by shared encrypted auth.json
 // ---------------------------------------------------------------------------
 
-/// File-backed [`CredentialStore`] for **one** MCP server key inside a sealed `auth.json`.
+/// File-backed [`CredentialStore`] for **one** MCP server key inside an encrypted `auth.json`.
 ///
-/// The whole file is envelope-encrypted; MCP credentials are JSON objects inside the payload.
+/// The file stores plain JSON with per-field `enc:` encryption; MCP credentials are
+/// JSON objects encrypted as strings inside the payload.
 #[derive(Clone)]
 pub struct FileCredentialStore {
     path: PathBuf,
@@ -281,7 +385,7 @@ pub struct FileCredentialStore {
 }
 
 impl FileCredentialStore {
-    /// Create a store for `server_key` inside the shared sealed file at `path`.
+    /// Create a store for `server_key` inside the shared encrypted file at `path`.
     pub fn new(path: impl Into<PathBuf>, server_key: impl Into<String>) -> Self {
         Self {
             path: path.into(),
@@ -448,7 +552,7 @@ impl CredentialStore for FileCredentialStore {
         let key = self.resolve_key()?;
         let mut file = AuthStoreFile::load_from_path_with_key(&self.path, &key).await?;
         file.mcp.remove(&self.server_key);
-        if file.mcp.is_empty() && file.providers.is_empty() {
+        if file.mcp.is_empty() && file.provider.is_empty() {
             if self.path.exists() {
                 let _ = tokio::fs::remove_file(&self.path).await;
             }
@@ -463,7 +567,7 @@ impl CredentialStore for FileCredentialStore {
 // Public helpers
 // ---------------------------------------------------------------------------
 
-/// True when sealed `auth.json` contains an entry for `server_name`.
+/// True when encrypted `auth.json` contains an entry for `server_name`.
 pub fn has_stored_credentials(auth_store_path: &Path, server_name: &str) -> bool {
     AuthStoreFile::load_from_path_sync(auth_store_path)
         .map(|file| file.contains_server(server_name))
@@ -476,7 +580,7 @@ mod sealed_store_tests {
     use tempfile::tempdir;
 
     #[tokio::test]
-    async fn sealed_provider_roundtrip_no_lock_sidecar() {
+    async fn plain_json_encrypted_roundtrip_no_lock_sidecar() {
         let key = Aes256Key::generate();
         let dir = tempdir().unwrap();
         let path = dir.path().join("auth.json");
@@ -485,27 +589,89 @@ mod sealed_store_tests {
         file.set_provider_credential("opencode", "sk-test-secret".into());
         file.save_to_path_with_key(&path, &key).await.unwrap();
 
+        // No lock sidecar or separate key file
         let mut lock_sidecar = path.as_os_str().to_os_string();
         lock_sidecar.push(".lock");
         assert!(!std::path::PathBuf::from(lock_sidecar).exists());
         assert!(!path.with_extension("key").exists());
 
+        // File is plain JSON, not an envelope
         let raw = std::fs::read_to_string(&path).unwrap();
-        assert!(raw.contains("\"v\": 2") || raw.contains("\"v\":2"));
-        assert!(!raw.contains("sk-test-secret"));
+        assert!(!raw.contains("\"v\": 2"), "should not be an envelope: {raw}");
+        assert!(!raw.contains("sk-test-secret"), "plaintext must not appear: {raw}");
+        assert!(raw.contains("enc:"), "value should be encrypted with enc: prefix: {raw}");
 
         let loaded = AuthStoreFile::load_from_path_with_key(&path, &key).await.unwrap();
         assert_eq!(loaded.get_provider_credential("opencode"), Some("sk-test-secret"));
     }
 
     #[tokio::test]
-    async fn rejects_cleartext_legacy_store() {
+    async fn env_ref_stored_as_plaintext() {
         let key = Aes256Key::generate();
         let dir = tempdir().unwrap();
         let path = dir.path().join("auth.json");
-        std::fs::write(&path, r#"{"providers":{"x":"sk"}}"#).unwrap();
-        let err = AuthStoreFile::load_from_path_with_key(&path, &key).await.unwrap_err();
-        assert!(err.to_string().to_ascii_lowercase().contains("envelope") || err.to_string().contains("legacy"));
+
+        let mut file = AuthStoreFile::default();
+        file.set_provider_credential("openai", "env:OPENAI_API_KEY".into());
+        file.save_to_path_with_key(&path, &key).await.unwrap();
+
+        let raw = std::fs::read_to_string(&path).unwrap();
+        assert!(raw.contains("env:OPENAI_API_KEY"), "env ref must be in plaintext: {raw}");
+        assert!(!raw.contains("enc:"), "env refs should not be encrypted");
+
+        let loaded = AuthStoreFile::load_from_path_with_key(&path, &key).await.unwrap();
+        assert_eq!(loaded.get_provider_credential("openai"), Some("env:OPENAI_API_KEY"));
+    }
+
+    #[tokio::test]
+    async fn mcp_credentials_encrypted_roundtrip() {
+        let key = Aes256Key::generate();
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("auth.json");
+
+        let mut file = AuthStoreFile::default();
+        // StoredCredentials-like JSON object
+        let creds = serde_json::json!({
+            "clientId": "client-abc",
+            "scopes": ["read", "write"],
+        });
+        file.mcp.insert("server-foo".into(), creds);
+        file.save_to_path_with_key(&path, &key).await.unwrap();
+
+        let raw = std::fs::read_to_string(&path).unwrap();
+        assert!(!raw.contains("client-abc"), "client ID must not appear in plaintext: {raw}");
+        assert!(raw.contains("enc:"), "mcp value should be encrypted: {raw}");
+
+        let loaded = AuthStoreFile::load_from_path_with_key(&path, &key).await.unwrap();
+        let loaded_val = loaded.mcp.get("server-foo").unwrap();
+        assert_eq!(loaded_val.get("clientId").and_then(|v| v.as_str()), Some("client-abc"));
+    }
+
+    #[tokio::test]
+    async fn loads_plain_legacy_store_with_env_refs() {
+        // Plain JSON with only env: refs should load successfully (no encryption needed).
+        let key = Aes256Key::generate();
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("auth.json");
+        let content = r#"{"providers":{"openai":"env:OPENAI_API_KEY"}}"#;
+        std::fs::write(&path, content).unwrap();
+
+        let loaded = AuthStoreFile::load_from_path_with_key(&path, &key).await.unwrap();
+        assert_eq!(loaded.get_provider_credential("openai"), Some("env:OPENAI_API_KEY"));
+    }
+
+    #[tokio::test]
+    async fn loads_plain_legacy_store_with_mixed() {
+        // Plain JSON with mixed env: and plain values — plain values should survive.
+        let key = Aes256Key::generate();
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("auth.json");
+        let content = r#"{"providers":{"openai":"env:OPENAI_API_KEY","other":"plain-text-key"}}"#;
+        std::fs::write(&path, content).unwrap();
+
+        let loaded = AuthStoreFile::load_from_path_with_key(&path, &key).await.unwrap();
+        assert_eq!(loaded.get_provider_credential("openai"), Some("env:OPENAI_API_KEY"));
+        assert_eq!(loaded.get_provider_credential("other"), Some("plain-text-key"));
     }
 }
 
@@ -838,10 +1004,10 @@ mod tests {
 
         let raw = tokio::fs::read_to_string(&path).await.unwrap();
         assert!(
-            raw.contains("\"v\":") && raw.contains("ciphertext"),
-            "expected v2 envelope: {raw}"
+            raw.contains("enc:") && !raw.contains("ciphertext"),
+            "expected plain JSON with enc: fields, got: {raw}"
         );
-        assert!(!raw.contains("client-a"), "client id must not appear in plaintext");
+        assert!(!raw.contains("client-a"), "client id must not appear in plaintext: {raw}");
         let mut lock_sidecar = path.as_os_str().to_os_string();
         lock_sidecar.push(".lock");
         assert!(!std::path::PathBuf::from(lock_sidecar).exists());

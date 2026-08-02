@@ -30,7 +30,7 @@ impl ModelSelectorView {
             provider_index: pending.provider_index,
             global_count: global_count_label(&pending.catalog),
             filtered_models: filtered_models.clone(),
-            footer_hint: model_selector_footer_hint(pending.is_provider_scope_mode()),
+            footer_hint: model_selector_footer_hint(pending.is_provider_scope_mode(), pending.sort_order),
         }
     }
 
@@ -57,10 +57,6 @@ impl ModelSelectorView {
         }
         let indices = self.catalog.builtin_provider_indices();
         indices.iter().position(|&index| index == self.provider_index)
-    }
-
-    pub fn shows_provider_in_list_hint(&self, filter: &str) -> bool {
-        !filter.trim().is_empty() || self.catalog.shows_provider_in_hint(self.provider_index)
     }
 }
 
@@ -121,12 +117,6 @@ pub fn ModelSelectorBar(props: &mut ModelSelectorBarProps, _hooks: Hooks) -> imp
     );
 
     let list_height = model_selector_list_viewport_height(props.screen_width, props.screen_height);
-    let filter_text = props
-        .filter
-        .as_ref()
-        .map(|state| state.read().clone())
-        .unwrap_or_default();
-    let show_provider_hint = props.view.shows_provider_in_list_hint(&filter_text);
     let search_focused = props.has_focus && props.input_focus == ModelSelectorFocus::Search;
 
     let body = element! {
@@ -156,7 +146,7 @@ pub fn ModelSelectorBar(props: &mut ModelSelectorBarProps, _hooks: Hooks) -> imp
                     compact: true,
                     // Never type scope/nav/scoped shortcuts into the filter field.
                     // `=` / `_` cover Shift layouts for `+` / `-`.
-                    blocked_chars: vec!['[', ']', '+', '-', '=', '_'],
+                    blocked_chars: vec!['[', ']', '+', '-', '=', '_', '$'],
                     on_submit: props.on_filter_submit.take(),
                     on_cancel: props.on_cancel.take(),
                 )
@@ -166,7 +156,7 @@ pub fn ModelSelectorBar(props: &mut ModelSelectorBarProps, _hooks: Hooks) -> imp
                     width: body_width,
                     height: list_height,
                     models: props.view.filtered_models.clone(),
-                    show_provider_hint: show_provider_hint,
+                    show_provider_hint: true,
                     selected_index: props.model_index,
                     has_focus: props.has_focus,
                     theme: Some(theme),

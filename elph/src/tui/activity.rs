@@ -28,6 +28,7 @@ pub fn braille_spinner_glyph(tick: u32) -> &'static str {
 }
 
 /// Live braille frame from wall clock — skips frames under load (no slow-mo / fake freeze).
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn braille_spinner_glyph_now() -> &'static str {
     SpinnerLoader::glyph_now()
 }
@@ -185,6 +186,43 @@ pub fn format_activity_busy_line(label: &str, phase_elapsed_secs: f64) -> String
     }
 }
 
+/// Thinking threshold in seconds before the status row starts joking.
+pub const THINKING_OVERDUE_THRESHOLD_SECS: f64 = 10.0;
+
+/// Escalating witty labels for a thinking phase that drags on past the threshold.
+/// Each message covers one [`THINKING_OVERDUE_THRESHOLD_SECS`]-long bucket.
+const OVERDUE_THINKING_MESSAGES: &[&str] = &[
+    "Hold on, still over thinking...",
+    "Still over thinking... going deeper",
+    "Thinking so hard it might overheat",
+    "Did it forget the question?",
+    "Is it thinking, or napping?",
+    "Thinking at the speed of molasses...",
+];
+
+/// Escalating witty label for a thinking phase that exceeds 10s.
+///
+/// Returns `None` below the threshold; afterwards picks a message based on how
+/// many 10s buckets the phase has crossed so long waits stay fresh.
+pub fn thinking_overdue_label(elapsed_secs: f64) -> Option<&'static str> {
+    if !elapsed_secs.is_finite() || elapsed_secs < THINKING_OVERDUE_THRESHOLD_SECS {
+        return None;
+    }
+    let bucket = (elapsed_secs / THINKING_OVERDUE_THRESHOLD_SECS) as usize;
+    let idx = bucket.saturating_sub(1).min(OVERDUE_THINKING_MESSAGES.len() - 1);
+    Some(OVERDUE_THINKING_MESSAGES[idx])
+}
+
+/// Busy left segment with long-thinking escalation (see [`thinking_overdue_label`]).
+pub fn format_activity_busy_line_dynamic(label: &str, phase_elapsed_secs: f64) -> String {
+    if label == "Thinking"
+        && let Some(witty) = thinking_overdue_label(phase_elapsed_secs)
+    {
+        return format!("{witty} · {}", format_duration_secs(phase_elapsed_secs));
+    }
+    format_activity_busy_line(label, phase_elapsed_secs)
+}
+
 /// Idle status notice shown briefly after a turn completes.
 pub fn format_turn_complete_notice(elapsed_secs: f64) -> String {
     format!("Turn complete · {}", format_duration_secs(elapsed_secs))
@@ -207,8 +245,7 @@ pub fn user_shell_activity_label(command: &str) -> String {
 
 /// Banner text when quit is requested while a turn is still running (fixed above StatusRow).
 pub fn format_quit_while_busy_transcript() -> String {
-    "Agent is still responding. Press y to quit (cancels the turn), n to keep waiting, or repeat /exit, :q, or Ctrl+D to confirm."
-        .to_string()
+    "Agent is still responding. Press y to quit, n to keep waiting, or Ctrl+D to force quit.".to_string()
 }
 
 /// Status-row suffix while quit confirmation is pending during an active turn.
@@ -464,6 +501,36 @@ mod tests {
     }
 
     #[test]
+    fn thinking_overdue_label_none_below_threshold() {
+        assert_eq!(thinking_overdue_label(0.0), None);
+        assert_eq!(thinking_overdue_label(9.9), None);
+        assert_eq!(thinking_overdue_label(f64::NAN), None);
+    }
+
+    #[test]
+    fn thinking_overdue_label_escalates_by_ten_second_buckets() {
+        assert_eq!(thinking_overdue_label(10.0), Some("Hold on, still over thinking..."));
+        assert_eq!(thinking_overdue_label(19.9), Some("Hold on, still over thinking..."));
+        assert_eq!(thinking_overdue_label(20.0), Some("Still over thinking... going deeper"));
+        assert_eq!(thinking_overdue_label(30.0), Some("Thinking so hard it might overheat"));
+        // Long waits clamp to the final message.
+        assert_eq!(thinking_overdue_label(3600.0), Some("Thinking at the speed of molasses..."));
+    }
+
+    #[test]
+    fn format_activity_busy_line_dynamic_escalates_only_thinking() {
+        // Below threshold: unchanged.
+        assert_eq!(format_activity_busy_line_dynamic("Thinking", 5.0), "Thinking · 5s");
+        // Past threshold: witty label replaces the activity name, timer kept.
+        assert_eq!(
+            format_activity_busy_line_dynamic("Thinking", 11.0),
+            "Hold on, still over thinking... · 11s"
+        );
+        // Non-thinking labels are untouched.
+        assert_eq!(format_activity_busy_line_dynamic("Running grep", 31.0), "Running grep · 31s");
+    }
+
+    #[test]
     fn format_turn_complete_notice_includes_elapsed() {
         assert_eq!(format_turn_complete_notice(110.0), "Turn complete · 1m50s");
     }
@@ -540,8 +607,7 @@ mod tests {
     fn format_quit_while_busy_transcript_mentions_confirm_keys() {
         let notice = format_quit_while_busy_transcript();
         assert!(notice.contains("y"));
-        assert!(notice.contains("/exit"));
-        assert!(notice.contains(":q"));
+        assert!(notice.contains("n"));
         assert!(notice.contains("Ctrl+D"));
     }
 

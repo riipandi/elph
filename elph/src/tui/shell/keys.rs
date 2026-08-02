@@ -123,6 +123,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         code, kind, modifiers, ..
     }) = event
     else {
+        // Non-Key events (e.g. Paste) must propagate to child hooks. Do not consume.
         return;
     };
     if kind == KeyEventKind::Release {
@@ -866,6 +867,26 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 return;
             }
 
+            // `$` — toggle sort order (Default → CostAsc → CostDesc → …).
+            if modifiers.is_empty() && code == KeyCode::Char('$') {
+                if let Some(pending) = pending_model_selector.write().as_mut() {
+                    let next = match pending.sort_order {
+                        crate::tui::model_selector::SortOrder::Default => {
+                            crate::tui::model_selector::SortOrder::CostAsc
+                        }
+                        crate::tui::model_selector::SortOrder::CostAsc => {
+                            crate::tui::model_selector::SortOrder::CostDesc
+                        }
+                        crate::tui::model_selector::SortOrder::CostDesc => {
+                            crate::tui::model_selector::SortOrder::Default
+                        }
+                    };
+                    pending.sort_order = next;
+                    model_selected_index.set(pending.model_index);
+                }
+                return;
+            }
+
             // ←/→ (and h/l on list) — cycle providers only on the Provider scope tab.
             // Arrows also work from the filter when it is empty so users need not Tab first.
             if let Some(delta) = model_selector_provider_delta(modifiers, code) {
@@ -1462,7 +1483,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             return;
         }
 
-        // ── Feedback dialog (Report a Bug / Join Community) ────────
+        // ── Feedback dialog (Report a Bug / Join Community / Support) ──
         if *pending_feedback.read() {
             if modifiers.is_empty() && code == KeyCode::Esc {
                 *pending_feedback.write() = false;
@@ -2319,12 +2340,12 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 return;
             }
 
-            // Character typing / backspace: owned by DialogUserInputContent → TextInput
+            // Character typing, backspace, paste: owned by DialogUserInputContent → TextInput
             // (shared `provider_connect_api_key` State). Do not also push/pop here —
             // that double-applied each keystroke (`ad` → `adad`).
-            if !shell_global_shortcut(modifiers, code) {
-                return;
-            }
+            // Let all keystrokes through to the Input component. Only Ctrl+C/Ctrl+D
+            // are intercepted by the shell global shortcut handler above.
+            return;
         }
 
         let option_nav = {
@@ -2640,12 +2661,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         &mut ephemeral_banner,
                         &mut ephemeral_banner_generation,
                         &expire_tx,
-                        EphemeralBanner {
-                            key: "transient:slash_busy",
-                            text: "Agent is still responding — wait for the current turn to finish.".to_string(),
-                            kind: EphemeralBannerKind::Warning,
-                            expires_at: None,
-                        },
+                        slash_busy_banner(),
                     );
                     return;
                 }
@@ -3119,8 +3135,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 }
             }
         }
-        // Ctrl+R — play confetti rain (if no overlays open).
-        (m, KeyCode::Char('r')) | (m, KeyCode::Char('R'))
+        // Ctrl+H — play confetti rain (if no overlays open).
+        (m, KeyCode::Char('h')) | (m, KeyCode::Char('H'))
             if m.contains(KeyModifiers::CONTROL)
                 && !m.contains(KeyModifiers::ALT)
                 && !m.contains(KeyModifiers::META)
@@ -3260,8 +3276,18 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 }
             }
         }
-        (m, KeyCode::Esc) if m.is_empty() && shell_focus.get() == ShellFocus::Transcript => {
-            shell_focus.set(ShellFocus::Prompt);
+        (m, KeyCode::Esc) if m.is_empty() => {
+            // Escape cancels Shift-based text selection mode — the temporary Ctrl+S
+            // toggle (e.g. after Shift+↑/↓ redirected focus to the transcript). The
+            // persistent Ctrl+S toggle keeps its own mechanism and is never
+            // cancelled by Escape.
+            if shift_held.get() {
+                shift_held.set(false);
+                shift_last_pressed.set(None);
+            }
+            if shell_focus.get() == ShellFocus::Transcript {
+                shell_focus.set(ShellFocus::Prompt);
+            }
         }
         // Tab: toggle focus between prompt textarea and transcript.
         (m, KeyCode::Tab) if m.is_empty() && !status_dialog_open && !palette_tab_reserved => match shell_focus.get() {

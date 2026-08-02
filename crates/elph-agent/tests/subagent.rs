@@ -62,6 +62,7 @@ async fn spawn_and_list_subagents_with_turso_sessions() {
         resources: AgentHarnessResources::default(),
         stream_options: AgentHarnessStreamOptions::default(),
         thinking_level: Default::default(),
+        prompt_encoding: None,
         agent_graph: Some(Arc::new(AgentGraphStore::new(&graph_db))),
     };
 

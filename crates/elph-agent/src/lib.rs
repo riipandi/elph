@@ -179,6 +179,7 @@ pub use compaction::compute_file_lists;
 pub use compaction::create_file_ops;
 pub use compaction::estimate_context_tokens;
 pub use compaction::estimate_tokens;
+pub use compaction::estimate_tokens_with_system_prompt;
 pub use compaction::extract_file_ops_from_message;
 pub use compaction::find_cut_point;
 pub use compaction::find_turn_start_index;
@@ -218,6 +219,7 @@ pub use prompt::PromptTemplateDiagnosticCode;
 pub use prompt::SourcedPromptTemplate;
 pub use prompt::SourcedPromptTemplateDiagnostic;
 pub use prompt::builtin::session_name::extract_conversation_for_naming;
+pub use prompt::builtin::session_name::sanitize_session_name;
 pub use prompt::encoding::PromptEncodingConfig;
 pub use prompt::encoding::PromptEncodingDelimiter;
 pub use prompt::encoding::PromptEncodingMode;
@@ -340,8 +342,6 @@ pub use tools::create_move_path_tool;
 pub use tools::create_read_file_tool;
 #[cfg(feature = "tools-search")]
 pub use tools::create_search_tools;
-#[cfg(feature = "tools-shell-exec")]
-pub use tools::create_shell_exec_tool;
 #[cfg(feature = "tools-write-file")]
 pub use tools::create_write_file_tool;
 #[cfg(feature = "mcp")]
@@ -481,6 +481,8 @@ pub use tools::mcp::load_or_create_master_key;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::lock_auth_store;
 #[cfg(feature = "mcp")]
+pub use tools::mcp::looks_like_envelope;
+#[cfg(feature = "mcp")]
 pub use tools::mcp::mcp_result_to_agent;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::mcp_result_to_agent_with_limit;
@@ -530,6 +532,8 @@ pub use tools::mcp::validate_server_config;
 pub use tools::mcp::{McpLoadOptions, McpServerLoadProgress};
 #[cfg(feature = "tools-web")]
 pub use tools::{WebSearchEngine, WebSearchResult};
+#[cfg(feature = "tools-shell-exec")]
+pub use tools::{create_shell_exec_tool, normalize_shell_exec_args, strip_redundant_cd_prefix};
 #[cfg(feature = "tools-web")]
 pub use tools::{create_web_fetch_tool, create_web_search_tool, create_web_tools};
 pub use tools::{echo_tool, simple_tool};

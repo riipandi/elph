@@ -163,9 +163,9 @@ struct FooterRightProps {
 fn FooterRight(props: &FooterRightProps) -> impl Into<AnyElement<'static>> {
     let theme = UiTheme::default();
     let footer_right = if props.supports_images {
-        format!("IMG | {} | {}", props.model_label, props.thinking_level.label())
+        format!("◐ · {} · {}", props.model_label, props.thinking_level.label())
     } else {
-        format!("{} | {}", props.model_label, props.thinking_level.label())
+        format!("{} · {}", props.model_label, props.thinking_level.label())
     };
 
     element! {

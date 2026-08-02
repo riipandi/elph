@@ -64,7 +64,7 @@ The active tool list is rendered dynamically on every turn. Tool guidance names 
 3. Interactive tools: block until the user answers.
 4. Risky tools: approval dialog (unless brave / allow-for-session).
 5. Execute; stream shell output to the TUI when applicable.
-6. Optionally rewrite structured tool output as [TOON](https://github.com/toon-format/toon) before the model sees it (`ELPH_PROMPT_ENCODING` or harness config; default `off`).
+6. Optionally rewrite structured tool output as [TOON](https://github.com/toon-format/toon) before the model sees it (`settings.json` → `promptEncoding`, `ELPH_PROMPT_ENCODING`, or built-in default `off`).
 7. Append assistant + tool result messages to history.
 8. Repeat until no tool calls remain.
 
@@ -77,6 +77,12 @@ When enabled, the agent runtime may compress large JSON tool results (and MCP `s
 | `off`  | Default — tool results pass through unchanged |
 | `toon` | Encode eligible JSON ≥ size threshold         |
 | `auto` | Encode only uniform tabular JSON arrays       |
+
+**Configuration** — precedence (highest first):
+
+1. `settings.json` → `promptEncoding` group (host maps it into harness options; subagents inherit it). `null`/absent = skip to env.
+2. `ELPH_PROMPT_ENCODING`, `ELPH_PROMPT_ENCODING_MIN_BYTES`, `ELPH_PROMPT_ENCODING_DELIMITER`, `ELPH_PROMPT_ENCODING_TABULAR_DELIMITER` env vars.
+3. Built-in default (`off`, `minBytes` 2048).
 
 Implementation and examples: [`elph-agent` prompt-encoding.md](../crates/elph-agent/docs/prompt-encoding.md).
 
@@ -105,11 +111,12 @@ A tool is sent to the API only if it is known, has a schema, is executable, and 
 
 Configured via `settings.compaction` (`thresholdPct`, `keepRecentTokens`) mapped into harness `CompactionSettings` (auto-compact is always enabled from the host). Summarization can use `models.compactionModel` (`inherit` = session model).
 
-| Path | Behavior |
-| ---- | -------- |
-| **Auto** | After a successful turn, if context usage exceeds the threshold, Elph compact history and posts sticky transcript notices (will / running / done or failed). |
-| **Manual** | `/compact` (or `/c`) — same lifecycle notices; noop when nothing to summarize. |
-| **Model switch** | Switching to a **smaller** context window checks whether history still fits; if not, compact (up to two passes) with notices before the next turn. |
+| Path                    | Behavior                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Auto**                | If context usage exceeds the threshold — checked **before** sending a new prompt (including the upcoming prompt size) and **after** every turn (successful or errored) — Elph compacts history and posts sticky transcript notices (will / running / done or failed). The estimate matches the header context label (session messages + compiled system prompt, counted once), so `thresholdPct` fires exactly when the chrome shows that percentage. The system prompt is only added on top of the message estimate when provider usage is not reused, so the label never double-counts it and cannot read above 100% of the window for a request that actually fits. When a turn errors with a context-limit overflow, Elph compacts and retries once, but only if the retry still fits after compaction. |
+| **Turn-error recovery** | When a turn ends in a provider error that indicates a context-limit overflow (or usage is already over threshold), Elph compacts automatically and **re-runs the same prompt once** so the interrupted task continues. The retry is bounded to a single attempt.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **Manual**              | `/compact` (or `/c`) — same lifecycle notices; noop when nothing to summarize.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| **Model switch**        | Switching to a **smaller** context window checks whether history still fits; if not, compact (up to two passes) with notices before the next turn.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 
 Manual and auto share the harness compact path (with optional compaction-model override so the session footer model is not permanently changed).
 
@@ -183,18 +190,18 @@ TypeID with prefix `sess` — shown in the footer.
 
 ### Persistence
 
-| Data                 | Location                                                          |
-| -------------------- | ----------------------------------------------------------------- |
-| Provider / model     | Per-session (tree + Turso row); new sessions seed from `models.defaultModel` |
-| Mode / thinking      | Per-session (default mode `build`; thinking seed `models.defaultThinkingLevel`) |
-| Conversation history | Turso session tree in `APP_DATA/metadata.db` (`session_entries`)  |
-| Platform metadata    | Same DB: goals, spawn graph, session index                         |
-| Model catalog        | Embedded + merge `CONFIG_DIR/providers/*.json` (disk wins by id)  |
-| Crash recovery       | Semi-durable harness journal + tool-result repair (see below)     |
-| Project memory       | `<project>/.elph/store.db`                                        |
+| Data                 | Location                                                                           |
+| -------------------- | ---------------------------------------------------------------------------------- |
+| Provider / model     | Per-session (tree + Turso row); new sessions seed from the project's last used model, falling back to `models.defaultModel` (TUI) |
+| Mode / thinking      | Per-session (default mode `build`; thinking seed `models.defaultThinkingLevel`)    |
+| Conversation history | Turso session tree in `APP_DATA/metadata.db` (`session_entries`)                   |
+| Platform metadata    | Same DB: goals, spawn graph, session index                                         |
+| Model catalog        | Embedded + merge `CONFIG_DIR/providers/*.json` (disk wins by id)                   |
+| Crash recovery       | Semi-durable harness journal + tool-result repair (see below)                      |
+| Project memory       | `<project>/.elph/store.db`                                                         |
 | Session artifacts    | `APP_DATA/sessions/<SESSION_ID>/` (`mcp_cache`, `terminals`, `tool_outputs.jsonl`) |
-| Todo snapshot        | Per-session metadata when TodoList is active                      |
-| Event / request logs | JSONL per session for diagnostics                                 |
+| Todo snapshot        | Per-session metadata when TodoList is active                                       |
+| Event / request logs | JSONL per session for diagnostics                                                  |
 
 ### Semi-durable harness recovery
 
@@ -202,12 +209,12 @@ Product open/resume uses `AgentHarness::restore` (wired from `elph/src/agent/run
 
 **Journal** — custom tree entries with type prefix `harness.*`:
 
-| Custom type | Role |
-| ----------- | ---- |
-| `harness.queue_enqueue` / `harness.queue_consume` | Durable steer / follow-up / next-turn queues (stable `queue_id`) |
-| `harness.pending_write` / `harness.pending_write_applied` | Deferred session writes while a turn runs (stable `write_id`) |
-| `harness.operation_started` / `harness.operation_finished` | Run / compaction / branch-summary lifecycle |
-| `harness.turn_started` / `harness.turn_finished` | Per-turn markers (including fail / interrupt outcomes) |
+| Custom type                                                | Role                                                             |
+| ---------------------------------------------------------- | ---------------------------------------------------------------- |
+| `harness.queue_enqueue` / `harness.queue_consume`          | Durable steer / follow-up / next-turn queues (stable `queue_id`) |
+| `harness.pending_write` / `harness.pending_write_applied`  | Deferred session writes while a turn runs (stable `write_id`)    |
+| `harness.operation_started` / `harness.operation_finished` | Run / compaction / branch-summary lifecycle                      |
+| `harness.turn_started` / `harness.turn_finished`           | Per-turn markers (including fail / interrupt outcomes)           |
 
 **On restore:**
 
@@ -252,7 +259,7 @@ Tasks panel above input; per-session snapshot persistence.
 `create_coding_session_with_events` in `elph/src/agent/runtime.rs` assembles the harness tool list:
 
 1. `BuiltinToolsBuilder::all(env)` — every built-in tool enabled by `elph-agent`’s `builtin-tools` feature
-2. MCP tools from `McpToolRegistry::create_agent_tools()`
+2. MCP tools from `McpToolRegistry::create_agent_tools().await`
 3. Goal tools from `create_goal_tools()`
 
 Multi-agent tools are injected by `AgentHarness` when `tools-multi-agent` is enabled and the default active-tool set is used.

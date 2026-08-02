@@ -32,6 +32,9 @@
         "models": {
             "$ref": "#/definitions/models"
         },
+        "promptEncoding": {
+            "$ref": "#/definitions/promptEncoding"
+        },
         "memory": {
             "$ref": "#/definitions/memory"
         },
@@ -219,9 +222,8 @@
             "description": "Model catalog preferences and seeds for new sessions (not live session state).",
             "properties": {
                 "defaultModel": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "Optional provider/model_id seed for new sessions only (e.g. opencode/big-pickle). Live model is per-session."
+                    "oneOf": [{ "type": "string", "minLength": 1 }, { "type": "null" }],
+                    "description": "Optional provider/model_id seed for new sessions only (e.g. openai/gpt-5.6-luna). null/absent → no model until picked. Live model is per-session."
                 },
                 "sessionTitleModel": {
                     "type": "string",
@@ -246,7 +248,7 @@
                 },
                 "showConfiguredOnly": {
                     "type": "boolean",
-                    "default": true,
+                    "default": false,
                     "description": "When true, the model picker All list and Provider tabs only show providers with credentials in auth.json."
                 },
                 "scopedModels": {
@@ -255,11 +257,72 @@
                     "items": {
                         "type": "string",
                         "minLength": 1,
-                        "description": "provider/model_id entry (e.g. opencode/big-pickle)."
+                        "description": "provider/model_id entry (e.g. openai/gpt-5.6-luna)."
                     },
                     "description": "Models for Ctrl+P cycling and the Scoped tab. Edit via /scoped-models."
                 }
             }
+        },
+        "promptEncoding": {
+            "oneOf": [
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "description": "Optional TOON prompt encoding for model-visible tool results. Absent/null falls back to ELPH_PROMPT_ENCODING* env vars.",
+                    "properties": {
+                        "mode": {
+                            "type": "string",
+                            "default": "off",
+                            "enum": ["off", "toon", "auto"],
+                            "description": "When to apply TOON encoding: off (never), toon (all eligible structured payloads), auto (uniform tabular arrays only). Unknown values fall back to off."
+                        },
+                        "minBytes": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "default": 2048,
+                            "description": "Minimum JSON byte length before TOON encoding applies."
+                        },
+                        "minSavingsRatio": {
+                            "type": "number",
+                            "default": 1.0,
+                            "description": "Encode only when the TOON form is at most this ratio of the JSON size (1.0 = strictly smaller)."
+                        },
+                        "delimiter": {
+                            "type": "string",
+                            "default": "comma",
+                            "enum": ["comma", "tab", "pipe"],
+                            "description": "TOON delimiter for general payloads."
+                        },
+                        "tabularDelimiter": {
+                            "type": "string",
+                            "enum": ["comma", "tab", "pipe"],
+                            "description": "TOON delimiter for tabular arrays (default: tab)."
+                        },
+                        "targets": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "description": "Which tool-result surfaces TOON may rewrite (both default to true).",
+                            "properties": {
+                                "toolResultText": {
+                                    "type": "boolean",
+                                    "default": true,
+                                    "description": "Rewrite eligible tool-result text blocks."
+                                },
+                                "structuredDetails": {
+                                    "type": "boolean",
+                                    "default": true,
+                                    "description": "Rewrite MCP structured_content details payloads."
+                                }
+                            }
+                        },
+                        "preamble": {
+                            "type": "string",
+                            "description": "Preamble above TOON fenced blocks. Defaults to the built-in TOON hint."
+                        }
+                    }
+                },
+                { "type": "null" }
+            ]
         },
         "memory": {
             "type": "object",
@@ -276,6 +339,44 @@
                     "type": "boolean",
                     "default": true,
                     "description": "Prefer quantized ONNX weights when a *Q variant exists."
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Master switch for automatic memory hooks and bootstrap injection. Agent tools can still open the store when disabled."
+                },
+                "autoRecall": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Per-turn multi-source recall injection."
+                },
+                "autoCaptureWork": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Auto-journal successful file mutations as work/change memories."
+                },
+                "autoCaptureExploration": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Auto-capture exploration into discovery / project-map memories."
+                },
+                "topK": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 5,
+                    "description": "Vector top-k for task retrieval."
+                },
+                "contextBudgetChars": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 3000,
+                    "description": "Max characters for all injected memory XML blocks."
+                },
+                "minQueryLength": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 15,
+                    "description": "Minimum user prompt length to trigger auto-recall."
                 }
             }
         },

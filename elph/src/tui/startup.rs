@@ -3,12 +3,11 @@
 use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
-use elph_agent::{McpLoadReport, McpServerLoadProgress};
+use elph_agent::{FileSystem, McpLoadReport, McpServerLoadProgress};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 use chrono::{DateTime, Utc};
 
-use crate::agent::mcp_bootstrap::{discover_mcp_registry_with_progress, wire_mcp_into_session};
 use crate::agent::{AgentUiEvent, CodingAgentSession, CreateSessionOptions, LoadResourcesResult};
 use crate::agent::{create_coding_session_with_events, format_resource_conflict_notice, format_resource_load_warnings};
 use crate::platform::{Paths, Settings};
@@ -39,6 +38,10 @@ pub struct TuiBootstrapConfig {
     pub paths: Paths,
     pub settings: Settings,
     pub resume_id: Option<String>,
+    /// Full `provider/model` the new session should start on (resolved from last
+    /// session or settings default at startup). Ignored when `resume_id` is set —
+    /// the session restores its own model from the tree.
+    pub model_override: Option<String>,
     pub preloaded_resources: LoadResourcesResult,
 }
 
@@ -189,15 +192,6 @@ pub fn apply_mcp_startup_summary_line(messages: &mut Vec<TranscriptMessage>, sum
     upsert_startup_line(messages, STARTUP_KEY_MCP_LOAD, summary, TranscriptStyle::StatusSuccess);
 }
 
-pub fn mark_mcp_startup_failed(messages: &mut Vec<TranscriptMessage>, err: &str) {
-    upsert_startup_line(
-        messages,
-        STARTUP_KEY_MCP_LOAD,
-        format!("MCP failed{STARTUP_SEP}{err}"),
-        TranscriptStyle::StatusFailed,
-    );
-}
-
 /// Append a dim configuration warning under the MCP block.
 pub fn append_startup_warning(messages: &mut Vec<TranscriptMessage>, warning: &str) {
     let warning = warning.trim();
@@ -344,7 +338,7 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
         cwd: &cwd,
         resume_id: config.resume_id.as_deref(),
         provider_override: None,
-        model_override: None,
+        model_override: config.model_override.as_deref(),
         agent_mode: None,
         preloaded_resources: Some(config.preloaded_resources.clone()),
         defer_mcp_load: true,
@@ -397,7 +391,8 @@ async fn load_chat_history(session: &CodingAgentSession) -> Vec<TranscriptMessag
         return messages;
     }
 
-    reconstruct_transcript_from_llm_entries(&entries)
+    let cwd = session.harness().env().cwd().to_string();
+    reconstruct_transcript_from_llm_entries(&entries, &cwd)
 }
 
 /// Latest full transcript snapshot written after each completed turn.
@@ -417,7 +412,10 @@ fn load_transcript_snapshot_from_entries(entries: &[elph_agent::SessionTreeEntry
 }
 
 /// Reconstruct transcript cards from the LLM session tree (fallback path).
-fn reconstruct_transcript_from_llm_entries(entries: &[elph_agent::SessionTreeEntry]) -> Vec<TranscriptMessage> {
+fn reconstruct_transcript_from_llm_entries(
+    entries: &[elph_agent::SessionTreeEntry],
+    cwd: &str,
+) -> Vec<TranscriptMessage> {
     use elph_ai::{AssistantContentBlock, ContentBlock, Message, UserContent};
     use std::collections::HashMap;
 
@@ -546,7 +544,10 @@ fn reconstruct_transcript_from_llm_entries(entries: &[elph_agent::SessionTreeEnt
                         AssistantContentBlock::ToolCall(tc) => {
                             has_visible = true;
                             // Same raw JSON args as live ToolStart (not pretty-formatted).
-                            let args_summary = serde_json::to_string(&tc.arguments).unwrap_or_default();
+                            let mut args_summary = serde_json::to_string(&tc.arguments).unwrap_or_default();
+                            if tc.name == "shell_exec" {
+                                args_summary = elph_agent::normalize_shell_exec_args(&args_summary, cwd);
+                            }
 
                             let mut msg = TranscriptMessage::tool_call(
                                 tc.name.clone(),
@@ -696,24 +697,41 @@ pub enum McpBootstrapUpdate {
 }
 
 /// Discover MCP servers and attach tools to a running session (after the TUI is visible).
+///
+/// Always attaches tools even if some servers fail — graceful degradation.
 pub async fn bootstrap_mcp_for_session(
     session: &CodingAgentSession,
-    paths: &Paths,
+    _paths: &Paths,
     mut on_update: impl FnMut(McpBootstrapUpdate),
 ) -> Result<()> {
+    let registry = session
+        .mcp_registry()
+        .ok_or_else(|| anyhow::anyhow!("MCP registry not available"))?;
+
     let (progress_tx, mut progress_rx) = tokio::sync::mpsc::unbounded_channel();
-    let paths = paths.clone();
-    let load = tokio::spawn(async move { discover_mcp_registry_with_progress(&paths, Some(progress_tx)).await });
+    let registry_for_discovery = Arc::clone(&registry);
+    let load = tokio::spawn(async move {
+        registry_for_discovery
+            .discover_tools_with_progress(Some(progress_tx))
+            .await
+    });
 
     while let Some(event) = progress_rx.recv().await {
         on_update(McpBootstrapUpdate::Server(event));
     }
 
-    let (registry, config_warnings) = load.await.map_err(|e| anyhow::anyhow!("{e}"))?;
-    for line in format_mcp_load_footer(&registry.load_report(), &config_warnings) {
+    // Always attach tools even if discovery had errors — partial results are better than none.
+    match load.await {
+        Ok(Ok(())) => {}
+        Ok(Err(e)) => log::warn!("MCP discovery partial failure (tools already attached): {e}"),
+        Err(e) => log::warn!("MCP discovery task panicked: {e}"),
+    }
+    let report = registry.load_report();
+    for line in format_mcp_load_footer(&report, &[]) {
         on_update(McpBootstrapUpdate::TranscriptLine(line));
     }
-    wire_mcp_into_session(session, registry, config_warnings).await?;
+    // Attach whatever tools we have (even if discovery partially failed).
+    session.attach_mcp_registry(registry).await?;
     Ok(())
 }
 
@@ -725,7 +743,6 @@ pub enum BootstrapUiEvent {
     McpServer(McpServerLoadProgress),
     McpTranscriptLine(String),
     McpComplete,
-    McpFailed(String),
 }
 
 /// Run agent + MCP bootstrap off the UI thread; progress arrives on the returned channel.
@@ -760,20 +777,23 @@ async fn run_bootstrap_worker(config: TuiBootstrapConfig, paths: Paths, tx: Unbo
     }
 
     let tx_progress = tx.clone();
-    match bootstrap_mcp_for_session(session.as_ref(), &paths, move |update| {
+    let mcp_result = bootstrap_mcp_for_session(session.as_ref(), &paths, move |update| {
         let event = match update {
             McpBootstrapUpdate::Server(progress) => BootstrapUiEvent::McpServer(progress),
             McpBootstrapUpdate::TranscriptLine(line) => BootstrapUiEvent::McpTranscriptLine(line),
         };
         let _ = tx_progress.send(event);
     })
-    .await
-    {
+    .await;
+
+    // Always complete the bootstrap — tools were already attached even on partial failure.
+    match mcp_result {
         Ok(()) => {
             let _ = tx.send(BootstrapUiEvent::McpComplete);
         }
         Err(err) => {
-            let _ = tx.send(BootstrapUiEvent::McpFailed(err.to_string()));
+            log::warn!("MCP bootstrap partial failure (tools already attached): {err}");
+            let _ = tx.send(BootstrapUiEvent::McpComplete);
         }
     }
 }

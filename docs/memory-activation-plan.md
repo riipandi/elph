@@ -575,6 +575,11 @@ Insert `<memory_and_context>` after `<context_and_rules>` (or before `<execution
 | build / brave | Use recent work aggressively; minimize redundant reads after injection                         |
 | plan / ask    | Recall heavily; do not invent work logs for pure Q&A; discoveries OK when mapping architecture |
 
+> **Note (2026-08-01):** the mode-specific memory lines above were consolidated into the
+> always-rendered `<memory_and_context>` section of `coding_base.md` and removed from the
+> `mode_*.md` templates to keep the static prompt lean. Mode templates now carry only
+> mode-protocol guidance (Plan keeps the "no work-log entries during planning" guard).
+
 ### Task 3.3 — Tool description rewrites
 
 **File:** `elph/src/memory/tools.rs`

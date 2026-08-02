@@ -99,6 +99,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         mut ui_events_slot,
         mut user_shell_abort,
         mut user_shell_channel,
+        mut thinking_level,
         ..
     } = ctx;
     loop {
@@ -154,7 +155,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                             notifier::notify(&settings.notifications, notifier::NotifKind::StartupReady);
                         }
                     }
-                    BootstrapUiEvent::AgentFailed(msg) | BootstrapUiEvent::McpFailed(msg) => {
+                    BootstrapUiEvent::AgentFailed(msg) => {
                         if let Ok(settings) = Settings::load(&paths.read().clone()) {
                             notifier::notify(
                                 &settings.notifications,
@@ -180,7 +181,9 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     &mut ui_events_slot,
                     &mut messages,
                     &mut prompt_history,
-                );
+                    &mut thinking_level,
+                )
+                .await;
                 chrome_full_redraw_pending.set(true);
                 publish_transcript_now(&mut messages_revision, &mut transcript_pending, &mut last_transcript_publish);
             }
@@ -217,11 +220,14 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     ));
                 }
 
-                // Create a fresh bootstrap config with no resume_id (forces a new session)
+                // Create a fresh bootstrap config with no resume_id (forces a new session).
+                // Boot on the model last used in this project, same as a fresh startup.
+                let boot = crate::tui::resolve_boot_model(&settings, &paths_for_load, &cwd_for_load, None).await;
                 let new_config = TuiBootstrapConfig {
                     paths: paths_for_load,
                     settings,
                     resume_id: None,
+                    model_override: boot.ok().map(|(provider, model_id)| format!("{provider}/{model_id}")),
                     preloaded_resources: loaded,
                 };
                 bootstrap_config.set(Some(new_config));
