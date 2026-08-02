@@ -643,6 +643,8 @@ fn render_select_auth_method_step(
             context_k: 0,
             reasoning: false,
             images: false,
+            is_free: false,
+            cost_per_m_input: 0.0,
         })
         .collect();
     let desc_hints: Vec<String> = auth_methods.iter().map(|m| m.description.clone()).collect();
@@ -798,6 +800,8 @@ fn render_select_provider_step(
             context_k: 0,
             reasoning: false,
             images: false,
+            is_free: false,
+            cost_per_m_input: 0.0,
         })
         .collect();
     let config_hints: Vec<String> = filtered_with_status
@@ -885,6 +889,8 @@ fn render_oauth_select_step(
             context_k: 0,
             reasoning: false,
             images: false,
+            is_free: false,
+            cost_per_m_input: 0.0,
         })
         .collect();
 

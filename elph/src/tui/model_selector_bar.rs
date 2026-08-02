@@ -30,7 +30,7 @@ impl ModelSelectorView {
             provider_index: pending.provider_index,
             global_count: global_count_label(&pending.catalog),
             filtered_models: filtered_models.clone(),
-            footer_hint: model_selector_footer_hint(pending.is_provider_scope_mode()),
+            footer_hint: model_selector_footer_hint(pending.is_provider_scope_mode(), pending.sort_order),
         }
     }
 
@@ -156,7 +156,7 @@ pub fn ModelSelectorBar(props: &mut ModelSelectorBarProps, _hooks: Hooks) -> imp
                     compact: true,
                     // Never type scope/nav/scoped shortcuts into the filter field.
                     // `=` / `_` cover Shift layouts for `+` / `-`.
-                    blocked_chars: vec!['[', ']', '+', '-', '=', '_'],
+                    blocked_chars: vec!['[', ']', '+', '-', '=', '_', '$'],
                     on_submit: props.on_filter_submit.take(),
                     on_cancel: props.on_cancel.take(),
                 )

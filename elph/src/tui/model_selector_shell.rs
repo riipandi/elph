@@ -450,6 +450,8 @@ mod tests {
         let mut pending = PendingModelSelector::open(String::new(), None, &[]);
         pending.input_focus = ModelSelectorFocus::Search;
         pending.apply_scope_nav(1);
+        assert_eq!(pending.scope_mode(), ModelScopeMode::Free);
+        pending.apply_scope_nav(1);
         assert_eq!(pending.scope_mode(), ModelScopeMode::Scoped);
         assert_eq!(pending.input_focus, ModelSelectorFocus::Search);
     }

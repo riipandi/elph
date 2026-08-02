@@ -140,6 +140,49 @@ mod tests {
     }
 }
 
+/// Try to load a plain JSON auth file (legacy format without sealed envelope).
+///
+/// Returns `Some(AuthStoreFile)` with the providers parsed from the JSON,
+/// or `None` if the file is not valid plain JSON.
+/// Returns `None` without attempting when the file looks like a sealed v2 envelope.
+///
+/// Supports formats:
+/// - `{ "provider": { "id": "cred" } }` — nested (camelCase, AuthStoreFile shape)
+/// - `{ "providers": { "id": "cred" } }` — nested (snake_case fallback)
+/// - `{ "id": "cred" }` — flat key-value
+async fn try_load_plain_json_auth(path: &Path) -> Option<elph_agent::AuthStoreFile> {
+    let content = tokio::fs::read_to_string(path).await.ok()?;
+    // If it looks like a sealed envelope, do not attempt plain JSON parsing —
+    // the sealed load failed for a real reason and the envelope has no plaintext providers.
+    if elph_agent::looks_like_envelope(content.as_bytes()) {
+        return None;
+    }
+    let json: serde_json::Value = serde_json::from_str(&content).ok()?;
+    let mut file = elph_agent::AuthStoreFile::default();
+    // Try nested format: "provider" (camelCase) or "providers" (snake_case)
+    let providers_obj = json
+        .get("provider")
+        .or_else(|| json.get("providers"))
+        .and_then(|v| v.as_object());
+    if let Some(providers) = providers_obj {
+        for (pid, val) in providers {
+            if let Some(s) = val.as_str() {
+                file.set_provider_credential(pid, s.to_string());
+            }
+        }
+    } else if let Some(obj) = json.as_object() {
+        // Try flat format: { "id": "cred" }
+        for (pid, val) in obj {
+            if let Some(s) = val.as_str() {
+                if pid != "mcp" && pid != "v" && pid != "alg" && pid != "nonce" && pid != "ciphertext" {
+                    file.set_provider_credential(pid, s.to_string());
+                }
+            }
+        }
+    }
+    if file.provider.is_empty() { None } else { Some(file) }
+}
+
 /// Load provider credentials from `auth.json` into an in-memory credential store.
 async fn load_credentials_from_auth_json(auth_store_path: Option<&Path>) -> Result<InMemoryCredentialStore> {
     let store = InMemoryCredentialStore::new();
@@ -154,11 +197,15 @@ async fn load_credentials_from_auth_json(auth_store_path: Option<&Path>) -> Resu
         Ok(f) => f,
         Err(e) => {
             log::warn!("auth store load failed ({}): {e}", path.display());
-            return Ok(store);
+            // Fallback: try plain JSON (legacy format without sealed envelope)
+            match try_load_plain_json_auth(path).await {
+                Some(f) => f,
+                None => return Ok(store),
+            }
         }
     };
 
-    for (provider_id, value) in &file.providers {
+    for (provider_id, value) in &file.provider {
         let Some(raw) = value.as_str() else {
             continue;
         };

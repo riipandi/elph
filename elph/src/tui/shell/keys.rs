@@ -866,6 +866,26 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 return;
             }
 
+            // `$` — toggle sort order (Default → CostAsc → CostDesc → …).
+            if modifiers.is_empty() && code == KeyCode::Char('$') {
+                if let Some(pending) = pending_model_selector.write().as_mut() {
+                    let next = match pending.sort_order {
+                        crate::tui::model_selector::SortOrder::Default => {
+                            crate::tui::model_selector::SortOrder::CostAsc
+                        }
+                        crate::tui::model_selector::SortOrder::CostAsc => {
+                            crate::tui::model_selector::SortOrder::CostDesc
+                        }
+                        crate::tui::model_selector::SortOrder::CostDesc => {
+                            crate::tui::model_selector::SortOrder::Default
+                        }
+                    };
+                    pending.sort_order = next;
+                    model_selected_index.set(pending.model_index);
+                }
+                return;
+            }
+
             // ←/→ (and h/l on list) — cycle providers only on the Provider scope tab.
             // Arrows also work from the filter when it is empty so users need not Tab first.
             if let Some(delta) = model_selector_provider_delta(modifiers, code) {

@@ -355,6 +355,8 @@ pub use tools::mcp::AuthStorePathBuilder;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::DEFAULT_AUTH_FILE_NAME;
 #[cfg(feature = "mcp")]
+pub use tools::mcp::looks_like_envelope;
+#[cfg(feature = "mcp")]
 pub use tools::mcp::DEFAULT_MAX_STRUCTURED_DETAIL_CHARS;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::DEFAULT_MAX_TOOL_RESULT_CHARS;

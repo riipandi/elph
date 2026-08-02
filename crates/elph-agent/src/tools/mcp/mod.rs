@@ -58,8 +58,9 @@ pub use auth::AuthStorePathBuilder;
 #[cfg(feature = "mcp")]
 pub use auth::ENV_REF_PREFIX;
 #[cfg(feature = "mcp")]
-pub use auth::FileCredentialStore;
+pub use envelope::looks_like_envelope;
 #[cfg(feature = "mcp")]
+pub use auth::FileCredentialStore;
 pub use auth::FileCredentialStoreBuilder;
 #[cfg(feature = "mcp")]
 pub use auth::McpOAuthFlowOptions;
