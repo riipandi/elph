@@ -197,8 +197,6 @@ pub fn write_status(out: &mut String, status: &StoreStatus, settings: Option<&Me
         kv(out, sty, "top-k", s.top_k);
         kv(out, sty, "context budget", format!("{} chars", s.context_budget_chars));
         kv(out, sty, "min query length", s.min_query_length);
-        kv(out, sty, "embed model", &s.embed_model);
-        kv(out, sty, "embed quantized", on_off(sty, s.embed_quantized));
     }
 
     if !status.categories.is_empty() {
@@ -648,7 +646,12 @@ pub fn write_help(out: &mut String, sty: MemoryStyle) {
     let _ = writeln!(
         out,
         "{}",
-        sty.paint(S_MUTED, "  topK, contextBudgetChars, minQueryLength, embedModel")
+        sty.paint(S_MUTED, "  topK, contextBudgetChars, minQueryLength")
+    );
+    let _ = writeln!(
+        out,
+        "{}",
+        sty.paint(S_MUTED, "Embed model: settings.models.embed (model, quantized)")
     );
     let _ = writeln!(out);
     let _ = writeln!(out, "{}", sty.paint(S_TITLE, "Examples"));

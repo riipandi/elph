@@ -38,6 +38,27 @@ pub struct ScanStats {
     pub bytes_read: u64,
 }
 
+/// Progress event during index build/update (host UI hooks).
+#[derive(Debug, Clone)]
+pub struct IndexProgress {
+    pub phase: IndexPhase,
+    pub files_walked: u32,
+    pub files_indexed: u32,
+    pub current_path: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IndexPhase {
+    Starting,
+    Scanning,
+    IndexingFile,
+    Finalizing,
+    Done,
+}
+
+/// Optional progress callback for [`super::CodegraphStore::build`] / `update`.
+pub type ProgressFn = std::sync::Arc<dyn Fn(IndexProgress) + Send + Sync>;
+
 impl Default for ScanStats {
     fn default() -> Self {
         Self {

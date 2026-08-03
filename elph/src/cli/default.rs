@@ -14,6 +14,12 @@ pub fn handle(continue_session: bool, resume: Option<String>) -> ExitCode {
         }
     };
 
+    // Pre-TUI: offer codebase indexing when codegraph is enabled and index is empty.
+    if let Err(err) = crate::codegraph::maybe_offer_index(&paths) {
+        log::warn!("codegraph startup index offer: {err:#}");
+        // Non-fatal — continue into TUI.
+    }
+
     let mode = match SessionLaunchMode::from_flags(continue_session, resume) {
         Ok(m) => m,
         Err(err) => {

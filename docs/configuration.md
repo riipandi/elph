@@ -191,14 +191,16 @@ Project overrides **per nested key** (deep merge). Runtime saves write **home on
         "treeBranchSummaries": "inherit",
         "defaultThinkingLevel": "high",
         "showConfiguredOnly": false,
-        "scopedModels": []
+        "scopedModels": [],
+        "embed": {
+            "model": "AllMiniLML6V2",
+            "quantized": true
+        }
     },
     "promptEncoding": null,
     "maxRetries": 2,
     "defaultTimeout": "120s",
     "memory": {
-        "embedModel": "AllMiniLML6V2",
-        "embedQuantized": true,
         "enabled": true,
         "autoRecall": true,
         "autoCaptureWork": true,
@@ -206,6 +208,9 @@ Project overrides **per nested key** (deep merge). Runtime saves write **home on
         "topK": 5,
         "contextBudgetChars": 3000,
         "minQueryLength": 15
+    },
+    "codegraph": {
+        "enabled": false
     },
     "notifications": {
         "enabled": true,
@@ -231,9 +236,10 @@ Project overrides **per nested key** (deep merge). Runtime saves write **home on
 | **`maxRetries`**            | (top-level)                                                                                                                                 | LLM HTTP retries on 5xx / network errors                                                                                                            |
 | **`defaultTimeout`**        | (top-level)                                                                                                                                 | LLM stream inactivity / SSE stall limit (e.g. `120s`)                                                                                               |
 | **`ui`**                    | `theme`, `themes`, `showThinking`, `autoExpandThinking`, `stickyScroll`, `footerTokenDisplay`, `coloredStatusFooter`, `allowModeChangeWhileBusy`, `filePicker.showHiddenFiles` | Appearance + transcript / chrome                                                                                                                    |
-| **`models`**                | `defaultModel`, `defaultThinkingLevel`, `sessionTitleModel`, `compactionModel`, `treeBranchSummaries`, `scopedModels`, `showConfiguredOnly` | Seeds for **new** sessions + catalog prefs. **Not** live model/mode/thinking                                                                        |
+| **`models`**                | `defaultModel`, `defaultThinkingLevel`, `sessionTitleModel`, `compactionModel`, `treeBranchSummaries`, `scopedModels`, `showConfiguredOnly`, **`embed`** (`model`, `quantized`) | Seeds for **new** sessions + catalog prefs + **local embedding** (shared by memory + codegraph). **Not** live chat model/mode/thinking |
 | **`promptEncoding`**        | `mode`, `minBytes`, `minSavingsRatio`, `delimiter`, `tabularDelimiter`, `targets`, `preamble`                                                 | TOON encoding of model-visible tool results (optional; absent/`null` → `ELPH_PROMPT_ENCODING*` env vars)                                           |
-| **`memory`**                | `embedModel`, `embedQuantized`, `enabled`, `autoRecall`, `autoCaptureWork`, `autoCaptureExploration`, `topK`, `contextBudgetChars`, `minQueryLength` | Floppy memory hooks + retrieval (see [memory.md](./memory.md))                                                                                     |
+| **`memory`**                | `enabled`, `autoRecall`, `autoCaptureWork`, `autoCaptureExploration`, `topK`, `contextBudgetChars`, `minQueryLength` | Floppy memory hooks + retrieval (see [memory.md](./memory.md)); embed model is under `models.embed` |
+| **`codegraph`**             | `enabled` (default **false**)                                                                                                               | When true: (1) register agent tools `code_search` / `code_impact` / `code_status` / `code_reindex`; (2) pre-TUI interactive offer to index an empty project. CLI `elph codegraph` always works. See [codegraph.md](./codegraph.md). |
 | **`notifications`**        | `enabled`, `onTurnComplete`, `onToolPermission`, `onUserQuestion`, `onError`, `onTurnCancel`, `onStartupReady`, `minTurnDurationSecs`, `appName` | Desktop notifications (see [notifications](#notifications-notifications))                                                                          |
 | **`compaction`**            | `thresholdPct`, `keepRecentTokens`                                                                                                          | Auto-compaction **thresholds** only (auto-compact is always available after turns when usage exceeds the threshold; `/compact` is always available) |
 

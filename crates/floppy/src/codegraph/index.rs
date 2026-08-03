@@ -10,7 +10,7 @@ use turso::{Connection, params};
 use super::chunk::{chunk_source, lang_label_for_path};
 use super::graph::{extract_import_targets, file_node_id, nodes_for_chunks};
 use super::merkle::{merkle_root, sha256_hex};
-use super::types::{RawChunk, ScanStats};
+use super::types::{IndexPhase, IndexProgress, ProgressFn, RawChunk, ScanStats};
 use crate::store::EmbedFn;
 use crate::util::{drain_rows, is_zero, vec_buf};
 
@@ -23,9 +23,21 @@ pub struct Indexer<'a> {
     pub embed: &'a EmbedFn,
     pub max_chunk_lines: u32,
     pub max_file_bytes: u64,
+    pub progress: Option<&'a ProgressFn>,
 }
 
 impl Indexer<'_> {
+    fn report(&self, phase: IndexPhase, stats: &ScanStats, current: Option<&str>) {
+        if let Some(cb) = self.progress {
+            cb(IndexProgress {
+                phase,
+                files_walked: stats.files_walked,
+                files_indexed: stats.files_indexed,
+                current_path: current.map(str::to_string),
+            });
+        }
+    }
+
     /// Full or incremental index. When `full` is true, rehash all files (still skips unchanged hashes).
     pub async fn scan(&self, conn: &Connection, full: bool) -> Result<ScanStats> {
         let _ = full;
@@ -33,8 +45,11 @@ impl Indexer<'_> {
         let mut live_paths: HashSet<String> = HashSet::new();
         let mut file_map: BTreeMap<String, String> = BTreeMap::new();
 
+        self.report(IndexPhase::Starting, &stats, None);
+
         // Load existing hashes for skip
         let existing = load_file_hashes(conn).await?;
+        self.report(IndexPhase::Scanning, &stats, None);
 
         let walker = WalkBuilder::new(self.root)
             .hidden(false)
@@ -104,11 +119,18 @@ impl Indexer<'_> {
             let source = String::from_utf8_lossy(&bytes).into_owned();
             let chunks = chunk_source(&rel, &source, self.max_chunk_lines);
             let lang = lang_label_for_path(path);
+            self.report(IndexPhase::IndexingFile, &stats, Some(&rel));
             self.reindex_file(conn, &rel, &hash, lang, &source, &chunks, &mut stats)
                 .await
                 .with_context(|| format!("index {rel}"))?;
             stats.files_indexed += 1;
+            // Throttle UI: report every file when small, every 8th when large.
+            if stats.files_indexed <= 20 || stats.files_indexed.is_multiple_of(8) {
+                self.report(IndexPhase::IndexingFile, &stats, Some(&rel));
+            }
         }
+
+        self.report(IndexPhase::Finalizing, &stats, None);
 
         // Remove deleted paths
         for old in existing.keys() {
@@ -125,6 +147,7 @@ impl Indexer<'_> {
         upsert_meta(conn, META_LAST, &now.to_string()).await?;
         upsert_meta(conn, META_DIR, &self.root.display().to_string()).await?;
 
+        self.report(IndexPhase::Done, &stats, None);
         Ok(stats)
     }
 

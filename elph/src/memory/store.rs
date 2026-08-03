@@ -22,7 +22,7 @@ pub fn open_store_with_session(paths: &Paths, needs_embed: bool, session_id: &st
 
     let settings = Settings::load(paths).context("load settings")?;
 
-    let dims = resolve_embedding_model(&settings.memory.embed_model, settings.memory.embed_quantized)
+    let dims = resolve_embedding_model(&settings.models.embed.model, settings.models.embed.quantized)
         .map(|m| embedding_dims(&m))
         .unwrap_or(DEFAULT_EMBEDDING_DIMS);
 
@@ -44,8 +44,8 @@ pub fn open_store_with_session(paths: &Paths, needs_embed: bool, session_id: &st
             .with_context(|| format!("create {}", paths.models_dir().display()))?;
 
         let options = EmbedOptions {
-            model: Some(settings.memory.embed_model.clone()),
-            quantized: settings.memory.embed_quantized,
+            model: Some(settings.models.embed.model.clone()),
+            quantized: settings.models.embed.quantized,
             cache_dir: Some(paths.models_dir()),
         };
         builder = builder.embed(options)?;

@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://elph.space/elph-schema.json",
     "title": "Elph settings configuration",
-    "description": "User preferences for the Elph coding agent, grouped by domain (ui, models, memory, notifications, compaction). Active model, thinking level, and agent mode are per-session (not stored here). Home: ~/.elph/settings.json. Optional project overrides: <workDir>/.elph/settings.json (same shape). Merge: defaults \u2190 home \u2190 project (project wins per nested key). Runtime saves write the home layer only. Legacy session group and flat keys are migrated on load; unknown keys are ignored. Top-level transport: maxRetries, defaultTimeout. Legacy nested provider group is migrated on load.",
+    "description": "User preferences for the Elph coding agent, grouped by domain (ui, models, memory, codegraph, notifications, compaction). Active model, thinking level, and agent mode are per-session (not stored here). Home: ~/.elph/settings.json. Optional project overrides: <workDir>/.elph/settings.json (same shape). Merge: defaults \u2190 home \u2190 project (project wins per nested key). Runtime saves write the home layer only. Legacy session group, flat keys, and memory.embedModel/embedQuantized are migrated on load; unknown keys are ignored. Top-level transport: maxRetries, defaultTimeout. Legacy nested provider group is migrated on load.",
     "type": "object",
     "additionalProperties": false,
     "properties": {
@@ -37,6 +37,9 @@
         },
         "memory": {
             "$ref": "#/definitions/memory"
+        },
+        "codegraph": {
+            "$ref": "#/definitions/codegraph"
         },
         "notifications": {
             "$ref": "#/definitions/notifications"
@@ -260,6 +263,28 @@
                         "description": "provider/model_id entry (e.g. openai/gpt-5.6-luna)."
                     },
                     "description": "Models for Ctrl+P cycling and the Scoped tab. Edit via /scoped-models."
+                },
+                "embed": {
+                    "$ref": "#/definitions/embed",
+                    "description": "Local ONNX / Hugging Face embedding model shared by floppy memory and codegraph."
+                }
+            }
+        },
+        "embed": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Local embedding model for vector search (memory + codegraph).",
+            "properties": {
+                "model": {
+                    "type": "string",
+                    "default": "AllMiniLML6V2",
+                    "minLength": 1,
+                    "description": "Embedding model catalog name or Hugging Face repo id."
+                },
+                "quantized": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Prefer quantized ONNX weights when a *Q variant exists."
                 }
             }
         },
@@ -327,19 +352,8 @@
         "memory": {
             "type": "object",
             "additionalProperties": false,
-            "description": "Local embedding / floppy memory preferences.",
+            "description": "Floppy project memory hooks and retrieval. Embedding model is under models.embed.",
             "properties": {
-                "embedModel": {
-                    "type": "string",
-                    "default": "AllMiniLML6V2",
-                    "minLength": 1,
-                    "description": "Embedding model catalog name or Hugging Face repo id."
-                },
-                "embedQuantized": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Prefer quantized ONNX weights when a *Q variant exists."
-                },
                 "enabled": {
                     "type": "boolean",
                     "default": true,
@@ -377,6 +391,18 @@
                     "minimum": 0,
                     "default": 15,
                     "description": "Minimum user prompt length to trigger auto-recall."
+                }
+            }
+        },
+        "codegraph": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Semantic codebase index wiring in the coding agent. CLI elph codegraph is always available; agent tools are gated by enabled.",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "When true, register agent tools code_search, code_impact, code_status, and code_reindex. Default false."
                 }
             }
         },

@@ -57,7 +57,10 @@ pub use util::category_str;
 pub use util::{DEFAULT_EMBEDDING_DIMS, VALID_EMBEDDING_BYTES};
 
 #[cfg(feature = "codegraph")]
-pub use codegraph::{ChunkHit, CodegraphConfig, CodegraphStatus, CodegraphStore, ImpactNode, ScanStats, SearchOptions};
+pub use codegraph::{
+    ChunkHit, CodegraphConfig, CodegraphStatus, CodegraphStore, ImpactNode, IndexPhase, IndexProgress,
+    ProgressFn, ScanStats, SearchOptions,
+};
 
 pub fn create_memory_store(config: FloppyConfig, embed: EmbedFn) -> MemoryStore {
     MemoryStore::new(config, embed)

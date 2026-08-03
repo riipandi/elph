@@ -26,8 +26,8 @@ and co-locates storage with **floppy** memory in project `store.db`.
 | 10  | Retrieval       | **Parallel hybrid**: FTS5 BM25 + vector → RRF/weighted merge                                                                                                            |
 | 11  | Freshness       | Explicit `build`/`update` + **dirty reindex on demand before search** (no fs watch in v1)                                                                               |
 | 12  | Languages (AST) | **Tier-1:** Python, C, C++, Java, C#, JS, TS/TSX, Rust, Go, Elixir. **SQL:** text fallback (FTS/vector). **Tier-2** opt-in later. Unknown → text fallback               |
-| 13  | Embed model     | **Single shared MiniLM** (384-dim) for memory + codegraph                                                                                                               |
-| 14  | Surface         | **CLI + agent tools**. Agent: `code_search`, `code_impact`, `code_status`, `code_reindex` (dirty). **`build` and `purge` are CLI-only**                                 |
+| 13  | Embed model     | **Single shared MiniLM** via **`models.embed`** (`model`, `quantized`) for memory + codegraph                                                                           |
+| 14  | Surface         | **CLI always**; agent tools only when **`codegraph.enabled`** (default **false**). Tools: `code_search`, `code_impact`, `code_status`, `code_reindex`. Build/purge CLI-only |
 
 ### Agent loop (target)
 
@@ -51,6 +51,47 @@ code_reindex?           // optional after large refactors
 | `purge`  | Clear codegraph tables                     |
 
 No multi-repo, watch, serve, eval, postprocess, or visualize subcommands in v1.
+
+### Settings (`settings.json`)
+
+```json
+{
+  "models": {
+    "embed": {
+      "model": "AllMiniLML6V2",
+      "quantized": true
+    }
+  },
+  "codegraph": {
+    "enabled": false
+  }
+}
+```
+
+| Key | Default | Meaning |
+| --- | ------- | ------- |
+| `codegraph.enabled` | `false` | Register agent tools for the coding session |
+| `models.embed.model` | `AllMiniLML6V2` | Local embedder (same as floppy memory) |
+| `models.embed.quantized` | `true` | Prefer quantized ONNX weights |
+
+Enable agent indexing tools:
+
+```json
+{ "codegraph": { "enabled": true } }
+```
+
+CLI (`elph codegraph build|update|status|search|impact|purge`) does **not** require `codegraph.enabled`.
+
+### Startup onboarding (pre-TUI)
+
+When launching the interactive TUI (`elph` with no subcommand):
+
+1. Detect first Elph access to the project (`.elph/` missing before ensure).
+2. If **`codegraph.enabled`** is true, the terminal is interactive, the index is empty, and the user has not declined before → show an interactive prompt (inquire Select: **Yes!** / **Skip**).
+3. **Yes!** runs `build` with a `CliSpinner` progress line (files reindexed / path).
+4. **Skip** writes `.elph/codegraph_index_declined` so the prompt does not repeat (delete the file to be asked again).
+
+Skipped when: non-TTY, `ELPH_QUIET` / `CI`, `codegraph.enabled=false`, index already has files, or declined marker present.
 
 ---
 

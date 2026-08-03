@@ -26,10 +26,12 @@
 //!     "treeBranchSummaries": "inherit",
 //!     "defaultThinkingLevel": "high",
 //!     "showConfiguredOnly": false,
-//!     "scopedModels": []
+//!     "scopedModels": [],
+//!     "embed": { "model": "AllMiniLML6V2", "quantized": true }
 //!   },
 //!   "promptEncoding": null,
 //!   "memory": { ... },
+//!   "codegraph": { "enabled": false },
 //!   "notifications": { ... },
 //!   "compaction": { ... }
 //! }
@@ -101,9 +103,12 @@ pub struct Settings {
     /// Absent / `null` falls back to `ELPH_PROMPT_ENCODING*` environment variables.
     #[serde(default)]
     pub prompt_encoding: Option<elph_agent::PromptEncodingConfig>,
-    /// Local embedding / floppy memory.
+    /// Local floppy memory (hooks / retrieval; embed model lives under `models.embed`).
     #[serde(default)]
     pub memory: MemorySettings,
+    /// Semantic codebase index (agent tools + index prefs). Default off.
+    #[serde(default)]
+    pub codegraph: CodegraphSettings,
     /// Desktop notification preferences.
     #[serde(default)]
     pub notifications: NotificationSettings,
@@ -247,6 +252,9 @@ pub struct ModelsSettings {
     /// Edit via `/scoped-models`.
     #[serde(default)]
     pub scoped_models: Vec<String>,
+    /// Local ONNX / Hugging Face embedding model (shared by floppy memory + codegraph).
+    #[serde(default)]
+    pub embed: EmbedSettings,
 }
 
 impl Default for ModelsSettings {
@@ -259,6 +267,28 @@ impl Default for ModelsSettings {
             default_thinking_level: default_thinking_level(),
             show_configured_only: false,
             scoped_models: Vec::new(),
+            embed: EmbedSettings::default(),
+        }
+    }
+}
+
+/// Local embedding model for vector search (memory + codegraph).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct EmbedSettings {
+    /// Embedding model catalog name or Hugging Face repo id (see `floppy::resolve_embedding_model`).
+    #[serde(default = "default_embed_model")]
+    pub model: String,
+    /// Prefer quantized model weights when a `*Q` variant exists (default: true).
+    #[serde(default = "default_embed_quantized")]
+    pub quantized: bool,
+}
+
+impl Default for EmbedSettings {
+    fn default() -> Self {
+        Self {
+            model: default_embed_model(),
+            quantized: default_embed_quantized(),
         }
     }
 }
@@ -283,12 +313,6 @@ impl ModelsSettings {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct MemorySettings {
-    /// Embedding model catalog name or Hugging Face repo id (see `floppy::resolve_embedding_model`).
-    #[serde(default = "default_embed_model")]
-    pub embed_model: String,
-    /// Prefer quantized model weights when a `*Q` variant exists (default: true).
-    #[serde(default = "default_embed_quantized")]
-    pub embed_quantized: bool,
     /// Master switch for automatic memory hooks and bootstrap injection.
     /// Agent tools can still open the store when disabled.
     #[serde(default = "default_true")]
@@ -316,8 +340,6 @@ pub struct MemorySettings {
 impl Default for MemorySettings {
     fn default() -> Self {
         Self {
-            embed_model: default_embed_model(),
-            embed_quantized: default_embed_quantized(),
             enabled: true,
             auto_recall: true,
             auto_capture_work: true,
@@ -326,6 +348,22 @@ impl Default for MemorySettings {
             context_budget_chars: default_memory_context_budget(),
             min_query_length: default_memory_min_query_length(),
         }
+    }
+}
+
+/// Semantic codebase indexing (agent tools; CLI always available).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CodegraphSettings {
+    /// When true, register agent tools (`code_search`, `code_impact`, `code_status`, `code_reindex`).
+    /// Default **false** — enable explicitly. CLI `elph codegraph` is unaffected.
+    #[serde(default = "default_false")]
+    pub enabled: bool,
+}
+
+impl Default for CodegraphSettings {
+    fn default() -> Self {
+        Self { enabled: false }
     }
 }
 
@@ -436,6 +474,7 @@ impl Settings {
             models: ModelsSettings::default(),
             prompt_encoding: None,
             memory: MemorySettings::default(),
+            codegraph: CodegraphSettings::default(),
             notifications: NotificationSettings::default(),
             compaction: CompactionConfig::default(),
         }
@@ -584,6 +623,48 @@ fn migrate_settings_value(value: &mut Value) {
         }
         if let Some(scoped) = models.remove("scoped") {
             models.entry("scopedModels".to_string()).or_insert(scoped);
+        }
+        // Flat models.embedModel / embedQuantized → models.embed.{model,quantized}
+        let flat_model = models.remove("embedModel");
+        let flat_q = models.remove("embedQuantized");
+        if flat_model.is_some() || flat_q.is_some() {
+            let embed = models
+                .entry("embed".to_string())
+                .or_insert_with(|| Value::Object(Map::new()));
+            if let Some(obj) = embed.as_object_mut() {
+                if let Some(m) = flat_model {
+                    obj.entry("model".to_string()).or_insert(m);
+                }
+                if let Some(q) = flat_q {
+                    obj.entry("quantized".to_string()).or_insert(q);
+                }
+            }
+        }
+    }
+
+    // memory.embedModel / embedQuantized → models.embed (shared local embedder)
+    let (mem_model, mem_q) = if let Some(Value::Object(memory)) = root.get_mut("memory") {
+        (memory.remove("embedModel"), memory.remove("embedQuantized"))
+    } else {
+        (None, None)
+    };
+    if mem_model.is_some() || mem_q.is_some() {
+        let models = root
+            .entry("models".to_string())
+            .or_insert_with(|| Value::Object(Map::new()));
+        if let Some(models_obj) = models.as_object_mut() {
+            let embed = models_obj
+                .entry("embed".to_string())
+                .or_insert_with(|| Value::Object(Map::new()));
+            if let Some(obj) = embed.as_object_mut() {
+                // Only fill missing keys so an explicit models.embed wins over legacy memory.
+                if let Some(m) = mem_model {
+                    obj.entry("model".to_string()).or_insert(m);
+                }
+                if let Some(q) = mem_q {
+                    obj.entry("quantized".to_string()).or_insert(q);
+                }
+            }
         }
     }
 
@@ -766,8 +847,9 @@ mod tests {
         let json = serde_json::to_string_pretty(&settings).expect("serialize");
         let decoded: Settings = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(settings, decoded);
-        assert_eq!(decoded.memory.embed_model, "AllMiniLML6V2");
-        assert!(decoded.memory.embed_quantized);
+        assert_eq!(decoded.models.embed.model, "AllMiniLML6V2");
+        assert!(decoded.models.embed.quantized);
+        assert!(!decoded.codegraph.enabled);
         assert!(decoded.models.default_model.is_none());
         assert_eq!(decoded.models.session_title_model, "inherit");
         assert_eq!(decoded.models.compaction_model, "inherit");
@@ -895,7 +977,8 @@ mod tests {
         let paths = test_paths(&tmp);
         Settings::ensure(&paths).expect("ensure");
         let loaded = Settings::load(&paths).expect("load");
-        assert_eq!(loaded.memory.embed_model, "AllMiniLML6V2");
+        assert_eq!(loaded.models.embed.model, "AllMiniLML6V2");
+        assert!(!loaded.codegraph.enabled);
         // New knobs default when section/fields are missing.
         assert!(loaded.memory.enabled);
         assert!(loaded.memory.auto_recall);
@@ -908,11 +991,36 @@ mod tests {
 
     #[test]
     fn memory_settings_partial_json_defaults() {
-        let raw = r#"{"embedModel":"AllMiniLML6V2","embedQuantized":false}"#;
+        let raw = r#"{"enabled":true,"topK":3}"#;
         let decoded: MemorySettings = serde_json::from_str(raw).expect("parse");
         assert!(decoded.enabled);
         assert!(decoded.auto_recall);
-        assert_eq!(decoded.top_k, 5);
+        assert_eq!(decoded.top_k, 3);
+    }
+
+    #[test]
+    fn migrate_legacy_memory_embed_to_models_embed() {
+        let mut value = serde_json::json!({
+            "memory": {
+                "embedModel": "BGESmallENV15",
+                "embedQuantized": false,
+                "enabled": true
+            }
+        });
+        migrate_settings_value(&mut value);
+        let settings: Settings = serde_json::from_value(value).expect("parse");
+        assert_eq!(settings.models.embed.model, "BGESmallENV15");
+        assert!(!settings.models.embed.quantized);
+        assert!(settings.memory.enabled);
+        assert!(!settings.codegraph.enabled);
+    }
+
+    #[test]
+    fn codegraph_settings_default_disabled() {
+        let s = Settings::defaults();
+        assert!(!s.codegraph.enabled);
+        let decoded: CodegraphSettings = serde_json::from_str("{}").expect("parse");
+        assert!(!decoded.enabled);
     }
 
     #[test]

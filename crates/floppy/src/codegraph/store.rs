@@ -7,7 +7,9 @@ use std::sync::Mutex;
 use super::index::{self, Indexer};
 use super::migrations;
 use super::search;
-use super::types::{ChunkHit, CodegraphConfig, CodegraphStatus, ImpactNode, ScanStats, SearchOptions};
+use super::types::{
+    ChunkHit, CodegraphConfig, CodegraphStatus, ImpactNode, ProgressFn, ScanStats, SearchOptions,
+};
 use crate::db;
 use crate::store::EmbedFn;
 
@@ -50,26 +52,38 @@ impl CodegraphStore {
         Ok(())
     }
 
-    fn indexer(&self) -> Indexer<'_> {
+    fn indexer<'a>(&'a self, progress: Option<&'a ProgressFn>) -> Indexer<'a> {
         Indexer {
             root: Path::new(&self.root_dir),
             embed: &self.embed,
             max_chunk_lines: self.max_chunk_lines,
             max_file_bytes: self.max_file_bytes,
+            progress,
         }
     }
 
     /// Full project index (CLI `build`).
     pub async fn build(&self) -> Result<ScanStats> {
+        self.build_with_progress(None).await
+    }
+
+    /// Full project index with optional progress callback.
+    pub async fn build_with_progress(&self, progress: Option<ProgressFn>) -> Result<ScanStats> {
         self.init().await?;
-        let indexer = self.indexer();
+        let progress_ref = progress.as_ref();
+        let indexer = self.indexer(progress_ref);
         db::with_local_db(&self.db_path, |conn| async move { indexer.scan(&conn, true).await }).await
     }
 
     /// Incremental dirty reindex (CLI `update` / agent `code_reindex`).
     pub async fn update(&self) -> Result<ScanStats> {
+        self.update_with_progress(None).await
+    }
+
+    pub async fn update_with_progress(&self, progress: Option<ProgressFn>) -> Result<ScanStats> {
         self.init().await?;
-        let indexer = self.indexer();
+        let progress_ref = progress.as_ref();
+        let indexer = self.indexer(progress_ref);
         db::with_local_db(&self.db_path, |conn| async move { indexer.reindex_dirty(&conn).await }).await
     }
 

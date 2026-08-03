@@ -11,13 +11,11 @@ use crate::platform::Paths;
 pub fn run(paths: Paths, cmd: &CodegraphCommands) -> Result<()> {
     match cmd {
         CodegraphCommands::Build => {
-            let store = open_store(&paths, true)?;
-            let stats = try_block_on(store.build())??;
+            let stats = run_scan_with_spinner(&paths, true)?;
             print_scan("build", &stats);
         }
         CodegraphCommands::Update => {
-            let store = open_store(&paths, true)?;
-            let stats = try_block_on(store.update())??;
+            let stats = run_scan_with_spinner(&paths, false)?;
             print_scan("update", &stats);
         }
         CodegraphCommands::Status => {
@@ -96,6 +94,48 @@ pub fn run(paths: Paths, cmd: &CodegraphCommands) -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn run_scan_with_spinner(paths: &Paths, full_build: bool) -> Result<ScanStats> {
+    use std::sync::Arc;
+
+    use elph_tui::CliSpinner;
+    use floppy::{IndexPhase, ProgressFn};
+
+    let spinner = CliSpinner::new(if full_build {
+        "Building codegraph index…"
+    } else {
+        "Updating codegraph index…"
+    });
+    let spinner_cb = spinner.clone();
+    let progress: ProgressFn = Arc::new(move |ev| {
+        let msg = match ev.phase {
+            IndexPhase::Starting => "Opening store…".into(),
+            IndexPhase::Scanning => "Scanning files…".into(),
+            IndexPhase::IndexingFile => match &ev.current_path {
+                Some(p) => format!(
+                    "{p}  ({} reindexed · {} seen)",
+                    ev.files_indexed, ev.files_walked
+                ),
+                None => format!(
+                    "Indexing…  ({} reindexed · {} seen)",
+                    ev.files_indexed, ev.files_walked
+                ),
+            },
+            IndexPhase::Finalizing => "Finalizing…".into(),
+            IndexPhase::Done => "Done".into(),
+        };
+        spinner_cb.set_message(msg);
+    });
+
+    let store = open_store(paths, true)?;
+    let stats = if full_build {
+        try_block_on(store.build_with_progress(Some(progress)))??
+    } else {
+        try_block_on(store.update_with_progress(Some(progress)))??
+    };
+    spinner.finish_and_clear();
+    Ok(stats)
 }
 
 fn print_scan(label: &str, stats: &ScanStats) {

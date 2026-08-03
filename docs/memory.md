@@ -155,10 +155,14 @@ Read-only commands do not require a loaded embedding model. `search` downloads t
 
 In `~/.elph/settings.json`:
 
-| Field                   | Default         | Description                             |
-| ----------------------- | --------------- | --------------------------------------- |
-| `memory.embedModel`     | `AllMiniLML6V2` | Model name or Hugging Face alias        |
-| `memory.embedQuantized` | `true`          | Prefer quantized catalog variant when available |
+| Field                    | Default         | Description                                      |
+| ------------------------ | --------------- | ------------------------------------------------ |
+| `models.embed.model`     | `AllMiniLML6V2` | Local embedding model (shared with codegraph)    |
+| `models.embed.quantized` | `true`          | Prefer quantized catalog variant when available  |
+| `memory.enabled`         | `true`          | Auto hooks / bootstrap injection                 |
+| `codegraph.enabled`      | `false`         | Agent codegraph tools (CLI always available)     |
+
+Legacy `memory.embedModel` / `memory.embedQuantized` are migrated into `models.embed` on load.
 
 ### Model aliases (examples)
 

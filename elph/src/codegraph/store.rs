@@ -17,7 +17,7 @@ pub fn open_store(paths: &Paths, needs_embed: bool) -> Result<CodegraphStore> {
         .with_context(|| format!("create {}", paths.project_elph_dir().display()))?;
 
     let settings = Settings::load(paths).context("load settings")?;
-    let dims = resolve_embedding_model(&settings.memory.embed_model, settings.memory.embed_quantized)
+    let dims = resolve_embedding_model(&settings.models.embed.model, settings.models.embed.quantized)
         .map(|m| embedding_dims(&m))
         .unwrap_or(DEFAULT_EMBEDDING_DIMS);
 
@@ -25,8 +25,8 @@ pub fn open_store(paths: &Paths, needs_embed: bool) -> Result<CodegraphStore> {
         std::fs::create_dir_all(paths.models_dir())
             .with_context(|| format!("create {}", paths.models_dir().display()))?;
         let options = EmbedOptions {
-            model: Some(settings.memory.embed_model.clone()),
-            quantized: settings.memory.embed_quantized,
+            model: Some(settings.models.embed.model.clone()),
+            quantized: settings.models.embed.quantized,
             cache_dir: Some(paths.models_dir()),
         };
         create_embedder(options).context("create codegraph embedder")?
