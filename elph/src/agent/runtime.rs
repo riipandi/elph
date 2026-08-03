@@ -74,6 +74,7 @@ pub async fn create_coding_session_with_events(
         memory_opts,
     ));
     tools.extend(crate::memory::tools::create_memory_tools(Arc::clone(&memory_runtime)));
+    tools.extend(crate::codegraph::tools::create_codegraph_tools(options.paths.clone()));
 
     // Create shared UI event channel for ask_user tool and session.
     let (ui_tx, ui_rx) = tokio::sync::mpsc::unbounded_channel();

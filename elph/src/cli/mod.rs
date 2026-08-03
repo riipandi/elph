@@ -28,7 +28,7 @@ use elph_agent::AgentBuilder;
 
 use crate::platform::ExitCode;
 
-pub use codegraph::CodegraphArgs;
+pub use codegraph::{CodegraphArgs, CodegraphCommands};
 pub use completions::CompletionsArgs;
 pub use doctor::DoctorArgs;
 pub use export::ExportArgs;
@@ -79,7 +79,7 @@ pub struct Cli {
 pub enum Commands {
     /// Run Elph as an Agent Client Protocol (ACP) server over stdio
     Acp,
-    /// Structural knowledge graph for smarter code reviews
+    /// Semantic code index + thin impact graph
     Codegraph(CodegraphArgs),
     /// Generate shell completion scripts (bash, zsh, fish, powershell, etc)
     Completions(CompletionsArgs),

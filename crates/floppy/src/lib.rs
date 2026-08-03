@@ -13,6 +13,7 @@
 //! No environment variables are read inside this module.
 
 mod builder;
+mod db;
 mod embed;
 pub mod migrations;
 mod paths;
@@ -22,6 +23,9 @@ mod scoring;
 mod store;
 mod types;
 mod util;
+
+#[cfg(feature = "codegraph")]
+pub mod codegraph;
 
 pub use builder::FloppyBuilder;
 #[cfg(feature = "embed")]
@@ -51,6 +55,9 @@ pub use types::{
 };
 pub use util::category_str;
 pub use util::{DEFAULT_EMBEDDING_DIMS, VALID_EMBEDDING_BYTES};
+
+#[cfg(feature = "codegraph")]
+pub use codegraph::{ChunkHit, CodegraphConfig, CodegraphStatus, CodegraphStore, ImpactNode, ScanStats, SearchOptions};
 
 pub fn create_memory_store(config: FloppyConfig, embed: EmbedFn) -> MemoryStore {
     MemoryStore::new(config, embed)

@@ -1,12 +1,15 @@
 use clap::{Parser, Subcommand};
 
 use super::help;
-use crate::platform::{EXIT_SUCCESS, ExitCode};
+use crate::platform::{EXIT_ERROR, EXIT_SUCCESS, ExitCode};
 
 #[derive(Parser, Default)]
 #[command(
     name = "codegraph",
-    about = "Structural knowledge graph for smarter code reviews",
+    about = "Semantic code index + thin impact graph",
+    long_about = "Index the project into .elph/store.db for hybrid FTS/vector search and shallow impact queries.\n\
+                  First-time setup: elph codegraph build\n\
+                  Agent tools: code_search, code_impact, code_status, code_reindex (no build/purge).",
     color = clap::ColorChoice::Auto
 )]
 pub struct CodegraphArgs {
@@ -16,36 +19,34 @@ pub struct CodegraphArgs {
 
 #[derive(Subcommand)]
 pub enum CodegraphCommands {
-    /// Full graph build (parse all files)
+    /// Full index build (CLI-only; not exposed to the agent)
     Build,
     /// Incremental update (changed files only)
     Update,
-    /// Auto-update on file changes
-    Watch,
-    /// Show graph statistics
+    /// Show index statistics and Merkle fingerprint
     Status,
-    /// Analyze change impact (risk-scored review)
-    Changes,
-    /// Run evaluation benchmarks
-    Eval,
-    /// Run post-processing (flows, communities, FTS)
-    Postprocess,
-    /// List registered repositories
-    Repos,
-    /// Register a repository in the multi-repo registry
-    Register {
-        /// Path to the repository root
-        path: Option<String>,
+    /// Hybrid keyword + semantic search
+    Search {
+        /// Search query tokens
+        #[arg(required = true)]
+        query: Vec<String>,
+        /// Max results
+        #[arg(short = 'n', long, default_value_t = 10)]
+        limit: u32,
     },
-    /// Remove a repository from the registry
-    Unregister {
-        /// Repository name or path to remove
-        name: String,
+    /// Shallow impact / neighbor lookup for a path or symbol
+    Impact {
+        /// Path, symbol name, or node id
+        target: String,
+        /// BFS depth
+        #[arg(short = 'd', long, default_value_t = 1)]
+        depth: u32,
+        /// Max nodes
+        #[arg(short = 'n', long, default_value_t = 30)]
+        limit: u32,
     },
-    /// Generate interactive HTML graph
-    Visualize,
-    /// Start MCP server for any AI agent
-    Serve,
+    /// Clear the codegraph index tables
+    Purge,
 }
 
 pub fn handle(args: &CodegraphArgs) -> ExitCode {
@@ -53,57 +54,29 @@ pub fn handle(args: &CodegraphArgs) -> ExitCode {
         return help::print_subcommand_help::<CodegraphArgs>();
     };
 
-    match cmd {
-        CodegraphCommands::Build => {
-            help::unimplemented("codegraph build — not yet implemented");
-            EXIT_SUCCESS
+    let paths = match crate::platform::Paths::resolve() {
+        Ok(p) => p,
+        Err(err) => {
+            eprintln!("error: {err}");
+            return EXIT_ERROR;
         }
-        CodegraphCommands::Update => {
-            help::unimplemented("codegraph update — not yet implemented");
-            EXIT_SUCCESS
-        }
-        CodegraphCommands::Watch => {
-            help::unimplemented("codegraph watch — not yet implemented");
-            EXIT_SUCCESS
-        }
-        CodegraphCommands::Status => {
-            help::unimplemented("codegraph status — not yet implemented");
-            EXIT_SUCCESS
-        }
-        CodegraphCommands::Changes => {
-            help::unimplemented("codegraph changes — not yet implemented");
-            EXIT_SUCCESS
-        }
-        CodegraphCommands::Eval => {
-            help::unimplemented("codegraph eval — not yet implemented");
-            EXIT_SUCCESS
-        }
-        CodegraphCommands::Postprocess => {
-            help::unimplemented("codegraph postprocess — not yet implemented");
-            EXIT_SUCCESS
-        }
-        CodegraphCommands::Repos => {
-            help::unimplemented("codegraph repos — not yet implemented");
-            EXIT_SUCCESS
-        }
-        CodegraphCommands::Register { path } => {
-            help::unimplemented(&format!(
-                "codegraph register — not yet implemented (path: {})",
-                path.as_deref().unwrap_or("<cwd>")
-            ));
-            EXIT_SUCCESS
-        }
-        CodegraphCommands::Unregister { name } => {
-            help::unimplemented(&format!("codegraph unregister — not yet implemented (name: {name})"));
-            EXIT_SUCCESS
-        }
-        CodegraphCommands::Visualize => {
-            help::unimplemented("codegraph visualize — not yet implemented");
-            EXIT_SUCCESS
-        }
-        CodegraphCommands::Serve => {
-            help::unimplemented("codegraph serve — not yet implemented");
-            EXIT_SUCCESS
+    };
+
+    if let Err(err) = crate::platform::ensure_project(&paths) {
+        eprintln!("error: {err}");
+        return EXIT_ERROR;
+    }
+
+    if let Err(err) = crate::platform::ensure_datastore_blocking(&paths) {
+        eprintln!("error: {err}");
+        return EXIT_ERROR;
+    }
+
+    match crate::codegraph::run(paths, cmd) {
+        Ok(()) => EXIT_SUCCESS,
+        Err(err) => {
+            eprintln!("error: {err:#}");
+            EXIT_ERROR
         }
     }
 }

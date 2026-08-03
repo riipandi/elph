@@ -16,7 +16,7 @@ The `elph` binary provides 19 subcommands (from `elph/src/cli/mod.rs`):
 | Subcommand    | Alias | Description                                 |
 | ------------- | ----- | ------------------------------------------- |
 | `acp`         | —     | Agent Client Protocol server over stdio     |
-| `codegraph`   | —     | Structural knowledge graph for code reviews |
+| `codegraph`   | —     | Semantic code index + impact (`build`/`update`/`status`/`search`/`impact`/`purge`) |
 | `completions` | —     | Generate shell completion scripts           |
 | `doctor`      | —     | Show discovered configuration               |
 | `export`      | —     | Export session transcript/archive           |

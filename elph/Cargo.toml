@@ -31,7 +31,7 @@ crossterm.workspace = true
 elph-agent = { workspace = true, features = ["tracing", "builtin-tools", "mcp", "prompt-templates", "extensions"] }
 elph-ai = { workspace = true, features = ["tracing"] }
 elph-tui = { workspace = true }
-floppy = { path = "../crates/floppy", version = "0.0.1", features = ["embed"] }
+floppy = { path = "../crates/floppy", version = "0.0.1", features = ["embed", "codegraph"] }
 futures-util.workspace = true
 git2 = { workspace = true, features = ["cred"] }
 inquire.workspace = true

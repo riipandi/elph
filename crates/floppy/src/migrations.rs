@@ -98,10 +98,13 @@ pub const MIGRATIONS: &[FloppyMigration] = &[
 
 /// Apply pending floppy migrations using the shared `app_migrations` ledger.
 pub async fn apply(conn: &Connection) -> Result<()> {
-    run(conn, MIGRATIONS).await
+    apply_set(conn, MIGRATIONS).await
 }
 
-async fn run(conn: &Connection, migrations: &[FloppyMigration]) -> Result<()> {
+/// Apply an arbitrary ordered migration set via the shared `app_migrations` ledger.
+///
+/// Used by host modules (e.g. codegraph band 500+) that share the same project DB file.
+pub async fn apply_set(conn: &Connection, migrations: &[FloppyMigration]) -> Result<()> {
     conn.execute(
         "CREATE TABLE IF NOT EXISTS app_migrations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -120,22 +123,17 @@ async fn run(conn: &Connection, migrations: &[FloppyMigration]) -> Result<()> {
     )
     .await?;
 
-    let current_version = {
-        let mut rows = conn
-            .query("SELECT COALESCE(MAX(version), 0) FROM app_migrations", ())
-            .await?;
-        let version = if let Some(row) = rows.next().await? {
-            row.get::<i64>(0)?
-        } else {
-            0
-        };
-        // Drain the cursor before DDL — Turso blocks execute_batch on open queries.
-        drain_rows(&mut rows).await?;
-        version
-    };
-
+    // Per-version membership (not MAX): memory 1–99 and codegraph 500+ share one ledger.
     for migration in migrations {
-        if migration.version <= current_version {
+        let already = {
+            let mut rows = conn
+                .query("SELECT 1 FROM app_migrations WHERE version = ?", (migration.version,))
+                .await?;
+            let found = rows.next().await?.is_some();
+            drain_rows(&mut rows).await?;
+            found
+        };
+        if already {
             continue;
         }
 

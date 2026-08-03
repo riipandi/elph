@@ -1,0 +1,40 @@
+//! Open a [`floppy::CodegraphStore`] for the current project.
+
+use anyhow::{Context, Result};
+use floppy::{
+    CodegraphConfig, CodegraphStore, DEFAULT_EMBEDDING_DIMS, EmbedOptions, create_embedder, embedding_dims,
+    noop_embedder, resolve_embedding_model,
+};
+
+use crate::platform::{Paths, Settings};
+use crate::utils::path::AppPaths;
+
+/// Open codegraph store sharing `<project>/.elph/store.db` with memory.
+///
+/// When `needs_embed` is true, uses the same MiniLM settings as floppy memory.
+pub fn open_store(paths: &Paths, needs_embed: bool) -> Result<CodegraphStore> {
+    std::fs::create_dir_all(paths.project_elph_dir())
+        .with_context(|| format!("create {}", paths.project_elph_dir().display()))?;
+
+    let settings = Settings::load(paths).context("load settings")?;
+    let dims = resolve_embedding_model(&settings.memory.embed_model, settings.memory.embed_quantized)
+        .map(|m| embedding_dims(&m))
+        .unwrap_or(DEFAULT_EMBEDDING_DIMS);
+
+    let embed = if needs_embed {
+        std::fs::create_dir_all(paths.models_dir())
+            .with_context(|| format!("create {}", paths.models_dir().display()))?;
+        let options = EmbedOptions {
+            model: Some(settings.memory.embed_model.clone()),
+            quantized: settings.memory.embed_quantized,
+            cache_dir: Some(paths.models_dir()),
+        };
+        create_embedder(options).context("create codegraph embedder")?
+    } else {
+        noop_embedder(dims)
+    };
+
+    let root = paths.project_dir().to_string_lossy().into_owned();
+    let db_path = paths.memory_db_path().to_string_lossy().into_owned();
+    Ok(CodegraphStore::new(CodegraphConfig::new(db_path, root, embed)))
+}

@@ -34,7 +34,7 @@ elph -r <id>              # same as --resume
 | Command       | Description                                 |
 | ------------- | ------------------------------------------- |
 | `acp`         | Agent Client Protocol server over stdio     |
-| `codegraph`   | Structural knowledge graph for code reviews |
+| `codegraph`   | Semantic code index + shallow impact graph  |
 | `completions` | Shell completion scripts                    |
 | `doctor`      | Show discovered configuration               |
 | `export`      | Export session transcript or archive        |
@@ -97,9 +97,9 @@ Design: interactive credential setup, models.dev catalog sync, enable/disable pr
 
 ### `codegraph`
 
-Subcommands: `build`, `update`, `watch`, `status`, `changes`, `eval`, `postprocess`, `repos`, `register`, `unregister`, `visualize`, `serve`, `wiki`.
+Subcommands: `build`, `update`, `status`, `search`, `impact`, `purge`.
 
-Structural graph for smarter code reviews and impact analysis.
+Semantic code index (hybrid FTS + vector) and shallow impact graph in project `store.db`. See [codegraph.md](./codegraph.md).
 
 ### `mcp`
 

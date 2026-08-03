@@ -31,7 +31,7 @@ Elph re-implements these concepts in Rust with the following key differences:
 - **Rendering**: `iocraft` + `crossterm` instead of pi-tui
 - **Serialization**: Serde + JSONL instead of JSON
 - **Memory store**: Turso-backed vector embeddings for lifelong agent context
-- **Codegraph**: `elph codegraph` — AST-graph analysis for structural code review
+- **Codegraph**: `elph codegraph` — semantic code index (FTS + vector) and shallow impact graph
 - **MCP**: Built-in Model Context Protocol client integration
 - **Subagents**: Built-in sub-agent orchestration (spawn, steer, resume)
 - **Agent Swarm**: Multi-agent swarm coordination via `elph-swarm` crate

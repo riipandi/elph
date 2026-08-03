@@ -46,6 +46,11 @@ pub fn vec_buf(v: &[f32]) -> Vec<u8> {
     v.iter().flat_map(|f| f.to_le_bytes()).collect()
 }
 
+/// True when every component is approximately zero (noop embedder).
+pub fn is_zero(v: &[f32]) -> bool {
+    v.iter().all(|x| x.abs() < f32::EPSILON)
+}
+
 pub fn embedding_status(byte_len: Option<i64>, dimensions: u32) -> EmbeddingStatus {
     let expected_bytes = (dimensions as usize) * std::mem::size_of::<f32>();
     match byte_len {
