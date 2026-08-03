@@ -679,7 +679,7 @@ fn first_line(s: &str, max: usize) -> String {
     }
 }
 
-#[allow(dead_code)] // kept for local helpers / future detail truncation
+#[allow(dead_code)] // used in tests
 fn truncate(s: &str, max: usize) -> String {
     if s.chars().count() <= max {
         s.to_string()

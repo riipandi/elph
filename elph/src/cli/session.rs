@@ -3,7 +3,7 @@ use std::env;
 use clap::{Parser, Subcommand};
 
 use super::help;
-use super::style::{self, CliStyle, S_ACCENT, S_BODY, S_MUTED, S_OK, S_TIP, S_WARN};
+use super::style::{self, CliStyle, S_ACCENT, S_BODY, S_MUTED};
 use crate::agent::SessionManager;
 use crate::platform::{EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths};
 

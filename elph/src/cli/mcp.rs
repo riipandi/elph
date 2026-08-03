@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 
 use super::help;
-use super::style::{self, CliStyle, S_ACCENT, S_BODY, S_HEADER, S_MUTED, S_OK, S_WARN};
+use super::style::{self, CliStyle, S_ACCENT, S_BODY, S_HEADER, S_MUTED};
 use crate::platform::ensure_home_blocking;
 use crate::platform::mcp as mcp_runtime;
 use crate::platform::mcp::{McpConfigScope, McpServerSource};

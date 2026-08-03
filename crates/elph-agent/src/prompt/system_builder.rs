@@ -87,11 +87,11 @@ impl SystemPromptBuilder {
         match self.mode {
             PromptAssemblyMode::Extend => {
                 let mut out = render_base_template(&self.context);
-                if let Some(body) = &self.domain_body {
-                    if !body.trim().is_empty() {
-                        out.push_str("\n\n");
-                        out.push_str(body);
-                    }
+                if let Some(body) = &self.domain_body
+                    && !body.trim().is_empty()
+                {
+                    out.push_str("\n\n");
+                    out.push_str(body);
                 }
                 if !self.context.mode_section.trim().is_empty() {
                     out.push_str("\n\n");

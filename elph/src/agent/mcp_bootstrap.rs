@@ -1,6 +1,5 @@
 //! MCP discovery and late binding into an already-running agent session.
 
-use std::path::Path;
 use std::sync::Arc;
 
 use crate::utils::path::AppPaths;

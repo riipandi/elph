@@ -951,7 +951,9 @@ mod tests {
         let restored = messages_from_snapshot_data(&data).expect("parse");
         assert_eq!(restored.len(), 2);
         assert_eq!(restored[0].style, TranscriptStyle::SkillPrompt);
-        assert_eq!(restored[0].content, "/code-review fix tests");
+        // The `[skill]` display prefix is part of the card content and is
+        // preserved verbatim through the snapshot round-trip.
+        assert_eq!(restored[0].content, "[skill] /code-review fix tests");
         assert_eq!(restored[1].style, TranscriptStyle::User);
         assert_eq!(restored[1].content, "/summarize --short");
     }

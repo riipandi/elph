@@ -3,7 +3,7 @@ use std::sync::Arc;
 use clap::Args;
 use elph_agent::{BuiltinToolsBuilder, LocalExecutionEnv};
 
-use super::style::{self, CliStyle, S_ACCENT, S_BODY, S_HEADER, S_MUTED, S_OK, S_TIP};
+use super::style::{self, CliStyle, S_ACCENT, S_BODY, S_HEADER, S_MUTED};
 use crate::platform::{EXIT_SUCCESS, ExitCode};
 
 #[derive(Args, Default)]

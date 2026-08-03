@@ -204,6 +204,11 @@ impl McpCacheStore {
             .count()
     }
 
+    /// Whether the cache holds no live (non-expired) entries.
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// Atomically rewrite the JSONL file from the current in-memory entries.
     fn rewrite_file(&self, entries: &HashMap<u64, CachedEntry>) -> Result<()> {
         let tmp_path = self.file_path.with_extension("jsonl.tmp");

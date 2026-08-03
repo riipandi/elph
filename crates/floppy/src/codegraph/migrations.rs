@@ -61,9 +61,6 @@ pub const CG_V501_NAME: &str = "codegraph_fts";
 pub const CG_V501_UP: &str = r#"
 CREATE INDEX IF NOT EXISTS idx_cg_chunks_fts ON cg_chunks USING fts (content, path, name, kind)"#;
 
-#[allow(dead_code)]
-pub const LAST_VERSION: i64 = 501;
-
 pub const MIGRATIONS: &[FloppyMigration] = &[
     FloppyMigration {
         version: 500,

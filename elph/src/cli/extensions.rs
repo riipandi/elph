@@ -3,7 +3,7 @@ use std::path::Path;
 use clap::{Parser, Subcommand};
 
 use super::help;
-use super::style::{self, CliStyle, S_ACCENT, S_BODY, S_HEADER, S_MUTED, S_OK, S_WARN};
+use super::style::{self, CliStyle, S_ACCENT, S_BODY, S_HEADER, S_MUTED, S_OK};
 use crate::extensions::ExtensionHost;
 use crate::platform::{AppPaths, EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths};
 

@@ -136,22 +136,6 @@ async fn load_prompt_templates_resolved(
     (prompt_templates, conflicts, warnings)
 }
 
-fn detect_cross_kind_conflicts(skills: &[elph_agent::Skill], templates: &[PromptTemplate]) -> Vec<CrossKindConflict> {
-    let skill_names: std::collections::HashSet<&str> = skills.iter().map(|s| s.name.as_str()).collect();
-    let mut out = Vec::new();
-    for template in templates {
-        if skill_names.contains(template.name.as_str()) {
-            out.push(CrossKindConflict {
-                name: template.name.clone(),
-                // dispatch_slash_command prefers prompt templates over skills (after builtins/extensions).
-                slash_winner: "prompt template",
-            });
-        }
-    }
-    out.sort_by(|a, b| a.name.cmp(&b.name));
-    out
-}
-
 /// User-facing multi-section notice for all resource name conflicts.
 ///
 /// Prefer sending this via [`crate::agent::AgentUiEvent::TranscriptNotice`] so it
@@ -180,7 +164,6 @@ pub fn format_resource_load_warnings(result: &LoadResourcesResult) -> Option<Str
 #[cfg(test)]
 mod tests {
     use super::*;
-    use elph_agent::Skill;
     use tempfile::TempDir;
 
     fn test_paths(tmp: &TempDir) -> Paths {
@@ -223,26 +206,6 @@ mod tests {
     #[test]
     fn format_notice_none_when_empty() {
         assert!(format_resource_conflict_notice(&LoadResourcesResult::default()).is_none());
-    }
-
-    #[test]
-    fn cross_kind_detects_shared_names() {
-        let skills = vec![Skill {
-            name: "review".into(),
-            description: "s".into(),
-            content: "c".into(),
-            file_path: "/s".into(),
-            ..Default::default()
-        }];
-        let templates = vec![PromptTemplate {
-            name: "review".into(),
-            description: "t".into(),
-            content: "c".into(),
-            argument_hint: None,
-        }];
-        let conflicts = detect_cross_kind_conflicts(&skills, &templates);
-        assert_eq!(conflicts.len(), 1);
-        assert_eq!(conflicts[0].name, "review");
     }
 
     #[tokio::test]

@@ -582,12 +582,11 @@ impl McpSessionPool {
         }
 
         // Cache hit: return immediately for read-only tools.
-        if is_read_only_tool(tool_name) {
-            if let Some(cache) = &self.cache_store {
-                if let Some(cached) = cache.get(name, tool_name, &args) {
-                    return Ok(cached);
-                }
-            }
+        if is_read_only_tool(tool_name)
+            && let Some(cache) = &self.cache_store
+            && let Some(cached) = cache.get(name, tool_name, &args)
+        {
+            return Ok(cached);
         }
 
         let ttl = config.cache_ttl_ms().unwrap_or(self.default_cache_ttl_ms);
@@ -595,10 +594,10 @@ impl McpSessionPool {
         let result = session.call_tool(tool_name, args.clone()).await?;
 
         // Cache miss: store result for read-only tools.
-        if is_read_only_tool(tool_name) {
-            if let Some(cache) = &self.cache_store {
-                let _ = cache.set(name, tool_name, &args, &result, ttl);
-            }
+        if is_read_only_tool(tool_name)
+            && let Some(cache) = &self.cache_store
+        {
+            let _ = cache.set(name, tool_name, &args, &result, ttl);
         }
 
         Ok(result)

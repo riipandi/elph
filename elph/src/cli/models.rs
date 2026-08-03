@@ -1,7 +1,7 @@
 use clap::Args;
 use elph_ai::builtin_models;
 
-use super::style::{self, CliStyle, S_ACCENT, S_BODY, S_MUTED};
+use super::style::{self, CliStyle, S_ACCENT, S_MUTED};
 use crate::platform::{EXIT_SUCCESS, ExitCode};
 
 #[derive(Args, Default)]

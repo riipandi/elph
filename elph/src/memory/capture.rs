@@ -1,7 +1,7 @@
 //! Structured work/change/discovery memory templates and path helpers.
 
 use std::collections::HashMap;
-use std::path::{Component, Path};
+use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::Value;
@@ -253,14 +253,6 @@ pub fn now_unix() -> i64 {
 pub fn discovery_area_matches(content: &str, area: &str) -> bool {
     let needle = format!("Area: {area}");
     content.contains(&needle) || content.contains(&format!("Area: {area}/"))
-}
-
-/// Whether path components look like a relative project path (not absolute-only noise).
-#[allow(dead_code)]
-pub fn is_simple_relative(path: &str) -> bool {
-    !Path::new(path)
-        .components()
-        .any(|c| matches!(c, Component::RootDir | Component::Prefix(_)))
 }
 
 /// Display path for journals: redact sensitive; keep short.
