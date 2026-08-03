@@ -664,7 +664,12 @@ pub(crate) fn prompt_card_from_session_meta(
     } else {
         TranscriptStyle::User
     };
-    let mut msg = TranscriptMessage::text(prompt_title.to_string(), style);
+    let display = if prompt_kind == "skill" {
+        format!("[skill] {prompt_title}")
+    } else {
+        prompt_title.to_string()
+    };
+    let mut msg = TranscriptMessage::text(display, style);
     msg.submitted_at = submitted_at;
     msg.detail_expanded = false;
     Some(msg)
@@ -926,7 +931,7 @@ mod tests {
     fn prompt_card_from_session_meta_skill_and_template() {
         let skill = prompt_card_from_session_meta("/tui-design layout", "skill", None).expect("skill");
         assert_eq!(skill.style, TranscriptStyle::SkillPrompt);
-        assert_eq!(skill.content, "/tui-design layout");
+        assert_eq!(skill.content, "[skill] /tui-design layout");
         assert!(skill.style.is_user_input_card());
 
         let template = prompt_card_from_session_meta("/review-pr 42", "template", None).expect("template");

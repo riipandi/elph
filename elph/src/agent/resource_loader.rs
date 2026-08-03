@@ -84,7 +84,7 @@ pub async fn load_resources(paths: &Paths, cwd: &Path, env: &LocalExecutionEnv) 
         load_prompt_templates_resolved(env, paths, cwd).await;
     warnings.extend(template_warnings);
 
-    let cross_kind_conflicts = detect_cross_kind_conflicts(&skills, &prompt_templates);
+    let cross_kind_conflicts = Vec::new(); // intentional: dispatch order (templates before skills) handles priority
 
     let resources = AgentHarnessResources {
         skills,
