@@ -51,13 +51,22 @@ pub async fn create_coding_session_with_events(
         use elph_agent::session::types::HasSessionId;
         session.metadata().await.session_id().to_string()
     };
-    let (selection, _overlay_stats) = resolve_model(
-        options.settings,
-        options.provider_override,
-        options.model_override,
-        Some(&options.paths.auth_store_path()),
-    )
-    .await?;
+
+    // resolve_model and discover_mcp_registry are pure file reads independent
+    // of each other and of the DB operations above — run them concurrently.
+    let auth_store = options.paths.auth_store_path();
+    let ((selection, _overlay_stats), (mcp_registry, mcp_config_warnings)) = tokio::try_join!(
+        resolve_model(
+            options.settings,
+            options.provider_override,
+            options.model_override,
+            Some(&auth_store),
+        ),
+        async {
+            let (registry, warnings) = discover_mcp_registry(options.paths).await;
+            Ok::<_, anyhow::Error>((registry, warnings))
+        },
+    )?;
 
     let resources = match options.preloaded_resources {
         Some(loaded) => loaded.resources,
@@ -82,14 +91,9 @@ pub async fn create_coding_session_with_events(
     tools.push(super::ask_user::create_ask_user_tool(ui_tx.clone()));
     tools.push(super::mode_change::create_mode_change_tool(ui_tx.clone()));
 
-    let (mcp_registry, mcp_config_warnings) = if options.defer_mcp_load {
-        let (registry, warnings) = discover_mcp_registry(options.paths).await;
-        (registry, warnings)
-    } else {
-        let (registry, warnings) = discover_mcp_registry(options.paths).await;
-        tools.extend(registry.create_agent_tools().await);
-        (registry, warnings)
-    };
+    if !options.defer_mcp_load {
+        tools.extend(mcp_registry.create_agent_tools().await);
+    }
 
     let goal_store = Arc::new(GoalStore::new(options.paths.memory_db_path()));
     let goal_runtime = Arc::new(GoalRuntime::new(goal_store.clone(), session_id.clone()));

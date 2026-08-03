@@ -585,6 +585,8 @@ pub(crate) async fn apply_bootstrap_ui_event(
             }
             bootstrap_phase.set(BootstrapPhase::AgentReady);
             activity_label.set(bootstrap_activity_label(BootstrapPhase::AgentReady, None));
+            // Unblock the prompt immediately — MCP tools load in the background.
+            busy.set(false);
         }
         BootstrapUiEvent::AgentFailed(err) => {
             log::warn!("agent bootstrap failed: {err}");
