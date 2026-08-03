@@ -195,7 +195,7 @@ Event Loop                          Panel
            ▼
 ┌─────────────────────┐
 │  TranscriptCache    │  ← turso SQLite
-│  push_batch()       │    project/.elph/store.db
+│  push_batch()       │    project/.elph/metadata.db
 └─────────────────────┘
 ```
 
@@ -248,45 +248,44 @@ const KEEP_MESSAGES: usize = 200;                // keep after truncation
 
 ### Core API (`TranscriptCache`)
 
-| Method                           | Async | Purpose                                      |
-| -------------------------------- | ----- | -------------------------------------------- |
-| `open(db_path, session_id)`      | ✅    | Open/create DB, run migrations               |
-| `push_batch(batch)`              | ✅    | Insert batch (individual `INSERT OR IGNORE`) |
+| Method                      | Async | Purpose                                            |
+| --------------------------- | ----- | -------------------------------------------------- |
+| `open(db_path, session_id)` | ✅    | Open/create DB, idempotent DDL (no migration band) |
+| `push_batch(batch)`         | ✅    | Insert batch (individual `INSERT OR IGNORE`)       |
 
 ### Database Location
 
 ```
-<project>/.elph/store.db      // per-project transcript cache + floppy memory + codegraph
-<project>/.elph/metadata.db   // (retired) transcript cache — merged into store.db
+<project>/.elph/metadata.db    // per-project transcript archive (TUI card overflow only)
+<project>/.elph/store.db       // floppy memory + codegraph (no transcript tables)
 ~/.local/share/elph/metadata.db // global sessions/goals (separate, machine-global)
 ```
 
-**Consolidation:** the per-project transcript cache no longer uses its own file. It moves
-into the single project DB `store.db`, alongside floppy memory and (when enabled) codegraph,
-so one project has exactly one SQLite connection/backup unit. The global
-`~/.local/share/elph/metadata.db` (sessions, goals, session tree) is unaffected and stays a
-separate machine-global file.
+The transcript cache keeps its own per-project file, `.elph/metadata.db`, separate from the
+floppy `store.db` (memory + codegraph). It is not merged into `store.db`, and it is unrelated
+to the machine-global `~/.local/share/elph/metadata.db` (sessions, goals, session tree),
+which stays a separate file.
 
-The transcript tables get their own migration version band (100–199) under the shared
-`PRAGMA user_version` mechanism described in [`codegraph.md`](./codegraph.md#migration-mechanism-no-ledger-table),
-so they do not collide with floppy memory (1–99) or codegraph (500–599) in the same file.
-The path is resolved via [`Paths::transcript_db_path()`] in `platform/paths.rs`.
+The transcript schema is created with idempotent DDL (`CREATE TABLE IF NOT EXISTS` +
+`CREATE INDEX IF NOT EXISTS`) on open — there is no migration version band and no
+`PRAGMA user_version` involvement. The path is resolved via [`Paths::transcript_db_path()`]
+in `platform/paths.rs`.
 
 ## File Map
 
-| File                                      | Role                                                      |
-| ----------------------------------------- | --------------------------------------------------------- |
-| `elph/src/tui/transcript/cache.rs`        | `TranscriptCache` (SQLite archive store)                  |
-| `elph/src/tui/transcript/mod.rs`          | Module exports                                            |
-| `elph/src/tui/transcript/panel.rs`        | TranscriptPanel component + render cache                  |
-| `elph/src/tui/transcript/layout.rs`       | `IncrementalLayoutCache` + row layout                     |
-| `elph/src/tui/transcript/types.rs`        | `TranscriptMessage`, `TranscriptStyle`, `ToolCardDetail`  |
-| `elph/src/tui/transcript/card/builder.rs` | Bubble building + windowing                               |
-| `elph/src/tui/transcript/markdown/`       | Streaming markdown buffer + parse workers                 |
-| `elph/src/tui/tool_params.rs`             | Tool display labels + MCP server names                    |
-| `elph/src/tui/agent_bridge.rs`            | Event applier + streaming content caps                    |
-| `elph/src/tui/shell/`                      | Shell component (`mod.rs`), event loop (`tick.rs`), key handling (`keys.rs`), view builder (`view.rs`) |
-| `elph/src/tui/platform/paths.rs`          | `transcript_db_path()`                                    |
+| File                                      | Role                                                                                                   |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `elph/src/tui/transcript/cache.rs`        | `TranscriptCache` (SQLite archive store)                                                               |
+| `elph/src/tui/transcript/mod.rs`          | Module exports                                                                                         |
+| `elph/src/tui/transcript/panel.rs`        | TranscriptPanel component + render cache                                                               |
+| `elph/src/tui/transcript/layout.rs`       | `IncrementalLayoutCache` + row layout                                                                  |
+| `elph/src/tui/transcript/types.rs`        | `TranscriptMessage`, `TranscriptStyle`, `ToolCardDetail`                                               |
+| `elph/src/tui/transcript/card/builder.rs` | Bubble building + windowing                                                                            |
+| `elph/src/tui/transcript/markdown/`       | Streaming markdown buffer + parse workers                                                              |
+| `elph/src/tui/tool_params.rs`             | Tool display labels + MCP server names                                                                 |
+| `elph/src/tui/agent_bridge.rs`            | Event applier + streaming content caps                                                                 |
+| `elph/src/tui/shell/`                     | Shell component (`mod.rs`), event loop (`tick.rs`), key handling (`keys.rs`), view builder (`view.rs`) |
+| `elph/src/platform/paths.rs`              | `transcript_db_path()`                                                                                 |
 
 [`TranscriptMessage`]: https://github.com/riipandi/elph/blob/main/elph/src/tui/transcript/types.rs
 [`TranscriptStyle`]: https://github.com/riipandi/elph/blob/main/elph/src/tui/transcript/types.rs

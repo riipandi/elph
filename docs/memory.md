@@ -6,14 +6,14 @@ Inspired by [memelord](https://github.com/glommer/memelord) (MIT License, Copyri
 
 ## Overview
 
-| Concern    | Approach                                                    |
-| ---------- | ----------------------------------------------------------- |
-| Storage    | Turso embedded SQLite (`store.db`)                          |
-| Retrieval  | Vector (`vector32`; dims match embed) + FTS5 keyword hybrid (BM25 + cosine) |
-| Embeddings | Local ONNX (configurable model + cache)                     |
-| Scoring    | Welford baseline + z-score task scoring, EMA weight updates |
-| IDs        | TSID (time-sortable, 13 characters)                         |
-| Migrations | Versioned via `PRAGMA user_version` + idempotent additive DDL (no ledger) |
+| Concern    | Approach                                                                                                       |
+| ---------- | -------------------------------------------------------------------------------------------------------------- |
+| Storage    | Turso embedded SQLite (`store.db`)                                                                             |
+| Retrieval  | Vector (`vector32`; dims match embed), decay-weighted; keyword via `LIKE` fallback (FTS5 unavailable on Turso) |
+| Embeddings | Local ONNX (configurable model + cache)                                                                        |
+| Scoring    | Welford baseline + z-score task scoring, EMA weight updates                                                    |
+| IDs        | Kalid (time-sortable, 16 characters)                                                                           |
+| Migrations | Shared `app_migrations` ledger (`apply_set`); additive DDL; no `PRAGMA user_version`                           |
 
 ### Lifecycle
 
@@ -38,7 +38,8 @@ Inspired by [memelord](https://github.com/glommer/memelord) (MIT License, Copyri
 ```
 PROJECT_DIR/
 └── .elph/
-    ├── store.db          # gitignored
+    ├── store.db          # gitignored; memory + codegraph
+    ├── metadata.db       # transcript archive (TUI card overflow)
     └── .gitignore
 ```
 
@@ -67,32 +68,35 @@ First semantic search downloads from Hugging Face; later runs reuse the cache. T
 | Table               | Purpose                                               |
 | ------------------- | ----------------------------------------------------- |
 | `memories`          | Content, embedding, category, weight, retrieval stats |
-| `memories_fts`      | External-content FTS5 index over `memories` (keyword BM25, V4) |
 | `tasks`             | Description, embedding, usage metrics, score          |
 | `memory_retrievals` | Per (memory, task): similarity, self-report, credit   |
 | `meta`              | Key-value (e.g. Welford baseline JSON)                |
 
+Keyword search falls back to `LIKE` on `memories.content` — the planned FTS5 index
+(`memories_fts`, migration V4) is not implemented.
+
 ### Categories
 
-| Category       | Typical source                          |
-| -------------- | --------------------------------------- |
-| `correction`   | Agent mistake + lesson                  |
-| `user`         | User denial, correction, explicit input |
-| `insight`      | Agent-discovered pattern                |
-| `discovery`    | Exploratory finding                     |
-| `consolidated` | Merged or summarized memories           |
+| Category       | Typical source                                    |
+| -------------- | ------------------------------------------------- |
+| `correction`   | Agent mistake + lesson                            |
+| `user`         | User denial, correction, explicit input           |
+| `insight`      | Agent-discovered pattern                          |
+| `discovery`    | Exploratory finding                               |
+| `consolidated` | Merged or summarized memories                     |
+| `work`         | Active task context (dedicated decay/purge rules) |
 
 ### Defaults
 
-| Setting              | Default                                        |
-| -------------------- | ---------------------------------------------- |
-| Embed model          | `AllMiniLML6V2` (quantized → `AllMiniLML6V2Q`) |
-| Embedding dimensions | Model-dependent (384 for AllMiniLML6V2)        |
-| Vector type          | `vector32`                                     |
-| Top-k retrieval      | 5                                              |
-| Learning rate (EMA)  | 0.1                                            |
-| Decay rate           | 0.995                                          |
-| Weight clamp         | [0.1, 5.0]                                     |
+| Setting              | Default                                                |
+| -------------------- | ------------------------------------------------------ |
+| Embed model          | `AllMiniLML6V2` (quantized → `AllMiniLML6V2Q`)         |
+| Embedding dimensions | Model-dependent (384 for AllMiniLML6V2)                |
+| Vector type          | `vector32`                                             |
+| Top-k retrieval      | 5 (floppy default; Elph host sets 8 via `memory.topK`) |
+| Learning rate (EMA)  | 0.1                                                    |
+| Decay rate           | 0.995                                                  |
+| Weight clamp         | [0.1, 5.0]                                             |
 
 ## Scoring model
 
@@ -109,45 +113,82 @@ First semantic search downloads from Hugging Face; later runs reuse the cache. T
 credit = task_score × (self_report / 3) × (1 / num_retrieved)
 ```
 
-**Weight update** — EMA toward credit, clamped [0.1, 5.0].
+**Weight update** — EMA toward credit with a weight-dependent learning rate, clamped [0.1, 5.0].
 
-**Decay** — multiply weights by `decay_rate`; delete below 0.15 when `retrieval_count > 5`.
+**Decay** — multiply weights by `decay_rate`, category-aware: `work` notes fade at most
+`min(decay_rate, 0.98)` per pass, `correction`/`user` memories at most `max(decay_rate, 0.998)`
+(kept longer), everything else at the base `decay_rate`. Purge deletes memories with
+`weight < 0.15 AND retrieval_count > 5`; `work` notes are additionally purged when
+`weight < 0.4`, older than 14 days, and retrieved fewer than 3 times. Maintenance also cleans
+up orphaned `memory_retrievals` rows.
 
-## Agent integration API (design)
+### Retrieval
+
+Retrieval is vector-only: cosine similarity over `memories.embedding`, weighted by a decay
+factor on the elapsed days since the memory was last retrieved (`retrieval_sql`):
+
+```sql
+SELECT id, content, category, weight, created_at, retrieval_count,
+       vector_distance_cos(vector32(embedding), vector32(?)) AS distance
+FROM memories
+WHERE embedding IS NOT NULL
+ORDER BY
+  (1.0 - vector_distance_cos(vector32(embedding), vector32(?)))
+  * POWER(?, (CAST(? AS REAL) - COALESCE(last_retrieved, created_at)) / 86400.0)
+DESC
+LIMIT ?
+```
+
+The bound parameters are `decay_rate`, current time in seconds, and `top_k`; memories that
+have not been retrieved recently are boosted, keeping stale entries from crowding out fresh
+context. There is no keyword branch in recall — `search_memories` is read-only and does not
+create a task record.
+
+## Agent integration API
 
 ### Task lifecycle
 
-| Phase  | Action                                                  |
-| ------ | ------------------------------------------------------- |
-| Start  | `start_task(description)` → task id + top-k memories    |
-| During | `report_correction`, `report` (insight / user / …)      |
-| End    | `end_task` with usage metrics + self-reports per memory |
+| Phase  | Action                                                        |
+| ------ | ------------------------------------------------------------- |
+| Start  | `start_task(description)` → task id + top-k memories          |
+| During | `report_correction`, `report_user_input`, `insert_raw_memory` |
+| End    | `end_task` with usage metrics + self-reports per memory       |
 
 ### Query & maintenance
 
-| Operation         | Description                                      |
-| ----------------- | ------------------------------------------------ |
-| `get_status`      | Store statistics                                 |
-| `list_memories`   | Optional category filter                         |
-| `list_tasks`      | Recent tasks with retrievals                     |
-| `get_timeline`    | Merged event timeline                            |
-| `search_memories` | Semantic search without creating a task          |
-| `search`          | Full lifecycle search (creates task record)      |
-| `decay`           | Apply decay + prune weak entries                 |
-| `purge`           | Delete below weight threshold                    |
-| `contradict`      | Remove wrong memory, optionally store correction |
-| `embed_pending`   | Backfill missing embeddings                      |
+| Operation               | Description                                            |
+| ----------------------- | ------------------------------------------------------ |
+| `get_status`            | Store statistics                                       |
+| `list_memories`         | Optional category filter                               |
+| `list_recent_memories`  | Recent memories (`limit`)                              |
+| `list_tasks`            | Recent tasks with retrievals                           |
+| `get_timeline`          | Merged event timeline                                  |
+| `search_memories`       | Semantic search without creating a task                |
+| `search`                | Full lifecycle search (creates task record)            |
+| `decay`                 | Apply decay + prune weak entries                       |
+| `consolidate_similar`   | Merge similar memories (max 10 merges, weight cap 2.5) |
+| `purge`                 | Delete below weight threshold                          |
+| `flush`                 | Delete all memories                                    |
+| `contradict_memory`     | Remove wrong memory, optionally store correction       |
+| `insert_raw_memory`     | Insert a raw memory with explicit category             |
+| `embed_pending`         | Backfill missing embeddings                            |
+| `clear_zero_embeddings` | Drop zero-length embedding blobs                       |
+| `penalize_memory`       | Scale a memory's weight down                           |
+| `get_top_by_weight`     | Highest-weight memories                                |
 
 ## CLI
 
-| Subcommand       | Description                       |
-| ---------------- | --------------------------------- |
-| `status`         | Overview                          |
-| `list`           | All memories; `--category` filter |
-| `tasks`          | Recent tasks                      |
-| `log`            | Compact timeline                  |
-| `search <query>` | Semantic lookup (needs embedder)  |
-| `purge`          | Remove weak memories              |
+| Subcommand       | Description                                       |
+| ---------------- | ------------------------------------------------- |
+| `status`         | Overview                                          |
+| `list`           | All memories; `--category` filter, `-n`           |
+| `recent`         | Recent memories (`-n` limit)                      |
+| `tasks`          | Recent tasks                                      |
+| `log`            | Compact timeline                                  |
+| `search <query>` | Semantic lookup, read-only (no task)              |
+| `purge`          | Remove weak memories (`--threshold`, default 0.5) |
+| `flush`          | Delete all memories (interactive confirm)         |
+| `consolidate`    | Merge similar memories                            |
 
 Read-only commands do not require a loaded embedding model. `search` downloads the model on first use (bounded by the 5-minute `EMBEDDER_INIT_TIMEOUT`; see [Model cache](#model-cache)).
 
@@ -155,15 +196,15 @@ Read-only commands do not require a loaded embedding model. `search` downloads t
 
 In `~/.elph/settings.json`:
 
-| Field                    | Default         | Description                                      |
-| ------------------------ | --------------- | ------------------------------------------------ |
-| `models.embed.model`     | `AllMiniLML6V2` | Local embedding model (shared with codegraph)    |
-| `models.embed.quantized` | `true`          | Prefer quantized catalog variant when available  |
-| `memory.enabled`         | `true`          | Auto hooks / bootstrap injection                 |
-| `memory.topK`            | `8`             | Semantic hits pulled into active per-turn recall |
-| `memory.contextBudgetChars` | `4000`       | Budget for injected memory XML                   |
-| `memory.minQueryLength`  | `8`             | Min prompt length (task-like short prompts still recall) |
-| `codegraph.enabled`      | `false`         | Agent codegraph tools (CLI always available)     |
+| Field                       | Default         | Description                                              |
+| --------------------------- | --------------- | -------------------------------------------------------- |
+| `models.embed.model`        | `AllMiniLML6V2` | Local embedding model (shared with codegraph)            |
+| `models.embed.quantized`    | `true`          | Prefer quantized catalog variant when available          |
+| `memory.enabled`            | `true`          | Auto hooks / bootstrap injection                         |
+| `memory.topK`               | `8`             | Semantic hits pulled into active per-turn recall         |
+| `memory.contextBudgetChars` | `4000`          | Budget for injected memory XML                           |
+| `memory.minQueryLength`     | `8`             | Min prompt length (task-like short prompts still recall) |
+| `codegraph.enabled`         | `false`         | Agent codegraph tools (CLI always available)             |
 
 Legacy `memory.embedModel` / `memory.embedQuantized` are migrated into `models.embed` on load.
 
@@ -189,19 +230,19 @@ Embeddings are fixed-size blobs for `vector32` queries. Changing to a model with
 | `ELPH_PROJECT_DIR` | Project root (`.elph/store.db`) |
 | `XDG_DATA_HOME`    | Base for data dir when unset    |
 
-## Migrations (design)
+## Migrations (implemented)
 
-| Version | Description                   |
-| ------- | ----------------------------- |
-| 1       | Core schema                   |
-| 2       | Fix truncated embedding blobs |
-| 3       | Query indexes                 |
-| 4       | FTS5 index over `memories` + sync triggers (retrieval optimization) |
+| Version | Description                                                                              |
+| ------- | ---------------------------------------------------------------------------------------- |
+| 1       | Core schema (`memories`, `tasks`, `memory_retrievals`, `meta`, all STRICT)               |
+| 2       | Fix truncated embedding blobs (reset short embeddings)                                   |
+| 3       | Query indexes (`idx_memories_*`, `idx_memory_retrievals_*`, partial pending-embed index) |
 
-Host-specific migrations use version numbers above the floppy baseline (see the version
-bands in [`codegraph.md`](./codegraph.md)); the project `store.db` also hosts the transcript
-and codegraph tables. No migration runs through a ledger table — schema version lives in
-`PRAGMA user_version`.
+Migrations run through the shared `app_migrations` ledger (`apply_set` in
+`floppy::core::migration`) — per-version membership, applied once, no `PRAGMA user_version`.
+Memory uses band 1–99, codegraph 500–599 (see [`codegraph.md`](./codegraph.md#schema-v1)). The
+transcript archive lives in a separate per-project file (`metadata.db`) with idempotent DDL
+and no version band.
 
 ## Related
 

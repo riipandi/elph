@@ -5,31 +5,32 @@ Ports patterns from [glommer/codemogger](https://github.com/glommer/codemogger) 
 into Rust, adopts selective ideas from [code-review-graph](https://github.com/tirth8205/code-review-graph),
 and co-locates storage with **floppy** memory in project `store.db`.
 
-> Status: **Implementation in progress** (validated design locked).
+> Status: **Implemented (v1)** — core pipeline is live; known gaps are documented in
+> [Known limitations (v1)](#known-limitations-v1).
 > Constraint: **consumer-class machines** — limited RAM, CPU, disk.
 
 ---
 
 ## Locked product decisions (validation)
 
-| #   | Topic           | Decision                                                                                                                                                                |
-| --- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Product         | **Codemogger base** + selective CRG concepts                                                                                                                            |
-| 2   | Canonical unit  | **Chunk-first**; graph nodes/edges are **derived**                                                                                                                      |
-| 3   | Merkle          | **File-only** leaves; for **reindex invalidation + snapshot fingerprint**; no remote cache/sync                                                                         |
-| 4   | Index payload   | **Full chunk body** for embed **and** FTS                                                                                                                               |
-| 5   | Storage         | All project data in **`<project>/.elph/store.db`** (memory + transcript + codegraph)                                                                                    |
-| 6   | Concurrency     | **Logical partition + Turso MVCC**: domains may write in parallel (row-disjoint); **coordinated writer inside codegraph build**; Merkle root updated at **end of scan** |
-| 7   | Graph v1        | **Minimal**: nodes from chunks, shallow edges (import heuristics), **impact BFS**; no multi-repo; no flows/communities/hub                                              |
-| 8   | `ast-grep`      | **Chunking** via ast-grep; edges **heuristic/shallow**                                                                                                                  |
-| 9   | Chunk rules     | Top-level defs; **split if > ~150 lines**                                                                                                                               |
-| 10  | Retrieval       | **Parallel hybrid**: FTS5 BM25 + vector → RRF/weighted merge                                                                                                            |
-| 11  | Freshness       | Explicit `build`/`update` + **dirty reindex on demand before search** (no fs watch in v1)                                                                               |
-| 12  | Languages (AST) | **Tier-1:** Python, C, C++, Java, C#, JS, TS/TSX, Rust, Go, Elixir. **SQL:** text fallback (FTS/vector). **Tier-2** opt-in later. Unknown → text fallback               |
-| 13  | Embed model     | **Single shared MiniLM** via **`models.embed`** (`model`, `quantized`) for memory + codegraph                                                                           |
+| #   | Topic           | Decision                                                                                                                                                                    |
+| --- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Product         | **Codemogger base** + selective CRG concepts                                                                                                                                |
+| 2   | Canonical unit  | **Chunk-first**; graph nodes/edges are **derived**                                                                                                                          |
+| 3   | Merkle          | **File-only** leaves; for **reindex invalidation + snapshot fingerprint**; no remote cache/sync                                                                             |
+| 4   | Index payload   | **Full chunk body** stored (capped ~6k chars); embed uses compact text (path + kind + name + body ≤ ~1.8k chars)                                                            |
+| 5   | Storage         | Codegraph + memory in **`<project>/.elph/store.db`**; transcript archive is a separate file (`metadata.db`)                                                                 |
+| 6   | Concurrency     | **Logical partition + Turso MVCC**: domains may write in parallel (row-disjoint); **coordinated writer inside codegraph build**; Merkle root updated at **end of scan**     |
+| 7   | Graph v1        | **Minimal**: nodes from chunks, shallow edges (import heuristics), **impact BFS**; no multi-repo; no flows/communities/hub                                                  |
+| 8   | `ast-grep`      | **Chunking** via ast-grep; edges **heuristic/shallow**                                                                                                                      |
+| 9   | Chunk rules     | Top-level defs; **split if > 120 lines** (`max_chunk_lines`), max 48 chunks/file                                                                                            |
+| 10  | Retrieval       | **Hybrid**: keyword (FTS5 BM25 when available, else `LIKE`) + vector → RRF merge (K=60)                                                                                     |
+| 11  | Freshness       | Explicit `build`/`update` + **dirty reindex on demand before search** (no fs watch in v1)                                                                                   |
+| 12  | Languages (AST) | **Tier-1:** Python, C, C++, Java, C#, JS, TS/TSX, Rust, Go, Elixir. **SQL:** text fallback (keyword/vector). **Tier-2** opt-in later. Unknown → text fallback               |
+| 13  | Embed model     | **Single shared MiniLM** via **`models.embed`** (`model`, `quantized`) for memory + codegraph                                                                               |
 | 14  | Surface         | **CLI always**; agent tools only when **`codegraph.enabled`** (default **false**). Tools: `code_search`, `code_impact`, `code_status`, `code_reindex`. Build/purge CLI-only |
 
-### Agent loop (target)
+### Agent loop
 
 ```text
 code_status → (empty? user runs: elph codegraph build)
@@ -41,14 +42,14 @@ code_reindex?           // optional after large refactors
 
 ### CLI surface (v1)
 
-| Command  | Role                                       |
-| -------- | ------------------------------------------ |
-| `build`  | Full index (CLI-only)                      |
-| `update` | Dirty reindex                              |
-| `status` | Stats + Merkle fingerprint                 |
-| `search` | Hybrid search                              |
-| `impact` | Shallow blast radius                       |
-| `purge`  | Clear codegraph tables                     |
+| Command  | Role                                                                                               |
+| -------- | -------------------------------------------------------------------------------------------------- |
+| `build`  | Full index (CLI-only; same code path as `update` — see [Known limitations](#known-limitations-v1)) |
+| `update` | Dirty reindex                                                                                      |
+| `status` | Stats + Merkle fingerprint                                                                         |
+| `search` | Hybrid search                                                                                      |
+| `impact` | Shallow blast radius                                                                               |
+| `purge`  | Clear codegraph tables                                                                             |
 
 No multi-repo, watch, serve, eval, postprocess, or visualize subcommands in v1.
 
@@ -56,23 +57,23 @@ No multi-repo, watch, serve, eval, postprocess, or visualize subcommands in v1.
 
 ```json
 {
-  "models": {
-    "embed": {
-      "model": "AllMiniLML6V2",
-      "quantized": true
+    "models": {
+        "embed": {
+            "model": "AllMiniLML6V2",
+            "quantized": true
+        }
+    },
+    "codegraph": {
+        "enabled": false
     }
-  },
-  "codegraph": {
-    "enabled": false
-  }
 }
 ```
 
-| Key | Default | Meaning |
-| --- | ------- | ------- |
-| `codegraph.enabled` | `false` | Register agent tools for the coding session |
-| `models.embed.model` | `AllMiniLML6V2` | Local embedder (same as floppy memory) |
-| `models.embed.quantized` | `true` | Prefer quantized ONNX weights |
+| Key                      | Default         | Meaning                                     |
+| ------------------------ | --------------- | ------------------------------------------- |
+| `codegraph.enabled`      | `false`         | Register agent tools for the coding session |
+| `models.embed.model`     | `AllMiniLML6V2` | Local embedder (same as floppy memory)      |
+| `models.embed.quantized` | `true`          | Prefer quantized ONNX weights               |
 
 Enable agent indexing tools:
 
@@ -99,7 +100,7 @@ Skipped when: non-TTY, `ELPH_QUIET` / `CI`, `codegraph.enabled=false`, index alr
 
 ## Executive summary (architecture)
 
-- **Rust stack:** `ast-grep-core` + `ast-grep-language` (feature-gated grammars) + `turso` (FTS5 + `vector_distance_cos`) + shared floppy embedder.
+- **Rust stack:** `ast-grep-core` + `ast-grep-language` (feature-gated grammars) + `turso` (`vector_distance_cos`; FTS5 unavailable on Turso → `LIKE` fallback) + shared floppy embedder.
 - **Floppy feature:** `codegraph` (optional; pulls parsers + walk/hash deps). Enable from Elph as `features = ["embed", "codegraph"]`.
 - **Schema namespace:** `cg_*` tables in the same `store.db` as memory.
 - **Incremental:** SHA-256 **per file**; re-parse/re-embed only when file hash changes.
@@ -146,13 +147,6 @@ CREATE TABLE IF NOT EXISTS cg_chunks (
   embedding BLOB
 ) STRICT;
 
-CREATE VIRTUAL TABLE IF NOT EXISTS cg_fts USING fts5(
-  content, path, name, kind,
-  content = 'cg_chunks',
-  content_rowid = 'id',
-  tokenize = 'unicode61'
-);
-
 CREATE TABLE IF NOT EXISTS cg_nodes (
   id TEXT PRIMARY KEY,
   path TEXT NOT NULL,
@@ -175,9 +169,14 @@ CREATE TABLE IF NOT EXISTS cg_meta (
 ) STRICT;
 ```
 
-External-content FTS triggers keep `cg_fts` in sync on chunk insert/update/delete.
+Migration **501** would add a `cg_fts` virtual table (SQLite FTS5) plus external-content
+triggers to keep it in sync on chunk insert/update/delete. On Turso the FTS5 DDL fails, so
+the migration is skipped and `cg_meta.fts_available` is set to `"0"` — keyword search falls
+back to `LIKE` (see [Hybrid search](#hybrid-search)).
 
-Migration band for codegraph DDL: **500+** in the store’s migration ledger (alongside floppy memory 1–99), until a full `PRAGMA user_version` consolidation lands.
+Migration band for codegraph DDL: **500+** in the shared `app_migrations` ledger (applied via
+`apply_set`, alongside floppy memory 1–99). Schema version is tracked per-migration in the
+ledger; there is no `PRAGMA user_version`.
 
 ---
 
@@ -193,7 +192,7 @@ walk (ignore::WalkBuilder, gitignore)
        store body capped (~6k chars); skip bulk json/yaml/toml fallback
        OR sql/md text fallback (minified → short digest only)
   → import-edge heuristics (regex) → cg_edges (file-level)
-  → embed compact text (path+kind+name+truncated body ≤~1.8k chars); FTS uses stored body
+  → embed compact text (path+kind+name+body ≤~1.8k chars); keyword search uses LIKE on stored body (FTS unavailable)
   → upsert cg_chunks + cg_nodes; update cg_files
   → drop paths gone from worktree
   → write Merkle root to cg_meta
@@ -203,11 +202,27 @@ walk (ignore::WalkBuilder, gitignore)
 
 ## Hybrid search
 
-1. Optionally dirty-reindex files whose hash changed.
-2. FTS5 BM25 over `cg_fts` → top-k₁.
-3. Vector cosine over `cg_chunks.embedding` → top-k₂.
-4. Merge via **reciprocal rank fusion** (RRF).
-5. Return `{ path, start_line, end_line, kind, name, score, snippet, source }`.
+1. Optionally dirty-reindex files whose hash changed (`refresh_dirty`).
+2. Keyword over `cg_chunks` — FTS5 BM25 when `fts_available=1` and `cg_fts` exists, otherwise
+   `LIKE` on `content`/`path`/`name` → top-k₁.
+3. Vector cosine over `cg_chunks.embedding` (`vector_distance_cos`, 384 dims) → top-k₂.
+4. Merge via **reciprocal rank fusion** (RRF, K=60); hits present in both paths merge with
+   `source="both"`.
+5. Return `{ path, start_line, end_line, kind, name, score, snippet, source }` (snippet ~240 chars).
+
+---
+
+## Known limitations (v1)
+
+- **`build` ≡ `update`** — the CLI passes `full=true` for `build`, but `Indexer::scan` ignores
+  the flag (`let _ = full;`), so `build` behaves exactly like `update` (hash-skip makes it a
+  no-op on an already-fresh index). A true full rebuild is not yet wired.
+- **FTS is off on Turso** — the FTS5 virtual-table migration (501) cannot run on Turso, so
+  keyword search uses the `LIKE` fallback (`fts_available=0`). Enabling BM25 keyword search
+  would require Turso-native FTS (`CREATE INDEX ... USING fts`, Tantivy-backed) instead of
+  SQLite FTS5 syntax.
+- **Agent tools are read-only** — `code_search`, `code_impact`, `code_status`, `code_reindex`
+  (`code_reindex` = `update`). Build/purge remain CLI-only.
 
 ---
 
@@ -236,7 +251,7 @@ full      = ["memory", "embed", "codegraph"]
 
 ## Concurrency (Turso)
 
-- Prefer domain isolation: memory/transcript rows vs `cg_*` rows.
+- Prefer domain isolation: memory rows vs `cg_*` rows.
 - Inside index build: single logical writer; commit per file (or small batches); **meta root once at end**.
 - Optional later: `PRAGMA journal_mode='mvcc'` + `BEGIN CONCURRENT` + retry on row conflict (experimental).
 
