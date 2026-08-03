@@ -377,6 +377,8 @@ pub use tools::mcp::McpAuthSource;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::McpAuthSourceReport;
 #[cfg(feature = "mcp")]
+pub use tools::mcp::McpCacheStore;
+#[cfg(feature = "mcp")]
 pub use tools::mcp::McpClient;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::McpClientService;

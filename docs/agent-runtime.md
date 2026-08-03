@@ -199,7 +199,7 @@ TypeID with prefix `sess` — shown in the footer.
 | Model catalog        | Embedded + merge `CONFIG_DIR/providers/*.json` (disk wins by id)                   |
 | Crash recovery       | Semi-durable harness journal + tool-result repair (see below)                      |
 | Project memory       | `<project>/.elph/store.db`                                                         |
-| Session artifacts    | `APP_DATA/sessions/<SESSION_ID>/` (`mcp_cache`, `terminals`, `tool_outputs.jsonl`) |
+| Session artifacts    | `APP_DATA/sessions/<SESSION_ID>/` (`mcp_cache` tool result cache, `terminals`, `tool_outputs.jsonl`) |
 | Todo snapshot        | Per-session metadata when TodoList is active                                       |
 | Event / request logs | JSONL per session for diagnostics                                                  |
 

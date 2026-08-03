@@ -106,8 +106,16 @@ fn list_sessions(manager: &SessionManager, cwd: &std::path::Path, query: Option<
             let sty = CliStyle::auto();
             let mut out = String::new();
             if sessions.is_empty() {
-                style::info(&mut out, sty, sty.paint(S_MUTED, format!("No sessions found for {}", cwd.display())));
-                style::tip(&mut out, sty, "Sessions are created automatically when you start a conversation.");
+                style::info(
+                    &mut out,
+                    sty,
+                    sty.paint(S_MUTED, format!("No sessions found for {}", cwd.display())),
+                );
+                style::tip(
+                    &mut out,
+                    sty,
+                    "Sessions are created automatically when you start a conversation.",
+                );
             } else {
                 style::section(&mut out, sty, &format!("Sessions ({})", sessions.len()));
                 use std::fmt::Write;

@@ -5,8 +5,8 @@ use elph_agent::try_block_on;
 use floppy::{ScanStats, SearchOptions};
 
 use super::store::open_store;
-use crate::cli::style::{self, CliStyle, S_ACCENT, S_BODY, S_HEADER, S_MUTED, S_OK, S_TIP, S_TITLE, S_VALUE, S_WARN};
 use crate::cli::CodegraphCommands;
+use crate::cli::style::{self, CliStyle, S_ACCENT, S_BODY, S_HEADER, S_MUTED, S_OK, S_TIP, S_TITLE, S_VALUE, S_WARN};
 use crate::platform::Paths;
 
 pub fn run(paths: Paths, cmd: &CodegraphCommands) -> Result<()> {

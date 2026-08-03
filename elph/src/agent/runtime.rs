@@ -55,6 +55,11 @@ pub async fn create_coding_session_with_events(
     // resolve_model and discover_mcp_registry are pure file reads independent
     // of each other and of the DB operations above — run them concurrently.
     let auth_store = options.paths.auth_store_path();
+
+    // Open session-scoped MCP cache store (eager — creates the DB + schema now).
+    let mcp_cache_path = session_manager.mcp_cache_path(&session_id);
+    let mcp_cache = elph_agent::McpCacheStore::open(&mcp_cache_path).await.ok();
+
     let ((selection, _overlay_stats), (mcp_registry, mcp_config_warnings)) = tokio::try_join!(
         resolve_model(
             options.settings,
@@ -63,7 +68,7 @@ pub async fn create_coding_session_with_events(
             Some(&auth_store),
         ),
         async {
-            let (registry, warnings) = discover_mcp_registry(options.paths).await;
+            let (registry, warnings) = discover_mcp_registry(options.paths, mcp_cache.map(Arc::new)).await;
             Ok::<_, anyhow::Error>((registry, warnings))
         },
     )?;

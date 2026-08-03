@@ -43,6 +43,11 @@ impl SessionManager {
         Ok(())
     }
 
+    /// Path to the session-scoped MCP tool result cache DB.
+    pub fn mcp_cache_path(&self, session_id: &str) -> PathBuf {
+        self.artifact_dir_for(session_id).join("mcp_cache").join("cache.db")
+    }
+
     fn remove_artifact_dirs(&self, session_id: &str) {
         let base = self.artifact_dir_for(session_id);
         if base.exists() {

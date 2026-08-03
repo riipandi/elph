@@ -141,6 +141,7 @@ impl McpServerConfig {
             mrtr_elicitation: McpMrtrElicitationPolicy::Decline,
             policy: None,
             load_strategy: McpLoadStrategy::default(),
+            cache_ttl_ms: None,
         })
     }
 
@@ -244,6 +245,14 @@ impl McpServerConfig {
             Self::Http(c) | Self::Sse(c) => c.load_strategy,
         }
     }
+
+    /// Tool call result cache TTL in milliseconds. None = use default.
+    pub fn cache_ttl_ms(&self) -> Option<u64> {
+        match self {
+            Self::Stdio(c) => c.cache_ttl_ms,
+            Self::Http(c) | Self::Sse(c) => c.cache_ttl_ms,
+        }
+    }
 }
 
 /// Stdio (child process) server configuration.
@@ -281,6 +290,10 @@ pub struct McpStdioConfig {
     /// Tool discovery strategy for this server. Defaults to `lazy`.
     #[serde(default, skip_serializing_if = "is_default_lazy")]
     pub load_strategy: McpLoadStrategy,
+    /// Tool call result cache TTL in milliseconds (default 60000).
+    /// Set to 0 to disable caching for this server.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cache_ttl_ms: Option<u64>,
 }
 
 /// OAuth client metadata used by `mcp auth` and token-aware transports.
@@ -456,6 +469,10 @@ pub struct McpHttpConfig {
     /// Tool discovery strategy for this server. Defaults to `lazy`.
     #[serde(default, skip_serializing_if = "is_default_lazy")]
     pub load_strategy: McpLoadStrategy,
+    /// Tool call result cache TTL in milliseconds (default 60000).
+    /// Set to 0 to disable caching for this server.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cache_ttl_ms: Option<u64>,
 }
 
 fn is_default_auth_conflict(p: &McpAuthConflictPolicy) -> bool {
@@ -483,6 +500,7 @@ impl McpHttpConfig {
             mrtr_elicitation: McpMrtrElicitationPolicy::Decline,
             policy: None,
             load_strategy: McpLoadStrategy::default(),
+            cache_ttl_ms: None,
         }
     }
 
@@ -553,6 +571,8 @@ pub struct McpLoadOptions {
     pub progress_tx: Option<mpsc::UnboundedSender<McpServerLoadProgress>>,
     /// Tool discovery strategy (default `lazy`).
     pub load_strategy: McpLoadStrategy,
+    /// Optional persistent tool call result cache.
+    pub cache_store: Option<std::sync::Arc<super::cache::McpCacheStore>>,
 }
 
 impl Default for McpLoadOptions {
@@ -567,6 +587,7 @@ impl Default for McpLoadOptions {
             response_cache: McpResponseCacheConfig::default(),
             progress_tx: None,
             load_strategy: McpLoadStrategy::default(),
+            cache_store: None,
         }
     }
 }
@@ -633,6 +654,7 @@ mod tests {
                 mrtr_elicitation: McpMrtrElicitationPolicy::Decline,
                 policy: None,
                 load_strategy: McpLoadStrategy::default(),
+                cache_ttl_ms: None,
             }),
         );
         assert_eq!(cfg.enabled_count(), 0);

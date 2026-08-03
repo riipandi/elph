@@ -88,8 +88,8 @@ Override with `ELPH_HOME` (config) and `ELPH_DATA_DIR` (data).
 | Platform DB            | `APP_DATA/metadata.db`                    | Goals, agent spawn graph, skill cache, session index + tree                  |
 | Floppy memory + codegraph | `PROJECT/.elph/store.db`                  | Agent long-term memory, embeddings, codebase chunk index — all in one ledger |
 | Transcript archive     | `PROJECT/.elph/metadata.db`               | TUI card overflow only (not the LLM session tree)                            |
-| Session artifacts      | `APP_DATA/sessions/<SESSION_ID>/`         | `mcp_cache/`, `terminals/`, `tool_outputs.jsonl`, optional `event_log.jsonl` |
-| Host MCP cache         | `APP_DATA/mcp_cache/`                     | CLI MCP ops when no session is active                                        |
+| Session artifacts      | `APP_DATA/sessions/<SESSION_ID>/`         | `mcp_cache/` (tool result cache), `terminals/`, `tool_outputs.jsonl`, optional `event_log.jsonl` |
+| Host MCP cache         | `APP_DATA/mcp_cache/`                     | CLI MCP ops when no session is active (tool result cache)                                        |
 | App / crash / MCP logs | `APP_DATA/logs/`                          | Rolling JSONL, dated crash logs, MCP stderr                                  |
 | Config files           | `CONFIG_DIR/*.json`                       | Settings, auth, trust, MCP, providers                                        |
 | Provider catalogs      | `CONFIG_DIR/providers/*.json`             | Disk model overlays (see below)                                              |

@@ -55,9 +55,7 @@ pub enum McpCommands {
         scopes: Vec<String>,
     },
     /// Remove OAuth credentials for an MCP server
-    Logout {
-        name: String,
-    },
+    Logout { name: String },
 }
 
 pub fn handle(args: &McpArgs) -> ExitCode {
@@ -80,7 +78,11 @@ pub fn handle(args: &McpArgs) -> ExitCode {
                 help::unimplemented("MCP add — interactive config entry not yet implemented");
                 return EXIT_SUCCESS;
             };
-            let scope = if *project { McpConfigScope::Project } else { McpConfigScope::Home };
+            let scope = if *project {
+                McpConfigScope::Project
+            } else {
+                McpConfigScope::Home
+            };
             match mcp_runtime::parse_server_config(raw) {
                 Ok(server) => match mcp_runtime::upsert_server_in(&paths, scope, name, server) {
                     Ok(()) => {
@@ -112,7 +114,11 @@ pub fn handle(args: &McpArgs) -> ExitCode {
         }
         McpCommands::Remove { name, project, all } => {
             let sty = CliStyle::auto();
-            let primary = if *project { McpConfigScope::Project } else { McpConfigScope::Home };
+            let primary = if *project {
+                McpConfigScope::Project
+            } else {
+                McpConfigScope::Home
+            };
             let mut removed_any = false;
             match mcp_runtime::remove_server_in(&paths, primary, name) {
                 Ok(true) => {
@@ -305,11 +311,14 @@ fn handle_list(paths: &Paths, project_only: bool, home_only: bool) -> ExitCode {
             out,
             "   {}  lifecycle: {}",
             sty.paint(S_MUTED, "·"),
-            sty.paint(S_BODY, match server.lifecycle_mode() {
-                McpLifecycleMode::Auto => "auto",
-                McpLifecycleMode::Legacy => "legacy",
-                McpLifecycleMode::Discover => "discover",
-            }),
+            sty.paint(
+                S_BODY,
+                match server.lifecycle_mode() {
+                    McpLifecycleMode::Auto => "auto",
+                    McpLifecycleMode::Legacy => "legacy",
+                    McpLifecycleMode::Discover => "discover",
+                }
+            ),
         );
         if let Some(url) = server.remote_url() {
             let _ = writeln!(out, "   {}  url: {}", sty.paint(S_MUTED, "·"), sty.paint(S_BODY, url));
@@ -420,7 +429,11 @@ fn handle_doctor(paths: &Paths) -> ExitCode {
         format!(
             "{} server(s){}",
             home.server_count(),
-            if paths.mcp_config_path().exists() { "" } else { " (file missing)" }
+            if paths.mcp_config_path().exists() {
+                ""
+            } else {
+                " (file missing)"
+            }
         ),
     );
     style::kv(&mut out, sty, "Project config", paths.project_mcp_config_path().display());
@@ -431,7 +444,11 @@ fn handle_doctor(paths: &Paths) -> ExitCode {
         format!(
             "{} server(s){}",
             project.server_count(),
-            if paths.project_mcp_config_path().exists() { "" } else { " (file missing)" }
+            if paths.project_mcp_config_path().exists() {
+                ""
+            } else {
+                " (file missing)"
+            }
         ),
     );
     style::kv(&mut out, sty, "Merged servers", config.server_count());

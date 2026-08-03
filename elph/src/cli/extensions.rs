@@ -117,7 +117,12 @@ fn list_extensions(host: &ExtensionHost) -> ExitCode {
             sty.paint(S_MUTED, &manifest.version),
             state,
         );
-        let _ = writeln!(out, "   {}  {}", sty.paint(S_MUTED, "·"), sty.paint(S_BODY, &manifest.description));
+        let _ = writeln!(
+            out,
+            "   {}  {}",
+            sty.paint(S_MUTED, "·"),
+            sty.paint(S_BODY, &manifest.description)
+        );
 
         for cmd in host
             .registry()

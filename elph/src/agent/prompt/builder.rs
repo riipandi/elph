@@ -307,7 +307,6 @@ mod tests {
                 "shell_exec",
                 "web_fetch",
                 "web_search",
-                
                 "ask_user_question",
                 "list_available_tools",
                 "spawn_agent",

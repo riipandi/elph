@@ -1,10 +1,11 @@
 //! MCP discovery and late binding into an already-running agent session.
 
+use std::path::Path;
 use std::sync::Arc;
 
 use crate::utils::path::AppPaths;
 use anyhow::Result;
-use elph_agent::{McpLoadOptions, McpServerLoadProgress, McpToolRegistry};
+use elph_agent::{McpCacheStore, McpLoadOptions, McpServerLoadProgress, McpToolRegistry};
 use tokio::sync::mpsc;
 
 use super::events::AgentUiEvent;
@@ -13,14 +14,18 @@ use super::tools_catalog::reconcile_harness_tools;
 use crate::platform::Paths;
 
 /// Load merged MCP config and discover remote tool catalogs.
-pub async fn discover_mcp_registry(paths: &Paths) -> (Arc<McpToolRegistry>, Vec<String>) {
-    discover_mcp_registry_with_progress(paths, None).await
+pub async fn discover_mcp_registry(
+    paths: &Paths,
+    cache_store: Option<Arc<McpCacheStore>>,
+) -> (Arc<McpToolRegistry>, Vec<String>) {
+    discover_mcp_registry_with_progress(paths, None, cache_store).await
 }
 
 /// Like [`discover_mcp_registry`], emitting per-server progress events when `progress_tx` is set.
 pub async fn discover_mcp_registry_with_progress(
     paths: &Paths,
     progress_tx: Option<mpsc::UnboundedSender<McpServerLoadProgress>>,
+    cache_store: Option<Arc<McpCacheStore>>,
 ) -> (Arc<McpToolRegistry>, Vec<String>) {
     let (mcp_config, mcp_config_warnings) = crate::platform::mcp::load_config_best_effort(paths);
     for warning in &mcp_config_warnings {
@@ -30,6 +35,7 @@ pub async fn discover_mcp_registry_with_progress(
     let load_options = McpLoadOptions {
         auth_store_path: Some(auth_store_path),
         progress_tx,
+        cache_store,
         ..McpLoadOptions::default()
     };
     let registry = match McpToolRegistry::load_with_options(mcp_config, load_options).await {

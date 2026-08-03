@@ -169,7 +169,8 @@ impl McpToolRegistry {
     pub async fn load_with_options(config: McpConfig, options: McpLoadOptions) -> Result<Self> {
         let pool = McpSessionPool::new()
             .with_auth_store_path(options.auth_store_path.clone())
-            .with_response_cache(options.response_cache.clone());
+            .with_response_cache(options.response_cache.clone())
+            .with_cache_store(options.cache_store.clone());
         let (_event_tx, event_rx) = if options.enable_list_changed {
             let (tx, rx) = mpsc::unbounded_channel();
             pool.set_event_sender(tx.clone());

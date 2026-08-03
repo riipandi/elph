@@ -141,6 +141,39 @@ Per-server field `lifecycle` (default `auto`):
 
 Client identity advertises name `elph`, protocol preference `2026-07-28`, form elicitation, and the Tasks extension. List responses use the rmcp SEP-2549 client cache (configurable via `McpLoadOptions.response_cache`).
 
+### Tool result cache
+
+Read-only tool call results are cached persistently on disk so repeated calls with the same arguments return instantly instead of hitting the MCP server again.
+
+**Storage** (per `docs/configuration.md` layout):
+
+| Scope   | Path                                                        |
+| ------- | ----------------------------------------------------------- |
+| Session | `APP_DATA/sessions/<SESSION_ID>/mcp_cache/cache.db`         |
+| Host    | `APP_DATA/mcp_cache/cache.db` (CLI ops without a session)   |
+
+**Behavior:**
+
+- **Cache key** — hash of `(server, tool, canonical JSON args)`. Different args → different entries.
+- **Read-only only** — tools whose names contain mutation keywords (`write`, `create`, `delete`, `update`, `edit`, `set`, `add`, `remove`, …) are never cached.
+- **TTL** — default 60 seconds. Per-server override via `cacheTtlMs` in `mcp.json`; `0` disables caching for that server.
+- **Eviction** — expired entries are deleted lazily on read; when the table exceeds 2048 rows, the oldest expired entries are pruned.
+- **Invalidation** — entries for a server are dropped on reconnect; `elph mcp` reload clears the store.
+
+```json
+{
+    "mcpServers": {
+        "deepwiki": {
+            "type": "http",
+            "url": "https://mcp.deepwiki.com/mcp",
+            "cacheTtlMs": 300000
+        }
+    }
+}
+```
+
+Library hosts opt in by opening a `McpCacheStore` and passing it via `McpLoadOptions.cache_store`.
+
 ### MRTR elicitation (SEP-2322)
 
 `mrtrElicitation` (default `decline`):

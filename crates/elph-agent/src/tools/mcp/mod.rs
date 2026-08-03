@@ -22,6 +22,8 @@ mod auth;
 #[cfg(feature = "mcp")]
 mod auth_resolve;
 #[cfg(feature = "mcp")]
+mod cache;
+#[cfg(feature = "mcp")]
 mod client;
 #[cfg(feature = "mcp")]
 mod compat;
@@ -82,6 +84,8 @@ pub use auth::{DEFAULT_AUTH_FILE_NAME, DEFAULT_OAUTH_SCOPES};
 pub use auth_resolve::resolve_remote_auth;
 #[cfg(feature = "mcp")]
 pub use auth_resolve::{McpAuthSource, McpAuthSourceReport, ResolvedMcpAuth};
+#[cfg(feature = "mcp")]
+pub use cache::McpCacheStore;
 #[cfg(feature = "mcp")]
 pub use client::PROBE_TIMEOUT;
 #[cfg(feature = "mcp")]

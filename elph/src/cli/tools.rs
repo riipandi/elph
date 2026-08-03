@@ -18,23 +18,32 @@ pub struct ToolsArgs {
 }
 
 const GROUPS: &[(&str, &str, &[&str])] = &[
-    (
-        "Read & Search",
-        "tools-search",
-        &["read_file", "grep", "find_path", "list_dir"],
-    ),
+    ("Read & Search", "tools-search", &["read_file", "grep", "find_path", "list_dir"]),
     (
         "Edit",
         "tools-edit",
         &[
-            "edit_file", "write_file", "shell_exec", "create_dir", "copy_path", "delete_path", "move_path",
+            "edit_file",
+            "write_file",
+            "shell_exec",
+            "create_dir",
+            "copy_path",
+            "delete_path",
+            "move_path",
         ],
     ),
     ("Web", "tools-web", &["web_search", "web_fetch"]),
     (
         "Collaboration",
         "tools-collaboration",
-        &["ask_user_question", "spawn_agent", "send_message", "followup_task", "wait_agent", "list_agents"],
+        &[
+            "ask_user_question",
+            "spawn_agent",
+            "send_message",
+            "followup_task",
+            "wait_agent",
+            "list_agents",
+        ],
     ),
 ];
 
@@ -56,7 +65,11 @@ pub fn handle(args: &ToolsArgs) -> ExitCode {
         .map(|t| (t.tool.name.as_str(), (t.tool.description.as_str(), &t.tool.parameters)))
         .collect();
 
-    let mcp_names: Vec<&str> = tool_map.keys().filter(|name| name.starts_with("mcp_")).copied().collect();
+    let mcp_names: Vec<&str> = tool_map
+        .keys()
+        .filter(|name| name.starts_with("mcp_"))
+        .copied()
+        .collect();
     let group_filter = args.group.as_deref().map(|s| s.to_ascii_lowercase());
 
     let mut out = String::new();
@@ -71,7 +84,10 @@ pub fn handle(args: &ToolsArgs) -> ExitCode {
             }
         }
 
-        let available: Vec<&&str> = expected_names.iter().filter(|name| tool_map.contains_key(**name)).collect();
+        let available: Vec<&&str> = expected_names
+            .iter()
+            .filter(|name| tool_map.contains_key(**name))
+            .collect();
         if available.is_empty() {
             continue;
         }
@@ -100,7 +116,10 @@ pub fn handle(args: &ToolsArgs) -> ExitCode {
     }
 
     // MCP tools
-    let show_mcp = group_filter.as_ref().map(|f| f.contains("other") || f.contains("mcp")).unwrap_or(true);
+    let show_mcp = group_filter
+        .as_ref()
+        .map(|f| f.contains("other") || f.contains("mcp"))
+        .unwrap_or(true);
     if show_mcp && !mcp_names.is_empty() {
         use std::fmt::Write;
         let _ = writeln!(out);
@@ -141,7 +160,10 @@ pub fn handle(args: &ToolsArgs) -> ExitCode {
     }
 
     // Meta tools
-    let show_meta = group_filter.as_ref().map(|f| f.contains("other") || f.contains("meta")).unwrap_or(true);
+    let show_meta = group_filter
+        .as_ref()
+        .map(|f| f.contains("other") || f.contains("meta"))
+        .unwrap_or(true);
     if show_meta && tool_map.contains_key("list_available_tools") {
         use std::fmt::Write;
         let _ = writeln!(out);
@@ -161,7 +183,11 @@ pub fn handle(args: &ToolsArgs) -> ExitCode {
 
     if group_filter.is_some() && total_shown == 0 {
         let _ = writeln!(out);
-        style::tip(&mut out, sty, "No tools matched the filter. Available groups: search, edit, web, collaboration, other");
+        style::tip(
+            &mut out,
+            sty,
+            "No tools matched the filter. Available groups: search, edit, web, collaboration, other",
+        );
     }
 
     print!("{out}");
