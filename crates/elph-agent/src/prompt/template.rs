@@ -1,64 +1,51 @@
-//! MiniJinja template engine for system prompts with custom delimiters.
+//! System prompt base template rendered directly in Rust (no template engine).
 
-use minijinja::{Environment, syntax::SyntaxConfig};
 use thiserror::Error;
 
-/// Custom delimiters (`${{` / `${%`) to avoid collisions with `{{` in markdown and code examples.
-pub fn custom_prompt_syntax() -> SyntaxConfig {
-    SyntaxConfig::builder()
-        .variable_delimiters("${{", "}}")
-        .block_delimiters("${%", "%}")
-        .build()
-        .expect("valid syntax config")
-}
+use super::context::SystemPromptTemplateContext;
 
 #[derive(Debug, Error)]
 pub enum PromptRenderError {
     #[error("template render failed: {0}")]
-    Render(#[from] minijinja::Error),
+    Render(String),
 }
 
-/// Registry for embedded system prompt templates.
-#[derive(Clone)]
-pub struct PromptTemplateEngine {
-    env: Environment<'static>,
-}
+/// Render the generic base template (`persona` + optional session env blocks).
+///
+/// Mirrors the previous `templates/base.md` MiniJinja template:
+///
+/// ```text
+/// {persona}
+///
+/// Working directory: {working_directory}   (when set)
+/// Current date: {current_date}             (when set)
+/// OS: {os_name}                            (when set)
+/// Shell: {shell_path}                      (when set)
+/// {skills_section}                         (when set)
+/// ```
+pub fn render_base_template(ctx: &SystemPromptTemplateContext) -> String {
+    let mut out = String::new();
+    out.push_str(ctx.persona.trim());
 
-impl Default for PromptTemplateEngine {
-    fn default() -> Self {
-        Self::new()
+    if let Some(dir) = ctx.working_directory.as_deref().filter(|s| !s.is_empty()) {
+        out.push_str("\n\nWorking directory: ");
+        out.push_str(dir);
     }
-}
-
-impl PromptTemplateEngine {
-    pub fn new() -> Self {
-        let mut env = Environment::new();
-        env.set_syntax(custom_prompt_syntax());
-        Self { env }
+    if let Some(date) = ctx.current_date.as_deref().filter(|s| !s.is_empty()) {
+        out.push_str("\n\nCurrent date: ");
+        out.push_str(date);
     }
-
-    pub fn register_embedded(&mut self, name: &'static str, source: &'static str) -> Result<(), PromptRenderError> {
-        self.env.add_template(name, source)?;
-        Ok(())
+    if let Some(os) = ctx.os_name.as_deref().filter(|s| !s.is_empty()) {
+        out.push_str("\n\nOS: ");
+        out.push_str(os);
     }
-
-    pub fn render<T: serde::Serialize>(&self, name: &str, ctx: &T) -> Result<String, PromptRenderError> {
-        let template = self.env.get_template(name)?;
-        Ok(template.render(ctx)?)
+    if let Some(shell) = ctx.shell_path.as_deref().filter(|s| !s.is_empty()) {
+        out.push_str("\n\nShell: ");
+        out.push_str(shell);
     }
-}
-
-impl std::fmt::Debug for PromptTemplateEngine {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("PromptTemplateEngine").finish_non_exhaustive()
+    if !ctx.skills_section.trim().is_empty() {
+        out.push_str("\n\n");
+        out.push_str(ctx.skills_section.trim());
     }
-}
-
-/// Shared engine with the generic base template pre-registered.
-pub fn default_prompt_engine() -> PromptTemplateEngine {
-    let mut engine = PromptTemplateEngine::new();
-    engine
-        .register_embedded("base", include_str!("../../templates/base.md"))
-        .expect("base template is valid");
-    engine
+    out
 }

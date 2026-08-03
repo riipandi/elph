@@ -240,9 +240,8 @@ pub use prompt::substitute_args;
 pub use prompt::{DEFAULT_SYSTEM_PROMPT, resolve_system_prompt_text};
 #[cfg(feature = "prompt-templates")]
 pub use prompt::{
-    PromptAssemblyMode, PromptRenderError, PromptTemplateEngine, SystemPromptBuildError, SystemPromptBuilder,
-    SystemPromptTemplateContext, ToolByKindContext, ToolNamesContext, custom_prompt_syntax, default_prompt_engine,
-    format_project_context, tool_names_context,
+    PromptAssemblyMode, PromptRenderError, SystemPromptBuildError, SystemPromptBuilder, SystemPromptTemplateContext,
+    ToolByKindContext, ToolNamesContext, format_project_context, render_base_template, tool_names_context,
 };
 pub use runtime::event_stream::{AgentEventSink, AgentEventStream};
 pub use runtime::local_env::LocalExecutionEnv;

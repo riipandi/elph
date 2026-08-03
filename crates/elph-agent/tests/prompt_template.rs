@@ -23,18 +23,13 @@ fn extend_mode_renders_base_persona() {
 }
 
 #[test]
-fn full_mode_renders_domain_template_with_tool_conditionals() {
-    const DOMAIN: &str = "domain";
-    const TEMPLATE: &str = "Intro.\n${%- if tools.read_file %}read=${{ tools.read_file }}${%- endif %}";
-
-    let context = SystemPromptTemplateContext::default().with_active_tool_names(&["read_file".to_string()]);
+fn full_mode_renders_domain_body() {
+    let context = SystemPromptTemplateContext::default();
 
     let prompt = SystemPromptBuilder::new()
         .mode(PromptAssemblyMode::Full)
         .context(context)
-        .register_domain_template(DOMAIN, TEMPLATE)
-        .expect("register")
-        .domain_template(DOMAIN)
+        .domain_body("Intro.\nread=read_file")
         .render()
         .expect("render");
 

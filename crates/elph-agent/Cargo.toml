@@ -21,7 +21,7 @@ full = ["mcp", "prompt-templates", "extensions", "builtin-tools"]
 builtin-tools = ["tools-edit", "tools-search", "tools-web", "tools-collaboration"]
 extensions = ["dep:wasmtime", "dep:walkdir"]
 mcp = ["dep:rmcp"]
-prompt-templates = ["dep:minijinja"]
+prompt-templates = []
 obscura = ["dep:obscura"]
 tools-collaboration = []
 tools-copy-path = []
@@ -75,7 +75,6 @@ log.workspace = true
 logforth.workspace = true
 memchr.workspace = true
 memorable-ids.workspace = true
-minijinja = { workspace = true, optional = true, features = ["custom_syntax"] }
 obscura = { workspace = true, optional = true }
 parking_lot.workspace = true
 rand.workspace = true

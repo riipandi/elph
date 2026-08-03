@@ -1,8 +1,8 @@
 //! Coding-agent system prompt assembly.
 //!
 //! Layering (generic runtime → product domain):
-//! 1. [`elph_agent::templates::base`] — persona, session env, [`format_skills_for_system_prompt`] (`<available_skills>`)
-//! 2. `coding_base.md` — Grok-style sections (`<action_safety>`, `<tool_calling>`, …) with Pi tool names
+//! 1. [`elph_agent::render_base_template`] — persona, session env, [`format_skills_for_system_prompt`] (`<available_skills>`)
+//! 2. [`super::template::coding_agent_engine`] — Grok-style `coding_base.md` (MiniJinja) with tool names
 //! 3. `mode_section` — per-mode appendix (`<mode_context>`)
 //! 4. [`elph_agent::format_project_context`] — Pi-style `<project_context>` for AGENTS.md
 
@@ -13,8 +13,7 @@ use elph_agent::{AgentHarnessResources, PromptAssemblyMode, SystemPromptBuilder,
 use elph_agent::{format_skills_for_system_prompt, now_iso_timestamp};
 
 use super::modes::{build_mode_section, mode_footer_slug};
-
-const CODING_BASE_TEMPLATE: &str = "coding_base";
+use super::template::coding_agent_engine;
 
 /// Build the dynamic system prompt for a coding session turn.
 ///
@@ -58,11 +57,11 @@ pub fn build_coding_system_prompt(
     }
     .with_active_tool_names(tool_names);
 
+    let coding_base = coding_agent_engine().render("coding_base", &context)?;
     SystemPromptBuilder::new()
         .mode(PromptAssemblyMode::Extend)
         .context(context)
-        .register_domain_template(CODING_BASE_TEMPLATE, include_str!("../../../templates/agent/coding_base.md"))?
-        .domain_template(CODING_BASE_TEMPLATE)
+        .domain_body(coding_base)
         .render()
         .map_err(Into::into)
 }
