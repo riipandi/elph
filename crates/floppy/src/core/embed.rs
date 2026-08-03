@@ -121,6 +121,10 @@ fn alias_model_name(name: &str) -> &str {
         "baai/bge-large-en-v1.5" | "bge-large-en-v1.5" => "BGELargeENV15",
         "nomic-ai/nomic-embed-text-v1" => "NomicEmbedTextV1",
         "nomic-ai/nomic-embed-text-v1.5" => "NomicEmbedTextV15",
+        "jinaai/jina-embeddings-v2-base-en" | "jina-embeddings-v2-base-en" => "JinaEmbeddingsV2BaseEn",
+        "jinaai/jina-embeddings-v2-small-en" | "jina-embeddings-v2-small-en" => "JinaEmbeddingsV2SmallEn",
+        "qwen/qwen3-embedding-0.6b" | "qwen3-embedding-0.6b" => "Qwen3Embedding06B",
+        "google/embeddinggemma-300m" | "gemma-embedding-300m" => "GemmaEmbedding300M",
         "xenova/all-minilm-l6-v2" => "AllMiniLML6V2Q",
         _ => name,
     }

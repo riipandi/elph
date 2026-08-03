@@ -280,8 +280,8 @@ impl Default for ModelsSettings {
 #[serde(rename_all = "camelCase")]
 pub struct EmbedSettings {
     /// Embedding model catalog name or Hugging Face repo id (see `floppy::resolve_embedding_model`).
-    #[serde(default = "default_embed_model")]
-    pub model: String,
+    #[serde(default = "default_embed_model", deserialize_with = "deserialize_embed_model")]
+    pub model: EmbedModel,
     /// Prefer quantized model weights when a `*Q` variant exists (default: true).
     #[serde(default = "default_embed_quantized")]
     pub quantized: bool,
@@ -292,6 +292,75 @@ impl Default for EmbedSettings {
         Self {
             model: default_embed_model(),
             quantized: default_embed_quantized(),
+        }
+    }
+}
+
+/// Supported embedding models for local vector search.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum EmbedModel {
+    /// Fast, small BERT model (sentence-transformers/all-MiniLM-L6-v2). 384 dims, ~20MB.
+    AllMiniLML6V2,
+    /// Jina v2 base English model (jinaai/jina-embeddings-v2-base-en). 768 dims, better quality.
+    JinaEmbeddingsV2BaseEn,
+    /// Jina v2 small English model (jinaai/jina-embeddings-v2-small-en). 512 dims, faster.
+    JinaEmbeddingsV2SmallEn,
+    /// Nomic embed text v1.5 (nomic-ai/nomic-embed-text-v1.5). 768 dims, 8192 context.
+    NomicEmbedTextV15,
+    /// Qwen3 embedding 0.6B (Qwen/Qwen3-Embedding-0.6B). Modern, good balance.
+    Qwen3Embedding06B,
+    /// Gemma3 embedding 300M (google/embeddinggemma-300m). Google's lightweight model.
+    GemmaEmbedding300M,
+    /// Custom Hugging Face repo ID (e.g., "BAAI/bge-small-en-v1.5").
+    Custom(String),
+}
+
+impl EmbedModel {
+    /// Convert to the string format expected by embed_anything.
+    pub fn to_model_id(&self) -> String {
+        match self {
+            Self::AllMiniLML6V2 => "sentence-transformers/all-MiniLM-L6-v2".to_string(),
+            Self::JinaEmbeddingsV2BaseEn => "jinaai/jina-embeddings-v2-base-en".to_string(),
+            Self::JinaEmbeddingsV2SmallEn => "jinaai/jina-embeddings-v2-small-en".to_string(),
+            Self::NomicEmbedTextV15 => "nomic-ai/nomic-embed-text-v1.5".to_string(),
+            Self::Qwen3Embedding06B => "Qwen/Qwen3-Embedding-0.6B".to_string(),
+            Self::GemmaEmbedding300M => "google/embeddinggemma-300m".to_string(),
+            Self::Custom(id) => id.clone(),
+        }
+    }
+
+    /// Parse from string (for backwards compatibility with old settings).
+    pub fn from_string(s: &str) -> Self {
+        match s {
+            "allMiniLML6V2" | "AllMiniLML6V2" | "sentence-transformers/all-minilm-l6-v2" => Self::AllMiniLML6V2,
+            "jinaEmbeddingsV2BaseEn" | "JinaEmbeddingsV2BaseEn" | "jinaai/jina-embeddings-v2-base-en" => {
+                Self::JinaEmbeddingsV2BaseEn
+            }
+            "jinaEmbeddingsV2SmallEn" | "JinaEmbeddingsV2SmallEn" | "jinaai/jina-embeddings-v2-small-en" => {
+                Self::JinaEmbeddingsV2SmallEn
+            }
+            "nomicEmbedTextV15" | "NomicEmbedTextV15" | "nomic-ai/nomic-embed-text-v1.5" => Self::NomicEmbedTextV15,
+            "qwen3Embedding06B" | "Qwen3Embedding06B" | "qwen/qwen3-embedding-0.6b" => Self::Qwen3Embedding06B,
+            "gemmaEmbedding300M" | "GemmaEmbedding300M" | "google/embeddinggemma-300m" => Self::GemmaEmbedding300M,
+            _ => Self::Custom(s.to_string()),
+        }
+    }
+}
+
+/// Custom deserializer for EmbedModel to support both enum and string (backwards compatibility).
+fn deserialize_embed_model<'de, D>(deserializer: D) -> Result<EmbedModel, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Option::<Value>::deserialize(deserializer)?;
+    match value {
+        None | Some(Value::Null) => Ok(default_embed_model()),
+        Some(Value::String(s)) => Ok(EmbedModel::from_string(&s)),
+        Some(other) => {
+            // Try to serialize and deserialize as string
+            let json = serde_json::to_string(&other).map_err(serde::de::Error::custom)?;
+            Ok(EmbedModel::from_string(&json))
         }
     }
 }
@@ -362,6 +431,27 @@ pub struct CodegraphSettings {
     /// Default **false** — enable explicitly. CLI `elph codegraph` is unaffected.
     #[serde(default = "default_false")]
     pub enabled: bool,
+    /// Max lines per chunk before splitting (default: 120).
+    #[serde(default = "default_codegraph_max_chunk_lines")]
+    pub max_chunk_lines: u32,
+    /// Skip files larger than this many bytes (default: 512KB).
+    #[serde(default = "default_codegraph_max_file_bytes")]
+    pub max_file_bytes: u64,
+    /// Max concurrent DB connections for parallel writes (default: 4).
+    #[serde(default = "default_codegraph_max_db_connections")]
+    pub max_db_connections: usize,
+}
+
+fn default_codegraph_max_chunk_lines() -> u32 {
+    120
+}
+
+fn default_codegraph_max_file_bytes() -> u64 {
+    512 * 1024 // 512KB
+}
+
+fn default_codegraph_max_db_connections() -> usize {
+    4
 }
 
 /// MCP client preferences (tool result cache retention).
@@ -788,8 +878,8 @@ fn parse_duration_ms(input: &str) -> Option<u64> {
     }
 }
 
-fn default_embed_model() -> String {
-    floppy::DEFAULT_EMBED_MODEL.to_string()
+fn default_embed_model() -> EmbedModel {
+    EmbedModel::AllMiniLML6V2
 }
 
 fn default_embed_quantized() -> bool {
@@ -874,7 +964,7 @@ mod tests {
         let json = serde_json::to_string_pretty(&settings).expect("serialize");
         let decoded: Settings = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(settings, decoded);
-        assert_eq!(decoded.models.embed.model, "AllMiniLML6V2");
+        assert_eq!(decoded.models.embed.model, EmbedModel::AllMiniLML6V2);
         assert!(decoded.models.embed.quantized);
         assert!(!decoded.codegraph.enabled);
         assert!(decoded.models.default_model.is_none());
@@ -1004,7 +1094,7 @@ mod tests {
         let paths = test_paths(&tmp);
         Settings::ensure(&paths).expect("ensure");
         let loaded = Settings::load(&paths).expect("load");
-        assert_eq!(loaded.models.embed.model, "AllMiniLML6V2");
+        assert_eq!(loaded.models.embed.model, EmbedModel::AllMiniLML6V2);
         assert!(!loaded.codegraph.enabled);
         // New knobs default when section/fields are missing.
         assert!(loaded.memory.enabled);
@@ -1036,7 +1126,7 @@ mod tests {
         });
         migrate_settings_value(&mut value);
         let settings: Settings = serde_json::from_value(value).expect("parse");
-        assert_eq!(settings.models.embed.model, "BGESmallENV15");
+        assert_eq!(settings.models.embed.model, EmbedModel::Custom("BGESmallENV15".to_string()));
         assert!(!settings.models.embed.quantized);
         assert!(settings.memory.enabled);
         assert!(!settings.codegraph.enabled);

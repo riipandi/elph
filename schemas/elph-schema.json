@@ -280,9 +280,16 @@
             "properties": {
                 "model": {
                     "type": "string",
-                    "default": "AllMiniLML6V2",
-                    "minLength": 1,
-                    "description": "Embedding model catalog name or Hugging Face repo id."
+                    "default": "allMiniLML6V2",
+                    "enum": [
+                        "allMiniLML6V2",
+                        "jinaEmbeddingsV2BaseEn",
+                        "jinaEmbeddingsV2SmallEn",
+                        "nomicEmbedTextV15",
+                        "qwen3Embedding06B",
+                        "gemmaEmbedding300M"
+                    ],
+                    "description": "Embedding model: allMiniLML6V2 (fast, 384d), jinaEmbeddingsV2BaseEn (768d, better), jinaEmbeddingsV2SmallEn (512d, faster), nomicEmbedTextV15 (768d, 8192 context), qwen3Embedding06B (modern), gemmaEmbedding300M (Google)."
                 },
                 "quantized": {
                     "type": "boolean",
@@ -406,6 +413,27 @@
                     "type": "boolean",
                     "default": false,
                     "description": "When true, register agent tools code_search, code_impact, code_status, and code_reindex. Default false."
+                },
+                "maxChunkLines": {
+                    "type": "integer",
+                    "minimum": 10,
+                    "maximum": 500,
+                    "default": 120,
+                    "description": "Max lines per chunk before splitting (larger chunks = fewer chunks, slower embedding)."
+                },
+                "maxFileBytes": {
+                    "type": "integer",
+                    "minimum": 1024,
+                    "maximum": 104857600,
+                    "default": 524288,
+                    "description": "Skip files larger than this many bytes (default 512KB)."
+                },
+                "maxDbConnections": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 16,
+                    "default": 4,
+                    "description": "Max concurrent DB connections for parallel writes (more = faster, more memory)."
                 }
             }
         },

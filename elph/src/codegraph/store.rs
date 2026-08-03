@@ -17,7 +17,8 @@ pub fn open_store(paths: &Paths, needs_embed: bool) -> Result<CodegraphStore> {
         .with_context(|| format!("create {}", paths.project_elph_dir().display()))?;
 
     let settings = Settings::load(paths).context("load settings")?;
-    let dims = resolve_embedding_model(&settings.models.embed.model, settings.models.embed.quantized)
+    let model_id = settings.models.embed.model.to_model_id();
+    let dims = resolve_embedding_model(&model_id, settings.models.embed.quantized)
         .map(|m| embedding_dims(&m))
         .unwrap_or(DEFAULT_EMBEDDING_DIMS);
 
@@ -25,7 +26,7 @@ pub fn open_store(paths: &Paths, needs_embed: bool) -> Result<CodegraphStore> {
         std::fs::create_dir_all(paths.models_dir())
             .with_context(|| format!("create {}", paths.models_dir().display()))?;
         let options = EmbedOptions {
-            model: Some(settings.models.embed.model.clone()),
+            model: Some(model_id),
             quantized: settings.models.embed.quantized,
             cache_dir: Some(paths.models_dir()),
         };
@@ -38,5 +39,14 @@ pub fn open_store(paths: &Paths, needs_embed: bool) -> Result<CodegraphStore> {
 
     let root = paths.project_dir().to_string_lossy().into_owned();
     let db_path = paths.memory_db_path().to_string_lossy().into_owned();
-    Ok(CodegraphStore::new(CodegraphConfig::new(db_path, root, embed)))
+    let cg_config = CodegraphConfig {
+        db_path,
+        root_dir: root,
+        embed,
+        apply_migrations: true,
+        max_chunk_lines: settings.codegraph.max_chunk_lines,
+        max_file_bytes: settings.codegraph.max_file_bytes,
+        max_db_connections: Some(settings.codegraph.max_db_connections),
+    };
+    Ok(CodegraphStore::new(cg_config))
 }

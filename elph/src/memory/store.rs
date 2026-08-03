@@ -21,8 +21,9 @@ pub fn open_store_with_session(paths: &Paths, needs_embed: bool, session_id: &st
         .with_context(|| format!("create {}", paths.project_elph_dir().display()))?;
 
     let settings = Settings::load(paths).context("load settings")?;
+    let model_id = settings.models.embed.model.to_model_id();
 
-    let dims = resolve_embedding_model(&settings.models.embed.model, settings.models.embed.quantized)
+    let dims = resolve_embedding_model(&model_id, settings.models.embed.quantized)
         .map(|m| embedding_dims(&m))
         .unwrap_or(DEFAULT_EMBEDDING_DIMS);
 
@@ -44,7 +45,7 @@ pub fn open_store_with_session(paths: &Paths, needs_embed: bool, session_id: &st
             .with_context(|| format!("create {}", paths.models_dir().display()))?;
 
         let options = EmbedOptions {
-            model: Some(settings.models.embed.model.clone()),
+            model: Some(model_id),
             quantized: settings.models.embed.quantized,
             cache_dir: Some(paths.models_dir()),
         };
