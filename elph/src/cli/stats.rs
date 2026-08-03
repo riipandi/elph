@@ -1,6 +1,6 @@
 use clap::Args;
 
-use crate::cli::help;
+use super::style::{self, CliStyle, S_MUTED};
 use crate::platform::{EXIT_SUCCESS, ExitCode};
 
 #[derive(Args, Default)]
@@ -15,9 +15,16 @@ pub struct StatsArgs {
 }
 
 pub fn handle(args: &StatsArgs) -> ExitCode {
-    help::unimplemented(&format!(
-        "Stats — not yet implemented (session={:?}, json={})",
-        args.session, args.json
-    ));
+    let sty = CliStyle::auto();
+    let mut out = String::new();
+    style::section(&mut out, sty, "Statistics");
+    style::info(&mut out, sty, sty.paint(S_MUTED, "Not yet implemented."));
+    if let Some(s) = &args.session {
+        style::kv(&mut out, sty, "Session", s);
+    }
+    if args.json {
+        style::kv(&mut out, sty, "JSON output", "true");
+    }
+    print!("{out}");
     EXIT_SUCCESS
 }

@@ -6,7 +6,7 @@ use crate::platform::{EXIT_SUCCESS, ExitCode};
 #[derive(Parser, Default)]
 #[command(
     name = "server",
-    about = "Run the local Elph server (REST + WebSocket + web UI)",
+    about = "Run the Elph server (REST + WebSocket + web UI)",
     color = clap::ColorChoice::Auto
 )]
 pub struct ServerArgs {

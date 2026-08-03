@@ -1,6 +1,6 @@
 use clap::{Args, ValueEnum};
 
-use crate::cli::help;
+use super::style::{self, CliStyle, S_MUTED};
 use crate::platform::{EXIT_SUCCESS, ExitCode};
 
 #[derive(Args)]
@@ -35,13 +35,19 @@ pub enum ExportFormat {
 }
 
 pub fn handle(args: &ExportArgs) -> ExitCode {
-    help::unimplemented(&format!(
-        "Export — not yet implemented (session={}, output={}, format={:?}, clipboard={}, sanitize={})",
-        args.session_id.as_deref().unwrap_or("<recent>"),
-        args.output.as_deref().unwrap_or("<stdout>"),
-        args.format,
-        args.clipboard,
-        args.sanitize
-    ));
+    let sty = CliStyle::auto();
+    let mut out = String::new();
+    style::section(&mut out, sty, "Export");
+    style::info(&mut out, sty, sty.paint(S_MUTED, "Not yet implemented."));
+    style::kv(&mut out, sty, "Session", args.session_id.as_deref().unwrap_or("<recent>"));
+    style::kv(&mut out, sty, "Output", args.output.as_deref().unwrap_or("<stdout>"));
+    style::kv(&mut out, sty, "Format", format!("{:?}", args.format));
+    if args.clipboard {
+        style::kv(&mut out, sty, "Clipboard", "true");
+    }
+    if args.sanitize {
+        style::kv(&mut out, sty, "Sanitize", "true");
+    }
+    print!("{out}");
     EXIT_SUCCESS
 }

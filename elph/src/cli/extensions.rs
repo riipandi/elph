@@ -3,6 +3,7 @@ use std::path::Path;
 use clap::{Parser, Subcommand};
 
 use super::help;
+use super::style::{self, CliStyle, S_ACCENT, S_BODY, S_HEADER, S_MUTED, S_OK, S_WARN};
 use crate::extensions::ExtensionHost;
 use crate::platform::{AppPaths, EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths};
 
@@ -79,6 +80,7 @@ pub fn handle(args: &ExtensionsArgs) -> ExitCode {
 }
 
 fn list_extensions(host: &ExtensionHost) -> ExitCode {
+    let sty = CliStyle::auto();
     let paths = match Paths::resolve() {
         Ok(paths) => paths,
         Err(error) => {
@@ -88,34 +90,58 @@ fn list_extensions(host: &ExtensionHost) -> ExitCode {
     };
     let settings = ExtensionHost::load_settings(&paths);
     let manifests = host.registry().read().extensions();
+    let mut out = String::new();
+
     if manifests.is_empty() {
-        println!("No extensions installed.");
-        println!("Global dir: {}", paths.global_extensions_dir().display());
+        style::info(&mut out, sty, sty.paint(S_MUTED, "No extensions installed."));
+        style::kv(&mut out, sty, "Global dir", paths.global_extensions_dir().display());
+        print!("{out}");
         return EXIT_SUCCESS;
     }
-    for manifest in manifests {
+
+    style::section(&mut out, sty, &format!("Extensions ({})", manifests.len()));
+    use std::fmt::Write;
+    let _ = writeln!(out);
+
+    for manifest in &manifests {
         let enabled = settings.is_enabled(&manifest.name) && manifest.enabled;
-        println!(
-            "{name} {version} [{state}] — {description}",
-            name = manifest.name,
-            version = manifest.version,
-            state = if enabled { "enabled" } else { "disabled" },
-            description = manifest.description,
+        let state = if enabled {
+            sty.paint(S_OK, "enabled")
+        } else {
+            sty.paint(S_MUTED, "disabled")
+        };
+        let _ = writeln!(
+            out,
+            "  {}  {}  {}",
+            sty.paint(S_ACCENT, &manifest.name),
+            sty.paint(S_MUTED, &manifest.version),
+            state,
         );
+        let _ = writeln!(out, "   {}  {}", sty.paint(S_MUTED, "·"), sty.paint(S_BODY, &manifest.description));
+
         for cmd in host
             .registry()
             .read()
             .commands()
-            .into_iter()
+            .iter()
             .filter(|cmd| cmd.extension == manifest.name)
         {
-            println!("  /{} — {}", cmd.name, cmd.description);
+            let _ = writeln!(
+                out,
+                "   {}  {}  {}",
+                sty.paint(S_HEADER, "/"),
+                sty.paint(S_ACCENT, &cmd.name),
+                sty.paint(S_MUTED, &cmd.description),
+            );
         }
     }
+
+    print!("{out}");
     EXIT_SUCCESS
 }
 
 fn install_extension(host: &ExtensionHost, paths: &Paths, source: &str, force: bool) -> ExitCode {
+    let sty = CliStyle::auto();
     let source = Path::new(source);
     if !source.join("extension.toml").is_file() {
         eprintln!("missing extension.toml: path={}", source.display());
@@ -123,7 +149,9 @@ fn install_extension(host: &ExtensionHost, paths: &Paths, source: &str, force: b
     }
     match host.install_bundle(source, paths, force) {
         Ok(dest) => {
-            println!("Installed extension to {}", dest.display());
+            let mut out = String::new();
+            style::success(&mut out, sty, format!("Installed extension to {}", dest.display()));
+            print!("{out}");
             EXIT_SUCCESS
         }
         Err(error) => {
@@ -134,6 +162,7 @@ fn install_extension(host: &ExtensionHost, paths: &Paths, source: &str, force: b
 }
 
 fn remove_extension(paths: &Paths, name: &str) -> ExitCode {
+    let sty = CliStyle::auto();
     let dest = paths.config_dir().join("extensions").join(name);
     if !dest.is_dir() {
         eprintln!("extension not installed: {name}");
@@ -143,11 +172,14 @@ fn remove_extension(paths: &Paths, name: &str) -> ExitCode {
         help::cli_error(format!("remove extension: {error}"));
         return EXIT_ERROR;
     }
-    println!("Removed extension '{name}'.");
+    let mut out = String::new();
+    style::success(&mut out, sty, format!("Removed extension '{name}'."));
+    print!("{out}");
     EXIT_SUCCESS
 }
 
 fn set_enabled(paths: &Paths, name: &str, enabled: bool) -> ExitCode {
+    let sty = CliStyle::auto();
     let mut settings = ExtensionHost::load_settings(paths);
     settings.disabled.retain(|n| n != name);
     if !enabled && !settings.disabled.iter().any(|n| n == name) {
@@ -155,7 +187,13 @@ fn set_enabled(paths: &Paths, name: &str, enabled: bool) -> ExitCode {
     }
     match ExtensionHost::save_settings(paths, &settings) {
         Ok(()) => {
-            println!("Extension '{name}' {}", if enabled { "enabled" } else { "disabled" });
+            let mut out = String::new();
+            if enabled {
+                style::success(&mut out, sty, format!("Extension '{name}' enabled."));
+            } else {
+                style::info(&mut out, sty, format!("Extension '{name}' disabled."));
+            }
+            print!("{out}");
             EXIT_SUCCESS
         }
         Err(error) => {

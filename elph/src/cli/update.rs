@@ -1,5 +1,6 @@
 use clap::Args;
 
+use super::style::{self, CliStyle, S_MUTED};
 use crate::platform::{EXIT_SUCCESS, ExitCode};
 
 #[derive(Args)]
@@ -30,24 +31,34 @@ pub struct UpdateArgs {
 }
 
 pub fn handle(args: &UpdateArgs) -> ExitCode {
-    println!("Update — not yet implemented");
+    let sty = CliStyle::auto();
+    let mut out = String::new();
+
+    style::section(&mut out, sty, "Update");
+    style::info(&mut out, sty, sty.paint(S_MUTED, "Not yet implemented."));
+
+    use std::fmt::Write;
     if args.check {
-        println!("  --check: true");
+        let _ = writeln!(out);
+        style::kv(&mut out, sty, "Check mode", "true");
     }
     if args.json {
-        println!("  --json: true");
+        let _ = writeln!(out);
+        style::kv(&mut out, sty, "JSON output", "true");
     }
     if args.force_reinstall {
-        println!("  --force-reinstall: true");
+        style::kv(&mut out, sty, "Force reinstall", "true");
     }
     if let Some(v) = &args.version {
-        println!("  --version: {v}");
+        style::kv(&mut out, sty, "Version", v);
     }
     if args.canary {
-        println!("  --canary: true");
+        style::kv(&mut out, sty, "Channel", "canary");
     }
     if args.stable {
-        println!("  --stable: true");
+        style::kv(&mut out, sty, "Channel", "stable");
     }
+
+    print!("{out}");
     EXIT_SUCCESS
 }

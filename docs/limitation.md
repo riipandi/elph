@@ -35,8 +35,9 @@ malformed database schema (__turso_internal_fts_dir_idx_cg_chunks_fts_key) - nea
 **Impact:** read-only — the database is fully functional when opened by Turso (Elph
 runtime). Third-party SQLite tools cannot open it.
 
-**Workaround:** use `elph` CLI commands (`elph memory list`, `elph codegraph search`,
-etc.) instead of external SQLite tools.
+**Workaround:** use a libSQL-compatible GUI like [Dataflare](https://github.com/DataflareApp/Dataflare)
+instead of standard SQLite tools. Or use `elph` CLI commands (`elph memory list`,
+`elph codegraph search`, etc.) instead of external SQLite tools.
 
 ## Single-platform cross build
 

@@ -1,6 +1,7 @@
 use clap::Args;
 use elph_ai::builtin_models;
 
+use super::style::{self, CliStyle, S_ACCENT, S_BODY, S_MUTED};
 use crate::platform::{EXIT_SUCCESS, ExitCode};
 
 #[derive(Args, Default)]
@@ -15,8 +16,12 @@ pub struct ModelsArgs {
 }
 
 pub fn handle(args: &ModelsArgs) -> ExitCode {
+    let sty = CliStyle::auto();
     let models = builtin_models(None).into_arc();
     let query = args.search.as_deref().map(|s| s.to_ascii_lowercase());
+
+    let mut out = String::new();
+    let mut count = 0usize;
 
     for provider in models.get_providers() {
         if let Some(filter) = &args.provider
@@ -24,6 +29,7 @@ pub fn handle(args: &ModelsArgs) -> ExitCode {
         {
             continue;
         }
+        let mut provider_shown = false;
         for model in provider.get_models() {
             if let Some(q) = &query {
                 let hay = format!("{} {} {}", provider.id, model.id, model.name).to_ascii_lowercase();
@@ -31,9 +37,31 @@ pub fn handle(args: &ModelsArgs) -> ExitCode {
                     continue;
                 }
             }
-            println!("{}/{}  {}", provider.id, model.id, model.name);
+            if !provider_shown {
+                use std::fmt::Write;
+                let _ = writeln!(out);
+                style::section(&mut out, sty, &format!("Provider: {}", provider.id));
+                provider_shown = true;
+            }
+            use std::fmt::Write;
+            let _ = writeln!(
+                out,
+                "  {}  {}",
+                sty.paint(S_ACCENT, format!("{:<24}", model.id)),
+                sty.paint(S_MUTED, &model.name),
+            );
+            count += 1;
         }
     }
 
+    if count == 0 {
+        style::info(&mut out, sty, sty.paint(S_MUTED, "No models matched."));
+    } else {
+        use std::fmt::Write;
+        let _ = writeln!(out);
+        style::kv(&mut out, sty, "Total", format!("{count} models"));
+    }
+
+    print!("{out}");
     EXIT_SUCCESS
 }

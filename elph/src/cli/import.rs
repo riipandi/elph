@@ -1,6 +1,6 @@
 use clap::Args;
 
-use crate::cli::help;
+use super::style::{self, CliStyle, S_MUTED};
 use crate::platform::{EXIT_SUCCESS, ExitCode};
 
 #[derive(Args)]
@@ -19,11 +19,17 @@ pub struct ImportArgs {
 }
 
 pub fn handle(args: &ImportArgs) -> ExitCode {
-    help::unimplemented(&format!(
-        "Import — not yet implemented (file={}, list={}, json={})",
-        args.file.as_deref().unwrap_or("<none>"),
-        args.list,
-        args.json
-    ));
+    let sty = CliStyle::auto();
+    let mut out = String::new();
+    style::section(&mut out, sty, "Import");
+    style::info(&mut out, sty, sty.paint(S_MUTED, "Not yet implemented."));
+    style::kv(&mut out, sty, "File", args.file.as_deref().unwrap_or("<none>"));
+    if args.list {
+        style::kv(&mut out, sty, "List mode", "true");
+    }
+    if args.json {
+        style::kv(&mut out, sty, "JSON output", "true");
+    }
+    print!("{out}");
     EXIT_SUCCESS
 }

@@ -17,6 +17,7 @@ mod server;
 mod session;
 mod session_launch;
 mod stats;
+pub mod style;
 mod tools;
 mod update;
 pub mod version;
@@ -145,9 +146,9 @@ pub enum Commands {
     Extensions(ExtensionsArgs),
     /// Manage AI providers and credentials
     Provider(ProviderArgs),
-    /// Run a prompt non-interactively and exit
+    /// Run a prompt non-interactively (headless)
     Run(RunArgs),
-    /// Run the local Elph server (REST + WebSocket + web UI)
+    /// Run the Elph server (REST + WebSocket + web UI)
     Server(ServerArgs),
     /// List, search, or restore sessions
     Session(SessionArgs),

@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 
-use super::help;
+use super::style::{self, CliStyle, S_MUTED};
 use crate::platform::{EXIT_SUCCESS, ExitCode};
 
 #[derive(Parser, Default)]
@@ -38,31 +38,34 @@ pub enum WorktreeCommands {
 }
 
 pub fn handle(args: &WorktreeArgs) -> ExitCode {
+    let sty = CliStyle::auto();
     let Some(cmd) = &args.command else {
-        return help::print_subcommand_help::<WorktreeArgs>();
+        return super::help::print_subcommand_help::<WorktreeArgs>();
     };
+    let mut out = String::new();
+    style::section(&mut out, sty, "Worktree");
     match cmd {
         WorktreeCommands::List => {
-            help::unimplemented("Worktree list — not yet implemented");
-            EXIT_SUCCESS
+            style::info(&mut out, sty, sty.paint(S_MUTED, "Not yet implemented."));
         }
         WorktreeCommands::Show { id_or_path } => {
-            help::unimplemented(&format!("Worktree show — not yet implemented (id_or_path: {id_or_path})"));
-            EXIT_SUCCESS
+            style::info(&mut out, sty, sty.paint(S_MUTED, "Not yet implemented."));
+            style::kv(&mut out, sty, "Target", id_or_path);
         }
         WorktreeCommands::Rm { id_or_path, force } => {
-            help::unimplemented(&format!(
-                "Worktree rm — not yet implemented (id_or_path: {id_or_path}, force: {force})"
-            ));
-            EXIT_SUCCESS
+            style::info(&mut out, sty, sty.paint(S_MUTED, "Not yet implemented."));
+            style::kv(&mut out, sty, "Target", id_or_path);
+            if *force {
+                style::kv(&mut out, sty, "Force", "true");
+            }
         }
         WorktreeCommands::Gc => {
-            help::unimplemented("Worktree gc — not yet implemented");
-            EXIT_SUCCESS
+            style::info(&mut out, sty, sty.paint(S_MUTED, "Not yet implemented."));
         }
         WorktreeCommands::Db => {
-            help::unimplemented("Worktree db — not yet implemented");
-            EXIT_SUCCESS
+            style::info(&mut out, sty, sty.paint(S_MUTED, "Not yet implemented."));
         }
     }
+    print!("{out}");
+    EXIT_SUCCESS
 }

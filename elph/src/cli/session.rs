@@ -3,6 +3,7 @@ use std::env;
 use clap::{Parser, Subcommand};
 
 use super::help;
+use super::style::{self, CliStyle, S_ACCENT, S_BODY, S_MUTED, S_OK, S_TIP, S_WARN};
 use crate::agent::SessionManager;
 use crate::platform::{EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths};
 
@@ -45,7 +46,6 @@ pub fn handle(args: &SessionArgs) -> ExitCode {
             return EXIT_ERROR;
         }
     };
-    // Ensure platform schema (sessions/goals/…) exists before listing.
     if let Err(err) = crate::platform::ensure_datastore_blocking(&paths) {
         help::cli_error(format!("init datastore: {err}"));
         return EXIT_ERROR;
@@ -72,7 +72,9 @@ pub fn handle(args: &SessionArgs) -> ExitCode {
                 manager.delete(&meta).await
             }) {
                 Ok(()) => {
-                    println!("Deleted session {id}");
+                    let mut out = String::new();
+                    style::success(&mut out, CliStyle::auto(), format!("Deleted session {id}"));
+                    print!("{out}");
                     EXIT_SUCCESS
                 }
                 Err(err) => {
@@ -101,17 +103,34 @@ fn list_sessions(manager: &SessionManager, cwd: &std::path::Path, query: Option<
                 }
                 _ => sessions,
             };
+            let sty = CliStyle::auto();
+            let mut out = String::new();
             if sessions.is_empty() {
-                println!("No sessions found for {}", cwd.display());
+                style::info(&mut out, sty, sty.paint(S_MUTED, format!("No sessions found for {}", cwd.display())));
+                style::tip(&mut out, sty, "Sessions are created automatically when you start a conversation.");
             } else {
-                for meta in sessions {
-                    let name = meta.name.as_deref().unwrap_or("-");
-                    println!(
-                        "{}  created {}  updated {}  cwd={}  name={}",
-                        meta.id, meta.created_at, meta.updated_at, meta.cwd, name
+                style::section(&mut out, sty, &format!("Sessions ({})", sessions.len()));
+                use std::fmt::Write;
+                let _ = writeln!(out);
+                for meta in &sessions {
+                    let name = meta.name.as_deref().unwrap_or("(untitled)");
+                    let _ = writeln!(
+                        out,
+                        "  {}  {}",
+                        sty.paint(S_ACCENT, &meta.id[..8.min(meta.id.len())]),
+                        sty.paint(S_BODY, name),
+                    );
+                    let _ = writeln!(
+                        out,
+                        "   {}  created {}  ·  updated {}  ·  {}",
+                        sty.paint(S_MUTED, "·"),
+                        sty.paint(S_MUTED, &meta.created_at[..10]),
+                        sty.paint(S_MUTED, &meta.updated_at[..10]),
+                        sty.paint(S_MUTED, &meta.cwd),
                     );
                 }
             }
+            print!("{out}");
             EXIT_SUCCESS
         }
         Err(err) => {
