@@ -21,6 +21,10 @@ use super::template::coding_agent_engine;
 /// `preferred_chat_language` controls the language the AI uses for conversational
 /// responses in the transcript. Code, comments, and documentation remain in English
 /// regardless of this value. Pass an empty string to use the default (English).
+///
+/// `codegraph_enabled` mirrors the `codegraph.enabled` setting: when false, the
+/// `<codegraph>` guidance section is omitted even if `code_*` tool names leak into
+/// `tool_names` (defense-in-depth on top of the tool-name check).
 pub fn build_coding_system_prompt(
     cwd: &Path,
     resources: &AgentHarnessResources,
@@ -28,6 +32,7 @@ pub fn build_coding_system_prompt(
     agents_md: Option<&str>,
     mode: AgentMode,
     preferred_chat_language: impl Into<String>,
+    codegraph_enabled: bool,
 ) -> anyhow::Result<String> {
     let date = now_iso_timestamp().chars().take(10).collect::<String>();
     let shell_path = std::env::var("SHELL").ok();
@@ -59,7 +64,7 @@ pub fn build_coding_system_prompt(
     .with_active_tool_names(tool_names);
 
     let elph_context = ElphCodingPromptContext::new(&base_context);
-    let elph_context = if has_codegraph_tools(tool_names) {
+    let elph_context = if codegraph_enabled && has_codegraph_tools(tool_names) {
         elph_context.with_codegraph_tools(tool_names)
     } else {
         elph_context
@@ -88,6 +93,7 @@ mod tests {
             None,
             AgentMode::Build,
             "",
+            true,
         )
         .expect("prompt");
 
@@ -119,6 +125,7 @@ mod tests {
             None,
             AgentMode::Build,
             "",
+            true,
         )
         .expect("prompt");
 
@@ -137,10 +144,34 @@ mod tests {
             None,
             AgentMode::Build,
             "",
+            true,
         )
         .expect("prompt");
 
         assert!(!prompt.contains("<codegraph>"));
+    }
+
+    #[test]
+    fn coding_prompt_omits_codegraph_when_disabled_even_with_tools() {
+        // Defense-in-depth: `codegraph.enabled` false must hide the `<codegraph>`
+        // guidance section even if `code_*` tool names are present in the active
+        // tool list (they still appear in `<available_tools>`).
+        let prompt = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["read_file".into(), "code_search".into(), "code_impact".into()],
+            None,
+            AgentMode::Build,
+            "",
+            false,
+        )
+        .expect("prompt");
+
+        assert!(!prompt.contains("<codegraph>"));
+        assert!(!prompt.contains("code index"));
+        // Guidance that only exists inside the `<codegraph>` section must be gone.
+        assert!(!prompt.contains("blast radius"));
+        assert!(!prompt.contains("`code_search` first"));
     }
 
     #[test]
@@ -152,6 +183,7 @@ mod tests {
             None,
             AgentMode::Plan,
             "",
+            true,
         )
         .expect("prompt");
 
@@ -169,6 +201,7 @@ mod tests {
             None,
             AgentMode::Ask,
             "",
+            true,
         )
         .expect("prompt");
 
@@ -188,6 +221,7 @@ mod tests {
             None,
             AgentMode::Brave,
             "",
+            true,
         )
         .expect("prompt");
 
@@ -206,6 +240,7 @@ mod tests {
             None,
             AgentMode::Build,
             "",
+            true,
         )
         .expect("prompt");
 
@@ -222,6 +257,7 @@ mod tests {
             Some("Always run tests."),
             AgentMode::Build,
             "",
+            true,
         )
         .expect("prompt");
 
@@ -248,6 +284,7 @@ mod tests {
             None,
             AgentMode::Build,
             "",
+            true,
         )
         .expect("prompt");
 
@@ -270,6 +307,7 @@ mod tests {
             None,
             AgentMode::Build,
             "",
+            true,
         )
         .expect("prompt");
 
@@ -288,6 +326,7 @@ mod tests {
             Some("Always run tests."),
             AgentMode::Build,
             "indonesian",
+            true,
         )
         .expect("prompt");
 
@@ -326,6 +365,7 @@ mod tests {
             None,
             AgentMode::Build,
             "",
+            true,
         )
         .expect("prompt");
 
@@ -341,6 +381,7 @@ mod tests {
             None,
             AgentMode::Build,
             "",
+            true,
         )
         .expect("prompt");
         assert!(!without_subagents.contains("<subagents>"));
@@ -359,6 +400,7 @@ mod tests {
             None,
             AgentMode::Build,
             "",
+            true,
         )
         .expect("prompt");
 

@@ -56,6 +56,8 @@ pub struct CodingAgentSessionParams {
     pub preferred_chat_language: String,
     /// Settings `models.compactionModel` (`inherit` or `provider/model_id`).
     pub compaction_model_ref: String,
+    /// Whether `codegraph.enabled` is on — gates the `<codegraph>` prompt section.
+    pub codegraph_enabled: bool,
 }
 
 pub struct CodingAgentSession {
@@ -83,6 +85,8 @@ pub struct CodingAgentSession {
     preferred_chat_language: String,
     /// Settings `models.compactionModel` (`inherit` or `provider/model_id`).
     compaction_model_ref: String,
+    /// Whether `codegraph.enabled` is on — gates the `<codegraph>` prompt section.
+    codegraph_enabled: bool,
     /// Bounded retry counter for background auto-title generation
     /// (caps at [`SESSION_TITLE_MAX_ATTEMPTS`] per session instance).
     title_generation_attempts: Arc<AtomicU32>,
@@ -104,6 +108,7 @@ impl CodingAgentSession {
             title_model,
             preferred_chat_language,
             compaction_model_ref,
+            codegraph_enabled,
         } = params;
         let mut policy = AgentModePolicy::new(agent_mode);
         let mcp_slot = Arc::new(RwLock::new(mcp_registry));
@@ -129,6 +134,7 @@ impl CodingAgentSession {
             title_model,
             preferred_chat_language,
             compaction_model_ref,
+            codegraph_enabled,
             title_generation_attempts: Arc::new(AtomicU32::new(if already_named {
                 SESSION_TITLE_MAX_ATTEMPTS
             } else {
@@ -282,6 +288,7 @@ impl CodingAgentSession {
             agents_md.as_deref(),
             mode,
             &self.preferred_chat_language,
+            self.codegraph_enabled,
         )?;
         *self.system_prompt_cache.write() = Some(text.clone());
         Ok(text)

@@ -2,6 +2,7 @@
 //! Full build and purge are CLI-only.
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::{Context, Result};
 use elph_agent::{AgentTool, AgentToolResult};
@@ -9,7 +10,7 @@ use elph_ai::Tool;
 use serde_json::{Value, json};
 
 use super::store::open_store;
-use crate::platform::Paths;
+use crate::platform::{Paths, Settings};
 use floppy::SearchOptions;
 
 pub const CODEGRAPH_TOOL_NAMES: &[&str] = &["code_search", "code_impact", "code_status", "code_reindex"];
@@ -23,6 +24,33 @@ pub fn create_codegraph_tools(paths: Paths) -> Vec<AgentTool> {
         create_status_tool(Arc::clone(&paths)),
         create_reindex_tool(paths),
     ]
+}
+
+/// Per-call timeout for codegraph agent tools, from `codegraph.toolTimeoutMs`.
+///
+/// `0` disables the timeout. A timeout is not a hard failure — the tool returns
+/// an error result that tells the agent to fall back to `grep` / `read_file` /
+/// `shell_exec`, so a slow or blocked index never stalls the turn.
+fn codegraph_tool_timeout(paths: &Paths) -> Option<Duration> {
+    let ms = Settings::load(paths)
+        .map(|s| s.codegraph.tool_timeout_ms)
+        .unwrap_or(15_000);
+    if ms == 0 { None } else { Some(Duration::from_millis(ms)) }
+}
+
+/// Fallback guidance returned when a codegraph tool times out.
+fn timeout_result(tool: &str, timeout_ms: u64) -> AgentToolResult {
+    let text = format!(
+        "`{tool}` timed out after {timeout_ms}ms. The codegraph index may be busy or unavailable. \
+         Fall back to `grep` / `read_file` / `shell_exec` for this lookup instead."
+    );
+    AgentToolResult {
+        content: vec![elph_agent::ToolResultContent::Text(elph_ai::TextContent::new(text))],
+        details: json!({ "timedOut": true, "timeoutMs": timeout_ms }),
+        added_tool_names: None,
+        terminate: None,
+        usage: None,
+    }
 }
 
 fn create_search_tool(paths: Arc<Paths>) -> AgentTool {
@@ -53,9 +81,26 @@ fn create_search_tool(paths: Arc<Paths>) -> AgentTool {
         "code_search",
         move |_, args| {
             let paths = Arc::clone(&paths);
-            Box::pin(async move { execute_search(paths, args).await })
+            let timeout = codegraph_tool_timeout(&paths);
+            Box::pin(async move { run_with_timeout("code_search", timeout, execute_search(paths, args)).await })
         },
     )
+}
+
+/// Run a codegraph tool future under the configured timeout, returning a
+/// fallback error result on timeout instead of hanging the agent turn.
+async fn run_with_timeout(
+    tool: &'static str,
+    timeout: Option<Duration>,
+    fut: impl std::future::Future<Output = Result<AgentToolResult>>,
+) -> Result<AgentToolResult> {
+    match timeout {
+        Some(duration) => match tokio::time::timeout(duration, fut).await {
+            Ok(result) => result,
+            Err(_elapsed) => Ok(timeout_result(tool, duration.as_millis() as u64)),
+        },
+        None => fut.await,
+    }
 }
 
 async fn execute_search(paths: Arc<Paths>, args: Value) -> Result<AgentToolResult> {
@@ -163,7 +208,8 @@ fn create_impact_tool(paths: Arc<Paths>) -> AgentTool {
         "code_impact",
         move |_, args| {
             let paths = Arc::clone(&paths);
-            Box::pin(async move { execute_impact(paths, args).await })
+            let timeout = codegraph_tool_timeout(&paths);
+            Box::pin(async move { run_with_timeout("code_impact", timeout, execute_impact(paths, args)).await })
         },
     )
 }
@@ -238,7 +284,8 @@ fn create_status_tool(paths: Arc<Paths>) -> AgentTool {
         "code_status",
         move |_, _args| {
             let paths = Arc::clone(&paths);
-            Box::pin(async move { execute_status(paths).await })
+            let timeout = codegraph_tool_timeout(&paths);
+            Box::pin(async move { run_with_timeout("code_status", timeout, execute_status(paths)).await })
         },
     )
 }
@@ -288,7 +335,8 @@ fn create_reindex_tool(paths: Arc<Paths>) -> AgentTool {
         "code_reindex",
         move |_, _args| {
             let paths = Arc::clone(&paths);
-            Box::pin(async move { execute_reindex(paths).await })
+            let timeout = codegraph_tool_timeout(&paths);
+            Box::pin(async move { run_with_timeout("code_reindex", timeout, execute_reindex(paths)).await })
         },
     )
 }

@@ -31,7 +31,7 @@
 //!   },
 //!   "promptEncoding": null,
 //!   "memory": { ... },
-//!   "codegraph": { "enabled": false },
+//!   "codegraph": { "enabled": false, "toolTimeoutMs": 15000 },
 //!   "notifications": { ... },
 //!   "compaction": { ... }
 //! }
@@ -467,6 +467,11 @@ pub struct CodegraphSettings {
     /// Max concurrent DB connections for parallel writes (default: 4).
     #[serde(default = "default_codegraph_max_db_connections")]
     pub max_db_connections: usize,
+    /// Per-call timeout for agent `code_*` tools in milliseconds (default: 15000).
+    /// `0` disables the timeout. On timeout the tool returns an error and the
+    /// agent falls back to `grep` / `read_file` / `shell_exec`.
+    #[serde(default = "default_codegraph_tool_timeout_ms")]
+    pub tool_timeout_ms: u64,
 }
 
 fn default_codegraph_max_chunk_lines() -> u32 {
@@ -479,6 +484,10 @@ fn default_codegraph_max_file_bytes() -> u64 {
 
 fn default_codegraph_max_db_connections() -> usize {
     4
+}
+
+fn default_codegraph_tool_timeout_ms() -> u64 {
+    15_000
 }
 
 /// MCP client preferences (tool result cache retention).
@@ -1171,6 +1180,17 @@ mod tests {
         assert!(!s.codegraph.enabled);
         let decoded: CodegraphSettings = serde_json::from_str("{}").expect("parse");
         assert!(!decoded.enabled);
+        assert_eq!(decoded.tool_timeout_ms, 15_000);
+    }
+
+    #[test]
+    fn codegraph_tool_timeout_round_trip() {
+        let decoded: CodegraphSettings =
+            serde_json::from_str(r#"{"enabled": true, "toolTimeoutMs": 30000}"#).expect("parse");
+        assert!(decoded.enabled);
+        assert_eq!(decoded.tool_timeout_ms, 30_000);
+        let encoded = serde_json::to_string(&decoded).expect("serialize");
+        assert!(encoded.contains("\"toolTimeoutMs\":30000"));
     }
 
     #[test]

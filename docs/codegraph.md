@@ -64,16 +64,18 @@ No multi-repo, watch, serve, eval, postprocess, or visualize subcommands in v1.
         }
     },
     "codegraph": {
-        "enabled": false
+        "enabled": false,
+        "toolTimeoutMs": 15000
     }
 }
 ```
 
-| Key                      | Default         | Meaning                                     |
-| ------------------------ | --------------- | ------------------------------------------- |
-| `codegraph.enabled`      | `false`         | Register agent tools for the coding session |
-| `models.embed.model`     | `AllMiniLML6V2` | Local embedder (same as floppy memory)      |
-| `models.embed.quantized` | `true`          | Prefer quantized ONNX weights               |
+| Key                      | Default         | Meaning                                                                                     |
+| ------------------------ | --------------- | ------------------------------------------------------------------------------------------- |
+| `codegraph.enabled`      | `false`         | Register agent tools for the coding session                                                 |
+| `codegraph.toolTimeoutMs`| `15000`         | Per-call timeout (ms) for agent `code_*` tools; `0` disables. On timeout the tool returns an error and the agent falls back to `grep` / `read_file` / `shell_exec` |
+| `models.embed.model`     | `AllMiniLML6V2` | Local embedder (same as floppy memory)                                                      |
+| `models.embed.quantized` | `true`          | Prefer quantized ONNX weights                                                               |
 
 Enable agent indexing tools:
 
@@ -219,6 +221,10 @@ walk (ignore::WalkBuilder, gitignore)
   no-op on an already-fresh index). A true full rebuild is not yet wired.
 - **Agent tools are read-only** — `code_search`, `code_impact`, `code_status`, `code_reindex`
   (`code_reindex` = `update`). Build/purge remain CLI-only.
+- **Agent tool timeout** — each `code_*` call is bounded by `codegraph.toolTimeoutMs`
+  (default 15s, `0` disables). On timeout the tool returns a fallback error result telling
+  the agent to use `grep` / `read_file` / `shell_exec`; the index is an accelerator, not a
+  requirement, so a slow or blocked index never stalls the turn.
 
 ---
 

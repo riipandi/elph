@@ -29,6 +29,12 @@ pub fn coding_tool_exposure_policy() -> &'static ToolExposurePolicy {
             "ask_user_question".into(),
             "request_mode_change".into(),
             "list_available_tools".into(),
+            // Codegraph tools are read-only (search / impact / status / dirty reindex)
+            // and only registered when `codegraph.enabled` is true — safe in Plan/Ask.
+            "code_search".into(),
+            "code_impact".into(),
+            "code_status".into(),
+            "code_reindex".into(),
         ],
         ..ToolExposurePolicy::default()
     })
@@ -254,6 +260,48 @@ mod tests {
         let active = AgentModePolicy::active_tool_names_for_mode(AgentMode::Ask, &all, None);
         assert!(active.contains(&"read_file".to_string()));
         assert!(!active.contains(&"write_file".to_string()));
+    }
+
+    #[test]
+    fn ask_mode_includes_codegraph_tools() {
+        let all = vec![
+            "code_search".into(),
+            "code_impact".into(),
+            "code_status".into(),
+            "code_reindex".into(),
+            "write_file".into(),
+        ];
+        let active = AgentModePolicy::active_tool_names_for_mode(AgentMode::Ask, &all, None);
+        assert!(active.contains(&"code_search".to_string()));
+        assert!(active.contains(&"code_impact".to_string()));
+        assert!(active.contains(&"code_status".to_string()));
+        assert!(active.contains(&"code_reindex".to_string()));
+        assert!(!active.contains(&"write_file".to_string()));
+    }
+
+    #[test]
+    fn plan_mode_includes_codegraph_tools() {
+        let all = vec![
+            "code_search".into(),
+            "code_impact".into(),
+            "code_status".into(),
+            "code_reindex".into(),
+            "write_file".into(),
+        ];
+        let active = AgentModePolicy::active_tool_names_for_mode(AgentMode::Plan, &all, None);
+        assert!(active.contains(&"code_search".to_string()));
+        assert!(active.contains(&"code_impact".to_string()));
+        assert!(active.contains(&"code_status".to_string()));
+        assert!(active.contains(&"code_reindex".to_string()));
+        assert!(!active.contains(&"write_file".to_string()));
+    }
+
+    #[test]
+    fn codegraph_tools_do_not_require_approval_in_build_mode() {
+        let policy = AgentModePolicy::new(AgentMode::Build);
+        for name in ["code_search", "code_impact", "code_status", "code_reindex"] {
+            assert!(!policy.needs_approval(name), "{name} should not require approval");
+        }
     }
 
     #[test]

@@ -40,6 +40,7 @@ ${%- if codegraph.code_status %}
 ${%- if codegraph.code_reindex %}
 - After large multi-file refactors, call `${{ codegraph.code_reindex }}` (dirty update) if search results look stale.
   ${%- endif %}
+- If a codegraph tool times out or errors, fall back to `grep` / `read_file` / `shell_exec` for the lookup — the index is an accelerator, not a requirement.
 - Do not bulk-read the repo to rebuild an index yourself; indexing is a host feature.
 
 </codegraph>

@@ -159,6 +159,7 @@ pub async fn create_coding_session_with_events(
         .unwrap_or_default();
     let injected_memory = if ctx.is_empty() { None } else { Some(ctx) };
     let preferred_chat_language = options.settings.preferred_chat_language.clone();
+    let codegraph_enabled = options.settings.codegraph.enabled;
 
     let system_prompt = SystemPrompt::Dynamic(Arc::new(move |ctx| {
         let cwd = cwd.clone();
@@ -166,6 +167,7 @@ pub async fn create_coding_session_with_events(
         let mode_state = Arc::clone(&mode_for_prompt);
         let memory_section = injected_memory.clone();
         let preferred_chat_language = preferred_chat_language.clone();
+        let codegraph_enabled = codegraph_enabled;
         Box::pin(async move {
             let mode = *mode_state.lock().await;
             let tool_names: Vec<String> = ctx.active_tools.iter().map(|t| t.name().to_string()).collect();
@@ -176,6 +178,7 @@ pub async fn create_coding_session_with_events(
                 agents_md.as_deref(),
                 mode,
                 preferred_chat_language,
+                codegraph_enabled,
             )
             .unwrap_or_else(|error| {
                 log::warn!("coding system prompt render failed: {error}");
@@ -250,6 +253,7 @@ pub async fn create_coding_session_with_events(
         title_model: options.settings.models.session_title_model.clone(),
         preferred_chat_language: options.settings.preferred_chat_language.clone(),
         compaction_model_ref: options.settings.models.compaction_model.clone(),
+        codegraph_enabled: options.settings.codegraph.enabled,
     })
     .await?;
 
