@@ -170,9 +170,9 @@ pub fn embedding_dims(model: &ResolvedEmbeddingModel) -> u32 {
 /// requires models with PyTorch/safetensors weights. ONNX-only Q-variant models (`Xenova/`,
 /// `Qdrant/` repos) are not supported here — the `quantized` option is ignored for model resolution.
 ///
-/// **GPU Support:** Currently disabled due to embed_anything 0.7.1 dependency issues with candle-core.
-/// When upstream is fixed, enable the `embed-gpu` or `embed-cuda` features to use GPU acceleration.
-/// The `device` option is currently ignored (always CPU).
+/// **GPU Support:** Enable the `embed-gpu` feature for Apple Metal (macOS ARM64) or `embed-cuda` for
+/// NVIDIA CUDA (Linux/Windows). GPU is selected automatically at compile time via cargo features.
+/// The `device` option is currently ignored.
 #[cfg(feature = "embed")]
 pub fn create_embedder(options: EmbedOptions) -> anyhow::Result<EmbedFn> {
     use embed_anything::embeddings::embed::Embedder;
@@ -196,9 +196,9 @@ pub fn create_embedder(options: EmbedOptions) -> anyhow::Result<EmbedFn> {
         set_hf_home(dir);
     }
 
-    // GPU device support: when GPU features are enabled, Candle will use GPU automatically
+    // GPU device support: when GPU features are enabled, use candle-core's Device
     // For now, device selection is handled at compile time via cargo features
-    // TODO: When embed_anything 0.7.1 is fixed and GPU features work, enable device selection here
+    // The device option is currently ignored (always CPU) to avoid complexity
     let device = None;
 
     let embedder = Embedder::from_pretrained_hf(&hf_model_id, None, None, device, pooling)?;

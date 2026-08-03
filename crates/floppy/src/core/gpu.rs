@@ -62,11 +62,7 @@ fn detect_gpu_backend() -> GpuBackend {
     static DETECTED: OnceLock<GpuBackend> = OnceLock::new();
 
     *DETECTED.get_or_init(|| {
-        // GPU features are currently disabled due to embed_anything 0.7.1 dependency issues
-        // with candle-core. When upstream is fixed, uncomment the detection logic below.
-
-        /*
-        #[cfg(all(feature = "metal", target_os = "macos"))]
+        #[cfg(all(feature = "embed-gpu", target_os = "macos"))]
         {
             // Check for Apple Silicon (M1/M2/M3/M4)
             if is_apple_silicon() {
@@ -74,14 +70,13 @@ fn detect_gpu_backend() -> GpuBackend {
             }
         }
 
-        #[cfg(all(feature = "cuda", any(target_os = "linux", target_os = "windows")))]
+        #[cfg(all(feature = "embed-cuda", any(target_os = "linux", target_os = "windows")))]
         {
             // Check for NVIDIA GPU via nvidia-smi or CUDA libraries
             if has_nvidia_gpu() {
                 return GpuBackend::Cuda;
             }
         }
-        */
 
         GpuBackend::None
     })
@@ -99,9 +94,9 @@ fn is_apple_silicon() -> bool {
 #[allow(dead_code)]
 fn has_nvidia_gpu() -> bool {
     // Try to detect via CUDA libraries presence
-    // For now, we assume if embed_anything/cuda feature is compiled, CUDA is available
+    // For now, we assume if embed-cuda feature is compiled, CUDA is available
     // In production, you might want to check for nvidia-smi or CUDA libraries
-    cfg!(feature = "cuda")
+    cfg!(feature = "embed-cuda")
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "windows")))]

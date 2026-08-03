@@ -55,41 +55,51 @@ All changes are **additive** — no existing APIs are modified:
 - The terminal must support OSC 8 (iTerm2, Kitty, WezTerm, Alacritty, Windows Terminal,
   etc.) and the user needs to **Cmd+Click** (macOS) or **Ctrl+Click** (Linux/Windows).
 
-## GPU Support: Disabled due to embed_anything dependency issues
 
-GPU acceleration for embeddings is currently **disabled** due to a dependency conflict
-in `embed_anything` 0.7.1 with `candle-core`. The error occurs when enabling GPU features:
+## GPU Support: Available via feature flags
 
-```
-error: failed to select a version for the requirement `candle-kernels = "^0.11.0"`
-candidate versions found which didn't match: 0.9.2, 0.9.2-alpha.2, 0.9.2-alpha.1, ...
-```
+GPU acceleration for embeddings is now available via cargo features. candle-kernels 0.11.0 is available on crates.io, resolving the previous dependency conflict.
 
-### Current State
-
-- GPU detection infrastructure is implemented in `crates/floppy/src/core/gpu.rs`
-- Settings support `models.embed.gpu` field (default: `true`)
-- Memory and codegraph stores are ready to use GPU when enabled
-- GPU feature flags are defined but commented out in `crates/floppy/Cargo.toml`
-
-### Platform Support (when enabled)
+### Platform Support
 
 - **macOS ARM64** (Apple Silicon M1/M2/M3/M4): Uses Apple Metal via `embed-gpu` feature
 - **Linux/Windows with NVIDIA GPU**: Uses CUDA via `embed-cuda` feature
 - **Auto-detection**: `GpuConfig::detect()` checks OS and hardware availability
 
-### To Enable GPU (when upstream is fixed)
+### To Enable GPU
 
-1. Uncomment feature flags in `crates/floppy/Cargo.toml`:
-    ```toml
-    embed-gpu = ["embed", "embed_anything/metal"]
-    embed-cuda = ["embed", "embed_anything/cuda"]
-    ```
-2. Uncomment detection logic in `crates/floppy/src/core/gpu.rs`
-3. Enable device selection in `crates/floppy/src/core/embed.rs`
+Add GPU feature to your build:
 
-### Upstream Tracking
+```bash
+# For macOS ARM64 (Apple Silicon)
+cargo build --features embed-gpu
 
-- Issue: embed_anything dependency conflict with candle-core 0.11.0
-- Monitor: [embed_anything releases](https://crates.io/crates/embed_anything)
-- When a new version fixes the dependency, enable the GPU features.
+# For Linux/Windows with NVIDIA GPU
+cargo build --features embed-cuda
+```
+
+Or enable in `elph/Cargo.toml` dependency on floppy:
+```toml
+floppy = { path = "../crates/floppy", version = "0.0.1", features = ["full", "embed-gpu"] }
+# or
+floppy = { path = "../crates/floppy", version = "0.0.1", features = ["full", "embed-cuda"] }
+```
+
+### Settings Configuration
+
+Enable GPU in `settings.json`:
+```json
+{
+  "models": {
+    "embed": {
+      "gpu": true
+    }
+  }
+}
+```
+
+When `gpu: true`, the system auto-detects hardware and reports availability. Actual GPU usage depends on whether the appropriate cargo feature is enabled at build time.
+
+### Current Limitation
+
+GPU device selection is handled at **compile time** via cargo features, not at runtime. The `models.embed.gpu` setting can detect hardware but cannot switch between CPU/GPU dynamically. To use GPU, you must rebuild with the appropriate feature flag.

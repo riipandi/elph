@@ -299,7 +299,7 @@
                 "gpu": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Enable GPU acceleration when available (auto-detects Apple Metal on macOS ARM64, NVIDIA CUDA on Linux/Windows). NOTE: Currently disabled due to embed_anything dependency issues. When upstream is fixed, this will enable GPU acceleration."
+                    "description": "Enable GPU acceleration when available (auto-detects Apple Metal on macOS ARM64, NVIDIA CUDA on Linux/Windows). NOTE: GPU selection is compile-time via cargo features (embed-gpu or embed-cuda), not runtime. This setting enables detection but cannot switch CPU/GPU dynamically."
                 }
             }
         },
