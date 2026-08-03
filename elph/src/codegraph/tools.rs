@@ -12,6 +12,8 @@ use super::store::open_store;
 use crate::platform::Paths;
 use floppy::SearchOptions;
 
+pub const CODEGRAPH_TOOL_NAMES: &[&str] = &["code_search", "code_impact", "code_status", "code_reindex"];
+
 /// Create agent-facing codegraph tools (no build/purge).
 pub fn create_codegraph_tools(paths: Paths) -> Vec<AgentTool> {
     let paths = Arc::new(paths);

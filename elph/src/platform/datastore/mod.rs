@@ -3,11 +3,9 @@ use turso::Builder;
 
 use super::migrations;
 use super::paths::Paths;
-use elph_agent::{InitProgress, try_block_on};
+use elph_agent::try_block_on;
 use floppy::codegraph_migrations;
 use floppy::memory::migrations as memory_migrations;
-
-const DATASTORE_STEPS: u64 = 2;
 
 /// Lazily initialize the shared project database on first use.
 ///
@@ -20,8 +18,7 @@ const DATASTORE_STEPS: u64 = 2;
 pub async fn ensure(paths: &Paths) -> Result<()> {
     let store_db = paths.memory_db_path();
 
-    let progress = InitProgress::new(DATASTORE_STEPS).with_quiet_env("ELPH_QUIET");
-    progress.advance("Opening store database");
+    eprintln!("Opening store database");
 
     // Open one connection and apply all migration bands through it.
     let db = Builder::new_local(store_db.to_string_lossy().as_ref())
@@ -38,8 +35,7 @@ pub async fn ensure(paths: &Paths) -> Result<()> {
     memory_migrations::apply(&conn).await?;
     codegraph_migrations::apply(&conn).await?;
 
-    progress.advance("Databases ready");
-    progress.finish();
+    eprintln!("Databases ready");
     Ok(())
 }
 

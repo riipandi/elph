@@ -4,30 +4,25 @@ use crate::platform::scaffold::{
 };
 use crate::utils::path::AppPaths;
 use anyhow::Result;
-use elph_agent::InitProgress;
 use elph_agent::{ensure_dirs, try_block_on};
 
 use super::paths::Paths;
 
-const INIT_STEPS: u64 = 5;
 const APP_ID: &str = "elph";
 
 /// Scaffold required directories and default files for a fresh Elph home.
 pub async fn ensure(app_version: &str) -> Result<Paths> {
-    let progress = InitProgress::new(INIT_STEPS).with_quiet_env("ELPH_QUIET");
-    progress.advance("Resolving home directories");
+    eprintln!("Resolving home directories");
     let paths = Paths::resolve()?;
-    run_init_steps(&paths, app_version, &progress).await?;
-    progress.finish();
+    run_init_steps(&paths, app_version).await?;
+    eprintln!("Startup complete");
     Ok(paths)
 }
 
 /// Scaffold a specific home directory tree (useful in tests and custom setups).
 #[allow(dead_code)]
 pub async fn ensure_with_paths(paths: &Paths, app_version: &str) -> Result<()> {
-    let progress = InitProgress::new(INIT_STEPS).with_quiet_env("ELPH_QUIET");
-    run_init_steps(paths, app_version, &progress).await?;
-    progress.finish();
+    run_init_steps(paths, app_version).await?;
     Ok(())
 }
 
@@ -36,14 +31,14 @@ pub fn ensure_home_blocking(app_version: &str) -> Result<Paths> {
     try_block_on(ensure(app_version))?
 }
 
-async fn run_init_steps(paths: &Paths, app_version: &str, progress: &InitProgress) -> Result<()> {
-    progress.advance("Creating directories");
+async fn run_init_steps(paths: &Paths, app_version: &str) -> Result<()> {
+    eprintln!("Creating directories");
     ensure_home_dirs(paths)?;
 
-    progress.advance("Writing configuration");
+    eprintln!("Writing configuration");
     ensure_files(paths, app_version)?;
 
-    progress.advance("Unpacking provider catalogs");
+    eprintln!("Unpacking provider catalogs");
     let report = ProvidersUnpack::ensure(paths)?;
     if report.written > 0 {
         log::debug!(
@@ -57,7 +52,7 @@ async fn run_init_steps(paths: &Paths, app_version: &str, progress: &InitProgres
         log::warn!("provider catalog install: {err:#}");
     }
 
-    progress.advance("Unpacking bundled skills and user guide");
+    eprintln!("Unpacking bundled skills and user guide");
     let assets = BundledAssets::ensure(paths, APP_ID, app_version)?;
     if assets.written > 0 {
         log::debug!(

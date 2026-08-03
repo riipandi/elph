@@ -112,15 +112,13 @@ async fn main() -> anyhow::Result<()> {
                             ..
                         } => {
                             if let elph_ai::AssistantMessageEvent::TextDelta { delta, .. } = &*assistant_message_event {
-                                if !saw_delta.swap(true, Ordering::SeqCst) {
-                                }
+                                if !saw_delta.swap(true, Ordering::SeqCst) {}
                                 print!("{delta}");
                                 let _ = std::io::stdout().flush();
                             }
                         }
                         AgentEvent::ToolExecutionStart { tool_name, args, .. } => {
-                            if !saw_delta.load(Ordering::SeqCst) {
-                            }
+                            if !saw_delta.load(Ordering::SeqCst) {}
                             tool_calls.fetch_add(1, Ordering::SeqCst);
                             println!();
                             println!("🔧 Calling: {tool_name}");

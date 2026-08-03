@@ -244,8 +244,7 @@ pub async fn run_agent_prompt(agent: &Agent, prompt: &str, meta: &RunMeta<'_>) -
                         ..
                     } => {
                         if let elph_ai::AssistantMessageEvent::TextDelta { delta, .. } = &*assistant_message_event {
-                            if !saw_delta.swap(true, Ordering::SeqCst) {
-                            }
+                            if !saw_delta.swap(true, Ordering::SeqCst) {}
                             print!("{delta}");
                             let _ = std::io::stdout().flush();
                         }

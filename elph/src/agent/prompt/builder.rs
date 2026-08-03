@@ -12,6 +12,7 @@ use crate::types::AgentMode;
 use elph_agent::{AgentHarnessResources, PromptAssemblyMode, SystemPromptBuilder, SystemPromptTemplateContext};
 use elph_agent::{format_skills_for_system_prompt, now_iso_timestamp};
 
+use super::context::{ElphCodingPromptContext, has_codegraph_tools};
 use super::modes::{build_mode_section, mode_footer_slug};
 use super::template::coding_agent_engine;
 
@@ -40,7 +41,7 @@ pub fn build_coding_system_prompt(
 
     let preferred_chat_language: String = preferred_chat_language.into();
 
-    let context = SystemPromptTemplateContext {
+    let base_context = SystemPromptTemplateContext {
         persona: "You are Elph, an expert and intelligent coding agent. Complete the user's request end-to-end using the available context and tools."
             .to_string(),
         working_directory: Some(cwd.display().to_string()),
@@ -57,10 +58,17 @@ pub fn build_coding_system_prompt(
     }
     .with_active_tool_names(tool_names);
 
-    let coding_base = coding_agent_engine().render("coding_base", &context)?;
+    let elph_context = ElphCodingPromptContext::new(&base_context);
+    let elph_context = if has_codegraph_tools(tool_names) {
+        elph_context.with_codegraph_tools(tool_names)
+    } else {
+        elph_context
+    };
+
+    let coding_base = coding_agent_engine().render("coding_base", &elph_context)?;
     SystemPromptBuilder::new()
         .mode(PromptAssemblyMode::Extend)
-        .context(context)
+        .context(base_context)
         .domain_body(coding_base)
         .render()
         .map_err(Into::into)

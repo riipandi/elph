@@ -2,6 +2,7 @@
 
 mod agents_md;
 mod builder;
+mod context;
 mod modes;
 mod template;
 
