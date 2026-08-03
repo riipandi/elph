@@ -24,7 +24,6 @@ pub fn metadata_migrations() -> &'static [Migration] {
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     cwd TEXT,
-                    work_dir TEXT,
                     parent_session_id TEXT,
                     provider_id TEXT,
                     model_id TEXT,
@@ -36,7 +35,6 @@ pub fn metadata_migrations() -> &'static [Migration] {
                 ) STRICT;
                 CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(created_at);
                 CREATE INDEX IF NOT EXISTS idx_sessions_cwd ON sessions(cwd);
-                CREATE INDEX IF NOT EXISTS idx_sessions_work_dir ON sessions(work_dir);
                 CREATE INDEX IF NOT EXISTS idx_sessions_parent ON sessions(parent_session_id);",
         },
         Migration {

@@ -132,13 +132,13 @@ async fn open_migrated(db_path: &Path) -> Result<turso::Connection, SessionError
 async fn list_sessions(db_path: &Path, cwd: Option<&str>) -> Result<Vec<TursoSessionMetadata>, SessionError> {
     let conn = open_migrated(db_path).await?;
     let sql = if cwd.is_some() {
-        "SELECT id, created_at, updated_at, cwd, work_dir, parent_session_id,
+        "SELECT id, created_at, updated_at, cwd, parent_session_id,
                 provider_id, model_id, agent_mode, name
          FROM sessions
-         WHERE COALESCE(cwd, work_dir, '') = ?
+         WHERE cwd = ?
          ORDER BY updated_at DESC, created_at DESC"
     } else {
-        "SELECT id, created_at, updated_at, cwd, work_dir, parent_session_id,
+        "SELECT id, created_at, updated_at, cwd, parent_session_id,
                 provider_id, model_id, agent_mode, name
          FROM sessions
          ORDER BY updated_at DESC, created_at DESC"
@@ -208,17 +208,16 @@ fn row_to_metadata(row: &turso::Row, db_path: &str) -> Result<TursoSessionMetada
     let created_at: String = row.get(1).map_err(map_err)?;
     let updated_at: String = row.get(2).map_err(map_err).unwrap_or_else(|_| created_at.clone());
     let cwd: Option<String> = row.get(3).map_err(map_err)?;
-    let work_dir: Option<String> = row.get(4).map_err(map_err)?;
-    let parent_session_id: Option<String> = row.get(5).map_err(map_err)?;
-    let provider_id: Option<String> = row.get(6).map_err(map_err)?;
-    let model_id: Option<String> = row.get(7).map_err(map_err)?;
-    let agent_mode: Option<String> = row.get(8).map_err(map_err)?;
-    let name: Option<String> = row.get(9).map_err(map_err)?;
+    let parent_session_id: Option<String> = row.get(4).map_err(map_err)?;
+    let provider_id: Option<String> = row.get(5).map_err(map_err)?;
+    let model_id: Option<String> = row.get(6).map_err(map_err)?;
+    let agent_mode: Option<String> = row.get(7).map_err(map_err)?;
+    let name: Option<String> = row.get(8).map_err(map_err)?;
     Ok(TursoSessionMetadata {
         id,
         created_at,
         updated_at,
-        cwd: cwd.filter(|s| !s.is_empty()).or(work_dir).unwrap_or_default(),
+        cwd: cwd.filter(|s| !s.is_empty()).unwrap_or_default(),
         parent_session_id,
         provider_id,
         model_id,

@@ -98,14 +98,13 @@ impl TursoSessionStorage {
 
         conn.execute(
             "INSERT INTO sessions (
-                id, created_at, updated_at, cwd, work_dir, parent_session_id,
+                id, created_at, updated_at, cwd, parent_session_id,
                 provider_id, model_id, agent_mode, name, system_prompt, metadata, active_leaf_id
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)",
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)",
             turso::params![
                 session_id.as_str(),
                 created_at.as_str(),
                 created_at.as_str(),
-                cwd.as_str(),
                 cwd.as_str(),
                 options.parent_session_id.as_deref(),
                 options.provider_id.as_deref(),
@@ -237,7 +236,7 @@ async fn load_metadata(
 ) -> Result<TursoSessionMetadata, SessionError> {
     let mut rows = conn
         .query(
-            "SELECT created_at, updated_at, cwd, work_dir, parent_session_id,
+            "SELECT created_at, updated_at, cwd, parent_session_id,
                     provider_id, model_id, agent_mode, name
              FROM sessions WHERE id = ?",
             turso::params![session_id],
@@ -256,15 +255,14 @@ async fn load_metadata(
         .map_err(map_storage_error)
         .unwrap_or_else(|_| created_at.clone());
     let cwd: Option<String> = row.get(2).map_err(map_storage_error)?;
-    let work_dir: Option<String> = row.get(3).map_err(map_storage_error)?;
-    let parent_session_id: Option<String> = row.get(4).map_err(map_storage_error)?;
-    let provider_id: Option<String> = row.get(5).map_err(map_storage_error)?;
-    let model_id: Option<String> = row.get(6).map_err(map_storage_error)?;
-    let agent_mode: Option<String> = row.get(7).map_err(map_storage_error)?;
-    let name: Option<String> = row.get(8).map_err(map_storage_error)?;
+    let parent_session_id: Option<String> = row.get(3).map_err(map_storage_error)?;
+    let provider_id: Option<String> = row.get(4).map_err(map_storage_error)?;
+    let model_id: Option<String> = row.get(5).map_err(map_storage_error)?;
+    let agent_mode: Option<String> = row.get(6).map_err(map_storage_error)?;
+    let name: Option<String> = row.get(7).map_err(map_storage_error)?;
     while rows.next().await.map_err(map_storage_error)?.is_some() {}
 
-    let cwd = cwd.filter(|s| !s.is_empty()).or(work_dir).unwrap_or_default();
+    let cwd = cwd.filter(|s| !s.is_empty()).unwrap_or_default();
 
     Ok(TursoSessionMetadata {
         id: session_id.to_string(),
