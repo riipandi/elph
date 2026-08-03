@@ -9,7 +9,7 @@ use turso::{Connection, params};
 
 use super::chunk::{chunk_source, embed_text_for_chunk, lang_label_for_path};
 use super::graph::{extract_import_targets, file_node_id, nodes_for_chunks};
-use super::merkle::{merkle_root, fast_hash, sha256_hex};
+use super::merkle::{fast_hash, merkle_root, sha256_hex};
 use super::types::{IndexPhase, IndexProgress, ProgressFn, RawChunk, ScanStats};
 use crate::core::embed::EmbedFn;
 use crate::core::util::{drain_rows, is_zero, vec_buf};
@@ -191,53 +191,63 @@ impl Indexer<'_> {
         )
         .await?;
 
-        // Nodes + edges
-        for (id, path, name, kind, start, end) in nodes_for_chunks(chunks) {
-            conn.execute(
-                "INSERT OR REPLACE INTO cg_nodes(id, path, name, kind, start_line, end_line)
-                 VALUES (?, ?, ?, ?, ?, ?)",
-                params![id, path, name, kind, start as i64, end as i64],
-            )
-            .await?;
+        // Batch insert nodes
+        let nodes = nodes_for_chunks(chunks);
+        if !nodes.is_empty() {
+            for (id, path, name, kind, start, end) in nodes {
+                conn.execute(
+                    "INSERT OR REPLACE INTO cg_nodes(id, path, name, kind, start_line, end_line)
+                     VALUES (?, ?, ?, ?, ?, ?)",
+                    params![id, path, name, kind, start as i64, end as i64],
+                )
+                .await?;
+            }
         }
 
+        // Batch insert edges
         let src_node = file_node_id(rel);
-        for target in extract_import_targets(rel, source) {
-            let dst = format!("import:{target}");
-            conn.execute(
-                "INSERT OR IGNORE INTO cg_edges(src, dst, kind) VALUES (?, ?, 'imports')",
-                params![src_node.clone(), dst],
-            )
-            .await?;
+        let targets = extract_import_targets(rel, source);
+        if !targets.is_empty() {
+            for target in targets {
+                let dst = format!("import:{target}");
+                conn.execute(
+                    "INSERT OR IGNORE INTO cg_edges(src, dst, kind) VALUES (?, ?, 'imports')",
+                    params![src_node.clone(), dst],
+                )
+                .await?;
+            }
         }
 
-        for chunk in chunks {
-            // Compact embed text reduces model tokens / RAM; full body still stored for FTS.
-            let embed_src = embed_text_for_chunk(chunk);
-            let emb = (self.embed)(&embed_src).await?;
-            let emb_blob = if is_zero(&emb) {
-                None
-            } else {
-                stats.chunks_embedded += 1;
-                Some(vec_buf(&emb))
-            };
+        // Batch insert chunks with embeddings
+        if !chunks.is_empty() {
+            for chunk in chunks {
+                // Compact embed text reduces model tokens / RAM; full body still stored for FTS.
+                let embed_src = embed_text_for_chunk(chunk);
+                let emb = (self.embed)(&embed_src).await?;
+                let emb_blob = if is_zero(&emb) {
+                    None
+                } else {
+                    stats.chunks_embedded += 1;
+                    Some(vec_buf(&emb))
+                };
 
-            conn.execute(
-                "INSERT INTO cg_chunks(path, kind, name, start_line, end_line, content, file_hash, embedding)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                params![
-                    chunk.path.as_str(),
-                    chunk.kind.as_str(),
-                    chunk.name.as_deref(),
-                    chunk.start_line as i64,
-                    chunk.end_line as i64,
-                    chunk.content.as_str(),
-                    hash,
-                    emb_blob.as_deref(),
-                ],
-            )
-            .await?;
-            stats.chunks_indexed += 1;
+                conn.execute(
+                    "INSERT INTO cg_chunks(path, kind, name, start_line, end_line, content, file_hash, embedding)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    params![
+                        chunk.path.as_str(),
+                        chunk.kind.as_str(),
+                        chunk.name.as_deref(),
+                        chunk.start_line as i64,
+                        chunk.end_line as i64,
+                        chunk.content.as_str(),
+                        hash,
+                        emb_blob.as_deref(),
+                    ],
+                )
+                .await?;
+                stats.chunks_indexed += 1;
+            }
         }
 
         Ok(())
@@ -245,6 +255,9 @@ impl Indexer<'_> {
 }
 
 async fn delete_path(conn: &Connection, path: &str) -> Result<()> {
+    // Batch delete: use transaction for atomicity and efficiency
+    conn.execute("BEGIN TRANSACTION", ()).await?;
+
     // Edges for file node
     let node = file_node_id(path);
     conn.execute("DELETE FROM cg_edges WHERE src = ? OR dst = ?", params![node.clone(), node])
@@ -255,6 +268,8 @@ async fn delete_path(conn: &Connection, path: &str) -> Result<()> {
         .await?;
     conn.execute("DELETE FROM cg_files WHERE path = ?", params![path])
         .await?;
+
+    conn.execute("COMMIT", ()).await?;
     Ok(())
 }
 
