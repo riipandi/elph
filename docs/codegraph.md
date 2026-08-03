@@ -24,7 +24,7 @@ and co-locates storage with **floppy** memory in project `store.db`.
 | 7   | Graph v1        | **Minimal**: nodes from chunks, shallow edges (import heuristics), **impact BFS**; no multi-repo; no flows/communities/hub                                                  |
 | 8   | `ast-grep`      | **Chunking** via ast-grep; edges **heuristic/shallow**                                                                                                                      |
 | 9   | Chunk rules     | Top-level defs; **split if > 120 lines** (`max_chunk_lines`), max 48 chunks/file                                                                                            |
-| 10  | Retrieval       | **Hybrid**: keyword (FTS5 BM25 when available, else `LIKE`) + vector → RRF merge (K=60)                                                                                     |
+| 10  | Retrieval       | **Hybrid**: keyword (Turso-native FTS, Tantivy-backed, BM25) + vector → RRF merge (K=60)                                                                                    |
 | 11  | Freshness       | Explicit `build`/`update` + **dirty reindex on demand before search** (no fs watch in v1)                                                                                   |
 | 12  | Languages (AST) | **Tier-1:** Python, C, C++, Java, C#, JS, TS/TSX, Rust, Go, Elixir. **SQL:** text fallback (keyword/vector). **Tier-2** opt-in later. Unknown → text fallback               |
 | 13  | Embed model     | **Single shared MiniLM** via **`models.embed`** (`model`, `quantized`) for memory + codegraph                                                                               |
@@ -100,7 +100,7 @@ Skipped when: non-TTY, `ELPH_QUIET` / `CI`, `codegraph.enabled=false`, index alr
 
 ## Executive summary (architecture)
 
-- **Rust stack:** `ast-grep-core` + `ast-grep-language` (feature-gated grammars) + `turso` (`vector_distance_cos`; FTS5 unavailable on Turso → `LIKE` fallback) + shared floppy embedder.
+- **Rust stack:** `ast-grep-core` + `ast-grep-language` (feature-gated grammars) + `turso` (`vector_distance_cos`; Turso-native FTS via `CREATE INDEX ... USING fts`, Tantivy-backed) + shared floppy embedder.
 - **Floppy feature:** `codegraph` (optional; pulls parsers + walk/hash deps). Enable from Elph as `features = ["embed", "codegraph"]`.
 - **Schema namespace:** `cg_*` tables in the same `store.db` as memory.
 - **Incremental:** SHA-256 **per file**; re-parse/re-embed only when file hash changes.
@@ -192,7 +192,7 @@ walk (ignore::WalkBuilder, gitignore)
        store body capped (~6k chars); skip bulk json/yaml/toml fallback
        OR sql/md text fallback (minified → short digest only)
   → import-edge heuristics (regex) → cg_edges (file-level)
-  → embed compact text (path+kind+name+body ≤~1.8k chars); keyword search uses LIKE on stored body (FTS unavailable)
+  → embed compact text (path+kind+name+body ≤~1.8k chars); keyword search uses Turso-native FTS index (Tantivy-backed, BM25) on stored body
   → upsert cg_chunks + cg_nodes; update cg_files
   → drop paths gone from worktree
   → write Merkle root to cg_meta

@@ -24,7 +24,6 @@ pub async fn open_local_db(db_path: &str) -> Result<Database> {
         let build = Builder::new_local(db_path)
             .experimental_multiprocess_wal(true)
             .experimental_index_method(true)
-            .experimental_strict(true)
             .experimental_vacuum(true)
             .build()
             .await;

@@ -206,7 +206,7 @@ pub fn run(cli: &Cli) -> ExitCode {
         return completions::handle(args);
     }
 
-    let console_enabled = cli.command.is_some();
+    let console_enabled = false;
     let agent_builder = AgentBuilder::new(env!("CARGO_PKG_VERSION"))
         .env_prefix("ELPH")
         .app_name("elph")

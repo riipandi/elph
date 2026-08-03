@@ -6,14 +6,14 @@ Inspired by [memelord](https://github.com/glommer/memelord) (MIT License, Copyri
 
 ## Overview
 
-| Concern    | Approach                                                                                                       |
-| ---------- | -------------------------------------------------------------------------------------------------------------- |
-| Storage    | Turso embedded SQLite (`store.db`)                                                                             |
+| Concern    | Approach                                                                                     |
+| ---------- | -------------------------------------------------------------------------------------------- |
+| Storage    | Turso embedded SQLite (`store.db`)                                                           |
 | Retrieval  | **Hybrid**: keyword (Turso-native FTS, Tantivy-backed) + vector (`vector32`), decay-weighted |
-| Embeddings | Local ONNX (configurable model + cache)                                                                        |
-| Scoring    | Welford baseline + z-score task scoring, EMA weight updates                                                    |
-| IDs        | Kalid (time-sortable, 16 characters)                                                                           |
-| Migrations | Shared `app_migrations` ledger (`apply_set`); additive DDL; no `PRAGMA user_version`                           |
+| Embeddings | Local ONNX (configurable model + cache)                                                      |
+| Scoring    | Welford baseline + z-score task scoring, EMA weight updates                                  |
+| IDs        | Kalid (time-sortable, 16 characters)                                                         |
+| Migrations | Shared `app_migrations` ledger (`apply_set`); additive DDL; no `PRAGMA user_version`         |
 
 ### Lifecycle
 
@@ -25,7 +25,7 @@ Inspired by [memelord](https://github.com/glommer/memelord) (MIT License, Copyri
 ```
 ┌─────────────┐     start_task      ┌──────────────────┐
 │   Agent     │ ──────────────────► │  store.db       │
-│   session   │ ◄── top-k memories  │  (Turso + vec)   │
+│   session   │ ◄── top-k memories  │  (Turso + vec + FTS) │
 └─────────────┘     end_task        └──────────────────┘
        │              report              │
        └──────── corrections ─────────────┘
@@ -163,25 +163,25 @@ using the Turso-native FTS index on `memories.content` (migration V4).
 
 ### Query & maintenance
 
-| Operation               | Description                                            |
-| ----------------------- | ------------------------------------------------------ |
-| `get_status`            | Store statistics                                       |
-| `list_memories`         | Optional category filter                               |
-| `list_recent_memories`  | Recent memories (`limit`)                              |
-| `list_tasks`            | Recent tasks with retrievals                           |
-| `get_timeline`          | Merged event timeline                                  |
+| Operation               | Description                                                     |
+| ----------------------- | --------------------------------------------------------------- |
+| `get_status`            | Store statistics                                                |
+| `list_memories`         | Optional category filter                                        |
+| `list_recent_memories`  | Recent memories (`limit`)                                       |
+| `list_tasks`            | Recent tasks with retrievals                                    |
+| `get_timeline`          | Merged event timeline                                           |
 | `search_memories`       | Hybrid semantic keyword + vector search without creating a task |
-| `search`                | Full lifecycle search (creates task record)            |
-| `decay`                 | Apply decay + prune weak entries                       |
-| `consolidate_similar`   | Merge similar memories (max 10 merges, weight cap 2.5) |
-| `purge`                 | Delete below weight threshold                          |
-| `flush`                 | Delete all memories                                    |
-| `contradict_memory`     | Remove wrong memory, optionally store correction       |
-| `insert_raw_memory`     | Insert a raw memory with explicit category             |
-| `embed_pending`         | Backfill missing embeddings                            |
-| `clear_zero_embeddings` | Drop zero-length embedding blobs                       |
-| `penalize_memory`       | Scale a memory's weight down                           |
-| `get_top_by_weight`     | Highest-weight memories                                |
+| `search`                | Full lifecycle search (creates task record)                     |
+| `decay`                 | Apply decay + prune weak entries                                |
+| `consolidate_similar`   | Merge similar memories (max 10 merges, weight cap 2.5)          |
+| `purge`                 | Delete below weight threshold                                   |
+| `flush`                 | Delete all memories                                             |
+| `contradict_memory`     | Remove wrong memory, optionally store correction                |
+| `insert_raw_memory`     | Insert a raw memory with explicit category                      |
+| `embed_pending`         | Backfill missing embeddings                                     |
+| `clear_zero_embeddings` | Drop zero-length embedding blobs                                |
+| `penalize_memory`       | Scale a memory's weight down                                    |
+| `get_top_by_weight`     | Highest-weight memories                                         |
 
 ## CLI
 
