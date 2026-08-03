@@ -54,3 +54,42 @@ All changes are **additive** — no existing APIs are modified:
   by the application and the terminal never receives the event to activate the hyperlink.
 - The terminal must support OSC 8 (iTerm2, Kitty, WezTerm, Alacritty, Windows Terminal,
   etc.) and the user needs to **Cmd+Click** (macOS) or **Ctrl+Click** (Linux/Windows).
+
+## GPU Support: Disabled due to embed_anything dependency issues
+
+GPU acceleration for embeddings is currently **disabled** due to a dependency conflict
+in `embed_anything` 0.7.1 with `candle-core`. The error occurs when enabling GPU features:
+
+```
+error: failed to select a version for the requirement `candle-kernels = "^0.11.0"`
+candidate versions found which didn't match: 0.9.2, 0.9.2-alpha.2, 0.9.2-alpha.1, ...
+```
+
+### Current State
+
+- GPU detection infrastructure is implemented in `crates/floppy/src/core/gpu.rs`
+- Settings support `models.embed.gpu` field (default: `true`)
+- Memory and codegraph stores are ready to use GPU when enabled
+- GPU feature flags are defined but commented out in `crates/floppy/Cargo.toml`
+
+### Platform Support (when enabled)
+
+- **macOS ARM64** (Apple Silicon M1/M2/M3/M4): Uses Apple Metal via `embed-gpu` feature
+- **Linux/Windows with NVIDIA GPU**: Uses CUDA via `embed-cuda` feature
+- **Auto-detection**: `GpuConfig::detect()` checks OS and hardware availability
+
+### To Enable GPU (when upstream is fixed)
+
+1. Uncomment feature flags in `crates/floppy/Cargo.toml`:
+    ```toml
+    embed-gpu = ["embed", "embed_anything/metal"]
+    embed-cuda = ["embed", "embed_anything/cuda"]
+    ```
+2. Uncomment detection logic in `crates/floppy/src/core/gpu.rs`
+3. Enable device selection in `crates/floppy/src/core/embed.rs`
+
+### Upstream Tracking
+
+- Issue: embed_anything dependency conflict with candle-core 0.11.0
+- Monitor: [embed_anything releases](https://crates.io/crates/embed_anything)
+- When a new version fixes the dependency, enable the GPU features.

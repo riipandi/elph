@@ -44,6 +44,7 @@ pub use core::embed::{
     EMBEDDER_INIT_TIMEOUT, ResolvedEmbeddingModel, create_embedder_with_timeout, embedding_dims,
     resolve_embedding_model,
 };
+pub use core::gpu::{GpuBackend, GpuConfig};
 pub use core::migration::{FloppyMigration, apply_set};
 pub use core::paths::{DB_FILE_NAME, DEFAULT_DATA_DIR, FloppyPaths};
 pub use core::util::{DEFAULT_EMBEDDING_DIMS, VALID_EMBEDDING_BYTES, drain_rows, is_zero, vec_buf};

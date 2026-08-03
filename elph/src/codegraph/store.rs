@@ -2,7 +2,7 @@
 
 use anyhow::{Context, Result};
 use floppy::{
-    CodegraphConfig, CodegraphStore, DEFAULT_EMBEDDING_DIMS, EMBEDDER_INIT_TIMEOUT, EmbedOptions,
+    CodegraphConfig, CodegraphStore, DEFAULT_EMBEDDING_DIMS, EMBEDDER_INIT_TIMEOUT, EmbedOptions, GpuConfig,
     create_embedder_with_timeout, embedding_dims, noop_embedder, resolve_embedding_model,
 };
 
@@ -25,10 +25,16 @@ pub fn open_store(paths: &Paths, needs_embed: bool) -> Result<CodegraphStore> {
     let embed = if needs_embed {
         std::fs::create_dir_all(paths.models_dir())
             .with_context(|| format!("create {}", paths.models_dir().display()))?;
+
+        // Configure GPU based on user preference and hardware availability
+        let gpu_config = GpuConfig::with_preference(settings.models.embed.gpu);
+        let device = gpu_config.candle_device().map(|d| d.to_string());
+
         let options = EmbedOptions {
             model: Some(model_id),
             quantized: settings.models.embed.quantized,
             cache_dir: Some(paths.models_dir()),
+            device,
         };
         // Bounded: a blocked Hugging Face download must fail with a helpful
         // message instead of hanging the CLI at "Preparing embedder…".

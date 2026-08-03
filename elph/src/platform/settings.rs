@@ -285,6 +285,9 @@ pub struct EmbedSettings {
     /// Prefer quantized model weights when a `*Q` variant exists (default: true).
     #[serde(default = "default_embed_quantized")]
     pub quantized: bool,
+    /// Enable GPU acceleration when available (default: auto-detect).
+    #[serde(default = "default_embed_gpu")]
+    pub gpu: bool,
 }
 
 impl Default for EmbedSettings {
@@ -292,6 +295,7 @@ impl Default for EmbedSettings {
         Self {
             model: default_embed_model(),
             quantized: default_embed_quantized(),
+            gpu: default_embed_gpu(),
         }
     }
 }
@@ -886,6 +890,10 @@ fn default_embed_quantized() -> bool {
     true
 }
 
+fn default_embed_gpu() -> bool {
+    true
+}
+
 fn default_memory_top_k() -> u32 {
     8
 }
@@ -966,6 +974,7 @@ mod tests {
         assert_eq!(settings, decoded);
         assert_eq!(decoded.models.embed.model, EmbedModel::AllMiniLML6V2);
         assert!(decoded.models.embed.quantized);
+        assert!(decoded.models.embed.gpu);
         assert!(!decoded.codegraph.enabled);
         assert!(decoded.models.default_model.is_none());
         assert_eq!(decoded.models.session_title_model, "inherit");
@@ -1104,6 +1113,7 @@ mod tests {
         assert_eq!(loaded.memory.top_k, 8);
         assert_eq!(loaded.memory.context_budget_chars, 4000);
         assert_eq!(loaded.memory.min_query_length, 8);
+        assert!(loaded.models.embed.gpu);
     }
 
     #[test]

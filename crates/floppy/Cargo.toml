@@ -22,7 +22,12 @@ default = ["memory"]
 # Task-scoped agent memory (memelord-compatible design).
 memory = []
 # Local ONNX / Candle embeddings via embed_anything.
-embed = ["dep:embed_anything"]
+embed = ["dep:embed_anything", "embed_anything/accelerate"]
+# GPU acceleration (optional, requires matching hardware):
+# NOTE: GPU features disabled due to embed_anything 0.7.1 dependency issues with candle-core.
+# When upstream is fixed, uncomment these features:
+# embed-gpu = ["embed", "embed_anything/metal"]
+# embed-cuda = ["embed", "embed_anything/cuda"]
 # Semantic codebase index (ast-grep chunking + FTS/vector). Optional; heavy.
 codegraph = [
   "dep:ast-grep-core",

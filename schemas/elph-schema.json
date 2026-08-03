@@ -295,6 +295,11 @@
                     "type": "boolean",
                     "default": true,
                     "description": "Prefer quantized ONNX weights when a *Q variant exists."
+                },
+                "gpu": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable GPU acceleration when available (auto-detects Apple Metal on macOS ARM64, NVIDIA CUDA on Linux/Windows). NOTE: Currently disabled due to embed_anything dependency issues. When upstream is fixed, this will enable GPU acceleration."
                 }
             }
         },

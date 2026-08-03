@@ -47,6 +47,9 @@ pub struct EmbedOptions {
     pub model: Option<String>,
     /// Hugging Face cache directory (sets `HF_HOME` during embedder init).
     pub cache_dir: Option<PathBuf>,
+    /// GPU device for Candle backend (currently ignored due to embed_anything 0.7.1 dependency issues).
+    /// When upstream is fixed, use: None=CPU, Some("metal")=Apple Metal, Some("cuda:0")=NVIDIA CUDA.
+    pub device: Option<String>,
 }
 
 impl Default for EmbedOptions {
@@ -55,6 +58,7 @@ impl Default for EmbedOptions {
             quantized: true,
             model: None,
             cache_dir: None,
+            device: None,
         }
     }
 }
@@ -72,6 +76,11 @@ impl EmbedOptions {
 
     pub fn quantized(mut self, quantized: bool) -> Self {
         self.quantized = quantized;
+        self
+    }
+
+    pub fn device(mut self, device: impl Into<String>) -> Self {
+        self.device = Some(device.into());
         self
     }
 }
@@ -160,6 +169,10 @@ pub fn embedding_dims(model: &ResolvedEmbeddingModel) -> u32 {
 /// **Note:** This function uses `embed_anything`'s Candle-based `from_pretrained_hf` path, which
 /// requires models with PyTorch/safetensors weights. ONNX-only Q-variant models (`Xenova/`,
 /// `Qdrant/` repos) are not supported here — the `quantized` option is ignored for model resolution.
+///
+/// **GPU Support:** Currently disabled due to embed_anything 0.7.1 dependency issues with candle-core.
+/// When upstream is fixed, enable the `embed-gpu` or `embed-cuda` features to use GPU acceleration.
+/// The `device` option is currently ignored (always CPU).
 #[cfg(feature = "embed")]
 pub fn create_embedder(options: EmbedOptions) -> anyhow::Result<EmbedFn> {
     use embed_anything::embeddings::embed::Embedder;
@@ -183,7 +196,12 @@ pub fn create_embedder(options: EmbedOptions) -> anyhow::Result<EmbedFn> {
         set_hf_home(dir);
     }
 
-    let embedder = Embedder::from_pretrained_hf(&hf_model_id, None, None, None, pooling)?;
+    // GPU device support: when GPU features are enabled, Candle will use GPU automatically
+    // For now, device selection is handled at compile time via cargo features
+    // TODO: When embed_anything 0.7.1 is fixed and GPU features work, enable device selection here
+    let device = None;
+
+    let embedder = Embedder::from_pretrained_hf(&hf_model_id, None, None, device, pooling)?;
 
     let shared = Arc::new(embedder);
     Ok(Arc::new(move |text: &str| {
