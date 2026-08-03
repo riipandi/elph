@@ -303,24 +303,6 @@ impl std::fmt::Display for GpuAcceleration {
     }
 }
 
-/// Custom deserializer for backward compatibility: accepts both bool and string.
-fn deserialize_gpu_acceleration<'de, D>(deserializer: D) -> Result<GpuAcceleration, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let value = Value::deserialize(deserializer)?;
-    match value {
-        Value::Bool(b) => Ok(if b { GpuAcceleration::Auto } else { GpuAcceleration::Off }),
-        Value::String(s) => match s.as_str() {
-            "on" => Ok(GpuAcceleration::On),
-            "off" => Ok(GpuAcceleration::Off),
-            "auto" => Ok(GpuAcceleration::Auto),
-            _ => Err(serde::de::Error::custom(format!("invalid gpuAcceleration value: {}", s))),
-        },
-        _ => Err(serde::de::Error::custom("expected bool or string for gpuAcceleration")),
-    }
-}
-
 /// Local embedding model for vector search (memory + codegraph).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -332,11 +314,7 @@ pub struct EmbedSettings {
     #[serde(default = "default_embed_quantized")]
     pub quantized: bool,
     /// GPU acceleration mode: on (always), off (never), auto (detect, default).
-    #[serde(
-        default = "default_gpu_acceleration",
-        deserialize_with = "deserialize_gpu_acceleration",
-        alias = "gpu"
-    )]
+    #[serde(default = "default_gpu_acceleration")]
     pub gpu_acceleration: GpuAcceleration,
 }
 
@@ -1190,64 +1168,6 @@ mod tests {
         assert!(!settings.models.embed.quantized);
         assert!(settings.memory.enabled);
         assert!(!settings.codegraph.enabled);
-    }
-
-    #[test]
-    fn migrate_gpu_bool_to_gpu_acceleration() {
-        // Test legacy bool true -> auto
-        let value = serde_json::json!({
-            "models": {
-                "embed": {
-                    "gpu": true
-                }
-            }
-        });
-        let settings: Settings = serde_json::from_value(value).expect("parse");
-        assert_eq!(settings.models.embed.gpu_acceleration, GpuAcceleration::Auto);
-
-        // Test legacy bool false -> off
-        let value = serde_json::json!({
-            "models": {
-                "embed": {
-                    "gpu": false
-                }
-            }
-        });
-        let settings: Settings = serde_json::from_value(value).expect("parse");
-        assert_eq!(settings.models.embed.gpu_acceleration, GpuAcceleration::Off);
-
-        // Test new enum value "on"
-        let value = serde_json::json!({
-            "models": {
-                "embed": {
-                    "gpuAcceleration": "on"
-                }
-            }
-        });
-        let settings: Settings = serde_json::from_value(value).expect("parse");
-        assert_eq!(settings.models.embed.gpu_acceleration, GpuAcceleration::On);
-
-        // Test new enum value "off"
-        let value = serde_json::json!({
-            "models": {
-                "embed": {
-                    "gpuAcceleration": "off"
-                }
-            }
-        });
-        let settings: Settings = serde_json::from_value(value).expect("parse");
-        assert_eq!(settings.models.embed.gpu_acceleration, GpuAcceleration::Off);
-
-        // Test new enum value "auto"
-        let value = serde_json::json!({
-            "models": {
-                "embed": {
-                    "gpuAcceleration": "auto"
-                }
-            }
-        });
-        let settings: Settings = serde_json::from_value(value).expect("parse");
-        assert_eq!(settings.models.embed.gpu_acceleration, GpuAcceleration::Auto);
     }
 
     #[test]
