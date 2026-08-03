@@ -40,6 +40,7 @@ async fn open_local_with_retry(path: &Path) -> Result<Database> {
     loop {
         let build = Builder::new_local(&path.to_string_lossy())
             .experimental_multiprocess_wal(true)
+            .experimental_index_method(true)
             .build()
             .await;
         match build {

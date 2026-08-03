@@ -1,4 +1,4 @@
-//! Platform session manager backed by Turso (`APP_DATA/metadata.db`).
+//! Platform session manager backed by Turso (`.elph/store.db`).
 
 use crate::utils::path::AppPaths;
 use anyhow::{Context, Result};
@@ -21,7 +21,7 @@ pub struct SessionManager {
 impl SessionManager {
     pub fn new(paths: &Paths, cwd: &Path) -> Result<Self> {
         Ok(Self {
-            repo: TursoSessionRepo::new(paths.metadata_db_path()),
+            repo: TursoSessionRepo::new(paths.memory_db_path()),
             cwd: normalize_cwd(cwd),
             data_dir: paths.data_dir().clone(),
         })

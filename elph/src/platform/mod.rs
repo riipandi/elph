@@ -7,7 +7,7 @@ pub mod exit_message;
 mod hooks;
 mod interrupt;
 pub mod mcp;
-mod migrations;
+pub mod migrations;
 pub mod paths;
 mod project;
 pub mod scaffold;

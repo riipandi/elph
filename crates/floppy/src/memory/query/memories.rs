@@ -103,34 +103,12 @@ impl MemoryStore {
         self.init().await?;
         let embedding = (self.embed_fn())(query).await?;
         let emb_buf = vec_buf(&embedding);
-        let sql = self.retrieval_sql();
         let decay_rate = self.decay_rate();
-        let top_k = self.top_k();
         let now = crate::memory::store::now_secs();
 
         self.with_db(move |conn| async move {
-            let mut rows = conn
-                .query(
-                    sql.as_ref(),
-                    params![emb_buf.as_slice(), emb_buf.as_slice(), decay_rate, now, top_k],
-                )
-                .await?;
-
-            let mut mems = Vec::new();
-            while let Some(row) = rows.next().await? {
-                let distance: f64 = row.get(6)?;
-                mems.push(Memory {
-                    id: row.get(0)?,
-                    content: row.get(1)?,
-                    category: category_from_str(&row.get::<String>(2)?),
-                    weight: row.get(3)?,
-                    score: 1.0 - distance,
-                    created_at: row.get(4)?,
-                    retrieval_count: row.get(5)?,
-                });
-            }
-            drain_rows(&mut rows).await?;
-            Ok(mems)
+            self.hybrid_retrieve(&conn, query, emb_buf.as_slice(), decay_rate, now)
+                .await
         })
         .await
     }

@@ -1,20 +1,22 @@
 use anyhow::Result;
 
 use super::migrations;
-use super::paths::{AppPaths, Paths};
+use super::paths::Paths;
 use elph_agent::{DatabaseSpec, InitProgress};
 use elph_agent::{ensure_databases_once, try_block_on};
 
 const DATASTORE_STEPS: u64 = 2;
 
-/// Lazily initialize local databases on first use.
+/// Lazily initialize the shared project database on first use.
 ///
-/// Only the metadata DB is initialized here. The memory DB (`.elph/store.db`)
-/// is opened by `floppy::MemoryStore::init()` which handles its own schema.
+/// The store DB (`.elph/store.db`) hosts the platform schema band via
+/// `metadata_migrations()`. Floppy (memory/codegraph) bands are applied by
+/// `floppy::MemoryStore` / codegraph indexing through the same `app_migrations`
+/// ledger; only the platform band is applied here.
 pub async fn ensure(paths: &Paths) -> Result<()> {
-    let metadata_db = paths.metadata_db_path();
+    let store_db = paths.memory_db_path();
     let specs = [DatabaseSpec {
-        path: &metadata_db,
+        path: &store_db,
         migrations: migrations::metadata_migrations(),
     }];
 
@@ -22,7 +24,7 @@ pub async fn ensure(paths: &Paths) -> Result<()> {
     // Two observable phases instead of a bar that is instantly full: opening the
     // SQLite connection (incl. stale shared-memory cleanup) and applying
     // migrations. The elapsed-time ticker shows the step is alive while blocked.
-    progress.advance("Opening metadata database");
+    progress.advance("Opening store database");
 
     match ensure_databases_once(&specs).await {
         Ok(_) => {
@@ -41,14 +43,14 @@ pub async fn ensure(paths: &Paths) -> Result<()> {
                     • Stale shared memory files from a previous crash\n\
                     • Another process holding the database lock\n\
                     • Corrupted database file\n\n\
-                    Try: rm ~/.local/share/elph/metadata.db*",
+                    Try: rm .elph/store.db* (in the project directory)",
                     error_msg
                 );
             } else if error_msg.contains("locked") || error_msg.contains("busy") {
                 anyhow::bail!(
                     "{}\n\nAnother process may be using the database.\n\
                     If no other elph instance is running, try:\n\
-                    rm ~/.local/share/elph/metadata.db*",
+                    rm .elph/store.db* (in the project directory)",
                     error_msg
                 );
             } else {

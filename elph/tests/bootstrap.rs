@@ -22,9 +22,10 @@ async fn ensure_creates_full_home() {
     assert!(paths.bundled_manifest_path().exists());
 
     platform::datastore::ensure(&paths).await.expect("ensure datastore");
-    // Goals + platform metadata share metadata.db; path must remain APP_DATA/metadata.db.
-    assert!(paths.metadata_db_path().exists());
-    // Memory DB is lazily opened by MemoryStore::init(), not by ensure_datastore.
+    // Goals, platform schema, and sessions share the project store DB
+    // (`.elph/store.db`); ensure() creates the file with the platform band.
+    assert!(paths.memory_db_path().exists());
+    // Floppy memory/codegraph bands are applied lazily by MemoryStore/indexing.
     assert!(paths.project_elph_dir().exists());
     assert!(paths.project_gitignore_path().exists());
     assert!(paths.bundled_dir().join("agents").is_dir());

@@ -426,9 +426,10 @@ pub async fn purge_all(conn: &Connection) -> Result<()> {
     conn.execute("DELETE FROM cg_nodes", ()).await?;
     conn.execute("DELETE FROM cg_chunks", ()).await?;
     conn.execute("DELETE FROM cg_files", ()).await?;
-    conn.execute("DELETE FROM cg_meta", ()).await?;
-    // Rebuild empty FTS if present
-    let _ = conn.execute("INSERT INTO cg_fts(cg_fts) VALUES('rebuild')", ()).await;
+    // Keep capability flags: Turso FTS indexes self-maintain on INSERT/DELETE,
+    // so there is no external rebuild step; only drop the rest of cg_meta.
+    conn.execute("DELETE FROM cg_meta WHERE key != 'fts_available'", ())
+        .await?;
     Ok(())
 }
 

@@ -55,7 +55,6 @@ mod tests {
             data_dir: PathBuf::from("/data"),
         };
 
-        assert_eq!(paths.metadata_db_path(), PathBuf::from("/data/metadata.db"));
         assert_eq!(paths.bundled_manifest_path(), PathBuf::from("/cfg/bundled/manifest.json"));
         assert_eq!(paths.agents_dir(), PathBuf::from("/cfg/agents"));
         assert_eq!(paths.host_mcp_cache_dir(), PathBuf::from("/data/mcp_cache"));

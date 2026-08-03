@@ -91,7 +91,7 @@ impl Paths {
     }
 
     /// Derive session artifact dir from a Turso session's `db_path` + `id`
-    /// (`{parent of metadata.db}/sessions/{session_id}`).
+    /// (`{parent of store.db}/sessions/{session_id}`).
     pub fn session_artifact_dir_from_db(db_path: &std::path::Path, session_id: &str) -> PathBuf {
         let data_dir = db_path.parent().unwrap_or_else(|| std::path::Path::new("."));
         data_dir.join("sessions").join(session_id)
@@ -161,7 +161,6 @@ mod tests {
         let project = tmp.path().join("repo");
         let paths = Paths::from_dirs(config.clone(), data.clone(), project.clone());
 
-        assert_eq!(paths.metadata_db_path(), data.join("metadata.db"));
         assert_eq!(paths.memory_db_path(), project.join(".elph/store.db"));
         assert_eq!(paths.transcript_db_path(), project.join(".elph/metadata.db"));
         assert_eq!(paths.project_gitignore_path(), project.join(".elph/.gitignore"));

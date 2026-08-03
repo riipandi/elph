@@ -9,7 +9,7 @@ Inspired by [memelord](https://github.com/glommer/memelord) (MIT License, Copyri
 | Concern    | Approach                                                                                                       |
 | ---------- | -------------------------------------------------------------------------------------------------------------- |
 | Storage    | Turso embedded SQLite (`store.db`)                                                                             |
-| Retrieval  | Vector (`vector32`; dims match embed), decay-weighted; keyword via `LIKE` fallback (FTS5 unavailable on Turso) |
+| Retrieval  | **Hybrid**: keyword (Turso-native FTS, Tantivy-backed) + vector (`vector32`), decay-weighted |
 | Embeddings | Local ONNX (configurable model + cache)                                                                        |
 | Scoring    | Welford baseline + z-score task scoring, EMA weight updates                                                    |
 | IDs        | Kalid (time-sortable, 16 characters)                                                                           |
@@ -72,8 +72,11 @@ First semantic search downloads from Hugging Face; later runs reuse the cache. T
 | `memory_retrievals` | Per (memory, task): similarity, self-report, credit   |
 | `meta`              | Key-value (e.g. Welford baseline JSON)                |
 
-Keyword search falls back to `LIKE` on `memories.content` — the planned FTS5 index
-(`memories_fts`, migration V4) is not implemented.
+Keyword search uses the Turso-native FTS index (`idx_memories_fts`, Tantivy-backed on
+`memories.content`), applied by migration V4. The index is auto-maintained by Turso on
+insert/update/delete. When `experimental_index_method` is not enabled, the FTS migration
+is skipped and `fts_available = 0` is recorded in `meta` — keyword search falls back to
+vector-only retrieval.
 
 ### Categories
 
@@ -124,8 +127,12 @@ up orphaned `memory_retrievals` rows.
 
 ### Retrieval
 
-Retrieval is vector-only: cosine similarity over `memories.embedding`, weighted by a decay
-factor on the elapsed days since the memory was last retrieved (`retrieval_sql`):
+Retrieval is hybrid: vector cosine similarity over `memories.embedding`, weighted by a decay
+factor on the elapsed days since the memory was last retrieved, **plus** keyword search
+through the Turso-native FTS index (Tantivy-backed, migration V4) when available. The FTS
+pass surfaces exact keyword matches the vector search may have missed. Hits without embeddings
+(e.g. pending/truncated embeddings at keyword-match time) get a rank-based synthetic score in
+[0.35, 0.55]; hits with embeddings use their real cosine similarity:
 
 ```sql
 SELECT id, content, category, weight, created_at, retrieval_count,
@@ -141,8 +148,8 @@ LIMIT ?
 
 The bound parameters are `decay_rate`, current time in seconds, and `top_k`; memories that
 have not been retrieved recently are boosted, keeping stale entries from crowding out fresh
-context. There is no keyword branch in recall — `search_memories` is read-only and does not
-create a task record.
+context. The keyword path (hybrid) adds exact-match hits the vector search may have missed,
+using the Turso-native FTS index on `memories.content` (migration V4).
 
 ## Agent integration API
 
@@ -163,7 +170,7 @@ create a task record.
 | `list_recent_memories`  | Recent memories (`limit`)                              |
 | `list_tasks`            | Recent tasks with retrievals                           |
 | `get_timeline`          | Merged event timeline                                  |
-| `search_memories`       | Semantic search without creating a task                |
+| `search_memories`       | Hybrid semantic keyword + vector search without creating a task |
 | `search`                | Full lifecycle search (creates task record)            |
 | `decay`                 | Apply decay + prune weak entries                       |
 | `consolidate_similar`   | Merge similar memories (max 10 merges, weight cap 2.5) |
@@ -237,6 +244,7 @@ Embeddings are fixed-size blobs for `vector32` queries. Changing to a model with
 | 1       | Core schema (`memories`, `tasks`, `memory_retrievals`, `meta`, all STRICT)               |
 | 2       | Fix truncated embedding blobs (reset short embeddings)                                   |
 | 3       | Query indexes (`idx_memories_*`, `idx_memory_retrievals_*`, partial pending-embed index) |
+| 4       | Turso-native FTS index on `memories.content` (`CREATE INDEX ... USING fts`)              |
 
 Migrations run through the shared `app_migrations` ledger (`apply_set` in
 `floppy::core::migration`) — per-version membership, applied once, no `PRAGMA user_version`.

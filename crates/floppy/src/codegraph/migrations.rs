@@ -57,35 +57,9 @@ CREATE TABLE IF NOT EXISTS cg_meta (
 ) STRICT
 "#;
 
-pub const CG_V501_NAME: &str = "codegraph_fts5";
+pub const CG_V501_NAME: &str = "codegraph_fts";
 pub const CG_V501_UP: &str = r#"
-CREATE VIRTUAL TABLE IF NOT EXISTS cg_fts USING fts5(
-    content,
-    path,
-    name,
-    kind,
-    content='cg_chunks',
-    content_rowid='id',
-    tokenize='unicode61'
-);
-
-CREATE TRIGGER IF NOT EXISTS cg_chunks_ai AFTER INSERT ON cg_chunks BEGIN
-  INSERT INTO cg_fts(rowid, content, path, name, kind)
-  VALUES (new.id, new.content, new.path, COALESCE(new.name, ''), new.kind);
-END;
-
-CREATE TRIGGER IF NOT EXISTS cg_chunks_ad AFTER DELETE ON cg_chunks BEGIN
-  INSERT INTO cg_fts(cg_fts, rowid, content, path, name, kind)
-  VALUES('delete', old.id, old.content, old.path, COALESCE(old.name, ''), old.kind);
-END;
-
-CREATE TRIGGER IF NOT EXISTS cg_chunks_au AFTER UPDATE ON cg_chunks BEGIN
-  INSERT INTO cg_fts(cg_fts, rowid, content, path, name, kind)
-  VALUES('delete', old.id, old.content, old.path, COALESCE(old.name, ''), old.kind);
-  INSERT INTO cg_fts(rowid, content, path, name, kind)
-  VALUES (new.id, new.content, new.path, COALESCE(new.name, ''), new.kind);
-END
-"#;
+CREATE INDEX IF NOT EXISTS idx_cg_chunks_fts ON cg_chunks USING fts (content, path, name, kind)"#;
 
 #[allow(dead_code)]
 pub const LAST_VERSION: i64 = 501;
@@ -104,13 +78,20 @@ pub const MIGRATIONS: &[FloppyMigration] = &[
 ];
 
 /// Apply codegraph migrations (500+). Safe alongside floppy memory migrations.
+///
+/// The Turso-native FTS index (`CREATE INDEX ... USING fts`, Tantivy-backed)
+/// requires the `experimental_index_method` builder flag; on builds without it
+/// the FTS migration fails and we fall back to the base schema, recording
+/// `fts_available = 0` in `cg_meta` so callers can skip keyword search.
 pub async fn apply(conn: &Connection) -> Result<()> {
-    // FTS setup can fail on some builds; try full set, fall back to base schema only.
     match apply_set(conn, MIGRATIONS).await {
-        Ok(()) => Ok(()),
+        Ok(()) => {
+            set_meta(conn, "fts_available", "1").await?;
+            Ok(())
+        }
         Err(e) => {
             let msg = e.to_string().to_ascii_lowercase();
-            if msg.contains("fts") || msg.contains("virtual") {
+            if msg.contains("fts") || msg.contains("index method") {
                 apply_set(conn, &MIGRATIONS[..1]).await?;
                 set_meta(conn, "fts_available", "0").await?;
                 Ok(())
@@ -131,12 +112,66 @@ async fn set_meta(conn: &Connection, key: &str, value: &str) -> Result<()> {
     Ok(())
 }
 
-#[allow(dead_code)]
+/// Whether the Turso-native FTS index is present, as recorded in `cg_meta`
+/// by [`apply`]. A missing key means migrations never ran (treated as no FTS).
 pub async fn fts_available(conn: &Connection) -> Result<bool> {
     let mut rows = conn
-        .query("SELECT name FROM sqlite_master WHERE type='table' AND name='cg_fts'", ())
+        .query("SELECT value FROM cg_meta WHERE key = 'fts_available'", ())
         .await?;
-    let found = rows.next().await?.is_some();
+    let value = if let Some(row) = rows.next().await? {
+        row.get::<String>(0)?
+    } else {
+        String::new()
+    };
     drain_rows(&mut rows).await?;
-    Ok(found)
+    Ok(value == "1")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use turso::Builder;
+
+    async fn conn_with(index_method: bool) -> Connection {
+        let db = Builder::new_local(":memory:")
+            .experimental_index_method(index_method)
+            .build()
+            .await
+            .expect("build");
+        db.connect().expect("connect")
+    }
+
+    async fn versions(conn: &Connection) -> Vec<i64> {
+        let mut rows = conn
+            .query("SELECT version FROM app_migrations ORDER BY version", ())
+            .await
+            .expect("ledger");
+        let mut out = Vec::new();
+        while let Some(row) = rows.next().await.expect("row") {
+            out.push(row.get::<i64>(0).expect("version"));
+        }
+        out
+    }
+
+    #[tokio::test]
+    async fn apply_with_index_method_enables_fts() {
+        let conn = conn_with(true).await;
+        apply(&conn).await.expect("apply");
+        assert!(fts_available(&conn).await.expect("fts flag"));
+        assert_eq!(versions(&conn).await, vec![500, 501]);
+    }
+
+    #[tokio::test]
+    async fn apply_falls_back_to_base_schema_without_index_method() {
+        let conn = conn_with(false).await;
+        apply(&conn).await.expect("apply fallback");
+        assert!(!fts_available(&conn).await.expect("fts flag"));
+        // Base schema applied, FTS migration skipped.
+        assert_eq!(versions(&conn).await, vec![500]);
+        let mut rows = conn
+            .query("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'cg_chunks'", ())
+            .await
+            .expect("tables");
+        assert!(rows.next().await.expect("row").is_some());
+    }
 }

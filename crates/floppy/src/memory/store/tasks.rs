@@ -6,10 +6,7 @@ use super::{MemoryStore, SelfReportRow, WeightUpdate};
 use super::{batch_set_weights, fetch_weights, new_id, now_secs, touch_retrieved_memories};
 use crate::core::util::{drain_rows, vec_buf};
 use crate::memory::scoring::{compute_credit, compute_task_score, initial_weight, update_baseline, update_weight};
-use crate::memory::types::{
-    Memory, MemoryCategory, ReportCorrectionInput, ReportUserInput, StartTaskResult, TaskEndInput,
-};
-use crate::memory::util::category_from_str;
+use crate::memory::types::{MemoryCategory, ReportCorrectionInput, ReportUserInput, StartTaskResult, TaskEndInput};
 
 impl MemoryStore {
     pub async fn start_task(&self, description: &str) -> Result<StartTaskResult> {
@@ -22,9 +19,7 @@ impl MemoryStore {
         self.embed_pending().await?;
 
         let decay_rate = self.decay_rate;
-        let top_k = self.top_k;
         let emb_buf = vec_buf(&task_embedding);
-        let retrieval_sql = self.retrieval_sql();
         let task_id_clone = task_id.clone();
         let description = description.to_string();
 
@@ -36,27 +31,9 @@ impl MemoryStore {
                 )
                 .await?;
 
-                let mut rows = conn
-                    .query(
-                        retrieval_sql.as_ref(),
-                        params![emb_buf.as_slice(), emb_buf.as_slice(), decay_rate, now, top_k],
-                    )
+                let mems = self
+                    .hybrid_retrieve(&conn, &description, emb_buf.as_slice(), decay_rate, now)
                     .await?;
-
-                let mut mems = Vec::new();
-                while let Some(row) = rows.next().await? {
-                    let distance: f64 = row.get(6)?;
-                    mems.push(Memory {
-                        id: row.get(0)?,
-                        content: row.get(1)?,
-                        category: category_from_str(&row.get::<String>(2)?),
-                        weight: row.get(3)?,
-                        score: 1.0 - distance,
-                        created_at: row.get(4)?,
-                        retrieval_count: row.get(5)?,
-                    });
-                }
-                drain_rows(&mut rows).await?;
 
                 for mem in &mems {
                     conn.execute(

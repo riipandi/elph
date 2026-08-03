@@ -6,7 +6,7 @@ mod chunk;
 mod graph;
 mod index;
 mod merkle;
-mod migrations;
+pub mod migrations;
 mod search;
 mod store;
 mod types;

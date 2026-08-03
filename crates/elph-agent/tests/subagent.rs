@@ -58,7 +58,7 @@ async fn spawn_and_list_subagents_with_turso_sessions() {
 
     let bootstrap = SubagentBootstrap {
         cwd: temp.path().to_string_lossy().to_string(),
-        metadata_db_path: graph_db.to_string_lossy().to_string(),
+        store_db_path: graph_db.to_string_lossy().to_string(),
         resources: AgentHarnessResources::default(),
         stream_options: AgentHarnessStreamOptions::default(),
         thinking_level: Default::default(),

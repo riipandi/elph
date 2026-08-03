@@ -1,43 +1,46 @@
 use elph_agent::Migration;
-use floppy::migrations::{V1_NAME, V1_UP, V2_NAME, V2_UP, V3_NAME, V3_UP};
 
+/// Platform schema migrations, applied into the shared `.elph/store.db` ledger.
+///
+/// Version bands: floppy memory 1–99, elph-agent session tree 100, **platform
+/// 101–199**, floppy codegraph 500–599. All bands share one `app_migrations`
+/// table, so platform versions must not collide with other bands.
+///
+/// The legacy user-level `metadata.db` (versions 1–8) is orphaned: sessions are
+/// project-scoped now, and the platform schema below is renumbered and reshaped
+/// to fully idempotent DDL (`CREATE ... IF NOT EXISTS`, no `ALTER TABLE`). That
+/// makes application order irrelevant: the session-tree migration (v100) may
+/// create `sessions`/`session_entries`/`session_sequences` first and these
+/// migrations become no-ops, or vice versa. The dual-model `messages` chat log
+/// (old v2, dropped by old v8) is not recreated.
 pub fn metadata_migrations() -> &'static [Migration] {
     &[
         Migration {
-            version: 1,
+            version: 101,
             name: "create_sessions_table",
+            // Mirrors elph-agent `SESSION_TREE_SCHEMA_SQL` so v100 and v101 agree.
             up: "CREATE TABLE IF NOT EXISTS sessions (
                     id TEXT PRIMARY KEY,
-                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    cwd TEXT,
                     work_dir TEXT,
+                    parent_session_id TEXT,
                     provider_id TEXT,
                     model_id TEXT,
                     agent_mode TEXT DEFAULT 'build',
+                    name TEXT,
                     system_prompt TEXT,
-                    metadata TEXT
+                    metadata TEXT,
+                    active_leaf_id TEXT
                 ) STRICT;
                 CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(created_at);
-                CREATE INDEX IF NOT EXISTS idx_sessions_work_dir ON sessions(work_dir);",
+                CREATE INDEX IF NOT EXISTS idx_sessions_cwd ON sessions(cwd);
+                CREATE INDEX IF NOT EXISTS idx_sessions_work_dir ON sessions(work_dir);
+                CREATE INDEX IF NOT EXISTS idx_sessions_parent ON sessions(parent_session_id);",
         },
         Migration {
-            version: 2,
-            name: "create_messages_table",
-            up: "CREATE TABLE IF NOT EXISTS messages (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    session_id TEXT NOT NULL,
-                    role TEXT NOT NULL,
-                    content TEXT,
-                    tool_call_id TEXT,
-                    tool_calls TEXT,
-                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
-                ) STRICT;
-                CREATE INDEX IF NOT EXISTS idx_messages_session_id ON messages(session_id);
-                CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);",
-        },
-        Migration {
-            version: 3,
+            version: 102,
             name: "create_todos_table",
             up: "CREATE TABLE IF NOT EXISTS todos (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,7 +56,7 @@ pub fn metadata_migrations() -> &'static [Migration] {
                 CREATE INDEX IF NOT EXISTS idx_todos_position ON todos(session_id, position);",
         },
         Migration {
-            version: 4,
+            version: 103,
             name: "create_goals_table",
             up: "CREATE TABLE IF NOT EXISTS goals (
                     id TEXT PRIMARY KEY,
@@ -75,7 +78,7 @@ pub fn metadata_migrations() -> &'static [Migration] {
                 CREATE INDEX IF NOT EXISTS idx_goals_status ON goals(status);",
         },
         Migration {
-            version: 5,
+            version: 104,
             name: "create_skill_cache_table",
             up: "CREATE TABLE IF NOT EXISTS skill_cache (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -89,10 +92,10 @@ pub fn metadata_migrations() -> &'static [Migration] {
                 CREATE INDEX IF NOT EXISTS idx_skill_cache_name ON skill_cache(skill_name);
                 CREATE INDEX IF NOT EXISTS idx_skill_cache_expires ON skill_cache(expires_at);",
         },
-        // v6 (add_goal_id_column) intentionally deleted — goal_id is no longer a separate column.
-        // The prefixed Kalid `goal_<16>` now serves as the primary key `id`.
+        // Old v6 (add_goal_id_column) intentionally not renumbered — goal_id is
+        // no longer a separate column. The prefixed Kalid `goal_<16>` is the PK.
         Migration {
-            version: 7,
+            version: 105,
             name: "create_agent_spawn_edges_table",
             up: "CREATE TABLE IF NOT EXISTS agent_spawn_edges (
                     parent_session_id TEXT NOT NULL,
@@ -106,24 +109,13 @@ pub fn metadata_migrations() -> &'static [Migration] {
                 CREATE INDEX IF NOT EXISTS idx_agent_spawn_parent ON agent_spawn_edges(parent_session_id);
                 CREATE INDEX IF NOT EXISTS idx_agent_spawn_path ON agent_spawn_edges(agent_path);",
         },
-        // Pi-aligned session tree (sqlite-node). Goals table (v4) and spawn edges (v7)
-        // are unchanged — only session index/tree tables evolve here.
+        // Pi-aligned session tree (sqlite-node): entries + sequences only.
+        // Idempotent: mirrors elph-agent `SESSION_TREE_SCHEMA_SQL`; no ALTERs,
+        // no DROP of the legacy `messages` table (never recreated).
         Migration {
-            version: 8,
+            version: 106,
             name: "session_tree_pi_schema",
-            up: r#"
-                -- Projected columns for list UI / leaf pointer (no-op if already present after wipe).
-                ALTER TABLE sessions ADD COLUMN cwd TEXT;
-                ALTER TABLE sessions ADD COLUMN parent_session_id TEXT;
-                ALTER TABLE sessions ADD COLUMN active_leaf_id TEXT;
-                ALTER TABLE sessions ADD COLUMN name TEXT;
-
-                UPDATE sessions SET cwd = work_dir WHERE cwd IS NULL AND work_dir IS NOT NULL;
-
-                CREATE INDEX IF NOT EXISTS idx_sessions_cwd ON sessions(cwd);
-                CREATE INDEX IF NOT EXISTS idx_sessions_parent ON sessions(parent_session_id);
-
-                CREATE TABLE IF NOT EXISTS session_entries (
+            up: "CREATE TABLE IF NOT EXISTS session_entries (
                     session_id TEXT NOT NULL,
                     id TEXT NOT NULL,
                     entry_seq INTEGER NOT NULL,
@@ -143,61 +135,23 @@ pub fn metadata_migrations() -> &'static [Migration] {
                 CREATE TABLE IF NOT EXISTS session_sequences (
                     session_id TEXT PRIMARY KEY,
                     next_seq INTEGER NOT NULL
-                ) STRICT;
-
-                -- Dual-model chat log never had writers; tree is source of truth.
-                DROP TABLE IF EXISTS messages;
-            "#,
+                ) STRICT;",
         },
     ]
-}
-
-/// Project-local memory store (`.elph/store.db`).
-///
-/// Composed from floppy schema migrations (ported from
-/// [memelord](https://github.com/glommer/memelord)); append Elph-specific entries with
-/// `version > migrations::LAST_VERSION`.
-#[allow(dead_code)]
-pub fn memory_migrations() -> &'static [Migration] {
-    const MIGRATIONS: &[Migration] = &[
-        Migration {
-            version: 1,
-            name: V1_NAME,
-            up: V1_UP,
-        },
-        Migration {
-            version: 2,
-            name: V2_NAME,
-            up: V2_UP,
-        },
-        Migration {
-            version: 3,
-            name: V3_NAME,
-            up: V3_UP,
-        },
-    ];
-    MIGRATIONS
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use elph_agent::{GoalStore, TursoSessionRepo, TursoSessionRepoCreateOptions, ensure_database};
-    use floppy::migrations;
-
-    #[test]
-    fn memory_migrations_track_floppy_versions() {
-        assert_eq!(memory_migrations().len(), migrations::MIGRATIONS.len());
-        assert_eq!(memory_migrations().last().map(|m| m.version), Some(migrations::LAST_VERSION));
-    }
 
     #[test]
     fn platform_migrations_end_at_session_tree() {
         let last = metadata_migrations().last().expect("migrations");
-        assert_eq!(last.version, 8);
+        assert_eq!(last.version, 106);
         assert_eq!(last.name, "session_tree_pi_schema");
         // Goals migration still present and unchanged in sequence.
-        let goals = metadata_migrations().iter().find(|m| m.version == 4).expect("goals");
+        let goals = metadata_migrations().iter().find(|m| m.version == 103).expect("goals");
         assert_eq!(goals.name, "create_goals_table");
         assert!(goals.up.contains("CREATE TABLE IF NOT EXISTS goals"));
     }
@@ -205,7 +159,7 @@ mod tests {
     #[tokio::test]
     async fn platform_metadata_db_supports_sessions_and_goals() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let db = tmp.path().join("metadata.db");
+        let db = tmp.path().join("store.db");
         ensure_database(&db, metadata_migrations()).await.expect("migrate");
 
         let repo = TursoSessionRepo::new(&db);

@@ -169,10 +169,10 @@ CREATE TABLE IF NOT EXISTS cg_meta (
 ) STRICT;
 ```
 
-Migration **501** would add a `cg_fts` virtual table (SQLite FTS5) plus external-content
-triggers to keep it in sync on chunk insert/update/delete. On Turso the FTS5 DDL fails, so
-the migration is skipped and `cg_meta.fts_available` is set to `"0"` — keyword search falls
-back to `LIKE` (see [Hybrid search](#hybrid-search)).
+Migration **501** creates a Turso-native FTS index on `cg_chunks` (via `CREATE INDEX ... USING fts`
+on columns `content, path, name, kind`). The index is auto-maintained by Turso on insert/update/delete.
+On builds without `experimental_index_method`, the FTS migration fails and `cg_meta.fts_available`
+is set to `"0"` — keyword search falls back to the vector path only (see [Hybrid search](#hybrid-search)).
 
 Migration band for codegraph DDL: **500+** in the shared `app_migrations` ledger (applied via
 `apply_set`, alongside floppy memory 1–99). Schema version is tracked per-migration in the
@@ -203,8 +203,8 @@ walk (ignore::WalkBuilder, gitignore)
 ## Hybrid search
 
 1. Optionally dirty-reindex files whose hash changed (`refresh_dirty`).
-2. Keyword over `cg_chunks` — FTS5 BM25 when `fts_available=1` and `cg_fts` exists, otherwise
-   `LIKE` on `content`/`path`/`name` → top-k₁.
+2. Keyword over `cg_chunks` — Turso-native FTS BM25 when `fts_available=1`, otherwise
+   vector-only (no `LIKE` fallback) → top-k₁.
 3. Vector cosine over `cg_chunks.embedding` (`vector_distance_cos`, 384 dims) → top-k₂.
 4. Merge via **reciprocal rank fusion** (RRF, K=60); hits present in both paths merge with
    `source="both"`.
@@ -217,10 +217,6 @@ walk (ignore::WalkBuilder, gitignore)
 - **`build` ≡ `update`** — the CLI passes `full=true` for `build`, but `Indexer::scan` ignores
   the flag (`let _ = full;`), so `build` behaves exactly like `update` (hash-skip makes it a
   no-op on an already-fresh index). A true full rebuild is not yet wired.
-- **FTS is off on Turso** — the FTS5 virtual-table migration (501) cannot run on Turso, so
-  keyword search uses the `LIKE` fallback (`fts_available=0`). Enabling BM25 keyword search
-  would require Turso-native FTS (`CREATE INDEX ... USING fts`, Tantivy-backed) instead of
-  SQLite FTS5 syntax.
 - **Agent tools are read-only** — `code_search`, `code_impact`, `code_status`, `code_reindex`
   (`code_reindex` = `update`). Build/purge remain CLI-only.
 

@@ -7,6 +7,7 @@ use turso::{Connection, params};
 use super::migrations::fts_available;
 use super::types::{ChunkHit, ImpactNode, SearchOptions};
 use crate::core::embed::EmbedFn;
+use crate::core::fts::sanitize_query;
 use crate::core::util::{drain_rows, is_zero, vec_buf};
 
 const RRF_K: f64 = 60.0;
@@ -17,23 +18,20 @@ pub async fn hybrid_search(conn: &Connection, embed: &EmbedFn, opts: &SearchOpti
 
     let mut ranks: HashMap<i64, (f64, ChunkHit)> = HashMap::new();
 
-    // FTS path
+    // FTS path (Turso Tantivy). `SELECT * ... WHERE fts_match(cols, ?1)` is
+    // routed through Tantivy and returns rows in BM25-descending order, which
+    // is exactly the ranking RRF needs — no score column required.
     if fts_available(conn).await.unwrap_or(false) {
-        let fts_q = sanitize_fts_query(&opts.query);
+        let fts_q = sanitize_query(&opts.query);
         if !fts_q.is_empty() {
-            let sql = format!(
-                "SELECT c.id, c.path, c.kind, c.name, c.start_line, c.end_line, c.content,
-                        bm25(cg_fts) AS rank
-                 FROM cg_fts
-                 JOIN cg_chunks c ON c.id = cg_fts.rowid
-                 WHERE cg_fts MATCH ?
-                 ORDER BY rank
-                 LIMIT {cand}"
-            );
+            let sql = "SELECT * FROM cg_chunks WHERE fts_match(content, path, name, kind, ?1)".to_string();
             if let Ok(mut rows) = conn.query(&sql, params![fts_q.as_str()]).await {
                 let mut i = 0usize;
                 while let Some(row) = rows.next().await? {
                     i += 1;
+                    if i > cand {
+                        break;
+                    }
                     let id: i64 = row.get(0)?;
                     let rrf = 1.0 / (RRF_K + i as f64);
                     let hit = row_to_hit(&row, rrf, "fts")?;
@@ -50,29 +48,6 @@ pub async fn hybrid_search(conn: &Connection, embed: &EmbedFn, opts: &SearchOpti
                 }
                 drain_rows(&mut rows).await?;
             }
-        }
-    } else {
-        // LIKE fallback
-        let like = format!("%{}%", opts.query.replace(['%', '_'], ""));
-        let sql = format!(
-            "SELECT id, path, kind, name, start_line, end_line, content, 0.0
-             FROM cg_chunks
-             WHERE content LIKE ? OR path LIKE ? OR IFNULL(name,'') LIKE ?
-             LIMIT {cand}"
-        );
-        if let Ok(mut rows) = conn
-            .query(&sql, params![like.as_str(), like.as_str(), like.as_str()])
-            .await
-        {
-            let mut i = 0usize;
-            while let Some(row) = rows.next().await? {
-                i += 1;
-                let id: i64 = row.get(0)?;
-                let rrf = 1.0 / (RRF_K + i as f64);
-                let hit = row_to_hit(&row, rrf, "like")?;
-                ranks.insert(id, (rrf, hit));
-            }
-            drain_rows(&mut rows).await?;
         }
     }
 
@@ -100,7 +75,7 @@ pub async fn hybrid_search(conn: &Connection, embed: &EmbedFn, opts: &SearchOpti
                     .and_modify(|(s, h)| {
                         *s += rrf;
                         h.score = *s;
-                        if h.source == "fts" || h.source == "like" {
+                        if h.source == "fts" {
                             h.source = "both".into();
                         }
                     })
@@ -145,27 +120,6 @@ fn snippet_of(content: &str, max_chars: usize) -> String {
     }
     let s: String = t.chars().take(max_chars).collect();
     format!("{s}…")
-}
-
-/// Very small FTS query sanitizer: quote tokens, drop empty.
-fn sanitize_fts_query(q: &str) -> String {
-    let tokens: Vec<String> = q
-        .split_whitespace()
-        .filter(|t| !t.is_empty())
-        .map(|t| {
-            let cleaned: String = t
-                .chars()
-                .filter(|c| c.is_alphanumeric() || *c == '_' || *c == '-' || *c == '.')
-                .collect();
-            if cleaned.is_empty() {
-                String::new()
-            } else {
-                format!("\"{cleaned}\"")
-            }
-        })
-        .filter(|t| !t.is_empty())
-        .collect();
-    tokens.join(" ")
 }
 
 pub async fn impact(conn: &Connection, target: &str, max_depth: u32, limit: u32) -> Result<Vec<ImpactNode>> {
@@ -297,4 +251,151 @@ async fn load_node(conn: &Connection, id: &str) -> Result<Option<ImpactNode>> {
     };
     drain_rows(&mut rows).await?;
     Ok(node)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::codegraph::index::purge_all;
+    use crate::codegraph::migrations;
+    use crate::core::embed::noop_embedder;
+    use turso::Builder;
+
+    async fn seed_conn() -> Connection {
+        let db = Builder::new_local(":memory:")
+            .experimental_index_method(true)
+            .build()
+            .await
+            .expect("build");
+        let conn = db.connect().expect("connect");
+        migrations::apply(&conn).await.expect("apply");
+
+        for (path, kind, name, content) in [
+            (
+                "src/main.rs",
+                "function",
+                Some("main"),
+                "fn main() { println!(\"rust hello\"); }",
+            ),
+            (
+                "src/lib.rs",
+                "function",
+                Some("borrow"),
+                "the borrow checker rules the rust type system",
+            ),
+            ("src/lib.rs", "struct", None, "milk and cookies are stored in the fridge"),
+            (
+                "src/util.rs",
+                "function",
+                Some("parse"),
+                "parse arguments with clap and milk the parser",
+            ),
+            (
+                "src/hot.rs",
+                "function",
+                Some("hot"),
+                "rust rust rust rust rust borrow checker hot path",
+            ),
+        ] {
+            conn.execute(
+                "INSERT INTO cg_chunks (path, kind, name, start_line, end_line, content, file_hash)
+                 VALUES (?, ?, ?, 1, 2, ?, 'abc')",
+                params![path, kind, name, content],
+            )
+            .await
+            .expect("insert chunk");
+        }
+        conn
+    }
+
+    #[tokio::test]
+    async fn fts_ranks_by_bm25_and_joins_terms() {
+        let conn = seed_conn().await;
+        let embed = noop_embedder(4);
+        let opts = SearchOptions {
+            query: "rust".into(),
+            limit: 10,
+            refresh_dirty: false,
+        };
+
+        // BM25 order: the repeated-"rust" chunk outranks single occurrences.
+        let hits = hybrid_search(&conn, &embed, &opts).await.expect("search");
+        assert_eq!(hits.first().map(|h| h.path.as_str()), Some("src/hot.rs"));
+        assert!(hits.iter().all(|h| h.source == "fts"));
+        assert!(hits.iter().all(|h| h.score > 0.0));
+
+        // Exact term: "borrow" matches the borrow-checker chunk.
+        let hits = hybrid_search(
+            &conn,
+            &embed,
+            &SearchOptions {
+                query: "borrow".into(),
+                limit: 10,
+                refresh_dirty: false,
+            },
+        )
+        .await
+        .expect("term search");
+        assert!(hits.iter().any(|h| h.name.as_deref() == Some("borrow")));
+
+        // Tantivy 0.26 has no single-token prefix queries: the `*` is ignored
+        // and "borr*" degrades to the exact term "borr", which matches nothing.
+        let hits = hybrid_search(
+            &conn,
+            &embed,
+            &SearchOptions {
+                query: "borr*".into(),
+                limit: 10,
+                refresh_dirty: false,
+            },
+        )
+        .await
+        .expect("prefix search");
+        assert!(hits.is_empty(), "Tantivy treats term* as an exact term (no prefix expansion)");
+
+        // AND-joined tokens narrow results to chunks mentioning both.
+        let hits = hybrid_search(
+            &conn,
+            &embed,
+            &SearchOptions {
+                query: "milk fridge".into(),
+                limit: 10,
+                refresh_dirty: false,
+            },
+        )
+        .await
+        .expect("and search");
+        assert!(hits.iter().any(|h| h.snippet.contains("fridge")));
+
+        // Nullable `name` column indexes fine (struct chunk with name IS NULL).
+        let hits = hybrid_search(
+            &conn,
+            &embed,
+            &SearchOptions {
+                query: "cookies".into(),
+                limit: 10,
+                refresh_dirty: false,
+            },
+        )
+        .await
+        .expect("null name search");
+        assert!(hits.iter().any(|h| h.name.is_none()));
+    }
+
+    #[tokio::test]
+    async fn purge_keeps_fts_available_flag() {
+        let conn = seed_conn().await;
+        purge_all(&conn).await.expect("purge");
+        assert!(migrations::fts_available(&conn).await.expect("fts flag"));
+
+        // After purge, keyword search returns nothing but still routes to FTS.
+        let embed = noop_embedder(4);
+        let opts = SearchOptions {
+            query: "rust".into(),
+            limit: 10,
+            refresh_dirty: false,
+        };
+        let hits = hybrid_search(&conn, &embed, &opts).await.expect("search");
+        assert!(hits.is_empty());
+    }
 }

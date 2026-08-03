@@ -7,6 +7,12 @@ pub struct Migration {
     pub up: &'static str,
 }
 
+/// Apply an ordered migration set via the shared `app_migrations` ledger.
+///
+/// Uses **per-version** membership (not `MAX(version)`) so disjoint version
+/// bands coexist in one ledger: floppy memory (1–99), the session tree (100),
+/// elph host platform (101–199), and floppy codegraph (500–599) all share the
+/// same `app_migrations` table in `.elph/store.db`.
 pub async fn run(conn: &Connection, migrations: &[Migration]) -> Result<()> {
     conn.execute(
         "CREATE TABLE IF NOT EXISTS app_migrations (
@@ -26,21 +32,16 @@ pub async fn run(conn: &Connection, migrations: &[Migration]) -> Result<()> {
     )
     .await?;
 
-    let current_version = {
-        let mut rows = conn
-            .query("SELECT COALESCE(MAX(version), 0) FROM app_migrations", ())
-            .await?;
-        let version = if let Some(row) = rows.next().await? {
-            row.get::<i64>(0)?
-        } else {
-            0
-        };
-        while rows.next().await?.is_some() {}
-        version
-    };
-
     for migration in migrations {
-        if migration.version <= current_version {
+        let already = {
+            let mut rows = conn
+                .query("SELECT 1 FROM app_migrations WHERE version = ?", (migration.version,))
+                .await?;
+            let found = rows.next().await?.is_some();
+            while rows.next().await?.is_some() {}
+            found
+        };
+        if already {
             continue;
         }
 

@@ -1,6 +1,7 @@
 //! Shared migration ledger (`app_migrations`) for multi-domain project DBs.
 //!
-//! Memory uses versions 1–99; codegraph uses 500–599. Hosts may own other bands.
+//! Version bands: memory 1–99, elph-agent session tree 100, elph host platform
+//! 101–199, codegraph 500–599. Hosts may own other bands.
 
 use anyhow::Result;
 use turso::Connection;

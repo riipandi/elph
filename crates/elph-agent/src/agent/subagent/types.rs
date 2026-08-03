@@ -49,8 +49,8 @@ impl Default for SubagentLimits {
 #[derive(Clone)]
 pub struct SubagentBootstrap {
     pub cwd: String,
-    /// Shared platform/session database (`APP_DATA/metadata.db` in the product).
-    pub metadata_db_path: String,
+    /// Shared project database (`.elph/store.db` in the product).
+    pub store_db_path: String,
     pub resources: AgentHarnessResources,
     pub stream_options: AgentHarnessStreamOptions,
     pub thinking_level: AgentThinkingLevel,

@@ -97,14 +97,6 @@ pub trait AppPaths {
         self.data_dir().join("models")
     }
 
-    /// Platform metadata + session tree (goals, spawn graph, session index/entries).
-    ///
-    /// Goals and related platform features share this database; path and table contracts
-    /// for goals must stay stable across storage refactors.
-    fn metadata_db_path(&self) -> PathBuf {
-        self.data_dir().join("metadata.db")
-    }
-
     fn version_path(&self) -> PathBuf {
         self.data_dir().join("version.json")
     }

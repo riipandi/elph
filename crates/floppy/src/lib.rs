@@ -1,13 +1,13 @@
 //! # floppy
 //!
 //! Domain-oriented library for **agent memory** and optional **semantic code indexing**,
-//! backed by Turso (embedded SQLite + vectors + FTS5).
+//! backed by Turso (embedded SQLite + vectors + FTS).
 //!
 //! ## Crate layout
 //!
 //! | Module | Domain | Feature |
 //! | ------ | ------ | ------- |
-//! | [`core`] | Shared DB open, embed adapters, paths, migration ledger | always |
+//! | [`core`] | Shared DB open, embed adapters, paths, FTS query sanitizer, migration ledger | always |
 //! | [`memory`] | Task-scoped memory store (memelord-compatible design) | `memory` (default) |
 //! | [`codegraph`] | Codebase chunk index + hybrid search | `codegraph` |
 //!
@@ -56,7 +56,9 @@ pub use memory::create_memory_store;
 #[cfg(feature = "memory")]
 pub use memory::migrations;
 #[cfg(feature = "memory")]
-pub use memory::migrations::{LAST_VERSION, MIGRATIONS, V1_NAME, V1_UP, V2_NAME, V2_UP, V3_NAME, V3_UP};
+pub use memory::migrations::{
+    LAST_VERSION, MIGRATIONS, V1_NAME, V1_UP, V2_NAME, V2_UP, V3_NAME, V3_UP, V4_NAME, V4_UP,
+};
 #[cfg(feature = "memory")]
 pub use memory::{
     CategoryCount, ConsolidateResult, ContradictResult, DecayResult, EmbeddingStatus, EndTaskWithDecayResult,
@@ -67,6 +69,10 @@ pub use memory::{
 };
 
 // ── Codegraph re-exports (feature = "codegraph") ────────────────────────────
+
+/// Codegraph migrations module (hosts map into their own runners).
+#[cfg(feature = "codegraph")]
+pub use codegraph::migrations as codegraph_migrations;
 
 #[cfg(feature = "codegraph")]
 pub use codegraph::{

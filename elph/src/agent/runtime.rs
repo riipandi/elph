@@ -92,7 +92,7 @@ pub async fn create_coding_session_with_events(
         (registry, warnings)
     };
 
-    let goal_store = Arc::new(GoalStore::new(options.paths.metadata_db_path()));
+    let goal_store = Arc::new(GoalStore::new(options.paths.memory_db_path()));
     let goal_runtime = Arc::new(GoalRuntime::new(goal_store.clone(), session_id.clone()));
     // Goals bridge: terminal goal status → work memory for future recall.
     let memory_for_goals = Arc::clone(&memory_runtime);
@@ -115,7 +115,7 @@ pub async fn create_coding_session_with_events(
         let clamped = raw.clamp_for_model(&selection.model);
         to_agent_thinking(clamped)
     };
-    let agent_graph = Arc::new(AgentGraphStore::new(options.paths.metadata_db_path()));
+    let agent_graph = Arc::new(AgentGraphStore::new(options.paths.memory_db_path()));
     // Map host settings → agnostic harness stream options (elph-agent never reads settings.json).
     let stream_options = AgentHarnessStreamOptions {
         timeout_ms: options.settings.provider_timeout_ms(),
@@ -124,7 +124,7 @@ pub async fn create_coding_session_with_events(
     };
     let subagent_bootstrap = SubagentBootstrap {
         cwd: options.cwd.display().to_string(),
-        metadata_db_path: options.paths.metadata_db_path().to_string_lossy().to_string(),
+        store_db_path: options.paths.memory_db_path().to_string_lossy().to_string(),
         resources: resources.clone(),
         stream_options: stream_options.clone(),
         thinking_level: thinking,
