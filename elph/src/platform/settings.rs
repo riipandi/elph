@@ -27,7 +27,7 @@
 //!     "defaultThinkingLevel": "high",
 //!     "showConfiguredOnly": false,
 //!     "scopedModels": [],
-//!     "embed": { "model": "AllMiniLML6V2", "quantized": true }
+//!     "embed": { "model": "AllMiniLML6V2", "quantized": true, "gpuAcceleration": "auto" }
 //!   },
 //!   "promptEncoding": null,
 //!   "memory": { ... },
@@ -275,6 +275,42 @@ impl Default for ModelsSettings {
     }
 }
 
+/// GPU acceleration mode for embeddings.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum GpuAcceleration {
+    /// Always use GPU (fails if GPU unavailable or feature not enabled).
+    On,
+    /// Never use GPU (CPU-only).
+    Off,
+    /// Auto-detect and use GPU if available (default).
+    Auto,
+}
+
+impl Default for GpuAcceleration {
+    fn default() -> Self {
+        Self::Auto
+    }
+}
+
+/// Custom deserializer for backward compatibility: accepts both bool and string.
+fn deserialize_gpu_acceleration<'de, D>(deserializer: D) -> Result<GpuAcceleration, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Value::deserialize(deserializer)?;
+    match value {
+        Value::Bool(b) => Ok(if b { GpuAcceleration::Auto } else { GpuAcceleration::Off }),
+        Value::String(s) => match s.as_str() {
+            "on" => Ok(GpuAcceleration::On),
+            "off" => Ok(GpuAcceleration::Off),
+            "auto" => Ok(GpuAcceleration::Auto),
+            _ => Err(serde::de::Error::custom(format!("invalid gpuAcceleration value: {}", s))),
+        },
+        _ => Err(serde::de::Error::custom("expected bool or string for gpuAcceleration")),
+    }
+}
+
 /// Local embedding model for vector search (memory + codegraph).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -285,9 +321,13 @@ pub struct EmbedSettings {
     /// Prefer quantized model weights when a `*Q` variant exists (default: true).
     #[serde(default = "default_embed_quantized")]
     pub quantized: bool,
-    /// Enable GPU acceleration when available (default: auto-detect).
-    #[serde(default = "default_embed_gpu")]
-    pub gpu: bool,
+    /// GPU acceleration mode: on (always), off (never), auto (detect, default).
+    #[serde(
+        default = "default_gpu_acceleration",
+        deserialize_with = "deserialize_gpu_acceleration",
+        alias = "gpu"
+    )]
+    pub gpu_acceleration: GpuAcceleration,
 }
 
 impl Default for EmbedSettings {
@@ -295,7 +335,7 @@ impl Default for EmbedSettings {
         Self {
             model: default_embed_model(),
             quantized: default_embed_quantized(),
-            gpu: default_embed_gpu(),
+            gpu_acceleration: default_gpu_acceleration(),
         }
     }
 }
@@ -890,8 +930,8 @@ fn default_embed_quantized() -> bool {
     true
 }
 
-fn default_embed_gpu() -> bool {
-    true
+fn default_gpu_acceleration() -> GpuAcceleration {
+    GpuAcceleration::Auto
 }
 
 fn default_memory_top_k() -> u32 {
@@ -974,7 +1014,7 @@ mod tests {
         assert_eq!(settings, decoded);
         assert_eq!(decoded.models.embed.model, EmbedModel::AllMiniLML6V2);
         assert!(decoded.models.embed.quantized);
-        assert!(decoded.models.embed.gpu);
+        assert_eq!(decoded.models.embed.gpu_acceleration, GpuAcceleration::Auto);
         assert!(!decoded.codegraph.enabled);
         assert!(decoded.models.default_model.is_none());
         assert_eq!(decoded.models.session_title_model, "inherit");
@@ -1113,7 +1153,7 @@ mod tests {
         assert_eq!(loaded.memory.top_k, 8);
         assert_eq!(loaded.memory.context_budget_chars, 4000);
         assert_eq!(loaded.memory.min_query_length, 8);
-        assert!(loaded.models.embed.gpu);
+        assert_eq!(loaded.models.embed.gpu_acceleration, GpuAcceleration::Auto);
     }
 
     #[test]
@@ -1140,6 +1180,64 @@ mod tests {
         assert!(!settings.models.embed.quantized);
         assert!(settings.memory.enabled);
         assert!(!settings.codegraph.enabled);
+    }
+
+    #[test]
+    fn migrate_gpu_bool_to_gpu_acceleration() {
+        // Test legacy bool true -> auto
+        let value = serde_json::json!({
+            "models": {
+                "embed": {
+                    "gpu": true
+                }
+            }
+        });
+        let settings: Settings = serde_json::from_value(value).expect("parse");
+        assert_eq!(settings.models.embed.gpu_acceleration, GpuAcceleration::Auto);
+
+        // Test legacy bool false -> off
+        let value = serde_json::json!({
+            "models": {
+                "embed": {
+                    "gpu": false
+                }
+            }
+        });
+        let settings: Settings = serde_json::from_value(value).expect("parse");
+        assert_eq!(settings.models.embed.gpu_acceleration, GpuAcceleration::Off);
+
+        // Test new enum value "on"
+        let value = serde_json::json!({
+            "models": {
+                "embed": {
+                    "gpuAcceleration": "on"
+                }
+            }
+        });
+        let settings: Settings = serde_json::from_value(value).expect("parse");
+        assert_eq!(settings.models.embed.gpu_acceleration, GpuAcceleration::On);
+
+        // Test new enum value "off"
+        let value = serde_json::json!({
+            "models": {
+                "embed": {
+                    "gpuAcceleration": "off"
+                }
+            }
+        });
+        let settings: Settings = serde_json::from_value(value).expect("parse");
+        assert_eq!(settings.models.embed.gpu_acceleration, GpuAcceleration::Off);
+
+        // Test new enum value "auto"
+        let value = serde_json::json!({
+            "models": {
+                "embed": {
+                    "gpuAcceleration": "auto"
+                }
+            }
+        });
+        let settings: Settings = serde_json::from_value(value).expect("parse");
+        assert_eq!(settings.models.embed.gpu_acceleration, GpuAcceleration::Auto);
     }
 
     #[test]

@@ -1,10 +1,9 @@
 use anyhow::{Context, Result};
 
+use crate::platform::{GpuAcceleration, Paths, Settings};
 use crate::utils::path::AppPaths;
 use floppy::{DEFAULT_EMBEDDING_DIMS, EmbedOptions, FloppyBuilder, MemoryStore};
 use floppy::{GpuConfig, embedding_dims, resolve_embedding_model};
-
-use crate::platform::{Paths, Settings};
 
 /// Open a floppy memory store for the current project.
 ///
@@ -45,7 +44,11 @@ pub fn open_store_with_session(paths: &Paths, needs_embed: bool, session_id: &st
             .with_context(|| format!("create {}", paths.models_dir().display()))?;
 
         // Configure GPU based on user preference and hardware availability
-        let gpu_config = GpuConfig::with_preference(settings.models.embed.gpu);
+        let gpu_config = match settings.models.embed.gpu_acceleration {
+            GpuAcceleration::On => GpuConfig::with_preference(true),
+            GpuAcceleration::Off => GpuConfig::with_preference(false),
+            GpuAcceleration::Auto => GpuConfig::detect(),
+        };
         let device = gpu_config.candle_device().map(|d| d.to_string());
 
         let options = EmbedOptions {

@@ -296,10 +296,11 @@
                     "default": true,
                     "description": "Prefer quantized ONNX weights when a *Q variant exists."
                 },
-                "gpu": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Enable GPU acceleration when available (auto-detects Apple Metal on macOS ARM64, NVIDIA CUDA on Linux/Windows). NOTE: GPU selection is compile-time via cargo features (embed-gpu or embed-cuda), not runtime. This setting enables detection but cannot switch CPU/GPU dynamically."
+                "gpuAcceleration": {
+                    "type": "string",
+                    "enum": ["on", "off", "auto"],
+                    "default": "auto",
+                    "description": "GPU acceleration mode: on (always use GPU), off (CPU-only), auto (detect and use GPU if available, default). GPU selection is compile-time via cargo features (metal or cuda), not runtime."
                 }
             }
         },

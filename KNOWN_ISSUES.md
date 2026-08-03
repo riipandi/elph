@@ -56,15 +56,15 @@ All changes are **additive** — no existing APIs are modified:
   etc.) and the user needs to **Cmd+Click** (macOS) or **Ctrl+Click** (Linux/Windows).
 
 
-## GPU Support: Available via feature flags
+## GPU Support: Available via compile-time features
 
-GPU acceleration for embeddings is now available via cargo features. candle-kernels 0.11.0 is available on crates.io, resolving the previous dependency conflict.
+GPU acceleration for embeddings is available via cargo features. candle-kernels 0.11.0 is available on crates.io.
 
 ### Platform Support
 
-- **macOS ARM64** (Apple Silicon M1/M2/M3/M4): Uses Apple Metal via `embed-gpu` feature
-- **Linux/Windows with NVIDIA GPU**: Uses CUDA via `embed-cuda` feature
-- **Auto-detection**: `GpuConfig::detect()` checks OS and hardware availability
+- **macOS ARM64** (Apple Silicon M1/M2/M3/M4): Uses Apple Metal via `metal` feature
+- **Linux/Windows with NVIDIA GPU**: Uses CUDA via `cuda` feature
+- **Auto-detection**: `GpuConfig::detect()` checks OS and hardware availability at runtime
 
 ### To Enable GPU
 
@@ -72,34 +72,37 @@ Add GPU feature to your build:
 
 ```bash
 # For macOS ARM64 (Apple Silicon)
-cargo build --features embed-gpu
+cargo build --features metal
 
 # For Linux/Windows with NVIDIA GPU
-cargo build --features embed-cuda
+cargo build --features cuda
 ```
 
 Or enable in `elph/Cargo.toml` dependency on floppy:
 ```toml
-floppy = { path = "../crates/floppy", version = "0.0.1", features = ["full", "embed-gpu"] }
+floppy = { path = "../crates/floppy", version = "0.0.1", features = ["full", "metal"] }
 # or
-floppy = { path = "../crates/floppy", version = "0.0.1", features = ["full", "embed-cuda"] }
+floppy = { path = "../crates/floppy", version = "0.0.1", features = ["full", "cuda"] }
 ```
 
 ### Settings Configuration
 
-Enable GPU in `settings.json`:
+Configure GPU acceleration mode in `settings.json`:
 ```json
 {
   "models": {
     "embed": {
-      "gpu": true
+      "gpuAcceleration": "auto"
     }
   }
 }
 ```
 
-When `gpu: true`, the system auto-detects hardware and reports availability. Actual GPU usage depends on whether the appropriate cargo feature is enabled at build time.
+Options:
+- `"auto"` (default): Auto-detect and use GPU if available
+- `"on"`: Always use GPU (fails if GPU unavailable or feature not enabled)
+- `"off"`: Never use GPU (CPU-only)
 
 ### Current Limitation
 
-GPU device selection is handled at **compile time** via cargo features, not at runtime. The `models.embed.gpu` setting can detect hardware but cannot switch between CPU/GPU dynamically. To use GPU, you must rebuild with the appropriate feature flag.
+GPU device selection is handled at **compile time** via cargo features, not at runtime. The `models.embed.gpuAcceleration` setting controls whether GPU is attempted (on/off/auto) but cannot switch between CPU/GPU dynamically without rebuilding. To use GPU, you must rebuild with the appropriate feature flag.

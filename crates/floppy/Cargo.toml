@@ -26,8 +26,8 @@ embed = ["dep:embed_anything", "embed_anything/accelerate"]
 # GPU acceleration (optional, requires matching hardware):
 # - metal: Apple Silicon GPU (macOS)
 # - cuda: NVIDIA GPU (Linux/Windows)
-embed-gpu = ["embed", "embed_anything/metal"]
-embed-cuda = ["embed", "embed_anything/cuda"]
+metal = ["embed", "embed_anything/metal"]
+cuda = ["embed", "embed_anything/cuda"]
 # Semantic codebase index (ast-grep chunking + FTS/vector). Optional; heavy.
 codegraph = [
   "dep:ast-grep-core",

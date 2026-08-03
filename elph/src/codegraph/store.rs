@@ -1,13 +1,12 @@
 //! Open a [`floppy::CodegraphStore`] for the current project.
 
+use crate::platform::{GpuAcceleration, Paths, Settings};
+use crate::utils::path::AppPaths;
 use anyhow::{Context, Result};
 use floppy::{
     CodegraphConfig, CodegraphStore, DEFAULT_EMBEDDING_DIMS, EMBEDDER_INIT_TIMEOUT, EmbedOptions, GpuConfig,
     create_embedder_with_timeout, embedding_dims, noop_embedder, resolve_embedding_model,
 };
-
-use crate::platform::{Paths, Settings};
-use crate::utils::path::AppPaths;
 
 /// Open codegraph store sharing `<project>/.elph/store.db` with memory.
 ///
@@ -27,7 +26,11 @@ pub fn open_store(paths: &Paths, needs_embed: bool) -> Result<CodegraphStore> {
             .with_context(|| format!("create {}", paths.models_dir().display()))?;
 
         // Configure GPU based on user preference and hardware availability
-        let gpu_config = GpuConfig::with_preference(settings.models.embed.gpu);
+        let gpu_config = match settings.models.embed.gpu_acceleration {
+            GpuAcceleration::On => GpuConfig::with_preference(true),
+            GpuAcceleration::Off => GpuConfig::with_preference(false),
+            GpuAcceleration::Auto => GpuConfig::detect(),
+        };
         let device = gpu_config.candle_device().map(|d| d.to_string());
 
         let options = EmbedOptions {
