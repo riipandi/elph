@@ -15,6 +15,14 @@ pub fn merkle_root(files: &BTreeMap<String, String>) -> String {
     hex_encode(hasher.finalize())
 }
 
+/// Fast non-cryptographic hash for file content comparison.
+/// Uses xxHash3 which is ~10x faster than SHA-256.
+pub fn fast_hash(bytes: &[u8]) -> String {
+    let hash = xxhash_rust::xxh3::xxh3_64(bytes);
+    format!("{:x}", hash)
+}
+
+/// Cryptographic hash for secure fingerprinting (used for merkle root).
 pub fn sha256_hex(bytes: &[u8]) -> String {
     let mut hasher = Sha256::new();
     hasher.update(bytes);

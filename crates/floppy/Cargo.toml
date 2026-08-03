@@ -30,6 +30,8 @@ codegraph = [
   "dep:ignore",
   "dep:sha2",
   "dep:regex",
+  "dep:xxhash-rust",
+  "xxhash-rust/xxh3",
 ]
 # Convenience: full surface for hosts (Elph).
 full = ["memory", "embed", "codegraph"]
@@ -62,6 +64,7 @@ serde_json.workspace = true
 sha2 = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["io-util", "macros", "rt", "rt-multi-thread", "sync", "time"] }
 turso.workspace = true
+xxhash-rust = { version = "0.8", optional = true }
 
 [dev-dependencies]
 tempfile.workspace = true

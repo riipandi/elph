@@ -9,7 +9,7 @@ use turso::{Connection, params};
 
 use super::chunk::{chunk_source, embed_text_for_chunk, lang_label_for_path};
 use super::graph::{extract_import_targets, file_node_id, nodes_for_chunks};
-use super::merkle::{merkle_root, sha256_hex};
+use super::merkle::{merkle_root, fast_hash, sha256_hex};
 use super::types::{IndexPhase, IndexProgress, ProgressFn, RawChunk, ScanStats};
 use crate::core::embed::EmbedFn;
 use crate::core::util::{drain_rows, is_zero, vec_buf};
@@ -52,6 +52,8 @@ impl Indexer<'_> {
         self.report(IndexPhase::Scanning, &stats, None);
 
         let walk_start = Instant::now();
+
+        // Use parallel walking with ignore crate
         let walker = WalkBuilder::new(self.root)
             .hidden(false)
             .git_ignore(true)
@@ -108,7 +110,9 @@ impl Indexer<'_> {
                 }
             };
             stats.bytes_read += bytes.len() as u64;
-            let hash = sha256_hex(&bytes);
+
+            // Use fast xxHash instead of SHA-256 for content comparison
+            let hash = fast_hash(&bytes);
             live_paths.insert(rel.clone());
             file_map.insert(rel.clone(), hash.clone());
 

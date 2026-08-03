@@ -3721,6 +3721,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "turso",
+ "xxhash-rust",
 ]
 
 [[package]]
