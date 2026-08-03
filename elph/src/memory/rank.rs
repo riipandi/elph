@@ -70,7 +70,41 @@ pub fn is_continuation_prompt(prompt: &str) -> bool {
 
 /// Adjust adaptive recall threshold for continuation prompts (lower = more permissive).
 pub fn adaptive_threshold_adjustment(prompt: &str) -> f64 {
-    if is_continuation_prompt(prompt) { -0.05 } else { 0.0 }
+    if is_continuation_prompt(prompt) {
+        -0.08
+    } else if is_task_like_prompt(prompt) {
+        -0.04
+    } else {
+        0.0
+    }
+}
+
+/// Heuristic: prompt looks like a real task (not a greeting), even if short.
+pub fn is_task_like_prompt(prompt: &str) -> bool {
+    let t = prompt.trim();
+    if t.is_empty() {
+        return false;
+    }
+    let lower = t.to_lowercase();
+    // Pure greetings / acks
+    const NOISE: &[&str] = &[
+        "hi", "hello", "hey", "thanks", "thank you", "ok", "okay", "yes", "no", "yep", "nope", "ping",
+        "test", "halo", "hai", "makasih", "terima kasih",
+    ];
+    if NOISE.iter().any(|n| lower == *n) {
+        return false;
+    }
+    // Code-ish or imperative cues → treat as task
+    if t.contains('/') || t.contains('`') || t.contains("::") || t.contains('.') && t.len() > 8 {
+        return true;
+    }
+    const CUES: &[&str] = &[
+        "fix", "add", "implement", "change", "update", "refactor", "find", "where", "how", "why",
+        "bug", "error", "fail", "test", "build", "review", "explain", "buat", "perbaiki", "cari",
+        "ubah", "tambah", "hapus", "kenapa", "bagaimana", "tolong", "please", "need", "want",
+        "should", "make", "create", "remove", "delete", "check", "debug", "investigate",
+    ];
+    CUES.iter().any(|c| lower.contains(c))
 }
 
 /// Detect structure / layout questions (prefer discovery / project map).
@@ -219,6 +253,14 @@ pub fn filter_sticky(memories: Vec<Memory>) -> Vec<Memory> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn task_like_detects_imperatives_not_greetings() {
+        assert!(is_task_like_prompt("fix the auth bug"));
+        assert!(is_task_like_prompt("where is MemoryStore?"));
+        assert!(!is_task_like_prompt("hi"));
+        assert!(!is_task_like_prompt("thanks"));
+    }
 
     fn mem(id: &str, cat: MemoryCategory, weight: f64, score: f64, created: i64) -> Memory {
         Memory {

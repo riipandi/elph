@@ -377,20 +377,20 @@
                 "topK": {
                     "type": "integer",
                     "minimum": 0,
-                    "default": 5,
-                    "description": "Vector top-k for task retrieval."
+                    "default": 8,
+                    "description": "Vector top-k for task retrieval (active recall pulls up to this many semantic hits)."
                 },
                 "contextBudgetChars": {
                     "type": "integer",
                     "minimum": 0,
-                    "default": 3000,
+                    "default": 4000,
                     "description": "Max characters for all injected memory XML blocks."
                 },
                 "minQueryLength": {
                     "type": "integer",
                     "minimum": 0,
-                    "default": 15,
-                    "description": "Minimum user prompt length to trigger auto-recall."
+                    "default": 8,
+                    "description": "Minimum user prompt length to trigger auto-recall. Task-like short prompts still recall."
                 }
             }
         },

@@ -84,7 +84,7 @@ mod tests {
         )
         .expect("prompt");
 
-        assert!(prompt.contains("You are Elph, an expert coding agent"));
+        assert!(prompt.contains("You are Elph, an expert and intelligent coding agent"));
         assert!(prompt.contains("Working directory: /tmp/project"));
         assert!(prompt.contains("<action_safety>"));
         assert!(prompt.contains("<tool_calling>"));
@@ -95,7 +95,45 @@ mod tests {
         assert!(prompt.contains("<available_tools>"));
         assert!(prompt.contains("<tool>read_file</tool>"));
         assert!(prompt.contains("<memory_and_context>"));
+        assert!(prompt.contains("Active recall is expected"));
+    }
+
+    #[test]
+    fn coding_prompt_includes_codegraph_when_tools_present() {
+        let prompt = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &[
+                "read_file".into(),
+                "code_search".into(),
+                "code_impact".into(),
+                "memory_search".into(),
+            ],
+            None,
+            AgentMode::Build,
+            "",
+        )
+        .expect("prompt");
+
+        assert!(prompt.contains("<codegraph>"));
+        assert!(prompt.contains("code_search"));
+        assert!(prompt.contains("code_impact"));
         assert!(prompt.contains("memory_search"));
+    }
+
+    #[test]
+    fn coding_prompt_omits_codegraph_without_tools() {
+        let prompt = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["read_file".into()],
+            None,
+            AgentMode::Build,
+            "",
+        )
+        .expect("prompt");
+
+        assert!(!prompt.contains("<codegraph>"));
     }
 
     #[test]

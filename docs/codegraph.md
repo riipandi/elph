@@ -183,17 +183,18 @@ Migration band for codegraph DDL: **500+** in the store’s migration ledger (al
 
 ```text
 walk (ignore::WalkBuilder, gitignore)
-  → skip binary / oversized
+  → skip binary / vendor / minified / lockfiles / oversized (>512 KiB)
   → sha256(file)
   → if hash == cg_files.hash: skip
   → chunk:
-       AST (ast-grep SupportLang) top-level defs, split >150 lines
-       OR text fallback (SQL / unknown) fixed-size / whole-file slices
+       AST top-level defs, split >120 lines, max 48 chunks/file
+       store body capped (~6k chars); skip bulk json/yaml/toml fallback
+       OR sql/md text fallback (minified → short digest only)
   → import-edge heuristics (regex) → cg_edges (file-level)
-  → embed each chunk (shared MiniLM; optional noop)
+  → embed compact text (path+kind+name+truncated body ≤~1.8k chars); FTS uses stored body
   → upsert cg_chunks + cg_nodes; update cg_files
   → drop paths gone from worktree
-  → write Merkle root + head_sha (if available) to cg_meta
+  → write Merkle root to cg_meta
 ```
 
 ---

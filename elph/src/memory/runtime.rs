@@ -32,7 +32,8 @@ pub const MEMORY_STARTUP_LOCK_TIMEOUT: Duration = Duration::from_secs(8);
 pub const RECALL_DB_TIMEOUT: Duration = Duration::from_secs(2);
 
 /// Minimum user query length to trigger a memory search (skip greetings, noise).
-pub const MIN_QUERY_LENGTH: usize = 15;
+/// Task-like short prompts still recall via [`crate::memory::rank::is_task_like_prompt`].
+pub const MIN_QUERY_LENGTH: usize = 8;
 
 /// Host-side automatic memory policy (from `settings.json` → `memory`).
 #[derive(Debug, Clone)]
@@ -504,17 +505,23 @@ impl MemoryRuntime {
 
         let top_semantic = semantic.iter().map(|m| m.score).fold(0.0_f64, f64::max);
         // If semantic match is weak on a large store, prefer recency/sticky over noise.
+        // Pull more semantic hits when top_k is higher (active recall).
+        let semantic_cap = self.options.top_k.max(5).min(12) as usize;
         let semantic_for_merge = if top_semantic < 0.35 && total_count > 50 {
             semantic_filtered
                 .into_iter()
                 .filter(|m| m.score >= 0.35)
-                .take(5)
+                .take(semantic_cap)
                 .collect()
         } else {
-            semantic_filtered.into_iter().take(5).collect()
+            semantic_filtered.into_iter().take(semantic_cap).collect()
         };
 
-        let opts = RankOptions::default().with_prompt(prompt);
+        // Prefer sticky/recent a bit more so lessons surface even when semantic is weak.
+        let mut opts = RankOptions::default().with_prompt(prompt);
+        opts.alpha = 0.45;
+        opts.beta = 0.30;
+        opts.gamma = 0.25;
         let ranked = merge_and_rank(semantic_for_merge, recent, sticky, now_secs(), &opts);
         if ranked.is_empty() {
             log::debug!(

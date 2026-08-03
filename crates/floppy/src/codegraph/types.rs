@@ -21,8 +21,9 @@ impl CodegraphConfig {
             root_dir: root_dir.into(),
             embed,
             apply_migrations: true,
-            max_chunk_lines: 150,
-            max_file_bytes: 1024 * 1024,
+            max_chunk_lines: 120,
+            // Cap per-file read size to keep consumer machines responsive.
+            max_file_bytes: 512 * 1024,
         }
     }
 }

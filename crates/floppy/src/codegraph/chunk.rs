@@ -1,4 +1,4 @@
-//! AST / fallback chunking for source files.
+//! AST / fallback chunking for source files (storage- and CPU-conscious).
 
 use std::path::Path;
 
@@ -9,6 +9,15 @@ use ast_grep_core::tree_sitter::LanguageExt;
 use ast_grep_language::SupportLang;
 
 use super::types::RawChunk;
+
+/// Hard cap on stored chunk body characters (FTS still useful; avoids giant blobs).
+pub const MAX_STORED_CHUNK_CHARS: usize = 6_000;
+/// Max chunks kept per file (largest / named defs preferred via AST order + cap).
+pub const MAX_CHUNKS_PER_FILE: usize = 48;
+/// Skip embedding text beyond this (compact form used for oversized bodies).
+pub const MAX_EMBED_CHARS: usize = 1_800;
+/// Min non-whitespace chars for a chunk to be worth indexing.
+const MIN_CHUNK_CHARS: usize = 12;
 
 /// Map path → language when AST support is available.
 pub fn language_for_path(path: &Path) -> Option<SupportLang> {
@@ -68,6 +77,24 @@ pub fn lang_label_for_path(path: &Path) -> &'static str {
         "json" => "json",
         other if !other.is_empty() => "text",
         _ => "text",
+    }
+}
+
+/// Whether this path should use whole-file text fallback when AST is unavailable.
+/// Config / data dumps are skipped to keep the index lean.
+pub fn allows_text_fallback(path: &Path) -> bool {
+    match path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "sql" | "md" | "markdown" | "rs" | "py" | "go" | "js" | "jsx" | "ts" | "tsx" | "java" | "c" | "h" | "cc"
+        | "cpp" | "hpp" | "cs" | "ex" | "exs" | "kt" | "kts" | "rb" | "php" | "swift" => true,
+        // Skip bulk config / lock / data unless tiny (handled by caller size checks)
+        "json" | "yaml" | "yml" | "toml" | "lock" | "svg" | "xml" | "html" | "css" | "scss" => false,
+        _ => false,
     }
 }
 
@@ -135,10 +162,54 @@ pub fn chunk_source(rel_path: &str, source: &str, max_chunk_lines: u32) -> Vec<R
     if let Some(lang) = language_for_path(path) {
         let chunks = chunk_ast(rel_path, source, lang, max_chunk_lines);
         if !chunks.is_empty() {
-            return chunks;
+            return cap_file_chunks(chunks);
         }
     }
-    chunk_fallback(rel_path, source, max_chunk_lines)
+    if !allows_text_fallback(path) {
+        return Vec::new();
+    }
+    cap_file_chunks(chunk_fallback(rel_path, source, max_chunk_lines))
+}
+
+/// Compact text used for embeddings (shorter than stored FTS body when large).
+pub fn embed_text_for_chunk(chunk: &RawChunk) -> String {
+    let header = match &chunk.name {
+        Some(n) => format!("{} {} {}\n", chunk.path, chunk.kind, n),
+        None => format!("{} {}\n", chunk.path, chunk.kind),
+    };
+    let body = &chunk.content;
+    if header.chars().count() + body.chars().count() <= MAX_EMBED_CHARS {
+        return format!("{header}{body}");
+    }
+    let budget = MAX_EMBED_CHARS.saturating_sub(header.chars().count() + 1);
+    let truncated: String = body.chars().take(budget).collect();
+    format!("{header}{truncated}")
+}
+
+fn cap_file_chunks(mut chunks: Vec<RawChunk>) -> Vec<RawChunk> {
+    chunks.retain(|c| c.content.chars().filter(|ch| !ch.is_whitespace()).count() >= MIN_CHUNK_CHARS);
+    if chunks.len() > MAX_CHUNKS_PER_FILE {
+        // Prefer named defs (symbols) over anonymous file slices.
+        chunks.sort_by(|a, b| {
+            let an = a.name.is_some() as u8;
+            let bn = b.name.is_some() as u8;
+            bn.cmp(&an).then_with(|| a.start_line.cmp(&b.start_line))
+        });
+        chunks.truncate(MAX_CHUNKS_PER_FILE);
+        chunks.sort_by_key(|c| c.start_line);
+    }
+    for c in &mut chunks {
+        c.content = truncate_chars(&c.content, MAX_STORED_CHUNK_CHARS);
+    }
+    chunks
+}
+
+fn truncate_chars(s: &str, max: usize) -> String {
+    if s.chars().count() <= max {
+        return s.to_string();
+    }
+    let t: String = s.chars().take(max.saturating_sub(1)).collect();
+    format!("{t}…")
 }
 
 fn chunk_ast(rel_path: &str, source: &str, lang: SupportLang, max_chunk_lines: u32) -> Vec<RawChunk> {
@@ -166,9 +237,10 @@ fn chunk_ast(rel_path: &str, source: &str, lang: SupportLang, max_chunk_lines: u
         if end_line < start_line {
             continue;
         }
+        // Prefer top-level-ish defs: skip nested functions deeper than ~2 levels by size heuristic
+        // (very small methods inside huge impls still kept if named).
         let kind = node.kind().into_owned();
         let name = node.field("name").map(|n| n.text().into_owned()).or_else(|| {
-            // Common alternates
             node.field("declarator")
                 .and_then(|d| d.field("declarator"))
                 .map(|n| n.text().into_owned())
@@ -177,7 +249,15 @@ fn chunk_ast(rel_path: &str, source: &str, lang: SupportLang, max_chunk_lines: u
         if content.trim().is_empty() {
             continue;
         }
+        // Skip tiny nested lexical decls in JS/TS noise
+        if kind == "lexical_declaration" && name.is_none() && content.lines().count() < 3 {
+            continue;
+        }
         push_split(&mut out, rel_path, &kind, name, start_line, end_line, &content, max_chunk_lines);
+        if out.len() >= MAX_CHUNKS_PER_FILE * 2 {
+            // Early stop over-collection; cap_file_chunks will trim.
+            break;
+        }
     }
     out
 }
@@ -187,11 +267,23 @@ fn chunk_fallback(rel_path: &str, source: &str, max_chunk_lines: u32) -> Vec<Raw
     if lines.is_empty() {
         return Vec::new();
     }
+    // Minified / single-line dumps: one short digest only
+    if looks_minified(source) {
+        let digest: String = source.chars().take(MAX_STORED_CHUNK_CHARS.min(800)).collect();
+        return vec![RawChunk {
+            path: rel_path.to_string(),
+            kind: "minified".into(),
+            name: None,
+            start_line: 1,
+            end_line: lines.len() as u32,
+            content: digest,
+        }];
+    }
     let kind = if rel_path.ends_with(".sql") { "sql" } else { "file" };
     let mut out = Vec::new();
     let max = max_chunk_lines.max(1) as usize;
     let mut start = 0usize;
-    while start < lines.len() {
+    while start < lines.len() && out.len() < MAX_CHUNKS_PER_FILE {
         let end = (start + max).min(lines.len());
         let content = lines[start..end].join("\n");
         if !content.trim().is_empty() {
@@ -207,6 +299,12 @@ fn chunk_fallback(rel_path: &str, source: &str, max_chunk_lines: u32) -> Vec<Raw
         start = end;
     }
     out
+}
+
+fn looks_minified(source: &str) -> bool {
+    let lines = source.lines().count().max(1);
+    let avg = source.len() / lines;
+    avg > 240 || (lines <= 3 && source.len() > 2_000)
 }
 
 fn push_split(
@@ -258,6 +356,9 @@ fn push_split(
         });
         part += 1;
         offset = end;
+        if part as usize >= MAX_CHUNKS_PER_FILE {
+            break;
+        }
     }
 }
 
@@ -279,9 +380,31 @@ mod tests {
 
     #[test]
     fn sql_fallback() {
-        let src = "SELECT 1;\nSELECT 2;\n";
+        let src = "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT);\nSELECT * FROM users;\n";
         let chunks = chunk_source("schema.sql", src, 150);
         assert_eq!(chunks.len(), 1);
         assert_eq!(chunks[0].kind, "sql");
+    }
+
+    #[test]
+    fn skips_json_fallback() {
+        let src = r#"{"a":1,"b":2}"#;
+        let chunks = chunk_source("package.json", src, 150);
+        assert!(chunks.is_empty());
+    }
+
+    #[test]
+    fn embed_text_is_bounded() {
+        let long = "x".repeat(10_000);
+        let chunk = RawChunk {
+            path: "a.rs".into(),
+            kind: "function_item".into(),
+            name: Some("big".into()),
+            start_line: 1,
+            end_line: 400,
+            content: long,
+        };
+        let e = embed_text_for_chunk(&chunk);
+        assert!(e.chars().count() <= MAX_EMBED_CHARS + 5);
     }
 }

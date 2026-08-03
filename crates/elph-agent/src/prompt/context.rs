@@ -19,6 +19,16 @@ pub struct ToolNamesContext {
     pub diagnostics: String,
     pub ask_user_question: String,
     pub list_available_tools: String,
+    /// Floppy memory tools (when registered).
+    pub memory_search: String,
+    pub memory_recent: String,
+    pub memory_report: String,
+    pub memory_contradict: String,
+    /// Codegraph tools (when `codegraph.enabled`).
+    pub code_search: String,
+    pub code_impact: String,
+    pub code_status: String,
+    pub code_reindex: String,
     pub by_kind: ToolByKindContext,
 }
 
@@ -120,6 +130,14 @@ pub fn tool_names_context(names: &[String]) -> ToolNamesContext {
         diagnostics: name("diagnostics"),
         ask_user_question: name("ask_user_question"),
         list_available_tools: name("list_available_tools"),
+        memory_search: name("memory_search"),
+        memory_recent: name("memory_recent"),
+        memory_report: name("memory_report"),
+        memory_contradict: name("memory_contradict"),
+        code_search: name("code_search"),
+        code_impact: name("code_impact"),
+        code_status: name("code_status"),
+        code_reindex: name("code_reindex"),
         by_kind: ToolByKindContext {
             read: first(&["read_file"]),
             edit: first(&["edit_file", "write_file"]),

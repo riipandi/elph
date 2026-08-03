@@ -770,15 +770,15 @@ fn default_embed_quantized() -> bool {
 }
 
 fn default_memory_top_k() -> u32 {
-    5
+    8
 }
 
 fn default_memory_context_budget() -> u32 {
-    3000
+    4000
 }
 
 fn default_memory_min_query_length() -> u32 {
-    15
+    8
 }
 
 fn default_thinking_level() -> String {
@@ -984,9 +984,9 @@ mod tests {
         assert!(loaded.memory.auto_recall);
         assert!(loaded.memory.auto_capture_work);
         assert!(loaded.memory.auto_capture_exploration);
-        assert_eq!(loaded.memory.top_k, 5);
-        assert_eq!(loaded.memory.context_budget_chars, 3000);
-        assert_eq!(loaded.memory.min_query_length, 15);
+        assert_eq!(loaded.memory.top_k, 8);
+        assert_eq!(loaded.memory.context_budget_chars, 4000);
+        assert_eq!(loaded.memory.min_query_length, 8);
     }
 
     #[test]

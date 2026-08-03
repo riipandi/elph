@@ -9,7 +9,7 @@ use super::rank::{RankSource, RankedMemory};
 pub const PER_MEMORY_CHARS: usize = 500;
 
 /// Default total character budget for all memory XML blocks.
-pub const CONTEXT_BUDGET_CHARS: usize = 3000;
+pub const CONTEXT_BUDGET_CHARS: usize = 4000;
 
 /// Minimum useful body chars — skip entry rather than mid-truncate below this.
 const MIN_USEFUL_BODY: usize = 80;

@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use turso::{Connection, params};
 
-use super::chunk::{chunk_source, lang_label_for_path};
+use super::chunk::{chunk_source, embed_text_for_chunk, lang_label_for_path};
 use super::graph::{extract_import_targets, file_node_id, nodes_for_chunks};
 use super::merkle::{merkle_root, sha256_hex};
 use super::types::{IndexPhase, IndexProgress, ProgressFn, RawChunk, ScanStats};
@@ -196,7 +196,9 @@ impl Indexer<'_> {
         }
 
         for chunk in chunks {
-            let emb = (self.embed)(&chunk.content).await?;
+            // Compact embed text reduces model tokens / RAM; full body still stored for FTS.
+            let embed_src = embed_text_for_chunk(chunk);
+            let emb = (self.embed)(&embed_src).await?;
             let emb_blob = if is_zero(&emb) {
                 None
             } else {
@@ -276,8 +278,46 @@ fn should_skip_path(path: &Path) -> bool {
         "/.next/",
         "/vendor/",
         "/__pycache__/",
+        "/.venv/",
+        "/venv/",
+        "/.cargo/",
+        "/.idea/",
+        "/.vscode/",
+        "/coverage/",
+        "/.turbo/",
+        "/.cache/",
+        "/Pods/",
+        "/.gradle/",
+        "/out/",
+        "/site-packages/",
+        "/third_party/",
+        "/third-party/",
+        "/.svelte-kit/",
+        "/.nuxt/",
+        "/.output/",
     ];
     if skip_dirs.iter().any(|d| s.contains(d)) {
+        return true;
+    }
+    let name = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    if name.ends_with(".min.js")
+        || name.ends_with(".min.css")
+        || name.ends_with(".map")
+        || matches!(
+            name.as_str(),
+            "package-lock.json"
+                | "yarn.lock"
+                | "pnpm-lock.yaml"
+                | "cargo.lock"
+                | "composer.lock"
+                | "go.sum"
+                | "poetry.lock"
+        )
+    {
         return true;
     }
     match path
@@ -289,7 +329,7 @@ fn should_skip_path(path: &Path) -> bool {
     {
         "png" | "jpg" | "jpeg" | "gif" | "webp" | "ico" | "pdf" | "zip" | "gz" | "tar" | "woff" | "woff2" | "ttf"
         | "eot" | "mp4" | "mp3" | "wasm" | "so" | "dylib" | "a" | "o" | "class" | "jar" | "exe" | "dll" | "bin"
-        | "lock" => true,
+        | "lock" | "rlib" | "rmeta" | "pyc" | "pyo" | "db" | "sqlite" | "parquet" => true,
         _ => false,
     }
 }

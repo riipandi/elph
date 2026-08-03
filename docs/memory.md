@@ -160,6 +160,9 @@ In `~/.elph/settings.json`:
 | `models.embed.model`     | `AllMiniLML6V2` | Local embedding model (shared with codegraph)    |
 | `models.embed.quantized` | `true`          | Prefer quantized catalog variant when available  |
 | `memory.enabled`         | `true`          | Auto hooks / bootstrap injection                 |
+| `memory.topK`            | `8`             | Semantic hits pulled into active per-turn recall |
+| `memory.contextBudgetChars` | `4000`       | Budget for injected memory XML                   |
+| `memory.minQueryLength`  | `8`             | Min prompt length (task-like short prompts still recall) |
 | `codegraph.enabled`      | `false`         | Agent codegraph tools (CLI always available)     |
 
 Legacy `memory.embedModel` / `memory.embedQuantized` are migrated into `models.embed` on load.

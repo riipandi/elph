@@ -125,9 +125,10 @@ pub async fn register_automatic_memory_hooks(
                             .await;
                     }
 
-                    // --- Step 2: skip short queries ---
+                    // --- Step 2: skip pure noise / short non-tasks ---
                     let min_len = runtime.options().min_query_length;
-                    if prompt_len < min_len {
+                    let task_like = crate::memory::rank::is_task_like_prompt(&prompt);
+                    if prompt_len < min_len && !task_like {
                         log::debug!(
                             "memory.recall.start skipped_reason=short_prompt prompt_len={prompt_len} min={min_len}"
                         );
