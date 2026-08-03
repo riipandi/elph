@@ -1,18 +1,20 @@
 use anyhow::Result;
+use turso::Builder;
 
 use super::migrations;
 use super::paths::Paths;
 use elph_agent::{DatabaseSpec, InitProgress};
 use elph_agent::{ensure_databases_once, try_block_on};
+use floppy::codegraph_migrations;
+use floppy::memory::migrations as memory_migrations;
 
 const DATASTORE_STEPS: u64 = 2;
 
 /// Lazily initialize the shared project database on first use.
 ///
 /// The store DB (`.elph/store.db`) hosts the platform schema band via
-/// `metadata_migrations()`. Floppy (memory/codegraph) bands are applied by
-/// `floppy::MemoryStore` / codegraph indexing through the same `app_migrations`
-/// ledger; only the platform band is applied here.
+/// `metadata_migrations()`, plus the floppy memory band (v1–4) and codegraph
+/// band (v500–501) so all tables exist immediately — not lazily on first use.
 pub async fn ensure(paths: &Paths) -> Result<()> {
     let store_db = paths.memory_db_path();
     let specs = [DatabaseSpec {
@@ -21,13 +23,21 @@ pub async fn ensure(paths: &Paths) -> Result<()> {
     }];
 
     let progress = InitProgress::new(DATASTORE_STEPS).with_quiet_env("ELPH_QUIET");
-    // Two observable phases instead of a bar that is instantly full: opening the
-    // SQLite connection (incl. stale shared-memory cleanup) and applying
-    // migrations. The elapsed-time ticker shows the step is alive while blocked.
     progress.advance("Opening store database");
 
     match ensure_databases_once(&specs).await {
         Ok(_) => {
+            // Apply floppy memory and codegraph migrations eagerly so all
+            // tables exist before the TUI starts.
+            let db = Builder::new_local(store_db.to_string_lossy().as_ref())
+                .experimental_multiprocess_wal(true)
+                .experimental_index_method(true)
+                .build()
+                .await?;
+            let conn = db.connect()?;
+            memory_migrations::apply(&conn).await?;
+            codegraph_migrations::apply(&conn).await?;
+
             progress.advance("Databases ready");
             progress.finish();
             Ok(())
@@ -36,7 +46,6 @@ pub async fn ensure(paths: &Paths) -> Result<()> {
             progress.finish();
             let error_msg = format!("Database initialization failed: {e}");
 
-            // Provide helpful hints for common errors
             if error_msg.contains("timeout") {
                 anyhow::bail!(
                     "{}\n\nThis may be caused by:\n\

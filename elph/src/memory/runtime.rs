@@ -191,6 +191,7 @@ impl MemoryRuntime {
     }
 
     /// Ensure the embed-capable store is open (shared by tools and hooks).
+    /// Schema tables are already created by `platform::datastore::ensure()`.
     pub async fn ensure_store(&self) -> Result<()> {
         {
             let guard = self.store.lock().await;
@@ -211,9 +212,7 @@ impl MemoryRuntime {
                             started.elapsed().as_millis()
                         );
                         let mut guard = self.store.lock().await;
-                        if guard.is_none() {
-                            *guard = Some(store);
-                        }
+                        *guard = Some(store);
                         Ok(())
                     }
                     Err(err) => {
