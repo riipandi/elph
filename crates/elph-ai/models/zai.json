@@ -199,10 +199,10 @@
         "baseUrl": "https://api.z.ai/api/coding/paas/v4",
         "contextWindow": 200000,
         "cost": {
-            "cacheRead": 0.01,
+            "cacheRead": 0.008,
             "cacheWrite": 0.0,
-            "input": 0.06,
-            "output": 0.4
+            "input": 0.04,
+            "output": 0.3
         },
         "id": "glm-4.7-flash",
         "input": ["text"],

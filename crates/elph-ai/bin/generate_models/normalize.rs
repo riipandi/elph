@@ -64,6 +64,9 @@ pub fn from_models_dev(provider: &ProviderSource, model_id: &str, mdev: &Value, 
 /// Refresh an existing Elph-only / gateway model with models.dev pricing/limits when found.
 pub fn enrich_existing(provider: &ProviderSource, model_id: &str, previous: &Value, mdev: Option<&Value>) -> Value {
     let mut entry = previous.clone();
+    if !entry.is_object() {
+        entry = serde_json::json!({});
+    }
     let obj = entry.as_object_mut().expect("model entry object");
 
     obj.insert("id".into(), json!(model_id));

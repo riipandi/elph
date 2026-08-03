@@ -10,7 +10,7 @@ use serde_json::Value;
 
 use super::models_dev::{default_cache_dir, find_model, find_model_fuzzy, load_models_dev, models_for_provider_keys};
 use super::normalize::{enrich_existing, from_models_dev};
-use super::pricing::{apply_cost, fetch_all_live_pricing, resolve_cost};
+use super::pricing::{apply_cost, fetch_all_live_pricing, fetch_live_model_ids, resolve_cost};
 use super::provider_sources::all_provider_sources;
 use super::term;
 
@@ -29,13 +29,14 @@ pub struct ChatOptions {
     pub no_regenerate_catalog: bool,
     pub offline: bool,
     pub no_live_pricing: bool,
+    pub force: bool,
 }
 
 pub fn generate_chat(options: ChatOptions) -> Result<()> {
     term::header("generate-models chat · models.dev origin");
     fs::create_dir_all(&options.models_dir).context("create models output directory")?;
     let cache_dir = default_cache_dir(&options.models_dir);
-    let models_dev = load_models_dev(&cache_dir, options.offline)?;
+    let models_dev = load_models_dev(&cache_dir, options.offline, options.force)?;
     let live = fetch_all_live_pricing(options.no_live_pricing);
 
     let mut index: Vec<CatalogIndexEntry> = Vec::new();
@@ -52,33 +53,61 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
         let mut catalog = BTreeMap::new();
 
         if src.gateway_preserve_ids || models_for_provider_keys(&models_dev, src.models_dev_keys).is_none() {
-            // Keep existing model ids (gateway / Elph-only) and enrich from models.dev.
+            // Gateway / Elph-only provider: keep existing model ids and enrich.
+            // When a live `/models` endpoint is configured (and the key is set),
+            // refresh the model id list so new upstream models appear.
             let prev_map = previous.as_ref().and_then(|v| v.as_object());
-            if let Some(prev_map) = prev_map {
-                for (mid, prev_entry) in prev_map {
-                    let mut entry = if let Some(m) = find_model(&models_dev, src.models_dev_keys, mid) {
-                        enrich_existing(src, mid, prev_entry, Some(m))
-                    } else if let Some((_, m)) = find_model_fuzzy(&models_dev, mid) {
-                        enrich_existing(src, mid, prev_entry, Some(&m))
-                    } else {
-                        enrich_existing(src, mid, prev_entry, None)
-                    };
-                    let (i, o, cr, cw, _) = resolve_cost(src, mid, &models_dev, &live, entry.get("cost"));
-                    apply_cost(&mut entry, i, o, cr, cw);
-                    tally_map(&entry, &mut maps_ok, &mut maps_bad);
-                    catalog.insert(mid.clone(), entry);
-                }
-            } else if let Some((_, mdev_models)) = models_for_provider_keys(&models_dev, src.models_dev_keys) {
-                for (mid, mdev) in mdev_models {
-                    let mut entry = from_models_dev(src, mid, mdev, None);
-                    let (i, o, cr, cw, _) = resolve_cost(src, mid, &models_dev, &live, None);
-                    apply_cost(&mut entry, i, o, cr, cw);
-                    tally_map(&entry, &mut maps_ok, &mut maps_bad);
-                    catalog.insert(mid.clone(), entry);
+            let live_ids = fetch_live_model_ids(src);
+            if let Some(live_ids) = &live_ids {
+                term::live_pricing(src.id, live_ids.len());
+            }
+
+            // Union of previous ids + live ids (new upstream models get a fresh entry).
+            // When a live `/models` endpoint is available, it is the source of
+            // truth: live ids replace the previous list so removed upstream
+            // models (and non-LLM entries) are dropped from the catalog.
+            let mut ids: Vec<String> = Vec::new();
+            if let Some(live_ids) = &live_ids {
+                ids.extend(live_ids.iter().cloned());
+            } else if let Some(prev_map) = prev_map {
+                ids.extend(prev_map.keys().cloned());
+            }
+            ids.sort();
+            ids.dedup();
+
+            if ids.is_empty() {
+                // No previous catalog and no live ids: fall back to models.dev list if any.
+                if let Some((_, mdev_models)) = models_for_provider_keys(&models_dev, src.models_dev_keys) {
+                    for (mid, mdev) in mdev_models {
+                        let mut entry = from_models_dev(src, mid, mdev, None);
+                        let (i, o, cr, cw, _) = resolve_cost(src, mid, &models_dev, &live, None);
+                        apply_cost(&mut entry, i, o, cr, cw);
+                        tally_map(&entry, &mut maps_ok, &mut maps_bad);
+                        catalog.insert(mid.clone(), entry);
+                    }
+                } else {
+                    term::warn(format!(
+                        "{}: no previous catalog, no live ids, not on models.dev — skipped",
+                        src.id
+                    ));
+                    continue;
                 }
             } else {
-                term::warn(format!("{}: no previous catalog and not on models.dev — skipped", src.id));
-                continue;
+                for mid in ids {
+                    let prev_entry = prev_map.and_then(|m| m.get(&mid));
+                    let prev_ref = prev_entry.unwrap_or(&Value::Null);
+                    let mut entry = if let Some(m) = find_model(&models_dev, src.models_dev_keys, &mid) {
+                        enrich_existing(src, &mid, prev_ref, Some(m))
+                    } else if let Some((_, m)) = find_model_fuzzy(&models_dev, &mid) {
+                        enrich_existing(src, &mid, prev_ref, Some(&m))
+                    } else {
+                        enrich_existing(src, &mid, prev_ref, None)
+                    };
+                    let (i, o, cr, cw, _) = resolve_cost(src, &mid, &models_dev, &live, entry.get("cost"));
+                    apply_cost(&mut entry, i, o, cr, cw);
+                    tally_map(&entry, &mut maps_ok, &mut maps_bad);
+                    catalog.insert(mid.clone(), entry);
+                }
             }
         } else if let Some((_, mdev_models)) = models_for_provider_keys(&models_dev, src.models_dev_keys) {
             // Origin: models.dev list

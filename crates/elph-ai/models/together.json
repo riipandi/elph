@@ -12,7 +12,7 @@
         },
         "contextWindow": 204800,
         "cost": {
-            "cacheRead": 0.06,
+            "cacheRead": 0.05,
             "cacheWrite": 0.0,
             "input": 0.3,
             "output": 1.2
@@ -45,7 +45,7 @@
             "supportsStrictMode": false,
             "thinkingFormat": "together"
         },
-        "contextWindow": 524288,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.06,
             "cacheWrite": 0.0,
@@ -54,7 +54,7 @@
         },
         "id": "MiniMaxAI/MiniMax-M3",
         "input": ["text", "image", "video"],
-        "maxTokens": 128000,
+        "maxTokens": 131072,
         "name": "MiniMax-M3",
         "provider": "together",
         "reasoning": true,
@@ -123,9 +123,9 @@
             "output": 0.15
         },
         "id": "Qwen/Qwen3.5-9B",
-        "input": ["text", "image", "video"],
-        "maxTokens": 65536,
-        "name": "Qwen3.5 9B",
+        "input": ["text"],
+        "maxTokens": 262144,
+        "name": "Qwen/Qwen3.5-9B",
         "provider": "together",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -220,7 +220,7 @@
             "supportsStrictMode": false,
             "thinkingFormat": "together"
         },
-        "contextWindow": 262144,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.145,
             "cacheWrite": 0.0,
@@ -229,8 +229,8 @@
         },
         "id": "deepseek-ai/DeepSeek-V4-Pro",
         "input": ["text"],
-        "maxTokens": 262144,
-        "name": "Deepseek V4 Pro",
+        "maxTokens": 384000,
+        "name": "DeepSeek V4 Pro",
         "provider": "together",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -259,12 +259,12 @@
         "cost": {
             "cacheRead": 0.026,
             "cacheWrite": 0.0,
-            "input": 0.14,
+            "input": 0.13,
             "output": 0.4
         },
         "id": "google/gemma-4-31B-it",
-        "input": ["text", "image"],
-        "maxTokens": 32768,
+        "input": ["text"],
+        "maxTokens": 262144,
         "name": "Gemma 4 31B IT",
         "provider": "together",
         "reasoning": true,
@@ -325,17 +325,17 @@
             "supportsStrictMode": false,
             "thinkingFormat": "together"
         },
-        "contextWindow": 262144,
+        "contextWindow": 262000,
         "cost": {
-            "cacheRead": 0.16,
+            "cacheRead": 0.2,
             "cacheWrite": 0.0,
-            "input": 0.3,
-            "output": 1.2
+            "input": 0.77,
+            "output": 4.0
         },
         "id": "moonshotai/Kimi-K2.6",
-        "input": ["text"],
-        "maxTokens": 131072,
-        "name": "Kimi K2.6",
+        "input": ["text", "image"],
+        "maxTokens": 262000,
+        "name": "moonshotai/Kimi-K2.6",
         "provider": "together",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -360,16 +360,16 @@
             "supportsStrictMode": false,
             "thinkingFormat": "together"
         },
-        "contextWindow": 262144,
+        "contextWindow": 262000,
         "cost": {
-            "cacheRead": 0.2375,
+            "cacheRead": 0.16,
             "cacheWrite": 0.0,
             "input": 0.95,
             "output": 4.0
         },
         "id": "moonshotai/Kimi-K2.7-Code",
         "input": ["text", "image"],
-        "maxTokens": 262144,
+        "maxTokens": 262000,
         "name": "Kimi K2.7 Code",
         "provider": "together",
         "reasoning": true,
@@ -395,7 +395,7 @@
             "supportsStrictMode": false,
             "thinkingFormat": "together"
         },
-        "contextWindow": 1048576,
+        "contextWindow": 327680,
         "cost": {
             "cacheRead": 0.27,
             "cacheWrite": 0.0,
@@ -404,7 +404,7 @@
         },
         "id": "moonshotai/Kimi-K3",
         "input": ["text", "image"],
-        "maxTokens": 262144,
+        "maxTokens": 32768,
         "name": "Kimi K3",
         "provider": "together",
         "reasoning": true,
@@ -432,7 +432,7 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.15,
+            "cacheRead": 0.25,
             "cacheWrite": 0.0,
             "input": 0.5,
             "output": 2.5
@@ -440,7 +440,7 @@
         "id": "nvidia/nemotron-3-ultra-550b-a55b",
         "input": ["text"],
         "maxTokens": 65536,
-        "name": "Nemotron 3 Ultra 550B A55B",
+        "name": "Nvidia Nemotron 3 Ultra 550B",
         "provider": "together",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -465,17 +465,17 @@
             "supportsStrictMode": false,
             "thinkingFormat": "openai"
         },
-        "contextWindow": 128000,
+        "contextWindow": 131000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.1,
-            "output": 0.5
+            "input": 0.05,
+            "output": 0.45
         },
         "id": "openai/gpt-oss-120b",
         "input": ["text"],
-        "maxTokens": 8192,
-        "name": "GPT-OSS-120B",
+        "maxTokens": 8000,
+        "name": "openai/gpt-oss-120b",
         "provider": "together",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -500,17 +500,17 @@
             "supportsStrictMode": false,
             "thinkingFormat": "openai"
         },
-        "contextWindow": 131072,
+        "contextWindow": 131000,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.0375,
             "cacheWrite": 0.0,
-            "input": 0.03,
-            "output": 0.14
+            "input": 0.04,
+            "output": 0.18
         },
         "id": "openai/gpt-oss-20b",
         "input": ["text"],
-        "maxTokens": 32768,
-        "name": "GPT OSS 20B",
+        "maxTokens": 8000,
+        "name": "openai/gpt-oss-20b",
         "provider": "together",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -570,7 +570,7 @@
             "supportsStrictMode": false,
             "thinkingFormat": "together"
         },
-        "contextWindow": 1000000,
+        "contextWindow": 1049000,
         "cost": {
             "cacheRead": 0.26,
             "cacheWrite": 0.0,
@@ -579,7 +579,7 @@
         },
         "id": "zai-org/GLM-5.2",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 262000,
         "name": "GLM-5.2",
         "provider": "together",
         "reasoning": true,

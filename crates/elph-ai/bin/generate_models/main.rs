@@ -66,6 +66,9 @@ struct ChatCmd {
     /// Skip live provider pricing HTTP probes
     #[arg(long)]
     no_live_pricing: bool,
+    /// Bypass the models.dev cache freshness check (always re-fetch)
+    #[arg(long)]
+    force: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -76,6 +79,8 @@ struct EnrichCmd {
     offline: bool,
     #[arg(long)]
     no_live_pricing: bool,
+    #[arg(long)]
+    force: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -110,6 +115,8 @@ struct AllCmd {
     no_live_pricing: bool,
     #[arg(long)]
     skip_scripts: bool,
+    #[arg(long)]
+    force: bool,
 }
 
 fn main() -> Result<()> {
@@ -123,6 +130,7 @@ fn main() -> Result<()> {
             no_regenerate_catalog: cmd.no_regenerate_catalog,
             offline: cmd.offline,
             no_live_pricing: cmd.no_live_pricing,
+            force: cmd.force,
         }),
         Command::Image(cmd) => {
             // Image path still uses optional local pi clone when present.
@@ -148,6 +156,7 @@ fn main() -> Result<()> {
                 no_regenerate_catalog: false,
                 offline: cmd.offline,
                 no_live_pricing: cmd.no_live_pricing,
+                force: cmd.force,
             })
         }
         Command::All(cmd) => {
@@ -157,6 +166,7 @@ fn main() -> Result<()> {
                 no_regenerate_catalog: cmd.no_regenerate_catalog,
                 offline: cmd.offline,
                 no_live_pricing: cmd.no_live_pricing,
+                force: cmd.force,
             })?;
             let catalog_dir = common::default_catalog_dir(&crate_root);
             let _ = generate_image(ImageOptions {

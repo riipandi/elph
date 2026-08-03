@@ -11,11 +11,19 @@ use super::term;
 
 const MODELS_DEV_API_URL: &str = "https://models.dev/api.json";
 
+/// How long a cached models.dev snapshot is considered fresh (24 hours).
+pub const MODELS_DEV_CACHE_TTL: std::time::Duration = std::time::Duration::from_secs(24 * 60 * 60);
+
 /// Cached models.dev root: provider_key → provider object (with `models` map).
 pub type ModelsDevRoot = HashMap<String, Value>;
 
 /// Fetch models.dev api.json (or load offline cache).
-pub fn load_models_dev(cache_dir: &Path, offline: bool) -> Result<ModelsDevRoot> {
+///
+/// - `offline`: use the cached snapshot only (error if missing).
+/// - `force`: bypass the freshness check and always re-fetch.
+/// - Otherwise: use the cache when it is younger than [`MODELS_DEV_CACHE_TTL`];
+///   on a fetch failure, fall back to the cached snapshot when one exists.
+pub fn load_models_dev(cache_dir: &Path, offline: bool, force: bool) -> Result<ModelsDevRoot> {
     fs::create_dir_all(cache_dir).with_context(|| format!("create cache dir {}", cache_dir.display()))?;
     let cache_path = cache_dir.join("api.json");
 
@@ -32,26 +40,79 @@ pub fn load_models_dev(cache_dir: &Path, offline: bool) -> Result<ModelsDevRoot>
         return Ok(root);
     }
 
+    // Freshness check: reuse the cache when it is young enough and not forced.
+    if !force && cache_is_fresh(&cache_path) {
+        let text = fs::read_to_string(&cache_path).with_context(|| format!("read {}", cache_path.display()))?;
+        let root: ModelsDevRoot = serde_json::from_str(&text).context("parse cached models.dev api.json")?;
+        term::info(format!(
+            "Loaded {} providers from fresh cache {} (age < 24h)",
+            root.len(),
+            cache_path.display()
+        ));
+        return Ok(root);
+    }
+
     term::fetch(format!("Fetching {MODELS_DEV_API_URL}…"));
-    let resp = reqwest::blocking::Client::builder()
+    let fetch = reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_secs(120))
         .build()
         .context("build HTTP client")?
         .get(MODELS_DEV_API_URL)
-        .send()
-        .context("fetch models.dev/api.json")?;
-    if !resp.status().is_success() {
-        bail!("{MODELS_DEV_API_URL} returned {}", resp.status());
+        .send();
+
+    match fetch {
+        Ok(resp) if resp.status().is_success() => {
+            let text = resp.text().context("read models.dev body")?;
+            let root: ModelsDevRoot = serde_json::from_str(&text).context("parse models.dev api.json")?;
+            fs::write(&cache_path, &text).with_context(|| format!("write {}", cache_path.display()))?;
+            term::fetch(format!(
+                "Got {} providers from models.dev (cached → {})",
+                root.len(),
+                cache_path.display()
+            ));
+            Ok(root)
+        }
+        Ok(resp) => {
+            // Fetch failed (non-2xx): fall back to cache when available.
+            if cache_path.is_file() {
+                let text = fs::read_to_string(&cache_path).with_context(|| format!("read {}", cache_path.display()))?;
+                let root: ModelsDevRoot = serde_json::from_str(&text).context("parse cached models.dev api.json")?;
+                term::warn(format!(
+                    "{MODELS_DEV_API_URL} returned {} — using cached snapshot ({} providers)",
+                    resp.status(),
+                    root.len()
+                ));
+                Ok(root)
+            } else {
+                bail!("{MODELS_DEV_API_URL} returned {}", resp.status());
+            }
+        }
+        Err(e) => {
+            // Network failure: fall back to cache when available.
+            if cache_path.is_file() {
+                let text = fs::read_to_string(&cache_path).with_context(|| format!("read {}", cache_path.display()))?;
+                let root: ModelsDevRoot = serde_json::from_str(&text).context("parse cached models.dev api.json")?;
+                term::warn(format!(
+                    "fetch {MODELS_DEV_API_URL} failed ({e}) — using cached snapshot ({} providers)",
+                    root.len()
+                ));
+                Ok(root)
+            } else {
+                Err(e).context("fetch models.dev/api.json")
+            }
+        }
     }
-    let text = resp.text().context("read models.dev body")?;
-    let root: ModelsDevRoot = serde_json::from_str(&text).context("parse models.dev api.json")?;
-    fs::write(&cache_path, &text).with_context(|| format!("write {}", cache_path.display()))?;
-    term::fetch(format!(
-        "Got {} providers from models.dev (cached → {})",
-        root.len(),
-        cache_path.display()
-    ));
-    Ok(root)
+}
+
+/// True when the cache file exists and is younger than [`MODELS_DEV_CACHE_TTL`].
+fn cache_is_fresh(cache_path: &Path) -> bool {
+    let Ok(meta) = fs::metadata(cache_path) else {
+        return false;
+    };
+    let Ok(modified) = meta.modified() else {
+        return false;
+    };
+    modified.elapsed().is_ok_and(|age| age < MODELS_DEV_CACHE_TTL)
 }
 
 /// Default cache directory under the models output dir.

@@ -190,12 +190,12 @@
         "cost": {
             "cacheRead": 0.16,
             "cacheWrite": 0.0,
-            "input": 0.95,
-            "output": 4.0
+            "input": 0.828,
+            "output": 4.389
         },
         "id": "kimi-k2.6",
-        "input": ["text", "image", "video"],
-        "maxTokens": 32768,
+        "input": ["text", "image"],
+        "maxTokens": 262144,
         "name": "Kimi K2.6",
         "provider": "neuralwatt",
         "reasoning": true,
@@ -248,14 +248,14 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.160835,
+            "cacheRead": 0.19,
             "cacheWrite": 0.0,
-            "input": 0.95,
-            "output": 3.9995
+            "input": 0.941,
+            "output": 4.389
         },
         "id": "kimi-k2.7-code",
-        "input": ["text", "image", "video"],
-        "maxTokens": 32768,
+        "input": ["text"],
+        "maxTokens": 262144,
         "name": "Kimi K2.7 Code",
         "provider": "neuralwatt",
         "reasoning": true,

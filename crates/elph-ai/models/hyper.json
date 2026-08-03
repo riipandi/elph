@@ -16,9 +16,7 @@
             "output": 0.4
         },
         "id": "deepseek-v4-flash",
-        "input": [
-            "text"
-        ],
+        "input": ["text"],
         "maxTokens": 384000,
         "name": "DeepSeek V4 Flash",
         "provider": "hyper",
@@ -50,9 +48,7 @@
             "output": 0.304864
         },
         "id": "deepseek-v4-flash-0731",
-        "input": [
-            "text"
-        ],
+        "input": ["text"],
         "maxTokens": 384000,
         "name": "DeepSeek V4 Flash 0731",
         "provider": "hyper",
@@ -84,9 +80,7 @@
             "output": 4.8
         },
         "id": "deepseek-v4-pro",
-        "input": [
-            "text"
-        ],
+        "input": ["text"],
         "maxTokens": 384000,
         "name": "DeepSeek V4 Pro",
         "provider": "hyper",
@@ -117,11 +111,9 @@
             "output": 0.42
         },
         "id": "gemma-4-26b-a4b-it",
-        "input": [
-            "text"
-        ],
+        "input": ["text"],
         "maxTokens": 25600,
-        "name": "Gemma 4 26B A4B",
+        "name": "Gemma 4 26B A4B IT",
         "provider": "hyper",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -150,9 +142,7 @@
             "output": 2.622
         },
         "id": "glm-5",
-        "input": [
-            "text"
-        ],
+        "input": ["text"],
         "maxTokens": 20275,
         "name": "GLM-5",
         "provider": "hyper",
@@ -184,9 +174,7 @@
             "output": 4.79072
         },
         "id": "glm-5.1",
-        "input": [
-            "text"
-        ],
+        "input": ["text"],
         "maxTokens": 131072,
         "name": "GLM-5.1",
         "provider": "hyper",
@@ -218,9 +206,7 @@
             "output": 4.4
         },
         "id": "glm-5.2",
-        "input": [
-            "text"
-        ],
+        "input": ["text"],
         "maxTokens": 128000,
         "name": "GLM-5.2",
         "provider": "hyper",
@@ -252,11 +238,9 @@
             "output": 0.7
         },
         "id": "gpt-oss-120b",
-        "input": [
-            "text"
-        ],
+        "input": ["text"],
         "maxTokens": 13107,
-        "name": "gpt-oss-120b",
+        "name": "GPT OSS 120B",
         "provider": "hyper",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -285,9 +269,7 @@
             "output": 2.85
         },
         "id": "kimi-k2.5",
-        "input": [
-            "text"
-        ],
+        "input": ["text"],
         "maxTokens": 26214,
         "name": "Kimi K2.5",
         "provider": "hyper",
@@ -319,9 +301,7 @@
             "output": 4.0
         },
         "id": "kimi-k2.6",
-        "input": [
-            "text"
-        ],
+        "input": ["text", "image"],
         "maxTokens": 262000,
         "name": "Kimi K2.6",
         "provider": "hyper",
@@ -352,9 +332,7 @@
             "output": 4.0
         },
         "id": "kimi-k2.7-code",
-        "input": [
-            "text"
-        ],
+        "input": ["text", "image"],
         "maxTokens": 16000,
         "name": "Kimi K2.7 Code",
         "provider": "hyper",
@@ -386,9 +364,7 @@
             "output": 16.332
         },
         "id": "kimi-k3",
-        "input": [
-            "text"
-        ],
+        "input": ["text", "image"],
         "maxTokens": 131072,
         "name": "Kimi K3",
         "provider": "hyper",
@@ -419,11 +395,9 @@
             "output": 1.0446
         },
         "id": "llama-3.3-70b-instruct",
-        "input": [
-            "text"
-        ],
+        "input": ["text"],
         "maxTokens": 12800,
-        "name": "Llama 3.3 70B Instruct",
+        "name": "Llama-3.3-70B-Instruct",
         "provider": "hyper",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -452,11 +426,9 @@
             "output": 0.934
         },
         "id": "llama-4-maverick-17b-128e-instruct-fp8",
-        "input": [
-            "text"
-        ],
+        "input": ["text"],
         "maxTokens": 43000,
-        "name": "Llama 4 Maverick 17B 128E Instruct FP8",
+        "name": "Llama 4 Maverick 17B Instruct",
         "provider": "hyper",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -485,11 +457,9 @@
             "output": 1.62
         },
         "id": "minimax-m2.7",
-        "input": [
-            "text"
-        ],
+        "input": ["text"],
         "maxTokens": 6553,
-        "name": "MiniMax M2.7",
+        "name": "MiniMax-M2.7",
         "provider": "hyper",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -513,17 +483,15 @@
         },
         "contextWindow": 512000,
         "cost": {
-            "cacheRead": 0.0642392,
+            "cacheRead": 0.064239,
             "cacheWrite": 0.0,
             "input": 0.32664,
             "output": 1.30656
         },
         "id": "minimax-m3",
-        "input": [
-            "text"
-        ],
+        "input": ["text", "image"],
         "maxTokens": 512000,
-        "name": "MiniMax M3",
+        "name": "MiniMax-M3",
         "provider": "hyper",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -531,237 +499,6 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "qwen3.6-flash": {
-        "api": "openai-completions",
-        "baseUrl": "https://hyper.charm.land/v1",
-        "compat": {
-            "maxTokensField": "max_tokens",
-            "supportsReasoningEffort": false,
-            "supportsStore": false
-        },
-        "contextWindow": 1000000,
-        "cost": {
-            "cacheRead": 0.1,
-            "cacheWrite": 1.25,
-            "input": 1.0,
-            "output": 4.0
-        },
-        "id": "qwen3.6-flash",
-        "input": [
-            "text"
-        ],
-        "maxTokens": 64000,
-        "name": "Qwen3.6-Flash",
-        "provider": "hyper",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "qwen3.6-max": {
-        "api": "openai-completions",
-        "baseUrl": "https://hyper.charm.land/v1",
-        "compat": {
-            "maxTokensField": "max_tokens",
-            "supportsReasoningEffort": false,
-            "supportsStore": false
-        },
-        "contextWindow": 256000,
-        "cost": {
-            "cacheRead": 0.2,
-            "cacheWrite": 2.5,
-            "input": 2.0,
-            "output": 12.0
-        },
-        "id": "qwen3.6-max",
-        "input": [
-            "text"
-        ],
-        "maxTokens": 64000,
-        "name": "Qwen3.6-Max",
-        "provider": "hyper",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "qwen3.6-plus": {
-        "api": "openai-completions",
-        "baseUrl": "https://hyper.charm.land/v1",
-        "compat": {
-            "maxTokensField": "max_tokens",
-            "supportsReasoningEffort": false,
-            "supportsStore": false
-        },
-        "contextWindow": 1000000,
-        "cost": {
-            "cacheRead": 0.2,
-            "cacheWrite": 2.5,
-            "input": 2.0,
-            "output": 6.0
-        },
-        "id": "qwen3.6-plus",
-        "input": [
-            "text"
-        ],
-        "maxTokens": 64000,
-        "name": "Qwen3.6-Plus",
-        "provider": "hyper",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "qwen3.7-flash": {
-        "api": "openai-completions",
-        "baseUrl": "https://hyper.charm.land/v1",
-        "compat": {
-            "maxTokensField": "max_tokens",
-            "supportsReasoningEffort": false,
-            "supportsStore": false
-        },
-        "contextWindow": 1000000,
-        "cost": {
-            "cacheRead": 0.04,
-            "cacheWrite": 0.0,
-            "input": 0.2,
-            "output": 0.8
-        },
-        "id": "qwen3.7-flash",
-        "input": [
-            "text"
-        ],
-        "maxTokens": 64000,
-        "name": "Qwen3.7-Flash",
-        "provider": "hyper",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "qwen3.7-max": {
-        "api": "openai-completions",
-        "baseUrl": "https://hyper.charm.land/v1",
-        "compat": {
-            "maxTokensField": "max_tokens",
-            "supportsReasoningEffort": false,
-            "supportsStore": false
-        },
-        "contextWindow": 1000000,
-        "cost": {
-            "cacheRead": 0.5,
-            "cacheWrite": 0.0,
-            "input": 2.5,
-            "output": 7.5
-        },
-        "id": "qwen3.7-max",
-        "input": [
-            "text"
-        ],
-        "maxTokens": 64000,
-        "name": "Qwen3.7-Max",
-        "provider": "hyper",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "qwen3.7-plus": {
-        "api": "openai-completions",
-        "baseUrl": "https://hyper.charm.land/v1",
-        "compat": {
-            "maxTokensField": "max_tokens",
-            "supportsReasoningEffort": false,
-            "supportsStore": false
-        },
-        "contextWindow": 1000000,
-        "cost": {
-            "cacheRead": 0.24,
-            "cacheWrite": 0.0,
-            "input": 1.2,
-            "output": 4.8
-        },
-        "id": "qwen3.7-plus",
-        "input": [
-            "text"
-        ],
-        "maxTokens": 64000,
-        "name": "Qwen3.7-Plus",
-        "provider": "hyper",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "qwen3.8-max": {
-        "api": "openai-completions",
-        "baseUrl": "https://hyper.charm.land/v1",
-        "compat": {
-            "maxTokensField": "max_tokens",
-            "supportsReasoningEffort": false,
-            "supportsStore": false
-        },
-        "contextWindow": 1000000,
-        "cost": {
-            "cacheRead": 0.25,
-            "cacheWrite": 0.0,
-            "input": 2.0,
-            "output": 6.0
-        },
-        "id": "qwen3.8-max",
-        "input": [
-            "text"
-        ],
-        "maxTokens": 65536,
-        "name": "Qwen3.8-Max",
-        "provider": "hyper",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -783,11 +520,9 @@
             "output": 2.145
         },
         "id": "qwen3-coder-480b-a35b-instruct-int4-mixed-ar",
-        "input": [
-            "text"
-        ],
+        "input": ["text"],
         "maxTokens": 10600,
-        "name": "Qwen3 Coder 480B A35B Instruct INT4 Mixed AR",
+        "name": "Qwen3-Coder 480B-A35B Instruct",
         "provider": "hyper",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -816,11 +551,226 @@
             "output": 1.136
         },
         "id": "qwen3-next-80b-a3b-instruct",
-        "input": [
-            "text"
-        ],
+        "input": ["text"],
         "maxTokens": 26214,
-        "name": "Qwen3 Next 80B A3B Instruct",
+        "name": "Qwen3-Next 80B-A3B Instruct",
+        "provider": "hyper",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "qwen3.6-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://hyper.charm.land/v1",
+        "compat": {
+            "maxTokensField": "max_tokens",
+            "supportsReasoningEffort": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.1,
+            "cacheWrite": 1.25,
+            "input": 1.0,
+            "output": 4.0
+        },
+        "id": "qwen3.6-flash",
+        "input": ["text", "image"],
+        "maxTokens": 64000,
+        "name": "Qwen3.6 Flash",
+        "provider": "hyper",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "qwen3.6-max": {
+        "api": "openai-completions",
+        "baseUrl": "https://hyper.charm.land/v1",
+        "compat": {
+            "maxTokensField": "max_tokens",
+            "supportsReasoningEffort": false,
+            "supportsStore": false
+        },
+        "contextWindow": 256000,
+        "cost": {
+            "cacheRead": 0.2,
+            "cacheWrite": 2.5,
+            "input": 2.0,
+            "output": 12.0
+        },
+        "id": "qwen3.6-max",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "Qwen3.6 Max Preview",
+        "provider": "hyper",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "qwen3.6-plus": {
+        "api": "openai-completions",
+        "baseUrl": "https://hyper.charm.land/v1",
+        "compat": {
+            "maxTokensField": "max_tokens",
+            "supportsReasoningEffort": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.2,
+            "cacheWrite": 2.5,
+            "input": 2.0,
+            "output": 6.0
+        },
+        "id": "qwen3.6-plus",
+        "input": ["text", "image"],
+        "maxTokens": 64000,
+        "name": "Qwen3.6 Plus",
+        "provider": "hyper",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "qwen3.7-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://hyper.charm.land/v1",
+        "compat": {
+            "maxTokensField": "max_tokens",
+            "supportsReasoningEffort": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.04,
+            "cacheWrite": 0.0,
+            "input": 0.2,
+            "output": 0.8
+        },
+        "id": "qwen3.7-flash",
+        "input": ["text", "image"],
+        "maxTokens": 64000,
+        "name": "Qwen3.7 Flash",
+        "provider": "hyper",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "qwen3.7-max": {
+        "api": "openai-completions",
+        "baseUrl": "https://hyper.charm.land/v1",
+        "compat": {
+            "maxTokensField": "max_tokens",
+            "supportsReasoningEffort": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 0.0,
+            "input": 2.5,
+            "output": 7.5
+        },
+        "id": "qwen3.7-max",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "Qwen3.7 Max",
+        "provider": "hyper",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "qwen3.7-plus": {
+        "api": "openai-completions",
+        "baseUrl": "https://hyper.charm.land/v1",
+        "compat": {
+            "maxTokensField": "max_tokens",
+            "supportsReasoningEffort": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.24,
+            "cacheWrite": 0.0,
+            "input": 1.2,
+            "output": 4.8
+        },
+        "id": "qwen3.7-plus",
+        "input": ["text", "image"],
+        "maxTokens": 64000,
+        "name": "Qwen3.7 Plus",
+        "provider": "hyper",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "qwen3.8-max": {
+        "api": "openai-completions",
+        "baseUrl": "https://hyper.charm.land/v1",
+        "compat": {
+            "maxTokensField": "max_tokens",
+            "supportsReasoningEffort": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.25,
+            "cacheWrite": 0.0,
+            "input": 2.0,
+            "output": 6.0
+        },
+        "id": "qwen3.8-max",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Qwen3.8-Max",
         "provider": "hyper",
         "reasoning": false,
         "thinkingLevelMap": {

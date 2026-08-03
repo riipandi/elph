@@ -1,70 +1,96 @@
 {
-    "deepseek-v4-flash:cloud": {
+    "deepseek-v4-flash": {
         "api": "openai-completions",
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.028,
+            "cacheWrite": 0.0,
+            "input": 0.138,
+            "output": 0.275
         },
-        "id": "deepseek-v4-flash:cloud",
+        "id": "deepseek-v4-flash",
         "input": ["text"],
         "maxTokens": 1048576,
-        "name": "DeepSeek V4 Flash (Cloud)",
+        "name": "deepseek-v4-flash",
         "provider": "ollama-cloud",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
+            "low": null,
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
         }
     },
-    "deepseek-v4-pro:cloud": {
+    "deepseek-v4-flash:0731": {
         "api": "openai-completions",
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
         },
-        "id": "deepseek-v4-pro:cloud",
+        "id": "deepseek-v4-flash:0731",
         "input": ["text"],
         "maxTokens": 1048576,
-        "name": "DeepSeek V4 Pro (Cloud)",
+        "name": "DeepSeek V4 Flash 0731",
         "provider": "ollama-cloud",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
+            "low": null,
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
         }
     },
-    "gemma4:31b:cloud": {
+    "deepseek-v4-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://ollama.com/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.33,
+            "cacheWrite": 0.0,
+            "input": 1.65,
+            "output": 3.301
+        },
+        "id": "deepseek-v4-pro",
+        "input": ["text"],
+        "maxTokens": 1048576,
+        "name": "deepseek-v4-pro",
+        "provider": "ollama-cloud",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gemma4:31b": {
         "api": "openai-completions",
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
         },
-        "id": "gemma4:31b:cloud",
-        "input": ["text"],
+        "id": "gemma4:31b",
+        "input": ["text", "image"],
         "maxTokens": 262144,
-        "name": "Gemma 4 31B (Cloud)",
+        "name": "gemma4:31b",
         "provider": "ollama-cloud",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -77,20 +103,20 @@
             "xhigh": null
         }
     },
-    "glm-5.1:cloud": {
+    "glm-5.1": {
         "api": "openai-completions",
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 202752,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.26,
+            "cacheWrite": 0.0,
+            "input": 1.756,
+            "output": 5.518
         },
-        "id": "glm-5.1:cloud",
+        "id": "glm-5.1",
         "input": ["text"],
         "maxTokens": 131072,
-        "name": "GLM 5.1 (Cloud)",
+        "name": "glm-5.1",
         "provider": "ollama-cloud",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -103,46 +129,46 @@
             "xhigh": null
         }
     },
-    "glm-5.2:cloud": {
+    "glm-5.2": {
         "api": "openai-completions",
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 976000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.26,
+            "cacheWrite": 0.0,
+            "input": 1.254,
+            "output": 5.016
         },
-        "id": "glm-5.2:cloud",
+        "id": "glm-5.2",
         "input": ["text"],
         "maxTokens": 131072,
-        "name": "GLM 5.2 (Cloud)",
+        "name": "GLM-5.2",
         "provider": "ollama-cloud",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
+            "low": null,
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
         }
     },
-    "gpt-oss:120b:cloud": {
+    "gpt-oss:120b": {
         "api": "openai-completions",
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
         },
-        "id": "gpt-oss:120b:cloud",
+        "id": "gpt-oss:120b",
         "input": ["text"],
         "maxTokens": 32768,
-        "name": "GPT-OSS 120B (Cloud)",
+        "name": "gpt-oss:120b",
         "provider": "ollama-cloud",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -155,20 +181,20 @@
             "xhigh": null
         }
     },
-    "gpt-oss:20b:cloud": {
+    "gpt-oss:20b": {
         "api": "openai-completions",
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
         },
-        "id": "gpt-oss:20b:cloud",
+        "id": "gpt-oss:20b",
         "input": ["text"],
         "maxTokens": 32768,
-        "name": "GPT-OSS 20B (Cloud)",
+        "name": "gpt-oss:20b",
         "provider": "ollama-cloud",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -181,20 +207,20 @@
             "xhigh": null
         }
     },
-    "kimi-k2.5:cloud": {
+    "kimi-k2.6": {
         "api": "openai-completions",
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.16,
+            "cacheWrite": 0.0,
+            "input": 0.828,
+            "output": 4.389
         },
-        "id": "kimi-k2.5:cloud",
+        "id": "kimi-k2.6",
         "input": ["text", "image"],
         "maxTokens": 262144,
-        "name": "Kimi K2.5 (Cloud)",
+        "name": "kimi-k2.6",
         "provider": "ollama-cloud",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -207,20 +233,20 @@
             "xhigh": null
         }
     },
-    "kimi-k2.6:cloud": {
+    "kimi-k2.7-code": {
         "api": "openai-completions",
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.19,
+            "cacheWrite": 0.0,
+            "input": 0.941,
+            "output": 4.389
         },
-        "id": "kimi-k2.6:cloud",
+        "id": "kimi-k2.7-code",
         "input": ["text", "image"],
         "maxTokens": 262144,
-        "name": "Kimi K2.6 (Cloud)",
+        "name": "kimi-k2.7-code",
         "provider": "ollama-cloud",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -233,98 +259,46 @@
             "xhigh": null
         }
     },
-    "kimi-k2.7-code:cloud": {
-        "api": "openai-completions",
-        "baseUrl": "https://ollama.com/v1",
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
-        },
-        "id": "kimi-k2.7-code:cloud",
-        "input": ["text", "image"],
-        "maxTokens": 262144,
-        "name": "Kimi K2.7 Code (Cloud)",
-        "provider": "ollama-cloud",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "kimi-k3:cloud": {
+    "kimi-k3": {
         "api": "openai-completions",
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.375,
+            "cacheWrite": 0.0,
+            "input": 3.75,
+            "output": 18.75
         },
-        "id": "kimi-k3:cloud",
-        "input": ["text", "image", "video"],
+        "id": "kimi-k3",
+        "input": ["text", "image"],
         "maxTokens": 131072,
-        "name": "Kimi K3 (Cloud)",
+        "name": "kimi-k3",
         "provider": "ollama-cloud",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
         }
     },
-    "minimax-m2.5:cloud": {
-        "api": "openai-completions",
-        "baseUrl": "https://ollama.com/v1",
-        "contextWindow": 204800,
-        "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
-        },
-        "id": "minimax-m2.5:cloud",
-        "input": ["text"],
-        "maxTokens": 131072,
-        "name": "MiniMax M2.5 (Cloud)",
-        "provider": "ollama-cloud",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "minimax-m2.7:cloud": {
+    "minimax-m2.7": {
         "api": "openai-completions",
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 196608,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.017,
+            "cacheWrite": 0.375,
+            "input": 0.08,
+            "output": 0.32
         },
-        "id": "minimax-m2.7:cloud",
+        "id": "minimax-m2.7",
         "input": ["text"],
         "maxTokens": 196608,
-        "name": "MiniMax M2.7 (Cloud)",
+        "name": "minimax-m2.7",
         "provider": "ollama-cloud",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -337,46 +311,46 @@
             "xhigh": null
         }
     },
-    "minimax-m3:cloud": {
+    "minimax-m3": {
         "api": "openai-completions",
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 512000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.06,
+            "cacheWrite": 0.0,
+            "input": 0.3,
+            "output": 1.2
         },
-        "id": "minimax-m3:cloud",
-        "input": ["text", "image"],
+        "id": "minimax-m3",
+        "input": ["text", "image", "video"],
         "maxTokens": 131072,
-        "name": "MiniMax M3 (Cloud)",
+        "name": "minimax-m3",
         "provider": "ollama-cloud",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
         }
     },
-    "mistral-large-3:675b:cloud": {
+    "mistral-large-3:675b": {
         "api": "openai-completions",
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
         },
-        "id": "mistral-large-3:675b:cloud",
-        "input": ["text"],
+        "id": "mistral-large-3:675b",
+        "input": ["text", "image"],
         "maxTokens": 262144,
-        "name": "Mistral Large 3 675B (Cloud)",
+        "name": "mistral-large-3:675b",
         "provider": "ollama-cloud",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -389,20 +363,20 @@
             "xhigh": null
         }
     },
-    "nemotron-3-nano:30b:cloud": {
+    "nemotron-3-nano:30b": {
         "api": "openai-completions",
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
         },
-        "id": "nemotron-3-nano:30b:cloud",
+        "id": "nemotron-3-nano:30b",
         "input": ["text"],
         "maxTokens": 131072,
-        "name": "Nemotron 3 Nano 30B (Cloud)",
+        "name": "nemotron-3-nano:30b",
         "provider": "ollama-cloud",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -415,20 +389,20 @@
             "xhigh": null
         }
     },
-    "nemotron-3-super:cloud": {
+    "nemotron-3-super": {
         "api": "openai-completions",
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
         },
-        "id": "nemotron-3-super:cloud",
+        "id": "nemotron-3-super",
         "input": ["text"],
         "maxTokens": 65536,
-        "name": "Nemotron 3 Super (Cloud)",
+        "name": "nemotron-3-super",
         "provider": "ollama-cloud",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -441,20 +415,20 @@
             "xhigh": null
         }
     },
-    "nemotron-3-ultra:cloud": {
+    "nemotron-3-ultra": {
         "api": "openai-completions",
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.1,
+            "output": 0.1
         },
-        "id": "nemotron-3-ultra:cloud",
+        "id": "nemotron-3-ultra",
         "input": ["text"],
         "maxTokens": 128000,
-        "name": "Nemotron 3 Ultra (Cloud)",
+        "name": "nemotron-3-ultra",
         "provider": "ollama-cloud",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -467,20 +441,20 @@
             "xhigh": null
         }
     },
-    "qwen3.5:397b:cloud": {
+    "qwen3.5:397b": {
         "api": "openai-completions",
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
         },
-        "id": "qwen3.5:397b:cloud",
-        "input": ["text"],
+        "id": "qwen3.5:397b",
+        "input": ["text", "image"],
         "maxTokens": 65536,
-        "name": "Qwen 3.5 397B (Cloud)",
+        "name": "qwen3.5:397b",
         "provider": "ollama-cloud",
         "reasoning": true,
         "thinkingLevelMap": {

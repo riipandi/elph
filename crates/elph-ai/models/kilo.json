@@ -1673,6 +1673,32 @@
             "xhigh": "xhigh"
         }
     },
+    "deepseek/deepseek-v4-flash-0731": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.kilo.ai/api/gateway",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.028,
+            "cacheWrite": 0.0,
+            "input": 0.14,
+            "output": 0.28
+        },
+        "id": "deepseek/deepseek-v4-flash-0731",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "DeepSeek V4 Flash 0731",
+        "provider": "kilo",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
     "deepseek/deepseek-v4-flash:discounted": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
@@ -2882,68 +2908,6 @@
             "xhigh": null
         }
     },
-    "inflection/inflection-3-pi": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.kilo.ai/api/gateway",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 8000,
-        "cost": {
-            "cacheRead": 1.2495,
-            "cacheWrite": 0.0,
-            "input": 2.499,
-            "output": 9.996
-        },
-        "id": "inflection/inflection-3-pi",
-        "input": ["text"],
-        "maxTokens": 4096,
-        "name": "Inflection 3 Pi",
-        "provider": "kilo",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "inflection/inflection-3-productivity": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.kilo.ai/api/gateway",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 8000,
-        "cost": {
-            "cacheRead": 1.2495,
-            "cacheWrite": 0.0,
-            "input": 2.499,
-            "output": 9.996
-        },
-        "id": "inflection/inflection-3-productivity",
-        "input": ["text"],
-        "maxTokens": 4096,
-        "name": "Inflection 3 Productivity",
-        "provider": "kilo",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "kilo-auto/balanced": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
@@ -3187,37 +3151,6 @@
             "low": null,
             "max": null,
             "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "kwaipilot/kat-coder-pro-v2.5:free": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.kilo.ai/api/gateway",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 256000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "id": "kwaipilot/kat-coder-pro-v2.5:free",
-        "input": ["text"],
-        "maxTokens": 80000,
-        "name": "Kwaipilot: KAT-Coder-Pro V2.5 (free)",
-        "provider": "kilo",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3893,37 +3826,6 @@
         "input": ["text", "pdf"],
         "maxTokens": 51200,
         "name": "Mistral: Codestral 2508",
-        "provider": "kilo",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "mistralai/devstral-2512": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.kilo.ai/api/gateway",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0.025,
-            "cacheWrite": 0.0,
-            "input": 0.4,
-            "output": 2.0
-        },
-        "id": "mistralai/devstral-2512",
-        "input": ["text"],
-        "maxTokens": 262144,
-        "name": "Devstral 2",
         "provider": "kilo",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -5641,68 +5543,6 @@
             "xhigh": null
         }
     },
-    "openai/gpt-4o-mini-search-preview": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.kilo.ai/api/gateway",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.075,
-            "cacheWrite": 0.0,
-            "input": 0.15,
-            "output": 0.6
-        },
-        "id": "openai/gpt-4o-mini-search-preview",
-        "input": ["text"],
-        "maxTokens": 16384,
-        "name": "GPT 4o Mini Search Preview",
-        "provider": "kilo",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "openai/gpt-4o-search-preview": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.kilo.ai/api/gateway",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 1.25,
-            "cacheWrite": 0.0,
-            "input": 2.5,
-            "output": 10.0
-        },
-        "id": "openai/gpt-4o-search-preview",
-        "input": ["text", "image"],
-        "maxTokens": 16384,
-        "name": "GPT-4o Search Preview",
-        "provider": "kilo",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "openai/gpt-5": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
@@ -5730,68 +5570,6 @@
             "max": null,
             "medium": "medium",
             "minimal": "minimal",
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "openai/gpt-5-chat": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.kilo.ai/api/gateway",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.11,
-            "cacheWrite": 0.0,
-            "input": 1.1,
-            "output": 9.0
-        },
-        "id": "openai/gpt-5-chat",
-        "input": ["text", "image"],
-        "maxTokens": 16384,
-        "name": "GPT-5-Chat",
-        "provider": "kilo",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "openai/gpt-5-codex": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.kilo.ai/api/gateway",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 400000,
-        "cost": {
-            "cacheRead": 0.125,
-            "cacheWrite": 0.0,
-            "input": 1.25,
-            "output": 10.0
-        },
-        "id": "openai/gpt-5-codex",
-        "input": ["text", "image"],
-        "maxTokens": 128000,
-        "name": "GPT-5-Codex",
-        "provider": "kilo",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
             "off": null,
             "xhigh": null
         }
@@ -5970,37 +5748,6 @@
         "input": ["image", "text", "pdf"],
         "maxTokens": 128000,
         "name": "GPT-5.1",
-        "provider": "kilo",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "openai/gpt-5.1-chat": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.kilo.ai/api/gateway",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.12,
-            "cacheWrite": 0.0,
-            "input": 1.25,
-            "output": 10.0
-        },
-        "id": "openai/gpt-5.1-chat",
-        "input": ["pdf", "image", "text"],
-        "maxTokens": 64000,
-        "name": "GPT-5.1 Chat",
         "provider": "kilo",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -6974,37 +6721,6 @@
             "xhigh": null
         }
     },
-    "openai/o3-deep-research": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.kilo.ai/api/gateway",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 200000,
-        "cost": {
-            "cacheRead": 2.2,
-            "cacheWrite": 0.0,
-            "input": 9.0,
-            "output": 36.0
-        },
-        "id": "openai/o3-deep-research",
-        "input": ["text"],
-        "maxTokens": 100000,
-        "name": "o3-deep-research",
-        "provider": "kilo",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "openai/o3-mini": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
@@ -7117,37 +6833,6 @@
         "input": ["image", "text", "pdf"],
         "maxTokens": 100000,
         "name": "o4-mini",
-        "provider": "kilo",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": "xhigh"
-        }
-    },
-    "openai/o4-mini-deep-research": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.kilo.ai/api/gateway",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 200000,
-        "cost": {
-            "cacheRead": 0.45,
-            "cacheWrite": 0.0,
-            "input": 1.8,
-            "output": 7.2
-        },
-        "id": "openai/o4-mini-deep-research",
-        "input": ["text"],
-        "maxTokens": 100000,
-        "name": "o4-mini-deep-research",
         "provider": "kilo",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -7551,68 +7236,6 @@
         "input": ["text", "image"],
         "maxTokens": 25600,
         "name": "Perplexity: Sonar Reasoning Pro",
-        "provider": "kilo",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "poolside/laguna-m.1": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.kilo.ai/api/gateway",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0.1,
-            "cacheWrite": 0.0,
-            "input": 0.2,
-            "output": 0.4
-        },
-        "id": "poolside/laguna-m.1",
-        "input": ["text"],
-        "maxTokens": 32768,
-        "name": "Laguna M.1",
-        "provider": "kilo",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "poolside/laguna-m.1:free": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.kilo.ai/api/gateway",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "id": "poolside/laguna-m.1:free",
-        "input": ["text"],
-        "maxTokens": 32768,
-        "name": "Poolside: Laguna M.1 (free)",
         "provider": "kilo",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -9144,6 +8767,32 @@
             "xhigh": null
         }
     },
+    "qwen/qwen3.7-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.kilo.ai/api/gateway",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.006,
+            "cacheWrite": 0.038,
+            "input": 0.03,
+            "output": 0.13
+        },
+        "id": "qwen/qwen3.7-flash",
+        "input": ["text", "image", "video"],
+        "maxTokens": 65536,
+        "name": "Qwen3.7 Flash",
+        "provider": "kilo",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "qwen/qwen3.7-max": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
@@ -9201,6 +8850,32 @@
             "low": "low",
             "max": null,
             "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "qwen/qwen3.8-max": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.kilo.ai/api/gateway",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.25,
+            "cacheWrite": 2.5,
+            "input": 2.0,
+            "output": 6.0
+        },
+        "id": "qwen/qwen3.8-max",
+        "input": ["text", "image", "video"],
+        "maxTokens": 131072,
+        "name": "Qwen3.8 Max",
+        "provider": "kilo",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -9795,6 +9470,32 @@
             "xhigh": null
         }
     },
+    "tencent/hy3:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.kilo.ai/api/gateway",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "tencent/hy3:free",
+        "input": ["text"],
+        "maxTokens": 128000,
+        "name": "Tencent: Hy3 (free)",
+        "provider": "kilo",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "thedrummer/cydonia-24b-v4.1": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
@@ -9938,6 +9639,32 @@
         "input": ["text", "image", "audio"],
         "maxTokens": 524288,
         "name": "Inkling",
+        "provider": "kilo",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "thinkingmachines/inkling-small": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.kilo.ai/api/gateway",
+        "contextWindow": 524288,
+        "cost": {
+            "cacheRead": 0.1,
+            "cacheWrite": 0.0,
+            "input": 0.45,
+            "output": 1.2
+        },
+        "id": "thinkingmachines/inkling-small",
+        "input": ["text", "image", "audio"],
+        "maxTokens": 524288,
+        "name": "Inkling Small",
         "provider": "kilo",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -10754,6 +10481,32 @@
             "minimal": null,
             "off": null,
             "xhigh": null
+        }
+    },
+    "~deepseek/deepseek-v4-flash-latest": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.kilo.ai/api/gateway",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.018,
+            "cacheWrite": 0.0,
+            "input": 0.09,
+            "output": 0.18
+        },
+        "id": "~deepseek/deepseek-v4-flash-latest",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "DeepSeek V4 Flash Latest",
+        "provider": "kilo",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
         }
     },
     "~google/gemini-flash-latest": {

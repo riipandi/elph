@@ -22,7 +22,7 @@
     {
         "providerId": "baseten",
         "rustMod": "baseten",
-        "count": 8
+        "count": 14
     },
     {
         "providerId": "cerebras",
@@ -72,17 +72,22 @@
     {
         "providerId": "huggingface",
         "rustMod": "huggingface",
-        "count": 51
+        "count": 129
     },
     {
         "providerId": "hyper",
         "rustMod": "hyper",
-        "count": 20
+        "count": 25
+    },
+    {
+        "providerId": "infron",
+        "rustMod": "infron",
+        "count": 330
     },
     {
         "providerId": "kilo",
         "rustMod": "kilo",
-        "count": 353
+        "count": 346
     },
     {
         "providerId": "kimi-coding",
@@ -127,7 +132,7 @@
     {
         "providerId": "ollama-cloud",
         "rustMod": "ollama_cloud",
-        "count": 19
+        "count": 18
     },
     {
         "providerId": "openai",
@@ -142,12 +147,12 @@
     {
         "providerId": "opencode",
         "rustMod": "opencode",
-        "count": 59
+        "count": 19
     },
     {
         "providerId": "opencode-go",
         "rustMod": "opencode_go",
-        "count": 16
+        "count": 25
     },
     {
         "providerId": "opengateway",
@@ -157,7 +162,7 @@
     {
         "providerId": "openrouter",
         "rustMod": "openrouter",
-        "count": 303
+        "count": 338
     },
     {
         "providerId": "qwen-token-plan",
@@ -182,7 +187,7 @@
     {
         "providerId": "tokenrouter",
         "rustMod": "tokenrouter",
-        "count": 76
+        "count": 120
     },
     {
         "providerId": "vercel-ai-gateway",

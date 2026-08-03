@@ -166,6 +166,15 @@ const PROVIDERS: &[ProviderSource] = &[
         live_pricing_env: Some("HYPER_API_KEY"),
     },
     ProviderSource {
+        id: "infron",
+        models_dev_keys: &["infron"],
+        default_api: "openai-completions",
+        default_base_url: "https://llm.onerouter.pro/v1",
+        gateway_preserve_ids: true,
+        live_pricing_base: Some("https://llm.onerouter.pro/v1"),
+        live_pricing_env: Some("INFRON_API_KEY"),
+    },
+    ProviderSource {
         id: "kilo",
         models_dev_keys: &["kilo", "kilocode"],
         default_api: "openai-completions",

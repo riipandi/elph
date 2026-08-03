@@ -28,7 +28,7 @@ Pricing prefers live provider APIs when keys/endpoints allow, then models.dev. E
 ## Prerequisites
 
 - Network access (unless `--offline` with existing `models/.cache/models.dev/api.json`)
-- Optional env keys for live pricing probes (`OPENAI_API_KEY`, `OPENROUTER_API_KEY`, …)
+- Optional env keys for live pricing probes (`OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `HYPER_API_KEY`, `INFRON_API_KEY`, …)
 - No local pi clone required for chat catalogs
 
 ## Workflow
@@ -43,11 +43,12 @@ make generate-models ARGS="chat"
 
 Useful flags:
 
-| Flag                      | Effect                                 |
-| ------------------------- | -------------------------------------- |
-| `--offline`               | Use cached models.dev only             |
-| `--no-live-pricing`       | Skip provider `/models` pricing probes |
-| `--no-regenerate-catalog` | Write JSON only                        |
+| Flag                      | Effect                                                        |
+| ------------------------- | ------------------------------------------------------------- |
+| `--offline`               | Use cached models.dev only                                    |
+| `--no-live-pricing`       | Skip provider `/models` pricing probes                        |
+| `--no-regenerate-catalog` | Write JSON only                                               |
+| `--force`                 | Bypass the models.dev cache freshness check (always re-fetch) |
 
 2. **Optional full pass** (chat + image fixture path)
 
@@ -66,7 +67,7 @@ Confirm:
 
 - `thinkingLevelMap: complete=N incomplete=0` in generator output
 - `Verified … catalog providers are registered in builtin_providers()`
-- Spot-check `anthropic.json`, `xai.json`, a gateway (`openrouter` / `kilo`)
+- Spot-check `anthropic.json`, `xai.json`, a gateway (`openrouter` / `kilo` / `hyper` / `infron`)
 
 4. **Summarize for the user**
 
@@ -74,6 +75,19 @@ Confirm:
 - Any providers skipped (not on models.dev and no previous overlay)
 - Remaining zero-priced models if any
 - Reminder: do not hand-edit generated catalogs except intentional Elph overlays; re-run this skill after changes
+
+## Data freshness
+
+The generator keeps model data current through three layers:
+
+1. **models.dev cache** — `models/.cache/models.dev/api.json` is reused when younger than **24h**. Use `--force` to bypass. On a fetch failure (network or non-2xx), the cached snapshot is used as a fallback instead of failing.
+
+2. **Live pricing** — for providers with `live_pricing_base` + `live_pricing_env` set (and the env key present), `/models` is probed for per-model pricing. Supported shapes:
+    - models.dev style: `metadata.pricing.{input_per_million, output_per_million, cached_input_per_million}`
+    - Hyper style: `pricing.{input, output, cache_hit, cache_create}`
+    - Infron/OneRouter style: `min_prompt_price` / `min_completion_price`
+
+3. **Live model list (gateway providers)** — for `gateway_preserve_ids` providers with a live `/models` endpoint, the **live id list replaces the previous catalog ids** (source of truth). New upstream models appear automatically; removed ones drop out. When the API exposes `category_type`, only `LLM` entries are kept so image/video models never pollute the chat catalog. If no live endpoint/key is available, the previous catalog ids are preserved.
 
 ## Rules
 
@@ -87,17 +101,17 @@ Confirm:
 
 ## Code map
 
-| Path                                      | Role                            |
-| ----------------------------------------- | ------------------------------- |
-| `bin/generate_models/main.rs`             | CLI                             |
-| `bin/generate_models/models_dev.rs`       | Fetch/cache models.dev          |
-| `bin/generate_models/provider_sources.rs` | Elph ↔ models.dev map           |
-| `bin/generate_models/normalize.rs`        | Entry merge + cost fields       |
-| `bin/generate_models/thinking_map.rs`     | Full 7-key maps                 |
-| `bin/generate_models/pricing.rs`          | Live pricing probes             |
-| `bin/generate_models/chat.rs`             | Orchestration + catalog.rs      |
-| `models/*.json`                           | Embedded catalogs               |
-| `schemas/provider-schema.json`            | Forward-looking override schema |
+| Path                                      | Role                                         |
+| ----------------------------------------- | -------------------------------------------- |
+| `bin/generate_models/main.rs`             | CLI                                          |
+| `bin/generate_models/models_dev.rs`       | Fetch/cache models.dev (24h TTL + fallback)  |
+| `bin/generate_models/provider_sources.rs` | Elph ↔ models.dev map + live endpoint config |
+| `bin/generate_models/normalize.rs`        | Entry merge + cost fields                    |
+| `bin/generate_models/thinking_map.rs`     | Full 7-key maps                              |
+| `bin/generate_models/pricing.rs`          | Live pricing probes + live model id refresh  |
+| `bin/generate_models/chat.rs`             | Orchestration + catalog.rs                   |
+| `models/*.json`                           | Embedded catalogs                            |
+| `schemas/provider-schema.json`            | Forward-looking override schema              |
 
 ## Do not
 
