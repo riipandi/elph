@@ -1,11 +1,11 @@
 use super::*;
 use crate::create_memory_store;
-use crate::scoring::{compute_credit, update_weight};
-use crate::store::noop_embedder;
-use crate::types::{
+use crate::memory::scoring::{compute_credit, update_weight};
+use crate::core::embed::noop_embedder;
+use crate::memory::types::{
     FloppyConfig, MemoryCategory, MemoryReportInput, MemoryReportType, ReportCorrectionInput, ReportUserInput,
 };
-use crate::types::{SelfReportEntry, TaskEndInput, TaskStatus, TimelineEventKind, UserInputSource};
+use crate::memory::types::{SelfReportEntry, TaskEndInput, TaskStatus, TimelineEventKind, UserInputSource};
 use std::sync::Arc;
 
 fn mock_embed() -> EmbedFn {
@@ -245,7 +245,7 @@ async fn embed_pending_skips_noop_zero_vectors() {
     let n = store.embed_pending().await.expect("embed_pending");
     assert_eq!(n, 0, "noop zeros must not be written");
     let list = store.list_memories(None).await.expect("list");
-    assert_eq!(list[0].embedding_status, crate::types::EmbeddingStatus::Pending);
+    assert_eq!(list[0].embedding_status, crate::memory::types::EmbeddingStatus::Pending);
 }
 
 #[tokio::test]
@@ -272,7 +272,7 @@ async fn clear_zero_embeddings_resets_corrupt_blobs() {
     let cleared = store.clear_zero_embeddings().await.expect("clear");
     assert_eq!(cleared, 1);
     let list = store.list_memories(None).await.expect("list");
-    assert_eq!(list[0].embedding_status, crate::types::EmbeddingStatus::Pending);
+    assert_eq!(list[0].embedding_status, crate::memory::types::EmbeddingStatus::Pending);
 }
 
 #[tokio::test]

@@ -6,8 +6,8 @@ use turso::{Connection, params};
 
 use super::migrations::fts_available;
 use super::types::{ChunkHit, ImpactNode, SearchOptions};
-use crate::store::EmbedFn;
-use crate::util::{drain_rows, is_zero, vec_buf};
+use crate::core::embed::EmbedFn;
+use crate::core::util::{drain_rows, is_zero, vec_buf};
 
 const RRF_K: f64 = 60.0;
 

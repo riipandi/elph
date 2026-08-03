@@ -2,8 +2,9 @@ use anyhow::{Context, Result};
 use turso::params;
 
 use super::MemoryStore;
-use crate::types::{Memory, MemoryStats, TopMemory};
-use crate::util::{category_from_str, drain_rows};
+use crate::memory::types::{Memory, MemoryStats, TopMemory};
+use crate::memory::util::category_from_str;
+use crate::core::util::drain_rows;
 
 impl MemoryStore {
     pub async fn get_stats(&self) -> Result<MemoryStats> {

@@ -1,5 +1,5 @@
 use super::super::*;
-use crate::types::{MemoryCategory, MemoryReportInput, ReportCorrectionInput, TaskEndInput, UserInputSource};
+use crate::memory::types::{MemoryCategory, MemoryReportInput, ReportCorrectionInput, TaskEndInput, UserInputSource};
 use std::sync::Arc;
 
 fn mock_embed() -> EmbedFn {
@@ -180,8 +180,8 @@ async fn contradict_wrapper_returns_struct() {
 
 #[test]
 fn floppy_paths_project_local() {
-    let paths = FloppyPaths::project_local();
+    let paths = crate::FloppyPaths::project_local();
     assert!(paths.db_path().ends_with(".floppy/store.db"));
-    let cfg = paths.config("sess");
+    let cfg = crate::FloppyConfig::new(paths.db_path_string(), "sess");
     assert_eq!(cfg.session_id, "sess");
 }

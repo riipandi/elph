@@ -11,8 +11,8 @@ use super::chunk::{chunk_source, embed_text_for_chunk, lang_label_for_path};
 use super::graph::{extract_import_targets, file_node_id, nodes_for_chunks};
 use super::merkle::{merkle_root, sha256_hex};
 use super::types::{IndexPhase, IndexProgress, ProgressFn, RawChunk, ScanStats};
-use crate::store::EmbedFn;
-use crate::util::{drain_rows, is_zero, vec_buf};
+use crate::core::embed::EmbedFn;
+use crate::core::util::{drain_rows, is_zero, vec_buf};
 
 const META_ROOT: &str = "merkle_root";
 const META_LAST: &str = "last_indexed_at";

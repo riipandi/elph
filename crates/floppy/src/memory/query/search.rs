@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use super::super::store::MemoryStore;
+use crate::memory::store::MemoryStore;
 
 impl MemoryStore {
     /// Semantic search via full task lifecycle (creates a task record).

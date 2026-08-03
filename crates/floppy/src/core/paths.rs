@@ -1,7 +1,6 @@
-use std::path::{Path, PathBuf};
+//! Filesystem layout for a floppy data directory (host-agnostic).
 
-use super::types::FloppyConfig;
-use super::{EmbedFn, MemoryStore};
+use std::path::{Path, PathBuf};
 
 /// Default data directory name for a standalone floppy store.
 pub const DEFAULT_DATA_DIR: &str = ".floppy";
@@ -41,16 +40,6 @@ impl FloppyPaths {
 
     pub fn exists(&self) -> bool {
         self.db_path().is_file()
-    }
-
-    /// Build a [`FloppyConfig`] for this location.
-    pub fn config(&self, session_id: impl Into<String>) -> FloppyConfig {
-        FloppyConfig::new(self.db_path_string(), session_id)
-    }
-
-    /// Open a [`MemoryStore`] at this location with the given embedder.
-    pub fn open(&self, session_id: impl Into<String>, embed: EmbedFn) -> MemoryStore {
-        MemoryStore::new(self.config(session_id), embed)
     }
 }
 

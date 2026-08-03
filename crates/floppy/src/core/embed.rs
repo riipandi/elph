@@ -2,17 +2,29 @@
 //!
 //! Enable with the `embed` feature (Candle / Hugging Face models).
 
+use std::future::Future;
 use std::path::PathBuf;
+use std::pin::Pin;
+use std::sync::Arc;
 
-use super::store::EmbedFn;
+use anyhow::Result;
 
 #[cfg(feature = "embed")]
 use std::str::FromStr;
-#[cfg(feature = "embed")]
-use std::sync::Arc;
 
-#[cfg(feature = "embed")]
-use super::store::EmbedFuture;
+/// Future returned by [`EmbedFn`].
+pub type EmbedFuture = Pin<Box<dyn Future<Output = Result<Vec<f32>>> + Send>>;
+
+/// Shared embedder callback used by memory and codegraph domains.
+pub type EmbedFn = Arc<dyn Fn(&str) -> EmbedFuture + Send + Sync>;
+
+/// Embedder that returns zero vectors (read-only inspection without a model).
+pub fn noop_embedder(dimensions: u32) -> EmbedFn {
+    Arc::new(move |_| {
+        let dims = dimensions as usize;
+        Box::pin(async move { Ok(vec![0.0f32; dims]) })
+    })
+}
 
 /// Default embedding model when none is configured.
 pub const DEFAULT_EMBED_MODEL: &str = "AllMiniLML6V2";

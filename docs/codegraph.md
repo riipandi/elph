@@ -211,10 +211,13 @@ walk (ignore::WalkBuilder, gitignore)
 
 ## Feature flags (`crates/floppy`)
 
+Domain layout: `floppy::core` (always) · `floppy::memory` (default) · `floppy::codegraph` (optional).
+
 ```toml
 [features]
-default = []
-embed = ["dep:embed_anything"]
+default   = ["memory"]
+memory    = []
+embed     = ["dep:embed_anything"]
 codegraph = [
   "dep:ast-grep-core",
   "dep:ast-grep-language",
@@ -222,9 +225,10 @@ codegraph = [
   "dep:sha2",
   "dep:regex",
 ]
+full      = ["memory", "embed", "codegraph"]
 ```
 
-`codegraph` does **not** force `embed`; hosts pass a real or noop `EmbedFn`. Elph enables both for search quality.
+`codegraph` does **not** force `embed`; hosts pass a real or noop `EmbedFn`. Elph uses `features = ["full"]`.
 
 ---
 

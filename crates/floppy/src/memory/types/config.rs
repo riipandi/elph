@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::super::util::DEFAULT_EMBEDDING_DIMS;
+use crate::core::util::DEFAULT_EMBEDDING_DIMS;
 
 /// Turso vector type for distance calculations. Easy to swap for experimentation.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -50,7 +50,7 @@ pub struct FloppyConfig {
     /// Daily decay rate for unused memories (default: 0.995)
     pub decay_rate: Option<f64>,
     /// Run floppy migrations in [`MemoryStore::init`] (default: true). Set `false` when the host
-    /// already applied [`crate::migrations::MIGRATIONS`].
+    /// already applied [`crate::memory::migrations::MIGRATIONS`].
     pub apply_migrations: Option<bool>,
 }
 

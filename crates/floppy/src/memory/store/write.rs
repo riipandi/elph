@@ -4,8 +4,8 @@ use turso::params;
 use super::MemoryStore;
 use super::delete_orphan_retrievals;
 use super::{new_id, now_secs};
-use crate::types::{ConsolidateResult, DecayResult, FlushResult};
-use crate::util::drain_rows;
+use crate::memory::types::{ConsolidateResult, DecayResult, FlushResult};
+use crate::core::util::drain_rows;
 
 impl MemoryStore {
     /// Category-aware weight decay.

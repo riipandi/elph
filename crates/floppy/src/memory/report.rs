@@ -1,8 +1,8 @@
 use anyhow::Result;
 
-use super::store::MemoryStore;
-use super::types::{ContradictResult, EndTaskWithDecayResult, MemoryCategory, MemoryReportInput, MemoryReportType};
-use super::types::{ReportCorrectionInput, ReportUserInput, TaskEndInput};
+use crate::memory::store::MemoryStore;
+use crate::memory::types::{ContradictResult, EndTaskWithDecayResult, MemoryCategory, MemoryReportInput, MemoryReportType};
+use crate::memory::types::{ReportCorrectionInput, ReportUserInput, TaskEndInput};
 
 impl MemoryStore {
     /// Unified memory report (correction, user input, or insight).
@@ -68,7 +68,7 @@ impl MemoryReportInput {
         }
     }
 
-    pub fn user_input(lesson: impl Into<String>, source: super::types::UserInputSource) -> Self {
+    pub fn user_input(lesson: impl Into<String>, source: crate::memory::types::UserInputSource) -> Self {
         Self {
             report_type: MemoryReportType::UserInput,
             lesson: lesson.into(),
@@ -107,7 +107,7 @@ mod tests {
 
     #[test]
     fn user_input_builds_correctly() {
-        let input = MemoryReportInput::user_input("hello", crate::types::UserInputSource::UserInput);
+        let input = MemoryReportInput::user_input("hello", crate::memory::types::UserInputSource::UserInput);
         assert_eq!(input.lesson, "hello");
     }
 }

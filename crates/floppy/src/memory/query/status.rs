@@ -1,8 +1,9 @@
 use anyhow::{Context, Result};
 
-use super::super::store::MemoryStore;
-use super::super::types::{CategoryCount, StoreStatus, TopMemory};
-use super::super::util::{category_from_str, drain_rows};
+use crate::memory::store::MemoryStore;
+use crate::memory::types::{CategoryCount, StoreStatus, TopMemory};
+use crate::memory::util::category_from_str;
+use crate::core::util::drain_rows;
 
 impl MemoryStore {
     /// Extended store statistics (counts, categories, top memories, task metrics).

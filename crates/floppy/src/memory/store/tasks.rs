@@ -4,9 +4,10 @@ use turso::params;
 
 use super::{MemoryStore, SelfReportRow, WeightUpdate};
 use super::{batch_set_weights, fetch_weights, new_id, now_secs, touch_retrieved_memories};
-use crate::scoring::{compute_credit, compute_task_score, initial_weight, update_baseline, update_weight};
-use crate::types::{Memory, MemoryCategory, ReportCorrectionInput, ReportUserInput, StartTaskResult, TaskEndInput};
-use crate::util::{category_from_str, drain_rows, vec_buf};
+use crate::memory::scoring::{compute_credit, compute_task_score, initial_weight, update_baseline, update_weight};
+use crate::memory::types::{Memory, MemoryCategory, ReportCorrectionInput, ReportUserInput, StartTaskResult, TaskEndInput};
+use crate::core::util::{drain_rows, vec_buf};
+use crate::memory::util::category_from_str;
 
 impl MemoryStore {
     pub async fn start_task(&self, description: &str) -> Result<StartTaskResult> {

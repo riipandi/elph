@@ -1,15 +1,16 @@
 use anyhow::Result;
 use turso::params;
 
-use super::super::store::MemoryStore;
-use super::super::types::{Memory, MemoryCategory, MemoryRecord};
-use super::super::util::{category_from_str, drain_rows, embedding_status, vec_buf};
+use crate::memory::store::MemoryStore;
+use crate::memory::types::{Memory, MemoryCategory, MemoryRecord};
+use crate::memory::util::{category_from_str, embedding_status};
+use crate::core::util::{drain_rows, vec_buf};
 
 impl MemoryStore {
     /// List memories, optionally filtered by category.
     pub async fn list_memories(&self, category: Option<MemoryCategory>) -> Result<Vec<MemoryRecord>> {
         self.init().await?;
-        let filter = category.map(super::super::util::category_str);
+        let filter = category.map(crate::memory::util::category_str);
         self.with_db(move |conn| async move {
             let (sql, params): (String, Vec<String>) = if let Some(cat) = filter {
                 (
@@ -55,7 +56,7 @@ impl MemoryStore {
     ) -> Result<Vec<MemoryRecord>> {
         self.init().await?;
         let limit = limit.max(1) as i64;
-        let filter = category.map(super::super::util::category_str);
+        let filter = category.map(crate::memory::util::category_str);
         self.with_db(move |conn| async move {
             let (sql, cat_param): (String, Option<String>) = if let Some(cat) = filter {
                 (
@@ -105,7 +106,7 @@ impl MemoryStore {
         let sql = self.retrieval_sql();
         let decay_rate = self.decay_rate();
         let top_k = self.top_k();
-        let now = super::super::store::now_secs();
+        let now = crate::memory::store::now_secs();
 
         self.with_db(move |conn| async move {
             let mut rows = conn

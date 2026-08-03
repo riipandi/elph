@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::store::EmbedFn;
+use crate::core::embed::EmbedFn;
 
 /// Configuration for [`super::CodegraphStore`].
 pub struct CodegraphConfig {

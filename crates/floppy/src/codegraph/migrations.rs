@@ -3,8 +3,8 @@
 use anyhow::Result;
 use turso::Connection;
 
-use crate::migrations::{FloppyMigration, apply_set};
-use crate::util::drain_rows;
+use crate::core::migration::{FloppyMigration, apply_set};
+use crate::core::util::drain_rows;
 
 pub const CG_V500_NAME: &str = "codegraph_create_schema";
 pub const CG_V500_UP: &str = r#"

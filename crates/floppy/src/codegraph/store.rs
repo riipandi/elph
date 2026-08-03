@@ -10,8 +10,8 @@ use super::search;
 use super::types::{
     ChunkHit, CodegraphConfig, CodegraphStatus, ImpactNode, ProgressFn, ScanStats, SearchOptions,
 };
-use crate::db;
-use crate::store::EmbedFn;
+use crate::core::db;
+use crate::core::embed::EmbedFn;
 
 pub struct CodegraphStore {
     db_path: String,

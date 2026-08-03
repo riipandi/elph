@@ -2,21 +2,28 @@
 name = "floppy"
 version = "0.0.1"
 license = "MIT"
-description = "AI memory with vector search powered by Turso"
+description = "Agent memory + semantic code index library (Turso), embeddable or standalone"
 homepage.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 edition.workspace = true
 publish = true
+readme = "README.md"
+keywords = ["ai", "memory", "vector", "codegraph", "sqlite"]
+categories = ["database", "development-tools"]
 
 [lib]
 name = "floppy"
 path = "src/lib.rs"
 
 [features]
-default = []
+# Library defaults: memory domain on, heavy parsers off.
+default = ["memory"]
+# Task-scoped agent memory (memelord-compatible design).
+memory = []
+# Local ONNX / Candle embeddings via embed_anything.
 embed = ["dep:embed_anything"]
-# Semantic codebase index (chunking via ast-grep + FTS/vector). Optional; heavy parsers.
+# Semantic codebase index (ast-grep chunking + FTS/vector). Optional; heavy.
 codegraph = [
   "dep:ast-grep-core",
   "dep:ast-grep-language",
@@ -24,6 +31,8 @@ codegraph = [
   "dep:sha2",
   "dep:regex",
 ]
+# Convenience: full surface for hosts (Elph).
+full = ["memory", "embed", "codegraph"]
 
 [dependencies]
 anyhow.workspace = true

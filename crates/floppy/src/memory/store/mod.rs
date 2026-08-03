@@ -6,30 +6,18 @@ mod write;
 use anyhow::{Context, Result};
 use rand::RngExt;
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::{Arc, Mutex, OnceLock};
 
 use std::time::{SystemTime, UNIX_EPOCH};
 use turso::params;
 use turso::{Builder, Connection, Database};
 
-use super::migrations;
-use super::scoring::empty_baseline;
-use super::types::{FloppyConfig, TaskBaseline, VectorType};
-use super::util::DEFAULT_EMBEDDING_DIMS;
-use super::util::{drain_rows, retrieval_sql};
-
-pub type EmbedFuture = Pin<Box<dyn Future<Output = Result<Vec<f32>>> + Send>>;
-pub type EmbedFn = Arc<dyn Fn(&str) -> EmbedFuture + Send + Sync>;
-
-/// Embedder that returns zero vectors (read-only inspection without a model).
-pub fn noop_embedder(dimensions: u32) -> EmbedFn {
-    Arc::new(move |_| {
-        let dims = dimensions as usize;
-        Box::pin(async move { Ok(vec![0.0f32; dims]) })
-    })
-}
+pub use crate::core::embed::EmbedFn;
+use crate::core::util::{DEFAULT_EMBEDDING_DIMS, drain_rows};
+use crate::memory::migrations;
+use crate::memory::scoring::empty_baseline;
+use crate::memory::types::{FloppyConfig, TaskBaseline, VectorType};
+use crate::memory::util::retrieval_sql;
 
 pub(super) type WeightUpdate = (String, f64);
 pub(super) type SelfReportRow = (String, u8, f64);

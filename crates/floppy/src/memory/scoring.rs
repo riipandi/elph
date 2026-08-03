@@ -1,4 +1,4 @@
-use super::types::{MemoryCategory, TaskBaseline, UserInputSource};
+use crate::memory::types::{MemoryCategory, TaskBaseline, UserInputSource};
 
 /// Welford's online algorithm — update running mean/variance. Returns new baseline (no mutation).
 pub fn update_baseline(baseline: &TaskBaseline, tokens: f64, errors: f64, user_corrections: f64) -> TaskBaseline {

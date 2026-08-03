@@ -4,8 +4,9 @@ use turso::params;
 use super::EMBED_PENDING_BATCH;
 use super::MemoryStore;
 use super::{new_id, now_secs};
-use crate::types::MemoryCategory;
-use crate::util::{category_str, drain_rows, vec_buf};
+use crate::memory::types::MemoryCategory;
+use crate::memory::util::category_str;
+use crate::core::util::{drain_rows, vec_buf};
 
 fn is_zero_embedding(v: &[f32]) -> bool {
     v.is_empty() || v.iter().all(|x| *x == 0.0)

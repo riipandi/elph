@@ -1,23 +1,9 @@
-//! Versioned schema migrations for the floppy memory store.
-//!
-//! Schema derived from [memelord](https://github.com/glommer/memelord) (`packages/sdk`).
-//! Host applications can map [`FloppyMigration`] entries into their own migration runner.
+//! Memory domain schema migrations (version band 1–99).
 
 use anyhow::Result;
 use turso::Connection;
 
-use super::util::drain_rows;
-
-/// One versioned SQL migration for the floppy store.
-///
-/// Field layout matches common host migration runners so consumers can map entries
-/// without coupling this module to a specific application crate.
-#[derive(Debug, Clone, Copy)]
-pub struct FloppyMigration {
-    pub version: i64,
-    pub name: &'static str,
-    pub up: &'static str,
-}
+use crate::core::migration::{FloppyMigration, apply_set};
 
 pub const V1_NAME: &str = "floppy_create_schema";
 pub const V1_UP: &str = r#"
@@ -74,10 +60,10 @@ CREATE INDEX IF NOT EXISTS idx_memory_retrievals_task_id ON memory_retrievals(ta
 CREATE INDEX IF NOT EXISTS idx_tasks_started_at ON tasks(started_at DESC);
 CREATE INDEX IF NOT EXISTS idx_memories_pending_embed ON memories(id) WHERE embedding IS NULL"#;
 
-/// Latest floppy schema version. Hosts should start custom migrations above this.
+/// Latest memory schema version in band 1–99.
 pub const LAST_VERSION: i64 = 3;
 
-/// Canonical floppy migration set — inject or extend in the host migration registry.
+/// Canonical memory migration set.
 pub const MIGRATIONS: &[FloppyMigration] = &[
     FloppyMigration {
         version: 1,
@@ -96,58 +82,9 @@ pub const MIGRATIONS: &[FloppyMigration] = &[
     },
 ];
 
-/// Apply pending floppy migrations using the shared `app_migrations` ledger.
+/// Apply memory migrations using the shared ledger.
 pub async fn apply(conn: &Connection) -> Result<()> {
     apply_set(conn, MIGRATIONS).await
-}
-
-/// Apply an arbitrary ordered migration set via the shared `app_migrations` ledger.
-///
-/// Used by host modules (e.g. codegraph band 500+) that share the same project DB file.
-pub async fn apply_set(conn: &Connection, migrations: &[FloppyMigration]) -> Result<()> {
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS app_migrations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            version INTEGER NOT NULL,
-            name TEXT NOT NULL,
-            applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-        ) STRICT",
-        (),
-    )
-    .await?;
-
-    conn.execute(
-        "CREATE UNIQUE INDEX IF NOT EXISTS idx_app_migrations_version
-         ON app_migrations(version)",
-        (),
-    )
-    .await?;
-
-    // Per-version membership (not MAX): memory 1–99 and codegraph 500+ share one ledger.
-    for migration in migrations {
-        let already = {
-            let mut rows = conn
-                .query("SELECT 1 FROM app_migrations WHERE version = ?", (migration.version,))
-                .await?;
-            let found = rows.next().await?.is_some();
-            drain_rows(&mut rows).await?;
-            found
-        };
-        if already {
-            continue;
-        }
-
-        // Turso requires execute_batch for multi-statement DDL (split execute is unreliable).
-        conn.execute_batch(migration.up).await?;
-
-        conn.execute(
-            "INSERT INTO app_migrations (version, name) VALUES (?, ?)",
-            (migration.version, migration.name),
-        )
-        .await?;
-    }
-
-    Ok(())
 }
 
 #[cfg(test)]
@@ -156,7 +93,7 @@ mod tests {
     use turso::Builder;
 
     #[tokio::test]
-    async fn apply_creates_floppy_tables() {
+    async fn apply_creates_memory_tables() {
         let dir = tempfile::tempdir().expect("tempdir");
         let db_path = dir.path().join("store.db");
         let db = Builder::new_local(db_path.to_string_lossy().as_ref())
