@@ -170,7 +170,8 @@ impl McpToolRegistry {
         let pool = McpSessionPool::new()
             .with_auth_store_path(options.auth_store_path.clone())
             .with_response_cache(options.response_cache.clone())
-            .with_cache_store(options.cache_store.clone());
+            .with_cache_store(options.cache_store.clone())
+            .with_default_cache_ttl(options.default_cache_ttl_ms);
         let (_event_tx, event_rx) = if options.enable_list_changed {
             let (tx, rx) = mpsc::unbounded_channel();
             pool.set_event_sender(tx.clone());

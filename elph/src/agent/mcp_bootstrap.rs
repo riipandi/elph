@@ -17,8 +17,9 @@ use crate::platform::Paths;
 pub async fn discover_mcp_registry(
     paths: &Paths,
     cache_store: Option<Arc<McpCacheStore>>,
+    default_cache_ttl_ms: u64,
 ) -> (Arc<McpToolRegistry>, Vec<String>) {
-    discover_mcp_registry_with_progress(paths, None, cache_store).await
+    discover_mcp_registry_with_progress(paths, None, cache_store, default_cache_ttl_ms).await
 }
 
 /// Like [`discover_mcp_registry`], emitting per-server progress events when `progress_tx` is set.
@@ -26,6 +27,7 @@ pub async fn discover_mcp_registry_with_progress(
     paths: &Paths,
     progress_tx: Option<mpsc::UnboundedSender<McpServerLoadProgress>>,
     cache_store: Option<Arc<McpCacheStore>>,
+    default_cache_ttl_ms: u64,
 ) -> (Arc<McpToolRegistry>, Vec<String>) {
     let (mcp_config, mcp_config_warnings) = crate::platform::mcp::load_config_best_effort(paths);
     for warning in &mcp_config_warnings {
@@ -36,6 +38,7 @@ pub async fn discover_mcp_registry_with_progress(
         auth_store_path: Some(auth_store_path),
         progress_tx,
         cache_store,
+        default_cache_ttl_ms,
         ..McpLoadOptions::default()
     };
     let registry = match McpToolRegistry::load_with_options(mcp_config, load_options).await {

@@ -109,6 +109,9 @@ pub struct Settings {
     /// Semantic codebase index (agent tools + index prefs). Default off.
     #[serde(default)]
     pub codegraph: CodegraphSettings,
+    /// MCP client preferences (tool result cache retention).
+    #[serde(default)]
+    pub mcp: McpSettings,
     /// Desktop notification preferences.
     #[serde(default)]
     pub notifications: NotificationSettings,
@@ -361,6 +364,35 @@ pub struct CodegraphSettings {
     pub enabled: bool,
 }
 
+/// MCP client preferences (tool result cache retention).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct McpSettings {
+    /// Tool result cache TTL in seconds (default 60). `0` disables caching.
+    #[serde(default = "default_mcp_cache_ttl_secs")]
+    pub cache_ttl_secs: u64,
+    /// Max cache entries before eviction (default 2048).
+    #[serde(default = "default_mcp_cache_max_entries")]
+    pub cache_max_entries: usize,
+}
+
+impl Default for McpSettings {
+    fn default() -> Self {
+        Self {
+            cache_ttl_secs: default_mcp_cache_ttl_secs(),
+            cache_max_entries: default_mcp_cache_max_entries(),
+        }
+    }
+}
+
+fn default_mcp_cache_ttl_secs() -> u64 {
+    60
+}
+
+fn default_mcp_cache_max_entries() -> usize {
+    2048
+}
+
 /// Desktop notification preferences.
 ///
 /// Controls which events trigger native OS notifications
@@ -469,6 +501,7 @@ impl Settings {
             prompt_encoding: None,
             memory: MemorySettings::default(),
             codegraph: CodegraphSettings::default(),
+            mcp: McpSettings::default(),
             notifications: NotificationSettings::default(),
             compaction: CompactionConfig::default(),
         }

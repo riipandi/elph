@@ -41,6 +41,9 @@
         "codegraph": {
             "$ref": "#/definitions/codegraph"
         },
+        "mcp": {
+            "$ref": "#/definitions/mcp"
+        },
         "notifications": {
             "$ref": "#/definitions/notifications"
         },
@@ -403,6 +406,25 @@
                     "type": "boolean",
                     "default": false,
                     "description": "When true, register agent tools code_search, code_impact, code_status, and code_reindex. Default false."
+                }
+            }
+        },
+        "mcp": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "MCP client preferences — tool result cache retention.",
+            "properties": {
+                "cacheTtlSecs": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 60,
+                    "description": "Tool result cache TTL in seconds. 0 disables caching. Per-server cacheTtlMs in mcp.json overrides this."
+                },
+                "cacheMaxEntries": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 2048,
+                    "description": "Maximum cache entries before eviction."
                 }
             }
         },

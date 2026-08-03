@@ -56,9 +56,9 @@ pub async fn create_coding_session_with_events(
     // of each other and of the DB operations above — run them concurrently.
     let auth_store = options.paths.auth_store_path();
 
-    // Open session-scoped MCP cache store (eager — creates the DB + schema now).
+    // Open session-scoped MCP cache store (eager — creates the JSONL file now).
     let mcp_cache_path = session_manager.mcp_cache_path(&session_id);
-    let mcp_cache = elph_agent::McpCacheStore::open(&mcp_cache_path).await.ok();
+    let mcp_cache = elph_agent::McpCacheStore::open(&mcp_cache_path, options.settings.mcp.cache_max_entries).ok();
 
     let ((selection, _overlay_stats), (mcp_registry, mcp_config_warnings)) = tokio::try_join!(
         resolve_model(
@@ -68,7 +68,12 @@ pub async fn create_coding_session_with_events(
             Some(&auth_store),
         ),
         async {
-            let (registry, warnings) = discover_mcp_registry(options.paths, mcp_cache.map(Arc::new)).await;
+            let (registry, warnings) = discover_mcp_registry(
+                options.paths,
+                mcp_cache.map(Arc::new),
+                options.settings.mcp.cache_ttl_secs.saturating_mul(1000),
+            )
+            .await;
             Ok::<_, anyhow::Error>((registry, warnings))
         },
     )?;

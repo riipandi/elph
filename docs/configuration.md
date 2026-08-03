@@ -83,17 +83,17 @@ Override with `ELPH_HOME` (config) and `ELPH_DATA_DIR` (data).
 
 ### Storage roles
 
-| Store                  | Path                                      | Contents                                                                     |
-| ---------------------- | ----------------------------------------- | ---------------------------------------------------------------------------- |
-| Platform DB            | `APP_DATA/metadata.db`                    | Goals, agent spawn graph, skill cache, session index + tree                  |
-| Floppy memory + codegraph | `PROJECT/.elph/store.db`                  | Agent long-term memory, embeddings, codebase chunk index — all in one ledger |
-| Transcript archive     | `PROJECT/.elph/metadata.db`               | TUI card overflow only (not the LLM session tree)                            |
-| Session artifacts      | `APP_DATA/sessions/<SESSION_ID>/`         | `mcp_cache/` (tool result cache), `terminals/`, `tool_outputs.jsonl`, optional `event_log.jsonl` |
-| Host MCP cache         | `APP_DATA/mcp_cache/`                     | CLI MCP ops when no session is active (tool result cache)                                        |
-| App / crash / MCP logs | `APP_DATA/logs/`                          | Rolling JSONL, dated crash logs, MCP stderr                                  |
-| Config files           | `CONFIG_DIR/*.json`                       | Settings, auth, trust, MCP, providers                                        |
-| Provider catalogs      | `CONFIG_DIR/providers/*.json`             | Disk model overlays (see below)                                              |
-| Bundled assets         | `CONFIG_DIR/bundled/{user-guide,skills}/` | Embedded in the binary; extracted on bootstrap if missing                    |
+| Store                     | Path                                      | Contents                                                                                               |
+| ------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Platform DB               | `APP_DATA/metadata.db`                    | Goals, agent spawn graph, skill cache, session index + tree                                            |
+| Floppy memory + codegraph | `PROJECT/.elph/store.db`                  | Agent long-term memory, embeddings, codebase chunk index — all in one ledger                           |
+| Transcript archive        | `PROJECT/.elph/metadata.db`               | TUI card overflow only (not the LLM session tree)                                                      |
+| Session artifacts         | `APP_DATA/sessions/<SESSION_ID>/`         | `mcp_cache/` (JSONL tool result cache), `terminals/`, `tool_outputs.jsonl`, optional `event_log.jsonl` |
+| Host MCP cache            | `APP_DATA/mcp_cache/`                     | CLI MCP ops when no session is active (JSONL tool result cache)                                        |
+| App / crash / MCP logs    | `APP_DATA/logs/`                          | Rolling JSONL, dated crash logs, MCP stderr                                                            |
+| Config files              | `CONFIG_DIR/*.json`                       | Settings, auth, trust, MCP, providers                                                                  |
+| Provider catalogs         | `CONFIG_DIR/providers/*.json`             | Disk model overlays (see below)                                                                        |
+| Bundled assets            | `CONFIG_DIR/bundled/{user-guide,skills}/` | Embedded in the binary; extracted on bootstrap if missing                                              |
 
 Goals remain on `APP_DATA/metadata.db` (`goals` table). Path and table contract must stay stable across layout refactors.
 
@@ -212,6 +212,10 @@ Project overrides **per nested key** (deep merge). Runtime saves write **home on
     "codegraph": {
         "enabled": false
     },
+    "mcp": {
+        "cacheTtlSecs": 60,
+        "cacheMaxEntries": 2048
+    },
     "notifications": {
         "enabled": true,
         "onTurnComplete": true,
@@ -230,18 +234,19 @@ Project overrides **per nested key** (deep merge). Runtime saves write **home on
 }
 ```
 
-| Group / field               | Fields                                                                                                                                      | Role                                                                                                                                                |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`preferredChatLanguage`** | (top-level)                                                                                                                                 | Language for user-facing chat prose                                                                                                                 |
-| **`maxRetries`**            | (top-level)                                                                                                                                 | LLM HTTP retries on 5xx / network errors                                                                                                            |
-| **`defaultTimeout`**        | (top-level)                                                                                                                                 | LLM stream inactivity / SSE stall limit (e.g. `120s`)                                                                                               |
-| **`ui`**                    | `theme`, `themes`, `showThinking`, `autoExpandThinking`, `stickyScroll`, `footerTokenDisplay`, `coloredStatusFooter`, `allowModeChangeWhileBusy`, `filePicker.showHiddenFiles` | Appearance + transcript / chrome                                                                                                                    |
-| **`models`**                | `defaultModel`, `defaultThinkingLevel`, `sessionTitleModel`, `compactionModel`, `treeBranchSummaries`, `scopedModels`, `showConfiguredOnly`, **`embed`** (`model`, `quantized`) | Seeds for **new** sessions + catalog prefs + **local embedding** (shared by memory + codegraph). **Not** live chat model/mode/thinking |
-| **`promptEncoding`**        | `mode`, `minBytes`, `minSavingsRatio`, `delimiter`, `tabularDelimiter`, `targets`, `preamble`                                                 | TOON encoding of model-visible tool results (optional; absent/`null` → `ELPH_PROMPT_ENCODING*` env vars)                                           |
-| **`memory`**                | `enabled`, `autoRecall`, `autoCaptureWork`, `autoCaptureExploration`, `topK`, `contextBudgetChars`, `minQueryLength` | Floppy memory hooks + retrieval (see [memory.md](./memory.md)); embed model is under `models.embed` |
-| **`codegraph`**             | `enabled` (default **false**)                                                                                                               | When true: (1) register agent tools `code_search` / `code_impact` / `code_status` / `code_reindex`; (2) pre-TUI interactive offer to index an empty project. CLI `elph codegraph` always works. See [codegraph.md](./codegraph.md). |
-| **`notifications`**        | `enabled`, `onTurnComplete`, `onToolPermission`, `onUserQuestion`, `onError`, `onTurnCancel`, `onStartupReady`, `minTurnDurationSecs`, `appName` | Desktop notifications (see [notifications](#notifications-notifications))                                                                          |
-| **`compaction`**            | `thresholdPct`, `keepRecentTokens`                                                                                                          | Auto-compaction **thresholds** only (auto-compact is always available after turns when usage exceeds the threshold; `/compact` is always available) |
+| Group / field               | Fields                                                                                                                                                                          | Role                                                                                                                                                                                                                                |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`preferredChatLanguage`** | (top-level)                                                                                                                                                                     | Language for user-facing chat prose                                                                                                                                                                                                 |
+| **`maxRetries`**            | (top-level)                                                                                                                                                                     | LLM HTTP retries on 5xx / network errors                                                                                                                                                                                            |
+| **`defaultTimeout`**        | (top-level)                                                                                                                                                                     | LLM stream inactivity / SSE stall limit (e.g. `120s`)                                                                                                                                                                               |
+| **`ui`**                    | `theme`, `themes`, `showThinking`, `autoExpandThinking`, `stickyScroll`, `footerTokenDisplay`, `coloredStatusFooter`, `allowModeChangeWhileBusy`, `filePicker.showHiddenFiles`  | Appearance + transcript / chrome                                                                                                                                                                                                    |
+| **`models`**                | `defaultModel`, `defaultThinkingLevel`, `sessionTitleModel`, `compactionModel`, `treeBranchSummaries`, `scopedModels`, `showConfiguredOnly`, **`embed`** (`model`, `quantized`) | Seeds for **new** sessions + catalog prefs + **local embedding** (shared by memory + codegraph). **Not** live chat model/mode/thinking                                                                                              |
+| **`promptEncoding`**        | `mode`, `minBytes`, `minSavingsRatio`, `delimiter`, `tabularDelimiter`, `targets`, `preamble`                                                                                   | TOON encoding of model-visible tool results (optional; absent/`null` → `ELPH_PROMPT_ENCODING*` env vars)                                                                                                                            |
+| **`memory`**                | `enabled`, `autoRecall`, `autoCaptureWork`, `autoCaptureExploration`, `topK`, `contextBudgetChars`, `minQueryLength`                                                            | Floppy memory hooks + retrieval (see [memory.md](./memory.md)); embed model is under `models.embed`                                                                                                                                 |
+| **`codegraph`**             | `enabled` (default **false**)                                                                                                                                                   | When true: (1) register agent tools `code_search` / `code_impact` / `code_status` / `code_reindex`; (2) pre-TUI interactive offer to index an empty project. CLI `elph codegraph` always works. See [codegraph.md](./codegraph.md). |
+| **`mcp`**                   | `cacheTtlSecs` (default 60), `cacheMaxEntries` (default 2048)                                                                                                                   | MCP tool result cache retention. Per-server `cacheTtlMs` in `mcp.json` overrides the global TTL. See [mcp.md](./mcp.md).                                                                                                            |
+| **`notifications`**         | `enabled`, `onTurnComplete`, `onToolPermission`, `onUserQuestion`, `onError`, `onTurnCancel`, `onStartupReady`, `minTurnDurationSecs`, `appName`                                | Desktop notifications (see [notifications](#notifications-notifications))                                                                                                                                                           |
+| **`compaction`**            | `thresholdPct`, `keepRecentTokens`                                                                                                                                              | Auto-compaction **thresholds** only (auto-compact is always available after turns when usage exceeds the threshold; `/compact` is always available)                                                                                 |
 
 Legacy nested `provider: { maxRetries, defaultTimeout }` is lifted to the root on load.
 
@@ -279,15 +284,15 @@ The group is **optional**: when absent or `null`, the agent falls back to the `E
 }
 ```
 
-| Field              | Type     | Default                              | Meaning                                                                              |
-| ------------------ | -------- | ------------------------------------ | ------------------------------------------------------------------------------------ |
-| `mode`             | `string` | `"off"`                              | `off` (never), `toon` (all eligible payloads), `auto` (uniform tabular arrays only). Unknown values fall back to `off`. |
-| `minBytes`         | `int`    | `2048`                               | Minimum JSON byte length before encoding applies.                                    |
-| `minSavingsRatio`  | `number` | `1.0`                                | Encode only when TOON is at most this ratio of the JSON size.                        |
-| `delimiter`        | `string` | `"comma"`                            | TOON delimiter for general payloads (`comma` / `tab` / `pipe`).                      |
-| `tabularDelimiter` | `string` | `"tab"`                              | TOON delimiter for tabular arrays.                                                   |
-| `targets`          | `object` | both `true`                          | Which surfaces may be rewritten (`toolResultText`, `structuredDetails`).             |
-| `preamble`         | `string` | built-in TOON hint                   | Preamble above TOON fenced blocks.                                                   |
+| Field              | Type     | Default            | Meaning                                                                                                                 |
+| ------------------ | -------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `mode`             | `string` | `"off"`            | `off` (never), `toon` (all eligible payloads), `auto` (uniform tabular arrays only). Unknown values fall back to `off`. |
+| `minBytes`         | `int`    | `2048`             | Minimum JSON byte length before encoding applies.                                                                       |
+| `minSavingsRatio`  | `number` | `1.0`              | Encode only when TOON is at most this ratio of the JSON size.                                                           |
+| `delimiter`        | `string` | `"comma"`          | TOON delimiter for general payloads (`comma` / `tab` / `pipe`).                                                         |
+| `tabularDelimiter` | `string` | `"tab"`            | TOON delimiter for tabular arrays.                                                                                      |
+| `targets`          | `object` | both `true`        | Which surfaces may be rewritten (`toolResultText`, `structuredDetails`).                                                |
+| `preamble`         | `string` | built-in TOON hint | Preamble above TOON fenced blocks.                                                                                      |
 
 ### Theme (`ui.theme` / `ui.themes`)
 
@@ -316,17 +321,17 @@ Token keys (camelCase): `textPrimary`, `textSecondary`, `textMuted`, `textHint`,
 
 Optional native OS notifications (macOS Notification Center, Linux D-Bus, Windows Toast). `enabled` is the master switch; individual `on*` flags select which events notify.
 
-| Field                | Type     | Default | Meaning                                                        |
-| -------------------- | -------- | ------- | -------------------------------------------------------------- |
-| `enabled`            | boolean  | `true`  | Master switch — disable all desktop notifications.            |
-| `onTurnComplete`     | boolean  | `true`  | Notify when the agent finishes a turn.                         |
-| `onToolPermission`   | boolean  | `true`  | Notify when the agent requests tool permission.                |
-| `onUserQuestion`     | boolean  | `true`  | Notify when the agent asks a question.                         |
-| `onError`            | boolean  | `true`  | Notify on errors (agent / MCP / bootstrap failure).            |
-| `onTurnCancel`       | boolean  | `false` | Notify when a running turn is canceled.                        |
-| `onStartupReady`     | boolean  | `true`  | Notify when bootstrap / startup completes.                     |
-| `minTurnDurationSecs`| number   | `5.0`   | Minimum turn duration (s) before a turn-complete notification. |
-| `appName`            | string   | `"Elph"`| App name shown in the notification banner.                     |
+| Field                 | Type    | Default  | Meaning                                                        |
+| --------------------- | ------- | -------- | -------------------------------------------------------------- |
+| `enabled`             | boolean | `true`   | Master switch — disable all desktop notifications.             |
+| `onTurnComplete`      | boolean | `true`   | Notify when the agent finishes a turn.                         |
+| `onToolPermission`    | boolean | `true`   | Notify when the agent requests tool permission.                |
+| `onUserQuestion`      | boolean | `true`   | Notify when the agent asks a question.                         |
+| `onError`             | boolean | `true`   | Notify on errors (agent / MCP / bootstrap failure).            |
+| `onTurnCancel`        | boolean | `false`  | Notify when a running turn is canceled.                        |
+| `onStartupReady`      | boolean | `true`   | Notify when bootstrap / startup completes.                     |
+| `minTurnDurationSecs` | number  | `5.0`    | Minimum turn duration (s) before a turn-complete notification. |
+| `appName`             | string  | `"Elph"` | App name shown in the notification banner.                     |
 
 ## Provider JSON
 

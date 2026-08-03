@@ -43,9 +43,9 @@ impl SessionManager {
         Ok(())
     }
 
-    /// Path to the session-scoped MCP tool result cache DB.
+    /// Path to the session-scoped MCP tool result cache file.
     pub fn mcp_cache_path(&self, session_id: &str) -> PathBuf {
-        self.artifact_dir_for(session_id).join("mcp_cache").join("cache.db")
+        self.artifact_dir_for(session_id).join("mcp_cache").join("cache.jsonl")
     }
 
     fn remove_artifact_dirs(&self, session_id: &str) {

@@ -23,10 +23,10 @@ SSE remotes can use OAuth the same way as Streamable HTTP.
 
 Per-server field `loadStrategy` (default `lazy`):
 
-| Value   | Behavior                                                                                                                                                                                                                 |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Value   | Behavior                                                                                                                                                                                                                                                                                                          |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `lazy`  | **(default)** Skip `tools/list` (and resources/prompts discovery) at load time. Tools are discovered on-demand per-server: first `create_agent_tools`, `call_tool`, `read_resource`, or `get_prompt` triggers discovery only for that server. Results are merged into the catalog — other servers stay untouched. |
-| `eager` | Legacy behavior — list all catalogs during `McpToolRegistry::load`.                                                                                                                                                      |
+| `eager` | Legacy behavior — list all catalogs during `McpToolRegistry::load`.                                                                                                                                                                                                                                               |
 
 **Key improvements:** lazy-loaded servers now correctly discover on their first tool call:
 
@@ -143,21 +143,22 @@ Client identity advertises name `elph`, protocol preference `2026-07-28`, form e
 
 ### Tool result cache
 
-Read-only tool call results are cached persistently on disk so repeated calls with the same arguments return instantly instead of hitting the MCP server again.
+Read-only tool call results are cached so repeated calls with the same arguments return instantly instead of hitting the MCP server again. The cache is an **in-memory HashMap persisted to a JSONL file** (one JSON object per line) — no database engine involved.
 
 **Storage** (per `docs/configuration.md` layout):
 
-| Scope   | Path                                                        |
-| ------- | ----------------------------------------------------------- |
-| Session | `APP_DATA/sessions/<SESSION_ID>/mcp_cache/cache.db`         |
-| Host    | `APP_DATA/mcp_cache/cache.db` (CLI ops without a session)   |
+| Scope   | Path                                                         |
+| ------- | ------------------------------------------------------------ |
+| Session | `APP_DATA/sessions/<SESSION_ID>/mcp_cache/cache.jsonl`       |
+| Host    | `APP_DATA/mcp_cache/cache.jsonl` (CLI ops without a session) |
 
 **Behavior:**
 
 - **Cache key** — hash of `(server, tool, canonical JSON args)`. Different args → different entries.
 - **Read-only only** — tools whose names contain mutation keywords (`write`, `create`, `delete`, `update`, `edit`, `set`, `add`, `remove`, …) are never cached.
-- **TTL** — default 60 seconds. Per-server override via `cacheTtlMs` in `mcp.json`; `0` disables caching for that server.
-- **Eviction** — expired entries are deleted lazily on read; when the table exceeds 2048 rows, the oldest expired entries are pruned.
+- **TTL** — default 60 seconds. Precedence: per-server `cacheTtlMs` in `mcp.json` → global `settings.json` `mcp.cacheTtlSecs` → 60s default. `0` disables caching.
+- **Max entries** — `settings.json` `mcp.cacheMaxEntries` (default 2048). Expired entries are pruned when over the limit.
+- **Persistence** — entries survive restarts (loaded from JSONL on open). File is rewritten atomically (temp + rename) on eviction/invalidation/clear.
 - **Invalidation** — entries for a server are dropped on reconnect; `elph mcp` reload clears the store.
 
 ```json
@@ -168,6 +169,17 @@ Read-only tool call results are cached persistently on disk so repeated calls wi
             "url": "https://mcp.deepwiki.com/mcp",
             "cacheTtlMs": 300000
         }
+    }
+}
+```
+
+Global retention in `settings.json`:
+
+```json
+{
+    "mcp": {
+        "cacheTtlSecs": 60,
+        "cacheMaxEntries": 2048
     }
 }
 ```

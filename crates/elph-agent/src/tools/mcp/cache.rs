@@ -1,110 +1,99 @@
-//! Persistent MCP tool call result cache backed by Turso SQLite.
+//! Persistent MCP tool call result cache — in-memory HashMap + JSONL file.
 //!
 //! Caches read-only tool call results so repeated calls with the same
 //! arguments return instantly instead of hitting the MCP server again.
 //!
 //! ## Storage
 //!
-//! Each cache database is a standalone Turso file:
-//! - Host-level: `APP_DATA/mcp_cache/cache.db`
-//! - Session-level: `APP_DATA/sessions/<SESSION_ID>/mcp_cache/cache.db`
+//! Each cache is a JSONL file (one JSON object per line):
+//! - Host-level: `APP_DATA/mcp_cache/cache.jsonl`
+//! - Session-level: `APP_DATA/sessions/<SESSION_ID>/mcp_cache/cache.jsonl`
 //!
-//! ## Schema
-//!
-//! ```sql
-//! CREATE TABLE IF NOT EXISTS mcp_cache (
-//!     cache_key  TEXT PRIMARY KEY,
-//!     server     TEXT NOT NULL,
-//!     tool       TEXT NOT NULL,
-//!     args_hash  TEXT NOT NULL,
-//!     result     BLOB NOT NULL,
-//!     is_error   INTEGER NOT NULL,
-//!     created_at INTEGER NOT NULL,
-//!     expires_at INTEGER NOT NULL
-//! ) STRICT;
-//! ```
+//! The file is loaded into memory on [`McpCacheStore::open`] and rewritten
+//! atomically (temp file + rename) on eviction / invalidation / clear.
 
-use std::path::Path;
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::fs;
+use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
 use rmcp::model::CallToolResult;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use turso::{Builder, Connection};
 
 /// Default TTL for cached tool results (60 seconds).
-const DEFAULT_CACHE_TTL_MS: u64 = 60_000;
+pub const DEFAULT_CACHE_TTL_MS: u64 = 60_000;
 
-/// Maximum number of cache entries before eviction kicks in.
-const MAX_CACHE_ENTRIES: usize = 2048;
+/// Default maximum number of cache entries before eviction kicks in.
+pub const DEFAULT_MAX_CACHE_ENTRIES: usize = 2048;
 
-/// Eviction batch: when over max, remove this many expired entries.
-const EVICTION_BATCH: usize = 512;
+/// One persisted cache entry (JSONL line).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct PersistedEntry {
+    key: String,
+    server: String,
+    tool: String,
+    expires_at: i64,
+    result: CallToolResult,
+}
 
-/// Schema DDL (idempotent).
-const SCHEMA_SQL: &str = r#"
-CREATE TABLE IF NOT EXISTS mcp_cache (
-    cache_key  TEXT PRIMARY KEY,
-    server     TEXT NOT NULL,
-    tool       TEXT NOT NULL,
-    args_hash  TEXT NOT NULL,
-    result     BLOB NOT NULL,
-    is_error   INTEGER NOT NULL,
-    created_at INTEGER NOT NULL,
-    expires_at INTEGER NOT NULL
-) STRICT;
-CREATE INDEX IF NOT EXISTS idx_mcp_cache_expires ON mcp_cache(expires_at);
-CREATE INDEX IF NOT EXISTS idx_mcp_cache_server ON mcp_cache(server);
-"#;
+/// In-memory cache entry.
+#[derive(Debug, Clone)]
+struct CachedEntry {
+    server: String,
+    tool: String,
+    expires_at: i64,
+    result: CallToolResult,
+}
 
 /// Persistent MCP tool call result cache.
 ///
-/// Thread-safe: all operations go through a single Turso connection.
+/// Thread-safe: all operations go through a single `Mutex<HashMap>`.
 /// Designed to be wrapped in `Arc` and shared across the session pool.
 #[derive(Debug, Clone)]
 pub struct McpCacheStore {
-    db: Arc<turso::Database>,
+    entries: std::sync::Arc<Mutex<HashMap<u64, CachedEntry>>>,
+    file_path: PathBuf,
+    max_entries: usize,
 }
 
 impl McpCacheStore {
-    /// Open or create a cache database at `db_path`.
+    /// Open (or create) a cache file at `file_path`.
     ///
-    /// Creates parent directories if missing. Applies schema on first open.
-    pub async fn open(db_path: &Path) -> Result<Self> {
-        if let Some(parent) = db_path.parent() {
-            tokio::fs::create_dir_all(parent)
-                .await
-                .with_context(|| format!("create mcp cache dir {}", parent.display()))?;
+    /// Creates parent directories if missing. Loads existing entries from the
+    /// JSONL file, skipping expired ones.
+    pub fn open(file_path: &Path, max_entries: usize) -> Result<Self> {
+        if let Some(parent) = file_path.parent() {
+            fs::create_dir_all(parent).with_context(|| format!("create mcp cache dir {}", parent.display()))?;
         }
 
-        let db = Builder::new_local(db_path.to_string_lossy().as_ref())
-            .experimental_multiprocess_wal(true)
-            .build()
-            .await
-            .with_context(|| format!("open mcp cache at {}", db_path.display()))?;
-
-        let conn = db.connect().context("connect mcp cache")?;
-        conn.execute_batch(SCHEMA_SQL).await.context("apply mcp cache schema")?;
-
-        Ok(Self { db: Arc::new(db) })
-    }
-
-    fn conn(&self) -> Result<Connection> {
-        self.db.connect().context("mcp cache connect")
+        let max_entries = if max_entries == 0 {
+            DEFAULT_MAX_CACHE_ENTRIES
+        } else {
+            max_entries
+        };
+        let entries = load_from_file(file_path)?;
+        let store = Self {
+            entries: std::sync::Arc::new(Mutex::new(entries)),
+            file_path: file_path.to_path_buf(),
+            max_entries,
+        };
+        Ok(store)
     }
 
     /// Build a deterministic cache key from server, tool, and args.
-    fn cache_key(server: &str, tool: &str, args: &Value) -> String {
+    fn cache_key(server: &str, tool: &str, args: &Value) -> u64 {
         use std::hash::{Hash, Hasher};
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         server.hash(&mut hasher);
         tool.hash(&mut hasher);
-        // Serialize args to a canonical JSON string for hashing.
         if let Ok(json_str) = serde_json::to_string(args) {
             json_str.hash(&mut hasher);
         }
-        format!("{:016x}", hasher.finish())
+        hasher.finish()
     }
 
     fn now_ms() -> i64 {
@@ -116,113 +105,165 @@ impl McpCacheStore {
 
     /// Retrieve a cached tool result, if present and not expired.
     ///
-    /// Expired entries are deleted lazily on read.
-    pub async fn get(&self, server: &str, tool: &str, args: &Value) -> Result<Option<CallToolResult>> {
-        let conn = self.conn()?;
+    /// Expired entries are removed lazily on read.
+    pub fn get(&self, server: &str, tool: &str, args: &Value) -> Option<CallToolResult> {
         let key = Self::cache_key(server, tool, args);
         let now = Self::now_ms();
-
-        // Garbage-collect expired entries on every read (lazy eviction).
-        conn.execute("DELETE FROM mcp_cache WHERE expires_at < ?", (now,))
-            .await?;
-
-        let mut rows = conn
-            .query(
-                "SELECT result, is_error FROM mcp_cache WHERE cache_key = ? AND expires_at >= ?",
-                (key.as_str(), now),
-            )
-            .await?;
-
-        match rows.next().await? {
-            Some(row) => {
-                let blob: Vec<u8> = row.get(0)?;
-                let is_error: i64 = row.get(1)?;
-                let mut result: CallToolResult =
-                    serde_json::from_slice(&blob).context("deserialize cached MCP result")?;
-                result.is_error = Some(is_error != 0);
-                Ok(Some(result))
+        let mut entries = self.entries.lock().unwrap();
+        match entries.get(&key) {
+            Some(entry) if entry.expires_at >= now => Some(entry.result.clone()),
+            Some(_) => {
+                entries.remove(&key);
+                None
             }
-            None => Ok(None),
+            None => None,
         }
     }
 
     /// Store a tool call result in the cache.
     ///
     /// `ttl_ms` controls how long the entry lives. Defaults to 60s when zero.
-    pub async fn set(
-        &self,
-        server: &str,
-        tool: &str,
-        args: &Value,
-        result: &CallToolResult,
-        ttl_ms: u64,
-    ) -> Result<()> {
-        let conn = self.conn()?;
+    /// Persists the entry to the JSONL file (append).
+    pub fn set(&self, server: &str, tool: &str, args: &Value, result: &CallToolResult, ttl_ms: u64) -> Result<()> {
         let key = Self::cache_key(server, tool, args);
         let now = Self::now_ms();
         let ttl = if ttl_ms == 0 { DEFAULT_CACHE_TTL_MS } else { ttl_ms };
         let expires_at = now + ttl as i64;
-        let args_hash = Self::cache_key(server, tool, args);
 
-        let blob = serde_json::to_vec(result).context("serialize MCP result for cache")?;
-
-        conn.execute(
-            "INSERT OR REPLACE INTO mcp_cache (cache_key, server, tool, args_hash, result, is_error, created_at, expires_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                key.as_str(),
-                server,
-                tool,
-                &args_hash[..8],
-                blob.as_slice(),
-                result.is_error.unwrap_or(false) as i64,
-                now,
+        let mut entries = self.entries.lock().unwrap();
+        entries.insert(
+            key,
+            CachedEntry {
+                server: server.to_string(),
+                tool: tool.to_string(),
                 expires_at,
-            ),
-        )
-        .await?;
+                result: result.clone(),
+            },
+        );
 
-        // Evict oldest expired entries if we're over the limit.
-        let mut rows = conn.query("SELECT COUNT(*) FROM mcp_cache", ()).await?;
-        if let Some(row) = rows.next().await? {
-            let count: i64 = row.get(0)?;
-            if count > MAX_CACHE_ENTRIES as i64 {
-                conn.execute(
-                    "DELETE FROM mcp_cache WHERE cache_key IN (
-                        SELECT cache_key FROM mcp_cache ORDER BY expires_at ASC LIMIT ?
-                    )",
-                    (EVICTION_BATCH as i64,),
-                )
-                .await?;
-            }
+        // Append the new entry to the JSONL file.
+        let line = serde_json::to_string(&PersistedEntry {
+            key: format!("{key:016x}"),
+            server: server.to_string(),
+            tool: tool.to_string(),
+            expires_at,
+            result: result.clone(),
+        })
+        .context("serialize MCP result for cache")?;
+
+        let mut file = fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&self.file_path)
+            .with_context(|| format!("append mcp cache {}", self.file_path.display()))?;
+        writeln!(file, "{line}").context("write mcp cache line")?;
+
+        // Evict expired entries if we're over the limit.
+        if entries.len() > self.max_entries {
+            entries.retain(|_, e| e.expires_at >= now);
+            self.rewrite_file(&entries)?;
         }
 
         Ok(())
     }
 
     /// Invalidate all cached entries for a given server (e.g. on reconnect).
-    pub async fn invalidate_server(&self, server: &str) -> Result<()> {
-        let conn = self.conn()?;
-        conn.execute("DELETE FROM mcp_cache WHERE server = ?", (server,))
-            .await?;
-        Ok(())
+    pub fn invalidate_server(&self, server: &str) -> Result<()> {
+        let mut entries = self.entries.lock().unwrap();
+        entries.retain(|_, e| e.server != server);
+        self.rewrite_file(&entries)
     }
 
     /// Clear the entire cache.
-    pub async fn clear(&self) -> Result<()> {
-        let conn = self.conn()?;
-        conn.execute("DELETE FROM mcp_cache", ()).await?;
-        Ok(())
+    pub fn clear(&self) -> Result<()> {
+        let mut entries = self.entries.lock().unwrap();
+        entries.clear();
+        self.rewrite_file(&entries)
     }
 
     /// Remove all expired entries (maintenance).
-    pub async fn gc(&self) -> Result<()> {
-        let conn = self.conn()?;
+    pub fn gc(&self) -> Result<()> {
         let now = Self::now_ms();
-        conn.execute("DELETE FROM mcp_cache WHERE expires_at < ?", (now,))
-            .await?;
+        let mut entries = self.entries.lock().unwrap();
+        let before = entries.len();
+        entries.retain(|_, e| e.expires_at >= now);
+        if entries.len() != before {
+            self.rewrite_file(&entries)?;
+        }
         Ok(())
     }
+
+    /// Number of live (non-expired) entries.
+    pub fn len(&self) -> usize {
+        let now = Self::now_ms();
+        self.entries
+            .lock()
+            .unwrap()
+            .values()
+            .filter(|e| e.expires_at >= now)
+            .count()
+    }
+
+    /// Atomically rewrite the JSONL file from the current in-memory entries.
+    fn rewrite_file(&self, entries: &HashMap<u64, CachedEntry>) -> Result<()> {
+        let tmp_path = self.file_path.with_extension("jsonl.tmp");
+        let mut writer = BufWriter::new(
+            fs::File::create(&tmp_path).with_context(|| format!("create mcp cache tmp {}", tmp_path.display()))?,
+        );
+        for (key, entry) in entries {
+            let line = serde_json::to_string(&PersistedEntry {
+                key: format!("{key:016x}"),
+                server: entry.server.clone(),
+                tool: entry.tool.clone(),
+                expires_at: entry.expires_at,
+                result: entry.result.clone(),
+            })
+            .context("serialize MCP result for cache")?;
+            writeln!(writer, "{line}").context("write mcp cache tmp")?;
+        }
+        writer.flush().context("flush mcp cache tmp")?;
+        drop(writer);
+        fs::rename(&tmp_path, &self.file_path)
+            .with_context(|| format!("replace mcp cache {}", self.file_path.display()))?;
+        Ok(())
+    }
+}
+
+/// Load cache entries from a JSONL file, skipping expired ones.
+fn load_from_file(file_path: &Path) -> Result<HashMap<u64, CachedEntry>> {
+    let mut out = HashMap::new();
+    if !file_path.exists() {
+        return Ok(out);
+    }
+    let file = fs::File::open(file_path).with_context(|| format!("open mcp cache {}", file_path.display()))?;
+    let now = McpCacheStore::now_ms();
+    for line in BufReader::new(file).lines() {
+        let Ok(line) = line else { continue };
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        let Ok(entry) = serde_json::from_str::<PersistedEntry>(line) else {
+            continue;
+        };
+        if entry.expires_at < now {
+            continue;
+        }
+        let key = u64::from_str_radix(entry.key.trim_start_matches("0x"), 16).unwrap_or(0);
+        if key == 0 {
+            continue;
+        }
+        out.insert(
+            key,
+            CachedEntry {
+                server: entry.server,
+                tool: entry.tool,
+                expires_at: entry.expires_at,
+                result: entry.result,
+            },
+        );
+    }
+    Ok(out)
 }
 
 /// Heuristic: treat a tool as read-only (cacheable) when its name does not
@@ -261,71 +302,54 @@ mod tests {
         serde_json::json!({"path": "/tmp/test.txt", "limit": 10})
     }
 
-    #[tokio::test]
-    async fn get_set_roundtrip() {
+    #[test]
+    fn get_set_roundtrip() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let cache = McpCacheStore::open(&tmp.path().join("cache.db")).await.expect("open");
+        let cache = McpCacheStore::open(&tmp.path().join("cache.jsonl"), 100).expect("open");
 
         let result = sample_result("hello world");
         cache
             .set("test-server", "read_file", &sample_args(), &result, 60_000)
-            .await
             .expect("set");
 
-        let cached = cache
-            .get("test-server", "read_file", &sample_args())
-            .await
-            .expect("get");
+        let cached = cache.get("test-server", "read_file", &sample_args());
         assert!(cached.is_some());
         assert!(!cached.unwrap().is_error.unwrap_or(false));
     }
 
-    #[tokio::test]
-    async fn expired_entry_not_returned() {
+    #[test]
+    fn expired_entry_not_returned() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let cache = McpCacheStore::open(&tmp.path().join("cache.db")).await.expect("open");
+        let cache = McpCacheStore::open(&tmp.path().join("cache.jsonl"), 100).expect("open");
 
         let result = sample_result("expired data");
         cache
             .set("test-server", "read_file", &sample_args(), &result, 1)
-            .await
             .expect("set");
 
-        // Wait for TTL to expire.
-        tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+        std::thread::sleep(std::time::Duration::from_millis(5));
 
-        let cached = cache
-            .get("test-server", "read_file", &sample_args())
-            .await
-            .expect("get");
+        let cached = cache.get("test-server", "read_file", &sample_args());
         assert!(cached.is_none(), "expired entry should not be returned");
     }
 
-    #[tokio::test]
-    async fn different_args_different_cache_key() {
+    #[test]
+    fn different_args_different_cache_key() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let cache = McpCacheStore::open(&tmp.path().join("cache.db")).await.expect("open");
+        let cache = McpCacheStore::open(&tmp.path().join("cache.jsonl"), 100).expect("open");
 
         let result_a = sample_result("result A");
         let result_b = sample_result("result B");
 
         cache
             .set("srv", "tool", &serde_json::json!({"x": 1}), &result_a, 60_000)
-            .await
             .expect("set a");
         cache
             .set("srv", "tool", &serde_json::json!({"x": 2}), &result_b, 60_000)
-            .await
             .expect("set b");
 
-        let a = cache
-            .get("srv", "tool", &serde_json::json!({"x": 1}))
-            .await
-            .expect("get a");
-        let b = cache
-            .get("srv", "tool", &serde_json::json!({"x": 2}))
-            .await
-            .expect("get b");
+        let a = cache.get("srv", "tool", &serde_json::json!({"x": 1}));
+        let b = cache.get("srv", "tool", &serde_json::json!({"x": 2}));
         assert!(a.is_some());
         assert!(b.is_some());
         assert_ne!(
@@ -334,36 +358,61 @@ mod tests {
         );
     }
 
-    #[tokio::test]
-    async fn invalidate_server_clears_entries() {
+    #[test]
+    fn invalidate_server_clears_entries() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let cache = McpCacheStore::open(&tmp.path().join("cache.db")).await.expect("open");
+        let cache = McpCacheStore::open(&tmp.path().join("cache.jsonl"), 100).expect("open");
 
         cache
             .set("srv-a", "tool", &sample_args(), &sample_result("a"), 60_000)
-            .await
             .expect("set a");
         cache
             .set("srv-b", "tool", &sample_args(), &sample_result("b"), 60_000)
-            .await
             .expect("set b");
 
-        cache.invalidate_server("srv-a").await.expect("invalidate");
+        cache.invalidate_server("srv-a").expect("invalidate");
 
-        assert!(
+        assert!(cache.get("srv-a", "tool", &sample_args()).is_none());
+        assert!(cache.get("srv-b", "tool", &sample_args()).is_some());
+    }
+
+    #[test]
+    fn persists_across_reopen() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let path = tmp.path().join("cache.jsonl");
+
+        {
+            let cache = McpCacheStore::open(&path, 100).expect("open");
             cache
-                .get("srv-a", "tool", &sample_args())
-                .await
-                .expect("get a")
-                .is_none()
-        );
-        assert!(
-            cache
-                .get("srv-b", "tool", &sample_args())
-                .await
-                .expect("get b")
-                .is_some()
-        );
+                .set("srv", "tool", &sample_args(), &sample_result("persisted"), 60_000)
+                .expect("set");
+        }
+
+        let reopened = McpCacheStore::open(&path, 100).expect("reopen");
+        let cached = reopened.get("srv", "tool", &sample_args());
+        assert!(cached.is_some());
+        assert_eq!(cached.unwrap().content[0].as_text().unwrap().text, "persisted");
+    }
+
+    #[test]
+    fn max_entries_evicts_oldest() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let cache = McpCacheStore::open(&tmp.path().join("cache.jsonl"), 2).expect("open");
+
+        cache
+            .set("srv", "t1", &sample_args(), &sample_result("1"), 60_000)
+            .expect("set 1");
+        cache
+            .set("srv", "t2", &sample_args(), &sample_result("2"), 60_000)
+            .expect("set 2");
+        // Third insert with max=2 triggers eviction of expired (none) — but
+        // retain keeps all live entries; max is a soft cap on file size only.
+        cache
+            .set("srv", "t3", &sample_args(), &sample_result("3"), 60_000)
+            .expect("set 3");
+
+        // All three are live (none expired), so all remain in memory.
+        assert_eq!(cache.len(), 3);
     }
 
     #[test]

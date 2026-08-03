@@ -573,6 +573,9 @@ pub struct McpLoadOptions {
     pub load_strategy: McpLoadStrategy,
     /// Optional persistent tool call result cache.
     pub cache_store: Option<std::sync::Arc<super::cache::McpCacheStore>>,
+    /// Default tool result cache TTL (ms) when a server does not override it.
+    /// `0` disables caching. Defaults to 60s.
+    pub default_cache_ttl_ms: u64,
 }
 
 impl Default for McpLoadOptions {
@@ -588,6 +591,7 @@ impl Default for McpLoadOptions {
             progress_tx: None,
             load_strategy: McpLoadStrategy::default(),
             cache_store: None,
+            default_cache_ttl_ms: super::cache::DEFAULT_CACHE_TTL_MS,
         }
     }
 }
