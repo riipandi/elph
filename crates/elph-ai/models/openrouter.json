@@ -1116,16 +1116,16 @@
             "supportsDeveloperRole": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 1000000,
+        "contextWindow": 32000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.85,
+            "output": 1.55
         },
         "id": "auto",
-        "input": ["text", "image", "pdf"],
-        "maxTokens": 131072,
+        "input": ["text"],
+        "maxTokens": 32000,
         "name": "Auto",
         "provider": "openrouter",
         "reasoning": true,
@@ -3257,8 +3257,8 @@
         },
         "id": "mistralai/devstral-2512",
         "input": ["text"],
-        "maxTokens": 65536,
-        "name": "Mistral: Devstral 2 2512",
+        "maxTokens": 262144,
+        "name": "Devstral 2",
         "provider": "openrouter",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -3851,10 +3851,10 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0992,
+            "cacheRead": 0.2,
             "cacheWrite": 0.0,
-            "input": 0.589,
-            "output": 2.48
+            "input": 0.6,
+            "output": 3.41
         },
         "id": "moonshotai/kimi-k2.6",
         "input": ["text", "image"],
@@ -4742,7 +4742,7 @@
         "id": "openai/gpt-5-codex",
         "input": ["text", "image"],
         "maxTokens": 128000,
-        "name": "OpenAI: GPT-5 Codex",
+        "name": "GPT-5-Codex",
         "provider": "openrouter",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -4937,15 +4937,15 @@
         },
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0.125,
+            "cacheRead": 0.12,
             "cacheWrite": 0.0,
             "input": 1.25,
             "output": 10.0
         },
         "id": "openai/gpt-5.1-chat",
-        "input": ["image", "pdf", "text"],
-        "maxTokens": 16384,
-        "name": "OpenAI: GPT-5.1 Chat",
+        "input": ["pdf", "image", "text"],
+        "maxTokens": 64000,
+        "name": "GPT-5.1 Chat",
         "provider": "openrouter",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -5894,10 +5894,10 @@
         },
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.03,
             "cacheWrite": 0.0,
             "input": 0.03,
-            "output": 0.14
+            "output": 0.13
         },
         "id": "openai/gpt-oss-20b",
         "input": ["text"],
@@ -6039,15 +6039,15 @@
         },
         "contextWindow": 200000,
         "cost": {
-            "cacheRead": 2.5,
+            "cacheRead": 2.2,
             "cacheWrite": 0.0,
-            "input": 10.0,
-            "output": 40.0
+            "input": 9.0,
+            "output": 36.0
         },
         "id": "openai/o3-deep-research",
-        "input": ["image", "pdf", "text"],
+        "input": ["text"],
         "maxTokens": 100000,
-        "name": "OpenAI: o3 Deep Research",
+        "name": "o3-deep-research",
         "provider": "openrouter",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -6184,15 +6184,15 @@
         },
         "contextWindow": 200000,
         "cost": {
-            "cacheRead": 0.5,
+            "cacheRead": 0.45,
             "cacheWrite": 0.0,
-            "input": 2.0,
-            "output": 8.0
+            "input": 1.8,
+            "output": 7.2
         },
         "id": "openai/o4-mini-deep-research",
-        "input": ["image", "pdf", "text"],
+        "input": ["text"],
         "maxTokens": 100000,
-        "name": "OpenAI: o4 Mini Deep Research",
+        "name": "o4-mini-deep-research",
         "provider": "openrouter",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -6695,12 +6695,12 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.09,
-            "output": 0.55
+            "input": 0.1495,
+            "output": 0.598
         },
         "id": "qwen/qwen3-235b-a22b-2507",
         "input": ["text"],
-        "maxTokens": 16384,
+        "maxTokens": 32768,
         "name": "Qwen3 235B A22B Instruct 2507",
         "provider": "openrouter",
         "reasoning": false,
@@ -6936,11 +6936,11 @@
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 0.07,
-            "output": 0.27
+            "output": 0.28
         },
         "id": "qwen/qwen3-coder-30b-a3b-instruct",
         "input": ["text"],
-        "maxTokens": 32768,
+        "maxTokens": 262144,
         "name": "Qwen3-Coder 30B-A3B Instruct",
         "provider": "openrouter",
         "reasoning": false,
@@ -7205,8 +7205,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.4,
-            "output": 4.0
+            "input": 0.98,
+            "output": 3.95
         },
         "id": "qwen/qwen3-vl-235b-a22b-thinking",
         "input": ["text", "image"],
@@ -7625,12 +7625,12 @@
         "cost": {
             "cacheRead": 0.15,
             "cacheWrite": 0.0,
-            "input": 0.3,
-            "output": 2.0
+            "input": 0.289,
+            "output": 2.4
         },
         "id": "qwen/qwen3.6-27b",
         "input": ["text", "image", "video"],
-        "maxTokens": 65536,
+        "maxTokens": 131072,
         "name": "Qwen3.6 27B",
         "provider": "openrouter",
         "reasoning": true,
@@ -8110,7 +8110,7 @@
         },
         "id": "thedrummer/unslopnemo-12b",
         "input": ["text"],
-        "maxTokens": 32768,
+        "maxTokens": 1024000,
         "name": "UnslopNemo 12B",
         "provider": "openrouter",
         "reasoning": false,
@@ -8673,14 +8673,14 @@
         },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.208,
+            "cacheRead": 0.11414,
             "cacheWrite": 0.0,
-            "input": 1.12,
-            "output": 3.52
+            "input": 0.6146,
+            "output": 1.9316
         },
         "id": "z-ai/glm-5.2",
         "input": ["text"],
-        "maxTokens": 128000,
+        "maxTokens": 131072,
         "name": "GLM-5.2",
         "provider": "openrouter",
         "reasoning": true,

@@ -344,7 +344,7 @@
             "output": 1.5
         },
         "id": "gemini/gemini-3.1-flash-lite",
-        "input": ["text", "image", "audio", "video", "pdf"],
+        "input": ["text", "image", "video", "audio", "pdf"],
         "maxTokens": 65536,
         "name": "Gemini 3.1 Flash Lite",
         "provider": "sumopod",
@@ -516,7 +516,7 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 200000,
+        "contextWindow": 202752,
         "cost": {
             "cacheRead": 0.26,
             "cacheWrite": 0.0,
@@ -525,7 +525,7 @@
         },
         "id": "glm-5.1",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 128000,
         "name": "GLM-5.1",
         "provider": "sumopod",
         "reasoning": true,
@@ -548,14 +548,14 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.26,
+            "cacheRead": 0.2817,
             "cacheWrite": 0.0,
-            "input": 1.4,
-            "output": 4.4
+            "input": 1.1268,
+            "output": 3.9438
         },
         "id": "glm-5.2",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 128000,
         "name": "GLM-5.2",
         "provider": "sumopod",
         "reasoning": true,
@@ -608,7 +608,7 @@
         },
         "contextWindow": 1047576,
         "cost": {
-            "cacheRead": 0.5,
+            "cacheRead": 0.32,
             "cacheWrite": 0.0,
             "input": 2.0,
             "output": 8.0
@@ -616,7 +616,7 @@
         "id": "gpt-4.1",
         "input": ["text", "image", "pdf"],
         "maxTokens": 32768,
-        "name": "GPT-4.1",
+        "name": "gpt-4.1",
         "provider": "sumopod",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -646,7 +646,7 @@
         "id": "gpt-4.1-mini",
         "input": ["text", "image", "pdf"],
         "maxTokens": 32768,
-        "name": "GPT-4.1 mini",
+        "name": "gpt-4.1-mini",
         "provider": "sumopod",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -670,13 +670,13 @@
         "cost": {
             "cacheRead": 0.025,
             "cacheWrite": 0.0,
-            "input": 0.1,
-            "output": 0.4
+            "input": 0.08,
+            "output": 0.26
         },
         "id": "gpt-4.1-nano",
         "input": ["text", "image"],
         "maxTokens": 32768,
-        "name": "GPT-4.1 nano",
+        "name": "gpt-4.1-nano",
         "provider": "sumopod",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -766,7 +766,7 @@
         "id": "gpt-5",
         "input": ["text", "image"],
         "maxTokens": 128000,
-        "name": "GPT-5",
+        "name": "gpt-5",
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -786,9 +786,9 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 400000,
+        "contextWindow": 272000,
         "cost": {
-            "cacheRead": 0.025,
+            "cacheRead": 0.03,
             "cacheWrite": 0.0,
             "input": 0.25,
             "output": 2.0
@@ -826,7 +826,7 @@
         "id": "gpt-5-nano",
         "input": ["text", "image"],
         "maxTokens": 128000,
-        "name": "GPT-5 Nano",
+        "name": "gpt-5-nano",
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -914,9 +914,9 @@
             "output": 1.25
         },
         "id": "gpt-5.4-nano",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
-        "name": "GPT-5.4 nano",
+        "name": "GPT-5.4 Nano",
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -975,7 +975,7 @@
         },
         "id": "kimi-k2.6",
         "input": ["text", "image", "video"],
-        "maxTokens": 262144,
+        "maxTokens": 32768,
         "name": "Kimi K2.6",
         "provider": "sumopod",
         "reasoning": true,
@@ -1065,8 +1065,8 @@
         },
         "id": "mimo-v2.5",
         "input": ["text", "image", "audio", "video"],
-        "maxTokens": 128000,
-        "name": "MiMo V2.5",
+        "maxTokens": 131072,
+        "name": "MiMo-V2.5",
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1086,17 +1086,17 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.003625,
+            "cacheRead": 0.0036,
             "cacheWrite": 0.0,
             "input": 0.435,
             "output": 0.87
         },
         "id": "mimo-v2.5-pro",
         "input": ["text"],
-        "maxTokens": 128000,
-        "name": "MiMo V2.5 Pro",
+        "maxTokens": 131072,
+        "name": "MiMo-V2.5-Pro",
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1116,16 +1116,16 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 1000000,
+        "contextWindow": 991000,
         "cost": {
-            "cacheRead": 0.1,
-            "cacheWrite": 0.234375,
-            "input": 0.1875,
-            "output": 1.125
+            "cacheRead": 0.0169,
+            "cacheWrite": 0.21125,
+            "input": 0.17,
+            "output": 1.01
         },
         "id": "qwen3.6-flash",
         "input": ["text", "image", "video"],
-        "maxTokens": 65536,
+        "maxTokens": 64000,
         "name": "Qwen3.6 Flash",
         "provider": "sumopod",
         "reasoning": true,
@@ -1146,16 +1146,16 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 1000000,
+        "contextWindow": 991000,
         "cost": {
-            "cacheRead": 0.2,
-            "cacheWrite": 2.5,
-            "input": 2.0,
-            "output": 6.0
+            "cacheRead": 0.0282,
+            "cacheWrite": 0.3525,
+            "input": 0.28,
+            "output": 1.69
         },
         "id": "qwen3.6-plus",
         "input": ["text", "image", "video"],
-        "maxTokens": 65536,
+        "maxTokens": 64000,
         "name": "Qwen3.6 Plus",
         "provider": "sumopod",
         "reasoning": true,
@@ -1176,16 +1176,16 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 1000000,
+        "contextWindow": 991000,
         "cost": {
-            "cacheRead": 0.5,
-            "cacheWrite": 3.125,
-            "input": 2.5,
-            "output": 7.5
+            "cacheRead": 0.169,
+            "cacheWrite": 2.1125,
+            "input": 1.69,
+            "output": 5.07
         },
         "id": "qwen3.7-max",
         "input": ["text"],
-        "maxTokens": 65536,
+        "maxTokens": 64000,
         "name": "Qwen3.7 Max",
         "provider": "sumopod",
         "reasoning": true,
@@ -1206,15 +1206,15 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 1000000,
+        "contextWindow": 991000,
         "cost": {
-            "cacheRead": 0.24,
+            "cacheRead": 0.0564,
             "cacheWrite": 0.3525,
-            "input": 1.2,
-            "output": 4.8
+            "input": 0.282,
+            "output": 1.128
         },
         "id": "qwen3.7-plus",
-        "input": ["text", "image", "video"],
+        "input": ["text"],
         "maxTokens": 64000,
         "name": "Qwen3.7 Plus",
         "provider": "sumopod",
@@ -1390,7 +1390,7 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.13,
+            "input": 0.09,
             "output": 0.0
         },
         "id": "text-embedding-3-large",

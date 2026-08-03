@@ -386,7 +386,7 @@
         "id": "deepseek-v4-flash",
         "input": ["text"],
         "maxTokens": 384000,
-        "name": "DeepSeek V4 Flash",
+        "name": "DeepSeek V4 Flash 0731",
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {

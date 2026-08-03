@@ -778,5 +778,83 @@
             "off": null,
             "xhigh": null
         }
+    },
+    "voxtral-mini-latest": {
+        "api": "mistral-conversations",
+        "baseUrl": "https://api.mistral.ai",
+        "contextWindow": 0,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "voxtral-mini-latest",
+        "input": ["audio"],
+        "maxTokens": 0,
+        "name": "Voxtral Mini (latest)",
+        "provider": "mistral",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "voxtral-mini-tts-latest": {
+        "api": "mistral-conversations",
+        "baseUrl": "https://api.mistral.ai",
+        "contextWindow": 0,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "voxtral-mini-tts-latest",
+        "input": ["text"],
+        "maxTokens": 0,
+        "name": "Voxtral Mini TTS (latest)",
+        "provider": "mistral",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "voxtral-small-latest": {
+        "api": "mistral-conversations",
+        "baseUrl": "https://api.mistral.ai",
+        "contextWindow": 32000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.1,
+            "output": 0.3
+        },
+        "id": "voxtral-small-latest",
+        "input": ["text", "audio"],
+        "maxTokens": 32000,
+        "name": "Voxtral Small (latest)",
+        "provider": "mistral",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     }
 }

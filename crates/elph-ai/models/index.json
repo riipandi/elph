@@ -47,7 +47,7 @@
     {
         "providerId": "fireworks",
         "rustMod": "fireworks",
-        "count": 16
+        "count": 17
     },
     {
         "providerId": "github-copilot",
@@ -102,7 +102,7 @@
     {
         "providerId": "mistral",
         "rustMod": "mistral",
-        "count": 30
+        "count": 33
     },
     {
         "providerId": "moonshotai",

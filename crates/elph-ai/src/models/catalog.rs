@@ -145,6 +145,7 @@ define_catalog!(GOOGLE_VERTEX_MODELS, "google_vertex.json");
 define_catalog!(GROQ_MODELS, "groq.json");
 define_catalog!(HUGGINGFACE_MODELS, "huggingface.json");
 define_catalog!(HYPER_MODELS, "hyper.json");
+define_catalog!(INFRON_MODELS, "infron.json");
 define_catalog!(KILO_MODELS, "kilo.json");
 define_catalog!(KIMI_CODING_MODELS, "kimi_coding.json");
 define_catalog!(MINIMAX_MODELS, "minimax.json");
@@ -193,6 +194,7 @@ pub fn all_builtin_models() -> HashMap<&'static str, &'static [Model]> {
         ("groq", GROQ_MODELS.as_slice()),
         ("huggingface", HUGGINGFACE_MODELS.as_slice()),
         ("hyper", HYPER_MODELS.as_slice()),
+        ("infron", INFRON_MODELS.as_slice()),
         ("kilo", KILO_MODELS.as_slice()),
         ("kimi-coding", KIMI_CODING_MODELS.as_slice()),
         ("minimax", MINIMAX_MODELS.as_slice()),

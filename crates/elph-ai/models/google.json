@@ -914,10 +914,10 @@
         "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.02,
+            "cacheRead": 0.012,
             "cacheWrite": 0.0,
-            "input": 0.1,
-            "output": 0.3
+            "input": 0.102,
+            "output": 0.297
         },
         "id": "gemma-4-31b-it",
         "input": ["text", "image"],

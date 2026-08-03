@@ -16,7 +16,7 @@
         },
         "id": "MiniMax-M2.5",
         "input": ["text"],
-        "maxTokens": 24576,
+        "maxTokens": 32768,
         "name": "MiniMax-M2.5",
         "provider": "qwen-token-plan",
         "reasoning": true,
@@ -164,7 +164,7 @@
             "supportsStore": false,
             "thinkingFormat": "qwen"
         },
-        "contextWindow": 200000,
+        "contextWindow": 202752,
         "cost": {
             "cacheRead": 0.26,
             "cacheWrite": 0.0,
@@ -173,7 +173,7 @@
         },
         "id": "glm-5.1",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 128000,
         "name": "GLM-5.1",
         "provider": "qwen-token-plan",
         "reasoning": true,
@@ -197,14 +197,14 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.26,
+            "cacheRead": 0.2817,
             "cacheWrite": 0.0,
-            "input": 1.4,
-            "output": 4.4
+            "input": 1.1268,
+            "output": 3.9438
         },
         "id": "glm-5.2",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 128000,
         "name": "GLM-5.2",
         "provider": "qwen-token-plan",
         "reasoning": true,
@@ -228,14 +228,14 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.08,
+            "cacheRead": 0.1,
             "cacheWrite": 0.0,
-            "input": 0.5,
-            "output": 2.8
+            "input": 0.6,
+            "output": 3.0
         },
         "id": "kimi-k2.5",
         "input": ["text", "image", "video"],
-        "maxTokens": 262144,
+        "maxTokens": 32768,
         "name": "Kimi K2.5",
         "provider": "qwen-token-plan",
         "reasoning": true,
@@ -266,7 +266,7 @@
         },
         "id": "kimi-k2.6",
         "input": ["text", "image", "video"],
-        "maxTokens": 262144,
+        "maxTokens": 32768,
         "name": "Kimi K2.6",
         "provider": "qwen-token-plan",
         "reasoning": true,
@@ -290,14 +290,14 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.19,
+            "cacheRead": 0.160835,
             "cacheWrite": 0.0,
             "input": 0.95,
-            "output": 4.0
+            "output": 3.9995
         },
         "id": "kimi-k2.7-code",
         "input": ["text", "image", "video"],
-        "maxTokens": 262144,
+        "maxTokens": 32768,
         "name": "Kimi K2.7 Code",
         "provider": "qwen-token-plan",
         "reasoning": true,

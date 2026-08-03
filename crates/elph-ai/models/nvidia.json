@@ -2384,8 +2384,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.039,
-            "output": 0.19
+            "input": 0.1,
+            "output": 0.5
         },
         "headers": {
             "NVCF-POLL-SECONDS": "3600"

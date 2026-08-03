@@ -75,9 +75,9 @@
         "contextWindow": 256000,
         "cost": {
             "cacheRead": 0.06,
-            "cacheWrite": 0.061,
-            "input": 0.122,
-            "output": 0.388
+            "cacheWrite": 0.063,
+            "input": 0.126,
+            "output": 0.42
         },
         "id": "gemma-4-26b-a4b-it",
         "input": ["text"],
@@ -107,9 +107,9 @@
         "contextWindow": 202752,
         "cost": {
             "cacheRead": 0.385,
-            "cacheWrite": 0.43,
-            "input": 0.86,
-            "output": 2.784
+            "cacheWrite": 0.425,
+            "input": 0.85,
+            "output": 2.622
         },
         "id": "glm-5",
         "input": ["text"],
@@ -235,9 +235,9 @@
         "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.2385,
-            "cacheWrite": 0.264,
-            "input": 0.528,
-            "output": 2.79
+            "cacheWrite": 0.27,
+            "input": 0.54,
+            "output": 2.85
         },
         "id": "kimi-k2.5",
         "input": ["text"],
@@ -392,7 +392,7 @@
             "supportsStore": false,
             "thinkingFormat": "deepseek"
         },
-        "contextWindow": 204800,
+        "contextWindow": 262100,
         "cost": {
             "cacheRead": 0.41,
             "cacheWrite": 0.21,
@@ -401,7 +401,7 @@
         },
         "id": "minimax-m2.7",
         "input": ["text"],
-        "maxTokens": 20480,
+        "maxTokens": 6553,
         "name": "MiniMax-M2.7",
         "provider": "hyper",
         "reasoning": false,
@@ -427,9 +427,9 @@
         "contextWindow": 106000,
         "cost": {
             "cacheRead": 0.3005,
-            "cacheWrite": 0.2925,
-            "input": 0.585,
-            "output": 2.245
+            "cacheWrite": 0.2875,
+            "input": 0.575,
+            "output": 2.145
         },
         "id": "qwen3-coder-480b-a35b-instruct-int4-mixed-ar",
         "input": ["text"],

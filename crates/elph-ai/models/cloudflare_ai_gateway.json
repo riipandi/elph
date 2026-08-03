@@ -131,7 +131,7 @@
         "id": "claude-3.5-haiku",
         "input": ["text", "image"],
         "maxTokens": 8192,
-        "name": "Anthropic: Claude 3.5 Haiku",
+        "name": "Claude 3.5 Haiku",
         "provider": "cloudflare-ai-gateway",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -672,7 +672,7 @@
         },
         "contextWindow": 400000,
         "cost": {
-            "cacheRead": 0.125,
+            "cacheRead": 0.13,
             "cacheWrite": 0.0,
             "input": 1.25,
             "output": 10.0
@@ -703,13 +703,13 @@
         "cost": {
             "cacheRead": 0.125,
             "cacheWrite": 0.0,
-            "input": 1.125,
-            "output": 9.0
+            "input": 1.25,
+            "output": 10.0
         },
         "id": "gpt-5.1-codex",
         "input": ["text", "image"],
         "maxTokens": 128000,
-        "name": "gpt-5.1-codex",
+        "name": "GPT-5.1 Codex",
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -765,9 +765,9 @@
             "output": 14.0
         },
         "id": "gpt-5.2-codex",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
-        "name": "gpt-5.2-codex",
+        "name": "GPT-5.2 Codex",
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -875,13 +875,13 @@
         },
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.02,
-            "cacheWrite": 0.25,
-            "input": 0.2,
-            "output": 1.2
+            "cacheRead": 0.1,
+            "cacheWrite": 1.25,
+            "input": 1.0,
+            "output": 6.0
         },
         "id": "gpt-5.6-luna",
-        "input": ["text", "image", "pdf"],
+        "input": ["text", "image"],
         "maxTokens": 128000,
         "name": "GPT-5.6 Luna",
         "provider": "cloudflare-ai-gateway",
@@ -910,7 +910,7 @@
             "output": 30.0
         },
         "id": "gpt-5.6-sol",
-        "input": ["text", "image", "pdf"],
+        "input": ["text", "image"],
         "maxTokens": 128000,
         "name": "GPT-5.6 Sol",
         "provider": "cloudflare-ai-gateway",
@@ -933,13 +933,13 @@
         },
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.2,
-            "cacheWrite": 2.5,
-            "input": 2.0,
-            "output": 12.0
+            "cacheRead": 0.25,
+            "cacheWrite": 3.125,
+            "input": 2.5,
+            "output": 15.0
         },
         "id": "gpt-5.6-terra",
-        "input": ["text", "image", "pdf"],
+        "input": ["text", "image"],
         "maxTokens": 128000,
         "name": "GPT-5.6 Terra",
         "provider": "cloudflare-ai-gateway",

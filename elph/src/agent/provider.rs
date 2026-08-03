@@ -98,6 +98,11 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
             api_key_env_key: "HYPER_API_KEY",
             default_model: "deepseek-v4-flash",
         }),
+        "infron" => Some(ProviderConfig {
+            label: "Infron",
+            api_key_env_key: "INFRON_API_KEY",
+            default_model: "deepseek/deepseek-v4-pro",
+        }),
         "kilo" => Some(ProviderConfig {
             label: "Kilo Gateway",
             api_key_env_key: "KILO_API_KEY",
@@ -404,6 +409,7 @@ mod tests {
             ("groq", "Groq", "GROQ_API_KEY"),
             ("huggingface", "Hugging Face", "HF_TOKEN"),
             ("hyper", "Charm Hyper", "HYPER_API_KEY"),
+            ("infron", "Infron", "INFRON_API_KEY"),
             ("kimi-coding", "Kimi For Coding", "MOONSHOT_API_KEY"),
             ("minimax", "MiniMax", "MINIMAX_API_KEY"),
             ("minimax-cn", "MiniMax (China)", "MINIMAX_API_KEY"),
@@ -465,6 +471,7 @@ mod tests {
             "groq",
             "huggingface",
             "hyper",
+            "infron",
             "kilo",
             "kimi-coding",
             "minimax",

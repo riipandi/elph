@@ -297,6 +297,22 @@ pub fn hyper_provider() -> Provider {
     })
 }
 
+pub fn infron_provider() -> Provider {
+    create_provider(CreateProviderOptions {
+        id: "infron".to_string(),
+        name: Some("Infron".to_string()),
+        base_url: Some("https://llm.onerouter.pro/v1".to_string()),
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("Infron API key", vec!["INFRON_API_KEY"])),
+            oauth: None,
+        },
+        models: INFRON_MODELS.to_vec(),
+        refresh_models: None,
+        api: ProviderApi::Single(openai_completions_api()),
+    })
+}
+
 pub fn cloudflare_ai_gateway_provider() -> Provider {
     create_provider(CreateProviderOptions {
         id: "cloudflare-ai-gateway".to_string(),
@@ -535,6 +551,7 @@ pub fn builtin_providers() -> Vec<Provider> {
         openai_provider(),
         openai_codex_provider(),
         hyper_provider(),
+        infron_provider(),
         // Kilo AI Gateway — OpenAI-compatible (https://kilo.ai/docs/gateway).
         // Base URL: https://api.kilo.ai/api/gateway · key: KILO_API_KEY
         simple_provider!(
