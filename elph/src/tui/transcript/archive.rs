@@ -92,6 +92,7 @@ impl ArchivedTranscriptMessage {
             user_pinned: false,
             user_shell: self.user_shell,
             sticky_meta: false,
+            retryable: false,
         };
 
         if message.style == TranscriptStyle::Assistant {

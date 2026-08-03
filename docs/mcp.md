@@ -35,6 +35,7 @@ Per-server field `loadStrategy` (default `lazy`):
 - **Merge, not replace:** `discover_server()` and `discover_tools_with_options()` merge results into the existing catalog instead of replacing all tools.
 - **Partial attach:** TUI bootstrap (`bootstrap_mcp_for_session`) always attaches tools even when some servers fail — partial results are better than no tools.
 - **No stale refresh:** The old code called `refresh_server()` (drops and re-creates the session) on every tool invocation. Now `ensure_server_discovered()` fires discovery exactly once per server, after which the pooled session handles all subsequent calls.
+- **Pre-turn sweep:** before every agent turn the session calls `ensure_mcp_tools_ready()`, which discovers any enabled server still pending and hot-attaches the new tools to the harness. A lazy server that was skipped at startup (or failed earlier) is thus available to the model on the very next turn without a restart.
 
 **Transport note:** `call_tool` now uses `call_tool_once` (non-MRTR) internally, which works with all transports (stdio, HTTP, SSE). The MRTR-aware `call_tool()` requires HTTP transport and fails on stdio with `"Requires HTTP transport (--port)"`. Since the agent harness doesn't support interactive MRTR rounds (the default `MrtrElicitationPolicy::Decline` declines all elicitation), `call_tool_once` is the correct choice.
 

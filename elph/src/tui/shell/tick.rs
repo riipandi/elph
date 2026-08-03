@@ -58,6 +58,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         paths,
         mut pending_confetti,
         mut pending_mode_change,
+        mut pending_retry_prompt,
         mut pending_plan_confirmation,
         mut pending_mcp_auth_for_tick,
         mut pending_provider_connect_for_tick,
@@ -500,6 +501,12 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                         api_error_banner(toast),
                     );
                 }
+            }
+
+            // Transient stream/API failure — stash the prompt so the `r` key can
+            // re-submit it without the user re-typing (error card shows the hint).
+            if let AgentUiEvent::RetryablePrompt(prompt) = &event {
+                pending_retry_prompt.set(Some(prompt.clone()));
             }
 
             if let AgentUiEvent::MemoryResult(ref text) = event {

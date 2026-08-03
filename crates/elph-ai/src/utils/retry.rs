@@ -97,6 +97,8 @@ static RETRYABLE: LazyLock<Regex> = LazyLock::new(|| {
         "transport.?error",
         "stream.?error",
         "stream.?ended.?unexpectedly",
+        "stream ended without finish_reason",
+        "finish_reason",
         // gRPC / server errors (pi #6449)
         "resource.?exhausted",
         "resourceed.?exhausted",

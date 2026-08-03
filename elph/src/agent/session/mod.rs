@@ -315,6 +315,8 @@ impl CodingAgentSession {
     /// Start a normal harness turn (blocks until idle, emits `RunCompleted`).
     async fn run_prompt_turn(&self, text: String) -> Result<()> {
         let _guard = self.turn_gate.lock().await;
+        // Lazy MCP: discover any still-pending servers and hot-attach tools before the model runs.
+        self.ensure_mcp_tools_ready().await;
         // Pre-prompt guard: when history already exceeds the configured threshold, compact
         // before sending so the request never runs into the hard context limit.
         self.maybe_auto_compact(Some(&text)).await;
@@ -324,8 +326,7 @@ impl CodingAgentSession {
         match &result {
             Ok(message) => {
                 self.finish_ui_turn(started).await;
-                // A provider error mid-turn (e.g. context overflow) ends the turn with an
-                // error message. Recover by compacting and resuming the same prompt once.
+                // Provider / stream errors: compact+retry (context) or silent transient retry.
                 if message.stop_reason == StopReason::Error {
                     self.recover_errored_turn(&text, message).await;
                 }
@@ -338,24 +339,128 @@ impl CodingAgentSession {
             }
             Err(err) => {
                 self.finish_ui_turn(started).await;
-                let text = crate::tui::api_error_display::format_user_facing_api_error(&err.to_string());
-                let _ = self.ui_tx.send(AgentUiEvent::Status(text));
-                // Free room after a harness-level failure too, when usage is already over threshold.
+                let err_s = err.to_string();
+                // Harness-level failure (e.g. stream cut) — one automatic retry when transient.
+                if elph_ai::retry::is_transient_error(&err_s) {
+                    let _ = self
+                        .ui_tx
+                        .send(AgentUiEvent::Status("Stream interrupted — retrying automatically…".to_string()));
+                    let retry_started = Instant::now();
+                    match self.harness.prompt(text.clone(), None).await {
+                        Ok(msg) => {
+                            self.finish_ui_turn(retry_started).await;
+                            if msg.stop_reason == StopReason::Error {
+                                self.emit_retryable_error(&text, msg.error_message.as_deref());
+                            }
+                            self.maybe_generate_session_title();
+                            self.maybe_auto_compact(None).await;
+                            return Ok(());
+                        }
+                        Err(retry_err) => {
+                            self.finish_ui_turn(retry_started).await;
+                            self.emit_retryable_error(&text, Some(&retry_err.to_string()));
+                            self.maybe_auto_compact(None).await;
+                            return Err(anyhow::anyhow!("{retry_err}"));
+                        }
+                    }
+                }
+                self.emit_retryable_error(&text, Some(&err_s));
                 self.maybe_auto_compact(None).await;
             }
         }
         result.map(|_| ()).map_err(|err| anyhow::anyhow!("{err}"))
     }
 
-    /// After a turn that ended with a provider error, compact when the failure points at a
-    /// context limit, then auto-resume the same prompt once so the interrupted task continues.
-    ///
-    /// Bounded: at most one retry, and only when a compaction actually ran.
-    async fn recover_errored_turn(&self, text: &str, message: &AssistantMessage) {
-        let error_text = message.error_message.as_deref().unwrap_or_default();
-        if !self.recover_from_turn_error(error_text).await {
+    /// Ensure lazy MCP servers are discovered and tools attached to the harness.
+    pub async fn ensure_mcp_tools_ready(&self) {
+        let registry = {
+            let guard = self.mcp_registry.read();
+            guard.clone()
+        };
+        let Some(registry) = registry else {
+            return;
+        };
+        let pending = registry.pending_server_count();
+        if pending == 0 && registry.is_tools_discovered() {
             return;
         }
+        let before = registry.tool_count();
+        if let Err(err) = registry.discover_tools().await {
+            log::warn!("MCP on-demand discovery: {err:#}");
+            // Still re-attach whatever was discovered so far.
+        }
+        let after = registry.tool_count();
+        if after != before || pending > 0 {
+            if let Err(err) = self.attach_mcp_registry(registry).await {
+                log::warn!("MCP re-attach after discovery: {err:#}");
+            } else if after > before {
+                let _ = self.ui_tx.send(AgentUiEvent::Status(format!(
+                    "MCP: loaded {} tool(s) on demand",
+                    after - before
+                )));
+            }
+        }
+    }
+
+    fn emit_retryable_error(&self, prompt: &str, error: Option<&str>) {
+        let raw = error.unwrap_or("request failed");
+        let display = crate::tui::api_error_display::format_user_facing_api_error(raw);
+        let transient = elph_ai::retry::is_transient_error(raw);
+        let line = if transient {
+            format!("{display}\n\n{}", crate::tui::api_error_display::RETRY_HINT)
+        } else {
+            display
+        };
+        let _ = self.ui_tx.send(AgentUiEvent::Status(line));
+        if transient {
+            let _ = self.ui_tx.send(AgentUiEvent::RetryablePrompt(prompt.to_string()));
+        }
+    }
+
+    /// After a turn that ended with a provider error, auto-recover when possible.
+    ///
+    /// 1. Transient stream/network errors → one silent prompt retry (no user action).
+    /// 2. Context-limit errors → compact then resume once.
+    async fn recover_errored_turn(&self, text: &str, message: &AssistantMessage) {
+        let error_text = message.error_message.as_deref().unwrap_or_default();
+
+        // Transient stream cutoffs / 5xx / etc. — retry without compaction first.
+        if elph_ai::retry::is_transient_error(error_text) {
+            let _ = self
+                .ui_tx
+                .send(AgentUiEvent::Status("Stream interrupted — retrying automatically…".to_string()));
+            let retry_started = Instant::now();
+            match self.harness.prompt(text.to_string(), None).await {
+                Ok(retry_message) => {
+                    self.finish_ui_turn(retry_started).await;
+                    if retry_message.stop_reason == StopReason::Error {
+                        // Fall through to context recovery if still failing.
+                        let retry_err = retry_message.error_message.as_deref().unwrap_or_default();
+                        if self.recover_from_turn_error(retry_err).await {
+                            self.retry_after_compaction(text).await;
+                        } else {
+                            self.emit_retryable_error(text, Some(retry_err));
+                        }
+                    }
+                    return;
+                }
+                Err(err) => {
+                    self.finish_ui_turn(retry_started).await;
+                    log::warn!("auto-retry after stream error failed: {err}");
+                    self.emit_retryable_error(text, Some(&err.to_string()));
+                    return;
+                }
+            }
+        }
+
+        if !self.recover_from_turn_error(error_text).await {
+            self.emit_retryable_error(text, Some(error_text));
+            return;
+        }
+        self.retry_after_compaction(text).await;
+    }
+
+    async fn retry_after_compaction(&self, text: &str) {
         let retry_started = Instant::now();
         if !self.retry_fits_after_compaction(text).await {
             let _ = self.ui_tx.send(AgentUiEvent::Status(
@@ -370,15 +475,13 @@ impl CodingAgentSession {
                 if retry_message.stop_reason == StopReason::Error
                     && let Some(retry_error) = retry_message.error_message
                 {
-                    let display = crate::tui::api_error_display::format_user_facing_api_error(&retry_error);
-                    let _ = self.ui_tx.send(AgentUiEvent::Status(display));
+                    self.emit_retryable_error(text, Some(&retry_error));
                 }
             }
             Err(err) => {
                 self.finish_ui_turn(retry_started).await;
                 log::warn!("auto-resume after compaction failed: {err}");
-                let display = crate::tui::api_error_display::format_user_facing_api_error(&err.to_string());
-                let _ = self.ui_tx.send(AgentUiEvent::Status(display));
+                self.emit_retryable_error(text, Some(&err.to_string()));
             }
         }
     }

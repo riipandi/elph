@@ -168,6 +168,9 @@ pub struct TranscriptMessage {
     pub user_shell: bool,
     /// When true, Meta rows are not replaced by later ephemeral [`TranscriptStyle::Meta`] status updates.
     pub sticky_meta: bool,
+    /// Transient provider/stream error the user can retry with the `r` key; the error
+    /// card renders a retry affordance when set.
+    pub retryable: bool,
 }
 
 impl TranscriptMessage {
@@ -191,6 +194,7 @@ impl TranscriptMessage {
             user_pinned: false,
             user_shell: false,
             sticky_meta: false,
+            retryable: false,
         }
     }
 
@@ -275,6 +279,7 @@ impl TranscriptMessage {
             user_pinned: false,
             user_shell: false,
             sticky_meta: false,
+            retryable: false,
         }
     }
 

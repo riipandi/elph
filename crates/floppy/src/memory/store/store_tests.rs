@@ -1,7 +1,7 @@
 use super::*;
+use crate::core::embed::noop_embedder;
 use crate::create_memory_store;
 use crate::memory::scoring::{compute_credit, update_weight};
-use crate::core::embed::noop_embedder;
 use crate::memory::types::{
     FloppyConfig, MemoryCategory, MemoryReportInput, MemoryReportType, ReportCorrectionInput, ReportUserInput,
 };

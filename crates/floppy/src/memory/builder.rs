@@ -6,14 +6,14 @@ use crate::core::embed::create_embedder;
 
 #[cfg(feature = "embed")]
 use crate::core::embed::DEFAULT_EMBED_MODEL;
+use crate::core::embed::EmbedFn;
+use crate::core::embed::noop_embedder;
 #[cfg(feature = "embed")]
 use crate::core::embed::{embedding_dims, resolve_embedding_model};
 use crate::core::paths::FloppyPaths;
-use crate::core::embed::noop_embedder;
-use crate::core::embed::EmbedFn;
+use crate::core::util::DEFAULT_EMBEDDING_DIMS;
 use crate::memory::store::MemoryStore;
 use crate::memory::types::{FloppyConfig, VectorType};
-use crate::core::util::DEFAULT_EMBEDDING_DIMS;
 
 /// Builder for a [`MemoryStore`] with explicit configuration (no environment variables).
 pub struct FloppyBuilder {

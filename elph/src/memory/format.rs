@@ -643,11 +643,7 @@ pub fn write_help(out: &mut String, sty: MemoryStyle) {
         "{}",
         sty.paint(S_MUTED, "  enabled, autoRecall, autoCaptureWork, autoCaptureExploration")
     );
-    let _ = writeln!(
-        out,
-        "{}",
-        sty.paint(S_MUTED, "  topK, contextBudgetChars, minQueryLength")
-    );
+    let _ = writeln!(out, "{}", sty.paint(S_MUTED, "  topK, contextBudgetChars, minQueryLength"));
     let _ = writeln!(
         out,
         "{}",

@@ -1,7 +1,9 @@
 use anyhow::Result;
 
 use crate::memory::store::MemoryStore;
-use crate::memory::types::{ContradictResult, EndTaskWithDecayResult, MemoryCategory, MemoryReportInput, MemoryReportType};
+use crate::memory::types::{
+    ContradictResult, EndTaskWithDecayResult, MemoryCategory, MemoryReportInput, MemoryReportType,
+};
 use crate::memory::types::{ReportCorrectionInput, ReportUserInput, TaskEndInput};
 
 impl MemoryStore {

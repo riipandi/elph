@@ -52,6 +52,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         mut pending_memory_flush,
         mut pending_mode_change,
         pending_model_selector,
+        mut pending_retry_prompt,
         mut pending_plan_confirmation,
         mut pending_mcp_auth,
         mut pending_provider_api_key,
@@ -345,6 +346,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             return;
         }
         // Empty editor: optional — interject the front queue item (one at a time).
+        // Always remove from harness queue (not only local UI) so QueueUpdate cannot resurrect it.
         if !prompt_queue.read().is_empty() {
             let popped = {
                 let mut q = prompt_queue.write();
@@ -360,34 +362,77 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 push_transcript_message(&mut messages, &mut messages_revision, &mut prompt_history, submitted);
                 pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
                 if let Some(session) = agent_session.as_ref() {
-                    if agent_turn_active.get() {
-                        TurnDispatcher::spawn_interject_queued(
-                            Arc::clone(session),
-                            item.kind,
-                            item.kind_index,
-                            item.text,
-                        );
-                    } else {
-                        agent_turn_active.set(true);
-                        chrome_refresh_pending.set(true);
-                        idle_status_notice.set(None);
-                        turn_cancel_requested.set(false);
-                        mark_busy(
-                            &mut BusyActivation {
-                                busy: &mut busy,
-                                busy_started_at: &mut busy_started_at,
-                                activity_started_at: &mut activity_started_at,
-                                activity_label: &mut activity_label,
-                                last_activity_label: &mut last_activity_label,
-                            },
-                            true,
-                            None,
-                        );
-                        begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
-                        TurnDispatcher::spawn_turn(Arc::clone(session), item.text, false);
-                    }
+                    // Always remove from harness + steer (idle path used to only spawn_turn,
+                    // leaving the item in the harness queue so it reappeared in the list).
+                    agent_turn_active.set(true);
+                    chrome_refresh_pending.set(true);
+                    idle_status_notice.set(None);
+                    turn_cancel_requested.set(false);
+                    mark_busy(
+                        &mut BusyActivation {
+                            busy: &mut busy,
+                            busy_started_at: &mut busy_started_at,
+                            activity_started_at: &mut activity_started_at,
+                            activity_label: &mut activity_label,
+                            last_activity_label: &mut last_activity_label,
+                        },
+                        true,
+                        None,
+                    );
+                    begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
+                    TurnDispatcher::spawn_interject_queued(Arc::clone(session), item.kind, item.kind_index, item.text);
                 }
             }
+        }
+        return;
+    }
+
+    // Plain `r` — retry the last transient provider/stream error (stream cutoff, 5xx, …)
+    // without re-typing. The error card shows the hint; the prompt is stashed by the
+    // tick loop on `AgentUiEvent::RetryablePrompt`. Only fires while idle with no modal open.
+    let retryable_prompt = pending_retry_prompt.read().clone();
+    if modifiers.is_empty()
+        && matches!(code, KeyCode::Char('r') | KeyCode::Char('R'))
+        && retryable_prompt.is_some()
+        && !agent_turn_active.get()
+        && !busy.get()
+        && pending_tool_approval.read().is_none()
+        && pending_user_question.read().is_none()
+        && pending_model_selector.read().is_none()
+        && pending_scoped_models.read().is_none()
+        && pending_system_prompt.read().is_none()
+        && pending_rename.read().is_none()
+        && pending_plan_confirmation.read().is_none()
+        && pending_mode_change.read().is_none()
+        && !pending_quit_confirm.get()
+        && !queue_manager_open.get()
+    {
+        let retry_text = retryable_prompt.unwrap();
+        pending_retry_prompt.set(None);
+        if let Some(session) = agent_session.as_ref() {
+            let mut submitted = TranscriptMessage::text(retry_text.clone(), TranscriptStyle::User);
+            submitted.submitted_at = Some(chrono::Utc::now());
+            // Sync to shared arc so the arc-to-state sync never loses this pre-echoed prompt.
+            messages_arc.write().write().unwrap().push(submitted.clone());
+            push_transcript_message(&mut messages, &mut messages_revision, &mut prompt_history, submitted);
+            pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
+            agent_turn_active.set(true);
+            chrome_refresh_pending.set(true);
+            idle_status_notice.set(None);
+            turn_cancel_requested.set(false);
+            mark_busy(
+                &mut BusyActivation {
+                    busy: &mut busy,
+                    busy_started_at: &mut busy_started_at,
+                    activity_started_at: &mut activity_started_at,
+                    activity_label: &mut activity_label,
+                    last_activity_label: &mut last_activity_label,
+                },
+                true,
+                None,
+            );
+            begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
+            TurnDispatcher::spawn_turn(Arc::clone(session), retry_text, false);
         }
         return;
     }

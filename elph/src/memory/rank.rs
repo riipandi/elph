@@ -88,8 +88,23 @@ pub fn is_task_like_prompt(prompt: &str) -> bool {
     let lower = t.to_lowercase();
     // Pure greetings / acks
     const NOISE: &[&str] = &[
-        "hi", "hello", "hey", "thanks", "thank you", "ok", "okay", "yes", "no", "yep", "nope", "ping",
-        "test", "halo", "hai", "makasih", "terima kasih",
+        "hi",
+        "hello",
+        "hey",
+        "thanks",
+        "thank you",
+        "ok",
+        "okay",
+        "yes",
+        "no",
+        "yep",
+        "nope",
+        "ping",
+        "test",
+        "halo",
+        "hai",
+        "makasih",
+        "terima kasih",
     ];
     if NOISE.iter().any(|n| lower == *n) {
         return false;
@@ -99,10 +114,43 @@ pub fn is_task_like_prompt(prompt: &str) -> bool {
         return true;
     }
     const CUES: &[&str] = &[
-        "fix", "add", "implement", "change", "update", "refactor", "find", "where", "how", "why",
-        "bug", "error", "fail", "test", "build", "review", "explain", "buat", "perbaiki", "cari",
-        "ubah", "tambah", "hapus", "kenapa", "bagaimana", "tolong", "please", "need", "want",
-        "should", "make", "create", "remove", "delete", "check", "debug", "investigate",
+        "fix",
+        "add",
+        "implement",
+        "change",
+        "update",
+        "refactor",
+        "find",
+        "where",
+        "how",
+        "why",
+        "bug",
+        "error",
+        "fail",
+        "test",
+        "build",
+        "review",
+        "explain",
+        "buat",
+        "perbaiki",
+        "cari",
+        "ubah",
+        "tambah",
+        "hapus",
+        "kenapa",
+        "bagaimana",
+        "tolong",
+        "please",
+        "need",
+        "want",
+        "should",
+        "make",
+        "create",
+        "remove",
+        "delete",
+        "check",
+        "debug",
+        "investigate",
     ];
     CUES.iter().any(|c| lower.contains(c))
 }

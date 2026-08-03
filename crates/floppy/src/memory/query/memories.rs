@@ -1,10 +1,10 @@
 use anyhow::Result;
 use turso::params;
 
+use crate::core::util::{drain_rows, vec_buf};
 use crate::memory::store::MemoryStore;
 use crate::memory::types::{Memory, MemoryCategory, MemoryRecord};
 use crate::memory::util::{category_from_str, embedding_status};
-use crate::core::util::{drain_rows, vec_buf};
 
 impl MemoryStore {
     /// List memories, optionally filtered by category.

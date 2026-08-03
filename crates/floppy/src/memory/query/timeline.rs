@@ -1,9 +1,9 @@
 use anyhow::Result;
 use turso::params;
 
+use crate::core::util::drain_rows;
 use crate::memory::store::MemoryStore;
 use crate::memory::types::{TimelineEvent, TimelineEventKind};
-use crate::core::util::drain_rows;
 
 fn preview_text(s: &str, max_chars: usize) -> String {
     let trimmed = s.trim();

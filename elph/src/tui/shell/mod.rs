@@ -451,6 +451,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     // Plain-`y` selection yank toast from Textarea — drained into ephemeral banner.
     let clipboard_toast = hooks.use_state(|| None::<elph_tui::ClipboardNotice>);
     let pending_mode_change = hooks.use_ref(|| None::<PendingModeChange>);
+    let pending_retry_prompt = hooks.use_ref(|| None::<String>);
     let prompt_editor_mirror = hooks.use_ref(|| (String::new(), 0usize));
     let styled_content = hooks.use_ref(String::new);
     let mention_index = hooks.use_ref(|| None::<Arc<MentionSearchIndex>>);
@@ -686,6 +687,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         pending_memory_flush,
         pending_mode_change,
         pending_model_selector,
+        pending_retry_prompt,
         pending_plan_confirmation,
         pending_provider_api_key,
         pending_mcp_auth,

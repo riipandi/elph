@@ -191,10 +191,7 @@ fn run_index_with_progress(paths: &Paths) -> Result<()> {
                         walked = ev.files_walked
                     )
                 } else {
-                    format!(
-                        "Indexing…  ({} reindexed · {} seen)",
-                        ev.files_indexed, ev.files_walked
-                    )
+                    format!("Indexing…  ({} reindexed · {} seen)", ev.files_indexed, ev.files_walked)
                 }
             }
             IndexPhase::Finalizing => "Finalizing Merkle fingerprint…".to_string(),
@@ -246,11 +243,7 @@ mod tests {
     #[test]
     fn declined_marker_roundtrip() {
         let tmp = tempfile::tempdir().expect("tmp");
-        let paths = Paths::from_dirs(
-            tmp.path().join("cfg"),
-            tmp.path().join("data"),
-            tmp.path().join("proj"),
-        );
+        let paths = Paths::from_dirs(tmp.path().join("cfg"), tmp.path().join("data"), tmp.path().join("proj"));
         crate::platform::ensure_project(&paths).expect("ensure");
         assert!(!declined_marker_path(&paths).exists());
         write_declined_marker(&paths).expect("write");

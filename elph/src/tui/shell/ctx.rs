@@ -90,6 +90,7 @@ pub(crate) struct ShellCtx {
     pub(crate) pending_mode_change: Ref<Option<PendingModeChange>>,
     pub(crate) pending_model_selector: Ref<Option<PendingModelSelector>>,
     pub(crate) pending_plan_confirmation: Ref<Option<PendingPlanConfirmation>>,
+    pub(crate) pending_retry_prompt: Ref<Option<String>>,
     pub(crate) pending_mcp_auth: Ref<Option<PendingMcpAuthDialog>>,
     pub(crate) pending_mcp_auth_for_tick: Ref<Option<PendingMcpAuthDialog>>,
     pub(crate) pending_provider_api_key: Ref<Option<PendingProviderApiKeyDialog>>,

@@ -12,9 +12,9 @@ mod store;
 mod types;
 mod util;
 
-pub use builder::FloppyBuilder;
 pub use crate::core::embed::{EmbedFn, EmbedFuture, noop_embedder};
 pub use crate::core::migration::FloppyMigration;
+pub use builder::FloppyBuilder;
 pub use migrations::{LAST_VERSION, MIGRATIONS, V1_NAME, V1_UP, V2_NAME, V2_UP, V3_NAME, V3_UP};
 pub use store::MemoryStore;
 pub use types::{

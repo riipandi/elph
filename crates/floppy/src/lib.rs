@@ -49,19 +49,19 @@ pub use core::util::{DEFAULT_EMBEDDING_DIMS, VALID_EMBEDDING_BYTES, drain_rows, 
 
 #[cfg(feature = "memory")]
 pub use memory::create_memory_store;
+/// Memory migrations module (hosts map into their own runners).
+#[cfg(feature = "memory")]
+pub use memory::migrations;
+#[cfg(feature = "memory")]
+pub use memory::migrations::{LAST_VERSION, MIGRATIONS, V1_NAME, V1_UP, V2_NAME, V2_UP, V3_NAME, V3_UP};
 #[cfg(feature = "memory")]
 pub use memory::{
     CategoryCount, ConsolidateResult, ContradictResult, DecayResult, EmbeddingStatus, EndTaskWithDecayResult,
     FloppyBuilder, FloppyConfig, FlushResult, Memory, MemoryCategory, MemoryRecord, MemoryReportInput,
     MemoryReportType, MemoryStats, MemoryStore, ReportCorrectionInput, ReportUserInput, SelfReportEntry,
-    StartTaskResult, StoreStatus, TaskBaseline, TaskCreatedMemory, TaskEndInput, TaskRecord, TaskRetrieval,
-    TaskStatus, TimelineEvent, TimelineEventKind, TopMemory, UserInputSource, VectorType, category_str,
+    StartTaskResult, StoreStatus, TaskBaseline, TaskCreatedMemory, TaskEndInput, TaskRecord, TaskRetrieval, TaskStatus,
+    TimelineEvent, TimelineEventKind, TopMemory, UserInputSource, VectorType, category_str,
 };
-#[cfg(feature = "memory")]
-pub use memory::migrations::{LAST_VERSION, MIGRATIONS, V1_NAME, V1_UP, V2_NAME, V2_UP, V3_NAME, V3_UP};
-/// Memory migrations module (hosts map into their own runners).
-#[cfg(feature = "memory")]
-pub use memory::migrations;
 
 // ── Codegraph re-exports (feature = "codegraph") ────────────────────────────
 

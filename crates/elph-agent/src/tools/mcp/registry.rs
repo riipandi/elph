@@ -308,35 +308,38 @@ impl McpToolRegistry {
         continue_on_error_override: Option<bool>,
         timeout_override: Option<Duration>,
     ) -> Result<()> {
-        // Exclusive claim: serialize concurrent discovery runs through the write
-        // lock, then drop the guard before the (potentially long) awaits below.
+        // Re-run whenever any enabled server still needs discovery.
+        // (A prior partial pass must not block later ensure/on-demand loads.)
+        let enabled: Vec<(String, McpServerConfig)> = self
+            .config
+            .enabled_servers()
+            .map(|(n, c)| (n.to_string(), c.clone()))
+            .collect();
+        let skipped = self.config.server_count().saturating_sub(enabled.len());
+        let pending: Vec<(String, McpServerConfig)> = enabled
+            .into_iter()
+            .filter(|(n, _)| !self.is_server_discovered(n))
+            .collect();
+
+        if pending.is_empty() {
+            *self.tools_discovered.write() = true;
+            return Ok(());
+        }
+
+        // Serialize concurrent discovery of the same pending set.
         {
             let mut discovered = self.tools_discovered.write();
-            if *discovered {
+            // Soft flag: true while a full pass is "complete enough"; reset if we still
+            // have pending work so concurrent callers don't bail early.
+            if *discovered && pending.is_empty() {
                 return Ok(());
             }
-            *discovered = true;
+            *discovered = false;
         }
 
         let result: Result<()> = async {
-            let enabled: Vec<(String, McpServerConfig)> = self
-                .config
-                .enabled_servers()
-                .map(|(n, c)| (n.to_string(), c.clone()))
-                .collect();
-            let skipped = self.config.server_count().saturating_sub(enabled.len());
-            let pending: Vec<(String, McpServerConfig)> = enabled
-                .into_iter()
-                .filter(|(n, _)| !self.is_server_discovered(n))
-                .collect();
-
-            if pending.is_empty() {
-                *self.report.write() = McpLoadReport {
-                    servers_skipped: skipped,
-                    ..Default::default()
-                };
-                return Ok(());
-            }
+            let pending = pending;
+            let skipped = skipped;
 
             let (concurrency, continue_on_error, discover_rp, progress_tx, discovery_timeout) = {
                 let options = self.load_options.read();
@@ -430,10 +433,9 @@ impl McpToolRegistry {
         }
         .await;
 
-        if result.is_err() {
-            // A failed discovery must not block a later retry.
-            *self.tools_discovered.write() = false;
-        }
+        // Only mark "fully discovered" when every enabled server succeeded at least once.
+        let all_done = self.config.enabled_servers().all(|(n, _)| self.is_server_discovered(n));
+        *self.tools_discovered.write() = result.is_ok() && all_done;
         result
     }
 

@@ -113,14 +113,8 @@ fn run_scan_with_spinner(paths: &Paths, full_build: bool) -> Result<ScanStats> {
             IndexPhase::Starting => "Opening store…".into(),
             IndexPhase::Scanning => "Scanning files…".into(),
             IndexPhase::IndexingFile => match &ev.current_path {
-                Some(p) => format!(
-                    "{p}  ({} reindexed · {} seen)",
-                    ev.files_indexed, ev.files_walked
-                ),
-                None => format!(
-                    "Indexing…  ({} reindexed · {} seen)",
-                    ev.files_indexed, ev.files_walked
-                ),
+                Some(p) => format!("{p}  ({} reindexed · {} seen)", ev.files_indexed, ev.files_walked),
+                None => format!("Indexing…  ({} reindexed · {} seen)", ev.files_indexed, ev.files_walked),
             },
             IndexPhase::Finalizing => "Finalizing…".into(),
             IndexPhase::Done => "Done".into(),

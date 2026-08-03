@@ -13,27 +13,27 @@ See [Architecture Overview](architecture/overview.md) for the system architectur
 
 The `elph` binary provides 19 subcommands (from `elph/src/cli/mod.rs`):
 
-| Subcommand    | Alias | Description                                 |
-| ------------- | ----- | ------------------------------------------- |
-| `acp`         | —     | Agent Client Protocol server over stdio     |
+| Subcommand    | Alias | Description                                                                        |
+| ------------- | ----- | ---------------------------------------------------------------------------------- |
+| `acp`         | —     | Agent Client Protocol server over stdio                                            |
 | `codegraph`   | —     | Semantic code index + impact (`build`/`update`/`status`/`search`/`impact`/`purge`) |
-| `completions` | —     | Generate shell completion scripts           |
-| `doctor`      | —     | Show discovered configuration               |
-| `export`      | —     | Export session transcript/archive           |
-| `import`      | —     | Import sessions                             |
-| `mcp`         | —     | Manage MCP server configurations            |
-| `memory`      | `mem` | Inspect/manage agent memory (floppy)        |
-| `models`      | —     | List available models                       |
-| `extensions`  | `ext` | Manage Elph extensions                      |
-| `provider`    | —     | Manage AI providers and credentials         |
-| `run`         | —     | Run a prompt non-interactively              |
-| `server`      | —     | Local Elph REST+WS+Web UI server            |
-| `session`     | —     | List/search/restore sessions                |
-| `stats`       | —     | Token usage and cost statistics             |
-| `tools`       | —     | List available agent tools                  |
-| `update`      | —     | Check for updates or install a version      |
-| `version`     | —     | Print version                               |
-| `worktree`    | —     | Manage git worktrees                        |
+| `completions` | —     | Generate shell completion scripts                                                  |
+| `doctor`      | —     | Show discovered configuration                                                      |
+| `export`      | —     | Export session transcript/archive                                                  |
+| `import`      | —     | Import sessions                                                                    |
+| `mcp`         | —     | Manage MCP server configurations                                                   |
+| `memory`      | `mem` | Inspect/manage agent memory (floppy)                                               |
+| `models`      | —     | List available models                                                              |
+| `extensions`  | `ext` | Manage Elph extensions                                                             |
+| `provider`    | —     | Manage AI providers and credentials                                                |
+| `run`         | —     | Run a prompt non-interactively                                                     |
+| `server`      | —     | Local Elph REST+WS+Web UI server                                                   |
+| `session`     | —     | List/search/restore sessions                                                       |
+| `stats`       | —     | Token usage and cost statistics                                                    |
+| `tools`       | —     | List available agent tools                                                         |
+| `update`      | —     | Check for updates or install a version                                             |
+| `version`     | —     | Print version                                                                      |
+| `worktree`    | —     | Manage git worktrees                                                               |
 
 ## Environment Variables
 

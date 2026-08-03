@@ -108,7 +108,8 @@ pub fn activity_label_for_event(event: &AgentUiEvent, show_thinking: bool) -> Op
         | AgentUiEvent::MemoryResult(_)
         | AgentUiEvent::UserPromptCommitted { .. }
         | AgentUiEvent::TranscriptNotice(_)
-        | AgentUiEvent::SubagentOutput { .. } => None,
+        | AgentUiEvent::SubagentOutput { .. }
+        | AgentUiEvent::RetryablePrompt(_) => None,
         AgentUiEvent::ModeChangeRequired(req) => Some(format!("Switch to {} mode?", req.target_mode)),
     }
 }
@@ -189,8 +190,9 @@ pub fn format_activity_busy_line(label: &str, phase_elapsed_secs: f64) -> String
 /// Thinking threshold in seconds before the status row starts joking.
 pub const THINKING_OVERDUE_THRESHOLD_SECS: f64 = 10.0;
 
-/// Escalating witty labels for a thinking phase that drags on past the threshold.
-/// Each message covers one [`THINKING_OVERDUE_THRESHOLD_SECS`]-long bucket.
+/// Pool of witty labels for a thinking phase that drags on past the threshold.
+/// Order is shuffled per phase start (see [`thinking_overdue_label`]) so messages
+/// do not always escalate in the same sequence.
 const OVERDUE_THINKING_MESSAGES: &[&str] = &[
     "Hold on, still over thinking...",
     "Still over thinking... going deeper",
@@ -199,19 +201,68 @@ const OVERDUE_THINKING_MESSAGES: &[&str] = &[
     "Is it thinking, or napping?",
     "Thinking at the speed of molasses...",
     "I won't give up, sit tight...",
+    "Still cooking… almost done?",
+    "Deep in the thought mines…",
+    "Consulting the silicon oracle…",
 ];
 
 /// Escalating witty label for a thinking phase that exceeds 10s.
 ///
-/// Returns `None` below the threshold; afterwards picks a message based on how
-/// many 10s buckets the phase has crossed so long waits stay fresh.
+/// Returns `None` below the threshold; afterwards picks a message from a
+/// **per-phase shuffled** permutation of [`OVERDUE_THINKING_MESSAGES`] so
+/// long waits stay fresh and non-repetitive across turns.
 pub fn thinking_overdue_label(elapsed_secs: f64) -> Option<&'static str> {
     if !elapsed_secs.is_finite() || elapsed_secs < THINKING_OVERDUE_THRESHOLD_SECS {
         return None;
     }
     let bucket = (elapsed_secs / THINKING_OVERDUE_THRESHOLD_SECS) as usize;
-    let idx = bucket.saturating_sub(1).min(OVERDUE_THINKING_MESSAGES.len() - 1);
-    Some(OVERDUE_THINKING_MESSAGES[idx])
+    let order = overdue_message_order();
+    let idx = bucket.saturating_sub(1).min(order.len().saturating_sub(1));
+    Some(OVERDUE_THINKING_MESSAGES[order[idx]])
+}
+
+/// Fisher–Yates shuffle of message indices, re-rolled when the thinking phase resets
+/// (elapsed just crossed the first overdue bucket after being below threshold is handled
+/// by callers re-querying each tick — we reseed when bucket==1 and cache via thread-local).
+fn overdue_message_order() -> Vec<usize> {
+    use std::cell::RefCell;
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    thread_local! {
+        static ORDER: RefCell<Vec<usize>> = const { RefCell::new(Vec::new()) };
+        static SEED_SLOT: RefCell<u64> = const { RefCell::new(0) };
+    }
+
+    // New seed roughly every thinking phase: use coarse clock + reseed when order empty.
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs() / 30) // re-shuffle window ~30s
+        .unwrap_or(0);
+
+    ORDER.with(|order| {
+        SEED_SLOT.with(|seed| {
+            let mut order = order.borrow_mut();
+            let mut seed = seed.borrow_mut();
+            if order.is_empty() || *seed != now {
+                *seed = now;
+                let n = OVERDUE_THINKING_MESSAGES.len();
+                let mut idx: Vec<usize> = (0..n).collect();
+                // Deterministic shuffle from seed
+                let mut h = DefaultHasher::new();
+                now.hash(&mut h);
+                let mut state = h.finish();
+                for i in (1..n).rev() {
+                    state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
+                    let j = (state as usize) % (i + 1);
+                    idx.swap(i, j);
+                }
+                *order = idx;
+            }
+            order.clone()
+        })
+    })
 }
 
 /// Busy left segment with long-thinking escalation (see [`thinking_overdue_label`]).
@@ -510,23 +561,32 @@ mod tests {
 
     #[test]
     fn thinking_overdue_label_escalates_by_ten_second_buckets() {
-        assert_eq!(thinking_overdue_label(10.0), Some("Hold on, still over thinking..."));
-        assert_eq!(thinking_overdue_label(19.9), Some("Hold on, still over thinking..."));
-        assert_eq!(thinking_overdue_label(20.0), Some("Still over thinking... going deeper"));
-        assert_eq!(thinking_overdue_label(30.0), Some("Thinking so hard it might overheat"));
-        assert_eq!(thinking_overdue_label(3600.0), Some("Thinking at the speed of molasses..."));
-        assert_eq!(thinking_overdue_label(4200.0), Some("I won't give up, sit tight..."));
+        // Same 10s bucket maps to the same (shuffled) message, so the label
+        // stays stable within a phase.
+        assert_eq!(thinking_overdue_label(10.0), thinking_overdue_label(19.9));
+        // Adjacent buckets escalate to different messages from the pool.
+        let b1 = thinking_overdue_label(10.0).expect("overdue");
+        let b2 = thinking_overdue_label(20.0).expect("overdue");
+        let b3 = thinking_overdue_label(30.0).expect("overdue");
+        assert_ne!(b1, b2);
+        assert_ne!(b2, b3);
+        // Very long phases clamp to the last message of the shuffled order.
+        assert_eq!(thinking_overdue_label(3600.0), thinking_overdue_label(4200.0));
+        // Every label is drawn from the pool.
+        for label in [b1, b2, b3, thinking_overdue_label(3600.0).expect("overdue")] {
+            assert!(OVERDUE_THINKING_MESSAGES.contains(&label), "{label:?} not in pool");
+        }
     }
 
     #[test]
     fn format_activity_busy_line_dynamic_escalates_only_thinking() {
         // Below threshold: unchanged.
         assert_eq!(format_activity_busy_line_dynamic("Thinking", 5.0), "Thinking · 5s");
-        // Past threshold: witty label replaces the activity name, timer kept.
-        assert_eq!(
-            format_activity_busy_line_dynamic("Thinking", 11.0),
-            "Hold on, still over thinking... · 11s"
-        );
+        // Past threshold: a pool message replaces the activity name, timer kept.
+        let busy = format_activity_busy_line_dynamic("Thinking", 11.0);
+        let (witty, duration) = busy.split_once(" · ").expect("timer suffix");
+        assert_eq!(duration, "11s");
+        assert!(OVERDUE_THINKING_MESSAGES.contains(&witty), "{witty:?} not in pool");
         // Non-thinking labels are untouched.
         assert_eq!(format_activity_busy_line_dynamic("Running grep", 31.0), "Running grep · 31s");
     }

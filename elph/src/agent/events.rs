@@ -47,6 +47,9 @@ pub struct QueuedPromptItem {
 #[derive(Debug)]
 pub enum AgentUiEvent {
     Status(String),
+    /// Last failed user prompt that can be re-submitted (transient stream/API errors).
+    /// Shell stores this for the `r` retry key / error-card affordance.
+    RetryablePrompt(String),
     /// Durable transcript notice (conflicts, reload details). Always **appends** a Meta
     /// card — unlike [`Self::Status`], it is not collapsed into the previous Meta line.
     TranscriptNotice(String),

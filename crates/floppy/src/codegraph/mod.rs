@@ -13,6 +13,6 @@ mod types;
 
 pub use store::CodegraphStore;
 pub use types::{
-    ChunkHit, CodegraphConfig, CodegraphStatus, ImpactNode, IndexPhase, IndexProgress, ProgressFn,
-    ScanStats, SearchOptions,
+    ChunkHit, CodegraphConfig, CodegraphStatus, ImpactNode, IndexPhase, IndexProgress, ProgressFn, ScanStats,
+    SearchOptions,
 };

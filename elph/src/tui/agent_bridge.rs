@@ -484,7 +484,8 @@ impl TranscriptEventApplier {
             | AgentUiEvent::ModeChangeRequired(_)
             | AgentUiEvent::QueueUpdate { .. }
             | AgentUiEvent::MemoryResult(_)
-            | AgentUiEvent::UserPromptCommitted { .. } => false,
+            | AgentUiEvent::UserPromptCommitted { .. }
+            | AgentUiEvent::RetryablePrompt(_) => false,
             // ToolApprovalRequired is handled in shell (must respond on response_tx).
             AgentUiEvent::ToolApprovalRequired(_) => false,
         }
@@ -533,22 +534,33 @@ impl TranscriptEventApplier {
 
     /// Provider/API failure card — red error style, replaces last error if still open.
     fn push_api_error(&mut self, messages: &mut Vec<TranscriptMessage>, line: &str) -> bool {
-        use crate::tui::api_error_display::format_user_facing_api_error;
+        use crate::tui::api_error_display::{RETRY_HINT, format_user_facing_api_error};
+        // The session appends RETRY_HINT to transient errors; detect it before the
+        // reformat below so the hint is rendered as a dedicated affordance.
+        let retryable = line.contains(RETRY_HINT);
         let line = format_user_facing_api_error(line);
         if line.is_empty() {
             return false;
         }
+        let content = if retryable {
+            line.split(RETRY_HINT).next().unwrap_or(&line).trim_end().to_string()
+        } else {
+            line
+        };
         // Upsert consecutive API error so MessageEnd + TurnEnd do not double-stack.
         if let Some(last) = messages.last_mut()
             && last.style == TranscriptStyle::Error
         {
-            last.content = line;
+            last.content = content;
+            last.retryable = retryable;
             return true;
         }
         self.finalize_thinking(messages);
         self.finalize_assistant(messages);
         self.finalize_meta(messages);
-        messages.push(TranscriptMessage::text(line, TranscriptStyle::Error));
+        let mut msg = TranscriptMessage::text(content, TranscriptStyle::Error);
+        msg.retryable = retryable;
+        messages.push(msg);
         true
     }
 

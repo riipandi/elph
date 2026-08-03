@@ -43,10 +43,7 @@ pub async fn apply_set(conn: &Connection, migrations: &[FloppyMigration]) -> Res
     for migration in migrations {
         let already = {
             let mut rows = conn
-                .query(
-                    "SELECT 1 FROM app_migrations WHERE version = ?",
-                    (migration.version,),
-                )
+                .query("SELECT 1 FROM app_migrations WHERE version = ?", (migration.version,))
                 .await?;
             let found = rows.next().await?.is_some();
             drain_rows(&mut rows).await?;

@@ -18,6 +18,7 @@ use crate::tui::ask_user_tool_card::{AskUserToolCardView, parse_ask_user_tool_ro
 use crate::tui::theme::{
     STATUS_FAILED_FG, STATUS_QUEUED_FG, STATUS_RUNNING_FG, STATUS_SUCCESS_FG, TEXT_FG, THINKING_FG, TOOL_ARGS_FG,
     TOOL_FAILED_FG, TOOL_OUTPUT_FG, TOOL_PARAM_HIGHLIGHT_FG, TOOL_RUNNING_FG, TOOL_SUCCESS_FG, TOOL_TASK_LABEL_FG,
+    USER_INPUT_ACCENT,
 };
 use crate::tui::tool_params::{
     ToolParamsView, format_collapsed_tool_parts_linked, parse_tool_params, tool_display_verb,
@@ -443,7 +444,41 @@ pub fn chat_response_card(
 
 pub fn error_card(screen_width: u16, message: &TranscriptMessage, margin_bottom: u16) -> AnyElement<'static> {
     let chrome = TranscriptCardChrome::tinted(screen_width, message.style, margin_bottom);
-    render_tinted_card(&chrome, message)
+    if !message.retryable {
+        return render_tinted_card(&chrome, message);
+    }
+    // Transient error (stream cutoff / 5xx / …): card body plus a dedicated
+    // "press r to retry" affordance so the retry path is visible, not buried in text.
+    let mut body_chrome = chrome.clone();
+    body_chrome.margin_bottom = 0;
+    let inner_width = body_chrome.inner_width(message.style);
+    let hint_row = element! {
+        View(
+            width: chrome.outer_width,
+            margin_bottom,
+            padding_left: chrome.padding_h,
+            padding_right: chrome.padding_h,
+            align_items: AlignItems::FlexStart,
+        ) {
+            View(
+                width: inner_width,
+                flex_direction: FlexDirection::Row,
+                align_items: AlignItems::Center,
+                gap: 1,
+            ) {
+                Text(content: "Press", color: TOOL_ARGS_FG)
+                Text(content: "r", color: USER_INPUT_ACCENT)
+                Text(content: "to retry this prompt", color: TOOL_ARGS_FG)
+            }
+        }
+    };
+    element! {
+        View(flex_direction: FlexDirection::Column, gap: 0) {
+            #(render_tinted_card(&body_chrome, message))
+            #(hint_row)
+        }
+    }
+    .into()
 }
 
 pub fn meta_card(screen_width: u16, message: &TranscriptMessage, margin_bottom: u16) -> AnyElement<'static> {

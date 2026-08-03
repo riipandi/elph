@@ -7,9 +7,7 @@ use std::sync::Mutex;
 use super::index::{self, Indexer};
 use super::migrations;
 use super::search;
-use super::types::{
-    ChunkHit, CodegraphConfig, CodegraphStatus, ImpactNode, ProgressFn, ScanStats, SearchOptions,
-};
+use super::types::{ChunkHit, CodegraphConfig, CodegraphStatus, ImpactNode, ProgressFn, ScanStats, SearchOptions};
 use crate::core::db;
 use crate::core::embed::EmbedFn;
 
