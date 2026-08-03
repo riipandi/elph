@@ -32,6 +32,14 @@ pub fn Header(props: &HeaderProps) -> impl Into<AnyElement<'static>> {
         half,
     );
 
+    let stats_color = if props.context_pct >= 80.0 {
+        Color::Rgb { r: 255, g: 165, b: 0 } // orange
+    } else if props.context_pct >= 60.0 {
+        Color::Yellow
+    } else {
+        Color::DarkGrey
+    };
+
     element! {
         View(
             width: props.screen_width,
@@ -48,7 +56,7 @@ pub fn Header(props: &HeaderProps) -> impl Into<AnyElement<'static>> {
             margin_bottom: 0,
         ) {
             Text(color: Color::DarkGrey, wrap: TextWrap::NoWrap, content: session_label)
-            Text(color: Color::DarkGrey, wrap: TextWrap::NoWrap, content: stats_label)
+            Text(color: stats_color, wrap: TextWrap::NoWrap, content: stats_label)
         }
     }
 }
