@@ -47,13 +47,22 @@ pub struct Indexer<'a> {
 }
 
 impl Indexer<'_> {
-    fn report(&self, phase: IndexPhase, stats: &ScanStats, current: Option<&str>) {
+    fn report(
+        &self,
+        phase: IndexPhase,
+        stats: &ScanStats,
+        current: Option<&str>,
+        files_to_index: Option<u32>,
+        estimated_seconds: Option<u64>,
+    ) {
         if let Some(cb) = self.progress {
             cb(IndexProgress {
                 phase,
                 files_walked: stats.files_walked,
                 files_indexed: stats.files_indexed,
                 current_path: current.map(str::to_string),
+                files_to_index,
+                estimated_seconds,
             });
         }
     }
@@ -66,11 +75,11 @@ impl Indexer<'_> {
         let mut live_paths: HashSet<String> = HashSet::new();
         let mut file_map: BTreeMap<String, String> = BTreeMap::new();
 
-        self.report(IndexPhase::Starting, &stats, None);
+        self.report(IndexPhase::Starting, &stats, None, None, None);
 
         // Load existing hashes for skip
         let existing = load_file_hashes(conn).await?;
-        self.report(IndexPhase::Scanning, &stats, None);
+        self.report(IndexPhase::Scanning, &stats, None, None, None);
 
         let walk_start = Instant::now();
 
@@ -153,6 +162,33 @@ impl Indexer<'_> {
 
         stats.walk_ms = walk_start.elapsed().as_millis() as u64;
 
+        // Calculate estimation after walk phase
+        let files_to_index_count = files_to_process.len() as u32;
+        let estimated_seconds = if files_to_index_count > 0 {
+            // Estimate: assume ~0.5 seconds per file (CPU) or ~0.1 seconds per file (GPU)
+            // Use a conservative estimate for CPU
+            let seconds_per_file = if self
+                .gpu_acceleration
+                .as_ref()
+                .map_or(false, |s| s.contains("metal") || s.contains("cuda"))
+            {
+                0.1 // GPU is faster
+            } else {
+                0.5 // CPU is slower
+            };
+            Some((files_to_index_count as f64 * seconds_per_file).ceil() as u64)
+        } else {
+            None
+        };
+
+        self.report(
+            IndexPhase::IndexingFile,
+            &stats,
+            None,
+            Some(files_to_index_count),
+            estimated_seconds,
+        );
+
         // Phase 2: Parallel chunking with rayon (CPU-bound)
         let chunk_start = Instant::now();
         let root_path = self.root.to_path_buf();
@@ -232,20 +268,38 @@ impl Indexer<'_> {
 
         // Batch insert all files
         for processed in &final_processed {
-            self.report(IndexPhase::IndexingFile, &stats, Some(&processed.rel));
+            self.report(
+                IndexPhase::IndexingFile,
+                &stats,
+                Some(&processed.rel),
+                Some(files_to_index_count),
+                estimated_seconds,
+            );
             self.batch_insert_file(conn, processed, &mut stats)
                 .await
                 .with_context(|| format!("index {}", processed.rel))?;
             stats.files_indexed += 1;
 
             if stats.files_indexed <= 20 || stats.files_indexed.is_multiple_of(8) {
-                self.report(IndexPhase::IndexingFile, &stats, Some(&processed.rel));
+                self.report(
+                    IndexPhase::IndexingFile,
+                    &stats,
+                    Some(&processed.rel),
+                    Some(files_to_index_count),
+                    estimated_seconds,
+                );
             }
         }
 
         stats.reindex_ms += db_start.elapsed().as_millis() as u64;
 
-        self.report(IndexPhase::Finalizing, &stats, None);
+        self.report(
+            IndexPhase::Finalizing,
+            &stats,
+            None,
+            Some(files_to_index_count),
+            estimated_seconds,
+        );
         let finalize_start = Instant::now();
 
         // Rebuild file_map from DB for accurate root (includes unchanged)
@@ -257,7 +311,7 @@ impl Indexer<'_> {
         upsert_meta(conn, META_DIR, &self.root.display().to_string()).await?;
         stats.finalize_ms = finalize_start.elapsed().as_millis() as u64;
 
-        self.report(IndexPhase::Done, &stats, None);
+        self.report(IndexPhase::Done, &stats, None, Some(files_to_index_count), estimated_seconds);
         Ok(stats)
     }
 

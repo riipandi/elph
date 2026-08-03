@@ -60,6 +60,10 @@ pub struct IndexProgress {
     pub files_walked: u32,
     pub files_indexed: u32,
     pub current_path: Option<String>,
+    /// Estimated total files to index (available after walk phase).
+    pub files_to_index: Option<u32>,
+    /// Estimated remaining time in seconds (available after walk phase).
+    pub estimated_seconds: Option<u64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

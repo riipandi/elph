@@ -154,10 +154,22 @@ fn run_scan_with_spinner(paths: &Paths, full_build: bool) -> Result<ScanStats> {
         let msg = match ev.phase {
             IndexPhase::Starting => "Opening store…".into(),
             IndexPhase::Scanning => "Scanning files…".into(),
-            IndexPhase::IndexingFile => match &ev.current_path {
-                Some(p) => format!("{p}  ({} reindexed · {} seen)", ev.files_indexed, ev.files_walked),
-                None => format!("Indexing…  ({} reindexed · {} seen)", ev.files_indexed, ev.files_walked),
-            },
+            IndexPhase::IndexingFile => {
+                let base = match &ev.current_path {
+                    Some(p) => format!("{p}  ({} reindexed · {} seen)", ev.files_indexed, ev.files_walked),
+                    None => format!("Indexing…  ({} reindexed · {} seen)", ev.files_indexed, ev.files_walked),
+                };
+                if let (Some(total), Some(estimate)) = (ev.files_to_index, ev.estimated_seconds) {
+                    let time_str = if estimate < 60 {
+                        format!("{}s", estimate)
+                    } else {
+                        format!("{}m", estimate / 60)
+                    };
+                    format!("{} · {} files · ~{}", base, total, time_str)
+                } else {
+                    base
+                }
+            }
             IndexPhase::Finalizing => "Finalizing…".into(),
             IndexPhase::Done => "Done".into(),
         };
