@@ -13,7 +13,7 @@ use super::CodingAgentSession;
 
 /// Tool groups for readable `/tools` output (name → member tool ids).
 const GROUPS: &[(&str, &[&str])] = &[
-    ("Read & Search", &["read_file", "grep", "find_path", "list_dir", "diagnostics"]),
+    ("Read & Search", &["read_file", "grep", "find_path", "list_dir"]),
     (
         "Edit",
         &[

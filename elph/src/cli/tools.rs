@@ -21,7 +21,7 @@ const GROUPS: &[(&str, &str, &[&str])] = &[
     (
         "Read & Search",
         "tools-search",
-        &["read_file", "grep", "find_path", "list_dir", "diagnostics"],
+        &["read_file", "grep", "find_path", "list_dir"],
     ),
     (
         "Edit",

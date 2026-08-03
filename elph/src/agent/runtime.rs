@@ -64,7 +64,6 @@ pub async fn create_coding_session_with_events(
         None => load_resources(options.paths, options.cwd, env.as_ref()).await.resources,
     };
     let mut tools = BuiltinToolsBuilder::all(env.clone()).build();
-    tools.push(super::diagnostics::create_diagnostics_tool(&options.cwd.display().to_string()));
 
     // Shared memory runtime (tools + hooks + bootstrap use one store / task id).
     let memory_opts = crate::memory::runtime::MemoryRuntimeOptions::from_settings(&options.settings.memory);

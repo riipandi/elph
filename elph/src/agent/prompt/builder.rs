@@ -235,7 +235,6 @@ mod tests {
                 "edit_file",
                 "write_file",
                 "shell_exec",
-                "diagnostics",
                 "list_available_tools",
             ]
             .map(String::from),
@@ -249,7 +248,6 @@ mod tests {
         assert!(prompt.contains("Search file contents and symbols with `grep`"));
         assert!(prompt.contains("Find files by name or glob with `find_path`"));
         assert!(prompt.contains("focused changes to existing files"));
-        assert!(prompt.contains("Use `diagnostics` after edits"));
         assert!(prompt.contains("Run independent tool calls in parallel"));
         // Lean-reading directive is present and memory policy is not duplicated in the mode section.
         assert!(prompt.contains("Read selectively: target the ranges or search hits you need"));
@@ -309,7 +307,7 @@ mod tests {
                 "shell_exec",
                 "web_fetch",
                 "web_search",
-                "diagnostics",
+                
                 "ask_user_question",
                 "list_available_tools",
                 "spawn_agent",

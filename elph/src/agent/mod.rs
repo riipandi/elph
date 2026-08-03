@@ -3,7 +3,6 @@
 mod agents_load;
 mod ask_user;
 mod conflict_notice;
-mod diagnostics;
 mod events;
 pub(crate) mod goal_slash;
 pub mod mcp_bootstrap;

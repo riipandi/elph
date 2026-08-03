@@ -26,7 +26,6 @@ pub fn coding_tool_exposure_policy() -> &'static ToolExposurePolicy {
             "list_dir".into(),
             "web_fetch".into(),
             "web_search".into(),
-            "diagnostics".into(),
             "ask_user_question".into(),
             "request_mode_change".into(),
             "list_available_tools".into(),
@@ -254,7 +253,6 @@ mod tests {
         all.extend(["write_file".to_string(), "shell_exec".to_string()]);
         let active = AgentModePolicy::active_tool_names_for_mode(AgentMode::Ask, &all, None);
         assert!(active.contains(&"read_file".to_string()));
-        assert!(active.contains(&"diagnostics".to_string()));
         assert!(!active.contains(&"write_file".to_string()));
     }
 
