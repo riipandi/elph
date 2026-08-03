@@ -95,9 +95,11 @@ fn install_logger(options: &LoggingOptions, trace_enabled: bool) -> Option<LogGu
     }
 
     if options.console_enabled {
-        let stdout = append::Stdout::default().with_layout(TextLayout::default());
+        // Diagnostics go to stderr so program output on stdout (tables, stats,
+        // scan results) stays clean and logs never corrupt piped output.
+        let stderr = append::Stderr::default().with_layout(TextLayout::default());
         let console_filter = level_filter(&options.level);
-        starter = starter.dispatch(|d| d.filter(console_filter).append(stdout));
+        starter = starter.dispatch(|d| d.filter(console_filter).append(stderr));
     }
 
     #[cfg(feature = "tracing")]

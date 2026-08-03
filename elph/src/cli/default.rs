@@ -15,9 +15,17 @@ pub fn handle(continue_session: bool, resume: Option<String>) -> ExitCode {
     };
 
     // Pre-TUI: offer codebase indexing when codegraph is enabled and index is empty.
-    if let Err(err) = crate::codegraph::maybe_offer_index(&paths) {
-        log::warn!("codegraph startup index offer: {err:#}");
-        // Non-fatal — continue into TUI.
+    // The index offer can take minutes (embedder download / first build), so make
+    // Ctrl+C abort it cleanly instead of relying on the default signal behavior.
+    {
+        let _interrupt = super::CliProgressInterruptGuard::new();
+        if let Err(err) = crate::codegraph::maybe_offer_index(&paths) {
+            log::warn!("codegraph startup index offer: {err:#}");
+            // Non-fatal — continue into TUI, but make the failure visible instead of
+            // burying it in the log file only.
+            eprintln!("warning: could not check the codebase index: {err:#}");
+            eprintln!("  Run `elph codegraph build` to index manually.");
+        }
     }
 
     let mode = match SessionLaunchMode::from_flags(continue_session, resume) {

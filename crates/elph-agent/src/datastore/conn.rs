@@ -176,7 +176,7 @@ pub fn cleanup_stale_shared_memory(path: &Path) -> Result<()> {
     }
 
     if cleaned {
-        log::info!("Cleaned up stale SQLite shared memory files");
+        log::debug!("Cleaned up stale SQLite shared memory files");
     }
 
     Ok(())

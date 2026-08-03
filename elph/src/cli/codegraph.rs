@@ -67,6 +67,10 @@ pub fn handle(args: &CodegraphArgs) -> ExitCode {
         return EXIT_ERROR;
     }
 
+    // Datastore init and the index build/update show progress on stderr; keep
+    // Ctrl+C interactive (clean "Interrupted." + exit 130) for these phases.
+    let _interrupt = super::CliProgressInterruptGuard::new();
+
     if let Err(err) = crate::platform::ensure_datastore_blocking(&paths) {
         eprintln!("error: {err}");
         return EXIT_ERROR;

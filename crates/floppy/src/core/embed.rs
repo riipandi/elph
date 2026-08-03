@@ -6,6 +6,7 @@ use std::future::Future;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::Result;
 
@@ -198,6 +199,56 @@ pub fn create_embedder(options: EmbedOptions) -> anyhow::Result<EmbedFn> {
     }))
 }
 
+/// Default cap on embedder initialization (model weights download) before failing.
+///
+/// [`Embedder::from_pretrained_hf`] performs a synchronous Hugging Face download
+/// with no internal deadline. On a blocked or blackholed network it can hang the
+/// CLI at "Preparing embedder…" indefinitely; callers that must not stall should
+/// use [`create_embedder_with_timeout`].
+pub const EMBEDDER_INIT_TIMEOUT: Duration = Duration::from_secs(5 * 60);
+
+/// Create a local embedder, bounding the potentially slow weights download to
+/// `timeout`. The first download for a model is cached under `HF_HOME`, so the
+/// timeout only bites on genuinely slow or unreachable networks.
+///
+/// On timeout the worker thread keeps running in the background (it cannot be
+/// force-killed); the caller should treat the error as fatal and abort the
+/// operation, letting the process exit drop the stray thread.
+#[cfg(feature = "embed")]
+pub fn create_embedder_with_timeout(options: EmbedOptions, timeout: Duration) -> anyhow::Result<EmbedFn> {
+    run_with_init_timeout(timeout, move || create_embedder(options))
+}
+
+/// Run a blocking embedder-initialization closure with a hard `timeout`.
+///
+/// The closure runs on a dedicated OS thread so a hung network download cannot
+/// stall the caller; `recv_timeout` bounds the wait.
+#[cfg(feature = "embed")]
+fn run_with_init_timeout(
+    timeout: Duration,
+    init: impl FnOnce() -> anyhow::Result<EmbedFn> + Send + 'static,
+) -> anyhow::Result<EmbedFn> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::Builder::new()
+        .name("embedder-init".to_string())
+        .spawn(move || {
+            let _ = tx.send(init());
+        })?;
+    match rx.recv_timeout(timeout) {
+        Ok(Ok(embed)) => Ok(embed),
+        Ok(Err(err)) => Err(err),
+        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => Err(anyhow::anyhow!(
+            "embedder initialization timed out after {}s — the model weights download is \
+             slow or the network is blocked. Check your connection and retry; after the first \
+             success the model is cached locally.",
+            timeout.as_secs()
+        )),
+        Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+            Err(anyhow::anyhow!("embedder initialization thread exited unexpectedly"))
+        }
+    }
+}
+
 #[cfg(feature = "embed")]
 fn set_hf_home(dir: &std::path::Path) {
     let value = dir.to_string_lossy().into_owned();
@@ -270,5 +321,51 @@ mod tests {
     #[test]
     fn resolve_unknown_model_returns_err() {
         assert!(resolve_embedding_model("nonexistent-model-v99", false).is_err());
+    }
+
+    #[test]
+    fn init_error_propagates_promptly() {
+        // A model that fails fast at resolution must surface immediately, not
+        // after the full timeout window.
+        let result = create_embedder_with_timeout(
+            EmbedOptions {
+                model: Some("nonexistent-model-v99".to_string()),
+                ..EmbedOptions::default()
+            },
+            Duration::from_secs(30),
+        );
+        let err = match result {
+            Err(err) => err,
+            Ok(_) => panic!("expected an error for unknown model"),
+        };
+        assert!(err.to_string().contains("unsupported embedding model"));
+    }
+
+    #[test]
+    fn init_timeout_returns_descriptive_error() {
+        let start = std::time::Instant::now();
+        let result = run_with_init_timeout(Duration::from_millis(100), || {
+            std::thread::sleep(Duration::from_secs(30));
+            Ok(noop_embedder(8))
+        });
+        let err = match result {
+            Err(err) => err,
+            Ok(_) => panic!("expected the timeout to fire"),
+        };
+        assert!(err.to_string().contains("timed out"), "{err}");
+        // Must fail long before the closure's own 30s sleep completes.
+        assert!(start.elapsed() < Duration::from_secs(5));
+    }
+
+    #[test]
+    fn init_worker_panic_reports_disconnect() {
+        let result = run_with_init_timeout(Duration::from_secs(5), || {
+            panic!("embedder thread crashed");
+        });
+        let err = match result {
+            Err(err) => err,
+            Ok(_) => panic!("expected the panicking worker to surface an error"),
+        };
+        assert!(err.to_string().contains("unexpectedly"), "{err}");
     }
 }

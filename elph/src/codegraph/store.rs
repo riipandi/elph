@@ -2,8 +2,8 @@
 
 use anyhow::{Context, Result};
 use floppy::{
-    CodegraphConfig, CodegraphStore, DEFAULT_EMBEDDING_DIMS, EmbedOptions, create_embedder, embedding_dims,
-    noop_embedder, resolve_embedding_model,
+    CodegraphConfig, CodegraphStore, DEFAULT_EMBEDDING_DIMS, EMBEDDER_INIT_TIMEOUT, EmbedOptions,
+    create_embedder_with_timeout, embedding_dims, noop_embedder, resolve_embedding_model,
 };
 
 use crate::platform::{Paths, Settings};
@@ -29,7 +29,9 @@ pub fn open_store(paths: &Paths, needs_embed: bool) -> Result<CodegraphStore> {
             quantized: settings.models.embed.quantized,
             cache_dir: Some(paths.models_dir()),
         };
-        create_embedder(options).context("create codegraph embedder")?
+        // Bounded: a blocked Hugging Face download must fail with a helpful
+        // message instead of hanging the CLI at "Preparing embedder…".
+        create_embedder_with_timeout(options, EMBEDDER_INIT_TIMEOUT).context("create codegraph embedder")?
     } else {
         noop_embedder(dims)
     };

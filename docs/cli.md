@@ -138,6 +138,10 @@ Export formats: `json`, `markdown`, `zip`. Flags: `--output`, `--clipboard`, `--
 
 First run scaffolds home config, data dirs, default settings, project `.elph/` gitignore, version metadata, global `AGENTS.md`, and **unpacks** built-in provider catalogs into `CONFIG_DIR/providers/*.json` (only missing files). Datastore (`metadata.db`) initializes for the default TUI and datastore-dependent subcommands.
 
+Startup and scan phases (bootstrap, datastore init, `codegraph build`/`update`) render an interactive progress line on **stderr**: an animated spinner, a stepped bar with `pos/total`, the message, and a running elapsed timer (e.g. `⠙ Initializing databases [━╸──────────] 1/2 · 3s`). Pressing `Ctrl+C` during one of these phases aborts cleanly with `Interrupted.` and exit code `130`.
+
+Diagnostic logs also go to **stderr**, keeping stdout reserved for program output (tables, stats, scan results). Piped stdout therefore stays machine-readable and free of log interleaving.
+
 ## Exit codes
 
 | Code  | Meaning                |

@@ -5,7 +5,7 @@ use super::paths::{AppPaths, Paths};
 use elph_agent::{DatabaseSpec, InitProgress};
 use elph_agent::{ensure_databases_once, try_block_on};
 
-const DATASTORE_STEPS: u64 = 1;
+const DATASTORE_STEPS: u64 = 2;
 
 /// Lazily initialize local databases on first use.
 ///
@@ -19,10 +19,14 @@ pub async fn ensure(paths: &Paths) -> Result<()> {
     }];
 
     let progress = InitProgress::new(DATASTORE_STEPS).with_quiet_env("ELPH_QUIET");
-    progress.advance("Initializing databases");
+    // Two observable phases instead of a bar that is instantly full: opening the
+    // SQLite connection (incl. stale shared-memory cleanup) and applying
+    // migrations. The elapsed-time ticker shows the step is alive while blocked.
+    progress.advance("Opening metadata database");
 
     match ensure_databases_once(&specs).await {
         Ok(_) => {
+            progress.advance("Databases ready");
             progress.finish();
             Ok(())
         }

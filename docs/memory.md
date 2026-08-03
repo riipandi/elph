@@ -60,7 +60,7 @@ Embedding weights live in the user data directory (not in the project):
 └── models/
 ```
 
-First semantic search downloads from Hugging Face; later runs reuse the cache.
+First semantic search downloads from Hugging Face; later runs reuse the cache. The initial download is bounded by a 5-minute timeout (`EMBEDDER_INIT_TIMEOUT`); on a slow or blocked network the command fails with a clear message instead of hanging.
 
 ## Schema
 
@@ -149,7 +149,7 @@ credit = task_score × (self_report / 3) × (1 / num_retrieved)
 | `search <query>` | Semantic lookup (needs embedder)  |
 | `purge`          | Remove weak memories              |
 
-Read-only commands do not require a loaded embedding model. `search` downloads the model on first use.
+Read-only commands do not require a loaded embedding model. `search` downloads the model on first use (bounded by the 5-minute `EMBEDDER_INIT_TIMEOUT`; see [Model cache](#model-cache)).
 
 ## Settings
 

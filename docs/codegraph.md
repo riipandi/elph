@@ -88,8 +88,10 @@ When launching the interactive TUI (`elph` with no subcommand):
 
 1. Detect first Elph access to the project (`.elph/` missing before ensure).
 2. If **`codegraph.enabled`** is true, the terminal is interactive, the index is empty, and the user has not declined before → show an interactive prompt (inquire Select: **Yes!** / **Skip**).
-3. **Yes!** runs `build` with a `CliSpinner` progress line (files reindexed / path).
+3. **Yes!** runs `build` with a `CliSpinner` progress line (files reindexed / path) plus a running elapsed timer.
 4. **Skip** writes `.elph/codegraph_index_declined` so the prompt does not repeat (delete the file to be asked again).
+
+The first index run downloads the shared embedder weights from Hugging Face. That download is bounded by a 5-minute timeout (`EMBEDDER_INIT_TIMEOUT`); on a slow or blocked network the command fails with a clear message instead of hanging at "Preparing embedder…". Subsequent runs reuse the local cache under the data dir.
 
 Skipped when: non-TTY, `ELPH_QUIET` / `CI`, `codegraph.enabled=false`, index already has files, or declined marker present.
 

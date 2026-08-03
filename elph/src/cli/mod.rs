@@ -28,6 +28,51 @@ use elph_agent::AgentBuilder;
 
 use crate::platform::ExitCode;
 
+/// RAII guard that installs a SIGINT handler forwarding to the elph-tui
+/// progress-ticker interrupt flag while alive, restoring the previous
+/// disposition on drop.
+///
+/// Only active around CLI progress phases (boot, datastore init, codegraph
+/// index) where the tick threads can observe the flag and abort with a clean
+/// "Interrupted." message + exit 130. Long-running phases (`server`, `run`,
+/// the TUI) never have the guard installed, so Ctrl+C keeps its default
+/// terminate behavior there.
+pub(crate) struct CliProgressInterruptGuard {
+    #[cfg(unix)]
+    previous: libc::sighandler_t,
+}
+
+impl CliProgressInterruptGuard {
+    pub(crate) fn new() -> Self {
+        #[cfg(unix)]
+        {
+            // SAFETY: libc::signal installs an async-signal-safe handler that
+            // only stores to an atomic flag (no allocation, no locking). The
+            // previous disposition is saved and restored on drop.
+            extern "C" fn handle_sigint(_sig: libc::c_int) {
+                elph_tui::note_interrupt();
+            }
+            let previous = unsafe { libc::signal(libc::SIGINT, handle_sigint as *const () as libc::sighandler_t) };
+            Self { previous }
+        }
+        #[cfg(not(unix))]
+        {
+            Self {}
+        }
+    }
+}
+
+impl Drop for CliProgressInterruptGuard {
+    fn drop(&mut self) {
+        #[cfg(unix)]
+        // SAFETY: restoring a previously saved disposition is a plain signal
+        // registration; no shared state is touched.
+        unsafe {
+            libc::signal(libc::SIGINT, self.previous);
+        }
+    }
+}
+
 pub use codegraph::{CodegraphArgs, CodegraphCommands};
 pub use completions::CompletionsArgs;
 pub use doctor::DoctorArgs;
@@ -185,6 +230,11 @@ pub fn run(cli: &Cli) -> ExitCode {
         }
     };
 
+    // Boot phases (home scaffold + datastore init) render progress on stderr;
+    // keep Ctrl+C interactive there, then restore default signal behavior
+    // before any long-running command handler (server, run, TUI) dispatches.
+    let _progress_interrupt = CliProgressInterruptGuard::new();
+
     let paths = match init_home() {
         Ok(paths) => paths,
         Err(code) => return code,
@@ -194,6 +244,7 @@ pub fn run(cli: &Cli) -> ExitCode {
         if let Err(code) = init_datastore(&paths) {
             return code;
         }
+        // default::handle reinstalls the guard for the index-offer phase itself.
         return default::handle(cli.continue_session, cli.resume.clone());
     };
 
@@ -202,6 +253,7 @@ pub fn run(cli: &Cli) -> ExitCode {
     {
         return code;
     }
+    drop(_progress_interrupt);
 
     match cmd {
         Commands::Acp => acp::handle(),
