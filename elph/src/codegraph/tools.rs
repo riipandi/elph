@@ -295,8 +295,14 @@ async fn execute_reindex(paths: Arc<Paths>) -> Result<AgentToolResult> {
     let store = open_store(&paths, true)?;
     let stats = store.update().await?;
     let text = format!(
-        "reindex done: walked={} indexed={} unchanged={} chunks={}",
-        stats.files_walked, stats.files_indexed, stats.files_unchanged, stats.chunks_indexed
+        "reindex done: walked={} indexed={} unchanged={} chunks={} (walk {}ms · reindex {}ms · finalize {}ms)",
+        stats.files_walked,
+        stats.files_indexed,
+        stats.files_unchanged,
+        stats.chunks_indexed,
+        stats.walk_ms,
+        stats.reindex_ms,
+        stats.finalize_ms
     );
     Ok(AgentToolResult {
         content: vec![elph_agent::ToolResultContent::Text(elph_ai::TextContent::new(text))],
@@ -306,6 +312,9 @@ async fn execute_reindex(paths: Arc<Paths>) -> Result<AgentToolResult> {
             "filesUnchanged": stats.files_unchanged,
             "chunksIndexed": stats.chunks_indexed,
             "chunksEmbedded": stats.chunks_embedded,
+            "walkMs": stats.walk_ms,
+            "reindexMs": stats.reindex_ms,
+            "finalizeMs": stats.finalize_ms,
         }),
         added_tool_names: None,
         terminate: None,

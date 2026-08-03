@@ -231,6 +231,14 @@ fn print_index_done(stats: &ScanStats) {
         stats.chunks_embedded,
         muted.render_reset()
     );
+    println!(
+        "{}  walk {} ms · reindex {} ms · finalize {} ms{}",
+        muted.render(),
+        stats.walk_ms,
+        stats.reindex_ms,
+        stats.finalize_ms,
+        muted.render_reset()
+    );
     println!();
 }
 

@@ -69,22 +69,7 @@ impl CliSpinner {
             tick_thread: Mutex::new(None),
         });
 
-        let tick_inner = Arc::clone(&inner);
-        let handle = thread::spawn(move || {
-            loop {
-                {
-                    let mut guard = tick_inner.state.lock().expect("spinner lock");
-                    if guard.finished {
-                        break;
-                    }
-                    guard.loader.tick();
-                    let line = render_spinner_line(guard.loader.glyph(), &guard.message);
-                    write_overwrite_line(&line);
-                }
-                thread::sleep(TICK_INTERVAL);
-            }
-        });
-        *inner.tick_thread.lock().expect("spinner tick lock") = Some(handle);
+        start_tick_thread(&inner);
 
         {
             let guard = inner.state.lock().expect("spinner lock");
@@ -121,12 +106,17 @@ impl CliSpinner {
     }
 
     pub fn finish_and_clear(&self) {
-        let mut guard = self.inner.state.lock().expect("spinner lock");
-        if !guard.enabled {
-            return;
+        {
+            let mut guard = self.inner.state.lock().expect("spinner lock");
+            if !guard.enabled {
+                return;
+            }
+            guard.finished = true;
+            clear_line();
         }
-        guard.finished = true;
-        clear_line();
+        // Do NOT hold the state lock across `join`: the tick thread must acquire
+        // it to observe `finished` and exit, so holding it here deadlocks (tick
+        // blocks on the lock while we block on the join).
         if let Some(handle) = self.inner.tick_thread.lock().expect("spinner tick lock").take() {
             let _ = handle.join();
         }
@@ -253,6 +243,51 @@ pub fn progress_spinner(message: &str) -> CliSpinner {
     CliSpinner::new(message)
 }
 
+/// Spawn the animated tick thread that repaints the spinner line every
+/// [`TICK_INTERVAL`] until the shared state flips to `finished`.
+///
+/// The tick thread must acquire the state lock to observe `finished`, so callers
+/// that join it (see [`CliSpinner::finish_and_clear`] / `Drop`) must never hold
+/// the state lock across the join.
+fn start_tick_thread(inner: &Arc<SpinnerInner>) {
+    let tick_inner = Arc::clone(inner);
+    let handle = thread::spawn(move || {
+        loop {
+            {
+                let mut guard = tick_inner.state.lock().expect("spinner lock");
+                if guard.finished {
+                    break;
+                }
+                guard.loader.tick();
+                let line = render_spinner_line(guard.loader.glyph(), &guard.message);
+                write_overwrite_line(&line);
+            }
+            thread::sleep(TICK_INTERVAL);
+        }
+    });
+    *inner.tick_thread.lock().expect("spinner tick lock") = Some(handle);
+}
+
+/// Test-only: build an animated spinner regardless of TTY so the tick-thread
+/// spawn + join paths are exercised under `#[cfg(test)]` (where
+/// [`progress_enabled`] always reports disabled).
+#[cfg(test)]
+impl CliSpinner {
+    fn new_enabled_for_test(message: &str) -> Self {
+        let inner = Arc::new(SpinnerInner {
+            state: Mutex::new(SpinnerLineState {
+                message: message.to_string(),
+                loader: SpinnerLoader::new(),
+                finished: false,
+                enabled: true,
+            }),
+            tick_thread: Mutex::new(None),
+        });
+        start_tick_thread(&inner);
+        Self { inner }
+    }
+}
+
 fn render_spinner_line(glyph: &str, message: &str) -> String {
     let mut el = element! {
         View(flex_direction: FlexDirection::Row, align_items: AlignItems::Center) {
@@ -352,6 +387,21 @@ mod tests {
     fn disabled_spinner_finish_is_noop() {
         let spinner = CliSpinner::disabled();
         spinner.finish_and_clear();
+    }
+
+    #[test]
+    fn finish_and_clear_joins_tick_thread() {
+        // Regression: finish_and_clear used to hold the state lock while joining
+        // the tick thread, which needs the same lock to observe `finished` — a
+        // guaranteed deadlock with an animated spinner ("stuck after indexing").
+        let spinner = CliSpinner::new_enabled_for_test("regression");
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            spinner.finish_and_clear();
+            let _ = tx.send(());
+        });
+        rx.recv_timeout(std::time::Duration::from_secs(1))
+            .expect("finish_and_clear deadlocked: tick thread never joined");
     }
 
     #[test]

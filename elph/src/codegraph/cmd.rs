@@ -141,4 +141,7 @@ fn print_scan(label: &str, stats: &ScanStats) {
     println!("  chunks:     {}", stats.chunks_indexed);
     println!("  embedded:   {}", stats.chunks_embedded);
     println!("  bytes:      {}", stats.bytes_read);
+    println!("  walk:       {} ms", stats.walk_ms);
+    println!("  reindex:    {} ms", stats.reindex_ms);
+    println!("  finalize:   {} ms", stats.finalize_ms);
 }

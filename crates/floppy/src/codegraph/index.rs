@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use ignore::WalkBuilder;
 use std::collections::{BTreeMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use turso::{Connection, params};
 
 use super::chunk::{chunk_source, embed_text_for_chunk, lang_label_for_path};
@@ -51,6 +51,7 @@ impl Indexer<'_> {
         let existing = load_file_hashes(conn).await?;
         self.report(IndexPhase::Scanning, &stats, None);
 
+        let walk_start = Instant::now();
         let walker = WalkBuilder::new(self.root)
             .hidden(false)
             .git_ignore(true)
@@ -116,6 +117,7 @@ impl Indexer<'_> {
                 continue;
             }
 
+            let index_start = Instant::now();
             let source = String::from_utf8_lossy(&bytes).into_owned();
             let chunks = chunk_source(&rel, &source, self.max_chunk_lines);
             let lang = lang_label_for_path(path);
@@ -124,13 +126,18 @@ impl Indexer<'_> {
                 .await
                 .with_context(|| format!("index {rel}"))?;
             stats.files_indexed += 1;
+            // Chunk + embed + DB writes for this file.
+            stats.reindex_ms += index_start.elapsed().as_millis() as u64;
             // Throttle UI: report every file when small, every 8th when large.
             if stats.files_indexed <= 20 || stats.files_indexed.is_multiple_of(8) {
                 self.report(IndexPhase::IndexingFile, &stats, Some(&rel));
             }
         }
+        // Walk time = everything in the loop except chunk/embed/DB work.
+        stats.walk_ms = (walk_start.elapsed().as_millis() as u64).saturating_sub(stats.reindex_ms);
 
         self.report(IndexPhase::Finalizing, &stats, None);
+        let finalize_start = Instant::now();
 
         // Remove deleted paths
         for old in existing.keys() {
@@ -146,6 +153,7 @@ impl Indexer<'_> {
         upsert_meta(conn, META_ROOT, &root).await?;
         upsert_meta(conn, META_LAST, &now.to_string()).await?;
         upsert_meta(conn, META_DIR, &self.root.display().to_string()).await?;
+        stats.finalize_ms = finalize_start.elapsed().as_millis() as u64;
 
         self.report(IndexPhase::Done, &stats, None);
         Ok(stats)

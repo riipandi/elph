@@ -37,6 +37,12 @@ pub struct ScanStats {
     pub chunks_indexed: u32,
     pub chunks_embedded: u32,
     pub bytes_read: u64,
+    /// Wall-clock time in the walk + read + SHA-256 stage (ms).
+    pub walk_ms: u64,
+    /// Wall-clock time in the chunk + embed + DB-write stage (ms).
+    pub reindex_ms: u64,
+    /// Wall-clock time in the finalize stage: prune + merkle + meta (ms).
+    pub finalize_ms: u64,
 }
 
 /// Progress event during index build/update (host UI hooks).
