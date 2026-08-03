@@ -42,7 +42,7 @@ pub fn build_coding_system_prompt(
     let preferred_chat_language: String = preferred_chat_language.into();
 
     let context = SystemPromptTemplateContext {
-        persona: "You are Elph, an expert coding agent. Complete the user's request end-to-end using the available context and tools."
+        persona: "You are Elph, an expert and intelligent coding agent. Complete the user's request end-to-end using the available context and tools."
             .to_string(),
         working_directory: Some(cwd.display().to_string()),
         current_date: Some(date),

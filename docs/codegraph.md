@@ -34,7 +34,7 @@ the existing **floppy** memory store.
 
 ## Background
 
-Elph ads a **structural knowledge graph for code reviews** (HCI subcommand `codegraph`).
+Elph adds a **structural knowledge graph for code reviews** (CLI subcommand `codegraph`).
 The CLI already has a full skeleton (`elph/src/cli/codegraph.rs`): `build`, `update`,
 `watch`, `status`, `changes`, `eval`, `postprocess` (flows, communities, FTS),
 `repos`/`register`/`unregister`, `visualize`, `serve`. The `elph/src/codegraph/mod.rs`
@@ -52,8 +52,38 @@ techniques:
   raw `ripgrep` keyword search (codemogger claims; treat as indicative).
 
 Elph also drives a **floppy** memory store (Turso vector search). This design lets one
-store brand the gap between floppy memory and codegraph graph knowledge with minimal
-duplication.
+store bridge the gap between floppy memory and codegraph graph knowledge with minimal
+duplication. It also reconciles a third consumer — the per-project transcript — into the same
+DB file, so memory, transcript, and graph share a single connection path.
+
+### Prior art: `tirth8205/code-review-graph` (CRG)
+
+Highly relevant reference spec for Elph's `codegraph` area — arguably closer than
+codemogger, because CRG is literally a _code-review knowledge graph_ (not a snippet
+index). Its CLI surface (`build`, `update`, `watch`, `status`, `changes`, `eval`,
+`postprocess` [flows/communities/FTS], `repos`/`register`/`unregister`, `visualize`,
+`serve`) matches Elph's stub (`elph/src/cli/codegraph.rs`) almost exactly, so CRG is
+likely the conceptual source behind that skeleton.
+
+Relevant signals that independently **validate this design's decisions**:
+
+- Python 3 + Tree-sitter, SQLite at `.code-review-graph/graph.db`, MIT license.
+- Incremental updates via SHA-256 file hashes (only changed files re-parsed).
+- **FTS5 hybrid search** (keyword `BM25` + vector similarity).
+- Default embedding `all-MiniLM-L6-v2` (validates keeping MiniLM as default).
+- Embeddings computed from identifiers/signatures/structural context + a bounded
+  docstring summary — **not full function bodies**.
+- Postprocessing concepts to adopt for Elph's `postprocess` stub: execution flows,
+  community detection (Leiden, auto-split), hub/bridge detection (betweenness),
+  knowledge-gap analysis.
+- Honest benchmarks to set expectations: keyword search ranked **MRR ~0.35**,
+  flow-detection is ~recall on JS/Go, and "impact recall 1.0" is graph-derived
+  (circular, not a 100% claim); median token savings ~65× vs whole corpus.
+
+Boundaries for Elph: CRG is Python, so it is a **design/architecture reference, not
+importable code**; it also ships far more surface than needed (30 MCP tools, daemon,
+GitHub Action) — Elph should adopt the core graph + impact radius + FTS ideas, not chase
+feature parity.
 
 ---
 
@@ -111,6 +141,31 @@ Live `git2` usage in Elph today is worktree-only (`utils/git.rs`: `is_worktree`,
 `read_branch`, `read_worktree_stats`, `read_diff_stats`) — no history walk yet. A
 git-history helper would add a `Revwalk`-based walk (`log_commits(cwd, limit)` →
 `(subject, sha, diff_stat)`) to feed floppy/codegraph.
+
+### Merkle trees (Q6)
+
+The plan uses **flat SHA-256 per-file hashes + `head_sha`** — **not** a Merkle tree. Git
+itself is a Merkle DAG, so repo-wide change detection already rides on `head_sha`/commit
+hashes, and per-file hashes pinpoint exactly which file changed.
+
+Cost/benefit of a Merkle tree here:
+
+|                           | Full binary Merkle tree                   | Cumulative fingerprint         |
+| ------------------------- | ----------------------------------------- | ------------------------------ |
+| Build                     | O(n) hashing                              | O(n) hashing                   |
+| Update one leaf           | O(log n) if siblings stored; else O(n)    | O(n) fold (fast at repo scale) |
+| Membership proof          | Yes                                       | No (not needed here)           |
+| Implementation cost       | Moderate (sorted leaves, sibling storage) | Very low                       |
+| Value at small repo scale | Marginal                                  | Cheap, sufficient              |
+
+Because Elph targets consumer machines and repo/index sizes are typically hundreds to low
+thousands of files, recomputing a cumulative fold is cheap (`µs–ms`). A custom binary
+Merkle tree adds storage + ordering complexity for negligible gain today.
+
+**Recommendation:** if an index _fingerprint_ is ever needed — comparing snapshots, DB
+hand-offs, non-git projects, or the multi-repo registry — use a **cumulative fingerprint**
+`root = SHA256(sorted concat of per-file hashes)` stored in `cg_meta`, rather than a full
+binary Merkle tree. This is optional and out of the core build.
 
 ---
 
@@ -227,13 +282,13 @@ upsert `cg_chunks_v1`+ FTS trigger → drop chunks for gone paths →`ScanStats`
 
 ## Reasoned trade-offs / decisions to avoid
 
-| Decision                                                                                    | Rationale                                                                                                                                                                                                               |
-| ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Do **not** refactor existing flat `floppy` modules into `memory/` unless two features exist | Avoid cosmetic churn; `memory/` is justified _only_ because it becomes a peer module of `codegraph`                                                                                                                     |
-| Keep codegraph schema/migrations **separate** from memory                                   | Different domain, different lifecycle; independent enabling                                                                                                                                                             |
-| Shared DB file vs two files                                                                 | Prefer **separate files** (memory `store.db`, graph `.codegraph/graph.db`) for feature independence; if a shared Turso file is required, strict `cg_*` namespacing + a feature-combo-safe migration runner are mandates |
-| Default model = MiniLM (Apache-2.0), no embedding-heavy default                             | Consumer hardware bound                                                                                                                                                                                                 |
-| `jina-v3` / code-specific models only as opt-in                                             | License + memory + `embed_anything` limitations                                                                                                                                                                         |
+| Decision                                                                                    | Rationale                                                                                                                                                          |
+| ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Do **not** refactor existing flat `floppy` modules into `memory/` unless two features exist | Avoid cosmetic churn; `memory/` is justified _only_ because it becomes a peer module of `codegraph`                                                                |
+| Keep codegraph schema/migrations **separate** from memory                                   | Different domain, different lifecycle; independent enabling                                                                                                        |
+| Shared DB file vs two files                                                                 | **Chosen: single `store.db`** for both `mem_*` and `cg_*` to minimize open connections; mandates strict `cg_*` namespacing + a feature-combo-safe migration runner |
+| Default model = MiniLM (Apache-2.0), no embedding-heavy default                             | Consumer hardware bound                                                                                                                                            |
+| `jina-v3` / code-specific models only as opt-in                                             | License + memory + `embed_anything` limitations                                                                                                                    |
 
 ---
 
@@ -241,16 +296,17 @@ upsert `cg_chunks_v1`+ FTS trigger → drop chunks for gone paths →`ScanStats`
 
 Each recommendation maps a **finding** to a concrete **position** to take when building.
 
-| #   | Finding (temuan)                                                                                                      | Recommendation (rekomendasi)                                                                                                                                |
-| --- | --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Floppy has **no FTS**; codemogger uses FTS5 + `vector8` + hybrid for 25–370× keyword search                           | Build FTS5 external-content + triggers + `vector8` as a **new layer** — do not treat it as optimizing the existing full-scan retrieval                      |
-| 2   | FTS5 **is available** via `libsql-ffi` compile flags                                                                  | Use `turso` + raw FTS5 SQL (same core codemogger uses); no extra C dep needed                                                                               |
-| 3   | `all-MiniLM-L6-v2` is Apache-2.0, 384-dim, ~90 MB, near-instant on CPU                                                | **Keep as default embedder** for both memory and codegraph                                                                                                  |
-| 4   | `unixcoder-base`: encoder, not similarity-tuned, PyTorch-only, needs custom wrapper                                   | **Reject as default**; only consider for code-specific graph if converted + tuned, never as floppy default                                                  |
-| 5   | `jina-embeddings-v3`: 570M, CC-BY-NC-4.0, ONNX ~1.15 GB, needs task-LoRA + Matryoshka handling `embed_anything` lacks | **Reject as default**; at most expose as a heavy opt-in behind a flag, and flag the non-commercial license                                                  |
-| 6   | Bulk-embedding git history is too heavy for consumer hardware                                                         | **Do not bulk-embed history** — SHA-256 change detection + FTS5 on commit messages + selective embedding of work-relevant diffs                             |
-| 7   | `ast-grep-core` + tree-sitter grammars provide the AST chunking codemogger uses                                       | Gate them under a **`codegraph` feature** so default builds stay lean and RAM-light                                                                         |
-| 8   | Memory and graph are different domains with different lifecycle                                                       | Keep **separate schemas/migrations** (`mem_*` vs `cg_*`) and prefer **separate DB files**; share only the crate-internal `db.rs`/`embed.rs`/`paths.rs` core |
+| #   | Finding (temuan)                                                                                                      | Recommendation (rekomendasi)                                                                                                                                                                      |
+| --- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Floppy has **no FTS**; codemogger uses FTS5 + `vector8` + hybrid for 25–370× keyword search                           | Build FTS5 external-content + triggers + `vector8` as a **new layer** — do not treat it as optimizing the existing full-scan retrieval                                                            |
+| 2   | FTS5 **is available** via `libsql-ffi` compile flags                                                                  | Use `turso` + raw FTS5 SQL (same core codemogger uses); no extra C dep needed                                                                                                                     |
+| 3   | `all-MiniLM-L6-v2` is Apache-2.0, 384-dim, ~90 MB, near-instant on CPU                                                | **Keep as default embedder** for both memory and codegraph                                                                                                                                        |
+| 4   | `unixcoder-base`: encoder, not similarity-tuned, PyTorch-only, needs custom wrapper                                   | **Reject as default**; only consider for code-specific graph if converted + tuned, never as floppy default                                                                                        |
+| 5   | `jina-embeddings-v3`: 570M, CC-BY-NC-4.0, ONNX ~1.15 GB, needs task-LoRA + Matryoshka handling `embed_anything` lacks | **Reject as default**; at most expose as a heavy opt-in behind a flag, and flag the non-commercial license                                                                                        |
+| 6   | Bulk-embedding git history is too heavy for consumer hardware                                                         | **Do not bulk-embed history** — SHA-256 change detection + FTS5 on commit messages + selective embedding of work-relevant diffs                                                                   |
+| 7   | `ast-grep-core` + tree-sitter grammars provide the AST chunking codemogger uses                                       | Gate them under a **`codegraph` feature** so default builds stay lean and RAM-light                                                                                                               |
+| 8   | Memory and graph are different domains with different lifecycle                                                       | Keep **separate schemas/migrations** (`mem_*` vs `cg_*`), but **co-locate both in a single `store.db`** to minimize open connections; share the crate-internal `db.rs`/`embed.rs`/`paths.rs` core |
+| 9   | Merkle tree solves repo-wide integrity, but git already provides a Merkle DAG (`head_sha`)                            | Do **not** build a binary Merkle tree in core; add only an optional cumulative fingerprint (`SHA256` of sorted per-file hashes) in `cg_meta` if snapshot/DB comparison is ever needed             |
 
 ### Spin-out directives (in order of work)
 
@@ -262,21 +318,139 @@ Each recommendation maps a **finding** to a concrete **position** to take when b
 
 ---
 
-## Open questions (to settle before build)
+## Decisions (confirmed before build)
 
-1. Default `memory` feature? (Recommended: yes, `default = ["memory"]`)
-2. `codegraph` off-by-default feature? (Recommended: yes)
-3. Shared single DB vs two separate DB files?
-4. Which extension → grammar set for v1 chunking (`rust`, `python`, `go`, `javascript`,
-   `typescript`, …)?
-5. Flip default `accel-anything` embedding: keep MiniLM for memory AND graph, or allow a
-   heavier opt-in model behind a flag?
+1. **`memory` is the default feature** — `default = ["memory"]`. Floppy's identity is the
+   memory store; it must work out-of-the-box without heavy deps.
+2. **`codegraph` is off-by-default** — ast-grep-core, tree-sitter grammars, `sha2`, and
+   `ignore` load only when `--features codegraph` is enabled (consumer-resource constraint).
+3. **Single shared DB file `store.db`** — both memory (`mem_*`) and codegraph (`cg_*`)
+   tables live in one libSQL file, minimizing open connections and simplifying backup.
+   A feature-safe migration runner gates which schema applies (memory-only vs both), and
+   one shared `db.rs` connection path keeps connection/file-handle churn minimal.
+4. **v1 grammar set** — `rust`, `python`, `go`, `typescript` (`.ts` + `.tsx`),
+   `javascript`. Covers Elph's own ecosystem plus common languages; additional grammars
+   are additive via the same `language_for(path)` map.
+5. **Embedding default stays `all-MiniLM-L6-v2` for both memory and codegraph** — heavy
+   models (e.g. `jina-embeddings-v3`, code-specific) are exposed only as opt-in behind a
+   flag/env var, with the CC-BY-NC-4.0 license caveat documented. No dimension mismatch:
+   both stores run at 384-dim.
+6. **Migration mechanism: no `app_migrations` ledger table.** For a non-critical dev store
+   the ledger is ceremony. Use `PRAGMA user_version` (single built-in integer per file) +
+   fully idempotent/additive DDL + an `ALTER TABLE ADD COLUMN` guard (`PRAGMA table_info`).
+   One composed runner per DB file; module version bands prevent collisions within a file
+   (memory 1–99, transcript 100–199, host 200–299, codegraph 500–599).
+7. **Project DB consolidation: transcript merges into `store.db`.** The per-project
+   transcript cache leaves `<project>/.elph/metadata.db` and lands in `store.db` beside the
+   memory tables. Global `~/.local/share/elph/metadata.db` (sessions, goals, session tree)
+   stays a separate, machine-global file with its own independent migration sequence.
+8. **Floppy memory gains an FTS5 + hybrid retrieval layer.** Add an external-content FTS5
+   table over `memories` + triggers (floppy migration V4), candidate-then-rerank vector
+   search, and a BM25 + vector hybrid. The current vector-only path stays as fallback until
+   the hybrid is proven on consumer-class hardware.
+
+---
+
+## Store DB architecture (single project file)
+
+**Chosen layout after consolidation:**
+
+| File                                       | Tables                                                                          | Migration owner                                                                        |
+| ------------------------------------------ | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `~/.local/share/elph/metadata.db` (global) | sessions, goals, skill_cache, agent_spawn_edges, session tree                   | host `metadata_migrations()` (v1–8) + elph-agent (v100); **unchanged, machine-global** |
+| `<project>/.elph/store.db`                 | floppy memory (`mem_*`) + transcript (`elph_transcript_*`) + codegraph (`cg_*`) | one composed, feature-gated runner                                                     |
+| `<project>/.elph/metadata.db`              | (retired) transcript snapshot                                                   | merged into `store.db`                                                                 |
+
+The per-project transcript cache no longer gets its own file; `store.db` becomes the sole
+project DB (fewest open connections, one backup unit). Memory and codegraph keep separate
+namespaced schemas (`mem_*` vs `cg_*`); the transcript tables use their own namespace so the
+three consumers coexist without table collisions.
+
+### Migration mechanism (no ledger table)
+
+The `app_migrations` ledger table is **dropped**. For a non-critical dev store, the
+`MAX(version)` ledger is ceremony. Replaced by:
+
+- **`PRAGMA user_version`** — single built-in integer per DB file = highest applied schema.
+  Fast-path: `current >= target` → skip.
+- **Idempotent, additive DDL** — `CREATE ... IF NOT EXISTS` everywhere, so re-running is
+  safe; a crash mid-run self-heals on the next open (no transaction needed).
+- **`ALTER TABLE ADD COLUMN` guard** — not idempotent in SQLite; each is gated by a
+  `PRAGMA table_info(<table>)` existence check before adding.
+- **One composed runner per file** — the host concatenates the active modules' slices
+  (memory-only vs memory+transcript → +codegraph) and applies them in version order.
+
+### Version bands (module namespaces, per file)
+
+`user_version` is one integer per file, so modules must not collide:
+
+| Band    | Owner                          |
+| ------- | ------------------------------ |
+| 1–99    | floppy `memory` (V1..V3 today) |
+| 100–199 | transcript (Elph)              |
+| 200–299 | host / Elph-specific store     |
+| 500–599 | floppy `codegraph` (`cg_*`)    |
+
+`codegraph` sits high so it can be feature-disabled without touching the memory/transcript
+schema. The global `metadata.db` runs its own independent sequence (v1–8 + 100) with the
+same mechanism, in a separate file — no shared ledger across files.
+
+---
+
+## Floppy memory retrieval optimization (FTS5 + vector)
+
+### Current state (verified in code)
+
+- **No FTS.** Floppy retrieval (`crates/floppy/src/util.rs::retrieval_sql`) is a
+  brute-force full scan: `vector_distance_cos(vector32(embedding), vector32(?))` is computed
+  for every row, then `ORDER BY (1.0 - distance) * POWER(decay, …)` — distance computed
+  twice, temp-b-tree sort over all rows, decay baked into the ORDER BY (unindexable).
+- **Vector** stored as f32 blob (384 dims → 1536 B); `VectorType::Vector32` default.
+- **FTS5 is available** — `libsql-ffi` compiles with
+  `SQLITE_ENABLE_FTS3|FTS5|RTREE|JSON1`.
+- **No side indexes / triggers** exist to keep an FTS or vector index consistent across
+  insert/update/delete/merge/purge/flush.
+
+### Optimization plan (phased)
+
+**Phase 1 — FTS5 keyword layer** (largest win, guaranteed available). External-content FTS5
+over `memories`:
+
+```sql
+CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
+    id UNINDEXED, category UNINDEXED, content,
+    tokenize = "porter unicode61"
+);
+-- AFTER INSERT / UPDATE / DELETE triggers on memories keep memories_fts in sync
+```
+
+BM25 ranking (`bm25(memories_fts)`) gives lexical search; codemogger reports 25–370× faster
+keyword retrieval than the existing scan.
+
+**Phase 2 — Vector search (maximal).** Move decay out of the SQL `ORDER BY`; compute
+similarity once per candidate and apply decay in the re-rank step (candidate-then-rerank:
+fetch `candidate_multiplier × top_k`, re-rank). Optionally store `vector8` (int8 quantized,
+384 B) for large corpora; default stays f32 for quality. Probe whether the bundled `turso`
+engine supports native vector columns / `vec0`-style KNN; if so, feature-gate it and fall
+back to brute-force otherwise.
+
+**Phase 3 — Hybrid retrieval.** Merge FTS5 BM25 + vector distance (reciprocal-rank fusion
+or weighted score) in `MemoryStore::search_memories` and the task-retrieval path. Keep the
+legacy vector-only path as fallback.
+
+**Phase 4 — Consistency & migration.** Ensure all write paths (write, consolidate, decay,
+purge, flush, penalize) keep `memories_fts` in sync via triggers. New floppy migration
+**V4** creates the FTS table + triggers + backfill, versioned under band 1–99 and coordinated
+with the migration mechanism above. Unit tests assert FTS row count matches `memories`
+after every mutation.
 
 ---
 
 ## References
 
 - codemogger: `glommer/codemogger` (GitHub)
+- code-review-graph (CRG): `tirth8205/code-review-graph` (session — Python/Tree-sitter;
+  graphs, blast-radius, flows, Leiden communities, FTS5 hybrid)
 - memelord → floppy: `crates/floppy` (this repository), schema V1–V3
 - `libsql-ffi/build.rs` — SQLite compile flags (FTS3/FTS5/RTREE/JSON1)
 - `docs.rs/ast-grep-core` 0.4x — Node API verified (children, dfs, field, find_all, range)

@@ -9,11 +9,11 @@ Inspired by [memelord](https://github.com/glommer/memelord) (MIT License, Copyri
 | Concern    | Approach                                                    |
 | ---------- | ----------------------------------------------------------- |
 | Storage    | Turso embedded SQLite (`store.db`)                          |
-| Retrieval  | Vector similarity (`vector32`; dims match embed model)      |
+| Retrieval  | Vector (`vector32`; dims match embed) + FTS5 keyword hybrid (BM25 + cosine) |
 | Embeddings | Local ONNX (configurable model + cache)                     |
 | Scoring    | Welford baseline + z-score task scoring, EMA weight updates |
 | IDs        | TSID (time-sortable, 13 characters)                         |
-| Migrations | Versioned SQL via shared `app_migrations` ledger            |
+| Migrations | Versioned via `PRAGMA user_version` + idempotent additive DDL (no ledger) |
 
 ### Lifecycle
 
@@ -67,10 +67,10 @@ First semantic search downloads from Hugging Face; later runs reuse the cache.
 | Table               | Purpose                                               |
 | ------------------- | ----------------------------------------------------- |
 | `memories`          | Content, embedding, category, weight, retrieval stats |
+| `memories_fts`      | External-content FTS5 index over `memories` (keyword BM25, V4) |
 | `tasks`             | Description, embedding, usage metrics, score          |
 | `memory_retrievals` | Per (memory, task): similarity, self-report, credit   |
 | `meta`              | Key-value (e.g. Welford baseline JSON)                |
-| `app_migrations`    | Migration ledger                                      |
 
 ### Categories
 
@@ -189,8 +189,12 @@ Embeddings are fixed-size blobs for `vector32` queries. Changing to a model with
 | 1       | Core schema                   |
 | 2       | Fix truncated embedding blobs |
 | 3       | Query indexes                 |
+| 4       | FTS5 index over `memories` + sync triggers (retrieval optimization) |
 
-Host-specific migrations use version numbers above the floppy baseline.
+Host-specific migrations use version numbers above the floppy baseline (see the version
+bands in [`codegraph.md`](./codegraph.md)); the project `store.db` also hosts the transcript
+and codegraph tables. No migration runs through a ledger table — schema version lives in
+`PRAGMA user_version`.
 
 ## Related
 

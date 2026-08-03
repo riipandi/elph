@@ -184,7 +184,7 @@ Event Loop                          Panel
            ▼
 ┌─────────────────────┐
 │  TranscriptCache    │  ← turso SQLite
-│  push_batch()       │    project/.elph/metadata.db
+│  push_batch()       │    project/.elph/store.db
 └─────────────────────┘
 ```
 
@@ -245,10 +245,20 @@ const KEEP_MESSAGES: usize = 200;                // keep after truncation
 ### Database Location
 
 ```
-<project>/.elph/metadata.db    // per-project transcript cache
-<project>/.elph/store.db       // existing floppy memory store
+<project>/.elph/store.db      // per-project transcript cache + floppy memory + codegraph
+<project>/.elph/metadata.db   // (retired) transcript cache — merged into store.db
+~/.local/share/elph/metadata.db // global sessions/goals (separate, machine-global)
 ```
 
+**Consolidation:** the per-project transcript cache no longer uses its own file. It moves
+into the single project DB `store.db`, alongside floppy memory and (when enabled) codegraph,
+so one project has exactly one SQLite connection/backup unit. The global
+`~/.local/share/elph/metadata.db` (sessions, goals, session tree) is unaffected and stays a
+separate machine-global file.
+
+The transcript tables get their own migration version band (100–199) under the shared
+`PRAGMA user_version` mechanism described in [`codegraph.md`](./codegraph.md#migration-mechanism-no-ledger-table),
+so they do not collide with floppy memory (1–99) or codegraph (500–599) in the same file.
 The path is resolved via [`Paths::transcript_db_path()`] in `platform/paths.rs`.
 
 ## File Map
