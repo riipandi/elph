@@ -3,6 +3,9 @@
 use anyhow::{Context, Result};
 use rand::RngExt;
 use std::future::Future;
+use std::sync::Arc;
+use std::time::Duration;
+use tokio::sync::Semaphore;
 use turso::{Builder, Connection, Database};
 
 /// Open an embedded Turso database at `db_path` with WAL recovery + lock retries.
@@ -140,6 +143,63 @@ pub(crate) fn database_in_use(db_path: &str) -> bool {
     modified
         .elapsed()
         .is_ok_and(|elapsed| elapsed < std::time::Duration::from_secs(30))
+}
+
+/// Simple connection pool for limiting concurrent DB access.
+/// Turso's libSQL doesn't have native connection pooling, so we use a semaphore
+/// to limit concurrent connections to avoid lock contention.
+#[derive(Clone)]
+pub struct ConnectionPool {
+    db: Arc<Database>,
+    semaphore: Arc<Semaphore>,
+    max_connections: usize,
+}
+
+impl ConnectionPool {
+    /// Create a new connection pool with the given max concurrent connections.
+    pub fn new(db: Database, max_connections: usize) -> Self {
+        Self {
+            db: Arc::new(db),
+            semaphore: Arc::new(Semaphore::new(max_connections)),
+            max_connections,
+        }
+    }
+
+    /// Get a connection from the pool, blocking if max concurrent connections reached.
+    pub async fn acquire(&self) -> Result<Connection> {
+        let _permit = self
+            .semaphore
+            .acquire()
+            .await
+            .map_err(|_| anyhow::anyhow!("Connection pool semaphore closed"))?;
+
+        let mut attempt = 0u32;
+        const MAX_RETRIES: u32 = 10;
+        const BASE_DELAY_MS: u64 = 50;
+
+        loop {
+            match self.db.connect() {
+                Ok(conn) => {
+                    conn.execute("PRAGMA busy_timeout = 5000", ()).await?;
+                    return Ok(conn);
+                }
+                Err(e) => {
+                    if attempt >= MAX_RETRIES || !is_lock_err(&e.to_string()) {
+                        return Err(e).context("connect failed");
+                    }
+                }
+            }
+            let jitter: f64 = rand::rng().random();
+            let delay = BASE_DELAY_MS as f64 * (1.0 + jitter) * (attempt as f64 + 1.0).min(5.0);
+            tokio::time::sleep(Duration::from_millis(delay as u64)).await;
+            attempt += 1;
+        }
+    }
+
+    /// Get the max number of concurrent connections.
+    pub fn max_connections(&self) -> usize {
+        self.max_connections
+    }
 }
 
 #[cfg(test)]

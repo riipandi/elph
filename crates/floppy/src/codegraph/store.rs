@@ -3,12 +3,13 @@
 use anyhow::Result;
 use std::path::Path;
 use std::sync::Mutex;
+use tokio::sync::OnceCell;
 
 use super::index::{self, Indexer};
 use super::migrations;
 use super::search;
 use super::types::{ChunkHit, CodegraphConfig, CodegraphStatus, ImpactNode, ProgressFn, ScanStats, SearchOptions};
-use crate::core::db;
+use crate::core::db::{self, ConnectionPool};
 use crate::core::embed::EmbedFn;
 
 pub struct CodegraphStore {
@@ -19,6 +20,8 @@ pub struct CodegraphStore {
     max_chunk_lines: u32,
     max_file_bytes: u64,
     initialized: Mutex<bool>,
+    connection_pool: OnceCell<ConnectionPool>,
+    max_db_connections: usize,
 }
 
 impl CodegraphStore {
@@ -31,7 +34,22 @@ impl CodegraphStore {
             max_chunk_lines: config.max_chunk_lines,
             max_file_bytes: config.max_file_bytes,
             initialized: Mutex::new(false),
+            connection_pool: OnceCell::new(),
+            max_db_connections: config.max_db_connections.unwrap_or(4),
         }
+    }
+
+    async fn get_connection_pool(&self) -> Result<&ConnectionPool> {
+        if let Some(pool) = self.connection_pool.get() {
+            return Ok(pool);
+        }
+
+        let db = db::open_local_db(&self.db_path).await?;
+        let pool = ConnectionPool::new(db, self.max_db_connections);
+        self.connection_pool
+            .set(pool)
+            .map_err(|_| anyhow::anyhow!("Failed to initialize connection pool"))?;
+        Ok(self.connection_pool.get().unwrap())
     }
 
     pub async fn init(&self) -> Result<()> {
@@ -70,7 +88,9 @@ impl CodegraphStore {
         self.init().await?;
         let progress_ref = progress.as_ref();
         let indexer = self.indexer(progress_ref);
-        db::with_local_db(&self.db_path, |conn| async move { indexer.scan(&conn, true).await }).await
+        let pool = self.get_connection_pool().await?;
+        let conn = pool.acquire().await?;
+        indexer.scan(&conn, true).await
     }
 
     /// Incremental dirty reindex (CLI `update` / agent `code_reindex`).
@@ -82,7 +102,9 @@ impl CodegraphStore {
         self.init().await?;
         let progress_ref = progress.as_ref();
         let indexer = self.indexer(progress_ref);
-        db::with_local_db(&self.db_path, |conn| async move { indexer.reindex_dirty(&conn).await }).await
+        let pool = self.get_connection_pool().await?;
+        let conn = pool.acquire().await?;
+        indexer.reindex_dirty(&conn).await
     }
 
     pub async fn status(&self) -> Result<CodegraphStatus> {

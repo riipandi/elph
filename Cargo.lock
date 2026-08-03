@@ -3714,6 +3714,7 @@ dependencies = [
  "memorable-ids",
  "parking_lot",
  "rand 0.10.2",
+ "rayon",
  "regex",
  "serde",
  "serde_json",

@@ -12,6 +12,8 @@ pub struct CodegraphConfig {
     pub max_chunk_lines: u32,
     /// Skip files larger than this many bytes (default 1 MiB).
     pub max_file_bytes: u64,
+    /// Max concurrent DB connections for parallel writes (default 4).
+    pub max_db_connections: Option<usize>,
 }
 
 impl CodegraphConfig {
@@ -24,6 +26,7 @@ impl CodegraphConfig {
             max_chunk_lines: 120,
             // Cap per-file read size to keep consumer machines responsive.
             max_file_bytes: 512 * 1024,
+            max_db_connections: None,
         }
     }
 }

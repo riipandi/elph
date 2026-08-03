@@ -32,6 +32,7 @@ codegraph = [
   "dep:regex",
   "dep:xxhash-rust",
   "xxhash-rust/xxh3",
+  "dep:rayon",
 ]
 # Convenience: full surface for hosts (Elph).
 full = ["memory", "embed", "codegraph"]
@@ -58,6 +59,7 @@ kalid.workspace = true
 memorable-ids.workspace = true
 parking_lot.workspace = true
 rand.workspace = true
+rayon = { workspace = true, optional = true }
 regex = { workspace = true, optional = true }
 serde.workspace = true
 serde_json.workspace = true

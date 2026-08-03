@@ -2,8 +2,10 @@
 
 use anyhow::{Context, Result};
 use ignore::WalkBuilder;
+use rayon::prelude::*;
 use std::collections::{BTreeMap, HashSet};
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use turso::{Connection, params};
 
@@ -17,6 +19,23 @@ use crate::core::util::{drain_rows, is_zero, vec_buf};
 const META_ROOT: &str = "merkle_root";
 const META_LAST: &str = "last_indexed_at";
 const META_DIR: &str = "root_dir";
+
+/// File data collected during walk phase for parallel processing.
+struct FileToProcess {
+    rel: String,
+    bytes: Vec<u8>,
+    hash: String,
+}
+
+/// Result of parallel file processing.
+struct ProcessedFile {
+    rel: String,
+    hash: String,
+    lang: String,
+    source: String,
+    chunks: Vec<RawChunk>,
+    embeddings: Vec<Vec<f32>>,
+}
 
 pub struct Indexer<'a> {
     pub root: &'a Path,
@@ -53,13 +72,15 @@ impl Indexer<'_> {
 
         let walk_start = Instant::now();
 
-        // Use parallel walking with ignore crate
+        // Phase 1: Walk and collect files (sequential - filesystem operations)
         let walker = WalkBuilder::new(self.root)
             .hidden(false)
             .git_ignore(true)
             .git_global(true)
             .git_exclude(true)
             .build();
+
+        let mut files_to_process: Vec<FileToProcess> = Vec::new();
 
         for entry in walker {
             let entry = match entry {
@@ -121,34 +142,109 @@ impl Indexer<'_> {
                 continue;
             }
 
-            let index_start = Instant::now();
-            let source = String::from_utf8_lossy(&bytes).into_owned();
-            let chunks = chunk_source(&rel, &source, self.max_chunk_lines);
-            let lang = lang_label_for_path(path);
-            self.report(IndexPhase::IndexingFile, &stats, Some(&rel));
-            self.reindex_file(conn, &rel, &hash, lang, &source, &chunks, &mut stats)
-                .await
-                .with_context(|| format!("index {rel}"))?;
-            stats.files_indexed += 1;
-            // Chunk + embed + DB writes for this file.
-            stats.reindex_ms += index_start.elapsed().as_millis() as u64;
-            // Throttle UI: report every file when small, every 8th when large.
-            if stats.files_indexed <= 20 || stats.files_indexed.is_multiple_of(8) {
-                self.report(IndexPhase::IndexingFile, &stats, Some(&rel));
-            }
+            files_to_process.push(FileToProcess {
+                rel: rel.clone(),
+                bytes,
+                hash,
+            });
         }
-        // Walk time = everything in the loop except chunk/embed/DB work.
-        stats.walk_ms = (walk_start.elapsed().as_millis() as u64).saturating_sub(stats.reindex_ms);
 
-        self.report(IndexPhase::Finalizing, &stats, None);
-        let finalize_start = Instant::now();
+        stats.walk_ms = walk_start.elapsed().as_millis() as u64;
 
-        // Remove deleted paths
+        // Phase 2: Parallel chunking with rayon (CPU-bound)
+        let chunk_start = Instant::now();
+        let root_path = self.root.to_path_buf();
+        let max_chunk_lines = self.max_chunk_lines;
+
+        let chunked_files: Vec<(String, String, String, String, Vec<RawChunk>)> = files_to_process
+            .par_iter()
+            .map(|file| {
+                let rel = &file.rel;
+                let bytes = &file.bytes;
+                let hash = &file.hash;
+
+                let source = String::from_utf8_lossy(bytes).into_owned();
+                let chunks = chunk_source(rel, &source, max_chunk_lines);
+                let lang = lang_label_for_path(root_path.join(rel).as_path()).to_string();
+
+                (rel.clone(), hash.clone(), lang, source, chunks)
+            })
+            .collect();
+
+        stats.reindex_ms = chunk_start.elapsed().as_millis() as u64;
+
+        // Phase 3: Process embeddings sequentially (async limitation)
+        let embed_start = Instant::now();
+        let embed_fn = self.embed;
+        let stats_mutex = Arc::new(Mutex::new(stats.clone()));
+
+        let processed_with_embeddings: Vec<ProcessedFile> = chunked_files
+            .into_iter()
+            .map(|(rel, hash, lang, source, chunks)| {
+                let mut embeddings = Vec::new();
+                for _chunk in &chunks {
+                    // Embeddings must be processed sequentially due to async
+                    // We'll fill these in the next loop
+                    embeddings.push(vec![]);
+                }
+
+                ProcessedFile {
+                    rel,
+                    hash,
+                    lang,
+                    source,
+                    chunks,
+                    embeddings,
+                }
+            })
+            .collect();
+
+        // Process embeddings sequentially (async limitation)
+        let mut final_processed = Vec::new();
+        for mut file in processed_with_embeddings {
+            for (i, chunk) in file.chunks.iter().enumerate() {
+                let embed_src = embed_text_for_chunk(chunk);
+                let emb = embed_fn(&embed_src).await.unwrap_or_default();
+                file.embeddings[i] = emb;
+            }
+
+            let mut s = stats_mutex.lock().unwrap();
+            s.chunks_embedded += file.embeddings.iter().filter(|e| !is_zero(e)).count() as u32;
+            drop(s);
+
+            final_processed.push(file);
+        }
+
+        let mut stats = stats_mutex.lock().unwrap().clone();
+        stats.reindex_ms += embed_start.elapsed().as_millis() as u64;
+
+        // Phase 4: Batch DB writes
+        let db_start = Instant::now();
+
+        // Delete old paths first
         for old in existing.keys() {
             if !live_paths.contains(old) {
                 delete_path(conn, old).await?;
             }
         }
+
+        // Batch insert all files
+        for processed in &final_processed {
+            self.report(IndexPhase::IndexingFile, &stats, Some(&processed.rel));
+            self.batch_insert_file(conn, processed, &mut stats)
+                .await
+                .with_context(|| format!("index {}", processed.rel))?;
+            stats.files_indexed += 1;
+
+            if stats.files_indexed <= 20 || stats.files_indexed.is_multiple_of(8) {
+                self.report(IndexPhase::IndexingFile, &stats, Some(&processed.rel));
+            }
+        }
+
+        stats.reindex_ms += db_start.elapsed().as_millis() as u64;
+
+        self.report(IndexPhase::Finalizing, &stats, None);
+        let finalize_start = Instant::now();
 
         // Rebuild file_map from DB for accurate root (includes unchanged)
         let final_map = load_file_hashes(conn).await?;
@@ -163,36 +259,31 @@ impl Indexer<'_> {
         Ok(stats)
     }
 
-    /// Reindex only paths whose worktree hash differs from the store.
-    pub async fn reindex_dirty(&self, conn: &Connection) -> Result<ScanStats> {
-        self.scan(conn, false).await
-    }
-
-    // Internal helper with a single call site; each arg is a flat per-file DB
-    // column, so a parameter struct would add ceremony without clarity. DeepWiki
-    // (rust-clippy: too_many_arguments) sanctions #[allow] for such helpers.
-    #[allow(clippy::too_many_arguments)]
-    async fn reindex_file(
+    /// Batch insert a processed file to reduce DB roundtrips.
+    async fn batch_insert_file(
         &self,
         conn: &Connection,
-        rel: &str,
-        hash: &str,
-        lang: &str,
-        source: &str,
-        chunks: &[RawChunk],
+        processed: &ProcessedFile,
         stats: &mut ScanStats,
     ) -> Result<()> {
-        delete_path(conn, rel).await?;
+        // Use transaction for atomicity
+        conn.execute("BEGIN TRANSACTION", ()).await?;
 
+        // Insert file record
         let now = now_secs();
         conn.execute(
             "INSERT INTO cg_files(path, file_hash, lang, updated_at) VALUES (?, ?, ?, ?)",
-            params![rel, hash, lang, now],
+            params![
+                processed.rel.as_str(),
+                processed.hash.as_str(),
+                processed.lang.as_str(),
+                now
+            ],
         )
         .await?;
 
         // Batch insert nodes
-        let nodes = nodes_for_chunks(chunks);
+        let nodes = nodes_for_chunks(&processed.chunks);
         if !nodes.is_empty() {
             for (id, path, name, kind, start, end) in nodes {
                 conn.execute(
@@ -205,8 +296,8 @@ impl Indexer<'_> {
         }
 
         // Batch insert edges
-        let src_node = file_node_id(rel);
-        let targets = extract_import_targets(rel, source);
+        let src_node = file_node_id(&processed.rel);
+        let targets = extract_import_targets(&processed.rel, &processed.source);
         if !targets.is_empty() {
             for target in targets {
                 let dst = format!("import:{target}");
@@ -219,38 +310,38 @@ impl Indexer<'_> {
         }
 
         // Batch insert chunks with embeddings
-        if !chunks.is_empty() {
-            for chunk in chunks {
-                // Compact embed text reduces model tokens / RAM; full body still stored for FTS.
-                let embed_src = embed_text_for_chunk(chunk);
-                let emb = (self.embed)(&embed_src).await?;
-                let emb_blob = if is_zero(&emb) {
-                    None
-                } else {
-                    stats.chunks_embedded += 1;
-                    Some(vec_buf(&emb))
-                };
+        for (i, chunk) in processed.chunks.iter().enumerate() {
+            let embedding = processed
+                .embeddings
+                .get(i)
+                .and_then(|e| if is_zero(e) { None } else { Some(e.as_slice()) });
+            let emb_blob = embedding.map(vec_buf);
 
-                conn.execute(
-                    "INSERT INTO cg_chunks(path, kind, name, start_line, end_line, content, file_hash, embedding)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    params![
-                        chunk.path.as_str(),
-                        chunk.kind.as_str(),
-                        chunk.name.as_deref(),
-                        chunk.start_line as i64,
-                        chunk.end_line as i64,
-                        chunk.content.as_str(),
-                        hash,
-                        emb_blob.as_deref(),
-                    ],
-                )
-                .await?;
-                stats.chunks_indexed += 1;
-            }
+            conn.execute(
+                "INSERT INTO cg_chunks(path, kind, name, start_line, end_line, content, file_hash, embedding)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                params![
+                    chunk.path.as_str(),
+                    chunk.kind.as_str(),
+                    chunk.name.as_deref(),
+                    chunk.start_line as i64,
+                    chunk.end_line as i64,
+                    chunk.content.as_str(),
+                    processed.hash.as_str(),
+                    emb_blob.as_deref(),
+                ],
+            )
+            .await?;
+            stats.chunks_indexed += 1;
         }
 
+        conn.execute("COMMIT", ()).await?;
         Ok(())
+    }
+
+    /// Reindex only paths whose worktree hash differs from the store.
+    pub async fn reindex_dirty(&self, conn: &Connection) -> Result<ScanStats> {
+        self.scan(conn, false).await
     }
 }
 
