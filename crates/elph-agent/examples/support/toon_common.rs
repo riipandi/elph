@@ -18,7 +18,6 @@ use elph_agent::ToolResultContent;
 pub use elph_agent::encode_value;
 use elph_ai::{Message, StopReason};
 use elph_ai::{builtin_models, get_builtin_model};
-use elph_tui::progress_spinner;
 use serde_json::Value;
 use serde_json::json;
 
@@ -73,10 +72,9 @@ pub async fn resolve_model() -> anyhow::Result<elph_ai::Model> {
     let model = get_builtin_model(PROVIDER, MODEL_ID)
         .ok_or_else(|| anyhow::anyhow!("model not found: {PROVIDER}/{MODEL_ID}"))?;
 
-    let setup = progress_spinner("Resolving auth...");
+    eprintln!("Resolving auth...");
     let models = builtin_models(None);
     let auth = models.get_auth(&model).await?;
-    setup.finish_and_clear();
 
     if auth.is_none() {
         anyhow::bail!("OpenCode Zen is not configured (missing OPENCODE_API_KEY?)");
@@ -233,12 +231,11 @@ pub fn report_tool_result(tool_name: &str, result: &AgentToolResult) {
 }
 
 pub async fn run_agent_prompt(agent: &Agent, prompt: &str, meta: &RunMeta<'_>) -> anyhow::Result<()> {
-    let generating = progress_spinner("Streaming from big-pickle...");
+    eprintln!("Streaming from big-pickle...");
     let saw_delta = Arc::new(AtomicBool::new(false));
 
     agent
         .subscribe(Arc::new(move |event, _token| {
-            let generating = generating.clone();
             let saw_delta = saw_delta.clone();
             Box::pin(async move {
                 match event {
@@ -248,14 +245,10 @@ pub async fn run_agent_prompt(agent: &Agent, prompt: &str, meta: &RunMeta<'_>) -
                     } => {
                         if let elph_ai::AssistantMessageEvent::TextDelta { delta, .. } = &*assistant_message_event {
                             if !saw_delta.swap(true, Ordering::SeqCst) {
-                                generating.finish_and_clear();
                             }
                             print!("{delta}");
                             let _ = std::io::stdout().flush();
                         }
-                    }
-                    AgentEvent::AgentEnd { .. } if !saw_delta.load(Ordering::SeqCst) => {
-                        generating.finish_and_clear();
                     }
                     AgentEvent::AgentEnd { .. } => {}
                     _ => {}

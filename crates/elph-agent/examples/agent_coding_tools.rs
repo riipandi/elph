@@ -19,7 +19,6 @@ use elph_agent::{Agent, AgentEvent, AgentOptions, LocalExecutionEnv, PartialAgen
 use elph_agent::{create_all_tools, create_edit_tools, create_search_tools};
 use elph_ai::{Message, StopReason};
 use elph_ai::{builtin_models, get_builtin_model};
-use elph_tui::progress_spinner;
 
 const PROVIDER: &str = "opencode";
 const MODEL_ID: &str = "big-pickle";
@@ -57,10 +56,9 @@ async fn main() -> anyhow::Result<()> {
     println!("Tools:    {}", args.tools);
     println!();
 
-    let setup = progress_spinner("Resolving auth...");
+    eprintln!("Resolving auth...");
     let models = builtin_models(None);
     let auth = models.get_auth(&model).await?;
-    setup.finish_and_clear();
 
     if let Some(auth) = &auth {
         println!("Auth:     configured via {}", auth.source.as_deref().unwrap_or("unknown"));
@@ -121,18 +119,15 @@ async fn main() -> anyhow::Result<()> {
         ..Default::default()
     });
 
-    // ── Subscribe to events ──
-    let generating = progress_spinner("Streaming from big-pickle...");
+    eprintln!("Streaming from big-pickle...");
     let saw_delta = Arc::new(AtomicBool::new(false));
     let tool_calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
 
     {
-        let generating = generating.clone();
         let saw_delta = saw_delta.clone();
         let tool_calls = tool_calls.clone();
         agent
             .subscribe(Arc::new(move |event, _token| {
-                let generating = generating.clone();
                 let saw_delta = saw_delta.clone();
                 let tool_calls = tool_calls.clone();
                 Box::pin(async move {
@@ -143,16 +138,12 @@ async fn main() -> anyhow::Result<()> {
                         } => {
                             if let elph_ai::AssistantMessageEvent::TextDelta { delta, .. } = &*assistant_message_event {
                                 if !saw_delta.swap(true, Ordering::SeqCst) {
-                                    generating.finish_and_clear();
                                 }
                                 print!("{delta}");
                                 let _ = std::io::stdout().flush();
                             }
                         }
                         AgentEvent::ToolExecutionStart { tool_name, .. } => {
-                            if !saw_delta.load(Ordering::SeqCst) {
-                                generating.finish_and_clear();
-                            }
                             tool_calls.fetch_add(1, Ordering::SeqCst);
                             println!();
                             println!("🔧 Calling tool: {tool_name}");
@@ -162,9 +153,6 @@ async fn main() -> anyhow::Result<()> {
                         } => {
                             let status = if is_error { "❌" } else { "✅" };
                             println!("{status} Tool finished: {tool_name}");
-                        }
-                        AgentEvent::AgentEnd { .. } if !saw_delta.load(Ordering::SeqCst) => {
-                            generating.finish_and_clear();
                         }
                         AgentEvent::AgentEnd { .. } => {}
                         _ => {}

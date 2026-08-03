@@ -3196,7 +3196,6 @@ dependencies = [
  "bytes",
  "crossbeam-channel",
  "elph-ai",
- "elph-tui",
  "failsafe",
  "fastrace",
  "fastrace-reqwest",

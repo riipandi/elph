@@ -70,8 +70,10 @@ impl Indexer<'_> {
     /// Full or incremental index. When `full` is true, rehash all files (still skips unchanged hashes).
     pub async fn scan(&self, conn: &Connection, full: bool) -> Result<ScanStats> {
         let _ = full;
-        let mut stats = ScanStats::default();
-        stats.gpu_acceleration = self.gpu_acceleration.clone();
+        let mut stats = ScanStats {
+            gpu_acceleration: self.gpu_acceleration.clone(),
+            ..Default::default()
+        };
         let mut live_paths: HashSet<String> = HashSet::new();
         let mut file_map: BTreeMap<String, String> = BTreeMap::new();
 
@@ -170,7 +172,7 @@ impl Indexer<'_> {
             let seconds_per_file = if self
                 .gpu_acceleration
                 .as_ref()
-                .map_or(false, |s| s.contains("metal") || s.contains("cuda"))
+                .is_some_and(|s| s.contains("metal") || s.contains("cuda"))
             {
                 0.1 // GPU is faster
             } else {

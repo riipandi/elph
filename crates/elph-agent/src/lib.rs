@@ -142,7 +142,6 @@ pub use agent::subagent::SubagentSpawnConfig;
 pub use agent::subagent::SubagentStatus;
 pub use agent::subagent::generate_agent_name;
 pub use agent::{Agent, AgentListener, AgentOptions, AgentSubscription, PartialAgentState};
-pub use builder::InitProgress;
 pub use builder::{AgentBuilder, AgentInit, BuiltinToolsBuilder};
 pub use collaboration::ToolExposurePolicy;
 pub use collaboration::assistant_message_text;

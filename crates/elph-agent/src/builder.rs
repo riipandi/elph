@@ -139,9 +139,6 @@ impl BuiltinToolsBuilder {
     }
 }
 
-/// Startup progress bar rendered with iocraft on stderr.
-pub use elph_tui::CliProgress as InitProgress;
-
 #[cfg(test)]
 mod tests {
     use super::*;

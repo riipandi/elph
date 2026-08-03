@@ -276,7 +276,7 @@ impl Default for ModelsSettings {
 }
 
 /// GPU acceleration mode for embeddings.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum GpuAcceleration {
     /// Always use GPU (fails if GPU unavailable or feature not enabled).
@@ -284,13 +284,8 @@ pub enum GpuAcceleration {
     /// Never use GPU (CPU-only).
     Off,
     /// Auto-detect and use GPU if available (default).
+    #[default]
     Auto,
-}
-
-impl Default for GpuAcceleration {
-    fn default() -> Self {
-        Self::Auto
-    }
 }
 
 impl std::fmt::Display for GpuAcceleration {

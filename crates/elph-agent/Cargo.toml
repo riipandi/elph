@@ -58,7 +58,6 @@ base64.workspace = true
 bytes.workspace = true
 crossbeam-channel.workspace = true
 elph-ai.workspace = true
-elph-tui.workspace = true
 failsafe.workspace = true
 fastrace = { workspace = true, optional = true }
 fastrace-reqwest = { workspace = true, optional = true }

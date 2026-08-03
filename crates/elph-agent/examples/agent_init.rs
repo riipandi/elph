@@ -1,7 +1,7 @@
 //! Agent builder and initialization — configure app identity, logging, and built-in tools.
 //!
 //! Demonstrates: `AgentBuilder`, `AgentInit`, `BuiltinToolsBuilder` (with feature gates),
-//! `InitProgress`, `LoggingOptions`.
+//! `LoggingOptions`.
 //!
 //! ```sh
 //! cargo run -p elph-agent --example agent_init --features builtin-tools
@@ -13,7 +13,6 @@ use std::sync::Arc;
 use elph_agent::AgentBuilder;
 use elph_agent::AgentInit;
 use elph_agent::BuiltinToolsBuilder;
-use elph_agent::InitProgress;
 use elph_agent::LocalExecutionEnv;
 use elph_agent::LogRotation;
 use elph_agent::LoggingOptions;
@@ -69,14 +68,12 @@ fn main() {
     let no_web = BuiltinToolsBuilder::new(env).without_web().build();
     println!("\n  Without web: {} tools", no_web.len());
 
-    // ── 6. InitProgress: progress bar for startup phases ──
-    println!("\n=== InitProgress ===");
-    let progress = InitProgress::new(3);
-    progress.advance("Loading config...");
-    progress.advance("Initializing databases...");
-    progress.advance("Starting runtime...");
-    progress.finish();
-    println!("  (progress bar advanced through 3 steps)");
+    // ── 6. Simple startup progress indicator ──
+    println!("\n=== Startup progress ===");
+    println!("  Loading config...");
+    println!("  Initializing databases...");
+    println!("  Starting runtime...");
+    println!("  (startup steps completed)");
 
     // ── 7. LoggingOptions::resolve directly ──
     println!("\n=== LoggingOptions resolusi langsung ===");
