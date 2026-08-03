@@ -22,6 +22,7 @@ pub struct CodegraphStore {
     initialized: Mutex<bool>,
     connection_pool: OnceCell<ConnectionPool>,
     max_db_connections: usize,
+    gpu_acceleration: Option<String>,
 }
 
 impl CodegraphStore {
@@ -36,6 +37,7 @@ impl CodegraphStore {
             initialized: Mutex::new(false),
             connection_pool: OnceCell::new(),
             max_db_connections: config.max_db_connections.unwrap_or(4),
+            gpu_acceleration: config.gpu_acceleration,
         }
     }
 
@@ -75,6 +77,7 @@ impl CodegraphStore {
             max_chunk_lines: self.max_chunk_lines,
             max_file_bytes: self.max_file_bytes,
             progress,
+            gpu_acceleration: self.gpu_acceleration.clone(),
         }
     }
 

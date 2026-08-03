@@ -293,6 +293,16 @@ impl Default for GpuAcceleration {
     }
 }
 
+impl std::fmt::Display for GpuAcceleration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GpuAcceleration::On => write!(f, "on"),
+            GpuAcceleration::Off => write!(f, "off"),
+            GpuAcceleration::Auto => write!(f, "auto"),
+        }
+    }
+}
+
 /// Custom deserializer for backward compatibility: accepts both bool and string.
 fn deserialize_gpu_acceleration<'de, D>(deserializer: D) -> Result<GpuAcceleration, D::Error>
 where

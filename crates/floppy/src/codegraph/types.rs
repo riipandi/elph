@@ -14,6 +14,8 @@ pub struct CodegraphConfig {
     pub max_file_bytes: u64,
     /// Max concurrent DB connections for parallel writes (default 4).
     pub max_db_connections: Option<usize>,
+    /// GPU acceleration mode used for embeddings (on/off/auto/detected).
+    pub gpu_acceleration: Option<String>,
 }
 
 impl CodegraphConfig {
@@ -27,6 +29,7 @@ impl CodegraphConfig {
             // Cap per-file read size to keep consumer machines responsive.
             max_file_bytes: 512 * 1024,
             max_db_connections: None,
+            gpu_acceleration: None,
         }
     }
 }
@@ -46,6 +49,8 @@ pub struct ScanStats {
     pub reindex_ms: u64,
     /// Wall-clock time in the finalize stage: prune + merkle + meta (ms).
     pub finalize_ms: u64,
+    /// GPU acceleration mode used for embeddings (on/off/auto/detected).
+    pub gpu_acceleration: Option<String>,
 }
 
 /// Progress event during index build/update (host UI hooks).

@@ -13,6 +13,16 @@ pub enum GpuBackend {
     Cuda,
 }
 
+impl std::fmt::Display for GpuBackend {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GpuBackend::None => write!(f, "none"),
+            GpuBackend::Metal => write!(f, "metal"),
+            GpuBackend::Cuda => write!(f, "cuda"),
+        }
+    }
+}
+
 /// GPU configuration for embedder.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GpuConfig {

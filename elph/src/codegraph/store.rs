@@ -4,8 +4,8 @@ use crate::platform::{GpuAcceleration, Paths, Settings};
 use crate::utils::path::AppPaths;
 use anyhow::{Context, Result};
 use floppy::{
-    CodegraphConfig, CodegraphStore, DEFAULT_EMBEDDING_DIMS, EMBEDDER_INIT_TIMEOUT, EmbedOptions, GpuConfig,
-    create_embedder_with_timeout, embedding_dims, noop_embedder, resolve_embedding_model,
+    CodegraphConfig, CodegraphStore, DEFAULT_EMBEDDING_DIMS, EMBEDDER_INIT_TIMEOUT, EmbedOptions, GpuBackend,
+    GpuConfig, create_embedder_with_timeout, embedding_dims, noop_embedder, resolve_embedding_model,
 };
 
 /// Open codegraph store sharing `<project>/.elph/store.db` with memory.
@@ -48,6 +48,32 @@ pub fn open_store(paths: &Paths, needs_embed: bool) -> Result<CodegraphStore> {
 
     let root = paths.project_dir().to_string_lossy().into_owned();
     let db_path = paths.memory_db_path().to_string_lossy().into_owned();
+
+    // Determine GPU acceleration mode for display
+    let gpu_acceleration = if needs_embed {
+        let gpu_config = match settings.models.embed.gpu_acceleration {
+            GpuAcceleration::On => GpuConfig::with_preference(true),
+            GpuAcceleration::Off => GpuConfig::with_preference(false),
+            GpuAcceleration::Auto => GpuConfig::detect(),
+        };
+        let gpu_backend = gpu_config.available_backend;
+        let gpu_enabled = gpu_config.enabled;
+        let setting_mode = settings.models.embed.gpu_acceleration;
+
+        let gpu_status = if !gpu_enabled {
+            format!("{} (disabled)", setting_mode)
+        } else {
+            match gpu_backend {
+                GpuBackend::Metal => format!("{} (metal)", setting_mode),
+                GpuBackend::Cuda => format!("{} (cuda)", setting_mode),
+                GpuBackend::None => format!("{} (cpu)", setting_mode),
+            }
+        };
+        Some(gpu_status)
+    } else {
+        None
+    };
+
     let cg_config = CodegraphConfig {
         db_path,
         root_dir: root,
@@ -56,6 +82,7 @@ pub fn open_store(paths: &Paths, needs_embed: bool) -> Result<CodegraphStore> {
         max_chunk_lines: settings.codegraph.max_chunk_lines,
         max_file_bytes: settings.codegraph.max_file_bytes,
         max_db_connections: Some(settings.codegraph.max_db_connections),
+        gpu_acceleration,
     };
     Ok(CodegraphStore::new(cg_config))
 }

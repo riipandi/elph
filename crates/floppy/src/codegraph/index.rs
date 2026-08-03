@@ -43,6 +43,7 @@ pub struct Indexer<'a> {
     pub max_chunk_lines: u32,
     pub max_file_bytes: u64,
     pub progress: Option<&'a ProgressFn>,
+    pub gpu_acceleration: Option<String>,
 }
 
 impl Indexer<'_> {
@@ -61,6 +62,7 @@ impl Indexer<'_> {
     pub async fn scan(&self, conn: &Connection, full: bool) -> Result<ScanStats> {
         let _ = full;
         let mut stats = ScanStats::default();
+        stats.gpu_acceleration = self.gpu_acceleration.clone();
         let mut live_paths: HashSet<String> = HashSet::new();
         let mut file_map: BTreeMap<String, String> = BTreeMap::new();
 

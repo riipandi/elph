@@ -187,5 +187,8 @@ fn print_scan(sty: &CliStyle, label: &str, stats: &ScanStats) {
     style::kv(&mut out, *sty, "Walk time", style::fmt_duration(stats.walk_ms));
     style::kv(&mut out, *sty, "Reindex time", style::fmt_duration(stats.reindex_ms));
     style::kv(&mut out, *sty, "Finalize time", style::fmt_duration(stats.finalize_ms));
+    if let Some(gpu) = &stats.gpu_acceleration {
+        style::kv(&mut out, *sty, "GPU acceleration", gpu);
+    }
     print!("{out}");
 }
