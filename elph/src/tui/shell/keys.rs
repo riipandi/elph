@@ -391,9 +391,9 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
     // without re-typing. The error card shows the hint; the prompt is stashed by the
     // tick loop on `AgentUiEvent::RetryablePrompt`. Only fires while idle with no modal open.
     let retryable_prompt = pending_retry_prompt.read().clone();
-    if modifiers.is_empty()
+    if let Some(retry_text) = retryable_prompt
+        && modifiers.is_empty()
         && matches!(code, KeyCode::Char('r') | KeyCode::Char('R'))
-        && retryable_prompt.is_some()
         && !agent_turn_active.get()
         && !busy.get()
         && pending_tool_approval.read().is_none()
@@ -407,7 +407,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         && !pending_quit_confirm.get()
         && !queue_manager_open.get()
     {
-        let retry_text = retryable_prompt.unwrap();
         pending_retry_prompt.set(None);
         if let Some(session) = agent_session.as_ref() {
             let mut submitted = TranscriptMessage::text(retry_text.clone(), TranscriptStyle::User);

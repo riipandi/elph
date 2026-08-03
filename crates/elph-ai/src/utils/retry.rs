@@ -178,7 +178,12 @@ pub async fn retry_assistant_call(
                 }
 
                 // Exponential backoff: 1s, 2s, 4s, 8s, 16s, capped at 30s.
-                let delay_ms = std::cmp::min(1000u64 * 2u64.pow(attempt - 1), 30_000);
+                // Cap the exponent so an unbounded `max_retries` can never overflow
+                // `2u64.pow`; the 30s cap already saturates at attempt >= 6, so this
+                // preserves behavior exactly for every realistic retry count.
+                // (DeepWiki, tokio-util time utils: saturating/exponent-capped arithmetic
+                // is the accepted pattern for overflow-safe backoff.)
+                let delay_ms = std::cmp::min(1000u64 * 2u64.pow((attempt - 1).min(30)), 30_000);
                 tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
             }
         }

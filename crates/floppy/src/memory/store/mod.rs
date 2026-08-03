@@ -347,14 +347,17 @@ fn clear_broken_wal_sidecars(db_path: &str) {
         if !p.exists() {
             continue;
         }
-        // Always drop empty/truncated WAL; drop SHM/TSHM whenever present (recreated on open).
+        // Always drop empty/truncated WAL; drop SHM/TSHM only when the database
+        // is not in use — removing them while another process holds the DB open
+        // can corrupt the shared WAL state in `experimental_multiprocess_wal`
+        // mode. (DeepWiki turso + docs.turso.tech; same gating as core/db.rs.)
         let should_remove = if suffix == "-wal" {
             match std::fs::metadata(p) {
                 Ok(m) => m.len() < 32, // empty or shorter than a WAL header
                 Err(_) => true,
             }
         } else {
-            true
+            !crate::core::db::database_in_use(db_path)
         };
         if should_remove {
             let _ = std::fs::remove_file(p);

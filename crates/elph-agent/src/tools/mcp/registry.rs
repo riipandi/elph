@@ -339,7 +339,6 @@ impl McpToolRegistry {
 
         let result: Result<()> = async {
             let pending = pending;
-            let skipped = skipped;
 
             let (concurrency, continue_on_error, discover_rp, progress_tx, discovery_timeout) = {
                 let options = self.load_options.read();
@@ -371,7 +370,10 @@ impl McpToolRegistry {
                             let _ = tx.send(server_discovery_progress(&result));
                         }
                         if matches!(result, ServerDiscovery::Ok { .. }) {
-                            self.discovered_servers.write().push(name.clone());
+                            let mut discovered = self.discovered_servers.write();
+                            if !discovered.contains(&name) {
+                                discovered.push(name.clone());
+                            }
                         }
                         result
                     }
@@ -483,7 +485,9 @@ impl McpToolRegistry {
 
         {
             let mut discovered = self.discovered_servers.write();
-            discovered.push(server_name.to_string());
+            if !discovered.iter().any(|n| n == server_name) {
+                discovered.push(server_name.to_string());
+            }
         }
         {
             let mut tools = self.tools.write();
@@ -534,7 +538,7 @@ impl McpToolRegistry {
 
     /// Check whether a specific server has already been discovered.
     pub fn is_server_discovered(&self, server_name: &str) -> bool {
-        self.discovered_servers.read().contains(&server_name.to_string())
+        self.discovered_servers.read().iter().any(|n| n == server_name)
     }
 
     /// Count enabled servers that have not yet been discovered.

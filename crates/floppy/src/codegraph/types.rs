@@ -28,7 +28,7 @@ impl CodegraphConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ScanStats {
     pub files_walked: u32,
     pub files_skipped: u32,
@@ -59,20 +59,6 @@ pub enum IndexPhase {
 
 /// Optional progress callback for [`super::CodegraphStore::build`] / `update`.
 pub type ProgressFn = std::sync::Arc<dyn Fn(IndexProgress) + Send + Sync>;
-
-impl Default for ScanStats {
-    fn default() -> Self {
-        Self {
-            files_walked: 0,
-            files_skipped: 0,
-            files_unchanged: 0,
-            files_indexed: 0,
-            chunks_indexed: 0,
-            chunks_embedded: 0,
-            bytes_read: 0,
-        }
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CodegraphStatus {

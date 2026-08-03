@@ -53,7 +53,7 @@ pub async fn hybrid_search(conn: &Connection, embed: &EmbedFn, opts: &SearchOpti
         }
     } else {
         // LIKE fallback
-        let like = format!("%{}%", opts.query.replace('%', "").replace('_', ""));
+        let like = format!("%{}%", opts.query.replace(['%', '_'], ""));
         let sql = format!(
             "SELECT id, path, kind, name, start_line, end_line, content, 0.0
              FROM cg_chunks

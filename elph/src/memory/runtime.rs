@@ -506,7 +506,7 @@ impl MemoryRuntime {
         let top_semantic = semantic.iter().map(|m| m.score).fold(0.0_f64, f64::max);
         // If semantic match is weak on a large store, prefer recency/sticky over noise.
         // Pull more semantic hits when top_k is higher (active recall).
-        let semantic_cap = self.options.top_k.max(5).min(12) as usize;
+        let semantic_cap = self.options.top_k.clamp(5, 12) as usize;
         let semantic_for_merge = if top_semantic < 0.35 && total_count > 50 {
             semantic_filtered
                 .into_iter()

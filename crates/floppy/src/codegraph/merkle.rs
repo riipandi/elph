@@ -10,15 +10,15 @@ pub fn merkle_root(files: &BTreeMap<String, String>) -> String {
         hasher.update(path.as_bytes());
         hasher.update([0u8]);
         hasher.update(hash.as_bytes());
-        hasher.update([b'\n']);
+        hasher.update(*b"\n");
     }
-    hex_encode(&hasher.finalize())
+    hex_encode(hasher.finalize())
 }
 
 pub fn sha256_hex(bytes: &[u8]) -> String {
     let mut hasher = Sha256::new();
     hasher.update(bytes);
-    hex_encode(&hasher.finalize())
+    hex_encode(hasher.finalize())
 }
 
 fn hex_encode(bytes: impl AsRef<[u8]>) -> String {

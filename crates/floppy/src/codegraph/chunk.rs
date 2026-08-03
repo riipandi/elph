@@ -307,6 +307,10 @@ fn looks_minified(source: &str) -> bool {
     avg > 240 || (lines <= 3 && source.len() > 2_000)
 }
 
+// Internal helper with a single call site; each arg is a flat RawChunk field,
+// so a parameter struct would add ceremony without clarity. DeepWiki
+// (rust-clippy: too_many_arguments) sanctions #[allow] for such helpers.
+#[allow(clippy::too_many_arguments)]
 fn push_split(
     out: &mut Vec<RawChunk>,
     path: &str,

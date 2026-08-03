@@ -352,19 +352,13 @@ impl Default for MemorySettings {
 }
 
 /// Semantic codebase indexing (agent tools; CLI always available).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct CodegraphSettings {
     /// When true, register agent tools (`code_search`, `code_impact`, `code_status`, `code_reindex`).
     /// Default **false** — enable explicitly. CLI `elph codegraph` is unaffected.
     #[serde(default = "default_false")]
     pub enabled: bool,
-}
-
-impl Default for CodegraphSettings {
-    fn default() -> Self {
-        Self { enabled: false }
-    }
 }
 
 /// Desktop notification preferences.

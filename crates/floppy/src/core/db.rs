@@ -102,15 +102,97 @@ pub(crate) fn clear_broken_wal_sidecars(db_path: &str) {
             continue;
         }
         let should_remove = if suffix == "-wal" {
+            // A WAL file under 32 bytes cannot hold a valid SQLite WAL header,
+            // so it is broken by definition and safe to remove.
             match std::fs::metadata(p) {
                 Ok(m) => m.len() < 32,
                 Err(_) => true,
             }
         } else {
-            true
+            // -shm / -tshm coordinate shared WAL state across processes. Only
+            // delete them when no process is actively using the database —
+            // removing them while another process holds the DB open can corrupt
+            // the shared WAL state in `experimental_multiprocess_wal` mode.
+            // (DeepWiki turso + docs.turso.tech; mirrors elph-agent's
+            // cleanup_stale_shared_memory / is_database_locked gating.)
+            !database_in_use(db_path)
         };
         if should_remove {
             let _ = std::fs::remove_file(p);
         }
+    }
+}
+
+/// Heuristic: treat the DB as in-use when its WAL file was modified within the
+/// last 30s. Mirrors `elph-agent`'s `is_database_locked` (datastore/conn.rs).
+pub(crate) fn database_in_use(db_path: &str) -> bool {
+    let wal = format!("{db_path}-wal");
+    let Ok(meta) = std::fs::metadata(wal) else {
+        return false;
+    };
+    let Ok(modified) = meta.modified() else {
+        return false;
+    };
+    // If the clock is unreliable, err toward "not in use" so genuinely stale
+    // sidecars still get cleaned up.
+    modified
+        .elapsed()
+        .is_ok_and(|elapsed| elapsed < std::time::Duration::from_secs(30))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn database_in_use_reflects_recent_wal() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let db = tmp.path().join("test.db");
+        let db_path = db.to_string_lossy().to_string();
+
+        // No WAL file -> not in use.
+        assert!(!database_in_use(&db_path));
+
+        // Freshly written WAL -> in use.
+        std::fs::write(format!("{db_path}-wal"), b"x").expect("write wal");
+        assert!(database_in_use(&db_path));
+    }
+
+    #[test]
+    fn clear_sidecars_keeps_shared_memory_when_db_in_use() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let db = tmp.path().join("test.db");
+        let db_path = db.to_string_lossy().to_string();
+
+        std::fs::write(&db_path, b"db").expect("write db");
+        std::fs::write(format!("{db_path}-wal"), vec![0u8; 64]).expect("write wal");
+        std::fs::write(format!("{db_path}-shm"), b"shm").expect("write shm");
+        std::fs::write(format!("{db_path}-tshm"), b"tshm").expect("write tshm");
+
+        clear_broken_wal_sidecars(&db_path);
+
+        // WAL is >= 32 bytes (not broken) and freshly written, so the DB looks
+        // in use: nothing is removed.
+        assert!(std::path::Path::new(&format!("{db_path}-wal")).exists());
+        assert!(std::path::Path::new(&format!("{db_path}-shm")).exists());
+        assert!(std::path::Path::new(&format!("{db_path}-tshm")).exists());
+    }
+
+    #[test]
+    fn clear_sidecars_removes_broken_wal_and_stale_shared_memory() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let db = tmp.path().join("test.db");
+        let db_path = db.to_string_lossy().to_string();
+
+        // No WAL -> database_in_use is false, so -shm/-tshm count as stale.
+        std::fs::write(format!("{db_path}-wal"), b"tiny").expect("write wal");
+        std::fs::write(format!("{db_path}-shm"), b"shm").expect("write shm");
+        std::fs::write(format!("{db_path}-tshm"), b"tshm").expect("write tshm");
+
+        clear_broken_wal_sidecars(&db_path);
+
+        assert!(!std::path::Path::new(&format!("{db_path}-wal")).exists());
+        assert!(!std::path::Path::new(&format!("{db_path}-shm")).exists());
+        assert!(!std::path::Path::new(&format!("{db_path}-tshm")).exists());
     }
 }

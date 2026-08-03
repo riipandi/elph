@@ -156,6 +156,10 @@ impl Indexer<'_> {
         self.scan(conn, false).await
     }
 
+    // Internal helper with a single call site; each arg is a flat per-file DB
+    // column, so a parameter struct would add ceremony without clarity. DeepWiki
+    // (rust-clippy: too_many_arguments) sanctions #[allow] for such helpers.
+    #[allow(clippy::too_many_arguments)]
     async fn reindex_file(
         &self,
         conn: &Connection,
@@ -320,18 +324,47 @@ fn should_skip_path(path: &Path) -> bool {
     {
         return true;
     }
-    match path
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("")
-        .to_ascii_lowercase()
-        .as_str()
-    {
-        "png" | "jpg" | "jpeg" | "gif" | "webp" | "ico" | "pdf" | "zip" | "gz" | "tar" | "woff" | "woff2" | "ttf"
-        | "eot" | "mp4" | "mp3" | "wasm" | "so" | "dylib" | "a" | "o" | "class" | "jar" | "exe" | "dll" | "bin"
-        | "lock" | "rlib" | "rmeta" | "pyc" | "pyo" | "db" | "sqlite" | "parquet" => true,
-        _ => false,
-    }
+    matches!(
+        path.extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_ascii_lowercase()
+            .as_str(),
+        "png"
+            | "jpg"
+            | "jpeg"
+            | "gif"
+            | "webp"
+            | "ico"
+            | "pdf"
+            | "zip"
+            | "gz"
+            | "tar"
+            | "woff"
+            | "woff2"
+            | "ttf"
+            | "eot"
+            | "mp4"
+            | "mp3"
+            | "wasm"
+            | "so"
+            | "dylib"
+            | "a"
+            | "o"
+            | "class"
+            | "jar"
+            | "exe"
+            | "dll"
+            | "bin"
+            | "lock"
+            | "rlib"
+            | "rmeta"
+            | "pyc"
+            | "pyo"
+            | "db"
+            | "sqlite"
+            | "parquet"
+    )
 }
 
 fn looks_binary(bytes: &[u8]) -> bool {
