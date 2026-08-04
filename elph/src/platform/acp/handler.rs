@@ -57,9 +57,9 @@ async fn handle_acp_slash_command(
             let help = format_help_message(None, None, None);
             send_text_chunks(connection, session_id, &help).await
         }
-        Some(SlashDispatch::Tools { args }) => {
+        Some(SlashDispatch::Tools { .. }) => {
             let (session, _, _) = lookup_session(state, &key)?;
-            let message = tools_slash_message(Some(&session), &args).map_err(|e| anyhow::anyhow!("{e}"))?;
+            let message = tools_slash_message(Some(&session)).map_err(|e| anyhow::anyhow!("{e}"))?;
             send_text_chunks(connection, session_id, &message).await
         }
         Some(SlashDispatch::SystemPrompt) => {

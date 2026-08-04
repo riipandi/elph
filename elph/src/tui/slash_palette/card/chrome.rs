@@ -95,8 +95,9 @@ mod tests {
 
     #[test]
     fn title_labels_args_phase() {
-        let commands = vec![SlashCommand::new("tools", "Show tools").with_args_hint("[list|table]")];
-        let snapshot = build_snapshot("/tools ", &commands, 40);
+        let commands =
+            vec![SlashCommand::new("confetti", "Confetti celebration").with_args_hint("[confetti|firework]")];
+        let snapshot = build_snapshot("/confetti ", &commands, 40);
         let chrome = PaletteCardChrome::from_snapshot(80, AgentMode::Build, &snapshot);
         assert_eq!(chrome.title, "02 Args");
     }

@@ -88,6 +88,83 @@ pub fn wrapped_text_row_count(text: &str, wrap_width: usize) -> usize {
     lines
 }
 
+/// Wrap `text` into lines that match iocraft's `TextWrap::Wrap` paint path.
+///
+/// Returns the wrapped lines (each is a `String` slice of `text`). Mirrors the
+/// single-segment case of [`wrapped_text_row_count`] exactly — same `unicode-linebreak`
+/// tables and greedy fill — so a caller can render every returned line with
+/// `TextWrap::NoWrap` (e.g. for a hanging-indent / two-column layout) and get the same
+/// visual result as letting iocraft wrap the whole string.
+pub fn wrap_text_to_lines(text: &str, wrap_width: usize) -> Vec<String> {
+    let wrap_width = wrap_width.max(1);
+    if text.is_empty() {
+        return Vec::new();
+    }
+
+    let mut lines: Vec<String> = Vec::new();
+    let mut current = String::new();
+    let mut current_width = 0usize;
+    let mut line_start = 0usize;
+
+    for (break_pos, opportunity) in linebreaks(text) {
+        // Segment covering [line_start, break_pos): everything since the previous break point.
+        let segment = &text[line_start..break_pos];
+        let segment_width = str_display_width(segment);
+        let trailing_whitespace_width = trailing_whitespace_width(segment);
+        line_start = break_pos;
+
+        let fit_width = segment_width.saturating_sub(trailing_whitespace_width);
+        if current_width + fit_width <= wrap_width {
+            current.push_str(segment);
+            current_width += segment_width;
+        } else {
+            if current_width > 0 {
+                lines.push(std::mem::take(&mut current));
+            }
+            // The segment itself is too wide: force-break it, skipping trailing whitespace.
+            let content_end = segment
+                .char_indices()
+                .rev()
+                .take_while(|(_, c)| c.is_whitespace())
+                .last()
+                .map(|(i, _)| i)
+                .unwrap_or(segment.len());
+            let content_width = str_display_width(&segment[..content_end]);
+            if content_width > wrap_width {
+                let mut w = 0usize;
+                let mut start = 0usize;
+                for (idx, c) in segment[..content_end].char_indices() {
+                    let char_width = char_display_width(c);
+                    if w > 0 && w + char_width > wrap_width {
+                        lines.push(segment[start..idx].to_string());
+                        w = 0;
+                        start = idx;
+                    }
+                    w += char_width;
+                }
+                current = segment[start..content_end].to_string();
+                current_width = str_display_width(&current);
+            } else {
+                current = segment.to_string();
+                current_width = segment_width;
+            }
+        }
+
+        if opportunity == BreakOpportunity::Mandatory {
+            lines.push(std::mem::take(&mut current));
+            current_width = 0;
+        }
+    }
+
+    if !current.is_empty() {
+        lines.push(current);
+    }
+    if text.ends_with('\n') {
+        lines.push(String::new());
+    }
+    lines
+}
+
 /// Display width of a char as iocraft computes it (unicode-width 0.1.x): control characters
 /// (including `\n`, `\r`, `\t`) have zero width. Newer unicode-width releases report them as 1,
 /// which would skew the fit checks against iocraft's paint.
@@ -126,6 +203,30 @@ mod tests {
         assert_eq!(wrapped_text_row_count("Hello, this\nstring\nhas\nnewlines in it.\n\n", 11), 7);
         // "this is a wrapping test" @ 14 → ["this is a ", "wrapping test"]
         assert_eq!(wrapped_text_row_count("this is a wrapping test", 14), 2);
+    }
+
+    #[test]
+    fn wrap_text_to_lines_matches_row_count_and_vectors() {
+        // Mirrors iocraft's single-segment wrap vectors: lines == row count and the
+        // produced lines equal the documented wrapped output.
+        let text = "Hello, world! This is a test string.";
+        let lines = wrap_text_to_lines(text, 12);
+        assert_eq!(lines, vec!["Hello, ", "world! This ", "is a test ", "string."]);
+        assert_eq!(lines.len(), wrapped_text_row_count(text, 12));
+
+        // Narrow wrap forces one char per line. Force-break strips trailing
+        // whitespace (so compare trimmed content); the row count still matches
+        // iocraft exactly.
+        let narrow = wrap_text_to_lines("foo bar", 0);
+        let narrow_trimmed: Vec<&str> = narrow.iter().map(|s| s.trim_end()).collect();
+        assert_eq!(narrow_trimmed, vec!["f", "o", "o", "b", "a", "r"]);
+        assert_eq!(narrow.len(), wrapped_text_row_count("foo bar", 0));
+
+        // Empty input yields no lines.
+        assert!(wrap_text_to_lines("", 10).is_empty());
+
+        // Double-width chars use display width.
+        assert_eq!(wrap_text_to_lines("こんにちは", 6), vec!["こんに", "ちは"]);
     }
 
     #[test]

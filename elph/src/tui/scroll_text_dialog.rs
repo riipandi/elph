@@ -10,12 +10,16 @@
 use elph_tui::components::theme::UiTheme;
 use elph_tui::components::{DialogChrome, DialogHeader, DialogShellOverlay};
 use elph_tui::components::{dialog_body_min_height, dialog_max_content_height};
+use elph_tui::word_wrap::wrap_text_to_lines;
 use iocraft::prelude::*;
 
 use crate::tui::focus::ShellFocus;
 
 /// Default dialog width as a percentage of the terminal width (`80%`).
 pub const DEFAULT_SCROLL_TEXT_WIDTH_PCT: u8 = 80;
+/// Wider width for the `/tools` dialog so tool names + descriptions breathe,
+/// while still scaling down on narrow terminals (responsive).
+pub const TOOLS_DIALOG_WIDTH_PCT: u8 = 92;
 /// Clamp range for width percent (inclusive).
 pub const MIN_SCROLL_TEXT_WIDTH_PCT: u8 = 20;
 pub const MAX_SCROLL_TEXT_WIDTH_PCT: u8 = 100;
@@ -262,7 +266,183 @@ fn split_key_value_line(line: &str) -> Option<(&str, &str)> {
     Some((label, value))
 }
 
+/// Whether `text` is a `/tools` dump: the first non-empty line is the
+/// `Available tools (…)` header. Used to apply structured, readable coloring.
+pub fn text_looks_like_tools_list(text: &str) -> bool {
+    text.lines()
+        .find(|line| !line.trim().is_empty())
+        .map(|line| line.trim_start().starts_with("Available tools ("))
+        .unwrap_or(false)
+}
+
+/// A parsed `/tools` line for the colored renderer.
+enum ToolsLine {
+    Spacer,
+    Header(String),
+    Section(String),
+    Server(String),
+    Note(String),
+    Tool(String, String),
+    Plain(String),
+}
+
+/// Classify one `/tools` line into its visual role.
+fn classify_tools_line(line: &str) -> ToolsLine {
+    let trimmed_end = line.trim_end();
+    if trimmed_end.is_empty() {
+        return ToolsLine::Spacer;
+    }
+    let indented = line.starts_with(' ') || line.starts_with('\t');
+    if !indented {
+        if trimmed_end.starts_with("Available tools (") {
+            return ToolsLine::Header(trimmed_end.to_string());
+        }
+        if trimmed_end.starts_with("Note:") {
+            return ToolsLine::Note(trimmed_end.to_string());
+        }
+        return ToolsLine::Section(trimmed_end.to_string());
+    }
+    let inner = trimmed_end.trim_start();
+    if inner.starts_with('[') && inner.ends_with(']') {
+        return ToolsLine::Server(inner.to_string());
+    }
+    if let Some((raw_name, rest)) = inner.split_once(char::is_whitespace) {
+        let name = raw_name.trim();
+        let desc = rest.trim();
+        if !name.is_empty() {
+            return ToolsLine::Tool(name.to_string(), desc.to_string());
+        }
+    }
+    ToolsLine::Plain(trimmed_end.to_string())
+}
+
+/// Render a `/tools` dump with readable, role-based coloring:
+///
+/// - Header (`Available tools (…)`) in accent bold.
+/// - Section labels (`Read & Search`, `Edit`, …) in warning bold.
+/// - `[server]` subheaders in muted bold.
+/// - Tool names in accent-soft bold; descriptions in secondary text.
+/// - Notes in muted text.
+///
+/// Each tool is laid out as two columns: a fixed-width (NoWrap) name column and a
+/// description column. Long descriptions are pre-wrapped with [`wrap_text_to_lines`]
+/// and rendered as a **hanging indent** — the first line sits after the name, and
+/// every wrapped continuation lines up under the description start (not the far-left
+/// edge), so the list reads like aligned columns even when wrapped. When the body is
+/// narrowed the name column shrinks (`min(body - 3, 28)`) so long names truncate
+/// instead of overflowing, keeping the dialog responsive on small terminals.
+fn render_tools_body(text: &str, body_width: u16, theme: UiTheme) -> AnyElement<'static> {
+    use ToolsLine::*;
+    let mut max_name = 0usize;
+    for line in text.lines() {
+        if let Tool(name, _) = classify_tools_line(line) {
+            max_name = max_name.max(name.chars().count());
+        }
+    }
+    let name_width = (max_name.clamp(10, 28) as u16).min(body_width.saturating_sub(3).max(4));
+    let desc_width = (body_width as usize).saturating_sub(name_width as usize + 2).max(1);
+    let name_col = |name: &str| format!("{name:<width$}", name = name, width = name_width as usize);
+    let indent = " ".repeat(name_width as usize + 2);
+    let mut rows: Vec<AnyElement<'static>> = Vec::new();
+    for line in text.lines() {
+        let row: AnyElement<'static> = match classify_tools_line(line) {
+            Spacer => element! {
+                View(width: body_width, height: 1u16, flex_shrink: 0f32) {}
+            }
+            .into(),
+            Header(title) => element! {
+                Text(content: title, color: theme.accent, weight: Weight::Bold, wrap: TextWrap::Wrap)
+            }
+            .into(),
+            Section(title) => element! {
+                Text(content: title, color: theme.warning, weight: Weight::Bold, wrap: TextWrap::Wrap)
+            }
+            .into(),
+            Server(label) => element! {
+                Text(content: label, color: theme.text_muted, weight: Weight::Bold, wrap: TextWrap::Wrap)
+            }
+            .into(),
+            Note(note) => element! {
+                Text(content: note, color: theme.text_muted, wrap: TextWrap::Wrap)
+            }
+            .into(),
+            Tool(name, desc) => {
+                let desc_lines = if desc.is_empty() {
+                    vec![String::new()]
+                } else {
+                    wrap_text_to_lines(&desc, desc_width)
+                };
+                let mut subrows: Vec<AnyElement<'static>> = Vec::new();
+                for (i, dline) in desc_lines.iter().enumerate() {
+                    if i == 0 {
+                        subrows.push(
+                            element! {
+                                View(
+                                    width: body_width,
+                                    flex_direction: FlexDirection::Row,
+                                    flex_shrink: 0f32,
+                                ) {
+                                    Text(
+                                        content: name_col(&name),
+                                        color: theme.accent_soft,
+                                        weight: Weight::Bold,
+                                        wrap: TextWrap::NoWrap,
+                                    )
+                                    Text(content: "  ".to_string(), color: theme.text_muted, wrap: TextWrap::NoWrap)
+                                    Text(content: dline.clone(), color: theme.text_secondary, wrap: TextWrap::NoWrap)
+                                }
+                            }
+                            .into(),
+                        );
+                    } else {
+                        subrows.push(
+                            element! {
+                                Text(
+                                    content: format!("{indent}{dline}"),
+                                    color: theme.text_secondary,
+                                    wrap: TextWrap::NoWrap,
+                                )
+                            }
+                            .into(),
+                        );
+                    }
+                }
+                element! {
+                    View(
+                        width: body_width,
+                        flex_direction: FlexDirection::Column,
+                        gap: 0,
+                        flex_shrink: 0f32,
+                    ) {
+                        #(subrows)
+                    }
+                }
+                .into()
+            }
+            Plain(content) => element! {
+                Text(content: content, color: theme.text_secondary, wrap: TextWrap::Wrap)
+            }
+            .into(),
+        };
+        rows.push(row);
+    }
+    element! {
+        View(
+            width: body_width,
+            flex_direction: FlexDirection::Column,
+            gap: 0,
+            flex_shrink: 0f32,
+        ) {
+            #(rows)
+        }
+    }
+    .into()
+}
+
 fn render_scroll_text_body(text: &str, body_width: u16, theme: UiTheme) -> AnyElement<'static> {
+    if text_looks_like_tools_list(text) {
+        return render_tools_body(text, body_width, theme);
+    }
     if text_looks_like_key_value_lines(text) {
         let rows: Vec<AnyElement<'static>> = text
             .lines()
@@ -400,6 +580,18 @@ pub fn ScrollTextDialogOverlay(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tools_list_detection_for_slash_tools() {
+        let tools = "Available tools (Build mode, 42 active)\n\nRead & Search\n  read_file       Read file contents from disk.\n  grep            Search file contents…\n\nWeb\n  web_search      Search the web.\n";
+        assert!(text_looks_like_tools_list(tools));
+        // Session info is key-value, not a tools list.
+        assert!(!text_looks_like_tools_list(
+            "Title: Fix login\nSession ID: abc\nModel: openai/gpt-4o"
+        ));
+        // Plain prose is neither.
+        assert!(!text_looks_like_tools_list("just some free text\nwith no header"));
+    }
 
     #[test]
     fn key_value_detection_for_session_info() {

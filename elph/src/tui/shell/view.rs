@@ -1406,15 +1406,6 @@ pub(crate) fn build_shell_view(
                                 TranscriptMessage::text(message, TranscriptStyle::Meta),
                                 );
                             }
-                            SlashOutcome::Assistant(message) => {
-                                push_transcript_message_synced(
-                                &mut messages,
-                                messages_arc,
-                                &mut messages_revision,
-                                &mut prompt_history,
-                                TranscriptMessage::assistant_slash_markdown(message),
-                                );
-                            }
                             SlashOutcome::Unimplemented(message) => {
                                 push_transcript_message_synced(
                                 &mut messages,
@@ -1551,6 +1542,22 @@ pub(crate) fn build_shell_view(
                                     shell_focus: &mut shell_focus,
                                     text,
                                     width_pct: None,
+                                });
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
+                            SlashOutcome::OpenToolsDialog { text } => {
+                                open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                                    pending: &mut pending_system_prompt,
+                                    shell_focus: &mut shell_focus,
+                                    title: "Tools".to_string(),
+                                    text,
+                                    width_pct: TOOLS_DIALOG_WIDTH_PCT,
+                                    body_height: None,
+                                    show_copy: true,
                                 });
                                 draft.set(String::new());
                                 live_draft.set(String::new());

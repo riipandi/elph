@@ -41,22 +41,6 @@ const GROUPS: &[(&str, &[&str])] = &[
     ("Goals", &["create_goal", "get_goal", "update_goal", "set_goal_budget"]),
 ];
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ToolsOutputFormat {
-    List,
-    Table,
-}
-
-impl ToolsOutputFormat {
-    pub fn parse(args: &str) -> Result<Self, String> {
-        match args.trim().to_ascii_lowercase().as_str() {
-            "" | "table" => Ok(Self::Table),
-            "list" => Ok(Self::List),
-            other => Err(format!("unknown /tools format: {other} (use list or table)")),
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ToolRow {
     name: String,
@@ -184,27 +168,34 @@ fn session_note(session_attached: bool) -> Option<String> {
     if session_attached {
         None
     } else {
-        Some("> **Note:** Agent session unavailable — showing built-in tools only (no MCP).".to_string())
+        Some("Note: Agent session unavailable — showing built-in tools only (no MCP).".to_string())
     }
 }
 
 fn format_header(payload: &ToolsPayload) -> String {
-    format!("## Available tools ({} mode, {} active)", payload.mode, payload.count)
+    format!("Available tools ({} mode, {} active)", payload.mode, payload.count)
 }
 
-fn format_tool_bullet(row: &ToolRow) -> String {
-    format!("- **`{}`** — {}", row.name, row.description)
-}
-
-fn format_tools_list(payload: &ToolsPayload, session_attached: bool) -> String {
+/// Group tools by section with a tidy `name  description` column layout.
+///
+/// Output is plain text (no markdown) so it reads cleanly in the scrollable
+/// `/tools` dialog. Each section is a header line; tool rows align their names
+/// under a fixed-width first column and the description wraps after it.
+fn format_tools_text(payload: &ToolsPayload, session_attached: bool) -> String {
     let mut lines = vec![format_header(payload)];
+    let name_width = payload
+        .tools
+        .iter()
+        .map(|row| row.name.chars().count())
+        .max()
+        .unwrap_or(0)
+        .clamp(10, 28);
     let mut current_group: Option<&str> = None;
     let mut current_server: Option<&str> = None;
-
     for row in &payload.tools {
         if current_group != Some(row.group.as_str()) {
             lines.push(String::new());
-            lines.push(format!("### {}", row.group));
+            lines.push(row.group.clone());
             current_group = Some(&row.group);
             current_server = None;
         }
@@ -212,75 +203,41 @@ fn format_tools_list(payload: &ToolsPayload, session_attached: bool) -> String {
             && let Some(server) = row.server.as_deref()
             && current_server != Some(server)
         {
-            lines.push(format!("**Server:** `{server}`"));
+            lines.push(format!("  [{server}]"));
             current_server = Some(server);
         }
-        lines.push(format_tool_bullet(row));
-    }
-
-    if let Some(note) = session_note(session_attached) {
-        lines.push(String::new());
-        lines.push(note);
-    }
-
-    lines.join("\n")
-}
-
-fn escape_table_cell(text: &str) -> String {
-    text.replace('|', "\\|").replace('\n', " ")
-}
-
-fn format_tools_table(payload: &ToolsPayload, session_attached: bool) -> String {
-    let mut lines = vec![
-        format_header(payload),
-        String::new(),
-        "| Tool | Group | Description |".to_string(),
-        "| --- | --- | --- |".to_string(),
-    ];
-
-    for row in &payload.tools {
         lines.push(format!(
-            "| `{}` | {} | {} |",
-            escape_table_cell(&row.name),
-            escape_table_cell(&row.group),
-            escape_table_cell(&row.description),
+            "  {name:<width$}  {desc}",
+            name = row.name,
+            width = name_width,
+            desc = row.description
         ));
     }
-
     if let Some(note) = session_note(session_attached) {
         lines.push(String::new());
         lines.push(note);
     }
-
     lines.join("\n")
 }
 
-pub fn format_tools_message(
-    mode: AgentMode,
-    tools: &[AgentTool],
-    session_attached: bool,
-    format: ToolsOutputFormat,
-) -> String {
+pub fn format_tools_message(mode: AgentMode, tools: &[AgentTool], session_attached: bool) -> String {
     let payload = tools_payload(mode, tools, session_attached);
-    match format {
-        ToolsOutputFormat::List => format_tools_list(&payload, session_attached),
-        ToolsOutputFormat::Table => format_tools_table(&payload, session_attached),
-    }
+    format_tools_text(&payload, session_attached)
 }
 
 /// Built-in tool catalog when no agent session is attached.
-pub fn format_builtin_tools_message(format: ToolsOutputFormat) -> String {
+pub fn format_builtin_tools_message() -> String {
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     let env = Arc::new(LocalExecutionEnv::new(&cwd));
     let tools = BuiltinToolsBuilder::all(env).build();
-    format_tools_message(AgentMode::Build, &tools, false, format)
+    format_tools_message(AgentMode::Build, &tools, false)
 }
 
-pub async fn active_tools_message(session: &CodingAgentSession, format: ToolsOutputFormat) -> Result<String> {
+pub async fn active_tools_message(session: &CodingAgentSession) -> Result<String> {
     let mode = *session.mode_state().lock().await;
     let mut tools = session.harness().get_active_tools().await;
     tools.sort_by(|left, right| left.name().cmp(right.name()));
-    Ok(format_tools_message(mode, &tools, true, format))
+    Ok(format_tools_message(mode, &tools, true))
 }
 
 const TOOLS_SNAPSHOT_TIMEOUT: std::time::Duration = std::time::Duration::from_millis(400);
@@ -290,12 +247,11 @@ const TOOLS_SNAPSHOT_TIMEOUT: std::time::Duration = std::time::Duration::from_mi
 /// While the agent is streaming, nested `try_block_on` on the TUI runtime can panic
 /// or hang. Session tools are loaded on a **detached** thread with a short timeout;
 /// on failure we fall back to the built-in catalog (with a note when a session exists).
-pub fn tools_slash_message(session: Option<&std::sync::Arc<CodingAgentSession>>, args: &str) -> Result<String, String> {
-    let format = ToolsOutputFormat::parse(args)?;
+pub fn tools_slash_message(session: Option<&Arc<CodingAgentSession>>) -> Result<String, String> {
     if let Some(session) = session {
-        let session = std::sync::Arc::clone(session);
+        let session = Arc::clone(session);
         match elph_agent::try_block_on_detached(
-            async move { active_tools_message(&session, format).await },
+            async move { active_tools_message(&session).await },
             TOOLS_SNAPSHOT_TIMEOUT,
         ) {
             Ok(Ok(message)) => return Ok(message),
@@ -307,13 +263,13 @@ pub fn tools_slash_message(session: Option<&std::sync::Arc<CodingAgentSession>>,
             }
         }
         // Live session tools unavailable (busy/timeout/error) — built-in catalog + note.
-        let mut message = format_builtin_tools_message(format);
+        let mut message = format_builtin_tools_message();
         message.push_str(
-            "\n\n_Note: live session tools were unavailable (agent may be busy). Showing the built-in catalog._",
+            "\n\nNote: live session tools were unavailable (agent may be busy). Showing the built-in catalog.",
         );
         return Ok(message);
     }
-    Ok(format_builtin_tools_message(format))
+    Ok(format_builtin_tools_message())
 }
 
 #[cfg(test)]
@@ -343,43 +299,30 @@ mod tests {
     }
 
     #[test]
-    fn parse_tools_output_formats() {
-        assert_eq!(ToolsOutputFormat::parse("").unwrap(), ToolsOutputFormat::Table);
-        assert_eq!(ToolsOutputFormat::parse("table").unwrap(), ToolsOutputFormat::Table);
-        assert_eq!(ToolsOutputFormat::parse("list").unwrap(), ToolsOutputFormat::List);
-        assert_eq!(ToolsOutputFormat::parse("TABLE").unwrap(), ToolsOutputFormat::Table);
-        assert!(ToolsOutputFormat::parse("json").is_err());
-        assert!(ToolsOutputFormat::parse("yaml").is_err());
+    fn groups_known_tools_by_section() {
+        let message = format_tools_message(AgentMode::Plan, &sample_tools(), true);
+        assert!(message.contains("Available tools (Plan mode, 2 active)"));
+        assert!(message.contains("Read & Search"));
+        assert!(message.contains("read_file"));
+        assert!(message.contains("Edit"));
+        assert!(message.contains("shell_exec"));
+        // Plain-text layout — no markdown table or bullet syntax.
+        assert!(!message.contains("| Tool |"));
+        assert!(!message.contains("- **`"));
     }
 
     #[test]
-    fn format_groups_known_tools_as_markdown_list() {
-        let message = format_tools_message(AgentMode::Plan, &sample_tools(), true, ToolsOutputFormat::List);
-        assert!(message.contains("## Available tools (Plan mode, 2 active)"));
-        assert!(message.contains("### Read & Search"));
-        assert!(message.contains("**`read_file`**"));
-        assert!(message.contains("### Edit"));
-        assert!(message.contains("**`shell_exec`**"));
+    fn builtin_fallback_notes_missing_session() {
+        let message = format_builtin_tools_message();
+        assert!(message.contains("Available tools"));
+        assert!(message.contains("session unavailable"));
+        assert!(!message.contains("| Tool |"));
     }
 
     #[test]
-    fn format_tools_table_renders_markdown_table() {
-        let message = format_tools_message(AgentMode::Plan, &sample_tools(), true, ToolsOutputFormat::Table);
-        assert!(message.contains("| Tool | Group | Description |"));
-        assert!(message.contains("| `read_file` | Read & Search |"));
-        assert!(message.contains("| `shell_exec` | Edit |"));
-    }
-
-    #[test]
-    fn format_builtin_fallback_notes_missing_session() {
-        let message = format_builtin_tools_message(ToolsOutputFormat::Table);
-        assert!(message.contains("## Available tools"));
-        assert!(message.contains("| Tool | Group | Description |"));
-        assert!(message.contains("Agent session unavailable"));
-    }
-
-    #[test]
-    fn tools_slash_message_rejects_unknown_format() {
-        assert!(tools_slash_message(None, "yaml").is_err());
+    fn slash_message_without_session_uses_builtin_catalog() {
+        let message = tools_slash_message(None).expect("ok");
+        assert!(message.contains("Available tools"));
+        assert!(message.contains("session unavailable"));
     }
 }

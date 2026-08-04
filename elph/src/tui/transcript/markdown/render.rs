@@ -40,7 +40,6 @@ fn render_markdown_part(
     document: Option<&MarkdownDocument>,
     fallback_source: &str,
     fallback_foreground: Color,
-    _width: u16,
 ) -> MarkdownDocument {
     if let Some(doc) = document {
         return doc.clone();
@@ -50,19 +49,25 @@ fn render_markdown_part(
     plain_text_document(fallback_source, fallback_foreground)
 }
 
-/// Render assistant markdown (stable prefix + streaming tail) as one iocraft block.
-pub fn render_markdown_buffer(
+/// Build the merged markdown document for an assistant message — the cached stable parts plus
+/// the live streaming tail — **without** painting it.
+///
+/// `render_markdown_buffer` (paint) and the transcript row measurement in `layout.rs`
+/// (`assistant_row_count`) both call this so measurement and paint always operate on the exact
+/// same document and stay in parity. The previous measure path summed the stable and tail row
+/// counts independently and missed the inter-segment gap at the stable↔tail boundary, so the
+/// measured height was one row short and the scroll viewport clipped the first line of the
+/// following paragraph.
+pub(crate) fn build_assistant_markdown_document(
     buffer: &AssistantMarkdownBuffer,
     raw: &str,
     tail_foreground: Color,
-    width: u16,
-) -> AnyElement<'static> {
-    let width = width.max(1);
+) -> MarkdownDocument {
     let mut document = MarkdownDocument::default();
     let mut source_start = 0usize;
 
-    // Process all stable parts as plain text (prevents structural artifacts
-    // from partial markdown parsing at slice boundaries)
+    // Process all stable parts as cached markdown (or plain-text fallback before the worker
+    // finishes parsing), then merge with the streaming tail.
     for part in &buffer.parts {
         let end = part.source_end.min(raw.len());
         let start = source_start.min(end);
@@ -70,14 +75,12 @@ pub fn render_markdown_buffer(
             source_start = end;
             continue;
         };
-        let part_doc = render_markdown_part(part.document.as_ref(), slice, tail_foreground, width);
+        let part_doc = render_markdown_part(part.document.as_ref(), slice, tail_foreground);
         document = merge_documents(document, part_doc);
         source_start = end;
     }
 
-    // Handle streaming tail with codeblock-preservation logic
     let tail = buffer.tail(raw);
-
     if !tail.is_empty() {
         // Check if the raw content (stable + tail) has an unclosed fence.
         // When unclosed, we MUST show the entire tail to avoid truncating
@@ -115,9 +118,20 @@ pub fn render_markdown_buffer(
         }
     }
 
+    document
+}
+
+/// Render assistant markdown (stable prefix + streaming tail) as one iocraft block.
+pub fn render_markdown_buffer(
+    buffer: &AssistantMarkdownBuffer,
+    raw: &str,
+    tail_foreground: Color,
+    width: u16,
+) -> AnyElement<'static> {
+    let width = width.max(1);
+    let document = build_assistant_markdown_document(buffer, raw, tail_foreground);
     if document.is_empty() {
         return render_linkified_plain_text(raw, tail_foreground, width);
     }
-
     render_markdown_block(&document, width)
 }

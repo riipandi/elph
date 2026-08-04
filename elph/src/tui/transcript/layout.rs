@@ -297,7 +297,7 @@ mod tests {
     #[test]
     fn slash_response_measure_matches_paint_without_header() {
         use iocraft::prelude::*;
-        let content = "## Tools\n\n- `find_path` — Quickly finds files by matching glob patterns (like `*.rs`), returning matching file paths alphabetically.\n- `list_dir` — Lists files and directories.\n\n| Tool | Group |\n| --- | --- |\n| `read_file` | Read |\n| `write_file` | Write |\n";
+        let content = "Available tools (Plan mode, 2 active)\n\nRead & Search\n  read_file       Read file contents from disk.\n  list_dir        Lists files and directories.\n\nEdit\n  write_file      Write a new file or overwrite an existing one.\n";
         let message = TranscriptMessage::assistant_slash_markdown(content);
         for width in [36u16, 40, 80, 120] {
             let layouts = layout_transcript_rows(std::slice::from_ref(&message), width);
@@ -328,7 +328,7 @@ mod tests {
     #[test]
     fn slash_flow_full_and_windowed_heights_match_measure() {
         use iocraft::prelude::*;
-        let content = "## Tools\n\n- `find_path` — Quickly finds files by matching glob patterns (like `*.rs`), returning matching file paths alphabetically.\n- `list_dir` — Lists files and directories.\n\n| Tool | Group |\n| --- | --- |\n| `read_file` | Read |\n| `write_file` | Write |\n";
+        let content = "Available tools (Plan mode, 2 active)\n\nRead & Search\n  read_file       Read file contents from disk.\n  list_dir        Lists files and directories.\n\nEdit\n  write_file      Write a new file or overwrite an existing one.\n";
         let messages = vec![
             TranscriptMessage::text("/tools list", TranscriptStyle::User),
             TranscriptMessage::assistant_slash_markdown(content),

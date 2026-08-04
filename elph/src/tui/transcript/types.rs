@@ -1035,7 +1035,7 @@ mod tests {
 
     #[test]
     fn local_slash_response_uses_meta_like_exterior_spacing() {
-        let message = TranscriptMessage::assistant_slash_markdown("## Tools");
+        let message = TranscriptMessage::assistant_slash_markdown("## Commands");
         assert_eq!(message.transcript_padding_top(), COLORED_CARD_PAD);
         assert_eq!(message.transcript_margin_bottom(None), COLORED_CARD_GAP);
         let user = TranscriptMessage::text("hi", TranscriptStyle::User);
@@ -1048,9 +1048,8 @@ mod tests {
 
     #[test]
     fn local_slash_markdown_marks_stream_complete() {
-        let message = TranscriptMessage::assistant_slash_markdown(
-            "## Available tools\n\n| Tool | Group |\n| --- | --- |\n| `read_file` | Read |\n",
-        );
+        let message =
+            TranscriptMessage::assistant_slash_markdown("## Example table\n\n| A | B |\n| --- | --- |\n| `x` | y |\n");
         assert!(message.local_slash_response);
         let markdown = message.markdown.as_ref().expect("markdown buffer");
         assert!(

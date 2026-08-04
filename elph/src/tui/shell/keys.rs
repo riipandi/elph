@@ -2697,13 +2697,11 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 let loaded_skills = skills.read().clone();
 
                 // Block session-querying slash commands while agent is streaming.
+                // `/tools` is deliberately allowed during a turn: it snapshots the active
+                // tool set on a detached thread (short timeout) and falls back to the
+                // built-in catalog, so it is safe and never blocks the TUI runtime.
                 let trimmed = slash_input.trim();
-                if agent_turn_active.get()
-                    && (trimmed == "/tools"
-                        || trimmed.starts_with("/tools ")
-                        || trimmed == "/system-prompt"
-                        || trimmed.starts_with("/system-prompt "))
-                {
+                if agent_turn_active.get() && (trimmed == "/system-prompt" || trimmed.starts_with("/system-prompt ")) {
                     let expire_tx = ephemeral_expire.read().tx.clone();
                     show_ephemeral_banner(
                         &mut ephemeral_banner,
@@ -2787,6 +2785,18 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             text,
                             width_pct: None,
                         });
+                    }
+                    SlashOutcome::OpenToolsDialog { text } => {
+                        open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                            pending: &mut pending_system_prompt,
+                            shell_focus: &mut shell_focus,
+                            title: "Tools".to_string(),
+                            text,
+                            width_pct: TOOLS_DIALOG_WIDTH_PCT,
+                            body_height: None,
+                            show_copy: true,
+                        });
+                        force_editor_clear.set(true);
                     }
                     SlashOutcome::OpenSessionInfoDialog { text } => {
                         open_scroll_text_dialog(OpenScrollTextDialogArgs {
@@ -2949,15 +2959,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             &mut messages_revision,
                             &mut prompt_history,
                             TranscriptMessage::text(message, TranscriptStyle::Meta),
-                        );
-                    }
-                    SlashOutcome::Assistant(message) => {
-                        push_transcript_message_synced(
-                            &mut messages,
-                            messages_arc,
-                            &mut messages_revision,
-                            &mut prompt_history,
-                            TranscriptMessage::assistant_slash_markdown(message),
                         );
                     }
                     SlashOutcome::Unimplemented(message) => {

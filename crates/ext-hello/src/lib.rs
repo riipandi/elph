@@ -1,5 +1,5 @@
 wit_bindgen::generate!({
-    path: "../../crates/elph-agent/wit/extension.wit",
+    path: "../elph-agent/wit/extension.wit",
     world: "guest",
 });
 

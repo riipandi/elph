@@ -121,7 +121,8 @@ paragraphs/list items, plain-text cards, tool param values) is word-wrapped by i
 Unicode line-break opportunities; older measurement used a character-wrap layout that packs
 more characters per row, under-counting rows at narrow widths (e.g. width 36 → 55 measured vs
 62 painted). The clipped painted tail (often the `…` of a truncated line) fell outside the
-viewport, so `/tools list` output appeared cut mid-line.
+viewport, so long local slash output (e.g. `/tools`, which now opens a wider, color-coded
+scrollable dialog) appeared cut mid-line.
 
 `elph_tui::wrapped_text_row_count` replicates the single-segment case of iocraft's
 `SegmentedString::wrap` — same `unicode-linebreak` tables (Unicode 15.0.0) and zero-width
@@ -132,6 +133,14 @@ control characters — so measurement matches paint at every width. It is used b
 - Streaming markdown tail and markdown part fallback (`transcript/markdown/layout.rs`).
 - Tool param values and approval summaries (`tool_params.rs`).
 - Dialog/select descriptions (`elph-tui` select + dialog_shell).
+
+Assistant markdown rows (`assistant_row_count`) are measured from the **exact same merged
+document** the renderer paints: `build_assistant_markdown_document` concatenates the cached
+stable parts with the streaming tail (same fence/tail caps as `render_markdown_buffer`),
+preserving the inter-block gap at the stable↔tail boundary. Measuring the stable and tail
+segments independently under-counted that gap by one row, so the auto-scroll viewport pinned
+one row short and clipped the first line of the following paragraph (the words at the start of
+a sentence/block looked cut off mid-stream).
 
 Pre-wrapped text rendered with `TextWrap::NoWrap` (tables, code blocks, user-input cards,
 sticky chrome) intentionally stays on the character-wrap path via `wrapped_transcript_row_count`.

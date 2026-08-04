@@ -354,29 +354,35 @@ mod tests {
         use super::super::model::build_snapshot;
 
         let mut commands = sample_commands();
-        commands.push(crate::types::SlashCommand::new("tools", "Show tools").with_args_hint("[list|table]"));
-        let snapshot = build_snapshot("/tools l", &commands, 40);
-        let action = resolve_snapshot_key_action("/tools l", &snapshot, 0, KeyCode::Enter, KeyModifiers::NONE).unwrap();
+        commands.push(
+            crate::types::SlashCommand::new("confetti", "Confetti celebration").with_args_hint("[confetti|firework]"),
+        );
+        let snapshot = build_snapshot("/confetti c", &commands, 40);
+        let action =
+            resolve_snapshot_key_action("/confetti c", &snapshot, 0, KeyCode::Enter, KeyModifiers::NONE).unwrap();
         assert_eq!(
             action,
             SlashPaletteKeyAction::SubmitCommand {
-                slash_input: "/tools list".into(),
+                slash_input: "/confetti confetti".into(),
             }
         );
     }
 
     #[test]
-    fn args_phase_tab_completes_tools_format() {
+    fn args_phase_tab_completes_confetti_format() {
         use super::super::model::build_snapshot;
 
         let mut commands = sample_commands();
-        commands.push(crate::types::SlashCommand::new("tools", "Show tools").with_args_hint("[list|table]"));
-        let snapshot = build_snapshot("/tools l", &commands, 40);
-        let action = resolve_snapshot_key_action("/tools l", &snapshot, 0, KeyCode::Tab, KeyModifiers::NONE).unwrap();
+        commands.push(
+            crate::types::SlashCommand::new("confetti", "Confetti celebration").with_args_hint("[confetti|firework]"),
+        );
+        let snapshot = build_snapshot("/confetti c", &commands, 40);
+        let action =
+            resolve_snapshot_key_action("/confetti c", &snapshot, 0, KeyCode::Tab, KeyModifiers::NONE).unwrap();
         assert_eq!(
             action,
             SlashPaletteKeyAction::CompleteDraft {
-                text: "/tools list ".into(),
+                text: "/confetti confetti ".into(),
                 suppress_enter_newline: false,
             }
         );

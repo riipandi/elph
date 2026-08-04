@@ -90,7 +90,7 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin_with_args("memory", "Agent memory store (floppy)"),
         builtin("feedback", "Report a bug or join community"),
         builtin("help", "List commands"),
-        builtin_with_args("tools", "Show active tools"),
+        builtin("tools", "Show active tools"),
         builtin("system-prompt", "Show compiled system prompt"),
         builtin("exit", "Quit Elph"),
         builtin_with_args("goal", "Manage session goals"),
@@ -266,17 +266,6 @@ pub struct SlashArgCompletion {
     pub description: &'static str,
 }
 
-const TOOLS_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
-    SlashArgCompletion {
-        value: "table",
-        description: "Markdown table (default)",
-    },
-    SlashArgCompletion {
-        value: "list",
-        description: "Grouped bullet list",
-    },
-];
-
 const CONFETTI_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
     SlashArgCompletion {
         value: "confetti",
@@ -387,7 +376,7 @@ const GOAL_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
 /// Static arg suggestions for built-in slash commands (palette args phase).
 pub fn slash_arg_completions(command_name: &str) -> Option<&'static [SlashArgCompletion]> {
     match command_name {
-        "tools" => Some(TOOLS_ARG_COMPLETIONS),
+        "tools" => None,
         "goal" | "goals" => Some(GOAL_ARG_COMPLETIONS),
         "confetti" | "conffety" | "confetty" => Some(CONFETTI_ARG_COMPLETIONS),
         "memory" | "mem" => Some(MEMORY_ARG_COMPLETIONS),
@@ -733,17 +722,17 @@ mod tests {
     }
 
     #[test]
-    fn palette_includes_tools_args_hint() {
+    fn palette_includes_tools_without_args() {
         let commands = slash_commands_for_palette(None, None, None);
         let tools = commands.iter().find(|cmd| cmd.name == "tools").expect("tools");
-        assert_eq!(tools.args_hint.as_deref(), Some("[args]"));
-        assert_eq!(tools.palette_command_label(), "/tools [args]");
+        assert_eq!(tools.args_hint, None);
+        assert_eq!(tools.palette_command_label(), "/tools");
         assert_eq!(tools.description, "Show active tools");
     }
 
     #[test]
-    fn slash_arg_completions_cover_tools_and_goal() {
-        assert!(slash_arg_completions("tools").is_some());
+    fn slash_arg_completions_cover_goal_and_others() {
+        assert!(slash_arg_completions("tools").is_none());
         assert!(slash_arg_completions("goal").is_some());
         assert!(slash_arg_completions("memory").is_some());
         assert!(slash_arg_completions("mem").is_some());

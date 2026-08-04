@@ -284,7 +284,7 @@ mod tests {
         assert!(palette_visible("/model"));
         assert!(palette_visible("  /go"));
         assert!(!palette_visible("/goal pause"));
-        assert!(palette_visible("/tools l"));
+        assert!(palette_visible("/confetti c"));
         assert!(!palette_visible("/help args"));
         assert!(!palette_visible("/model filter"));
     }
@@ -298,26 +298,29 @@ mod tests {
     #[test]
     fn palette_hides_after_args_selected() {
         assert!(palette_visible("/goal "));
-        assert!(!palette_visible("/tools list "));
-        assert!(!palette_visible("/tools list"));
+        assert!(!palette_visible("/confetti confetti "));
+        assert!(!palette_visible("/confetti confetti"));
         assert!(!palette_visible("/goal pause "));
-        assert!(palette_visible("/tools l"));
+        assert!(palette_visible("/confetti c"));
     }
 
     #[test]
-    fn args_phase_lists_tools_formats() {
+    fn args_phase_lists_confetti_formats() {
         let mut commands = sample_commands();
-        commands.push(SlashCommand::new("tools", "Show active tools").with_args_hint("[list|table]"));
-        let snapshot = build_snapshot("/tools l", &commands, 40);
+        commands.push(SlashCommand::new("confetti", "Confetti celebration").with_args_hint("[confetti|firework]"));
+        let snapshot = build_snapshot("/confetti c", &commands, 40);
         assert!(snapshot.is_args_phase());
         assert_eq!(snapshot.match_count, 1);
-        assert_eq!(snapshot.options[0].name, "list");
+        assert_eq!(snapshot.options[0].name, "confetti");
     }
 
     #[test]
     fn complete_slash_arg_preserves_trailing_tokens() {
-        assert_eq!(complete_slash_arg("/tools l extra", "tools", "list"), "/tools list extra");
-        assert_eq!(complete_slash_arg("/tools l", "tools", "list"), "/tools list ");
+        assert_eq!(
+            complete_slash_arg("/confetti c extra", "confetti", "confetti"),
+            "/confetti confetti extra"
+        );
+        assert_eq!(complete_slash_arg("/confetti c", "confetti", "confetti"), "/confetti confetti ");
     }
 
     #[test]

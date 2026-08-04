@@ -88,7 +88,8 @@ use crate::tui::scoped_models_shell::{
     save_scoped_models, scoped_models_list_nav_delta, scoped_models_reorder_delta, sync_scoped_filter,
 };
 use crate::tui::scroll_text_dialog::{
-    DEFAULT_SCROLL_TEXT_WIDTH_PCT, OpenScrollTextDialogArgs, ScrollTextDialogOverlay, open_scroll_text_dialog,
+    DEFAULT_SCROLL_TEXT_WIDTH_PCT, OpenScrollTextDialogArgs, ScrollTextDialogOverlay, TOOLS_DIALOG_WIDTH_PCT,
+    open_scroll_text_dialog,
 };
 use crate::tui::session_prefs::cycle_and_persist_theme_mode;
 use crate::tui::shell_submit::{

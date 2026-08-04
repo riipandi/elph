@@ -66,7 +66,7 @@ Future phases add tool registration, lifecycle events (`session_start`, `tool_ca
 
 - Guest: Rust + `wit-bindgen`, built with `cargo component` → `wasm32-wasip2`.
 - Host: `wasmtime` with component model enabled.
-- Example bundle: `extensions/say-hello/` in the repository (reference only).
+- Example bundle: `crates/ext-hello/say-hello/` in the repository (reference only).
 
 ## CLI: `elph plugin`
 

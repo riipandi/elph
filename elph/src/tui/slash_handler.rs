@@ -70,7 +70,6 @@ pub enum SlashOutcome {
     NewSession,
     BackgroundTask,
     Status(String),
-    Assistant(String),
     Unimplemented(String),
     SpawnAgentTurn,
     OverlayDeferred(OverlayCommand),
@@ -79,6 +78,10 @@ pub enum SlashOutcome {
     },
     OpenScopedModels,
     OpenSystemPromptDialog {
+        text: String,
+    },
+    /// Active tools viewer (ScrollTextDialog, like `/system-prompt`).
+    OpenToolsDialog {
         text: String,
     },
     /// Session metadata viewer (ScrollTextDialog).
@@ -151,8 +154,8 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
         SlashDispatch::Help => {
             SlashOutcome::Status(format_help_message(ctx.extensions, ctx.prompt_templates, ctx.skills))
         }
-        SlashDispatch::Tools { args } => match tools_slash_message(ctx.agent_session.as_ref(), &args) {
-            Ok(message) => SlashOutcome::Assistant(message),
+        SlashDispatch::Tools { .. } => match tools_slash_message(ctx.agent_session.as_ref()) {
+            Ok(text) => SlashOutcome::OpenToolsDialog { text },
             Err(message) => SlashOutcome::Status(message),
         },
         SlashDispatch::SystemPrompt => match system_prompt_slash_message(ctx.agent_session.as_ref()) {
@@ -267,13 +270,13 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
     matches!(
         outcome,
         SlashOutcome::Status(_)
-            | SlashOutcome::Assistant(_)
             | SlashOutcome::Unimplemented(_)
             | SlashOutcome::NewSession
             | SlashOutcome::BackgroundTask
             | SlashOutcome::OpenModelSelector { .. }
             | SlashOutcome::OpenScopedModels
             | SlashOutcome::OpenSystemPromptDialog { .. }
+            | SlashOutcome::OpenToolsDialog { .. }
             | SlashOutcome::OpenSessionInfoDialog { .. }
             | SlashOutcome::OpenRenameDialog { .. }
             | SlashOutcome::PlayConfetti { .. }
@@ -398,7 +401,9 @@ mod tests {
 
     #[test]
     fn local_slash_outcomes_skip_prompt_echo() {
-        assert!(!slash_echoes_prompt_in_transcript(&SlashOutcome::Assistant(String::new())));
+        assert!(!slash_echoes_prompt_in_transcript(&SlashOutcome::OpenToolsDialog {
+            text: String::new()
+        }));
         assert!(!slash_echoes_prompt_in_transcript(&SlashOutcome::Status(String::new())));
         assert!(!slash_echoes_prompt_in_transcript(&SlashOutcome::OpenModelSelector {
             filter: String::new()
@@ -413,7 +418,7 @@ mod tests {
     }
 
     #[test]
-    fn tools_json_is_rejected_without_session() {
+    fn tools_junk_arg_returns_dialog_without_session() {
         let outcome = handle_slash_submit(SlashContext {
             input: "/tools json",
             extensions: None,
@@ -425,33 +430,18 @@ mod tests {
             cwd: None,
             spawn_agent_work: true,
         });
+        assert!(!slash_echoes_prompt_in_transcript(&outcome));
         assert!(matches!(
             outcome,
-            SlashOutcome::Status(message) if message.contains("unknown /tools format")
+            SlashOutcome::OpenToolsDialog { text }
+                if text.contains("Available tools")
+                    && text.contains("session unavailable")
+                    && !text.contains("| Tool |")
         ));
     }
 
     #[test]
-    fn tools_unknown_format_returns_status() {
-        let outcome = handle_slash_submit(SlashContext {
-            input: "/tools yaml",
-            extensions: None,
-            prompt_templates: None,
-            skills: None,
-            agent_session: None,
-            extension_host: None,
-            paths: None,
-            cwd: None,
-            spawn_agent_work: true,
-        });
-        assert!(matches!(
-            outcome,
-            SlashOutcome::Status(message) if message.contains("unknown /tools format")
-        ));
-    }
-
-    #[test]
-    fn tools_returns_assistant_markdown_without_session() {
+    fn tools_returns_dialog_without_session() {
         let outcome = handle_slash_submit(SlashContext {
             input: "/tools",
             extensions: None,
@@ -466,10 +456,10 @@ mod tests {
         assert!(!slash_echoes_prompt_in_transcript(&outcome));
         assert!(matches!(
             outcome,
-            SlashOutcome::Assistant(message)
-                if message.contains("## Available tools")
-                    && message.contains("| Tool | Group | Description |")
-                    && message.contains("Agent session unavailable")
+            SlashOutcome::OpenToolsDialog { text }
+                if text.contains("Available tools")
+                    && text.contains("session unavailable")
+                    && !text.contains("| Tool |")
         ));
     }
 
@@ -538,7 +528,9 @@ mod tests {
         assert!(slash_outcome_is_ui_only(&SlashOutcome::OpenSystemPromptDialog {
             text: "x".into()
         }));
-        assert!(slash_outcome_is_ui_only(&SlashOutcome::Assistant("tools".into())));
+        assert!(slash_outcome_is_ui_only(&SlashOutcome::OpenToolsDialog {
+            text: "tools".into()
+        }));
         assert!(!slash_outcome_is_ui_only(&SlashOutcome::SpawnAgentTurn));
     }
 
