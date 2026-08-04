@@ -99,6 +99,13 @@ static RETRYABLE: LazyLock<Regex> = LazyLock::new(|| {
         "stream.?ended.?unexpectedly",
         "stream ended without finish_reason",
         "finish_reason",
+        // Incomplete generation responses (model cut off before finishing its reply)
+        "could.?not.?finish.?generating",
+        "did.?not.?finish.?generating",
+        "empty.?response",
+        "empty.?generation",
+        "no.?response.?received",
+        "received.?no.?response",
         // gRPC / server errors (pi #6449)
         "resource.?exhausted",
         "resourceed.?exhausted",
@@ -187,5 +194,35 @@ pub async fn retry_assistant_call(
                 tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn incomplete_generation_stream_errors_are_transient() {
+        assert!(is_transient_error("The model could not finish generating the response"));
+        assert!(is_transient_error("The model did not finish generating the response"));
+        assert!(is_transient_error("Received an empty response from the provider"));
+        assert!(is_transient_error("Empty generation returned by upstream"));
+        assert!(is_transient_error("no response received from the model"));
+    }
+
+    #[test]
+    fn known_non_retryable_errors_still_win() {
+        assert!(!is_transient_error("401: invalid_api_key"));
+        assert!(!is_transient_error("Monthly usage limit reached"));
+        assert!(!is_transient_error("insufficient_quota"));
+        assert!(!is_transient_error("403 access denied"));
+    }
+
+    #[test]
+    fn classic_stream_cutoffs_remain_transient() {
+        assert!(is_transient_error("stream ended without message_stop"));
+        assert!(is_transient_error("connection reset by peer"));
+        assert!(is_transient_error("HTTP2 request did not get a response"));
+        assert!(is_transient_error("503 Service Unavailable"));
     }
 }

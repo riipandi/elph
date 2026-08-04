@@ -1,9 +1,9 @@
 //! User-facing formatting for provider / HTTP API errors (401, 409, …).
 
 /// Marker appended to transient API-error status lines. The transcript error card
-/// detects this suffix and renders a dedicated "Press r to retry" affordance instead
-/// of showing the raw text.
-pub const RETRY_HINT: &str = "Press r to retry this prompt.";
+/// detects this suffix and renders a dedicated "Press Ctrl+R to retry" affordance
+/// instead of showing the raw text.
+pub const RETRY_HINT: &str = "Press Ctrl+R to retry this prompt.";
 
 /// Build a clear **transcript** line from a raw provider or harness error string.
 ///

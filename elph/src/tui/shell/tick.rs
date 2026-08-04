@@ -429,6 +429,9 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         let mut transcript_changed = false;
         let mut run_completed = false;
         let mut run_completed_elapsed: Option<f64> = None;
+        // True when a live-activity event (deltas / tool / Retrying) arrived after
+        // RunCompleted in the same drained batch — the turn is still alive.
+        let mut live_after_run_completed = false;
 
         let drained_events: Vec<AgentUiEvent> = if let Some(rx) = ui_events.as_ref() {
             if let Ok(mut guard) = rx.lock() {
@@ -465,6 +468,12 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                         false,
                         None,
                     );
+                }
+                // A live-activity event arriving *after* RunCompleted in the same batch
+                // means the turn is still running (auto-retry, late subagent output) — the
+                // turn-completion block below must not tear the busy state back down.
+                if run_completed {
+                    live_after_run_completed = true;
                 }
             }
             if let AgentUiEvent::RunCompleted { elapsed_secs } = &event {
@@ -503,7 +512,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 }
             }
 
-            // Transient stream/API failure — stash the prompt so the `r` key can
+            // Transient stream/API failure — stash the recovery prompt so the Ctrl+R key can
             // re-submit it without the user re-typing (error card shows the hint).
             if let AgentUiEvent::RetryablePrompt(prompt) = &event {
                 pending_retry_prompt.set(Some(prompt.clone()));
@@ -892,13 +901,18 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             if let Some(turn_elapsed) = run_completed_elapsed {
                 session_elapsed_secs.set(accumulate_session_elapsed(session_elapsed_secs.get(), turn_elapsed));
             }
-            busy.set(false);
-            agent_turn_active.set(false);
-            busy_started_at.set(None);
-            activity_started_at.set(None);
-            activity_label.set(String::new());
-            turn_token_tracker.set(None);
-            chrome_refresh_pending.set(true);
+            // Keep the busy/turn state alive when a retry (or late subagent output) started
+            // in the same batch right after RunCompleted — the spinner + "Retrying…" label
+            // must survive until that continuation finishes and emits its own RunCompleted.
+            if !live_after_run_completed {
+                busy.set(false);
+                agent_turn_active.set(false);
+                busy_started_at.set(None);
+                activity_started_at.set(None);
+                activity_label.set(String::new());
+                turn_token_tracker.set(None);
+                chrome_refresh_pending.set(true);
+            }
             // Follow-up prompts are drained inside the harness agent loop; no TUI re-spawn.
 
             // Persist full transcript (thinking / tools / durations / expand / diffs)

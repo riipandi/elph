@@ -47,9 +47,15 @@ pub struct QueuedPromptItem {
 #[derive(Debug)]
 pub enum AgentUiEvent {
     Status(String),
-    /// Last failed user prompt that can be re-submitted (transient stream/API errors).
-    /// Shell stores this for the `r` retry key / error-card affordance.
+    /// Recovery prompt the shell re-submits on Ctrl+R after a transient stream/API error.
+    /// Carries a "Continue"-style message (not the original prompt) so completed tool work
+    /// is not duplicated. Shell stores this for the Ctrl+R retry key / error-card affordance.
     RetryablePrompt(String),
+    /// The session is automatically retrying an interrupted turn. The shell shows a
+    /// spinner + "Retrying…" activity label (`attempt` is 1-based) instead of an idle bar.
+    Retrying {
+        attempt: u32,
+    },
     /// Durable transcript notice (conflicts, reload details). Always **appends** a Meta
     /// card — unlike [`Self::Status`], it is not collapsed into the previous Meta line.
     TranscriptNotice(String),

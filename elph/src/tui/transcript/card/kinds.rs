@@ -448,7 +448,7 @@ pub fn error_card(screen_width: u16, message: &TranscriptMessage, margin_bottom:
         return render_tinted_card(&chrome, message);
     }
     // Transient error (stream cutoff / 5xx / …): card body plus a dedicated
-    // "press r to retry" affordance so the retry path is visible, not buried in text.
+    // "Press Ctrl+R to retry" affordance so the retry path is visible, not buried in text.
     let mut body_chrome = chrome.clone();
     body_chrome.margin_bottom = 0;
     let inner_width = body_chrome.inner_width(message.style);
@@ -467,7 +467,7 @@ pub fn error_card(screen_width: u16, message: &TranscriptMessage, margin_bottom:
                 gap: 1,
             ) {
                 Text(content: "Press", color: TOOL_ARGS_FG)
-                Text(content: "r", color: USER_INPUT_ACCENT)
+                Text(content: "Ctrl+R", color: USER_INPUT_ACCENT)
                 Text(content: "to retry this prompt", color: TOOL_ARGS_FG)
             }
         }

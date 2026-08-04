@@ -354,7 +354,7 @@ Until a full refresh runs, `[+N -N]` may show stale values while the branch name
 | `Ctrl+~`                  | Cycle thinking level (`Ctrl+\`` also accepted)                                                     |
 | `Enter`                   | Send message; while agent is busy, enqueue as follow-up; in slash palette, run or complete command |
 | `Ctrl+Enter`              | If queue non-empty: send top item now (interject). Else interject editor text mid-turn             |
-| `r`                       | Retry the last transient error (stream cutoff / 5xx) — re-submits the failed prompt without re-typing (hint shown on the error card) |
+| `Ctrl+R`                  | Retry the last transient error (stream cutoff / 5xx) — submits a Continue-style recovery prompt without re-typing (hint shown on the error card) |
 | `Ctrl+Q`                  | Open/close numbered prompt queue manager (edit / cancel items)                                     |
 | `Ctrl+J`                  | Insert newline in input                                                                            |
 | `Shift+Enter`             | Insert newline in input                                                                            |

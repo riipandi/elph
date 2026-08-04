@@ -387,12 +387,14 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         return;
     }
 
-    // Plain `r` — retry the last transient provider/stream error (stream cutoff, 5xx, …)
-    // without re-typing. The error card shows the hint; the prompt is stashed by the
-    // tick loop on `AgentUiEvent::RetryablePrompt`. Only fires while idle with no modal open.
+    // Ctrl+R — retry the last transient provider/stream error (stream cutoff, 5xx, …)
+    // without re-typing. The error card shows the hint; the recovery prompt is stashed by
+    // the tick loop on `AgentUiEvent::RetryablePrompt`. Only fires while idle with no modal
+    // open, and only on the exact Ctrl+R chord (no extra Shift/Alt/Meta).
     let retryable_prompt = pending_retry_prompt.read().clone();
     if let Some(retry_text) = retryable_prompt
-        && modifiers.is_empty()
+        && modifiers.contains(KeyModifiers::CONTROL)
+        && !modifiers.intersects(KeyModifiers::SHIFT | KeyModifiers::ALT | KeyModifiers::META)
         && matches!(code, KeyCode::Char('r') | KeyCode::Char('R'))
         && !agent_turn_active.get()
         && !busy.get()

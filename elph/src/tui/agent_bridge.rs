@@ -485,7 +485,8 @@ impl TranscriptEventApplier {
             | AgentUiEvent::QueueUpdate { .. }
             | AgentUiEvent::MemoryResult(_)
             | AgentUiEvent::UserPromptCommitted { .. }
-            | AgentUiEvent::RetryablePrompt(_) => false,
+            | AgentUiEvent::RetryablePrompt(_)
+            | AgentUiEvent::Retrying { .. } => false,
             // ToolApprovalRequired is handled in shell (must respond on response_tx).
             AgentUiEvent::ToolApprovalRequired(_) => false,
         }

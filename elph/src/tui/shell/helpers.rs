@@ -110,6 +110,7 @@ pub(crate) fn agent_event_keeps_busy(event: &AgentUiEvent) -> bool {
             | AgentUiEvent::ToolEnd { .. }
             | AgentUiEvent::SubagentStatus { .. }
             | AgentUiEvent::SubagentOutput { .. }
+            | AgentUiEvent::Retrying { .. }
     )
 }
 

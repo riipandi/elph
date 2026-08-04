@@ -37,6 +37,14 @@ const SESSION_TITLE_USER: &str = include_str!("../../../templates/agent/session_
 /// Maximum number of background auto-title attempts per session lifetime.
 const SESSION_TITLE_MAX_ATTEMPTS: u32 = 3;
 
+/// Recovery prompt submitted instead of re-sending the original text when a transient
+/// stream/provider error interrupts a turn. The model resumes from the last persisted
+/// state (any tool results already in the conversation stay in context) instead of
+/// re-running the whole task, so completed tool calls are not duplicated.
+const RETRY_CONTINUE_PROMPT: &str = "Continue: the previous response was interrupted by a transient stream error. \
+     Resume from where you left off and finish the task. Do not repeat tool calls or \
+     actions that already succeeded.";
+
 /// Constructor inputs for [`CodingAgentSession::new`] (avoids a long positional arg list).
 pub struct CodingAgentSessionParams {
     pub harness: Arc<AgentHarness<TursoSessionStorage>>,
@@ -335,7 +343,7 @@ impl CodingAgentSession {
                 self.finish_ui_turn(started).await;
                 // Provider / stream errors: compact+retry (context) or silent transient retry.
                 if message.stop_reason == StopReason::Error {
-                    self.recover_errored_turn(&text, message).await;
+                    self.recover_errored_turn(message).await;
                 }
                 self.maybe_generate_session_title();
                 // Check auto-compaction after every turn (successful or errored).
@@ -345,33 +353,37 @@ impl CodingAgentSession {
                 self.finish_ui_turn_rejected_busy(format!("Error: {err}")).await;
             }
             Err(err) => {
-                self.finish_ui_turn(started).await;
                 let err_s = err.to_string();
-                // Harness-level failure (e.g. stream cut) — one automatic retry when transient.
+                // Harness-level failure (e.g. stream cut) — one automatic retry when
+                // transient. Keep the UI turn alive across the retry (no intermediate
+                // RunCompleted) so the shell shows a spinner + "Retrying…" indicator.
+                // The retry submits a Continue-style prompt instead of re-sending the
+                // original text, so already-completed tool work is not duplicated.
                 if elph_ai::retry::is_transient_error(&err_s) {
                     let _ = self
                         .ui_tx
                         .send(AgentUiEvent::Status("Stream interrupted — retrying automatically…".to_string()));
-                    let retry_started = Instant::now();
-                    match self.harness.prompt(text.clone(), None).await {
+                    let _ = self.ui_tx.send(AgentUiEvent::Retrying { attempt: 1 });
+                    match self.harness.prompt(RETRY_CONTINUE_PROMPT, None).await {
                         Ok(msg) => {
-                            self.finish_ui_turn(retry_started).await;
+                            self.finish_ui_turn(started).await;
                             if msg.stop_reason == StopReason::Error {
-                                self.emit_retryable_error(&text, msg.error_message.as_deref());
+                                self.emit_retryable_error(msg.error_message.as_deref());
                             }
                             self.maybe_generate_session_title();
                             self.maybe_auto_compact(None).await;
                             return Ok(());
                         }
                         Err(retry_err) => {
-                            self.finish_ui_turn(retry_started).await;
-                            self.emit_retryable_error(&text, Some(&retry_err.to_string()));
+                            self.finish_ui_turn(started).await;
+                            self.emit_retryable_error(Some(&retry_err.to_string()));
                             self.maybe_auto_compact(None).await;
                             return Err(anyhow::anyhow!("{retry_err}"));
                         }
                     }
                 }
-                self.emit_retryable_error(&text, Some(&err_s));
+                self.finish_ui_turn(started).await;
+                self.emit_retryable_error(Some(&err_s));
                 self.maybe_auto_compact(None).await;
             }
         }
@@ -409,7 +421,7 @@ impl CodingAgentSession {
         }
     }
 
-    fn emit_retryable_error(&self, prompt: &str, error: Option<&str>) {
+    fn emit_retryable_error(&self, error: Option<&str>) {
         let raw = error.unwrap_or("request failed");
         let display = crate::tui::api_error_display::format_user_facing_api_error(raw);
         let transient = elph_ai::retry::is_transient_error(raw);
@@ -420,15 +432,19 @@ impl CodingAgentSession {
         };
         let _ = self.ui_tx.send(AgentUiEvent::Status(line));
         if transient {
-            let _ = self.ui_tx.send(AgentUiEvent::RetryablePrompt(prompt.to_string()));
+            // Manual retry (Ctrl+R) resumes with a Continue-style recovery prompt rather
+            // than re-sending the original text, so completed tool work is not duplicated.
+            let _ = self
+                .ui_tx
+                .send(AgentUiEvent::RetryablePrompt(RETRY_CONTINUE_PROMPT.to_string()));
         }
     }
 
     /// After a turn that ended with a provider error, auto-recover when possible.
     ///
-    /// 1. Transient stream/network errors → one silent prompt retry (no user action).
+    /// 1. Transient stream/network errors → one automatic Continue-style retry.
     /// 2. Context-limit errors → compact then resume once.
-    async fn recover_errored_turn(&self, text: &str, message: &AssistantMessage) {
+    async fn recover_errored_turn(&self, message: &AssistantMessage) {
         let error_text = message.error_message.as_deref().unwrap_or_default();
 
         // Transient stream cutoffs / 5xx / etc. — retry without compaction first.
@@ -436,17 +452,18 @@ impl CodingAgentSession {
             let _ = self
                 .ui_tx
                 .send(AgentUiEvent::Status("Stream interrupted — retrying automatically…".to_string()));
+            let _ = self.ui_tx.send(AgentUiEvent::Retrying { attempt: 1 });
             let retry_started = Instant::now();
-            match self.harness.prompt(text.to_string(), None).await {
+            match self.harness.prompt(RETRY_CONTINUE_PROMPT, None).await {
                 Ok(retry_message) => {
                     self.finish_ui_turn(retry_started).await;
                     if retry_message.stop_reason == StopReason::Error {
                         // Fall through to context recovery if still failing.
                         let retry_err = retry_message.error_message.as_deref().unwrap_or_default();
                         if self.recover_from_turn_error(retry_err).await {
-                            self.retry_after_compaction(text).await;
+                            self.retry_after_compaction().await;
                         } else {
-                            self.emit_retryable_error(text, Some(retry_err));
+                            self.emit_retryable_error(Some(retry_err));
                         }
                     }
                     return;
@@ -454,41 +471,42 @@ impl CodingAgentSession {
                 Err(err) => {
                     self.finish_ui_turn(retry_started).await;
                     log::warn!("auto-retry after stream error failed: {err}");
-                    self.emit_retryable_error(text, Some(&err.to_string()));
+                    self.emit_retryable_error(Some(&err.to_string()));
                     return;
                 }
             }
         }
 
         if !self.recover_from_turn_error(error_text).await {
-            self.emit_retryable_error(text, Some(error_text));
+            self.emit_retryable_error(Some(error_text));
             return;
         }
-        self.retry_after_compaction(text).await;
+        self.retry_after_compaction().await;
     }
 
-    async fn retry_after_compaction(&self, text: &str) {
+    async fn retry_after_compaction(&self) {
         let retry_started = Instant::now();
-        if !self.retry_fits_after_compaction(text).await {
+        if !self.retry_fits_after_compaction(RETRY_CONTINUE_PROMPT).await {
             let _ = self.ui_tx.send(AgentUiEvent::Status(
                 "Context still exceeds limit after compaction — use /compact or a shorter prompt.".to_string(),
             ));
             self.finish_ui_turn(retry_started).await;
             return;
         }
-        match self.harness.prompt(text.to_string(), None).await {
+        let _ = self.ui_tx.send(AgentUiEvent::Retrying { attempt: 2 });
+        match self.harness.prompt(RETRY_CONTINUE_PROMPT, None).await {
             Ok(retry_message) => {
                 self.finish_ui_turn(retry_started).await;
                 if retry_message.stop_reason == StopReason::Error
                     && let Some(retry_error) = retry_message.error_message
                 {
-                    self.emit_retryable_error(text, Some(&retry_error));
+                    self.emit_retryable_error(Some(&retry_error));
                 }
             }
             Err(err) => {
                 self.finish_ui_turn(retry_started).await;
                 log::warn!("auto-resume after compaction failed: {err}");
-                self.emit_retryable_error(text, Some(&err.to_string()));
+                self.emit_retryable_error(Some(&err.to_string()));
             }
         }
     }
