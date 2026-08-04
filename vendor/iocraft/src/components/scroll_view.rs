@@ -65,6 +65,14 @@ impl ScrollViewHandle {
         }
     }
 
+    /// Disengages auto-scroll (bottom-pinning) without moving the current offset, so a
+    /// manually expanded card stays in view while more content streams below it.
+    pub fn pause_auto_scroll(&mut self) {
+        if let Some(inner) = &mut self.inner {
+            inner.user_scrolled_up.set(true);
+        }
+    }
+
     /// Scrolls to the given offset in lines from the top. The offset is clamped to the valid
     /// range. Disengages auto scroll if the resulting position is not at the bottom.
     pub fn scroll_to(&mut self, offset: i32) {

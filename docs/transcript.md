@@ -182,6 +182,20 @@ reads the scroll handle directly each frame (no separate override mirror), clamp
 offset to the fresh `max_offset`, and snaps to the bottom when it was clamped. The scrollbar
 thumb and offset clamping therefore track the collapsed height immediately.
 
+### Smart Scroll on Expand (panel.rs + vendored ScrollView)
+
+Auto-scroll follows the bottom while the user is pinned there. Expanding a collapsible card
+(Ctrl+O for the newest block, or clicking any process header) to read its detail must **not**
+yank the view back down as more content streams below it. The panel tracks each collapsible
+card's `detail_expanded` state across frames and, on a real collapsed→expanded toggle at a
+stable index, calls the vendored `ScrollViewHandle::pause_auto_scroll()` (which sets
+`user_scrolled_up = true` without moving the offset) and drops the near-bottom hysteresis
+(`near_bottom_sticky = false`). The result: the expanded card stays exactly where it was,
+streaming output keeps appending below it, and the view only re-pins to the bottom once the
+user scrolls back down (End, arrow/Page-Down, or mouse wheel to the bottom). Newly streamed
+cards start expanded but are excluded by `is_collapsible_detail()`, and a shrinking message
+count (e.g. an archive reload) is skipped, so the pause fires only on genuine user expands.
+
 ### Streaming Content Cap (agent_bridge.rs)
 
 Assistant streaming content is now capped at **200 KB** (similar to `TOOL_OUTPUT_STREAM_CAP` at

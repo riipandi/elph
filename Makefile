@@ -105,6 +105,7 @@ install: build ## Install elph (debug -> elph-dev; release -> elph-next)
 	  else \
 	    _suffix="-dev"; \
 	  fi; \
+      rm -f "$(INSTALL_DIR)/$$bin$${_suffix}"; \
 	  cp "$(BUILD_DIR)/$$bin" "$(INSTALL_DIR)/$$bin$${_suffix}"; \
 	  echo "$$bin$${_suffix} installed at: $(INSTALL_DIR)/$$bin$${_suffix} [$(BUILD_PROFILE)]"; \
 	done

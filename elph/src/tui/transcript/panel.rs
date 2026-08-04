@@ -90,6 +90,10 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
     let mut last_committed_bottom = hooks.use_ref(|| 0u32);
     let mut is_streaming = hooks.use_ref(|| false);
     is_streaming.set(props.streaming_active.unwrap_or(false));
+    // Tracks per-index `detail_expanded` of collapsible cards so a user-initiated
+    // expand (Ctrl+O / click) can pause auto-scroll without being confused with a
+    // freshly streamed card (which starts expanded).
+    let mut prev_detail_expanded = hooks.use_ref(Vec::<bool>::new);
 
     hooks.use_future(async move {
         let messages_arc = messages_arc; // moved into future
@@ -217,6 +221,38 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
         .map(|layout| layout.start_row.saturating_add(layout.row_count))
         .unwrap_or(0);
     let layout_content_u16 = layout_content_rows.min(u16::MAX as u32) as u16;
+
+    // Smart-scroll: when the user expands a collapsible card (Ctrl+O / click) while
+    // auto-following the bottom, pause the follow so the expanded detail stays in view
+    // instead of being yanked down by the streaming tail. We only react to a real
+    // collapsed→expanded toggle at a stable (existing) index: streamed cards start
+    // expanded and are excluded by `is_collapsible_detail()`, and structural reloads
+    // (shrinking message count) are skipped to avoid false positives.
+    {
+        let n = messages.len();
+        let mut prev = prev_detail_expanded.write();
+        if n >= prev.len() {
+            let mut expanded_now = false;
+            for i in 0..prev.len() {
+                let msg = &messages[i];
+                if msg.is_collapsible_detail() && !prev[i] && msg.detail_expanded {
+                    expanded_now = true;
+                    break;
+                }
+            }
+            if expanded_now && scroll_handle.read().is_auto_scroll_pinned() {
+                scroll_handle.write().pause_auto_scroll();
+                // Drop the near-bottom hysteresis so windowing keeps the current offset
+                // (not the freshly grown bottom) and the expanded card remains visible.
+                near_bottom_sticky.set(false);
+            }
+        }
+        let mut next = Vec::with_capacity(n);
+        for msg in messages.iter() {
+            next.push(msg.is_collapsible_detail() && msg.detail_expanded);
+        }
+        *prev = next;
+    }
 
     let auto_pinned = scroll_handle.read().is_auto_scroll_pinned();
     // Near-bottom with hysteresis to prevent flicker during streaming.
