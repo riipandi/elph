@@ -502,7 +502,14 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 }
                 // Sticky red toast — friendly text only (no raw JSON); transcript keeps fuller line.
                 if crate::tui::api_error_display::is_user_facing_api_error_line(message) {
-                    let toast = crate::tui::api_error_display::format_ephemeral_api_error(message);
+                    // Drop the trailing "Press Ctrl+R to retry this prompt." marker (and the
+                    // blank line that precedes it) so the single-line toast stays clean; the
+                    // transcript error card renders that hint as its own dedicated row.
+                    let cleaned = message
+                        .replace(crate::tui::api_error_display::RETRY_HINT, "")
+                        .trim()
+                        .to_string();
+                    let toast = crate::tui::api_error_display::format_ephemeral_api_error(&cleaned);
                     show_ephemeral_banner(
                         &mut ephemeral_banner,
                         &mut ephemeral_banner_generation,
