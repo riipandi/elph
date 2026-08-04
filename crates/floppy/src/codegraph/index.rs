@@ -145,7 +145,7 @@ impl Indexer<'_> {
             };
             stats.bytes_read += bytes.len() as u64;
 
-            // Use fast xxHash instead of SHA-256 for content comparison
+            // Use fast FxHasher64 (non-crypto) instead of SHA-256 for content comparison
             let hash = fast_hash(&bytes);
             live_paths.insert(rel.clone());
             file_map.insert(rel.clone(), hash.clone());

@@ -29,16 +29,7 @@ embed = ["dep:embed_anything", "embed_anything/accelerate"]
 metal = ["embed", "embed_anything/metal"]
 cuda = ["embed", "embed_anything/cuda"]
 # Semantic codebase index (ast-grep chunking + FTS/vector). Optional; heavy.
-codegraph = [
-  "dep:ast-grep-core",
-  "dep:ast-grep-language",
-  "dep:ignore",
-  "dep:sha2",
-  "dep:regex",
-  "dep:xxhash-rust",
-  "xxhash-rust/xxh3",
-  "dep:rayon",
-]
+codegraph = ["dep:ast-grep-core", "dep:ast-grep-language", "dep:ignore", "dep:sha2", "dep:regex", "dep:rayon"]
 # Convenience: full surface for hosts (Elph).
 full = ["memory", "embed", "codegraph"]
 
@@ -66,12 +57,12 @@ parking_lot.workspace = true
 rand.workspace = true
 rayon = { workspace = true, optional = true }
 regex = { workspace = true, optional = true }
+rustc-hash.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2 = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["io-util", "macros", "rt", "rt-multi-thread", "sync", "time"] }
 turso.workspace = true
-xxhash-rust = { version = "0.8", optional = true }
 
 [dev-dependencies]
 tempfile.workspace = true

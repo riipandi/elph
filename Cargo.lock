@@ -3859,13 +3859,13 @@ dependencies = [
  "rand 0.10.2",
  "rayon",
  "regex",
+ "rustc-hash 2.1.3",
  "serde",
  "serde_json",
  "sha2 0.11.0",
  "tempfile",
  "tokio",
  "turso",
- "xxhash-rust",
 ]
 
 [[package]]

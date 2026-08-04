@@ -1,7 +1,9 @@
 //! File-only Merkle fingerprint for the code index.
 
+use rustc_hash::FxHasher;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
+use std::hash::Hasher;
 
 /// Compute a stable root hash over sorted `(path, file_hash)` pairs.
 pub fn merkle_root(files: &BTreeMap<String, String>) -> String {
@@ -16,10 +18,11 @@ pub fn merkle_root(files: &BTreeMap<String, String>) -> String {
 }
 
 /// Fast non-cryptographic hash for file content comparison.
-/// Uses xxHash3 which is ~10x faster than SHA-256.
+/// Uses FNV-1a (FxHasher) — a fast, non-crypto 64-bit fingerprint.
 pub fn fast_hash(bytes: &[u8]) -> String {
-    let hash = xxhash_rust::xxh3::xxh3_64(bytes);
-    format!("{:x}", hash)
+    let mut hasher = FxHasher::default();
+    hasher.write(bytes);
+    format!("{:x}", hasher.finish())
 }
 
 /// Cryptographic hash for secure fingerprinting (used for merkle root).
