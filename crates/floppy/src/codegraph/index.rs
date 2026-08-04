@@ -79,18 +79,60 @@ impl Indexer<'_> {
             gpu_acceleration: self.gpu_acceleration.clone(),
             ..Default::default()
         };
-        let mut live_paths: HashSet<String> = HashSet::new();
-        let mut file_map: BTreeMap<String, String> = BTreeMap::new();
 
         self.report(IndexPhase::Starting, &stats, None, None, None);
 
-        // Load existing hashes for skip
+        // Load existing hashes so we can skip unchanged files and prune deleted ones.
         let existing = load_file_hashes(conn).await?;
         self.report(IndexPhase::Scanning, &stats, None, None, None);
 
+        let (files_to_process, live_paths, files_to_index_count, estimated_seconds) =
+            self.walk_phase(&mut stats, &existing);
+
+        let chunked_files = self.chunk_phase(&mut stats, &files_to_process);
+        let final_processed = self.embed_phase(&mut stats, chunked_files).await;
+
+        self.write_phase(
+            conn,
+            &mut stats,
+            &existing,
+            &live_paths,
+            &final_processed,
+            files_to_index_count,
+            estimated_seconds,
+        )
+        .await?;
+
+        self.finalize_phase(conn, &mut stats, files_to_index_count, estimated_seconds)
+            .await?;
+
+        log::info!(
+            target: "codegraph",
+            "codegraph index complete: files_walked={} files_indexed={} chunks_embedded={} \
+             walk_ms={} reindex_ms={} finalize_ms={} total_ms={}",
+            stats.files_walked,
+            stats.files_indexed,
+            stats.chunks_embedded,
+            stats.walk_ms,
+            stats.reindex_ms,
+            stats.finalize_ms,
+            stats.walk_ms + stats.reindex_ms + stats.finalize_ms,
+        );
+
+        self.report(IndexPhase::Done, &stats, None, Some(files_to_index_count), estimated_seconds);
+        Ok(stats)
+    }
+
+    /// Phase 1: walk the tree, read + hash files, and drop unchanged/skipped ones.
+    /// Returns the files to (re)index, the set of live paths, and the UI progress
+    /// estimates derived from the work count.
+    fn walk_phase(
+        &self,
+        stats: &mut ScanStats,
+        existing: &BTreeMap<String, String>,
+    ) -> (Vec<FileToProcess>, HashSet<String>, u32, Option<u64>) {
         let walk_start = Instant::now();
 
-        // Phase 1: Walk and collect files (sequential - filesystem operations)
         let walker = WalkBuilder::new(self.root)
             .hidden(false)
             .git_ignore(true)
@@ -99,6 +141,9 @@ impl Indexer<'_> {
             .build();
 
         let mut files_to_process: Vec<FileToProcess> = Vec::new();
+        let mut live_paths: HashSet<String> = HashSet::new();
+        // Retained for behavior parity with the original walk (built, not read).
+        let mut file_map: BTreeMap<String, String> = BTreeMap::new();
 
         for entry in walker {
             let entry = match entry {
@@ -172,8 +217,7 @@ impl Indexer<'_> {
         // Calculate estimation after walk phase
         let files_to_index_count = files_to_process.len() as u32;
         let estimated_seconds = if files_to_index_count > 0 {
-            // Estimate: assume ~0.5 seconds per file (CPU) or ~0.1 seconds per file (GPU)
-            // Use a conservative estimate for CPU
+            // Estimate: assume ~0.5 seconds per file (CPU) or ~0.1 seconds per file (GPU).
             let seconds_per_file = if self
                 .gpu_acceleration
                 .as_ref()
@@ -190,18 +234,27 @@ impl Indexer<'_> {
 
         self.report(
             IndexPhase::IndexingFile,
-            &stats,
+            stats,
             None,
             Some(files_to_index_count),
             estimated_seconds,
         );
 
-        // Phase 2: Parallel chunking with rayon (CPU-bound)
+        (files_to_process, live_paths, files_to_index_count, estimated_seconds)
+    }
+
+    /// Phase 2: parallel AST chunking (CPU-bound, via rayon).
+    fn chunk_phase(
+        &self,
+        stats: &mut ScanStats,
+        files_to_process: &[FileToProcess],
+    ) -> Vec<(String, String, String, String, Vec<RawChunk>)> {
         let chunk_start = Instant::now();
         let root_path = self.root.to_path_buf();
         let max_chunk_lines = self.max_chunk_lines;
 
-        let chunked_files: Vec<(String, String, String, String, Vec<RawChunk>)> = files_to_process
+        stats.reindex_ms = chunk_start.elapsed().as_millis() as u64;
+        files_to_process
             .par_iter()
             .map(|file| {
                 let rel = &file.rel;
@@ -214,14 +267,17 @@ impl Indexer<'_> {
 
                 (rel.clone(), hash.clone(), lang, source, chunks)
             })
-            .collect();
+            .collect()
+    }
 
-        stats.reindex_ms = chunk_start.elapsed().as_millis() as u64;
-
-        // Phase 3: Flatten all chunks into one batch, embed once (or in fixed-size
-        // sub-batches), then scatter results back to their owning file. This is the
-        // dominant indexing speedup: dozens of batched embedder calls instead of
-        // thousands of unbatched single-item calls.
+    /// Phase 3: flatten all chunks, embed them in batches, scatter results back.
+    /// This is the dominant indexing speedup: dozens of batched embedder calls
+    /// instead of thousands of unbatched single-item calls.
+    async fn embed_phase(
+        &self,
+        stats: &mut ScanStats,
+        chunked_files: Vec<(String, String, String, String, Vec<RawChunk>)>,
+    ) -> Vec<ProcessedFile> {
         let embed_start = Instant::now();
         let embed_fn = self.embed;
         let _concurrency = self.embed_concurrency.max(1); // reserved: concurrent dispatch not yet enabled
@@ -248,8 +304,23 @@ impl Indexer<'_> {
             .filter(|e| !is_zero(e))
             .count() as u32;
         stats.reindex_ms += embed_start.elapsed().as_millis() as u64;
+        final_processed
+    }
 
-        // Phase 4: Batch DB writes
+    /// Phase 4: prune deleted paths, then batch-insert all files inside one (or a
+    /// few) transaction(s) so we pay a WAL commit per batch of files rather than
+    /// one commit per file.
+    #[allow(clippy::too_many_arguments)]
+    async fn write_phase(
+        &self,
+        conn: &Connection,
+        stats: &mut ScanStats,
+        existing: &BTreeMap<String, String>,
+        live_paths: &HashSet<String>,
+        final_processed: &[ProcessedFile],
+        files_to_index_count: u32,
+        estimated_seconds: Option<u64>,
+    ) -> Result<()> {
         let db_start = Instant::now();
 
         // Delete old paths first
@@ -259,20 +330,19 @@ impl Indexer<'_> {
             }
         }
 
-        // Batch insert all files inside one (or a few) transaction(s) so we pay a
-        // WAL commit per batch of files rather than one commit per file.
+        // Batch insert all files inside one (or a few) transaction(s).
         let txn_batch = self.db_commit_batch_files.max(1);
         for chunk in final_processed.chunks(txn_batch) {
             conn.execute("BEGIN TRANSACTION", ()).await?;
             for processed in chunk {
                 self.report(
                     IndexPhase::IndexingFile,
-                    &stats,
+                    stats,
                     Some(&processed.rel),
                     Some(files_to_index_count),
                     estimated_seconds,
                 );
-                self.batch_insert_file(conn, processed, &mut stats)
+                self.batch_insert_file(conn, processed, stats)
                     .await
                     .with_context(|| format!("index {}", processed.rel))?;
                 stats.files_indexed += 1;
@@ -280,7 +350,7 @@ impl Indexer<'_> {
                 if stats.files_indexed <= 20 || stats.files_indexed.is_multiple_of(8) {
                     self.report(
                         IndexPhase::IndexingFile,
-                        &stats,
+                        stats,
                         Some(&processed.rel),
                         Some(files_to_index_count),
                         estimated_seconds,
@@ -291,10 +361,20 @@ impl Indexer<'_> {
         }
 
         stats.reindex_ms += db_start.elapsed().as_millis() as u64;
+        Ok(())
+    }
 
+    /// Phase 5: rebuild the Merkle root and persist index metadata.
+    async fn finalize_phase(
+        &self,
+        conn: &Connection,
+        stats: &mut ScanStats,
+        files_to_index_count: u32,
+        estimated_seconds: Option<u64>,
+    ) -> Result<()> {
         self.report(
             IndexPhase::Finalizing,
-            &stats,
+            stats,
             None,
             Some(files_to_index_count),
             estimated_seconds,
@@ -309,22 +389,7 @@ impl Indexer<'_> {
         upsert_meta(conn, META_LAST, &now.to_string()).await?;
         upsert_meta(conn, META_DIR, &self.root.display().to_string()).await?;
         stats.finalize_ms = finalize_start.elapsed().as_millis() as u64;
-
-        log::info!(
-            target: "codegraph",
-            "codegraph index complete: files_walked={} files_indexed={} chunks_embedded={} \
-             walk_ms={} reindex_ms={} finalize_ms={} total_ms={}",
-            stats.files_walked,
-            stats.files_indexed,
-            stats.chunks_embedded,
-            stats.walk_ms,
-            stats.reindex_ms,
-            stats.finalize_ms,
-            stats.walk_ms + stats.reindex_ms + stats.finalize_ms,
-        );
-
-        self.report(IndexPhase::Done, &stats, None, Some(files_to_index_count), estimated_seconds);
-        Ok(stats)
+        Ok(())
     }
 
     /// Batch insert a processed file to reduce DB roundtrips.
