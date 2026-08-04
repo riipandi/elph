@@ -171,7 +171,8 @@ where
         // The actual plan mode check is done by the before_tool_call hook.
         let tool_context = crate::tools::types::ToolContext::new(self.shared.env.clone())
             .with_plan_mode(false)
-            .with_headless(self.shared.headless);
+            .with_headless(self.shared.headless)
+            .with_terminals_dir(self.shared.terminals_dir.clone());
 
         AgentLoopConfig {
             model,

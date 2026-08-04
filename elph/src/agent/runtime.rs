@@ -222,6 +222,7 @@ pub async fn create_coding_session_with_events(
             shared_registry: None,
             agent_control: None,
             headless: options.headless,
+            terminals_dir: Some(session_manager.artifact_dir_for(&session_id).join("terminals")),
         },
         RestoreOptions::default(),
     )

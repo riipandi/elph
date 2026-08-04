@@ -39,6 +39,10 @@ pub struct ToolOutputEntry {
     pub is_error: bool,
     /// ISO 8601 timestamp.
     pub timestamp: String,
+    /// Optional path to the full persisted output file (e.g. a `terminals/*.txt`
+    /// capture for `shell_exec`). `None` when the inline `output` is authoritative.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output_path: Option<String>,
 }
 
 /// Maximum characters stored per tool output entry (long outputs are truncated).
@@ -54,6 +58,7 @@ pub async fn append_tool_output(
     args: &Value,
     output: &str,
     is_error: bool,
+    output_path: Option<&str>,
 ) -> Result<(), SessionError> {
     let truncated = if output.chars().count() > MAX_OUTPUT_LENGTH {
         let keep = MAX_OUTPUT_LENGTH.saturating_sub(3);
@@ -71,6 +76,7 @@ pub async fn append_tool_output(
         output: truncated,
         is_error,
         timestamp: crate::messages::now_iso_timestamp(),
+        output_path: output_path.map(str::to_string),
     };
 
     let line = serde_json::to_string(&entry).map_err(|e| storage_error(session_dir, format!("encode error: {e}")))?;
@@ -154,7 +160,7 @@ mod tests {
         let call_id = test_call_id();
         let args = serde_json::json!({"path": "src/main.rs"});
 
-        append_tool_output(dir.path(), &call_id, "read_file", &args, "fn main() {}", false)
+        append_tool_output(dir.path(), &call_id, "read_file", &args, "fn main() {}", false, None)
             .await
             .expect("append");
 
@@ -179,6 +185,7 @@ mod tests {
                 &args,
                 &format!("output {i}"),
                 false,
+                None,
             )
             .await
             .expect("append");
@@ -196,7 +203,7 @@ mod tests {
         let call_id = test_call_id();
         let args = serde_json::json!({"command": "echo hello"});
 
-        append_tool_output(dir.path(), &call_id, "shell_exec", &args, "hello", false)
+        append_tool_output(dir.path(), &call_id, "shell_exec", &args, "hello", false, None)
             .await
             .expect("append");
 
@@ -218,7 +225,7 @@ mod tests {
         let long_output = "x".repeat(MAX_OUTPUT_LENGTH + 1000);
         let args = serde_json::json!({});
 
-        append_tool_output(dir.path(), &call_id, "tool", &args, &long_output, false)
+        append_tool_output(dir.path(), &call_id, "tool", &args, &long_output, false, None)
             .await
             .expect("append");
 
@@ -241,7 +248,7 @@ mod tests {
         let call_id = test_call_id();
         let args = serde_json::json!({"command": "invalid"});
 
-        append_tool_output(dir.path(), &call_id, "shell_exec", &args, "exit code 1", true)
+        append_tool_output(dir.path(), &call_id, "shell_exec", &args, "exit code 1", true, None)
             .await
             .expect("append");
 
@@ -250,5 +257,30 @@ mod tests {
             .expect("get")
             .expect("found");
         assert!(entry.is_error);
+    }
+
+    #[tokio::test]
+    async fn records_output_path() {
+        let dir = test_dir();
+        let call_id = test_call_id();
+        let args = serde_json::json!({"command": "echo hello"});
+
+        append_tool_output(
+            dir.path(),
+            &call_id,
+            "shell_exec",
+            &args,
+            "hello",
+            false,
+            Some("terminals/shell-t-1.txt"),
+        )
+        .await
+        .expect("append");
+
+        let entry = get_tool_output(dir.path(), &call_id)
+            .await
+            .expect("get")
+            .expect("found");
+        assert_eq!(entry.output_path.as_deref(), Some("terminals/shell-t-1.txt"));
     }
 }

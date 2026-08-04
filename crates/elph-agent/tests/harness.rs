@@ -133,6 +133,7 @@ fn make_harness(
         shared_registry: None,
         agent_control: None,
         headless: false,
+        terminals_dir: None,
     })
     .expect("harness")
 }
@@ -186,6 +187,7 @@ async fn harness_exposes_queue_modes() {
         shared_registry: None,
         agent_control: None,
         headless: false,
+        terminals_dir: None,
     })
     .expect("harness");
 
@@ -315,6 +317,7 @@ async fn harness_before_agent_start_appends_messages() {
         shared_registry: None,
         agent_control: None,
         headless: false,
+        terminals_dir: None,
     })
     .expect("harness");
 
@@ -369,6 +372,7 @@ async fn harness_tool_result_hook_patches_output() {
         shared_registry: None,
         agent_control: None,
         headless: false,
+        terminals_dir: None,
     })
     .expect("harness");
 
@@ -560,6 +564,7 @@ async fn harness_settles_context_hook_failures() {
         shared_registry: None,
         agent_control: None,
         headless: false,
+        terminals_dir: None,
     })
     .expect("harness");
 
@@ -823,6 +828,7 @@ async fn harness_save_point_refreshes_config_at_tool_execution() {
             shared_registry: None,
             agent_control: None,
             headless: false,
+            terminals_dir: None,
         })
         .expect("harness"),
     );
@@ -1043,6 +1049,7 @@ async fn harness_validates_constructor_tool_names() {
         shared_registry: None,
         agent_control: None,
         headless: false,
+        terminals_dir: None,
     });
     assert_eq!(
         missing.err().expect("missing tool error").code,
@@ -1068,6 +1075,7 @@ async fn harness_validates_constructor_tool_names() {
         shared_registry: None,
         agent_control: None,
         headless: false,
+        terminals_dir: None,
     });
     assert_eq!(
         duplicate_tools.err().expect("duplicate tools error").code,
@@ -1093,6 +1101,7 @@ async fn harness_validates_constructor_tool_names() {
         shared_registry: None,
         agent_control: None,
         headless: false,
+        terminals_dir: None,
     });
     assert_eq!(
         duplicate_active.err().expect("duplicate active error").code,
@@ -1128,6 +1137,7 @@ async fn harness_tools_update_events_and_validation() {
         shared_registry: None,
         agent_control: None,
         headless: false,
+        terminals_dir: None,
     })
     .expect("harness");
 
@@ -1230,6 +1240,7 @@ async fn harness_resources_update_events_clone_resources() {
         shared_registry: None,
         agent_control: None,
         headless: false,
+        terminals_dir: None,
     })
     .expect("harness");
 
@@ -1364,6 +1375,7 @@ async fn harness_session_before_compact_overrides_custom_instructions() {
         shared_registry: None,
         agent_control: None,
         headless: false,
+        terminals_dir: None,
     })
     .expect("harness");
 
@@ -1436,6 +1448,7 @@ async fn harness_session_before_tree_runs_during_navigate_tree() {
         shared_registry: None,
         agent_control: None,
         headless: false,
+        terminals_dir: None,
     })
     .expect("harness");
 
@@ -1635,6 +1648,7 @@ async fn harness_restore_rehydrates_next_turn_queue() {
             shared_registry: None,
             agent_control: None,
             headless: false,
+            terminals_dir: None,
         },
         RestoreOptions::default(),
     )

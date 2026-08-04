@@ -162,6 +162,7 @@ async fn harness_prompt_persists_session_messages() {
         shared_registry: None,
         agent_control: None,
         headless: false,
+        terminals_dir: None,
     })
     .expect("harness");
 

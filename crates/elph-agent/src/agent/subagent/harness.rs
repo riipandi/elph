@@ -101,6 +101,7 @@ pub async fn spawn_subagent_harness(
         shared_registry: Some(shared_registry),
         agent_control: Some(agent_control),
         headless: false,
+        terminals_dir: None,
     })
     .map_err(|e: AgentHarnessError| e.to_string())?;
     harness.set_prompt_encoding(bootstrap.prompt_encoding.clone());

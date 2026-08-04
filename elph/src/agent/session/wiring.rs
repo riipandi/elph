@@ -229,6 +229,7 @@ impl CodingAgentSession {
                             &meta.id,
                         );
                         let _ = tokio::fs::create_dir_all(&dir).await;
+                        let output_path = event.details.get("outputPath").and_then(|v| v.as_str());
                         let _ = elph_agent::session::backends::session_dir::tool_outputs::append_tool_output(
                             &dir,
                             &event.tool_call_id,
@@ -244,6 +245,7 @@ impl CodingAgentSession {
                                 .collect::<Vec<_>>()
                                 .join("\n"),
                             event.is_error,
+                            output_path,
                         )
                         .await;
                         None::<elph_agent::ToolResultPatch>

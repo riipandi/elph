@@ -17,7 +17,7 @@ use crate::agent::harness::types::Result as HarnessResult;
 use crate::agent::harness::types::Shell;
 use crate::agent::harness::types::ShellExecOptions;
 use crate::agent::harness::utils::shell_output::{
-    ShellCaptureOptions, ShellOutputCallback, execute_shell_with_capture,
+    ShellCaptureOptions, ShellCaptureResult, ShellOutputCallback, execute_shell_with_capture,
 };
 use crate::agent::harness::utils::truncate::{DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES};
 use crate::runtime::local_env::LocalExecutionEnv;
@@ -243,20 +243,21 @@ fn normalize_lexical(path: &str) -> Option<String> {
 
 fn shell_exec_execute_fn() -> ToolExecuteFn {
     Arc::new(
-        move |_id,
+        move |id,
               args,
               signal,
               on_update,
               context|
               -> Pin<Box<dyn Future<Output = anyhow::Result<AgentToolResult>> + Send>> {
             let env = context.env.clone();
-            Box::pin(async move { execute_shell_exec(env, args, signal, on_update, context).await })
+            Box::pin(async move { execute_shell_exec(env, id, args, signal, on_update, context).await })
         },
     )
 }
 
 async fn execute_shell_exec(
     env: Arc<LocalExecutionEnv>,
+    id: String,
     args: Value,
     signal: Option<CancellationToken>,
     on_update: Option<ToolUpdateCallback>,
@@ -295,19 +296,28 @@ async fn execute_shell_exec(
             Some(BACKGROUND_DEFAULT_TIMEOUT_SECS)
         };
 
-        let output_path = match env
-            .create_temp_file(Some(CreateTempFileOptions {
-                prefix: "shell-exec-bg-".to_string(),
-                suffix: ".log".to_string(),
-                abort_token: signal.clone(),
-            }))
-            .await
-        {
-            HarnessResult::Ok(path) => path,
-            HarnessResult::Err(error) => return Err(anyhow::anyhow!("{}", error.message)),
+        // Persist the raw output to the session terminals dir when wired; otherwise
+        // fall back to a temp file (stateless contexts such as tests/examples).
+        let task_id = next_background_task_id();
+        let output_path = match &context.terminals_dir {
+            Some(dir) => {
+                let _ = std::fs::create_dir_all(dir);
+                dir.join(format!("shell-{task_id}.txt")).to_string_lossy().to_string()
+            }
+            None => match env
+                .create_temp_file(Some(CreateTempFileOptions {
+                    prefix: "shell-exec-bg-".to_string(),
+                    suffix: ".log".to_string(),
+                    abort_token: signal.clone(),
+                }))
+                .await
+            {
+                HarnessResult::Ok(path) => path,
+                HarnessResult::Err(error) => return Err(anyhow::anyhow!("{}", error.message)),
+            },
         };
 
-        let task_id = spawn_background_shell(env.clone(), command.to_string(), cwd, timeout, output_path.clone());
+        spawn_background_shell(env.clone(), command.to_string(), cwd, timeout, output_path.clone());
 
         let timeout_label = timeout
             .map(|seconds| format!("{seconds}s"))
@@ -361,6 +371,11 @@ async fn execute_shell_exec(
         HarnessResult::Err(error) => return Err(anyhow::anyhow!("{}", error.message)),
     };
 
+    // Persist the full command output to the session terminals dir (when wired),
+    // before `capture.output` is moved into the model-facing `text` below so it
+    // survives session resume and is referenced from tool_outputs.jsonl.
+    let persisted_output_path = persist_foreground_output(&context.terminals_dir, &id, &capture).await;
+
     let mut text = capture.output;
     if let Some(code) = capture.exit_code
         && code != 0
@@ -382,6 +397,7 @@ async fn execute_shell_exec(
             "truncated": capture.truncated,
             "cancelled": capture.cancelled,
             "fullOutputPath": capture.full_output_path,
+            "outputPath": persisted_output_path,
         }),
         added_tool_names: None,
         terminate: None,
@@ -389,27 +405,54 @@ async fn execute_shell_exec(
     })
 }
 
+/// Next monotonic background task id (`bg-<n>`).
+fn next_background_task_id() -> String {
+    static NEXT_TASK_ID: AtomicU64 = AtomicU64::new(1);
+    format!("bg-{}", NEXT_TASK_ID.fetch_add(1, Ordering::SeqCst))
+}
+
+/// Write the full foreground `shell_exec` output to the session terminals dir.
+///
+/// Prefers copying the already-written full-output temp file (when the capture
+/// was truncated) to avoid re-copying truncated text; otherwise writes the
+/// captured output directly. Returns `None` when no terminals dir is configured
+/// (stateless context). Failures are logged and swallowed — output persistence
+/// is best-effort and never fails the tool call.
+async fn persist_foreground_output(
+    terminals_dir: &Option<std::path::PathBuf>,
+    call_id: &str,
+    capture: &ShellCaptureResult,
+) -> Option<String> {
+    let dir = terminals_dir.as_ref()?;
+    let _ = tokio::fs::create_dir_all(dir).await;
+    let path = dir.join(format!("shell-{call_id}.txt"));
+    let path_str = path.to_string_lossy().to_string();
+    let wrote = if let Some(full) = &capture.full_output_path {
+        std::fs::copy(full, &path).is_ok()
+    } else {
+        tokio::fs::write(&path, &capture.output).await.is_ok()
+    };
+    wrote.then_some(path_str)
+}
+
 /// Spawn a shell command as a detached background task.
 ///
 /// The process runs independently of the agent turn: it owns a fresh abort
 /// token (not the turn's cancellation token) and streams stdout/stderr to the
-/// given output file. Returns a short task id for reference. The task is
-/// fire-and-forget; its completion status is appended to the file as a footer.
+/// given output file. The task is fire-and-forget; its completion status is
+/// appended to the file as a footer.
 fn spawn_background_shell(
     env: Arc<LocalExecutionEnv>,
     command: String,
     cwd: String,
     timeout: Option<u64>,
     output_path: String,
-) -> String {
-    static NEXT_TASK_ID: AtomicU64 = AtomicU64::new(1);
-    let task_id = format!("bg-{}", NEXT_TASK_ID.fetch_add(1, Ordering::SeqCst));
-
+) {
     let file = match std::fs::OpenOptions::new().create(true).append(true).open(&output_path) {
         Ok(file) => Arc::new(StdMutex::new(file)),
         Err(error) => {
             log::warn!("shell_exec background: cannot open output file {output_path}: {error}");
-            return task_id;
+            return;
         }
     };
 
@@ -450,8 +493,6 @@ fn spawn_background_shell(
             let _ = handle.flush();
         }
     });
-
-    task_id
 }
 
 #[cfg(test)]
@@ -485,6 +526,7 @@ mod tests {
         let ctx = crate::tools::types::ToolContext::new(env.clone());
         let result = execute_shell_exec(
             env,
+            "t-stream".to_string(),
             json!({ "command": "printf early; sleep 0.2; printf late", "timeout": 5 }),
             None,
             Some(on_update),
@@ -506,8 +548,15 @@ mod tests {
         let temp = TempDir::new().expect("temp dir");
         let env = Arc::new(LocalExecutionEnv::new(temp.path().to_path_buf()));
         let ctx = crate::tools::types::ToolContext::new(env.clone());
-        let result =
-            execute_shell_exec(env, json!({ "command": "echo hi", "run_in_background": true }), None, None, ctx).await;
+        let result = execute_shell_exec(
+            env,
+            "t-req".to_string(),
+            json!({ "command": "echo hi", "run_in_background": true }),
+            None,
+            None,
+            ctx,
+        )
+        .await;
         assert!(result.is_err(), "expected error when description is missing");
         assert!(result.unwrap_err().to_string().contains("description is required"));
     }
@@ -519,6 +568,7 @@ mod tests {
         let ctx = crate::tools::types::ToolContext::new(env.clone());
         let result = execute_shell_exec(
             env,
+            "t-spawn".to_string(),
             json!({ "command": "echo hello-from-bg", "run_in_background": true, "description": "demo bg task" }),
             None,
             None,
@@ -561,6 +611,7 @@ mod tests {
         let ctx = crate::tools::types::ToolContext::new(env.clone());
         let result = execute_shell_exec(
             env,
+            "t-600".to_string(),
             json!({ "command": "true", "run_in_background": true, "description": "d" }),
             None,
             None,
@@ -578,6 +629,7 @@ mod tests {
         let ctx = crate::tools::types::ToolContext::new(env.clone());
         let result = execute_shell_exec(
             env,
+            "t-disable".to_string(),
             json!({ "command": "true", "run_in_background": true, "disable_timeout": true, "description": "d" }),
             None,
             None,
@@ -595,6 +647,7 @@ mod tests {
         let ctx = crate::tools::types::ToolContext::new(env.clone()).with_headless(true);
         let result = execute_shell_exec(
             env,
+            "t-headless".to_string(),
             json!({ "command": "true", "run_in_background": true, "description": "d" }),
             None,
             None,
@@ -603,6 +656,75 @@ mod tests {
         .await
         .expect("shell_exec execution");
         assert!(result.details["timeout"].is_null(), "expected null timeout in headless mode");
+    }
+
+    #[tokio::test]
+    async fn shell_exec_foreground_persists_output_to_terminals_dir() {
+        let temp = TempDir::new().expect("temp dir");
+        let env = Arc::new(LocalExecutionEnv::new(temp.path().to_path_buf()));
+        let terminals = TempDir::new().expect("terminals dir");
+        let ctx =
+            crate::tools::types::ToolContext::new(env.clone()).with_terminals_dir(Some(terminals.path().to_path_buf()));
+        let result = execute_shell_exec(
+            env,
+            "t-fg".to_string(),
+            json!({ "command": "echo persisted-output" }),
+            None,
+            None,
+            ctx,
+        )
+        .await
+        .expect("shell_exec execution");
+
+        let output_path = result
+            .details
+            .get("outputPath")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        assert!(!output_path.is_empty(), "expected outputPath in details");
+        assert!(output_path.ends_with("shell-t-fg.txt"), "{output_path}");
+        let contents = std::fs::read_to_string(&output_path).expect("read terminals file");
+        assert!(contents.contains("persisted-output"), "terminals file: {contents}");
+    }
+
+    #[tokio::test]
+    async fn shell_exec_background_persists_output_to_terminals_dir() {
+        let temp = TempDir::new().expect("temp dir");
+        let env = Arc::new(LocalExecutionEnv::new(temp.path().to_path_buf()));
+        let terminals = TempDir::new().expect("terminals dir");
+        let ctx =
+            crate::tools::types::ToolContext::new(env.clone()).with_terminals_dir(Some(terminals.path().to_path_buf()));
+        let result = execute_shell_exec(
+            env,
+            "t-bgf".to_string(),
+            json!({ "command": "echo bg-persisted", "run_in_background": true, "description": "d" }),
+            None,
+            None,
+            ctx,
+        )
+        .await
+        .expect("shell_exec execution");
+
+        let output_path = result
+            .details
+            .get("outputPath")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        assert!(output_path.ends_with(".txt"), "{output_path}");
+        // The tool returns immediately; wait for the detached process to finish writing.
+        let mut waited = 0;
+        let mut contents = String::new();
+        while waited < 50 {
+            if let Ok(text) = std::fs::read_to_string(&output_path) {
+                if text.contains("bg-persisted") && text.contains("[exit code: 0]") {
+                    contents = text;
+                    break;
+                }
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            waited += 1;
+        }
+        assert!(contents.contains("bg-persisted"), "terminals file: {contents}");
     }
 
     #[test]

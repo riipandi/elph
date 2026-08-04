@@ -367,6 +367,15 @@ shell_exec command="cargo watch -x build" run_in_background=true description="bu
 - `disable_timeout=true` menghapus batas timeout untuk foreground maupun background.
 - `timeout` eksplisit (detik) tetap menang atas default di atas.
 
+**Persistensi output:**
+
+Setiap eksekusi `shell_exec` (foreground maupun background) menyimpan output mentahnya ke
+file di direktori terminal sesi: `~/.local/share/elph/sessions/<SESSION_ID>/terminals/*.txt`
+— foreground memakai nama `shell-<toolCallId>.txt`, background `shell-<taskId>.txt`. Path file
+tersebut dikembalikan lewat `details.outputPath` dan direferensikan pula di `tool_outputs.jsonl`
+(transkrip sesi) agar output tetap tersedia saat sesi dilanjutkan. Tanpa sesi persisten (mis. di
+tes), output hanya disimpan ke file temporer dan `outputPath` tidak diisi.
+
 **Catatan:** Tool ini berguna untuk menjalankan build, test, linting, git operations, dan perintah shell lainnya.
 
 ---

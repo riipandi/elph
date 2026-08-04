@@ -237,6 +237,8 @@ Run a shell command in the environment working directory. Output is truncated to
 
 \* `description` is required when `run_in_background` is true. Background tasks default to a 10-minute timeout (600s) in interactive mode and no timeout in headless `elph run`; `disable_timeout` or an explicit `timeout` override this.
 
+Each `shell_exec` run (foreground and background) persists its raw output to the session terminal directory `~/.local/share/elph/sessions/<SESSION_ID>/terminals/*.txt` (`shell-<toolCallId>.txt` for foreground, `shell-<taskId>.txt` for background). The file path is returned in `details.outputPath` and is also referenced from `tool_outputs.jsonl` (the session transcript) so output survives session resume. In stateless contexts (e.g. tests) output falls back to a temp file and `outputPath` is omitted.
+
 #### `create_dir`
 
 Create a new directory, including parent directories (like `mkdir -p`).
