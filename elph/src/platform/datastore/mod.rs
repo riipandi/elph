@@ -1,4 +1,5 @@
 use anyhow::Result;
+use elph_tui::CliSpinner;
 use turso_db::{connect, open_local};
 
 use super::migrations;
@@ -18,7 +19,8 @@ use floppy::memory::migrations as memory_migrations;
 pub async fn ensure(paths: &Paths) -> Result<()> {
     let store_db = paths.memory_db_path();
 
-    eprintln!("Opening store database");
+    let spinner = CliSpinner::new("Opening store database");
+    log::info!("Opening store database");
 
     // Open one connection and apply all migration bands through it.
     let db = open_local(
@@ -36,7 +38,8 @@ pub async fn ensure(paths: &Paths) -> Result<()> {
     memory_migrations::apply(&conn).await?;
     codegraph_migrations::apply(&conn).await?;
 
-    eprintln!("Databases ready");
+    log::info!("Databases ready");
+    spinner.finish_and_clear();
     Ok(())
 }
 

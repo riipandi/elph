@@ -5,6 +5,7 @@ use crate::platform::scaffold::{
 use crate::utils::path::AppPaths;
 use anyhow::Result;
 use elph_agent::{ensure_dirs, try_block_on};
+use elph_tui::CliSpinner;
 
 use super::paths::Paths;
 
@@ -12,17 +13,19 @@ const APP_ID: &str = "elph";
 
 /// Scaffold required directories and default files for a fresh Elph home.
 pub async fn ensure(app_version: &str) -> Result<Paths> {
-    eprintln!("Resolving home directories");
+    let spinner = CliSpinner::new("Resolving home directories");
+    log::info!("Resolving home directories");
     let paths = Paths::resolve()?;
-    run_init_steps(&paths, app_version).await?;
-    eprintln!("Startup complete");
+    run_init_steps(&paths, app_version, &spinner).await?;
+    log::info!("Startup complete");
+    spinner.finish_and_clear();
     Ok(paths)
 }
 
 /// Scaffold a specific home directory tree (useful in tests and custom setups).
 #[allow(dead_code)]
 pub async fn ensure_with_paths(paths: &Paths, app_version: &str) -> Result<()> {
-    run_init_steps(paths, app_version).await?;
+    run_init_steps(paths, app_version, &CliSpinner::disabled()).await?;
     Ok(())
 }
 
@@ -31,14 +34,17 @@ pub fn ensure_home_blocking(app_version: &str) -> Result<Paths> {
     try_block_on(ensure(app_version))?
 }
 
-async fn run_init_steps(paths: &Paths, app_version: &str) -> Result<()> {
-    eprintln!("Creating directories");
+async fn run_init_steps(paths: &Paths, app_version: &str, spinner: &CliSpinner) -> Result<()> {
+    spinner.set_message("Creating directories");
+    log::info!("Creating directories");
     ensure_home_dirs(paths)?;
 
-    eprintln!("Writing configuration");
+    spinner.set_message("Writing configuration");
+    log::info!("Writing configuration");
     ensure_files(paths, app_version)?;
 
-    eprintln!("Unpacking provider catalogs");
+    spinner.set_message("Unpacking provider catalogs");
+    log::info!("Unpacking provider catalogs");
     let report = ProvidersUnpack::ensure(paths)?;
     if report.written > 0 {
         log::debug!(
@@ -52,7 +58,8 @@ async fn run_init_steps(paths: &Paths, app_version: &str) -> Result<()> {
         log::warn!("provider catalog install: {err:#}");
     }
 
-    eprintln!("Unpacking bundled skills and user guide");
+    spinner.set_message("Unpacking bundled skills and user guide");
+    log::info!("Unpacking bundled skills and user guide");
     let assets = BundledAssets::ensure(paths, APP_ID, app_version)?;
     if assets.written > 0 {
         log::debug!(
