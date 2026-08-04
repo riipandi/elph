@@ -138,20 +138,10 @@ pub fn layout_transcript_rows_cached(
 
 fn message_row_count(message: &TranscriptMessage, wrap_width: u16) -> u32 {
     let row_count = if message.style == TranscriptStyle::Assistant {
-        if message.is_response_collapsed() {
-            1
-        } else {
-            let body = assistant_row_count(&message.content, message.markdown.as_ref(), wrap_width) as u32;
-            // Slash responses paint without the phase header (see `chat_response_card`).
-            let header_and_gap = if message.local_slash_response {
-                0
-            } else if body > 0 {
-                2
-            } else {
-                1
-            };
-            body.saturating_add(header_and_gap)
-        }
+        // AI chat responses render as plain log lines — no phase header, no collapse.
+        // `assistant_row_count` floors at 1 row; empty replies paint nothing, so zero it.
+        let body = assistant_row_count(&message.content, message.markdown.as_ref(), wrap_width) as u32;
+        if message.content.trim().is_empty() { 0 } else { body }
     } else if message.style.is_user_input_card() {
         let right_rail = user_input_right_rail(message.submitted_at, message.duration_secs);
         layout_user_input_lines(&message.content, right_rail.as_deref(), wrap_width).len() as u32

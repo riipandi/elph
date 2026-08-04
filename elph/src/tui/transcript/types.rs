@@ -16,8 +16,8 @@ use super::card::{
 use crate::tui::ask_user_tool_card::format_ask_user_tool_layout_text;
 
 use super::card::{
-    format_assistant_stream_body_display, format_thinking_body_display, format_thinking_stream_body_display,
-    format_tool_args_display, format_tool_output_display, tool_status_marker,
+    format_thinking_body_display, format_thinking_stream_body_display, format_tool_args_display,
+    format_tool_output_display, tool_status_marker,
 };
 use super::markdown::AssistantMarkdownBuffer;
 
@@ -305,12 +305,9 @@ impl TranscriptMessage {
             && !self.detail_expanded
     }
 
-    /// Finished assistant reply with the body folded into the phase header.
-    pub fn is_response_collapsed(&self) -> bool {
-        self.style == TranscriptStyle::Assistant && self.duration_secs.is_some() && !self.detail_expanded
-    }
-
     /// Finished thinking, tool, or assistant block that can expand/collapse (Ctrl+O / click).
+    ///
+    /// AI chat responses are no longer collapsible — they render as plain log lines.
     pub fn is_collapsible_detail(&self) -> bool {
         if self.style == TranscriptStyle::Thinking && self.duration_secs.is_some() {
             return true;
@@ -320,11 +317,7 @@ impl TranscriptMessage {
             return self.wait_agent_has_body()
                 && matches!(self.style, TranscriptStyle::ToolSuccess | TranscriptStyle::ToolFailed);
         }
-        if self.tool.is_some() && matches!(self.style, TranscriptStyle::ToolSuccess | TranscriptStyle::ToolFailed) {
-            return true;
-        }
-        // Settled AI replies can be folded so older turns stay compact.
-        self.style == TranscriptStyle::Assistant && self.duration_secs.is_some()
+        self.tool.is_some() && matches!(self.style, TranscriptStyle::ToolSuccess | TranscriptStyle::ToolFailed)
     }
 
     /// `ask_user_question` (and namespaced aliases) tool card.
@@ -360,7 +353,7 @@ impl TranscriptMessage {
         if self.style.is_status_line() {
             return true;
         }
-        if self.is_tool_collapsed() || self.is_thinking_collapsed() || self.is_response_collapsed() {
+        if self.is_tool_collapsed() || self.is_thinking_collapsed() {
             return true;
         }
         // Plain meta notices are single-line flush rows.
@@ -376,8 +369,10 @@ impl TranscriptMessage {
             return self.is_thinking_streaming()
                 || (self.duration_secs.is_some() && self.detail_expanded && !self.content.is_empty());
         }
+        // Settled AI replies always render their body (no collapse state) — treat them as
+        // expanded process rows so inter-row spacing stays stable next to tools/thinking.
         if self.style == TranscriptStyle::Assistant && !self.local_slash_response {
-            return self.duration_secs.is_none() || (self.detail_expanded && !self.content.is_empty());
+            return self.duration_secs.is_none() || !self.content.is_empty();
         }
         false
     }
@@ -463,7 +458,8 @@ impl TranscriptMessage {
         }
         match self.style {
             TranscriptStyle::Thinking => self.process_phase_layout_text("Thinking"),
-            TranscriptStyle::Assistant => self.process_phase_layout_text("Response"),
+            // AI chat responses render as plain log lines — no `Response` phase header.
+            TranscriptStyle::Assistant => self.content.clone(),
             _ if self.style.is_status_line() => {
                 let mut line = self.content.clone();
                 if let Some(detail) = self.status_detail.as_deref().map(str::trim).filter(|d| !d.is_empty()) {
@@ -511,7 +507,7 @@ impl TranscriptMessage {
         }
     }
 
-    /// Header (+ optional body) for thinking / response phases (glyph matches process indicator).
+    /// Header (+ optional body) for a thinking phase (glyph matches process indicator).
     fn process_phase_layout_text(&self, label: &str) -> String {
         use elph_tui::{GLYPH_META_SEP, ProcessStatus, process_status_glyph, process_status_word};
         let streaming = self.duration_secs.is_none();
@@ -527,20 +523,14 @@ impl TranscriptMessage {
         } else {
             header.push_str(&format!(" {GLYPH_META_SEP} {}", process_status_word(status)));
         }
-        let show_body = match self.style {
-            TranscriptStyle::Thinking => streaming || (self.detail_expanded && !self.content.is_empty()),
-            TranscriptStyle::Assistant => streaming || (self.detail_expanded && !self.content.is_empty()),
-            _ => !self.content.is_empty(),
-        };
+        let show_body = streaming || (self.detail_expanded && !self.content.is_empty());
         if show_body {
-            let body = match self.style {
+            let body = if streaming {
                 // Streaming thinking: 20-line cap so the collapse-on-finish transition
-                // does not cause a large layout jump. Finished + expanded: full content.
-                TranscriptStyle::Thinking if streaming => format_thinking_stream_body_display(&self.content),
-                TranscriptStyle::Thinking => format_thinking_body_display(&self.content),
-                // Streaming assistant: layout only needs the recent tail (full text stays in memory).
-                TranscriptStyle::Assistant if streaming => format_assistant_stream_body_display(&self.content),
-                _ => self.content.clone(),
+                // does not cause a large layout jump.
+                format_thinking_stream_body_display(&self.content)
+            } else {
+                format_thinking_body_display(&self.content)
             };
             format!("{header}\n{body}")
         } else {
@@ -584,7 +574,7 @@ fn tool_entry_gap_after(message: &TranscriptMessage, next_style: Option<Transcri
     }
 }
 
-/// Toggle expand/collapse of a specific finished thinking / tool / response block.
+/// Toggle expand/collapse of a specific finished thinking / tool block.
 /// Returns `true` when the block at `index` was toggled.
 pub fn toggle_collapsible_detail_at(messages: &mut [TranscriptMessage], index: usize) -> bool {
     let Some(message) = messages.get_mut(index) else {
@@ -600,7 +590,7 @@ pub fn toggle_collapsible_detail_at(messages: &mut [TranscriptMessage], index: u
     true
 }
 
-/// Toggle expand/collapse of the most recent finished thinking, tool, or response block.
+/// Toggle expand/collapse of the most recent finished thinking or tool block.
 /// Returns `true` when a block was toggled (used by Ctrl+O).
 pub fn toggle_latest_collapsible_detail(messages: &mut [TranscriptMessage]) -> bool {
     for index in (0..messages.len()).rev() {
@@ -1295,14 +1285,16 @@ mod tests {
     }
 
     #[test]
-    fn response_layout_text_matches_process_phase_header() {
+    fn response_layout_text_is_plain_log_line_without_phase_header() {
+        // AI chat responses render header-less (duration stays recorded, not displayed).
         let mut message = TranscriptMessage::text("Hello world", TranscriptStyle::Assistant);
-        assert_eq!(message.layout_text(), "◌ Response · running\nHello world");
+        assert_eq!(message.layout_text(), "Hello world");
         message.duration_secs = Some(2.5);
-        assert_eq!(message.layout_text(), "✓ Response · 2.5s\nHello world");
+        assert_eq!(message.layout_text(), "Hello world");
         message.detail_expanded = false;
-        assert_eq!(message.layout_text(), "✓ Response · 2.5s");
-        assert!(message.is_response_collapsed());
+        assert_eq!(message.layout_text(), "Hello world");
+        // Responses are no longer collapsible.
+        assert!(!message.is_collapsible_detail());
     }
 
     #[test]
@@ -1324,9 +1316,9 @@ mod tests {
         assert!(toggle_collapsible_detail_at(&mut messages, 0));
         assert!(messages[0].detail_expanded);
         assert!(messages[1].detail_expanded);
-        assert!(toggle_collapsible_detail_at(&mut messages, 1));
-        assert!(messages[0].detail_expanded);
-        assert!(!messages[1].detail_expanded);
+        // Assistant replies are plain log lines — toggling them is a no-op.
+        assert!(!toggle_collapsible_detail_at(&mut messages, 1));
+        assert!(messages[1].detail_expanded);
         assert!(!toggle_collapsible_detail_at(&mut messages, 99));
     }
 

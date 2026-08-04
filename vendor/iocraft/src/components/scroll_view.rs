@@ -239,6 +239,16 @@ pub struct ScrollViewProps<'a> {
     /// Set to `false` when a modal owns wheel input so background scroll
     /// regions (e.g. a transcript) do not move underneath.
     pub mouse_scroll: Option<bool>,
+    /// Authoritative content height (rows) supplied by the parent's own layout measure.
+    ///
+    /// ScrollView normally keeps a *peak* height while scrolled because the translated
+    /// pane under-reports its measured size (≈ viewport). That peak never shrinks, so
+    /// when the real content collapses (e.g. a transcript card toggled closed) the
+    /// previous-frame peak would let the scroll offset sit past the actual tail and
+    /// leave the scrollbar thumb stale. When the parent knows the true height, pass it
+    /// here: it replaces the stale peak (but never overrides a larger live measure), so
+    /// offset clamping and the scrollbar immediately track the collapsed content.
+    pub content_height_override: Option<u16>,
 }
 
 // Hook that measures the component height in pre_component_draw and writes
@@ -301,7 +311,12 @@ pub fn ScrollView<'a>(mut hooks: Hooks, props: &mut ScrollViewProps<'a>) -> impl
     // the scrollbar thumb. Keep a peak height for this instance while scrolled.
     let measured = content_height_ref.get();
     let prev = content_height.get();
-    let ch = if measured > prev {
+    let ch = if let Some(auth) = props.content_height_override {
+        // Parent-provided layout height — authoritative while the pane is translated
+        // (measured under-reports), but yield to a larger live measure so streaming
+        // growth between layout invalidations is never clipped.
+        measured.max(auth)
+    } else if measured > prev {
         measured
     } else if measured == 0 {
         prev

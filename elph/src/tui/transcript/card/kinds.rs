@@ -265,29 +265,6 @@ fn thinking_phase_header(
     .into()
 }
 
-fn response_phase_header(
-    inner_width: u16,
-    duration_secs: Option<f64>,
-    status: ProcessStatus,
-    message_index: usize,
-    clickable: bool,
-    toggle: Option<CollapsibleToggleCtx>,
-) -> AnyElement<'static> {
-    element! {
-        ProcessHeaderToggle(
-            inner_width: inner_width,
-            label: "Response".to_string(),
-            detail: String::new(),
-            duration_secs: duration_secs,
-            status: status,
-            message_index: message_index,
-            clickable: clickable,
-            toggle: toggle,
-        )
-    }
-    .into()
-}
-
 fn chrome_inner_width(chrome: &TranscriptCardChrome) -> u16 {
     chrome
         .outer_width
@@ -368,8 +345,8 @@ pub fn chat_response_card(
     screen_width: u16,
     message: &TranscriptMessage,
     margin_bottom: u16,
-    message_index: usize,
-    toggle: Option<CollapsibleToggleCtx>,
+    _message_index: usize,
+    _toggle: Option<CollapsibleToggleCtx>,
 ) -> AnyElement<'static> {
     let mut chrome = TranscriptCardChrome::from_style(screen_width, message.style, margin_bottom);
     if message.local_slash_response {
@@ -379,13 +356,9 @@ pub fn chat_response_card(
         chrome.padding_h = PROCESS_LOG_PAD_H;
     }
     let streaming = message.duration_secs.is_none() && !message.markdown.as_ref().is_some_and(|md| md.stream_complete);
-    let status = if streaming {
-        ProcessStatus::Running
-    } else {
-        ProcessStatus::Done
-    };
     let inner_width = chrome_inner_width(&chrome);
-    let show_body = streaming || (!message.is_response_collapsed() && !message.content.is_empty());
+    // AI chat responses render as plain log lines — always show the body, never collapsed.
+    let show_body = streaming || !message.content.is_empty();
     // Stream display uses a capped tail so paint stays O(recent content), not O(full reply).
     let stream_plain = streaming.then(|| format_assistant_stream_body_display(&message.content));
     let body = if !show_body {
@@ -410,20 +383,7 @@ pub fn chat_response_card(
         Vec::new()
     };
     let has_body = !body.is_empty();
-    // Slash responses (e.g. `/tools list`) are complete local output, not model replies:
-    // no phase header, no collapse toggle — the markdown body renders directly.
-    let has_header = !message.local_slash_response;
     let mut children: Vec<AnyElement<'static>> = Vec::new();
-    if has_header {
-        children.push(response_phase_header(
-            inner_width,
-            message.duration_secs,
-            status,
-            message_index,
-            message.is_collapsible_detail(),
-            toggle,
-        ));
-    }
     if has_body {
         children.push(
             element! {
@@ -439,7 +399,7 @@ pub fn chat_response_card(
             .into(),
         );
     }
-    phase_card_shell(&chrome, margin_bottom, if has_header && has_body { 1 } else { 0 }, children)
+    phase_card_shell(&chrome, margin_bottom, 0, children)
 }
 
 pub fn error_card(screen_width: u16, message: &TranscriptMessage, margin_bottom: u16) -> AnyElement<'static> {
@@ -892,10 +852,10 @@ pub fn thinking_response_pair_card(
 ) -> AnyElement<'static> {
     let mut chrome = TranscriptCardChrome::from_style(screen_width, TranscriptStyle::Thinking, margin_bottom);
     chrome.padding_h = PROCESS_LOG_PAD_H;
-    let (thinking, assistant, thinking_index, response_index) = if first.style == TranscriptStyle::Thinking {
-        (first, second, first_index, first_index + 1)
+    let (thinking, assistant, thinking_index) = if first.style == TranscriptStyle::Thinking {
+        (first, second, first_index)
     } else {
-        (second, first, first_index + 1, first_index)
+        (second, first, first_index + 1)
     };
     let inner_width = chrome_inner_width(&chrome);
     // Pairs form after thinking finalizes; collapse by default so the reply stays primary.
@@ -906,13 +866,8 @@ pub fn thinking_response_pair_card(
     };
     let thinking_show_body =
         thinking.is_thinking_streaming() || (!thinking.is_thinking_collapsed() && !thinking.content.is_empty());
-    let response_status = if assistant.duration_secs.is_none() {
-        ProcessStatus::Running
-    } else {
-        ProcessStatus::Done
-    };
-    let response_show_body =
-        assistant.duration_secs.is_none() || (!assistant.is_response_collapsed() && !assistant.content.is_empty());
+    // AI chat responses render as plain log lines — always show the assistant body.
+    let response_show_body = assistant.duration_secs.is_none() || !assistant.content.is_empty();
     let assistant_body = if !response_show_body {
         Vec::new()
     } else if assistant.markdown.is_some() {
@@ -970,16 +925,8 @@ pub fn thinking_response_pair_card(
             View(
                 width: inner_width,
                 flex_direction: FlexDirection::Column,
-                gap: if response_has_body { 1 } else { 0 },
+                gap: 0,
             ) {
-                #(response_phase_header(
-                    inner_width,
-                    assistant.duration_secs,
-                    response_status,
-                    response_index,
-                    assistant.is_collapsible_detail(),
-                    toggle,
-                ))
                 #(if response_has_body {
                     Some(element! {
                         View(

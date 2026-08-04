@@ -73,10 +73,9 @@ struct StickyHeaderCache {
 
 #[component]
 pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
-    let scroll_handle = hooks.use_ref_default::<ScrollViewHandle>();
+    let mut scroll_handle = hooks.use_ref_default::<ScrollViewHandle>();
     let mut render_cache = hooks.use_ref(|| None::<TranscriptRenderCache>);
     let mut cached_sticky_rows = hooks.use_ref(|| (None::<usize>, 0u16, 0u16)); // (idx, width, rows)
-    let scroll_offset_override = hooks.use_ref(|| None::<u32>);
     // Cache for full StickyHeaderLayout — avoids WrappedTextLayout per frame.
     let mut sticky_header_cache = hooks.use_ref(StickyHeaderCache::default);
     let mut markdown_layout_revision = hooks.use_state(|| 0u64);
@@ -210,8 +209,7 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
     let row_layouts = &cached.row_layouts;
     let is_sticky_prompt = &cached.is_sticky_prompt;
 
-    let handle = scroll_handle.read();
-    let scroll_zone = handle.viewport_height().max(1);
+    let scroll_zone = scroll_handle.read().viewport_height().max(1);
     // Layout-measured content height (stable across frames). Prefer this over ScrollView's
     // previous-frame content_height so windowing/sticky don't thrash while streaming.
     let layout_content_rows = row_layouts
@@ -220,13 +218,19 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
         .unwrap_or(0);
     let layout_content_u16 = layout_content_rows.min(u16::MAX as u32) as u16;
 
-    let auto_pinned = handle.is_auto_scroll_pinned();
+    let auto_pinned = scroll_handle.read().is_auto_scroll_pinned();
     // Near-bottom with hysteresis to prevent flicker during streaming.
     let max_off = scroll_view_max_offset(layout_content_u16, scroll_zone);
-    let raw_offset = scroll_offset_override
-        .read()
-        .map(|o| o as i32)
-        .unwrap_or_else(|| handle.scroll_offset());
+    let mut raw_offset = scroll_handle.read().scroll_offset();
+    // Reconcile a stale scroll position against the freshly measured content height.
+    // Toggling a card closed (or any content shrink) can leave the offset past the new
+    // tail — the ScrollView would render an empty viewport and the scrollbar would sit
+    // stale. Snap to the bottom instead of letting the blank state persist.
+    if raw_offset > max_off {
+        raw_offset = max_off;
+        scroll_handle.write().scroll_to(max_off);
+        near_bottom_sticky.set(true);
+    }
     // Only leave near_bottom when user has scrolled meaningfully away from bottom.
     // Threshold: 6 rows (2 scroll steps) above bottom.
     let is_near = auto_pinned || raw_offset >= max_off.saturating_sub(6);
@@ -420,7 +424,6 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
     let transcript_focused = props.has_focus;
     hooks.use_terminal_events({
         let mut scroll_handle = scroll_handle;
-        let mut scroll_offset_override = scroll_offset_override;
         move |event| {
             let TerminalEvent::Key(KeyEvent {
                 code, kind, modifiers, ..
@@ -437,19 +440,16 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
                 _ => TRANSCRIPT_SCROLL_STEP,
             };
 
-            let scrolled = if transcript_focused && transcript_nav_key(code, kind, modifiers) {
+            if transcript_focused && transcript_nav_key(code, kind, modifiers) {
                 match code {
                     KeyCode::Up | KeyCode::PageUp => {
                         scroll_view_up(&mut scroll_handle.write(), scroll_step);
-                        true
                     }
                     KeyCode::Down | KeyCode::PageDown => {
                         scroll_view_down(&mut scroll_handle.write(), scroll_step);
-                        true
                     }
                     KeyCode::Home => {
                         scroll_handle.write().scroll_to(0);
-                        true
                     }
                     KeyCode::End => {
                         let (content_height, viewport_height) = {
@@ -459,9 +459,8 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
                         scroll_handle
                             .write()
                             .scroll_to(scroll_view_max_offset(content_height, viewport_height));
-                        true
                     }
-                    _ => false,
+                    _ => {}
                 }
             } else if modifiers.contains(KeyModifiers::SHIFT)
                 && !modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::META)
@@ -470,20 +469,15 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
                 match code {
                     KeyCode::Up => {
                         scroll_view_up(&mut scroll_handle.write(), TRANSCRIPT_SCROLL_STEP);
-                        true
                     }
                     KeyCode::Down => {
                         scroll_view_down(&mut scroll_handle.write(), TRANSCRIPT_SCROLL_STEP);
-                        true
                     }
-                    _ => false,
+                    _ => {}
                 }
-            } else {
-                false
-            };
-            if scrolled {
-                scroll_offset_override.set(Some(scroll_handle.read().scroll_offset().max(0) as u32));
             }
+            // The ScrollView renders from its own clamped offset; the panel reads the
+            // handle directly on the next frame, so no separate override is needed.
         }
     });
 
@@ -528,6 +522,10 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
                         keyboard_scroll: Some(false),
                         mouse_scroll: Some(props.mouse_scroll.unwrap_or(true)),
                         auto_scroll: true,
+                        // Authoritative layout-measured height: keeps the scrollbar thumb
+                        // and offset clamping in sync when a card is toggled open/closed
+                        // (the ScrollView's own peak height would otherwise stay stale).
+                        content_height_override: Some(layout_content_u16),
                     ) {
                         View(
                             width: props.screen_width,

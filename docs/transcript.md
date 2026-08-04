@@ -17,11 +17,16 @@ Every row in the transcript is a [`TranscriptMessage`] with a [`TranscriptStyle`
 | `User`                                             | Submitted user input (tinted bubble)          |
 | `SkillPrompt`                                      | Slash command invoking a skill prompt         |
 | `Thinking`                                         | Model reasoning (streaming, then collapsible) |
-| `Assistant`                                        | Model response (streaming, then collapsible)  |
+| `Assistant`                                        | Model response (streaming log line)           |
 | `ToolRunning` / `ToolSuccess` / `ToolFailed`       | Tool call card (status-colored tint)          |
 | `Meta`                                             | Plain metadata line                           |
 | `Error`                                            | API / provider failure (red tint)             |
 | `StatusRunning` / `StatusSuccess` / `StatusFailed` | Process log (flush, foreground-only)          |
+
+Model **Assistant responses** render as plain log lines: no `✓ Response · 000ms` phase
+header and no expand/collapse toggle. Elapsed time is still recorded internally
+(`duration_secs`) for archival, it is just not displayed. Thinking and tool cards keep
+their collapsible headers.
 
 ### Error Cards and Retry
 
@@ -149,6 +154,18 @@ look clipped mid-line (e.g. an orphaned `…ing glob patterns…` line as the fi
 `sticky_scroll` now defers to `near_bottom`: pinned → no bar, latest card fully visible;
 scroll up → bar appears for orientation and disappears again once the prompt re-enters the
 viewport or the user returns to the bottom.
+
+### Scroll Height on Collapse (panel.rs + vendored ScrollView)
+
+Toggling a card open/closed changes the content height, but the vendored `ScrollView` keeps
+a *peak* height while scrolled (its translated pane under-reports its measured size ≈
+viewport), so after a collapse the old peak could leave the scroll offset past the real
+tail — an empty/blank viewport and a stale scrollbar. The panel now passes the authoritative
+layout-measured content height to `ScrollView` via `content_height_override`, which replaces
+the stale peak (yielding to a larger live measure during streaming growth). The panel also
+reads the scroll handle directly each frame (no separate override mirror), clamps a stale
+offset to the fresh `max_offset`, and snaps to the bottom when it was clamped. The scrollbar
+thumb and offset clamping therefore track the collapsed height immediately.
 
 ### Streaming Content Cap (agent_bridge.rs)
 
