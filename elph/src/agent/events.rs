@@ -1,5 +1,16 @@
 //! Agent → TUI event bridge.
 
+/// Recovery prompt submitted instead of re-sending the original text when a transient
+/// stream/provider error interrupts a turn. The model resumes from the last persisted
+/// state (any tool results already in the conversation stay in context) instead of
+/// re-running the whole task, so completed tool calls are not duplicated.
+///
+/// Shared with the TUI shell so the recovery prompt is recognized and rendered as a
+/// slim status label instead of a user bubble card in the transcript.
+pub const RETRY_CONTINUE_PROMPT: &str = "Continue: the previous response was interrupted by a transient stream error. \
+     Resume from where you left off and finish the task. Do not repeat tool calls or \
+     actions that already succeeded.";
+
 /// Lifecycle phase for subagent UI (maps to process glyphs / status colors).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SubagentUiPhase {
@@ -50,6 +61,8 @@ pub enum AgentUiEvent {
     /// Recovery prompt the shell re-submits on Ctrl+R after a transient stream/API error.
     /// Carries a "Continue"-style message (not the original prompt) so completed tool work
     /// is not duplicated. Shell stores this for the Ctrl+R retry key / error-card affordance.
+    /// The prompt itself is never shown as a user card — the shell renders a `Continuing…`
+    /// meta label instead.
     RetryablePrompt(String),
     /// The session is automatically retrying an interrupted turn. The shell shows a
     /// spinner + "Retrying…" activity label (`attempt` is 1-based) instead of an idle bar.

@@ -691,28 +691,41 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             }
 
             if let AgentUiEvent::UserPromptCommitted { text } = event {
-                // Idle submit and Ctrl+Enter already painted the user card.
+                // Idle submit and Ctrl+Enter (and Ctrl+R retry) already painted their row.
                 let pending = pre_echoed_user_prompts.get();
                 if pending > 0 {
                     pre_echoed_user_prompts.set(pending.saturating_sub(1));
-                } else {
-                    let mut submitted = TranscriptMessage::text(text, TranscriptStyle::User);
-                    submitted.submitted_at = Some(chrono::Utc::now());
-                    // Write to arc directly (no State dirty mark);
-                    // sync to messages State happens at end of tick.
+                    continue;
+                }
+                // Auto-retry recovery prompt (not pre-echoed by the shell) — render as a
+                // slim sticky status label ("Continuing…") instead of a user bubble card,
+                // and skip Arrow-Up history.
+                if text.trim() == RETRY_CONTINUE_PROMPT {
+                    let mut notice = TranscriptMessage::text("Continuing…", TranscriptStyle::Meta);
+                    notice.sticky_meta = true;
                     {
                         let mut msgs = messages_arc_inner.write().unwrap();
-                        if matches!(submitted.style, TranscriptStyle::User | TranscriptStyle::SkillPrompt) {
-                            crate::tui::prompt_history::push_history_entry_styled(
-                                &mut prompt_history.write(),
-                                &submitted.content,
-                                submitted.style,
-                            );
-                        }
-                        msgs.push(submitted);
+                        msgs.push(notice);
                     }
                     transcript_changed = true;
+                    continue;
                 }
+                let mut submitted = TranscriptMessage::text(text, TranscriptStyle::User);
+                submitted.submitted_at = Some(chrono::Utc::now());
+                // Write to arc directly (no State dirty mark);
+                // sync to messages State happens at end of tick.
+                {
+                    let mut msgs = messages_arc_inner.write().unwrap();
+                    if matches!(submitted.style, TranscriptStyle::User | TranscriptStyle::SkillPrompt) {
+                        crate::tui::prompt_history::push_history_entry_styled(
+                            &mut prompt_history.write(),
+                            &submitted.content,
+                            submitted.style,
+                        );
+                    }
+                    msgs.push(submitted);
+                }
+                transcript_changed = true;
                 continue;
             }
 

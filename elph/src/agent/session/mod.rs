@@ -17,6 +17,7 @@ use tokio::sync::Mutex;
 use tokio::sync::mpsc;
 
 use super::events::AgentUiEvent;
+use super::events::RETRY_CONTINUE_PROMPT;
 use super::model_registry::ModelSelection;
 use super::resource_loader::LoadResourcesResult;
 use super::resource_loader::load_resources;
@@ -36,14 +37,6 @@ const SESSION_TITLE_SYSTEM: &str = include_str!("../../../templates/agent/sessio
 const SESSION_TITLE_USER: &str = include_str!("../../../templates/agent/session_title_user.md");
 /// Maximum number of background auto-title attempts per session lifetime.
 const SESSION_TITLE_MAX_ATTEMPTS: u32 = 3;
-
-/// Recovery prompt submitted instead of re-sending the original text when a transient
-/// stream/provider error interrupts a turn. The model resumes from the last persisted
-/// state (any tool results already in the conversation stay in context) instead of
-/// re-running the whole task, so completed tool calls are not duplicated.
-const RETRY_CONTINUE_PROMPT: &str = "Continue: the previous response was interrupted by a transient stream error. \
-     Resume from where you left off and finish the task. Do not repeat tool calls or \
-     actions that already succeeded.";
 
 /// Constructor inputs for [`CodingAgentSession::new`] (avoids a long positional arg list).
 pub struct CodingAgentSessionParams {

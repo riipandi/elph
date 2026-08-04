@@ -31,15 +31,21 @@ their collapsible headers.
 ### Error Cards and Retry
 
 Transient provider/stream failures (stream cutoff, 5xx, rate limits) are auto-retried by the
-session before they surface. The retry submits a Continue-style recovery prompt instead of
-re-sending the original text, so tool calls that already completed are not duplicated, and the
-status row shows a spinner with a "Retrying…" label while it runs. If a turn still fails, the
-shell emits a **retryable** error card: its message ends with a `Press Ctrl+R to retry this
-prompt.` hint (the `RETRY_HINT` marker in `api_error_display.rs`). Retryable cards render a
-dedicated "Press `Ctrl+R` to retry this prompt" hint row below the error body, and pressing
-Ctrl+R re-submits the recovery prompt without re-typing — the prompt is stashed by the tick
-loop on `AgentUiEvent::RetryablePrompt` and consumed by the key handler. Non-transient errors
-render without the hint row.
+session before they surface. The retry submits a Continue-style recovery prompt
+([`RETRY_CONTINUE_PROMPT`]) instead of re-sending the original text, so tool calls that
+already completed are not duplicated, and the status row shows a spinner with a
+"Retrying…" label while it runs. Because that recovery prompt is an internal resumption
+message — not something the user typed — it is **not** rendered as a user bubble card. The
+shell pushes a slim sticky meta label (`Continuing…`) into the transcript instead, and it is
+kept out of Arrow-Up history.
+
+If a turn still fails, the shell emits a **retryable** error card: its message ends with a
+`Press Ctrl+R to retry this prompt.` hint (the `RETRY_HINT` marker in `api_error_display.rs`).
+Retryable cards render a dedicated "Press `Ctrl+R` to retry this prompt" hint row below the
+error body, and pressing Ctrl+R re-submits the recovery prompt without re-typing — the prompt
+is stashed by the tick loop on `AgentUiEvent::RetryablePrompt` and consumed by the key
+handler, which also renders the `Continuing…` meta label rather than a user bubble. Non-transient
+errors render without the hint row.
 
 ## State ↔ Arc Sync
 

@@ -411,11 +411,13 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
     {
         pending_retry_prompt.set(None);
         if let Some(session) = agent_session.as_ref() {
-            let mut submitted = TranscriptMessage::text(retry_text.clone(), TranscriptStyle::User);
-            submitted.submitted_at = Some(chrono::Utc::now());
-            // Sync to shared arc so the arc-to-state sync never loses this pre-echoed prompt.
-            messages_arc.write().write().unwrap().push(submitted.clone());
-            push_transcript_message(&mut messages, &mut messages_revision, &mut prompt_history, submitted);
+            // Recovery prompt — render a slim status label, not a user bubble (and not
+            // Arrow-Up history). The pre-echoed counter consumes the matching
+            // UserPromptCommitted from the agent loop so it does not render twice.
+            let mut notice = TranscriptMessage::text("Continuing…", TranscriptStyle::Meta);
+            notice.sticky_meta = true;
+            messages_arc.write().write().unwrap().push(notice.clone());
+            push_transcript_message(&mut messages, &mut messages_revision, &mut prompt_history, notice);
             pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
             agent_turn_active.set(true);
             chrome_refresh_pending.set(true);

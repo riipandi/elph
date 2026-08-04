@@ -33,7 +33,9 @@ pub use agents_load::{format_agent_conflict_notice, load_workspace_agents};
 pub use conflict_notice::{CrossKindConflict, TemplateConflict, format_name_conflicts};
 pub use events::{AgentUiEvent, SubagentUiPhase, ToolApprovalChoice};
 pub use events::{ModeChangeRequest, PlanConfirmationRequest, QueuedPromptItem, QueuedPromptKind};
-pub use events::{ToolApprovalRequest, UserQuestionOption, UserQuestionRequest, UserQuestionStep};
+pub use events::{
+    RETRY_CONTINUE_PROMPT, ToolApprovalRequest, UserQuestionOption, UserQuestionRequest, UserQuestionStep,
+};
 pub use mcp_bootstrap::discover_mcp_registry;
 pub use model_registry::ModelSelection;
 pub use model_registry::resolve_model;
