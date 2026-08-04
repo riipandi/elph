@@ -251,6 +251,29 @@ File: `crates/floppy/src/codegraph/index.rs`
 4. `delete_path()` (called for removed files) can stay as its own small transaction — it runs
    rarely (only for deleted paths) and isn't in the hot path.
 
+### 3.4 Do NOT stage to an intermediate file before insert
+
+Considered and rejected: `scan files -> checksum -> write to intermediate file -> batch SQL
+insert from file`. Do not implement this. Reasons:
+
+- Turso/libSQL has no native bulk-loader (no `.import`-equivalent callable from the `turso`
+  Rust crate) — inserts from a staged file still go through the same per-row `INSERT` calls as
+  inserting directly from memory. Staging adds a serialize + deserialize round-trip with zero
+  reduction in DB work.
+- The actual bottleneck is embedding (Phase 1), not the walk/checksum/DB-write path. Staging to
+  disk does not touch that cost at all.
+- Resumability — the presumed motivation for staging — is already provided by the existing
+  Merkle-diff mechanism (`load_file_hashes()` in `index.rs:425`, compared against the walked
+  file's `file_hash`) **combined with the chunked-commit strategy in 3.2/3.3**. Once a batch of
+  ~200 files is committed, those rows are durable; if the process crashes mid-run, the next
+  `scan()` call re-walks, re-checksums, finds those paths' hashes already match `cg_files`, and
+  skips them — resuming from the last committed batch with no staging file needed.
+- Keep in-memory `Vec<ProcessedFile>` as the working structure for scan → chunk → embed → write,
+  as already specified in Phase 1. This is correct for small/medium repos (target scope of this
+  plan). Only reconsider disk-streaming if a future large-monorepo case makes the in-memory chunk
+    - embedding set exceed available RAM — that is out of scope here (see "Explicitly out of
+      scope").
+
 ---
 
 ## Phase 4 — Verification
@@ -285,6 +308,88 @@ Do not consider this done until measured, not assumed.
    change (some ONNX/Candle batch implementations have known small numerical differences from
    padding — this is expected and fine, but a large divergence indicates a bug in the
    scatter-back-by-index logic in Phase 1.2, most likely an off-by-one in the `owner` vector).
+
+## Phase 5 — User-configurable settings (`settings.json`)
+
+The repo already has a working settings convention: `Settings` struct in
+`elph/src/platform/settings.rs`, serialized `camelCase` to `CONFIG_DIR/settings.json` (home,
+default write target) merged with `<project>/.elph/settings.json` (project override). It already
+has `CodegraphSettings` (`enabled`, `maxChunkLines`, `maxFileBytes`, `maxDbConnections`,
+`toolTimeoutMs`) and `EmbedSettings` (`model`, `quantized`, `gpuAcceleration`) — **extend these
+existing structs, do not create a new top-level settings section.**
+
+### 5.1 New fields to add to `CodegraphSettings`
+
+| JSON key             | Rust field              | Type    | Recommended default | What it controls                                                                                                                                                                                                                                                                | Why user-tunable                                                                                                                                                                                                                                                                                                                                                                                    |
+| -------------------- | ----------------------- | ------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `embedBatchSize`     | `embed_batch_size`      | `usize` | `64`                | Number of chunk texts sent to the embedder in a single batched call (Phase 1.2, `EMBED_BATCH_SIZE`).                                                                                                                                                                            | Optimal batch size depends on model size, CPU core count / GPU VRAM. Users on constrained machines (e.g. 4GB RAM laptop) may need to lower this to avoid memory spikes; users with a strong GPU (Phase 2) may want it higher (e.g. 128-256) for better throughput.                                                                                                                                  |
+| `dbCommitBatchFiles` | `db_commit_batch_files` | `usize` | `200`               | Number of files' worth of chunks/nodes/edges committed per DB transaction (Phase 3.2, `DB_TXN_BATCH_FILES`).                                                                                                                                                                    | Smaller = more frequent durability checkpoints (safer against crash loss, slightly slower); larger = fewer fsyncs (faster, but a crash loses more uncommitted work and must redo it on next run). Expose so users indexing on unreliable machines (CI runners with tight timeouts, laptops that sleep) can tune toward safety, and users on stable machines can tune toward raw speed.              |
+| `embedConcurrency`   | `embed_concurrency`     | `usize` | `1`                 | Number of embedding batches dispatched concurrently (advanced/experimental — only meaningful if the underlying embedder is safely callable from multiple tasks at once; verify thread-safety of the specific `embed_anything` backend in use before defaulting this above `1`). | Default `1` (fully sequential batches, safest, matches Phase 1 as specified). Advanced users who've confirmed their backend handles concurrent calls well (e.g. ONNX Runtime with multiple intra-op threads) can raise this for extra throughput. Document clearly in the JSON schema/comments that raising this without backend concurrency support gives no benefit and may cause CPU contention. |
+
+### 5.2 Fields that already exist and are already sufficient — do not duplicate
+
+- `maxChunkLines`, `maxFileBytes`, `maxDbConnections` (`CodegraphSettings`) — unrelated to this
+  perf work, leave as-is.
+- `gpuAcceleration` (`EmbedSettings`, enum `on`/`off`/`auto`) — this is exactly the setting Phase
+  2 wires into the embedder's `device` selection. No new field needed; just make sure Phase 2's
+  implementation actually reads `settings.embed.gpu_acceleration` (not just the CLI flag) when
+  constructing the embedder for a codegraph index run.
+- `model` / `quantized` (`EmbedSettings`) — already configurable, already affects embedding
+  speed/quality tradeoff (smaller/quantized models embed faster). No change needed, but worth a
+  one-line mention in user-facing docs that `quantized: true` (already the default) helps
+  indexing speed, not just download size.
+
+### 5.3 Implementation steps
+
+1. Add the three new fields to `CodegraphSettings` in `elph/src/platform/settings.rs` following
+   the existing pattern exactly (serde `#[serde(default = "fn_name")]` + a `default_codegraph_*()`
+   free function per field, same as `default_codegraph_max_chunk_lines()` etc.).
+2. Add matching doc comments above each field in the same style as the existing ones (see
+   `tool_timeout_ms`'s comment for the level of detail expected — one line stating what it does
+   and its default).
+3. Thread these three values from `CodegraphSettings` into `CodegraphConfig`
+   (`crates/floppy/src/codegraph/types.rs`) — add `embed_batch_size: usize`,
+   `db_commit_batch_files: usize`, `embed_concurrency: usize` fields to `CodegraphConfig`,
+   defaulted in `CodegraphConfig::new(...)` to match the same defaults (`64`, `200`, `1`), and
+   have the CLI/settings-loading call site (wherever `CodegraphConfig::new` is currently invoked,
+   likely in `elph/src/codegraph/cmd.rs`) populate them from the loaded `Settings`.
+4. Replace the hardcoded `EMBED_BATCH_SIZE` and `DB_TXN_BATCH_FILES` constants from Phase 1.2 and
+   Phase 3.2 with reads from `self.embed_batch_size` / `self.db_commit_batch_files` on `Indexer`
+   (add these as fields on `Indexer<'a>` alongside `max_chunk_lines`, `max_file_bytes`, mirroring
+   the existing pattern in `index.rs:40-47`).
+5. Validate at settings-load time (not deep in the indexing hot path): reject or clamp
+   `embedBatchSize == 0`, `dbCommitBatchFiles == 0`, `embedConcurrency == 0` to their defaults
+   with a logged warning, so a bad hand-edited `settings.json` can't silently produce a hang or
+   divide-by-zero-style edge case.
+6. Update `assets/user-guide/05-configuration.md` (or wherever settings are documented for end
+   users, per the existing user-guide structure) with the three new fields, their defaults, and
+   one-sentence tuning guidance drawn from the table above.
+
+### 5.4 Example `settings.json` snippet (for docs / user-guide)
+
+```json
+{
+    "codegraph": {
+        "enabled": true,
+        "maxChunkLines": 120,
+        "maxFileBytes": 524288,
+        "maxDbConnections": 4,
+        "toolTimeoutMs": 15000,
+        "embedBatchSize": 64,
+        "dbCommitBatchFiles": 200,
+        "embedConcurrency": 1
+    },
+    "models": {
+        "embed": {
+            "model": "AllMiniLML6V2",
+            "quantized": true,
+            "gpuAcceleration": "auto"
+        }
+    }
+}
+```
+
+---
 
 ## Explicitly out of scope for this plan
 
