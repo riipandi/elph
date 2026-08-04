@@ -180,16 +180,23 @@ async fn delete_session(db_path: &Path, session_id: &str) -> Result<(), SessionE
         .await
         .map_err(map_err)?;
     // Goals: best-effort cascade so session delete does not leave orphan goals.
-    // Table may be absent in library-only DBs.
-    let _ = conn
+    // The table may be absent in library-only DBs (expected there); any other
+    // error (e.g. a lock error) is logged rather than silently swallowed.
+    if let Err(error) = conn
         .execute("DELETE FROM goals WHERE session_id = ?", turso::params![session_id])
-        .await;
-    let _ = conn
+        .await
+    {
+        log::warn!("failed to cascade-delete goals for {session_id}: {error}");
+    }
+    if let Err(error) = conn
         .execute(
             "DELETE FROM agent_spawn_edges WHERE parent_session_id = ? OR child_session_id = ?",
             turso::params![session_id, session_id],
         )
-        .await;
+        .await
+    {
+        log::warn!("failed to cascade-delete agent_spawn_edges for {session_id}: {error}");
+    }
     let changed = conn
         .execute("DELETE FROM sessions WHERE id = ?", turso::params![session_id])
         .await

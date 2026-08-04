@@ -288,9 +288,7 @@ async fn execute_shell_exec(
         // defaults to a 10-minute cap.
         let timeout = if explicit_timeout.is_some() {
             explicit_timeout
-        } else if disable_timeout {
-            None
-        } else if context.is_headless {
+        } else if disable_timeout || context.is_headless {
             None
         } else {
             Some(BACKGROUND_DEFAULT_TIMEOUT_SECS)
@@ -591,11 +589,12 @@ mod tests {
         let mut waited = 0;
         let mut contents = String::new();
         while waited < 50 {
-            if let Ok(text) = std::fs::read_to_string(&output_path) {
-                if text.contains("hello-from-bg") && text.contains("[exit code: 0]") {
-                    contents = text;
-                    break;
-                }
+            if let Ok(text) = std::fs::read_to_string(output_path)
+                && text.contains("hello-from-bg")
+                && text.contains("[exit code: 0]")
+            {
+                contents = text;
+                break;
             }
             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             waited += 1;
@@ -683,7 +682,7 @@ mod tests {
             .unwrap_or_default();
         assert!(!output_path.is_empty(), "expected outputPath in details");
         assert!(output_path.ends_with("shell-t-fg.txt"), "{output_path}");
-        let contents = std::fs::read_to_string(&output_path).expect("read terminals file");
+        let contents = std::fs::read_to_string(output_path).expect("read terminals file");
         assert!(contents.contains("persisted-output"), "terminals file: {contents}");
     }
 
@@ -715,11 +714,12 @@ mod tests {
         let mut waited = 0;
         let mut contents = String::new();
         while waited < 50 {
-            if let Ok(text) = std::fs::read_to_string(&output_path) {
-                if text.contains("bg-persisted") && text.contains("[exit code: 0]") {
-                    contents = text;
-                    break;
-                }
+            if let Ok(text) = std::fs::read_to_string(output_path)
+                && text.contains("bg-persisted")
+                && text.contains("[exit code: 0]")
+            {
+                contents = text;
+                break;
             }
             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             waited += 1;
