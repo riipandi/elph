@@ -21,15 +21,26 @@ path = "src/lib.rs"
 default = ["memory"]
 # Task-scoped agent memory (memelord-compatible design).
 memory = []
-# Local ONNX / Candle embeddings via embed_anything.
-embed = ["dep:embed_anything", "embed_anything/accelerate"]
+# Local Candle embeddings via embed_anything (ONNX Runtime is not used).
+# The CPU backend is selected per target: Apple Accelerate on macOS
+# (see the target-specific dependency table below); other platforms use
+# Candle's default CPU backend. GPU backends are opt-in via `metal`/`cuda`.
+embed = ["dep:embed_anything"]
 # GPU acceleration (optional, requires matching hardware):
 # - metal: Apple Silicon GPU (macOS)
 # - cuda: NVIDIA GPU (Linux/Windows)
 metal = ["embed", "embed_anything/metal"]
 cuda = ["embed", "embed_anything/cuda"]
 # Semantic codebase index (ast-grep chunking + FTS/vector). Optional; heavy.
-codegraph = ["dep:ast-grep-core", "dep:ast-grep-language", "dep:ignore", "dep:sha2", "dep:regex", "dep:rayon", "dep:log"]
+codegraph = [
+  "dep:ast-grep-core",
+  "dep:ast-grep-language",
+  "dep:ignore",
+  "dep:sha2",
+  "dep:regex",
+  "dep:rayon",
+  "dep:log",
+]
 # Convenience: full surface for hosts (Elph).
 full = ["memory", "embed", "codegraph"]
 
@@ -65,6 +76,20 @@ sha2 = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["io-util", "macros", "rt", "rt-multi-thread", "sync", "time"] }
 turso.workspace = true
 turso-db.workspace = true
+
+# CPU backend is selected per target:
+# - macOS               -> Apple Accelerate (vecLib/BLAS)
+# - x86_64 (non-macOS)  -> Intel MKL
+# - other (e.g. ARM)    -> Candle's default CPU backend
+[target.'cfg(target_os = "macos")'.dependencies.embed_anything]
+workspace = true
+optional = true
+features = ["rustls-tls", "accelerate"]
+
+[target.'cfg(all(not(target_os = "macos"), target_arch = "x86_64"))'.dependencies.embed_anything]
+workspace = true
+optional = true
+features = ["rustls-tls", "mkl"]
 
 [dev-dependencies]
 tempfile.workspace = true
