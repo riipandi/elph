@@ -507,8 +507,11 @@ impl TranscriptEventApplier {
         }
         if let Some(last) = messages.last_mut()
             && last.style == TranscriptStyle::Meta
-            && !last.sticky_meta
+            && (!last.sticky_meta || last.content.trim() == line)
         {
+            // Collapse into a preceding sticky notice with the same label (e.g. the
+            // compaction "Compacting history…" emitted as both a TranscriptNotice and a
+            // Status) so it is not printed twice in the transcript.
             last.content = line.to_string();
             return true;
         }
@@ -1084,6 +1087,20 @@ mod tests {
         assert_eq!(messages.len(), 2, "status must not overwrite sticky conflict notice");
         assert!(messages[0].content.contains("conflicts"));
         assert_eq!(messages[1].content, "History compacted.");
+    }
+
+    #[test]
+    fn status_matching_sticky_notice_does_not_duplicate() {
+        let mut messages = Vec::new();
+        let mut applier = TranscriptEventApplier::new(false, false);
+        // Compaction emits the running label as both a sticky notice and a Status.
+        assert!(applier.apply(&mut messages, AgentUiEvent::TranscriptNotice("Compacting history…".into())));
+        assert_eq!(messages.len(), 1);
+        assert!(messages[0].sticky_meta);
+        // A later Status with the same label must collapse into the sticky notice
+        // instead of adding a second transcript card.
+        assert!(applier.apply(&mut messages, AgentUiEvent::Status("Compacting history…".into())));
+        assert_eq!(messages.len(), 1, "same-label Status must collapse into the sticky notice");
     }
 
     #[test]

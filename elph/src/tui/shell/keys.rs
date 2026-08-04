@@ -2970,7 +2970,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             TranscriptMessage::text(message, TranscriptStyle::Meta),
                         );
                     }
-                    SlashOutcome::SpawnAgentTurn => {
+                    SlashOutcome::SpawnAgentTurn | SlashOutcome::SpawnAgentTurnQuiet => {
                         if agent_turn_active.get() {
                             let queued = slash_input.clone();
                             prompt_queue.write().push_follow_up_local(queued.clone());

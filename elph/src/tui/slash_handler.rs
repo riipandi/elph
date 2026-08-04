@@ -72,6 +72,9 @@ pub enum SlashOutcome {
     Status(String),
     Unimplemented(String),
     SpawnAgentTurn,
+    /// Like [`SlashOutcome::SpawnAgentTurn`], but the slash input is NOT echoed as a
+    /// user prompt card (e.g. `/compact` — the compaction notice already communicates it).
+    SpawnAgentTurnQuiet,
     OverlayDeferred(OverlayCommand),
     OpenModelSelector {
         filter: String,
@@ -215,6 +218,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             other => SlashOutcome::OverlayDeferred(other),
         },
         SlashDispatch::Compact | SlashDispatch::PromptTemplate { .. } => {
+            let is_compact = matches!(dispatch, SlashDispatch::Compact);
             if ctx.agent_session.is_none() {
                 return SlashOutcome::Status("Agent session required for this command.".into());
             }
@@ -225,7 +229,13 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
                 let extension_host = ctx.extension_host.cloned();
                 SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
             }
-            SlashOutcome::SpawnAgentTurn
+            // `/compact` must not echo a "/compact" user prompt card — the compaction
+            // notice already communicates it. Other turn-spawning slash commands do echo.
+            if is_compact {
+                SlashOutcome::SpawnAgentTurnQuiet
+            } else {
+                SlashOutcome::SpawnAgentTurn
+            }
         }
         SlashDispatch::Goal { .. } | SlashDispatch::Reload | SlashDispatch::Extension { .. } => {
             if ctx.agent_session.is_none() {
@@ -415,6 +425,8 @@ mod tests {
             mode: crate::tui::confetti::ConfettiMode::Confetti
         }));
         assert!(slash_echoes_prompt_in_transcript(&SlashOutcome::SpawnAgentTurn));
+        // `/compact` spawns a turn but must NOT echo a "/compact" user prompt card.
+        assert!(!slash_echoes_prompt_in_transcript(&SlashOutcome::SpawnAgentTurnQuiet));
     }
 
     #[test]

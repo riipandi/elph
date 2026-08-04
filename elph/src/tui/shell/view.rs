@@ -1683,7 +1683,7 @@ pub(crate) fn build_shell_view(
                                 // handle_slash_submit. No busy/turn state needed — the task will
                                 // emit Status events when done.
                             }
-                            SlashOutcome::SpawnAgentTurn if is_slash => {
+                            SlashOutcome::SpawnAgentTurn | SlashOutcome::SpawnAgentTurnQuiet if is_slash => {
                                 if agent_turn_active.get() {
                                     // Queue agent slash for after the current turn (no nested spawn).
                                     let queued = slash_input.clone();
@@ -1712,7 +1712,7 @@ pub(crate) fn build_shell_view(
                                     begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
                                 }
                             }
-                            SlashOutcome::SpawnAgentTurn => {
+                            SlashOutcome::SpawnAgentTurn | SlashOutcome::SpawnAgentTurnQuiet => {
                                 debug_assert!(!slash_outcome_is_ui_only(&SlashOutcome::SpawnAgentTurn));
                                 if agent_turn_active.get() {
                                     prompt_queue.write().push_follow_up_local(body.clone());
