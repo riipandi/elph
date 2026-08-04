@@ -12,6 +12,7 @@ use super::chunk::{chunk_source, embed_text_for_chunk, lang_label_for_path};
 use super::graph::{extract_import_targets, file_node_id, nodes_for_chunks};
 use super::merkle::{fast_hash, merkle_root, sha256_hex};
 use super::types::{IndexPhase, IndexProgress, ProgressFn, RawChunk, ScanStats};
+use super::walk::{looks_binary, should_skip_path};
 use crate::core::embed::EmbedFn;
 use crate::core::util::{drain_rows, is_zero, vec_buf};
 
@@ -568,107 +569,6 @@ async fn upsert_meta(conn: &Connection, key: &str, value: &str) -> Result<()> {
 
 fn now_secs() -> i64 {
     SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64
-}
-
-fn should_skip_path(path: &Path) -> bool {
-    let s = path.to_string_lossy();
-    let skip_dirs = [
-        "/.git/",
-        "/target/",
-        "/node_modules/",
-        "/.elph/",
-        "/dist/",
-        "/build/",
-        "/.next/",
-        "/vendor/",
-        "/__pycache__/",
-        "/.venv/",
-        "/venv/",
-        "/.cargo/",
-        "/.idea/",
-        "/.vscode/",
-        "/coverage/",
-        "/.turbo/",
-        "/.cache/",
-        "/Pods/",
-        "/.gradle/",
-        "/out/",
-        "/site-packages/",
-        "/third_party/",
-        "/third-party/",
-        "/.svelte-kit/",
-        "/.nuxt/",
-        "/.output/",
-    ];
-    if skip_dirs.iter().any(|d| s.contains(d)) {
-        return true;
-    }
-    let name = path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("")
-        .to_ascii_lowercase();
-    if name.ends_with(".min.js")
-        || name.ends_with(".min.css")
-        || name.ends_with(".map")
-        || matches!(
-            name.as_str(),
-            "package-lock.json"
-                | "yarn.lock"
-                | "pnpm-lock.yaml"
-                | "cargo.lock"
-                | "composer.lock"
-                | "go.sum"
-                | "poetry.lock"
-        )
-    {
-        return true;
-    }
-    matches!(
-        path.extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("")
-            .to_ascii_lowercase()
-            .as_str(),
-        "png"
-            | "jpg"
-            | "jpeg"
-            | "gif"
-            | "webp"
-            | "ico"
-            | "pdf"
-            | "zip"
-            | "gz"
-            | "tar"
-            | "woff"
-            | "woff2"
-            | "ttf"
-            | "eot"
-            | "mp4"
-            | "mp3"
-            | "wasm"
-            | "so"
-            | "dylib"
-            | "a"
-            | "o"
-            | "class"
-            | "jar"
-            | "exe"
-            | "dll"
-            | "bin"
-            | "lock"
-            | "rlib"
-            | "rmeta"
-            | "pyc"
-            | "pyo"
-            | "db"
-            | "sqlite"
-            | "parquet"
-    )
-}
-
-fn looks_binary(bytes: &[u8]) -> bool {
-    bytes.iter().take(8192).any(|&b| b == 0)
 }
 
 #[allow(dead_code)]
