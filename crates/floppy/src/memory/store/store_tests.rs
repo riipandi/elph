@@ -7,6 +7,7 @@ use crate::memory::types::{
 };
 use crate::memory::types::{SelfReportEntry, TaskEndInput, TaskStatus, TimelineEventKind, UserInputSource};
 use std::sync::Arc;
+use turso_db::{clear_broken_wal_sidecars, is_lock_err, is_wal_io_err};
 
 fn mock_embed() -> EmbedFn {
     Arc::new(|text: &str| {

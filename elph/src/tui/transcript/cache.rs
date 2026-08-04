@@ -8,7 +8,8 @@
 use std::path::Path;
 
 use anyhow::Result;
-use turso::{Builder, Connection, params};
+use turso::{Connection, params};
+use turso_db::{connect, open_local};
 
 use super::types::{TranscriptMessage, TranscriptStyle};
 
@@ -23,11 +24,8 @@ pub struct TranscriptCache {
 impl TranscriptCache {
     /// Open (or create) the transcript database and run migrations.
     pub async fn open(db_path: &Path, session_id: &str) -> Result<Self> {
-        let db = Builder::new_local(db_path.to_string_lossy().as_ref())
-            .experimental_multiprocess_wal(true)
-            .build()
-            .await?;
-        let conn = db.connect()?;
+        let db = open_local(db_path, |b| b.experimental_multiprocess_wal(true), false).await?;
+        let conn = connect(&db).await?;
         Self::run_migrations(&conn).await?;
         Ok(Self {
             conn,

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use turso::Builder;
+use turso_db::{connect, open_local};
 
 use super::migrations;
 use super::paths::Paths;
@@ -21,12 +21,13 @@ pub async fn ensure(paths: &Paths) -> Result<()> {
     eprintln!("Opening store database");
 
     // Open one connection and apply all migration bands through it.
-    let db = Builder::new_local(store_db.to_string_lossy().as_ref())
-        .experimental_multiprocess_wal(true)
-        .experimental_index_method(true)
-        .build()
-        .await?;
-    let conn = db.connect()?;
+    let db = open_local(
+        &store_db,
+        |b| b.experimental_multiprocess_wal(true).experimental_index_method(true),
+        false,
+    )
+    .await?;
+    let conn = connect(&db).await?;
 
     // Platform band (v101–106).
     elph_agent::datastore::run_migrations(&conn, migrations::metadata_migrations()).await?;

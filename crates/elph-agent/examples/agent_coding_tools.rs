@@ -137,7 +137,7 @@ async fn main() -> anyhow::Result<()> {
                             ..
                         } => {
                             if let elph_ai::AssistantMessageEvent::TextDelta { delta, .. } = &*assistant_message_event {
-                                if !saw_delta.swap(true, Ordering::SeqCst) {}
+                                saw_delta.store(true, Ordering::SeqCst);
                                 print!("{delta}");
                                 let _ = std::io::stdout().flush();
                             }

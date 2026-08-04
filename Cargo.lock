@@ -3181,6 +3181,7 @@ dependencies = [
  "tokio",
  "tokio-util",
  "turso",
+ "turso-db",
  "yaml_serde",
 ]
 
@@ -3230,6 +3231,7 @@ dependencies = [
  "toml",
  "toon-format",
  "turso",
+ "turso-db",
  "url",
  "urlencoding",
  "walkdir",
@@ -3866,6 +3868,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "turso",
+ "turso-db",
 ]
 
 [[package]]
@@ -11215,6 +11218,18 @@ dependencies = [
  "turso_core",
  "turso_sdk_kit",
  "turso_sync_sdk_kit",
+]
+
+[[package]]
+name = "turso-db"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "log",
+ "rand 0.10.2",
+ "tempfile",
+ "tokio",
+ "turso",
 ]
 
 [[package]]

@@ -72,9 +72,9 @@ ${% endif %}
 - Prefer the most specific tool over a shell workaround.${% if tools.grep %} Search file contents and symbols with `${{ tools.grep }}`.${% endif %}${% if tools.find_path %} Find files by name or glob with `${{ tools.find_path }}`.${% endif %}${% if tools.list_dir %} Use `${{ tools.list_dir }}`to inspect a known directory.${% endif %}${% if tools.read_file %} Read only relevant files or ranges with`${{ tools.read_file }}`.${% endif %}
   ${% if agent_mode == "build" or agent_mode == "brave" %}
 ${%- if tools.edit_file or tools.write_file %}
-- ${% if tools.edit_file %}Use `${{ tools.edit_file }}`for focused changes to existing files.${% endif %}${% if tools.edit_file and tools.write_file %} ${% endif %}${% if tools.write_file %}Use`${{ tools.write_file }}` for new files or intentional full rewrites.${% endif %} Use dedicated copy, move, directory, and delete tools when listed.
+- ${% if tools.edit_file %}Use ${{ tools.edit_file }} for focused changes to existing files.${% endif %}${% if tools.edit_file and tools.write_file %} ${% endif %}${% if tools.write_file %}Use ${{ tools.write_file }} for new files or intentional full rewrites.${% endif %} Use dedicated copy, move, directory, and delete tools when listed.
   ${%- endif %}
-${%- if tools.shell_exec %}
+  ${%- if tools.shell_exec %}
 - Reserve `${{ tools.shell_exec }}` for builds, tests, version control, and commands that genuinely require a shell; never use it to read/edit files or communicate with the user when a dedicated channel exists.
 - `${{ tools.shell_exec }}` runs commands in the working directory — do not prefix them with `cd … &&`.
   ${%- endif %}

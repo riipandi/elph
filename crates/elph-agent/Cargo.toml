@@ -102,6 +102,7 @@ tokio-util = { workspace = true, features = ["rt"] }
 toml.workspace = true
 toon-format.workspace = true
 turso.workspace = true
+turso-db.workspace = true
 url.workspace = true
 urlencoding.workspace = true
 walkdir = { workspace = true, optional = true }

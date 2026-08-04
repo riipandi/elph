@@ -1,0 +1,27 @@
+[package]
+name = "turso-db"
+version = "0.0.1"
+license = "MIT"
+description = "Shared Turso (local SQLite) open/connect/retry/lock-error helpers for Elph"
+homepage.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+publish = false
+
+[lib]
+name = "turso_db"
+path = "src/lib.rs"
+
+[dependencies]
+anyhow.workspace = true
+log.workspace = true
+rand.workspace = true
+tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }
+turso.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints.rust]
+linker_messages = "allow"

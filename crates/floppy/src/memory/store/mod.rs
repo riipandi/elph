@@ -4,13 +4,14 @@ mod tasks;
 mod write;
 
 use anyhow::{Context, Result};
-use rand::RngExt;
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::{Arc, Mutex, OnceLock};
 
 use std::time::{SystemTime, UNIX_EPOCH};
 use turso::params;
-use turso::{Builder, Connection, Database};
+use turso::{Connection, Database};
+use turso_db::clear_broken_wal_sidecars;
 
 pub use crate::core::embed::EmbedFn;
 use crate::core::util::{DEFAULT_EMBEDDING_DIMS, drain_rows};
@@ -339,11 +340,8 @@ impl MemoryStore {
     }
 
     async fn open_db(&self) -> Result<Database> {
-        const MAX_RETRIES: u32 = 10;
-        const BASE_DELAY_MS: u64 = 50;
-
         // Parent dir must exist; Turso creates `store.db` on first open but not parents.
-        if let Some(parent) = std::path::Path::new(&self.db_path).parent()
+        if let Some(parent) = Path::new(&self.db_path).parent()
             && !parent.as_os_str().is_empty()
         {
             std::fs::create_dir_all(parent)
@@ -355,76 +353,22 @@ impl MemoryStore {
         // when `store.db` itself is healthy (or when the main file is missing).
         clear_broken_wal_sidecars(&self.db_path);
 
-        let mut attempt = 0u32;
-        let mut cleared_wal = false;
-        loop {
-            let build = Builder::new_local(&self.db_path)
-                .experimental_multiprocess_wal(true)
-                .experimental_index_method(true)
-                .build()
-                .await;
-            match build {
-                Ok(db) => return Ok(db),
-                Err(e) => {
-                    let msg = e.to_string();
-                    // One recovery pass for corrupt / truncated WAL leftovers.
-                    if !cleared_wal && is_wal_io_err(&msg) {
-                        clear_broken_wal_sidecars(&self.db_path);
-                        cleared_wal = true;
-                        attempt = 0;
-                        continue;
-                    }
-                    if attempt >= MAX_RETRIES || !is_lock_err(&msg) {
-                        return Err(e).with_context(|| {
-                            format!(
-                                "open memory store at {} (create an empty store by running any memory command once the path is writable)",
-                                self.db_path
-                            )
-                        });
-                    }
-                }
-            }
-            let jitter: f64 = rand::rng().random();
-            let delay = BASE_DELAY_MS as f64 * (1.0 + jitter) * (attempt as f64 + 1.0).min(5.0);
-            tokio::time::sleep(std::time::Duration::from_millis(delay as u64)).await;
-            attempt += 1;
-        }
+        turso_db::open_local(
+            Path::new(&self.db_path),
+            |b| b.experimental_multiprocess_wal(true).experimental_index_method(true),
+            true,
+        )
+        .await
     }
-
-    /// Open short-lived conn, run fn, then drop both conn and db. Turso embedded driver
-    /// locks the file at connect()-time; keep `Database` alive for the whole operation.
-    /// Retry connect() w/ backoff if another process holds the lock.
     pub(crate) async fn with_db<T, F, Fut>(&self, f: F) -> Result<T>
     where
         F: FnOnce(Connection) -> Fut,
         Fut: Future<Output = Result<T>>,
     {
-        const MAX_RETRIES: u32 = 10;
-        const BASE_DELAY_MS: u64 = 50;
-
         let db = self.open_db().await?;
-        let conn = {
-            let mut attempt = 0u32;
-            loop {
-                match db.connect() {
-                    Ok(conn) => break conn,
-                    Err(e) => {
-                        if attempt >= MAX_RETRIES || !is_lock_err(&e.to_string()) {
-                            return Err(e).context("connect failed");
-                        }
-                    }
-                }
-                let jitter: f64 = rand::rng().random();
-                let delay = BASE_DELAY_MS as f64 * (1.0 + jitter) * (attempt as f64 + 1.0).min(5.0);
-                tokio::time::sleep(std::time::Duration::from_millis(delay as u64)).await;
-                attempt += 1;
-            }
-        };
-
-        conn.execute("PRAGMA busy_timeout = 5000", ()).await?;
+        let conn = turso_db::connect(&db).await?;
         f(conn).await
     }
-
     pub async fn init(&self) -> Result<()> {
         if *self.initialized.lock().unwrap() {
             return Ok(());
@@ -456,57 +400,6 @@ impl MemoryStore {
 
         *self.initialized.lock().unwrap() = true;
         Ok(())
-    }
-}
-
-/// Check if a Turso error message indicates a lock-related failure.
-///
-/// Detects `SQLITE_LOCKED` (`"locked"`, `"Locking"`) and `SQLITE_BUSY`
-/// (`"busy"`) error messages.
-fn is_lock_err(msg: &str) -> bool {
-    let lower = msg.to_ascii_lowercase();
-    lower.contains("locked") || lower.contains("locking") || lower.contains("busy")
-}
-
-/// WAL / I/O failures that are often fixed by removing sidecar files.
-fn is_wal_io_err(msg: &str) -> bool {
-    let lower = msg.to_ascii_lowercase();
-    lower.contains("short read on wal")
-        || lower.contains("wal frame")
-        || lower.contains("database disk image is malformed")
-        || lower.contains("file is not a database")
-        || (lower.contains("i/o error") && lower.contains("wal"))
-        || lower.contains("unable to open database file")
-}
-
-/// Remove empty or leftover WAL/SHM sidecars next to `db_path`.
-///
-/// Safe when the main `store.db` is missing: only deletes known sidecar names
-/// (`store.db-wal`, `store.db-shm`, `store.db-tshm`). An empty `*-wal` (0 bytes)
-/// must go — Turso still tries to read frames from it and fails with
-/// "short read on WAL frame".
-fn clear_broken_wal_sidecars(db_path: &str) {
-    for suffix in ["-wal", "-shm", "-tshm"] {
-        let sidecar = format!("{db_path}{suffix}");
-        let p = std::path::Path::new(&sidecar);
-        if !p.exists() {
-            continue;
-        }
-        // Always drop empty/truncated WAL; drop SHM/TSHM only when the database
-        // is not in use — removing them while another process holds the DB open
-        // can corrupt the shared WAL state in `experimental_multiprocess_wal`
-        // mode. (DeepWiki turso + docs.turso.tech; same gating as core/db.rs.)
-        let should_remove = if suffix == "-wal" {
-            match std::fs::metadata(p) {
-                Ok(m) => m.len() < 32, // empty or shorter than a WAL header
-                Err(_) => true,
-            }
-        } else {
-            !crate::core::db::database_in_use(db_path)
-        };
-        if should_remove {
-            let _ = std::fs::remove_file(p);
-        }
     }
 }
 
