@@ -29,13 +29,14 @@ embed = ["dep:embed_anything", "embed_anything/accelerate"]
 metal = ["embed", "embed_anything/metal"]
 cuda = ["embed", "embed_anything/cuda"]
 # Semantic codebase index (ast-grep chunking + FTS/vector). Optional; heavy.
-codegraph = ["dep:ast-grep-core", "dep:ast-grep-language", "dep:ignore", "dep:sha2", "dep:regex", "dep:rayon"]
+codegraph = ["dep:ast-grep-core", "dep:ast-grep-language", "dep:ignore", "dep:sha2", "dep:regex", "dep:rayon", "dep:log"]
 # Convenience: full surface for hosts (Elph).
 full = ["memory", "embed", "codegraph"]
 
 [dependencies]
 anyhow.workspace = true
 ast-grep-core = { version = "0.45.0", optional = true }
+log = { workspace = true, optional = true }
 ast-grep-language = { version = "0.45.0", default-features = false, optional = true, features = [
   "tree-sitter-c",
   "tree-sitter-cpp",

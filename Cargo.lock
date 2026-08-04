@@ -3858,6 +3858,7 @@ dependencies = [
  "embed_anything",
  "ignore",
  "kalid",
+ "log",
  "memorable-ids",
  "parking_lot",
  "rand 0.10.2",

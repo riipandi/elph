@@ -226,14 +226,9 @@ impl Indexer<'_> {
         let embed_fn = self.embed;
         let _concurrency = self.embed_concurrency.max(1); // reserved: concurrent dispatch not yet enabled
 
-        let mut flat_texts: Vec<String> = Vec::new();
-        let mut owner: Vec<(usize, usize)> = Vec::new();
-        for (file_idx, (_, _, _, _, chunks)) in chunked_files.iter().enumerate() {
-            for (chunk_idx, chunk) in chunks.iter().enumerate() {
-                flat_texts.push(embed_text_for_chunk(chunk));
-                owner.push((file_idx, chunk_idx));
-            }
-        }
+        // Flatten -> embed in sub-batches -> scatter back. Extracted into free
+        // functions so the order/index bookkeeping is unit-testable in isolation.
+        let (flat_texts, owner, chunked_files) = flatten_chunk_texts(chunked_files);
 
         let batch_size = self.embed_batch_size.max(1);
         let mut flat_embeddings: Vec<Vec<f32>> = Vec::with_capacity(flat_texts.len());
@@ -245,24 +240,7 @@ impl Indexer<'_> {
             flat_embeddings.extend(result);
         }
 
-        let mut final_processed: Vec<ProcessedFile> = chunked_files
-            .into_iter()
-            .map(|(rel, hash, lang, source, chunks)| {
-                let embeddings = vec![Vec::new(); chunks.len()];
-                ProcessedFile {
-                    rel,
-                    hash,
-                    lang,
-                    source,
-                    chunks,
-                    embeddings,
-                }
-            })
-            .collect();
-
-        for ((file_idx, chunk_idx), emb) in owner.into_iter().zip(flat_embeddings) {
-            final_processed[file_idx].embeddings[chunk_idx] = emb;
-        }
+        let final_processed = scatter_embeddings(&owner, flat_embeddings, chunked_files);
 
         stats.chunks_embedded = final_processed
             .iter()
@@ -331,6 +309,19 @@ impl Indexer<'_> {
         upsert_meta(conn, META_LAST, &now.to_string()).await?;
         upsert_meta(conn, META_DIR, &self.root.display().to_string()).await?;
         stats.finalize_ms = finalize_start.elapsed().as_millis() as u64;
+
+        log::info!(
+            target: "codegraph",
+            "codegraph index complete: files_walked={} files_indexed={} chunks_embedded={} \
+             walk_ms={} reindex_ms={} finalize_ms={} total_ms={}",
+            stats.files_walked,
+            stats.files_indexed,
+            stats.chunks_embedded,
+            stats.walk_ms,
+            stats.reindex_ms,
+            stats.finalize_ms,
+            stats.walk_ms + stats.reindex_ms + stats.finalize_ms,
+        );
 
         self.report(IndexPhase::Done, &stats, None, Some(files_to_index_count), estimated_seconds);
         Ok(stats)
@@ -419,6 +410,56 @@ impl Indexer<'_> {
     pub async fn reindex_dirty(&self, conn: &Connection) -> Result<ScanStats> {
         self.scan(conn, false).await
     }
+}
+
+/// Flatten every chunk across all files into a single ordered list of embed
+/// inputs, recording `(file_idx, chunk_idx)` ownership so the resulting
+/// embeddings can be scattered back onto the correct file/chunk. The order of
+/// `flat_texts` is guaranteed to match `owner`.
+#[allow(clippy::type_complexity)]
+fn flatten_chunk_texts(
+    chunked_files: Vec<(String, String, String, String, Vec<RawChunk>)>,
+) -> (
+    Vec<String>,
+    Vec<(usize, usize)>,
+    Vec<(String, String, String, String, Vec<RawChunk>)>,
+) {
+    let mut flat_texts = Vec::new();
+    let mut owner = Vec::new();
+    for (file_idx, (_, _, _, _, chunks)) in chunked_files.iter().enumerate() {
+        for (chunk_idx, chunk) in chunks.iter().enumerate() {
+            flat_texts.push(embed_text_for_chunk(chunk));
+            owner.push((file_idx, chunk_idx));
+        }
+    }
+    (flat_texts, owner, chunked_files)
+}
+
+/// Scatter a flat, order-preserving list of embeddings back onto the file/chunk
+/// they came from. `owner[k]` must pair with `flat_embeddings[k]`.
+fn scatter_embeddings(
+    owner: &[(usize, usize)],
+    flat_embeddings: Vec<Vec<f32>>,
+    chunked_files: Vec<(String, String, String, String, Vec<RawChunk>)>,
+) -> Vec<ProcessedFile> {
+    let mut final_processed: Vec<ProcessedFile> = chunked_files
+        .into_iter()
+        .map(|(rel, hash, lang, source, chunks)| {
+            let n = chunks.len();
+            ProcessedFile {
+                rel,
+                hash,
+                lang,
+                source,
+                chunks,
+                embeddings: vec![Vec::new(); n],
+            }
+        })
+        .collect();
+    for ((file_idx, chunk_idx), emb) in owner.iter().zip(flat_embeddings) {
+        final_processed[*file_idx].embeddings[*chunk_idx] = emb;
+    }
+    final_processed
 }
 
 async fn delete_path(conn: &Connection, path: &str) -> Result<()> {
@@ -622,4 +663,114 @@ pub async fn purge_all(conn: &Connection) -> Result<()> {
 #[allow(dead_code)]
 pub fn pathbuf_root(root: &str) -> PathBuf {
     PathBuf::from(root)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+
+    /// Deterministic mock embedder: each input text maps to a fixed 4-dim vector,
+    /// so a test can assert exact correspondence between an input text and its
+    /// embedding and thus detect off-by-one / index bugs in the scatter step.
+    fn embed_of(text: &str) -> Vec<f32> {
+        let mut vec = vec![0.0f32; 4];
+        for (i, b) in text.bytes().enumerate() {
+            vec[i % 4] += (b as f32 + 1.0) * 0.01;
+        }
+        vec
+    }
+
+    fn mock_embedder() -> EmbedFn {
+        Arc::new(|texts: &[String]| {
+            let out: Vec<Vec<f32>> = texts.iter().map(|t| embed_of(t)).collect();
+            Box::pin(async move { Ok(out) })
+        })
+    }
+
+    #[tokio::test]
+    async fn batch_embedding_scatter_preserves_order_and_index() {
+        // Two files with unequal chunk counts exercise the index bookkeeping.
+        let chunked_files: Vec<(String, String, String, String, Vec<RawChunk>)> = vec![
+            (
+                "a.rs".into(),
+                "h1".into(),
+                "rust".into(),
+                "fn a() {}".into(),
+                vec![
+                    RawChunk {
+                        path: "a.rs".into(),
+                        kind: "fn".into(),
+                        name: Some("a".into()),
+                        start_line: 1,
+                        end_line: 2,
+                        content: "alpha".into(),
+                    },
+                    RawChunk {
+                        path: "a.rs".into(),
+                        kind: "fn".into(),
+                        name: Some("b".into()),
+                        start_line: 3,
+                        end_line: 4,
+                        content: "beta".into(),
+                    },
+                ],
+            ),
+            (
+                "b.rs".into(),
+                "h2".into(),
+                "rust".into(),
+                "fn b() {}".into(),
+                vec![RawChunk {
+                    path: "b.rs".into(),
+                    kind: "fn".into(),
+                    name: Some("c".into()),
+                    start_line: 1,
+                    end_line: 2,
+                    content: "gamma".into(),
+                }],
+            ),
+        ];
+
+        let embed_fn = mock_embedder();
+        let (flat_texts, owner, cf) = flatten_chunk_texts(chunked_files);
+
+        // Order of flat_texts must match owner: a.rs[0], a.rs[1], b.rs[0].
+        assert_eq!(owner, vec![(0usize, 0usize), (0, 1), (1, 0)]);
+        assert_eq!(flat_texts.len(), 3);
+
+        let flat_embeddings = embed_fn(&flat_texts).await.unwrap();
+        assert_eq!(flat_embeddings.len(), 3);
+
+        let final_processed = scatter_embeddings(&owner, flat_embeddings, cf);
+
+        // Every (file, chunk) embedding must equal the mock output for that chunk's
+        // embedding text — independent of any chunk-count balancing.
+        for pf in final_processed.iter() {
+            for ci in 0..pf.chunks.len() {
+                let expected = embed_of(&embed_text_for_chunk(&pf.chunks[ci]));
+                assert_eq!(pf.embeddings[ci], expected, "mismatch in {}", pf.rel);
+            }
+        }
+        // Distinct chunks must not collapse onto one another (no off-by-one).
+        assert_ne!(final_processed[0].embeddings[0], final_processed[0].embeddings[1]);
+    }
+
+    #[tokio::test]
+    async fn batch_embedding_subbatch_preserves_order() {
+        // Embedding in sub-batches must still return results in input order, which
+        // is exactly what scan() relies on when scattering flat_embeddings back by
+        // index. A divergence here would mean the whole scatter step is misaligned.
+        let texts: Vec<String> = (0..7).map(|i| format!("chunk-{i}")).collect();
+        let embed_fn = mock_embedder();
+        let mut all: Vec<Vec<f32>> = Vec::new();
+        for batch in texts.chunks(3) {
+            let b: Vec<String> = batch.to_vec();
+            all.extend(embed_fn(&b).await.unwrap());
+        }
+        assert_eq!(all.len(), 7);
+        for (i, t) in texts.iter().enumerate() {
+            assert_eq!(all[i], embed_of(t), "order broken at index {i}");
+        }
+    }
 }
