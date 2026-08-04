@@ -14,7 +14,6 @@
 
 use std::collections::HashMap;
 use std::fs;
-use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -23,6 +22,7 @@ use anyhow::{Context, Result};
 use rmcp::model::CallToolResult;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use serde_jsonlines::{append_json_lines, json_lines, write_json_lines};
 
 /// Default TTL for cached tool results (60 seconds).
 pub const DEFAULT_CACHE_TTL_MS: u64 = 60_000;
@@ -142,21 +142,15 @@ impl McpCacheStore {
         );
 
         // Append the new entry to the JSONL file.
-        let line = serde_json::to_string(&PersistedEntry {
+        let persisted = PersistedEntry {
             key: format!("{key:016x}"),
             server: server.to_string(),
             tool: tool.to_string(),
             expires_at,
             result: result.clone(),
-        })
-        .context("serialize MCP result for cache")?;
-
-        let mut file = fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&self.file_path)
+        };
+        append_json_lines(&self.file_path, [&persisted])
             .with_context(|| format!("append mcp cache {}", self.file_path.display()))?;
-        writeln!(file, "{line}").context("write mcp cache line")?;
 
         // Evict expired entries if we're over the limit.
         if entries.len() > self.max_entries {
@@ -212,22 +206,14 @@ impl McpCacheStore {
     /// Atomically rewrite the JSONL file from the current in-memory entries.
     fn rewrite_file(&self, entries: &HashMap<u64, CachedEntry>) -> Result<()> {
         let tmp_path = self.file_path.with_extension("jsonl.tmp");
-        let mut writer = BufWriter::new(
-            fs::File::create(&tmp_path).with_context(|| format!("create mcp cache tmp {}", tmp_path.display()))?,
-        );
-        for (key, entry) in entries {
-            let line = serde_json::to_string(&PersistedEntry {
-                key: format!("{key:016x}"),
-                server: entry.server.clone(),
-                tool: entry.tool.clone(),
-                expires_at: entry.expires_at,
-                result: entry.result.clone(),
-            })
-            .context("serialize MCP result for cache")?;
-            writeln!(writer, "{line}").context("write mcp cache tmp")?;
-        }
-        writer.flush().context("flush mcp cache tmp")?;
-        drop(writer);
+        let lines = entries.iter().map(|(key, entry)| PersistedEntry {
+            key: format!("{key:016x}"),
+            server: entry.server.clone(),
+            tool: entry.tool.clone(),
+            expires_at: entry.expires_at,
+            result: entry.result.clone(),
+        });
+        write_json_lines(&tmp_path, lines).with_context(|| format!("write mcp cache tmp {}", tmp_path.display()))?;
         fs::rename(&tmp_path, &self.file_path)
             .with_context(|| format!("replace mcp cache {}", self.file_path.display()))?;
         Ok(())
@@ -240,17 +226,11 @@ fn load_from_file(file_path: &Path) -> Result<HashMap<u64, CachedEntry>> {
     if !file_path.exists() {
         return Ok(out);
     }
-    let file = fs::File::open(file_path).with_context(|| format!("open mcp cache {}", file_path.display()))?;
+    let entries = json_lines::<PersistedEntry, _>(file_path)
+        .with_context(|| format!("open mcp cache {}", file_path.display()))?;
     let now = McpCacheStore::now_ms();
-    for line in BufReader::new(file).lines() {
-        let Ok(line) = line else { continue };
-        let line = line.trim();
-        if line.is_empty() {
-            continue;
-        }
-        let Ok(entry) = serde_json::from_str::<PersistedEntry>(line) else {
-            continue;
-        };
+    // Unreadable / malformed lines are dropped: a cache miss is always safe.
+    for entry in entries.filter_map(Result::ok) {
         if entry.expires_at < now {
             continue;
         }

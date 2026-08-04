@@ -96,6 +96,7 @@ rustix = { version = "1.1.4", features = ["pty", "termios", "process", "fs"] }
 rustls = { version = "0.23.42", default-features = false, features = ["ring", "std", "tls12"] }
 schemars = "1.2.1"
 serde = { version = "1.0.229", default-features = false, features = ["derive", "std"] }
+serde-jsonlines = "0.7.0"
 serde_json = { version = "1.0.151", default-features = false, features = ["std"] }
 yaml_serde = "0.10.4"
 sha2 = "0.11.0"

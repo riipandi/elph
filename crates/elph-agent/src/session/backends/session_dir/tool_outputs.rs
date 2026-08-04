@@ -18,10 +18,9 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tokio::fs::OpenOptions;
-use tokio::io::AsyncWriteExt;
 
 use super::layout::TOOL_OUTPUTS_FILE;
+use crate::session::jsonl_io;
 use crate::session::types::{SessionError, SessionErrorCode};
 
 /// One entry in the tool outputs log.
@@ -79,40 +78,21 @@ pub async fn append_tool_output(
         output_path: output_path.map(str::to_string),
     };
 
-    let line = serde_json::to_string(&entry).map_err(|e| storage_error(session_dir, format!("encode error: {e}")))?;
-
-    let path = session_dir.join(TOOL_OUTPUTS_FILE);
-    let mut file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(&path)
+    jsonl_io::append(&session_dir.join(TOOL_OUTPUTS_FILE), &entry)
         .await
-        .map_err(|e| storage_error(session_dir, format!("open error: {e}")))?;
-    file.write_all(format!("{line}\n").as_bytes())
-        .await
-        .map_err(|e| storage_error(session_dir, format!("write error: {e}")))?;
-    file.flush()
-        .await
-        .map_err(|e| storage_error(session_dir, format!("flush error: {e}")))?;
-    Ok(())
+        .map_err(|e| storage_error(session_dir, format!("write error: {e}")))
 }
 
 /// Load all tool output entries from the session directory, newest first.
 pub async fn load_tool_outputs(session_dir: &Path) -> Result<Vec<ToolOutputEntry>, SessionError> {
-    let path = session_dir.join(TOOL_OUTPUTS_FILE);
-    if !path.exists() {
-        return Ok(Vec::new());
-    }
-    let content = tokio::fs::read_to_string(&path)
+    let lines = jsonl_io::read_lines::<ToolOutputEntry>(&session_dir.join(TOOL_OUTPUTS_FILE))
         .await
         .map_err(|e| storage_error(session_dir, format!("read error: {e}")))?;
-    let mut entries = Vec::new();
-    for line in content.lines().filter(|l| !l.trim().is_empty()) {
-        match serde_json::from_str::<ToolOutputEntry>(line) {
+    let mut entries = Vec::with_capacity(lines.len());
+    for line in lines {
+        match line {
             Ok(entry) => entries.push(entry),
-            Err(e) => {
-                log::warn!("tool_outputs.jsonl: skipping invalid line: {e}");
-            }
+            Err(e) => log::warn!("{TOOL_OUTPUTS_FILE}: skipping invalid line: {e}"),
         }
     }
     Ok(entries)

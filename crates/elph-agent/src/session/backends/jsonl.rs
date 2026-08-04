@@ -5,11 +5,8 @@
 
 use std::path::{Path, PathBuf};
 
-use tokio::fs::OpenOptions;
-use tokio::fs::{self};
-use tokio::io::AsyncWriteExt;
-
 use crate::session::id::{generate_entry_id, generate_session_id};
+use crate::session::jsonl_io;
 use crate::session::storage_utils::{
     append_to_index, build_index, compute_statistics, create_leaf_entry, find_entries, get_entries_cursor,
     get_path_to_root, get_path_to_root_or_compaction,
@@ -31,11 +28,7 @@ pub struct JsonlSessionStorage {
 impl JsonlSessionStorage {
     pub async fn open(file_path: impl AsRef<Path>) -> Result<Self, SessionError> {
         let file_path = file_path.as_ref().to_path_buf();
-        let entries = if file_path.exists() {
-            load_entries(&file_path).await?
-        } else {
-            Vec::new()
-        };
+        let entries = load_entries(&file_path).await?;
         let leaf_id = entries
             .iter()
             .rev()
@@ -58,16 +51,14 @@ impl JsonlSessionStorage {
 }
 
 async fn load_entries(file_path: &Path) -> Result<Vec<SessionTreeEntry>, SessionError> {
-    let content = fs::read_to_string(file_path)
+    jsonl_io::read_lines::<SessionTreeEntry>(file_path)
         .await
-        .map_err(|e| SessionError::new(SessionErrorCode::Storage, format!("failed to read JSONL: {e}")))?;
-    let mut entries = Vec::new();
-    for line in content.lines().filter(|l| !l.trim().is_empty()) {
-        let entry: SessionTreeEntry = serde_json::from_str(line)
-            .map_err(|e| SessionError::new(SessionErrorCode::InvalidEntry, format!("invalid JSONL line: {e}")))?;
-        entries.push(entry);
-    }
-    Ok(entries)
+        .map_err(|e| SessionError::new(SessionErrorCode::Storage, format!("failed to read JSONL: {e}")))?
+        .into_iter()
+        .map(|line| {
+            line.map_err(|e| SessionError::new(SessionErrorCode::InvalidEntry, format!("invalid JSONL line: {e}")))
+        })
+        .collect()
 }
 
 impl SessionStorage for JsonlSessionStorage {
@@ -99,20 +90,9 @@ impl SessionStorage for JsonlSessionStorage {
     }
 
     async fn append_entry(&mut self, entry: SessionTreeEntry) -> Result<(), SessionError> {
-        let line = serde_json::to_string(&entry)
-            .map_err(|e| SessionError::new(SessionErrorCode::Storage, format!("failed to encode entry: {e}")))?;
-        let mut file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&self.file_path)
-            .await
-            .map_err(|e| SessionError::new(SessionErrorCode::Storage, format!("failed to open JSONL: {e}")))?;
-        file.write_all(format!("{line}\n").as_bytes())
+        jsonl_io::append(&self.file_path, &entry)
             .await
             .map_err(|e| SessionError::new(SessionErrorCode::Storage, format!("failed to append JSONL: {e}")))?;
-        file.flush()
-            .await
-            .map_err(|e| SessionError::new(SessionErrorCode::Storage, format!("failed to flush JSONL: {e}")))?;
         append_to_index(&mut self.index, entry);
         Ok(())
     }

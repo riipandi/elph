@@ -1,17 +1,17 @@
 use std::fs::{self};
 use std::fs::{File, OpenOptions};
-use std::io::Write;
 use std::io::{self};
 use std::path::PathBuf;
 
 use fastrace::collector::{EventRecord, Reporter, SpanRecord};
 use parking_lot::Mutex as ParkingMutex;
 use serde_json::json;
+use serde_jsonlines::JsonLinesWriter;
 
 /// Writes collected span trees as JSON lines under the application logs directory.
 pub struct JsonlReporter {
     path: PathBuf,
-    file: ParkingMutex<File>,
+    writer: ParkingMutex<JsonLinesWriter<File>>,
 }
 
 impl JsonlReporter {
@@ -21,7 +21,7 @@ impl JsonlReporter {
         let file = OpenOptions::new().create(true).append(true).open(&path)?;
         Ok(Self {
             path,
-            file: ParkingMutex::new(file),
+            writer: ParkingMutex::new(JsonLinesWriter::new(file)),
         })
     }
 
@@ -32,17 +32,13 @@ impl JsonlReporter {
 
 impl Reporter for JsonlReporter {
     fn report(&mut self, spans: Vec<SpanRecord>) {
-        let mut file = self.file.lock();
+        let mut writer = self.writer.lock();
         for span in spans {
-            let line = match serde_json::to_string(&span_to_json(&span)) {
-                Ok(line) => line,
-                Err(_) => continue,
-            };
-            if writeln!(file, "{line}").is_err() {
+            if writer.write(&span_to_json(&span)).is_err() {
                 break;
             }
         }
-        let _ = file.flush();
+        let _ = writer.flush();
     }
 }
 

@@ -81,6 +81,7 @@ regex.workspace = true
 reqwest.workspace = true
 rmcp = { workspace = true, optional = true }
 serde.workspace = true
+serde-jsonlines = { workspace = true, features = ["async"] }
 serde_json.workspace = true
 yaml_serde.workspace = true
 tempfile.workspace = true

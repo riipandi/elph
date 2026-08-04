@@ -4,6 +4,7 @@ pub mod backends;
 pub mod context;
 pub mod durability;
 pub mod id;
+pub(crate) mod jsonl_io;
 pub mod migrations;
 pub mod recovery;
 pub mod repo;

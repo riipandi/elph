@@ -3,11 +3,10 @@
 use std::path::{Path, PathBuf};
 
 use serde_json::json;
-use tokio::fs::OpenOptions;
 use tokio::fs::{self};
-use tokio::io::AsyncWriteExt;
 
 use crate::session::id::generate_entry_id;
+use crate::session::jsonl_io;
 use crate::session::storage_utils::{
     append_to_index, build_index, compute_statistics, create_leaf_entry, find_entries, get_entries_cursor,
     get_path_to_root, get_path_to_root_or_compaction,
@@ -105,14 +104,14 @@ impl SessionDirStorage {
     }
 
     async fn append_event(&self, entry: &SessionTreeEntry) -> Result<(), SessionError> {
-        append_jsonl_line(&self.session_dir, EVENTS_FILE, entry).await
+        append_jsonl(&self.session_dir, EVENTS_FILE, entry).await
     }
 
     async fn append_chat_mirror(&self, message: &AgentMessage) -> Result<(), SessionError> {
         let Some(line) = tree_message_to_chat_line(message) else {
             return Ok(());
         };
-        append_jsonl_value(&self.session_dir, CHAT_HISTORY_FILE, &line).await
+        append_jsonl(&self.session_dir, CHAT_HISTORY_FILE, &line).await
     }
 
     async fn append_prompt_history(&self, message: &AgentMessage) -> Result<(), SessionError> {
@@ -123,7 +122,7 @@ impl SessionDirStorage {
             "timestamp": crate::messages::now_iso_timestamp(),
             "prompt": text,
         });
-        append_jsonl_value(&self.session_dir, PROMPT_HISTORY_FILE, &line).await
+        append_jsonl(&self.session_dir, PROMPT_HISTORY_FILE, &line).await
     }
 
     async fn touch_summary(&mut self) -> Result<(), SessionError> {
@@ -176,23 +175,24 @@ async fn write_summary(session_dir: &Path, summary: &SessionSummary) -> Result<(
 }
 
 async fn load_events(session_dir: &Path) -> Result<Vec<SessionTreeEntry>, SessionError> {
-    let path = session_dir.join(EVENTS_FILE);
-    if !path.exists() {
-        return Ok(Vec::new());
-    }
-    let content = fs::read_to_string(&path)
+    let lines = jsonl_io::read_lines::<serde_json::Value>(&session_dir.join(EVENTS_FILE))
         .await
         .map_err(|error| storage_error(session_dir, format!("failed to read {EVENTS_FILE}: {error}")))?;
-    let mut entries = Vec::new();
-    for (index, line) in content.lines().filter(|line| !line.trim().is_empty()).enumerate() {
-        entries.push(parse_event_line(line, session_dir, index + 1)?);
+    let mut entries = Vec::with_capacity(lines.len());
+    for (index, line) in lines.into_iter().enumerate() {
+        let line_number = index + 1;
+        let parsed =
+            line.map_err(|error| invalid_entry(session_dir, line_number, format!("is not valid JSON: {error}")))?;
+        entries.push(parse_event(parsed, session_dir, line_number)?);
     }
     Ok(entries)
 }
 
-fn parse_event_line(line: &str, session_dir: &Path, line_number: usize) -> Result<SessionTreeEntry, SessionError> {
-    let parsed: serde_json::Value = serde_json::from_str(line)
-        .map_err(|error| invalid_entry(session_dir, line_number, format!("is not valid JSON: {error}")))?;
+fn parse_event(
+    parsed: serde_json::Value,
+    session_dir: &Path,
+    line_number: usize,
+) -> Result<SessionTreeEntry, SessionError> {
     let entry_type = parsed
         .get("type")
         .and_then(serde_json::Value::as_str)
@@ -222,33 +222,13 @@ fn parse_event_line(line: &str, session_dir: &Path, line_number: usize) -> Resul
         .map_err(|error| invalid_entry(session_dir, line_number, format!("is not a valid session entry: {error}")))
 }
 
-async fn append_jsonl_line(session_dir: &Path, file: &str, entry: &SessionTreeEntry) -> Result<(), SessionError> {
-    let line = serde_json::to_string(entry)
-        .map_err(|error| storage_error(session_dir, format!("failed to encode entry: {error}")))?;
-    append_line(session_dir, file, &line).await
-}
-
-async fn append_jsonl_value(session_dir: &Path, file: &str, value: &serde_json::Value) -> Result<(), SessionError> {
-    let line = serde_json::to_string(value)
-        .map_err(|error| storage_error(session_dir, format!("failed to encode value: {error}")))?;
-    append_line(session_dir, file, &line).await
-}
-
-async fn append_line(session_dir: &Path, file_name: &str, line: &str) -> Result<(), SessionError> {
-    let path = session_dir.join(file_name);
-    let mut file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(&path)
+async fn append_jsonl<T>(session_dir: &Path, file_name: &str, value: &T) -> Result<(), SessionError>
+where
+    T: ?Sized + serde::Serialize,
+{
+    jsonl_io::append(&session_dir.join(file_name), value)
         .await
-        .map_err(|error| storage_error(session_dir, format!("failed to open {file_name}: {error}")))?;
-    file.write_all(format!("{line}\n").as_bytes())
-        .await
-        .map_err(|error| storage_error(session_dir, format!("failed to append {file_name}: {error}")))?;
-    file.flush()
-        .await
-        .map_err(|error| storage_error(session_dir, format!("failed to flush {file_name}: {error}")))?;
-    Ok(())
+        .map_err(|error| storage_error(session_dir, format!("failed to append {file_name}: {error}")))
 }
 
 async fn write_text_file(session_dir: &Path, file: &str, content: &str) -> Result<(), SessionError> {
