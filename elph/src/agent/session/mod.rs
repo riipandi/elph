@@ -333,14 +333,20 @@ impl CodingAgentSession {
         let result = self.harness.prompt(text.clone(), None).await;
         match &result {
             Ok(message) => {
-                self.finish_ui_turn(started).await;
-                // Provider / stream errors: compact+retry (context) or silent transient retry.
                 if message.stop_reason == StopReason::Error {
+                    // Turn ended in a provider/context error: recover (compact + one bounded
+                    // retry) before finalizing the UI turn.
+                    self.finish_ui_turn(started).await;
                     self.recover_errored_turn(message).await;
+                } else {
+                    // Compact *while the turn is still busy* so the loading indicator stays
+                    // coherent: the agent visibly finalizes history (status row shows
+                    // "Auto-compacting history…") instead of a frozen turn that emits
+                    // post-hoc notices after the prompt box reappears.
+                    self.maybe_auto_compact(None).await;
+                    self.finish_ui_turn(started).await;
                 }
                 self.maybe_generate_session_title();
-                // Check auto-compaction after every turn (successful or errored).
-                self.maybe_auto_compact(None).await;
             }
             Err(err) if err.code == AgentHarnessErrorCode::Busy => {
                 self.finish_ui_turn_rejected_busy(format!("Error: {err}")).await;
@@ -375,9 +381,24 @@ impl CodingAgentSession {
                         }
                     }
                 }
+                // Non-transient harness error. When the provider rejects the request with a
+                // hard context-overflow error (rather than an assistant `stop_reason::Error`),
+                // compact once and auto-resume the interrupted task with a Continue-style
+                // prompt — the same recovery path used when a turn ends in `stop_reason::Error`.
+                // Without this the agent would stop after compaction, looking frozen.
                 self.finish_ui_turn(started).await;
-                self.emit_retryable_error(Some(&err_s));
-                self.maybe_auto_compact(None).await;
+                let recovered = self.recover_from_turn_error(&err_s).await;
+                if recovered {
+                    self.retry_after_compaction().await;
+                } else {
+                    self.emit_retryable_error(Some(&err_s));
+                    self.maybe_auto_compact(None).await;
+                }
+                return if recovered {
+                    Ok(())
+                } else {
+                    Err(anyhow::anyhow!("{err}"))
+                };
             }
         }
         result.map(|_| ()).map_err(|err| anyhow::anyhow!("{err}"))

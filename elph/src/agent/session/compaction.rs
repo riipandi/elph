@@ -94,6 +94,9 @@ impl CodingAgentSession {
             CompactSource::ModelSwitch => "Compacting history for the new model’s context limit…",
         };
         self.notice(running);
+        // Surface the running label on the status row (busy indicator) so the user sees the
+        // agent is actively compacting history — not frozen — while the turn is still busy.
+        let _ = self.ui_tx.send(AgentUiEvent::Status(running.to_string()));
 
         let before = self.estimate_context_usage().await.ok().map(|(t, _)| t);
         let model = self.resolve_compaction_model();
