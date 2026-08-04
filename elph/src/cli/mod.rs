@@ -18,7 +18,6 @@ mod session;
 mod session_launch;
 mod stats;
 pub mod style;
-mod tools;
 mod update;
 pub mod version;
 mod worktree;
@@ -88,7 +87,6 @@ pub use run::RunArgs;
 pub use server::ServerArgs;
 pub use session::SessionArgs;
 pub use stats::StatsArgs;
-pub use tools::ToolsArgs;
 pub use update::UpdateArgs;
 pub use worktree::WorktreeArgs;
 
@@ -158,8 +156,6 @@ pub enum Commands {
     Update(UpdateArgs),
     /// Print version information
     Version,
-    /// List available agent tools and their descriptions
-    Tools(ToolsArgs),
     /// Manage git worktrees
     Worktree(WorktreeArgs),
 }
@@ -274,7 +270,6 @@ pub fn run(cli: &Cli) -> ExitCode {
         Commands::Stats(args) => stats::handle(args),
         Commands::Update(args) => update::handle(args),
         Commands::Version => version::handle(),
-        Commands::Tools(args) => tools::handle(args),
         Commands::Worktree(args) => worktree::handle(args),
     }
 }
