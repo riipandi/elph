@@ -5,7 +5,6 @@ pub mod command;
 pub mod extensions;
 pub mod memory;
 pub mod platform;
-pub mod skills;
 pub mod tui;
 pub mod types;
 pub mod utils;

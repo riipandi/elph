@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use elph_agent::{ExtensionRegistry, PromptTemplate, Skill};
 
+use crate::agent::RETRY_CONTINUE_PROMPT;
 use crate::agent::{OverlayCommand, SlashDispatch};
 use crate::agent::{
     confetti_mode_from_args, dispatch_slash_command, format_help_message, session_info_slash_message,
@@ -14,7 +15,7 @@ use crate::extensions::ExtensionHost;
 use crate::platform::Paths;
 use crate::tui::confetti::confetti_mode_from_slash_args;
 
-use super::agent_bridge::SlashDispatcher;
+use super::agent_bridge::{SlashDispatcher, TurnDispatcher};
 
 /// Handle `/memory` slash commands as a background task.
 ///
@@ -217,6 +218,20 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             OverlayCommand::ScopedModels => SlashOutcome::OpenScopedModels,
             other => SlashOutcome::OverlayDeferred(other),
         },
+        SlashDispatch::Continue => {
+            if ctx.agent_session.is_none() {
+                return SlashOutcome::Status("Agent session required for this command.".into());
+            }
+            if ctx.spawn_agent_work {
+                // Submit the recovery prompt (not "/continue") so the model resumes the
+                // interrupted task without re-doing completed tool work. The tick loop
+                // renders the matching UserPromptCommitted as a "Continuing tasks…" meta
+                // line — via SpawnAgentTurnQuiet no "/continue" user card is echoed.
+                let session = ctx.agent_session.clone().expect("checked above");
+                TurnDispatcher::spawn_turn(session, RETRY_CONTINUE_PROMPT.to_string(), false);
+            }
+            SlashOutcome::SpawnAgentTurnQuiet
+        }
         SlashDispatch::Compact | SlashDispatch::PromptTemplate { .. } => {
             let is_compact = matches!(dispatch, SlashDispatch::Compact);
             if ctx.agent_session.is_none() {
@@ -519,6 +534,26 @@ mod tests {
     fn rename_without_session_returns_status() {
         let outcome = handle_slash_submit(SlashContext {
             input: "/rename",
+            extensions: None,
+            prompt_templates: None,
+            skills: None,
+            agent_session: None,
+            extension_host: None,
+            paths: None,
+            cwd: None,
+            spawn_agent_work: true,
+        });
+        assert!(matches!(
+            outcome,
+            SlashOutcome::Status(ref message) if message == "Agent session required for this command."
+        ));
+        assert!(slash_outcome_is_ui_only(&outcome));
+    }
+
+    #[test]
+    fn continue_without_session_returns_status() {
+        let outcome = handle_slash_submit(SlashContext {
+            input: "/continue",
             extensions: None,
             prompt_templates: None,
             skills: None,

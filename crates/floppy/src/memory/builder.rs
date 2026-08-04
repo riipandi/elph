@@ -125,7 +125,10 @@ mod tests {
     use std::sync::Arc;
 
     fn mock_embed() -> EmbedFn {
-        Arc::new(|_| Box::pin(async { Ok(vec![1.0, 0.0, 0.0, 0.0]) }))
+        Arc::new(|texts: &[String]| {
+            let n = texts.len();
+            Box::pin(async move { Ok(vec![vec![1.0, 0.0, 0.0, 0.0]; n]) })
+        })
     }
 
     #[test]

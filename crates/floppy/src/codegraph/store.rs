@@ -22,6 +22,9 @@ pub struct CodegraphStore {
     initialized: Mutex<bool>,
     connection_pool: OnceCell<ConnectionPool>,
     max_db_connections: usize,
+    embed_batch_size: usize,
+    db_commit_batch_files: usize,
+    embed_concurrency: usize,
     gpu_acceleration: Option<String>,
 }
 
@@ -37,6 +40,9 @@ impl CodegraphStore {
             initialized: Mutex::new(false),
             connection_pool: OnceCell::new(),
             max_db_connections: config.max_db_connections.unwrap_or(4),
+            embed_batch_size: config.embed_batch_size,
+            db_commit_batch_files: config.db_commit_batch_files,
+            embed_concurrency: config.embed_concurrency,
             gpu_acceleration: config.gpu_acceleration,
         }
     }
@@ -76,6 +82,9 @@ impl CodegraphStore {
             embed: &self.embed,
             max_chunk_lines: self.max_chunk_lines,
             max_file_bytes: self.max_file_bytes,
+            embed_batch_size: self.embed_batch_size,
+            db_commit_batch_files: self.db_commit_batch_files,
+            embed_concurrency: self.embed_concurrency,
             progress,
             gpu_acceleration: self.gpu_acceleration.clone(),
         }

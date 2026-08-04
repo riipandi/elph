@@ -99,7 +99,10 @@ mod tests {
             decay_rate: None,
             apply_migrations: None,
         };
-        let embed: EmbedFn = std::sync::Arc::new(|_| Box::pin(async { Ok(vec![1.0, 0.0, 0.0, 0.0]) }));
+        let embed: EmbedFn = std::sync::Arc::new(|texts: &[String]| {
+            let n = texts.len();
+            Box::pin(async move { Ok(vec![vec![1.0, 0.0, 0.0, 0.0]; n]) })
+        });
         let _store = create_memory_store(config, embed);
     }
 }

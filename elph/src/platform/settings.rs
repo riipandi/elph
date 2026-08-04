@@ -472,6 +472,19 @@ pub struct CodegraphSettings {
     /// agent falls back to `grep` / `read_file` / `shell_exec`.
     #[serde(default = "default_codegraph_tool_timeout_ms")]
     pub tool_timeout_ms: u64,
+    /// Number of chunk texts sent to the embedder in a single batched call (default: 64).
+    /// Lower on memory-constrained machines; raise with a strong GPU for throughput.
+    #[serde(default = "default_codegraph_embed_batch_size")]
+    pub embed_batch_size: usize,
+    /// Number of files' chunks/nodes/edges committed per DB transaction (default: 200).
+    /// Smaller = more frequent durability checkpoints; larger = fewer fsyncs.
+    #[serde(default = "default_codegraph_db_commit_batch_files")]
+    pub db_commit_batch_files: usize,
+    /// Number of embedding batches dispatched concurrently (default: 1; advanced).
+    /// Only helps if the embedding backend is safely callable from multiple tasks
+    /// at once; otherwise batches run sequentially regardless of this value.
+    #[serde(default = "default_codegraph_embed_concurrency")]
+    pub embed_concurrency: usize,
 }
 
 fn default_codegraph_max_chunk_lines() -> u32 {
@@ -488,6 +501,18 @@ fn default_codegraph_max_db_connections() -> usize {
 
 fn default_codegraph_tool_timeout_ms() -> u64 {
     15_000
+}
+
+fn default_codegraph_embed_batch_size() -> usize {
+    64
+}
+
+fn default_codegraph_db_commit_batch_files() -> usize {
+    200
+}
+
+fn default_codegraph_embed_concurrency() -> usize {
+    1
 }
 
 /// MCP client preferences (tool result cache retention).

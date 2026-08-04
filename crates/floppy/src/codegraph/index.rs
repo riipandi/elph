@@ -5,7 +5,6 @@ use ignore::WalkBuilder;
 use rayon::prelude::*;
 use std::collections::{BTreeMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use turso::{Connection, params};
 
@@ -42,6 +41,12 @@ pub struct Indexer<'a> {
     pub embed: &'a EmbedFn,
     pub max_chunk_lines: u32,
     pub max_file_bytes: u64,
+    /// Number of chunk texts sent to the embedder per batched call (Phase 1).
+    pub embed_batch_size: usize,
+    /// Number of files committed per DB transaction (Phase 3).
+    pub db_commit_batch_files: usize,
+    /// Concurrent embedding batches (advanced; default 1 = sequential, Phase 5).
+    pub embed_concurrency: usize,
     pub progress: Option<&'a ProgressFn>,
     pub gpu_acceleration: Option<String>,
 }
@@ -213,21 +218,37 @@ impl Indexer<'_> {
 
         stats.reindex_ms = chunk_start.elapsed().as_millis() as u64;
 
-        // Phase 3: Process embeddings sequentially (async limitation)
+        // Phase 3: Flatten all chunks into one batch, embed once (or in fixed-size
+        // sub-batches), then scatter results back to their owning file. This is the
+        // dominant indexing speedup: dozens of batched embedder calls instead of
+        // thousands of unbatched single-item calls.
         let embed_start = Instant::now();
         let embed_fn = self.embed;
-        let stats_mutex = Arc::new(Mutex::new(stats.clone()));
+        let _concurrency = self.embed_concurrency.max(1); // reserved: concurrent dispatch not yet enabled
 
-        let processed_with_embeddings: Vec<ProcessedFile> = chunked_files
+        let mut flat_texts: Vec<String> = Vec::new();
+        let mut owner: Vec<(usize, usize)> = Vec::new();
+        for (file_idx, (_, _, _, _, chunks)) in chunked_files.iter().enumerate() {
+            for (chunk_idx, chunk) in chunks.iter().enumerate() {
+                flat_texts.push(embed_text_for_chunk(chunk));
+                owner.push((file_idx, chunk_idx));
+            }
+        }
+
+        let batch_size = self.embed_batch_size.max(1);
+        let mut flat_embeddings: Vec<Vec<f32>> = Vec::with_capacity(flat_texts.len());
+        for batch in flat_texts.chunks(batch_size) {
+            let batch_vec: Vec<String> = batch.to_vec();
+            let result = embed_fn(&batch_vec)
+                .await
+                .unwrap_or_else(|_| vec![Vec::new(); batch_vec.len()]);
+            flat_embeddings.extend(result);
+        }
+
+        let mut final_processed: Vec<ProcessedFile> = chunked_files
             .into_iter()
             .map(|(rel, hash, lang, source, chunks)| {
-                let mut embeddings = Vec::new();
-                for _chunk in &chunks {
-                    // Embeddings must be processed sequentially due to async
-                    // We'll fill these in the next loop
-                    embeddings.push(vec![]);
-                }
-
+                let embeddings = vec![Vec::new(); chunks.len()];
                 ProcessedFile {
                     rel,
                     hash,
@@ -239,23 +260,15 @@ impl Indexer<'_> {
             })
             .collect();
 
-        // Process embeddings sequentially (async limitation)
-        let mut final_processed = Vec::new();
-        for mut file in processed_with_embeddings {
-            for (i, chunk) in file.chunks.iter().enumerate() {
-                let embed_src = embed_text_for_chunk(chunk);
-                let emb = embed_fn(&embed_src).await.unwrap_or_default();
-                file.embeddings[i] = emb;
-            }
-
-            let mut s = stats_mutex.lock().unwrap();
-            s.chunks_embedded += file.embeddings.iter().filter(|e| !is_zero(e)).count() as u32;
-            drop(s);
-
-            final_processed.push(file);
+        for ((file_idx, chunk_idx), emb) in owner.into_iter().zip(flat_embeddings) {
+            final_processed[file_idx].embeddings[chunk_idx] = emb;
         }
 
-        let mut stats = stats_mutex.lock().unwrap().clone();
+        stats.chunks_embedded = final_processed
+            .iter()
+            .flat_map(|f| f.embeddings.iter())
+            .filter(|e| !is_zero(e))
+            .count() as u32;
         stats.reindex_ms += embed_start.elapsed().as_millis() as u64;
 
         // Phase 4: Batch DB writes
@@ -268,21 +281,12 @@ impl Indexer<'_> {
             }
         }
 
-        // Batch insert all files
-        for processed in &final_processed {
-            self.report(
-                IndexPhase::IndexingFile,
-                &stats,
-                Some(&processed.rel),
-                Some(files_to_index_count),
-                estimated_seconds,
-            );
-            self.batch_insert_file(conn, processed, &mut stats)
-                .await
-                .with_context(|| format!("index {}", processed.rel))?;
-            stats.files_indexed += 1;
-
-            if stats.files_indexed <= 20 || stats.files_indexed.is_multiple_of(8) {
+        // Batch insert all files inside one (or a few) transaction(s) so we pay a
+        // WAL commit per batch of files rather than one commit per file.
+        let txn_batch = self.db_commit_batch_files.max(1);
+        for chunk in final_processed.chunks(txn_batch) {
+            conn.execute("BEGIN TRANSACTION", ()).await?;
+            for processed in chunk {
                 self.report(
                     IndexPhase::IndexingFile,
                     &stats,
@@ -290,7 +294,22 @@ impl Indexer<'_> {
                     Some(files_to_index_count),
                     estimated_seconds,
                 );
+                self.batch_insert_file(conn, processed, &mut stats)
+                    .await
+                    .with_context(|| format!("index {}", processed.rel))?;
+                stats.files_indexed += 1;
+
+                if stats.files_indexed <= 20 || stats.files_indexed.is_multiple_of(8) {
+                    self.report(
+                        IndexPhase::IndexingFile,
+                        &stats,
+                        Some(&processed.rel),
+                        Some(files_to_index_count),
+                        estimated_seconds,
+                    );
+                }
             }
+            conn.execute("COMMIT", ()).await?;
         }
 
         stats.reindex_ms += db_start.elapsed().as_millis() as u64;
@@ -324,8 +343,8 @@ impl Indexer<'_> {
         processed: &ProcessedFile,
         stats: &mut ScanStats,
     ) -> Result<()> {
-        // Use transaction for atomicity
-        conn.execute("BEGIN TRANSACTION", ()).await?;
+        // The surrounding call in `scan` opens the enclosing transaction; we just
+        // insert this file's rows within it.
 
         // Insert file record
         let now = now_secs();
@@ -393,7 +412,6 @@ impl Indexer<'_> {
             stats.chunks_indexed += 1;
         }
 
-        conn.execute("COMMIT", ()).await?;
         Ok(())
     }
 

@@ -74,6 +74,20 @@ pub fn open_store(paths: &Paths, needs_embed: bool) -> Result<CodegraphStore> {
         None
     };
 
+    // Clamp user-tunable batch settings so a hand-edited 0 can't hang the index
+    // run or cause a divide-by-zero. Defaults match floppy's CodegraphConfig::new.
+    let clamp = |v: usize, default: usize, name: &str| -> usize {
+        if v == 0 {
+            log::warn!("codegraph.{name} is 0; falling back to default {default}");
+            default
+        } else {
+            v
+        }
+    };
+    let embed_batch_size = clamp(settings.codegraph.embed_batch_size, 64, "embedBatchSize");
+    let db_commit_batch_files = clamp(settings.codegraph.db_commit_batch_files, 200, "dbCommitBatchFiles");
+    let embed_concurrency = clamp(settings.codegraph.embed_concurrency, 1, "embedConcurrency");
+
     let cg_config = CodegraphConfig {
         db_path,
         root_dir: root,
@@ -82,6 +96,9 @@ pub fn open_store(paths: &Paths, needs_embed: bool) -> Result<CodegraphStore> {
         max_chunk_lines: settings.codegraph.max_chunk_lines,
         max_file_bytes: settings.codegraph.max_file_bytes,
         max_db_connections: Some(settings.codegraph.max_db_connections),
+        embed_batch_size,
+        db_commit_batch_files,
+        embed_concurrency,
         gpu_acceleration,
     };
     Ok(CodegraphStore::new(cg_config))

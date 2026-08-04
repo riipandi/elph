@@ -705,10 +705,10 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     continue;
                 }
                 // Auto-retry recovery prompt (not pre-echoed by the shell) — render as a
-                // slim sticky status label ("Continuing…") instead of a user bubble card,
+                // slim sticky status label ("Continuing tasks…") instead of a user bubble card,
                 // and skip Arrow-Up history.
                 if text.trim() == RETRY_CONTINUE_PROMPT {
-                    let mut notice = TranscriptMessage::text("Continuing…", TranscriptStyle::Meta);
+                    let mut notice = TranscriptMessage::text("Continuing tasks…", TranscriptStyle::Meta);
                     notice.sticky_meta = true;
                     {
                         let mut msgs = messages_arc_inner.write().unwrap();

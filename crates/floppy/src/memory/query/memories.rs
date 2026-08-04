@@ -101,7 +101,11 @@ impl MemoryStore {
     /// Read-only semantic search — no task record, no retrieval side effects.
     pub async fn search_memories(&self, query: &str) -> Result<Vec<Memory>> {
         self.init().await?;
-        let embedding = (self.embed_fn())(query).await?;
+        let embedding = (self.embed_fn())(&[query.to_string()])
+            .await?
+            .into_iter()
+            .next()
+            .unwrap_or_default();
         let emb_buf = vec_buf(&embedding);
         let decay_rate = self.decay_rate();
         let now = crate::memory::store::now_secs();

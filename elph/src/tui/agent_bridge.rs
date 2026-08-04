@@ -172,6 +172,7 @@ impl SlashDispatcher {
                     }
                 }
                 SlashDispatch::NewSession
+                | SlashDispatch::Continue
                 | SlashDispatch::Quit
                 | SlashDispatch::Help
                 | SlashDispatch::Tools { .. }

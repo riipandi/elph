@@ -15,7 +15,11 @@ impl MemoryStore {
         let now = now_secs();
 
         // Embed outside with_db — no lock held during model inference
-        let task_embedding = (self.embed)(description).await?;
+        let task_embedding = (self.embed)(&[description.to_string()])
+            .await?
+            .into_iter()
+            .next()
+            .unwrap_or_default();
         self.embed_pending().await?;
 
         let decay_rate = self.decay_rate;
@@ -65,7 +69,11 @@ impl MemoryStore {
             "{}\n\nFailed approach: {}\nWorking approach: {}",
             input.lesson, input.what_failed, input.what_worked
         );
-        let embedding = (self.embed)(&content).await?;
+        let embedding = (self.embed)(std::slice::from_ref(&content))
+            .await?
+            .into_iter()
+            .next()
+            .unwrap_or_default();
         let emb_buf = vec_buf(&embedding);
         let current_task = self.current_task_id.lock().unwrap().clone();
 
@@ -111,7 +119,11 @@ impl MemoryStore {
         let id = new_id();
         let now = now_secs();
 
-        let embedding = (self.embed)(&input.lesson).await?;
+        let embedding = (self.embed)(std::slice::from_ref(&input.lesson))
+            .await?
+            .into_iter()
+            .next()
+            .unwrap_or_default();
         let emb_buf = vec_buf(&embedding);
         let weight = initial_weight(MemoryCategory::User, Some(input.source), None, None);
         let current_task = self.current_task_id.lock().unwrap().clone();

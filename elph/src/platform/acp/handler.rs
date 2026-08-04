@@ -114,6 +114,13 @@ async fn handle_acp_slash_command(
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
             send_text_chunks(connection, session_id, &message).await
         }
+        Some(SlashDispatch::Continue) => {
+            let (session, _, _) = lookup_session(state, &key)?;
+            session
+                .submit_prompt(crate::agent::RETRY_CONTINUE_PROMPT.to_string(), false)
+                .await?;
+            Ok(())
+        }
 
         // ── Informational end-turn ───────────────────────────────────────────
         Some(SlashDispatch::Quit) => send_text_chunks(connection, session_id, "Goodbye!").await,

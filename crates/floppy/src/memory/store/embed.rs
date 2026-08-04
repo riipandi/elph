@@ -75,9 +75,11 @@ impl MemoryStore {
             return Ok(0);
         }
 
+        let contents: Vec<String> = rows.iter().map(|(_, c)| c.clone()).collect();
+        let vecs = (self.embed)(&contents).await?;
+
         let mut embedded = Vec::with_capacity(rows.len());
-        for (id, content) in &rows {
-            let vec = (self.embed)(content).await?;
+        for ((id, _), vec) in rows.iter().zip(vecs) {
             // Never persist all-zero vectors (noop embedder) — they corrupt semantic search.
             if is_zero_embedding(&vec) {
                 continue;
@@ -149,7 +151,11 @@ impl MemoryStore {
 
         let mut correction_id = None;
         if let (Some(correction), true) = (correction, deleted) {
-            let embedding = (self.embed)(correction).await?;
+            let embedding = (self.embed)(&[correction.to_string()])
+                .await?
+                .into_iter()
+                .next()
+                .unwrap_or_default();
             let emb_buf = vec_buf(&embedding);
             let id = new_id();
             let now = now_secs();

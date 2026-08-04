@@ -61,8 +61,8 @@ pub enum AgentUiEvent {
     /// Recovery prompt the shell re-submits on Ctrl+R after a transient stream/API error.
     /// Carries a "Continue"-style message (not the original prompt) so completed tool work
     /// is not duplicated. Shell stores this for the Ctrl+R retry key / error-card affordance.
-    /// The prompt itself is never shown as a user card — the shell renders a `Continuing…`
-    /// meta label instead.
+    /// The prompt itself is never shown as a user card — the shell renders a
+    /// `Continuing tasks…` meta label instead.
     RetryablePrompt(String),
     /// The session is automatically retrying an interrupted turn. The shell shows a
     /// spinner + "Retrying…" activity label (`attempt` is 1-based) instead of an idle bar.

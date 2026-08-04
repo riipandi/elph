@@ -36,15 +36,19 @@ session before they surface. The retry submits a Continue-style recovery prompt
 already completed are not duplicated, and the status row shows a spinner with a
 "Retrying…" label while it runs. Because that recovery prompt is an internal resumption
 message — not something the user typed — it is **not** rendered as a user bubble card. The
-shell pushes a slim sticky meta label (`Continuing…`) into the transcript instead, and it is
+shell pushes a slim sticky meta label (`Continuing tasks…`) into the transcript instead, and it is
 kept out of Arrow-Up history.
+
+The same recovery prompt can be submitted manually with the `/continue` slash command
+(`/cont`) after a turn stalls, and it renders the identical `Continuing tasks…` meta line
+rather than a user prompt card.
 
 If a turn still fails, the shell emits a **retryable** error card: its message ends with a
 `Press Ctrl+R to retry this prompt.` hint (the `RETRY_HINT` marker in `api_error_display.rs`).
 Retryable cards render a dedicated "Press `Ctrl+R` to retry this prompt" hint row below the
 error body, and pressing Ctrl+R re-submits the recovery prompt without re-typing — the prompt
 is stashed by the tick loop on `AgentUiEvent::RetryablePrompt` and consumed by the key
-handler, which also renders the `Continuing…` meta label rather than a user bubble. Non-transient
+handler, which also renders the `Continuing tasks…` meta label rather than a user bubble. Non-transient
 errors render without the hint row.
 
 ## State ↔ Arc Sync
@@ -173,7 +177,7 @@ viewport or the user returns to the bottom.
 ### Scroll Height on Collapse (panel.rs + vendored ScrollView)
 
 Toggling a card open/closed changes the content height, but the vendored `ScrollView` keeps
-a *peak* height while scrolled (its translated pane under-reports its measured size ≈
+a _peak_ height while scrolled (its translated pane under-reports its measured size ≈
 viewport), so after a collapse the old peak could leave the scroll offset past the real
 tail — an empty/blank viewport and a stale scrollbar. The panel now passes the authoritative
 layout-measured content height to `ScrollView` via `content_height_override`, which replaces

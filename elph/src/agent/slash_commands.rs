@@ -84,6 +84,7 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin_with_args_hint("mcp", "MCP servers (auth, logout, list)", "[auth|logout|list]"),
         builtin("new", "Start a new session"),
         builtin("compact", "Compact conversation history"),
+        builtin("continue", "Resume the interrupted task"),
         builtin("resume", "Resume a different session"),
         builtin("reload", "Reload providers, settings, skills, templates, extensions"),
         builtin("quit", "Quit Elph"),
@@ -176,6 +177,10 @@ pub enum SlashDispatch {
     Quit,
     NewSession,
     Compact,
+    /// Submit the `RETRY_CONTINUE_PROMPT` recovery prompt (`/continue`) so the model
+    /// resumes an interrupted task without re-doing completed tool work. Rendered as a
+    /// slim "Continuing tasks…" meta line rather than a user prompt card.
+    Continue,
     Goal {
         args: String,
     },
@@ -409,6 +414,7 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
     match name {
         "exit" | "quit" | "q" => Some(SlashDispatch::Quit),
         "compact" | "c" => Some(SlashDispatch::Compact),
+        "continue" | "cont" => Some(SlashDispatch::Continue),
         "goal" | "goals" => Some(SlashDispatch::Goal { args }),
         "help" | "h" | "?" => Some(SlashDispatch::Help),
         "tools" => Some(SlashDispatch::Tools { args }),
@@ -599,6 +605,11 @@ mod tests {
             dispatch_slash_command("/compact", None, None, None),
             Some(SlashDispatch::Compact)
         );
+        assert_eq!(
+            dispatch_slash_command("/continue", None, None, None),
+            Some(SlashDispatch::Continue)
+        );
+        assert_eq!(dispatch_slash_command("/cont", None, None, None), Some(SlashDispatch::Continue));
         assert_eq!(
             dispatch_slash_command("/goal pause", None, None, None),
             Some(SlashDispatch::Goal { args: "pause".into() })

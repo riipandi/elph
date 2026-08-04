@@ -14,6 +14,12 @@ pub struct CodegraphConfig {
     pub max_file_bytes: u64,
     /// Max concurrent DB connections for parallel writes (default 4).
     pub max_db_connections: Option<usize>,
+    /// Number of chunk texts sent to the embedder per batched call (default 64).
+    pub embed_batch_size: usize,
+    /// Number of files committed per DB transaction (default 200).
+    pub db_commit_batch_files: usize,
+    /// Concurrent embedding batches (advanced; default 1 = sequential).
+    pub embed_concurrency: usize,
     /// GPU acceleration mode used for embeddings (on/off/auto/detected).
     pub gpu_acceleration: Option<String>,
 }
@@ -29,6 +35,9 @@ impl CodegraphConfig {
             // Cap per-file read size to keep consumer machines responsive.
             max_file_bytes: 512 * 1024,
             max_db_connections: None,
+            embed_batch_size: 64,
+            db_commit_batch_files: 200,
+            embed_concurrency: 1,
             gpu_acceleration: None,
         }
     }

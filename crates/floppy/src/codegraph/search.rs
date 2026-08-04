@@ -52,7 +52,11 @@ pub async fn hybrid_search(conn: &Connection, embed: &EmbedFn, opts: &SearchOpti
     }
 
     // Vector path
-    let emb = (embed)(&opts.query).await?;
+    let emb = (embed)(std::slice::from_ref(&opts.query))
+        .await?
+        .into_iter()
+        .next()
+        .unwrap_or_default();
     if !is_zero(&emb) {
         let blob = vec_buf(&emb);
         let sql = format!(

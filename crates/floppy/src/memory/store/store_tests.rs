@@ -10,9 +10,9 @@ use std::sync::Arc;
 use turso_db::{clear_broken_wal_sidecars, is_lock_err, is_wal_io_err};
 
 fn mock_embed() -> EmbedFn {
-    Arc::new(|text: &str| {
-        let text = text.to_string();
-        Box::pin(async move {
+    Arc::new(|texts: &[String]| {
+        let mut out = Vec::with_capacity(texts.len());
+        for text in texts {
             let mut vec = vec![0.0f32; 4];
             for (i, b) in text.bytes().enumerate() {
                 vec[i % 4] += b as f32;
@@ -23,8 +23,9 @@ fn mock_embed() -> EmbedFn {
                     *x /= norm;
                 }
             }
-            Ok(vec)
-        })
+            out.push(vec);
+        }
+        Box::pin(async move { Ok(out) })
     })
 }
 

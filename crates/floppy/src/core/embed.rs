@@ -14,16 +14,21 @@ use anyhow::Result;
 use std::str::FromStr;
 
 /// Future returned by [`EmbedFn`].
-pub type EmbedFuture = Pin<Box<dyn Future<Output = Result<Vec<f32>>> + Send>>;
+pub type EmbedFuture = Pin<Box<dyn Future<Output = Result<Vec<Vec<f32>>>> + Send>>;
 
 /// Shared embedder callback used by memory and codegraph domains.
-pub type EmbedFn = Arc<dyn Fn(&str) -> EmbedFuture + Send + Sync>;
+///
+/// Batch-first: callers pass a slice of texts and receive one embedding vector
+/// per input, in the same order. Batching many chunks into one call is the
+/// dominant indexing-speedup (the embedder amortizes overhead across the batch).
+pub type EmbedFn = Arc<dyn Fn(&[String]) -> EmbedFuture + Send + Sync>;
 
 /// Embedder that returns zero vectors (read-only inspection without a model).
 pub fn noop_embedder(dimensions: u32) -> EmbedFn {
-    Arc::new(move |_| {
+    Arc::new(move |texts: &[String]| {
         let dims = dimensions as usize;
-        Box::pin(async move { Ok(vec![0.0f32; dims]) })
+        let n = texts.len();
+        Box::pin(async move { Ok(vec![vec![0.0f32; dims]; n]) })
     })
 }
 
@@ -47,8 +52,10 @@ pub struct EmbedOptions {
     pub model: Option<String>,
     /// Hugging Face cache directory (sets `HF_HOME` during embedder init).
     pub cache_dir: Option<PathBuf>,
-    /// GPU device for Candle backend (currently ignored due to embed_anything 0.7.1 dependency issues).
-    /// When upstream is fixed, use: None=CPU, Some("metal")=Apple Metal, Some("cuda:0")=NVIDIA CUDA.
+    /// Advisory GPU device hint for reporting (e.g. `"metal"`, `"cuda:0"`, or `None`=CPU).
+    /// Actual device selection is compile-time via the `metal` / `cuda` cargo features
+    /// (embed_anything 0.7.1 has no runtime device parameter), so this does not change which
+    /// device the embedder runs on — it feeds `gpu_acceleration` stats reported upstream.
     pub device: Option<String>,
 }
 
@@ -196,27 +203,29 @@ pub fn create_embedder(options: EmbedOptions) -> anyhow::Result<EmbedFn> {
         set_hf_home(dir);
     }
 
-    // GPU device support: when GPU features are enabled, use candle-core's Device
-    // For now, device selection is handled at compile time via cargo features
-    // The device option is currently ignored (always CPU) to avoid complexity
-    let device = None;
-
-    let embedder = Embedder::from_pretrained_hf(&hf_model_id, None, None, device, pooling)?;
+    // Device is selected at compile time by the `metal` / `cuda` cargo features
+    // (see embed_anything's `select_device`). embed_anything 0.7.1 has no runtime
+    // device parameter on `from_pretrained_hf` (the 4th slot is the data `dtype`,
+    // which the Candle/Bert path ignores), so `options.device` is advisory only —
+    // it still feeds `gpu_acceleration` reporting upstream. dtype defaults to F32.
+    let embedder = Embedder::from_pretrained_hf(&hf_model_id, None, None, None, pooling)?;
 
     let shared = Arc::new(embedder);
-    Ok(Arc::new(move |text: &str| {
+    Ok(Arc::new(move |texts: &[String]| {
         let shared = Arc::clone(&shared);
-        let text = text.to_string();
+        let owned: Vec<String> = texts.to_vec();
         Box::pin(async move {
-            let vec = shared.embed(&[text.as_str()], Some(1), None).await?.into_iter().next();
-            let vec = match vec {
-                Some(result) => result.to_dense()?,
-                None => anyhow::bail!("embed_anything returned no vectors"),
-            };
-            if vec.len() != expected_dims {
-                anyhow::bail!("expected {expected_dims}-dim embedding, got {}", vec.len());
+            let refs: Vec<&str> = owned.iter().map(String::as_str).collect();
+            let results = shared.embed(&refs, Some(refs.len()), None).await?;
+            let mut out = Vec::with_capacity(results.len());
+            for r in results {
+                let vec = r.to_dense()?;
+                if vec.len() != expected_dims {
+                    anyhow::bail!("expected {expected_dims}-dim embedding, got {}", vec.len());
+                }
+                out.push(vec);
             }
-            Ok(vec)
+            Ok(out)
         }) as EmbedFuture
     }))
 }

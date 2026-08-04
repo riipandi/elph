@@ -414,7 +414,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             // Recovery prompt — render a slim status label, not a user bubble (and not
             // Arrow-Up history). The pre-echoed counter consumes the matching
             // UserPromptCommitted from the agent loop so it does not render twice.
-            let mut notice = TranscriptMessage::text("Continuing…", TranscriptStyle::Meta);
+            let mut notice = TranscriptMessage::text("Continuing tasks…", TranscriptStyle::Meta);
             notice.sticky_meta = true;
             messages_arc.write().write().unwrap().push(notice.clone());
             push_transcript_message(&mut messages, &mut messages_revision, &mut prompt_history, notice);
