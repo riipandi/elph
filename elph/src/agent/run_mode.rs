@@ -35,6 +35,7 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<()> {
         agent_mode,
         preloaded_resources: None,
         defer_mcp_load: false,
+        headless: true,
     })
     .await?;
 

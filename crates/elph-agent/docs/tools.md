@@ -227,10 +227,15 @@ Write file contents. Creates parent directories when needed.
 
 Run a shell command in the environment working directory. Output is truncated to the last 2000 lines or 50 KB.
 
-| Parameter | Type   | Required | Description        |
-| --------- | ------ | -------- | ------------------ |
-| `command` | string | yes      | Command to execute |
-| `timeout` | number | no       | Timeout in seconds |
+| Parameter          | Type    | Required | Description                                                                  |
+| ------------------ | ------- | -------- | ---------------------------------------------------------------------------- |
+| `command`          | string  | yes      | Command to execute                                                           |
+| `timeout`          | number  | no       | Timeout in seconds                                                          |
+| `run_in_background`| boolean | no       | Run as a background task; returns immediately with a task id and output file |
+| `disable_timeout`  | boolean | no       | Remove the timeout limit (foreground and background)                         |
+| `description`      | string  | no\*     | Background task description; **required** when `run_in_background` is true   |
+
+\* `description` is required when `run_in_background` is true. Background tasks default to a 10-minute timeout (600s) in interactive mode and no timeout in headless `elph run`; `disable_timeout` or an explicit `timeout` override this.
 
 #### `create_dir`
 

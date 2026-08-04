@@ -342,6 +342,7 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
         agent_mode: None,
         preloaded_resources: Some(config.preloaded_resources.clone()),
         defer_mcp_load: true,
+        headless: false,
     })
     .await?;
 

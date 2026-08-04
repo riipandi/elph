@@ -132,6 +132,7 @@ fn make_harness(
         compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
+        headless: false,
     })
     .expect("harness")
 }
@@ -184,6 +185,7 @@ async fn harness_exposes_queue_modes() {
         compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
+        headless: false,
     })
     .expect("harness");
 
@@ -312,6 +314,7 @@ async fn harness_before_agent_start_appends_messages() {
         compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
+        headless: false,
     })
     .expect("harness");
 
@@ -365,6 +368,7 @@ async fn harness_tool_result_hook_patches_output() {
         compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
+        headless: false,
     })
     .expect("harness");
 
@@ -555,6 +559,7 @@ async fn harness_settles_context_hook_failures() {
         compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
+        headless: false,
     })
     .expect("harness");
 
@@ -817,6 +822,7 @@ async fn harness_save_point_refreshes_config_at_tool_execution() {
             compaction_settings: CompactionSettings::default(),
             shared_registry: None,
             agent_control: None,
+            headless: false,
         })
         .expect("harness"),
     );
@@ -1036,6 +1042,7 @@ async fn harness_validates_constructor_tool_names() {
         compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
+        headless: false,
     });
     assert_eq!(
         missing.err().expect("missing tool error").code,
@@ -1060,6 +1067,7 @@ async fn harness_validates_constructor_tool_names() {
         compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
+        headless: false,
     });
     assert_eq!(
         duplicate_tools.err().expect("duplicate tools error").code,
@@ -1084,6 +1092,7 @@ async fn harness_validates_constructor_tool_names() {
         compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
+        headless: false,
     });
     assert_eq!(
         duplicate_active.err().expect("duplicate active error").code,
@@ -1118,6 +1127,7 @@ async fn harness_tools_update_events_and_validation() {
         compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
+        headless: false,
     })
     .expect("harness");
 
@@ -1219,6 +1229,7 @@ async fn harness_resources_update_events_clone_resources() {
         compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
+        headless: false,
     })
     .expect("harness");
 
@@ -1352,6 +1363,7 @@ async fn harness_session_before_compact_overrides_custom_instructions() {
         compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
+        headless: false,
     })
     .expect("harness");
 
@@ -1423,6 +1435,7 @@ async fn harness_session_before_tree_runs_during_navigate_tree() {
         compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
+        headless: false,
     })
     .expect("harness");
 
@@ -1621,6 +1634,7 @@ async fn harness_restore_rehydrates_next_turn_queue() {
             compaction_settings: CompactionSettings::default(),
             shared_registry: None,
             agent_control: None,
+            headless: false,
         },
         RestoreOptions::default(),
     )

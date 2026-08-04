@@ -77,6 +77,7 @@ ${%- if tools.edit_file or tools.write_file %}
   ${%- if tools.shell_exec %}
 - Reserve `${{ tools.shell_exec }}` for builds, tests, version control, and commands that genuinely require a shell; never use it to read/edit files or communicate with the user when a dedicated channel exists.
 - `${{ tools.shell_exec }}` runs commands in the working directory — do not prefix them with `cd … &&`.
+- For long-running work, set `run_in_background: true` and a `description`; the tool returns a task id and an output file path immediately (read it later with `read_file`). Background tasks default to a 10-minute timeout in interactive mode (none in headless `elph run`); pass `disable_timeout: true` to remove the limit.
   ${%- endif %}
 ${%- if tools.diagnostics %}
 - Use `${{ tools.diagnostics }}` after edits for targeted feedback, then run the smallest relevant tests or checks available.

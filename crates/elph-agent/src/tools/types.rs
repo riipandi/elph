@@ -32,6 +32,9 @@ pub struct ToolContext {
     pub cwd: String,
     /// Whether the current turn is in plan mode (tool may be blocked).
     pub is_plan_mode: bool,
+    /// Whether the agent is running in headless mode (`elph run`), which relaxes
+    /// some tool defaults (e.g. no background-task timeout by default).
+    pub is_headless: bool,
 }
 
 impl ToolContext {
@@ -40,6 +43,7 @@ impl ToolContext {
             env,
             cwd: String::new(),
             is_plan_mode: false,
+            is_headless: false,
         }
     }
 
@@ -50,6 +54,11 @@ impl ToolContext {
 
     pub fn with_plan_mode(mut self, plan_mode: bool) -> Self {
         self.is_plan_mode = plan_mode;
+        self
+    }
+
+    pub fn with_headless(mut self, headless: bool) -> Self {
+        self.is_headless = headless;
         self
     }
 }

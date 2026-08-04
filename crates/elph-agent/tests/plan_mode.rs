@@ -68,6 +68,7 @@ async fn harness_enter_plan_mode_filters_active_tools() {
         compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
+        headless: false,
     })
     .expect("harness");
 
@@ -118,6 +119,7 @@ async fn harness_emits_plan_confirmation_events() {
         compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
+        headless: false,
     })
     .expect("harness");
 

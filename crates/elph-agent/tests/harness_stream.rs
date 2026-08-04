@@ -110,6 +110,7 @@ async fn harness_snapshots_stream_options_before_provider_request() {
         compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
+        headless: false,
     })
     .expect("harness");
 
@@ -186,6 +187,7 @@ async fn harness_save_point_refreshes_stream_options_without_mutating_active_req
             compaction_settings: CompactionSettings::default(),
             shared_registry: None,
             agent_control: None,
+            headless: false,
         })
         .expect("harness"),
     );
@@ -254,6 +256,7 @@ async fn harness_chains_provider_request_patches_with_deletion() {
         compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
+        headless: false,
     })
     .expect("harness");
 
@@ -369,6 +372,7 @@ async fn harness_chains_provider_payload_hooks() {
         compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
+        headless: false,
     })
     .expect("harness");
 
@@ -459,6 +463,7 @@ async fn harness_on_chains_provider_payload_hooks() {
         compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
+        headless: false,
     })
     .expect("harness");
 
@@ -539,6 +544,7 @@ async fn harness_on_rejects_unknown_hook_type() {
         compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
+        headless: false,
     })
     .expect("harness");
 
@@ -581,6 +587,7 @@ async fn harness_after_provider_response_captures_status_and_headers() {
         compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
+        headless: false,
     })
     .expect("harness");
 
@@ -633,6 +640,7 @@ async fn harness_subscribe_receives_after_provider_response_own_event() {
         compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
+        headless: false,
     })
     .expect("harness");
 

@@ -34,6 +34,9 @@ pub struct CreateSessionOptions<'a> {
     pub preloaded_resources: Option<LoadResourcesResult>,
     /// When true, MCP discovery is skipped; use [`super::mcp_bootstrap`] to load later.
     pub defer_mcp_load: bool,
+    /// Whether the session runs in headless mode (`elph run`). Relaxes some tool
+    /// defaults (e.g. no background-task timeout by default).
+    pub headless: bool,
 }
 
 pub async fn create_coding_session_with_events(
@@ -218,6 +221,7 @@ pub async fn create_coding_session_with_events(
             subagent_bootstrap: Some(subagent_bootstrap),
             shared_registry: None,
             agent_control: None,
+            headless: options.headless,
         },
         RestoreOptions::default(),
     )

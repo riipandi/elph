@@ -278,6 +278,9 @@ where
     pub compaction_settings: CompactionSettings,
     pub shared_registry: Option<std::sync::Arc<crate::agent::subagent::AgentRegistry>>,
     pub agent_control: Option<std::sync::Arc<crate::agent::subagent::AgentControl>>,
+    /// Whether the harness runs in headless mode (`elph run`). Relaxes some tool
+    /// defaults (e.g. no background-task timeout by default).
+    pub headless: bool,
 }
 
 /// Policy when restored active tool names are missing from the host registry.

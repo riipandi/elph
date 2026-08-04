@@ -29,9 +29,9 @@ Membuat direktori baru beserta seluruh parent direktori yang diperlukan (seperti
 
 **Parameter:**
 
-| Parameter | Tipe | Wajib | Deskripsi |
-|-----------|------|-------|-----------|
-| `path` | string | ✅ | Path direktori yang akan dibuat |
+| Parameter | Tipe   | Wajib | Deskripsi                       |
+| --------- | ------ | ----- | ------------------------------- |
+| `path`    | string | ✅    | Path direktori yang akan dibuat |
 
 **Contoh:**
 
@@ -51,10 +51,10 @@ Membuat file baru atau menimpa file yang sudah ada dengan konten baru. Parent di
 
 **Parameter:**
 
-| Parameter | Tipe | Wajib | Deskripsi |
-|-----------|------|-------|-----------|
-| `path` | string | ✅ | Path file yang akan ditulis |
-| `content` | string | ✅ | Konten file (bisa berupa teks biasa atau markdown) |
+| Parameter | Tipe   | Wajib | Deskripsi                                          |
+| --------- | ------ | ----- | -------------------------------------------------- |
+| `path`    | string | ✅    | Path file yang akan ditulis                        |
+| `content` | string | ✅    | Konten file (bisa berupa teks biasa atau markdown) |
 
 **Contoh:**
 
@@ -74,11 +74,11 @@ Membaca isi file dan menampilkannya. Output dibatasi hingga 2000 baris atau 50 K
 
 **Parameter:**
 
-| Parameter | Tipe | Wajib | Deskripsi |
-|-----------|------|-------|-----------|
-| `path` | string | ✅ | Path file yang akan dibaca |
-| `offset` | number | ❌ | Baris awal pembacaan (1-indexed). Lewati untuk mulai dari awal. |
-| `limit` | number | ❌ | Jumlah maksimal baris yang dibaca. Lewati untuk membaca semua (maks 2000). |
+| Parameter | Tipe   | Wajib | Deskripsi                                                                  |
+| --------- | ------ | ----- | -------------------------------------------------------------------------- |
+| `path`    | string | ✅    | Path file yang akan dibaca                                                 |
+| `offset`  | number | ❌    | Baris awal pembacaan (1-indexed). Lewati untuk mulai dari awal.            |
+| `limit`   | number | ❌    | Jumlah maksimal baris yang dibaca. Lewati untuk membaca semua (maks 2000). |
 
 **Contoh:**
 
@@ -102,11 +102,11 @@ Mengubah konten file dengan mencari teks tertentu dan menggantinya. Berguna untu
 
 **Parameter:**
 
-| Parameter | Tipe | Wajib | Deskripsi |
-|-----------|------|-------|-----------|
-| `path` | string | ✅ | Path file yang akan diedit |
-| `old_string` | string | ✅ | Teks yang akan diganti (**harus cocok persis satu kali** di file) |
-| `new_string` | string | ✅ | Teks pengganti |
+| Parameter    | Tipe   | Wajib | Deskripsi                                                         |
+| ------------ | ------ | ----- | ----------------------------------------------------------------- |
+| `path`       | string | ✅    | Path file yang akan diedit                                        |
+| `old_string` | string | ✅    | Teks yang akan diganti (**harus cocok persis satu kali** di file) |
+| `new_string` | string | ✅    | Teks pengganti                                                    |
 
 **Aturan penting:**
 
@@ -144,9 +144,9 @@ Menghapus file atau direktori beserta seluruh isinya secara rekursif.
 
 **Parameter:**
 
-| Parameter | Tipe | Wajib | Deskripsi |
-|-----------|------|-------|-----------|
-| `path` | string | ✅ | Path file atau direktori yang akan dihapus |
+| Parameter | Tipe   | Wajib | Deskripsi                                  |
+| --------- | ------ | ----- | ------------------------------------------ |
+| `path`    | string | ✅    | Path file atau direktori yang akan dihapus |
 
 **Contoh:**
 
@@ -172,20 +172,20 @@ Mencari file dengan pola glob dan mengembalikan daftar path yang cocok secara al
 
 **Parameter:**
 
-| Parameter | Tipe | Wajib | Deskripsi |
-|-----------|------|-------|-----------|
-| `pattern` | string | ✅ | Pola glob (misal: `*.rs`, `**/*.toml`, `src/**/*.ts`) |
-| `path` | string | ❌ | Direktori pencarian (default: working directory) |
-| `limit` | number | ❌ | Jumlah maksimal hasil |
+| Parameter | Tipe   | Wajib | Deskripsi                                             |
+| --------- | ------ | ----- | ----------------------------------------------------- |
+| `pattern` | string | ✅    | Pola glob (misal: `*.rs`, `**/*.toml`, `src/**/*.ts`) |
+| `path`    | string | ❌    | Direktori pencarian (default: working directory)      |
+| `limit`   | number | ❌    | Jumlah maksimal hasil                                 |
 
 **Pola glob umum:**
 
-| Pola | Keterangan |
-|------|------------|
-| `*.rs` | Semua file `.rs` di direktori saat ini |
-| `**/*.rs` | Semua file `.rs` di semua subdirektori |
+| Pola          | Keterangan                                           |
+| ------------- | ---------------------------------------------------- |
+| `*.rs`        | Semua file `.rs` di direktori saat ini               |
+| `**/*.rs`     | Semua file `.rs` di semua subdirektori               |
 | `src/**/*.ts` | Semua file `.ts` di dalam `src/` dan subdirektorinya |
-| `*.{rs,toml}` | File dengan ekstensi `.rs` atau `.toml` |
+| `*.{rs,toml}` | File dengan ekstensi `.rs` atau `.toml`              |
 
 **Contoh:**
 
@@ -209,13 +209,13 @@ Mencari teks atau pola regex di dalam file-file di suatu direktori.
 
 **Parameter:**
 
-| Parameter | Tipe | Wajib | Deskripsi |
-|-----------|------|-------|-----------|
-| `pattern` | string | ✅ | Pola pencarian (regex atau teks literal) |
-| `path` | string | ✅ | Direktori atau file yang akan dicari |
-| `ignoreCase` | boolean | ❌ | Abaikan perbedaan huruf besar/kecil |
-| `literal` | boolean | ❌ | Perlakukan pola sebagai teks literal (bukan regex) |
-| `limit` | number | ❌ | Jumlah maksimal hasil |
+| Parameter    | Tipe    | Wajib | Deskripsi                                          |
+| ------------ | ------- | ----- | -------------------------------------------------- |
+| `pattern`    | string  | ✅    | Pola pencarian (regex atau teks literal)           |
+| `path`       | string  | ✅    | Direktori atau file yang akan dicari               |
+| `ignoreCase` | boolean | ❌    | Abaikan perbedaan huruf besar/kecil                |
+| `literal`    | boolean | ❌    | Perlakukan pola sebagai teks literal (bukan regex) |
+| `limit`      | number  | ❌    | Jumlah maksimal hasil                              |
 
 **Contoh:**
 
@@ -247,10 +247,10 @@ Menampilkan daftar file dan direktori di dalam suatu path.
 
 **Parameter:**
 
-| Parameter | Tipe | Wajib | Deskripsi |
-|-----------|------|-------|-----------|
-| `path` | string | ✅ | Path direktori yang akan didaftar |
-| `limit` | number | ❌ | Jumlah maksimal item yang ditampilkan |
+| Parameter | Tipe   | Wajib | Deskripsi                             |
+| --------- | ------ | ----- | ------------------------------------- |
+| `path`    | string | ✅    | Path direktori yang akan didaftar     |
+| `limit`   | number | ❌    | Jumlah maksimal item yang ditampilkan |
 
 **Contoh:**
 
@@ -270,10 +270,10 @@ Menyalin file atau direktori beserta seluruh isinya secara rekursif.
 
 **Parameter:**
 
-| Parameter | Tipe | Wajib | Deskripsi |
-|-----------|------|-------|-----------|
-| `source` | string | ✅ | Path sumber |
-| `destination` | string | ✅ | Path tujuan |
+| Parameter     | Tipe   | Wajib | Deskripsi   |
+| ------------- | ------ | ----- | ----------- |
+| `source`      | string | ✅    | Path sumber |
+| `destination` | string | ✅    | Path tujuan |
 
 **Contoh:**
 
@@ -297,10 +297,10 @@ Memindahkan atau mengganti nama file/direktori. Jika hanya filename yang berbeda
 
 **Parameter:**
 
-| Parameter | Tipe | Wajib | Deskripsi |
-|-----------|------|-------|-----------|
-| `source` | string | ✅ | Path sumber |
-| `destination` | string | ✅ | Path tujuan |
+| Parameter     | Tipe   | Wajib | Deskripsi   |
+| ------------- | ------ | ----- | ----------- |
+| `source`      | string | ✅    | Path sumber |
+| `destination` | string | ✅    | Path tujuan |
 
 **Contoh:**
 
@@ -330,10 +330,15 @@ Menjalankan perintah shell di working directory. Output dibatasi hingga 2000 bar
 
 **Parameter:**
 
-| Parameter | Tipe | Wajib | Deskripsi |
-|-----------|------|-------|-----------|
-| `command` | string | ✅ | Perintah shell yang akan dijalankan |
-| `timeout` | number | ❌ | Timeout dalam detik (default: sistem) |
+| Parameter           | Tipe    | Wajib | Deskripsi                                                                                  |
+| ------------------- | ------- | ----- | ------------------------------------------------------------------------------------------ |
+| `command`           | string  | ✅    | Perintah shell yang akan dijalankan                                                        |
+| `timeout`           | number  | ❌    | Timeout dalam detik                                                                        |
+| `run_in_background` | boolean | ❌    | Jalankan sebagai task latar belakang; kembali langsung dengan task ID dan path file output |
+| `disable_timeout`   | boolean | ❌    | Hapus batas timeout (berlaku untuk foreground maupun background)                           |
+| `description`       | string  | ❌*   | Deskripsi task; **wajib** bila `run_in_background=true`                                    |
+
+\* `description` wajib ketika `run_in_background=true`.
 
 **Contoh:**
 
@@ -349,6 +354,19 @@ shell_exec command="ls -la" timeout=10
 shell_exec command="cargo test -- --nocapture" timeout=120
 ```
 
+```
+shell_exec command="cargo watch -x build" run_in_background=true description="build watcher"
+```
+
+**Background & timeout:**
+
+- `run_in_background=true` menjalankan perintah secara terlepas (detached) dan mengembalikan
+  task ID beserta path file log output; agen dapat membaca file tersebut nanti via `read_file`.
+- Task background secara default memiliki timeout **10 menit** (600 detik) di mode interaktif,
+  namun **tanpa batas** di mode headless `elph run`.
+- `disable_timeout=true` menghapus batas timeout untuk foreground maupun background.
+- `timeout` eksplisit (detik) tetap menang atas default di atas.
+
 **Catatan:** Tool ini berguna untuk menjalankan build, test, linting, git operations, dan perintah shell lainnya.
 
 ---
@@ -359,11 +377,11 @@ Mencari informasi di web, memberikan hasil berupa snippet dan link. Mendukung mu
 
 **Parameter:**
 
-| Parameter | Tipe | Wajib | Deskripsi |
-|-----------|------|-------|-----------|
-| `query` | string | ✅ | Kata kunci pencarian |
-| `engine` | string | ❌ | Mesin pencari: `auto` (default), `duckduckgo`, `brave`, `exa`, `firecrawl`, `jina`, `perplexity`, `tavily`, `serpapi` |
-| `limit` | number | ❌ | Jumlah maksimal hasil (default: 5, maks: 20) |
+| Parameter | Tipe   | Wajib | Deskripsi                                                                                                             |
+| --------- | ------ | ----- | --------------------------------------------------------------------------------------------------------------------- |
+| `query`   | string | ✅    | Kata kunci pencarian                                                                                                  |
+| `engine`  | string | ❌    | Mesin pencari: `auto` (default), `duckduckgo`, `brave`, `exa`, `firecrawl`, `jina`, `perplexity`, `tavily`, `serpapi` |
+| `limit`   | number | ❌    | Jumlah maksimal hasil (default: 5, maks: 20)                                                                          |
 
 **Contoh:**
 
@@ -387,9 +405,9 @@ Mengambil konten dari URL dan mengembalikannya dalam format Markdown (HTML dikon
 
 **Parameter:**
 
-| Parameter | Tipe | Wajib | Deskripsi |
-|-----------|------|-------|-----------|
-| `url` | string | ✅ | URL (HTTP/HTTPS) yang akan di-fetch |
+| Parameter | Tipe   | Wajib | Deskripsi                           |
+| --------- | ------ | ----- | ----------------------------------- |
+| `url`     | string | ✅    | URL (HTTP/HTTPS) yang akan di-fetch |
 
 **Contoh:**
 
@@ -411,10 +429,10 @@ Membuat sub-agent baru untuk menangani tugas yang terfokus dalam konteks yang te
 
 **Parameter:**
 
-| Parameter | Tipe | Wajib | Deskripsi |
-|-----------|------|-------|-----------|
-| `task_name` | string | ✅ | Label singkat untuk task sub-agent |
-| `message` | string | ❌ | Instruksi awal opsional |
+| Parameter   | Tipe   | Wajib | Deskripsi                          |
+| ----------- | ------ | ----- | ---------------------------------- |
+| `task_name` | string | ✅    | Label singkat untuk task sub-agent |
+| `message`   | string | ❌    | Instruksi awal opsional            |
 
 **Contoh:**
 
@@ -429,19 +447,19 @@ spawn_agent task_name="refactor-auth" message="Refactor auth module to use new m
 
 ## Ringkasan Cepat
 
-| Tool | Fungsi Utama |
-|------|--------------|
-| `create_dir` | Buat direktori (mkdir -p) |
-| `write_file` | Buat/timpa file dengan konten |
-| `read_file` | Baca isi file |
-| `edit_file` | Edit sebagian file (cari & ganti) |
-| `delete_path` | Hapus file/direktori |
-| `find_path` | Cari file dengan glob pattern |
-| `grep` | Cari teks/regex di dalam file |
-| `list_dir` | Lihat isi direktori |
-| `copy_path` | Salin file/direktori |
-| `move_path` | Pindahkan/renama file/direktori |
-| `shell_exec` | Jalankan perintah shell |
-| `web_search` | Cari informasi di web |
-| `web_fetch` | Ambil konten URL |
+| Tool          | Fungsi Utama                          |
+| ------------- | ------------------------------------- |
+| `create_dir`  | Buat direktori (mkdir -p)             |
+| `write_file`  | Buat/timpa file dengan konten         |
+| `read_file`   | Baca isi file                         |
+| `edit_file`   | Edit sebagian file (cari & ganti)     |
+| `delete_path` | Hapus file/direktori                  |
+| `find_path`   | Cari file dengan glob pattern         |
+| `grep`        | Cari teks/regex di dalam file         |
+| `list_dir`    | Lihat isi direktori                   |
+| `copy_path`   | Salin file/direktori                  |
+| `move_path`   | Pindahkan/renama file/direktori       |
+| `shell_exec`  | Jalankan perintah shell               |
+| `web_search`  | Cari informasi di web                 |
+| `web_fetch`   | Ambil konten URL                      |
 | `spawn_agent` | Buat sub-agent untuk tugas terisolasi |

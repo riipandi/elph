@@ -169,7 +169,9 @@ where
 
         // ToolContext is constructed synchronously with a default plan mode.
         // The actual plan mode check is done by the before_tool_call hook.
-        let tool_context = crate::tools::types::ToolContext::new(self.shared.env.clone()).with_plan_mode(false);
+        let tool_context = crate::tools::types::ToolContext::new(self.shared.env.clone())
+            .with_plan_mode(false)
+            .with_headless(self.shared.headless);
 
         AgentLoopConfig {
             model,
