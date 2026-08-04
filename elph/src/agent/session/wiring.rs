@@ -214,24 +214,24 @@ impl CodingAgentSession {
         // ── Tool execution output persistence ──────────────────────────────────
         // Persist every tool call result to `tool_outputs.jsonl` in the session
         // directory so results survive session resume and can be browsed.
+        //
+        // The log lives in the APP_DATA session artifact dir
+        // (`~/.local/share/elph/sessions/<SESSION_ID>/`), the same location as
+        // `terminals/` — not the project-local `.elph/sessions/` directory.
         let harness_for_tool_output = self.harness.clone();
+        let tool_outputs_dir = self.session_manager.artifact_dir_for(&self.session_id);
         let tool_sink = harness_for_tool_output.clone();
         tool_sink
             .on_tool_result({
                 move |event: &elph_agent::ToolResultEvent| {
-                    let harness = harness_for_tool_output.clone();
+                    let tool_outputs_dir = tool_outputs_dir.clone();
                     let event = event.clone();
                     Box::pin(async move {
-                        let meta = harness.session_metadata().await;
                         // Tool outputs: APP_DATA/sessions/<SESSION_ID>/tool_outputs.jsonl
-                        let dir = crate::platform::Paths::session_artifact_dir_from_db(
-                            std::path::Path::new(&meta.db_path),
-                            &meta.id,
-                        );
-                        let _ = tokio::fs::create_dir_all(&dir).await;
+                        let _ = tokio::fs::create_dir_all(&tool_outputs_dir).await;
                         let output_path = event.details.get("outputPath").and_then(|v| v.as_str());
                         let _ = elph_agent::session::backends::session_dir::tool_outputs::append_tool_output(
-                            &dir,
+                            &tool_outputs_dir,
                             &event.tool_call_id,
                             &event.tool_name,
                             &event.input,

@@ -71,6 +71,11 @@ fn ensure_home_dirs(paths: &Paths) -> Result<()> {
     if let Err(err) = paths.migrate_projects_to_sessions() {
         log::warn!("migrate projects→sessions: {err}");
     }
+    // Legacy layout: <project>/.elph/sessions/<id>/tool_outputs.jsonl →
+    // APP_DATA/sessions/<id>/tool_outputs.jsonl
+    if let Err(err) = paths.migrate_legacy_session_tool_outputs() {
+        log::warn!("migrate legacy session tool outputs: {err}");
+    }
     Ok(())
 }
 

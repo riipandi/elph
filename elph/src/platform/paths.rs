@@ -90,13 +90,6 @@ impl Paths {
         self.project_elph_dir().join("settings.json")
     }
 
-    /// Derive session artifact dir from a Turso session's `db_path` + `id`
-    /// (`{parent of store.db}/sessions/{session_id}`).
-    pub fn session_artifact_dir_from_db(db_path: &std::path::Path, session_id: &str) -> PathBuf {
-        let data_dir = db_path.parent().unwrap_or_else(|| std::path::Path::new("."));
-        data_dir.join("sessions").join(session_id)
-    }
-
     /// One-time move of legacy `APP_DATA/projects/*` → `APP_DATA/sessions/*`.
     ///
     /// Safe to call every boot: only renames children that do not already exist under `sessions/`.
@@ -121,6 +114,41 @@ impl Paths {
         }
         // Drop empty legacy root when possible.
         let _ = std::fs::remove_dir(&projects);
+        Ok(())
+    }
+
+    /// One-time move of legacy project-local tool outputs
+    /// (`<project>/.elph/sessions/<SESSION_ID>/tool_outputs.jsonl`) into the
+    /// APP_DATA session dir (`~/.local/share/elph/sessions/<SESSION_ID>/`).
+    ///
+    /// Safe to call every boot: only moves files whose destination does not
+    /// already exist, and removes the legacy tree once empty.
+    pub fn migrate_legacy_session_tool_outputs(&self) -> std::io::Result<()> {
+        let legacy_root = self.project_elph_dir().join("sessions");
+        if !legacy_root.is_dir() {
+            return Ok(());
+        }
+        let sessions = self.sessions_dir();
+        for entry in std::fs::read_dir(&legacy_root)? {
+            let entry = entry?;
+            if !entry.file_type()?.is_dir() {
+                continue;
+            }
+            let src = entry.path().join("tool_outputs.jsonl");
+            if !src.is_file() {
+                continue;
+            }
+            let dest = sessions.join(entry.file_name()).join("tool_outputs.jsonl");
+            if dest.exists() {
+                continue;
+            }
+            std::fs::create_dir_all(dest.parent().expect("dest parent"))?;
+            std::fs::rename(&src, &dest)?;
+            // Drop the legacy session dir when empty.
+            let _ = std::fs::remove_dir(entry.path());
+        }
+        // Drop empty legacy root when possible.
+        let _ = std::fs::remove_dir(&legacy_root);
         Ok(())
     }
 }
@@ -186,12 +214,6 @@ mod tests {
     }
 
     #[test]
-    fn session_artifact_dir_from_db_joins_sessions() {
-        let dir = Paths::session_artifact_dir_from_db(std::path::Path::new("/data/metadata.db"), "sess1");
-        assert_eq!(dir, PathBuf::from("/data/sessions/sess1"));
-    }
-
-    #[test]
     fn migrate_projects_to_sessions_moves_children() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let data = tmp.path().join("data");
@@ -208,6 +230,42 @@ mod tests {
                 || std::fs::read_dir(&projects)
                     .map(|mut d| d.next().is_none())
                     .unwrap_or(true)
+        );
+    }
+
+    #[test]
+    fn migrate_legacy_session_tool_outputs_moves_to_app_data() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let data = tmp.path().join("data");
+        let project = tmp.path().join("repo");
+        let legacy = project.join(".elph/sessions/abc");
+        std::fs::create_dir_all(&legacy).expect("mkdir");
+        std::fs::write(legacy.join("tool_outputs.jsonl"), b"legacy").expect("write");
+        let paths = Paths::from_dirs(tmp.path().join("cfg"), data.clone(), project.clone());
+        paths.migrate_legacy_session_tool_outputs().expect("migrate");
+        assert!(!legacy.join("tool_outputs.jsonl").exists());
+        let dest = data.join("sessions/abc/tool_outputs.jsonl");
+        assert!(dest.is_file());
+        assert_eq!(std::fs::read_to_string(dest).expect("read"), "legacy");
+        // Legacy root is dropped once empty.
+        assert!(!project.join(".elph/sessions").exists());
+    }
+
+    #[test]
+    fn migrate_legacy_session_tool_outputs_keeps_existing_destination() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let data = tmp.path().join("data");
+        let project = tmp.path().join("repo");
+        let legacy = project.join(".elph/sessions/abc");
+        std::fs::create_dir_all(&legacy).expect("mkdir");
+        std::fs::write(legacy.join("tool_outputs.jsonl"), b"legacy").expect("write");
+        std::fs::create_dir_all(data.join("sessions/abc")).expect("mkdir");
+        std::fs::write(data.join("sessions/abc/tool_outputs.jsonl"), b"current").expect("write");
+        let paths = Paths::from_dirs(tmp.path().join("cfg"), data.clone(), project.clone());
+        paths.migrate_legacy_session_tool_outputs().expect("migrate");
+        assert_eq!(
+            std::fs::read_to_string(data.join("sessions/abc/tool_outputs.jsonl")).expect("read"),
+            "current"
         );
     }
 }

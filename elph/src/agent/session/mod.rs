@@ -414,7 +414,7 @@ impl CodingAgentSession {
         let display = crate::tui::api_error_display::format_user_facing_api_error(raw);
         let transient = elph_ai::retry::is_transient_error(raw);
         let line = if transient {
-            format!("{display}\n\n\n{}", crate::tui::api_error_display::RETRY_HINT)
+            format!("{display}\n\n{}", crate::tui::api_error_display::RETRY_HINT)
         } else {
             display
         };
