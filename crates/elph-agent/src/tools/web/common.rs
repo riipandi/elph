@@ -91,39 +91,6 @@ pub fn strip_html(s: &str) -> String {
     ws_re.replace_all(result.trim(), " ").trim().to_string()
 }
 
-pub fn html_to_text(data: &str) -> String {
-    match htmd::convert(data) {
-        Ok(markdown) => {
-            let trimmed = markdown.trim();
-            if trimmed.is_empty() {
-                // Fallback to plain text extraction if conversion yields nothing.
-                strip_html_plain(data)
-            } else {
-                trimmed.to_string()
-            }
-        }
-        Err(_) => strip_html_plain(data),
-    }
-}
-
-/// Fallback: strip HTML tags and decode entities to plain text.
-fn strip_html_plain(s: &str) -> String {
-    let clean = strip_html(s);
-    clean
-        .replace("\r\n", "\n")
-        .replace('\r', "\n")
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty())
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
-pub fn is_html_content_type(content_type: &str) -> bool {
-    let ct = content_type.to_lowercase();
-    ct.contains("text/html") || ct.contains("application/xhtml")
-}
-
 /// Test-only: allow loopback/private hosts.
 #[cfg(test)]
 pub static ALLOW_PRIVATE_HOSTS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);

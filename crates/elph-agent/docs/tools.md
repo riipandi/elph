@@ -71,7 +71,7 @@ Other Tools
 | `tools-list-dir`      | no      | `list_dir` only (pulls in `walkdir`)                                                           |
 | `mcp`                 | yes     | MCP client — see [mcp.md](./mcp.md)                                                            |
 | `extensions`          | yes     | WASM extension host                                                                            |
-| `obscura`             | no      | Obscura browser fallback for web tools                                                         |
+| `crawlberg`           | yes     | Crawlberg browser fallback for web tools (derived from Obscura)                                |
 | `tracing`             | no      | `fastrace` spans + HTTP trace propagation — see [observability.md](./observability.md)         |
 
 The `elph` binary enables `builtin-tools` (and `tracing`) by default:
@@ -145,7 +145,7 @@ Filesystem tools resolve paths through `ExecutionEnv::absolute_path` and perform
 
 `list_dir` resolves the directory path via `ExecutionEnv`, then lists immediate children with [`walkdir`](https://crates.io/crates/walkdir) on a blocking thread pool.
 
-`web_search` and `web_fetch` do not use `ExecutionEnv`. They perform outbound HTTP requests and optionally delegate to an Obscura browser worker thread.
+`web_search` and `web_fetch` do not use `ExecutionEnv`. They perform outbound HTTP requests and route JavaScript-heavy pages through the Crawlberg headless browser in-process.
 
 ## Tool reference
 
@@ -289,7 +289,7 @@ Search the web using multiple providers with automatic ranking and fallback.
 
 #### Ranking and availability
 
-Auto mode picks the highest-ranked configured engine. DuckDuckGo is always tried last as a fallback. When all HTTP engines fail and the `obscura` feature is enabled, Obscura scrapes DuckDuckGo via a headless browser.
+Auto mode picks the highest-ranked configured engine. DuckDuckGo is always tried last as a fallback. When all HTTP engines fail and the `crawlberg` feature is enabled (on by default), Crawlberg scrapes DuckDuckGo via the headless browser.
 
 | Rank | Engine     | Env var                | Key required |
 | ---- | ---------- | ---------------------- | ------------ |
@@ -322,13 +322,13 @@ results: 3
 
 #### `web_fetch`
 
-Fetch content from a public HTTP(S) URL. HTML responses are converted to Markdown using [`htmd`](https://crates.io/crates/htmd). Blocks private and loopback addresses (SSRF protection).
+Fetch content from a public HTTP(S) URL. HTML responses are rendered and converted to Markdown by Crawlberg. Blocks private and loopback addresses (SSRF protection).
 
 | Parameter | Type   | Required | Description                |
 | --------- | ------ | -------- | -------------------------- |
 | `url`     | string | yes      | HTTP or HTTPS URL to fetch |
 
-HTTP fetch is attempted first via `reqwest`. When that fails and the `obscura` feature is enabled, Obscura navigates to the page on a dedicated browser worker thread (`crossbeam-channel` + `tokio`), then extracts content from the rendered DOM.
+Fetching is routed through Crawlberg (`crawlberg` feature, on by default). For JavaScript-heavy pages it navigates the page in an in-process headless browser, then extracts content from the rendered DOM. Plain HTTP responses are returned directly.
 
 Response bodies are capped at 256 KB. HTML is converted to Markdown; other content types are returned as-is.
 

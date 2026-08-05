@@ -428,7 +428,7 @@ web_fetch url="https://doc.rust-lang.org/book/"
 web_fetch url="https://crates.io/api/v1/crates/serde"
 ```
 
-**Catatan:** Tool ini menggunakan Obscura headless browser untuk halaman yang banyak menggunakan JavaScript.
+**Catatan:** Tool ini menggunakan Crawlberg headless browser untuk halaman yang banyak menggunakan JavaScript.
 
 ---
 

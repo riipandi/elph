@@ -28,7 +28,14 @@ chrono.workspace = true
 clap.workspace = true
 clap_complete.workspace = true
 crossterm.workspace = true
-elph-agent = { workspace = true, features = ["tracing", "builtin-tools", "mcp", "prompt-templates", "extensions"] }
+elph-agent = { workspace = true, features = [
+  "tracing",
+  "builtin-tools",
+  "mcp",
+  "prompt-templates",
+  "extensions",
+  "crawlberg",
+] }
 elph-ai = { workspace = true, features = ["tracing"] }
 elph-tui = { workspace = true }
 floppy = { path = "../crates/floppy", version = "0.0.1", features = ["full"] }

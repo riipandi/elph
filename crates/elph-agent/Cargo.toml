@@ -16,13 +16,13 @@ name = "elph_agent"
 path = "src/lib.rs"
 
 [features]
-default = []
+default = ["crawlberg"]
 full = ["mcp", "prompt-templates", "extensions", "builtin-tools"]
 builtin-tools = ["tools-edit", "tools-search", "tools-web", "tools-collaboration"]
 extensions = ["dep:wasmtime", "dep:walkdir"]
 mcp = ["dep:rmcp"]
 prompt-templates = []
-obscura = ["dep:obscura"]
+crawlberg = ["dep:crawlberg"]
 tools-collaboration = []
 tools-copy-path = []
 tools-create-dir = []
@@ -47,7 +47,6 @@ tools-search = ["tools-read-file", "tools-grep", "tools-find-path", "tools-list-
 tools-web = []
 tools-write-file = []
 tracing = ["dep:fastrace", "dep:fastrace-reqwest", "fastrace/enable", "elph-ai/tracing"]
-# obscura is git-only (h4ckf0r0day/obscura); workspace [patch.crates-io] redirects 0.1 → tag v0.1.9.
 
 [dependencies]
 aes-gcm.workspace = true
@@ -56,7 +55,7 @@ async-trait = "0.1"
 backon.workspace = true
 base64.workspace = true
 bytes.workspace = true
-crossbeam-channel.workspace = true
+crawlberg = { workspace = true, optional = true }
 elph-ai.workspace = true
 failsafe.workspace = true
 fastrace = { workspace = true, optional = true }
@@ -64,7 +63,6 @@ fastrace-reqwest = { workspace = true, optional = true }
 fff-search = { workspace = true, optional = true }
 futures.workspace = true
 governor.workspace = true
-htmd.workspace = true
 http.workspace = true
 ignore.workspace = true
 jsonschema.workspace = true
@@ -74,7 +72,6 @@ log.workspace = true
 logforth.workspace = true
 memchr.workspace = true
 memorable-ids.workspace = true
-obscura = { workspace = true, optional = true }
 parking_lot.workspace = true
 rand.workspace = true
 regex.workspace = true

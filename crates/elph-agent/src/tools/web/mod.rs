@@ -1,4 +1,4 @@
-//! Web search and fetch tools with multi-engine ranking and Obscura fallback.
+//! Web search and fetch tools with multi-engine ranking and Crawlberg fallback.
 
 mod common;
 pub mod engines;
@@ -6,8 +6,8 @@ pub mod ranking;
 mod web_fetch;
 mod web_search;
 
-#[cfg(feature = "obscura")]
-mod obscura;
+#[cfg(feature = "crawlberg")]
+mod crawlberg;
 
 pub use ranking::{Engine, SearchResult};
 pub use web_fetch::create_web_fetch_tool;

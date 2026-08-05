@@ -66,10 +66,10 @@ These tools are defined in `elph/src/agent/` and are not available in the `elph-
 
 ## Web Tools
 
-| Tool         | Default approval | Description                                           |
-| ------------ | ---------------- | ----------------------------------------------------- |
-| `web_fetch`  | Auto-allow       | HTTP fetch; HTML → Markdown via htmd; SSRF protection |
-| `web_search` | Auto-allow       | Multi-engine search with ranking and fallback         |
+| Tool         | Default approval | Description                                                |
+| ------------ | ---------------- | ---------------------------------------------------------- |
+| `web_fetch`  | Auto-allow       | HTTP fetch; HTML → Markdown via Crawlberg; SSRF protection |
+| `web_search` | Auto-allow       | Multi-engine search with ranking and fallback              |
 
 ## Collaboration Tools
 

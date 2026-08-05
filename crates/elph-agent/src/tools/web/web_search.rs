@@ -14,8 +14,8 @@ use super::engines::search_engine;
 use super::ranking::Engine;
 use super::ranking::{format_results, ordered_try_list};
 
-#[cfg(feature = "obscura")]
-use super::obscura;
+#[cfg(feature = "crawlberg")]
+use super::crawlberg;
 
 pub fn create_web_search_tool() -> AgentTool {
     simple_tool(
@@ -104,9 +104,9 @@ async fn run_search(
         }
     }
 
-    #[cfg(feature = "obscura")]
+    #[cfg(feature = "crawlberg")]
     {
-        match obscura::search_duckduckgo(query).await {
+        match crawlberg::search_duckduckgo(query).await {
             Ok(results) if !results.is_empty() => {
                 let limited = if results.len() > limit {
                     results[..limit].to_vec()
@@ -115,8 +115,8 @@ async fn run_search(
                 };
                 return Ok((Engine::DuckDuckGo, limited));
             }
-            Ok(_) => errors.push("Obscura: no results".into()),
-            Err(error) => errors.push(format!("Obscura: {error}")),
+            Ok(_) => errors.push("Crawlberg: no results".into()),
+            Err(error) => errors.push(format!("Crawlberg: {error}")),
         }
     }
 

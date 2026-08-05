@@ -482,7 +482,7 @@ let tools = BuiltinToolsBuilder::all(env).build();
 
 `grep` and `find` use [`fff-search`](https://crates.io/crates/fff-search) for fast filesystem indexing and content search. `ls` uses [`walkdir`](https://crates.io/crates/walkdir) on a blocking thread pool. `read`, `write`, `edit`, and `shell_exec` use `ExecutionEnv` directly.
 
-`websearch` and `webfetch` query the public web via HTTP. They support multiple search providers with automatic ranking and fallback, and optionally use the [Obscura](https://docs.obscura.sh/guides/use-as-a-rust-library) headless browser for scraping when HTTP alone is insufficient. Web tools do not require an `ExecutionEnv`.
+`websearch` and `webfetch` query the public web via HTTP. They support multiple search providers with automatic ranking and fallback, and optionally use the [Crawlberg](https://crates.io/crates/crawlberg) headless browser for scraping when HTTP alone is insufficient. Web tools do not require an `ExecutionEnv`.
 
 ```rust
 use elph_agent::create_web_tools;
@@ -505,7 +505,7 @@ Set provider API keys via environment variables (`BRAVE_SEARCH_API_KEY`, `EXA_AP
 | `tools-collaboration` | no      | `spawn_agent`, `send_message`, …                                                               |
 | `mcp`                 | yes     | MCP client                                                                                     |
 | `extensions`          | yes     | WASM extension host                                                                            |
-| `obscura`             | no      | Obscura browser fallback for web tools                                                         |
+| `crawlberg`           | yes     | Crawlberg browser fallback for web tools (derived from Obscura)                                |
 | `tracing`             | no      | `fastrace` instrumentation                                                                     |
 
 ```sh
@@ -516,7 +516,7 @@ cargo build -p elph-agent --no-default-features
 cargo build -p elph-agent --features "mcp,extensions,builtin-tools"
 ```
 
-The first build with `obscura` compiles V8 from source and can take a long time.
+The first build with the `crawlberg` feature compiles V8 from source and can take a long time.
 
 See [docs/tools.md](./docs/tools.md) for parameters, output formats, truncation limits, and examples.
 
