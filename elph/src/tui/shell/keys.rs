@@ -2696,21 +2696,9 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 let templates = prompt_templates.read().clone();
                 let loaded_skills = skills.read().clone();
 
-                // Block session-querying slash commands while agent is streaming.
-                // `/tools` is deliberately allowed during a turn: it snapshots the active
-                // tool set on a detached thread (short timeout) and falls back to the
-                // built-in catalog, so it is safe and never blocks the TUI runtime.
-                let trimmed = slash_input.trim();
-                if agent_turn_active.get() && (trimmed == "/system-prompt" || trimmed.starts_with("/system-prompt ")) {
-                    let expire_tx = ephemeral_expire.read().tx.clone();
-                    show_ephemeral_banner(
-                        &mut ephemeral_banner,
-                        &mut ephemeral_banner_generation,
-                        &expire_tx,
-                        slash_busy_banner(),
-                    );
-                    return;
-                }
+                // `/tools` and `/system-prompt` are safe during a streaming turn
+                // (detached tool snapshot + fallback, or cached system prompt), so the
+                // "still responding" banner is intentionally not shown for them.
 
                 let outcome = handle_slash_submit(SlashContext {
                     input: &slash_input,

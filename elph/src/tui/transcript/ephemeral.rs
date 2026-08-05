@@ -20,9 +20,6 @@ pub const AGENT_MODE_NOTICE_KEY: &str = "transient:agent_mode";
 /// Stable key when mode toggle is blocked because a turn is busy.
 pub const AGENT_MODE_BUSY_NOTICE_KEY: &str = "transient:agent_mode_busy";
 
-/// Stable key when a session-querying slash command is blocked because the agent is streaming.
-pub const SLASH_BUSY_NOTICE_KEY: &str = "transient:slash_busy";
-
 /// Stable key for theme mode change banners (Ctrl+Shift+T).
 pub const THEME_MODE_NOTICE_KEY: &str = "transient:theme_mode";
 
@@ -123,16 +120,6 @@ pub fn agent_mode_busy_banner() -> EphemeralBanner {
         key: AGENT_MODE_BUSY_NOTICE_KEY,
         text: agent_mode_busy_notice(),
         kind: EphemeralBannerKind::Notice,
-        expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
-    }
-}
-
-/// Banner when a session-querying slash command is submitted during a busy turn (auto-expires).
-pub fn slash_busy_banner() -> EphemeralBanner {
-    EphemeralBanner {
-        key: SLASH_BUSY_NOTICE_KEY,
-        text: "Agent is still responding — wait for the current turn to finish.".to_string(),
-        kind: EphemeralBannerKind::Warning,
         expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
     }
 }
@@ -359,18 +346,6 @@ mod tests {
         assert_eq!(banner.key, AGENT_MODE_BUSY_NOTICE_KEY);
         assert!(banner.text.contains("busy"));
         assert!(banner.remaining_ttl().is_some());
-    }
-
-    #[test]
-    fn slash_busy_banner_is_timed_warning() {
-        let banner = slash_busy_banner();
-        assert_eq!(banner.key, SLASH_BUSY_NOTICE_KEY);
-        assert_eq!(banner.kind, EphemeralBannerKind::Warning);
-        assert!(banner.text.contains("still responding"));
-        assert!(banner.expires_at.is_some());
-        assert!(banner.remaining_ttl().is_some());
-        assert!(!banner.is_expired());
-        assert_eq!(banner.color(), QUIT_BUSY_NOTICE_FG);
     }
 
     #[test]

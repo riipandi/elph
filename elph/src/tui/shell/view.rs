@@ -1242,23 +1242,9 @@ pub(crate) fn build_shell_view(
                         let loaded_skills = skills.read().clone();
                         let paths_snapshot = paths.read().clone();
 
-                        // Block session-querying slash commands while agent is streaming.
-                        if agent_turn_active.get()
-                            && (slash_input.trim() == "/tools"
-                                || slash_input.trim().starts_with("/tools ")
-                                || slash_input.trim() == "/system-prompt"
-                                || slash_input.trim().starts_with("/system-prompt "))
-                        {
-                            let expire_tx = ephemeral_expire.read().tx.clone();
-                            show_ephemeral_banner(
-                                &mut ephemeral_banner,
-                                &mut ephemeral_banner_generation,
-                                &expire_tx,
-                                slash_busy_banner(),
-                            );
-                            suppress_enter_newline.set(true);
-                            return;
-                        }
+                        // `/tools` and `/system-prompt` are safe during a streaming turn
+                        // (detached tool snapshot + fallback, or cached system prompt), so the
+                        // "still responding" banner is intentionally not shown for them.
 
                         let outcome = handle_slash_submit(SlashContext {
                             input: &slash_input,
