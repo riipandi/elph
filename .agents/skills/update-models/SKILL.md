@@ -57,7 +57,15 @@ Useful flags:
 cargo run -p elph-ai --bin generate-models -- all --no-live-pricing
 ```
 
-3. **Verify**
+3. **Rebuild the binary**
+
+`build.rs` compresses `models/*.json` into the binary at compile time, so the new catalogs only ship after a rebuild. `cargo check`/`cargo test` (next step) trigger this automatically, but build the real target to bake in the compressed catalogs:
+
+```sh
+cargo build --release -p elph        # ships compressed catalogs into the single binary
+```
+
+4. **Verify**
 
 ```sh
 cargo test -p elph-ai --test providers --lib models
@@ -70,7 +78,7 @@ Confirm:
 - `Verified … catalog providers are registered in builtin_providers()`
 - Spot-check `anthropic.json`, `xai.json`, a gateway (`openrouter` / `kilo` / `hyper` / `infron`)
 
-4. **Summarize for the user**
+5. **Summarize for the user**
 
 - Provider count / model count
 - Any providers skipped (not on models.dev and no previous overlay)
