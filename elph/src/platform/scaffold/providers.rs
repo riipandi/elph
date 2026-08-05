@@ -2,14 +2,15 @@
 
 use crate::utils::path::AppPaths;
 use anyhow::{Context, Result};
-use elph_ai::embedded_provider_json;
+use elph_ai::{embedded_provider_ids, embedded_provider_json};
 use std::fs;
 use std::io::Write;
 use std::path::Path;
 
 /// Ensure every built-in provider catalog exists under `providers/` (kebab-case ids).
 ///
-/// Existing files are never overwritten so user overrides / custom providers win.
+/// Existing files are never overwritten so user overrides / custom providers win. Seeds are
+/// compressed in the binary and only decompressed for the files that are actually missing.
 pub struct ProvidersUnpack;
 
 impl ProvidersUnpack {
@@ -19,13 +20,15 @@ impl ProvidersUnpack {
 
         let mut written = 0usize;
         let mut skipped = 0usize;
-        for (provider_id, json) in embedded_provider_json() {
+        for provider_id in embedded_provider_ids() {
             let path = dir.join(format!("{provider_id}.json"));
             if path.exists() {
                 skipped += 1;
                 continue;
             }
-            write_pretty_json(&path, json).with_context(|| format!("write provider catalog {}", path.display()))?;
+            let json = embedded_provider_json(provider_id)
+                .with_context(|| format!("decompress embedded catalog {provider_id}"))?;
+            write_pretty_json(&path, &json).with_context(|| format!("write provider catalog {}", path.display()))?;
             written += 1;
         }
 
@@ -94,7 +97,7 @@ mod tests {
 
     #[test]
     fn provider_ids_are_kebab_case() {
-        for (id, _) in embedded_provider_json() {
+        for id in embedded_provider_ids() {
             assert!(
                 id.chars()
                     .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-'),
@@ -105,26 +108,26 @@ mod tests {
     }
 
     #[test]
-    fn disk_override_changes_get_builtin_model() {
-        use elph_ai::{get_builtin_model, set_disk_catalog_overrides};
-        use std::collections::HashMap;
+    fn unpacked_dir_overrides_get_builtin_model() {
+        use elph_ai::{get_builtin_model, install_provider_catalog_dir, set_provider_catalog_dir};
+
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let paths = Paths::from_dirs(tmp.path().join("config"), tmp.path().join("data"), tmp.path().join("project"));
+        ProvidersUnpack::ensure(&paths).expect("unpack");
 
         // Start clean so other tests don't pollute.
-        set_disk_catalog_overrides(HashMap::new());
+        set_provider_catalog_dir(None);
         let baseline = get_builtin_model("anthropic", "claude-haiku-4-5").expect("embedded haiku");
 
-        let mut models = elph_ai::get_builtin_models("anthropic");
-        if let Some(m) = models.iter_mut().find(|m| m.id == "claude-haiku-4-5") {
-            m.name = "Haiku Override".into();
-        }
-        let mut overlay = HashMap::new();
-        overlay.insert("anthropic".into(), models);
-        set_disk_catalog_overrides(overlay);
+        let anthropic = paths.providers_dir().join("anthropic.json");
+        let body = fs::read_to_string(&anthropic).expect("read unpacked catalog");
+        fs::write(&anthropic, body.replace(&baseline.name, "Haiku Override")).expect("write override");
+        install_provider_catalog_dir(&paths.providers_dir()).expect("install");
 
         let overridden = get_builtin_model("anthropic", "claude-haiku-4-5").expect("overridden");
         assert_eq!(overridden.name, "Haiku Override");
         assert_ne!(baseline.name, "Haiku Override");
 
-        set_disk_catalog_overrides(HashMap::new());
+        set_provider_catalog_dir(None);
     }
 }

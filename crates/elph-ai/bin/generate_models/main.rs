@@ -58,8 +58,6 @@ enum Command {
 struct ChatCmd {
     #[arg(long)]
     models_dir: Option<PathBuf>,
-    #[arg(long)]
-    no_regenerate_catalog: bool,
     /// Use cached models.dev snapshot only
     #[arg(long)]
     offline: bool,
@@ -107,6 +105,7 @@ struct AllCmd {
     images_dir: Option<PathBuf>,
     #[arg(long)]
     test_image_output: Option<PathBuf>,
+    /// Skip regenerating `src/images/models.rs` (image catalogs only)
     #[arg(long)]
     no_regenerate_catalog: bool,
     #[arg(long)]
@@ -126,8 +125,7 @@ fn main() -> Result<()> {
     match args.command {
         Command::Chat(cmd) => generate_chat(ChatOptions {
             models_dir: cmd.models_dir.unwrap_or_else(|| crate_root.join("models")),
-            catalog_rs: crate_root.join("src/models/catalog.rs"),
-            no_regenerate_catalog: cmd.no_regenerate_catalog,
+            builtin_rs: crate_root.join("src/providers/builtin.rs"),
             offline: cmd.offline,
             no_live_pricing: cmd.no_live_pricing,
             force: cmd.force,
@@ -152,8 +150,7 @@ fn main() -> Result<()> {
             // Re-run full chat rebuild (includes pricing); dedicated enrich keeps same entry.
             generate_chat(ChatOptions {
                 models_dir: cmd.models_dir.unwrap_or_else(|| crate_root.join("models")),
-                catalog_rs: crate_root.join("src/models/catalog.rs"),
-                no_regenerate_catalog: false,
+                builtin_rs: crate_root.join("src/providers/builtin.rs"),
                 offline: cmd.offline,
                 no_live_pricing: cmd.no_live_pricing,
                 force: cmd.force,
@@ -162,8 +159,7 @@ fn main() -> Result<()> {
         Command::All(cmd) => {
             generate_chat(ChatOptions {
                 models_dir: cmd.models_dir.clone().unwrap_or_else(|| crate_root.join("models")),
-                catalog_rs: crate_root.join("src/models/catalog.rs"),
-                no_regenerate_catalog: cmd.no_regenerate_catalog,
+                builtin_rs: crate_root.join("src/providers/builtin.rs"),
                 offline: cmd.offline,
                 no_live_pricing: cmd.no_live_pricing,
                 force: cmd.force,

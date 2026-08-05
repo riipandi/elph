@@ -130,7 +130,7 @@ Pick shape by content (smart, not rigid):
 3. Elph: `crates/elph-ai/`, `crates/elph-agent/` (+ public API in `src/lib.rs`)
 4. **Elph catalog / generator (post models.dev cutover)** — not pi’s `packages/ai` data scripts:
     - `crates/elph-ai/bin/generate_models/` (`models_dev`, `provider_sources`, `normalize`, `thinking_map`, `pricing`, `chat`)
-    - `crates/elph-ai/models/*.json`, `src/models/catalog.rs`, `src/providers/builtin.rs`
+    - `crates/elph-ai/models/*.json`, `build.rs`, `src/models/catalog.rs`, `src/providers/builtin.rs`
     - Skill [`update-models`](../update-models/SKILL.md); schema contract [`schemas/provider-schema.json`](../../../schemas/provider-schema.json)
 5. Extension scan hints: [`references/elph-extensions.md`](references/elph-extensions.md)
 6. Output shapes: [`references/report-template.md`](references/report-template.md)
@@ -260,12 +260,12 @@ Always ship in this order in-chat, in the user's current language (paths/commits
 
 ### Cross-skill handoff
 
-| Need                                                         | Skill / command                                                      |
-| ------------------------------------------------------------ | -------------------------------------------------------------------- |
-| Refresh model lists, pricing, thinkingLevelMap, `catalog.rs` | **`update-models`** / `generate-models chat`                         |
-| Gap audit vs pi (this skill)                                 | **`pi-port-gap`** — read-only by default                             |
-| Implement a runtime gap after audit                          | Explicit user ask → map to Elph modules; do not re-open catalog SSOT |
-| Build quality after a port                                   | **`rust-verify-harden`**                                             |
+| Need                                                             | Skill / command                                                      |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Refresh model lists, pricing, thinkingLevelMap (`models/*.json`) | **`update-models`** / `generate-models chat`                         |
+| Gap audit vs pi (this skill)                                     | **`pi-port-gap`** — read-only by default                             |
+| Implement a runtime gap after audit                              | Explicit user ask → map to Elph modules; do not re-open catalog SSOT |
+| Build quality after a port                                       | **`rust-verify-harden`**                                             |
 
 ---
 

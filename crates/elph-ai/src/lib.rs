@@ -34,16 +34,15 @@ pub use auth::{InMemoryModelsStore, ModelsStore, ModelsStoreEntry, ProviderStore
 pub use auth::{default_auth_context, env_api_key_auth, flexible_api_key_auth, resolve_provider_auth};
 pub use images::{CreateImagesModelsOptions, ImagesModels};
 pub use images::{builtin_images_models, generate_images};
-pub use models::embedded_provider_json;
 pub use models::{CreateModelsOptions, CreateProviderOptions, Models, MutableModels, Provider, ProviderApi};
 pub use models::{
     OverlayApplyReport, calculate_cost, clamp_thinking_level, create_disk_provider, create_models, create_provider,
 };
-pub use models::{
-    disk_catalog_overrides, load_provider_catalogs_dir, merge_model_lists, parse_provider_catalog_json,
-    set_disk_catalog_overrides,
-};
+pub use models::{builtin_catalog, builtin_provider_ids, invalidate_catalog_cache, merge_model_lists};
+pub use models::{custom_provider_catalogs, custom_provider_ids, install_provider_catalog_dir};
+pub use models::{embedded_provider_ids, embedded_provider_json};
 pub use models::{get_supported_thinking_levels, has_api, map_thinking_level_for_api, models_are_equal};
+pub use models::{parse_provider_catalog_json, provider_catalog_dir, set_provider_catalog_dir};
 pub use providers::faux::{FauxModelDefinition, FauxProviderHandle, FauxResponseStep, RegisterFauxProviderOptions};
 pub use providers::faux::{faux_assistant_message, faux_provider, faux_text, faux_thinking, faux_tool_call};
 pub use providers::{builtin_models, get_builtin_model, get_builtin_models, get_builtin_providers};

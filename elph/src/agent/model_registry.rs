@@ -66,7 +66,7 @@ pub async fn resolve_model(
 
     // Look up under the resolved provider only. Gateway model ids often contain `/`
     // (e.g. `moonshotai/kimi-k3-free`); never re-interpret that as a different provider.
-    // Honors disk overrides via set_disk_catalog_overrides.
+    // Honors CONFIG_DIR/providers via install_providers_dir above.
     let model =
         get_builtin_model(&provider, &model_id).with_context(|| format!("Model not found: {provider}/{model_id}"))?;
 
@@ -75,8 +75,9 @@ pub async fn resolve_model(
         credentials: Some(Arc::new(credentials)),
         ..Default::default()
     }));
-    // Merge disk overlays and register streaming adapters for disk-only provider ids.
-    let overlays = elph_ai::disk_catalog_overrides();
+    // Register streaming adapters for disk-only provider ids (builtin catalogs already
+    // merge their disk files during load).
+    let overlays = elph_ai::custom_provider_catalogs();
     let overlay_stats = mutable.apply_model_overlays(&overlays);
     let models = mutable.into_arc();
     models

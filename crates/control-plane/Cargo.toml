@@ -1,0 +1,30 @@
+[package]
+name = "elco"
+version = "0.0.1"
+license = "MIT"
+description = "Coordinator for the Elph coding agent."
+homepage.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+publish = true
+
+[lib]
+name = "elco"
+path = "src/lib.rs"
+
+[[bin]]
+name = "elco"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+memorable-ids.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints.rust]
+linker_messages = "allow"

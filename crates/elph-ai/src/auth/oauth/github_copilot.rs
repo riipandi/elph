@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::auth::OAuthLoader;
 use crate::auth::lazy_oauth;
 use crate::auth::types::{AuthEvent, AuthLoginCallbacks, AuthPrompt, ModelAuth, OAuthAuth, OAuthCredential};
-use crate::models::catalog::GITHUB_COPILOT_MODELS;
+use crate::models::catalog::builtin_catalog;
 
 use super::device_code::poll_oauth_device_code_flow;
 use super::device_code::{DeviceCodePollOptions, DeviceCodePollResult};
@@ -338,7 +338,7 @@ async fn fetch_available_model_ids(token: &str, enterprise_domain: Option<&str>)
 async fn enable_all_copilot_models(token: &str, enterprise_domain: Option<&str>) {
     let base_url = get_github_copilot_base_url(Some(token), enterprise_domain);
     let client = reqwest::Client::new();
-    for model in GITHUB_COPILOT_MODELS.iter() {
+    for model in builtin_catalog("github-copilot").iter() {
         let mut req = client
             .post(format!("{base_url}/models/{}/policy", model.id))
             .header("Content-Type", "application/json")

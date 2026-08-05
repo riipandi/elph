@@ -1,77 +1,19 @@
-//! Load and merge provider model catalogs from disk (`CONFIG_DIR/providers/*.json`).
+//! Provider catalog JSON → [`Model`] conversion.
 //!
-//! File shape matches embedded catalogs: a JSON object map of `modelId → model`.
-//! Also accepts a schema-style wrapper `{ "models": { ... } }`.
+//! Shared by the embedded seed ([`super::embedded`]) and user files under
+//! `CONFIG_DIR/providers/*.json`; both use the same shape.
 
 use std::collections::HashMap;
-use std::fs;
-use std::path::Path;
-use std::sync::{OnceLock, RwLock};
 
 use serde::Deserialize;
 
 use crate::types::{AnthropicMessagesCompat, Model, ModelCost, ModelCostTier};
 use crate::types::{OpenAICompletionsCompat, OpenAIResponsesCompat, ThinkingLevelMap};
 
-use super::catalog::{
-    all_builtin_models, get_builtin_model as embedded_get_model, get_builtin_models as embedded_get_models,
-};
-
-static DISK_OVERRIDES: OnceLock<RwLock<HashMap<String, Vec<Model>>>> = OnceLock::new();
-
-fn overrides() -> &'static RwLock<HashMap<String, Vec<Model>>> {
-    DISK_OVERRIDES.get_or_init(|| RwLock::new(HashMap::new()))
-}
-
-/// Install process-wide disk overrides used by [`crate::get_builtin_model`] and friends.
-///
-/// Call after reading `CONFIG_DIR/providers/`. Pass an empty map to clear.
-pub fn set_disk_catalog_overrides(map: HashMap<String, Vec<Model>>) {
-    if let Ok(mut guard) = overrides().write() {
-        *guard = map;
-    }
-}
-
-/// Snapshot of currently installed disk overrides (provider_id → models).
-pub fn disk_catalog_overrides() -> HashMap<String, Vec<Model>> {
-    overrides().read().map(|g| g.clone()).unwrap_or_default()
-}
-
-/// Load all `*.json` files from a providers directory into a map keyed by file stem (kebab-case id).
-pub fn load_provider_catalogs_dir(dir: &Path) -> Result<HashMap<String, Vec<Model>>, String> {
-    let mut out = HashMap::new();
-    if !dir.is_dir() {
-        return Ok(out);
-    }
-    let entries = fs::read_dir(dir).map_err(|e| format!("read {}: {e}", dir.display()))?;
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.extension().and_then(|e| e.to_str()) != Some("json") {
-            continue;
-        }
-        let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
-            continue;
-        };
-        if stem.eq_ignore_ascii_case("index") {
-            continue;
-        }
-        let raw = fs::read_to_string(&path).map_err(|e| format!("read {}: {e}", path.display()))?;
-        match parse_provider_catalog_json(&raw) {
-            Ok(models) => {
-                out.insert(stem.to_string(), models);
-            }
-            Err(err) => {
-                log::warn!("skip provider catalog {}: {err}", path.display());
-            }
-        }
-    }
-    Ok(out)
-}
-
 /// Parse a provider catalog JSON body into models.
 ///
 /// Accepts:
-/// - map of `modelId → model` (embedded / unpacked shape)
+/// - map of `modelId → model` (seed / unpacked shape)
 /// - schema wrapper `{ "baseUrl"?, "headers"?, "models": { … } }` (stamps baseUrl/headers onto models that omit them)
 pub fn parse_provider_catalog_json(json: &str) -> Result<Vec<Model>, String> {
     let value: serde_json::Value =
@@ -104,56 +46,6 @@ pub fn parse_provider_catalog_json(json: &str) -> Result<Vec<Model>, String> {
             convert_model(m)
         })
         .collect())
-}
-
-/// Merge overlay models over base by model `id` (overlay wins; extras append).
-pub fn merge_model_lists(base: &[Model], overlay: &[Model]) -> Vec<Model> {
-    let mut by_id: HashMap<String, Model> = HashMap::new();
-    for m in base {
-        by_id.insert(m.id.clone(), m.clone());
-    }
-    for m in overlay {
-        by_id.insert(m.id.clone(), m.clone());
-    }
-    let mut models: Vec<Model> = by_id.into_values().collect();
-    models.sort_by(|a, b| a.id.cmp(&b.id));
-    models
-}
-
-/// Merged model list for a provider: disk overlay over embedded (or disk-only custom provider).
-pub fn merged_models_for_provider(provider: &str) -> Vec<Model> {
-    let embedded = embedded_get_models(provider);
-    let disk = overrides()
-        .read()
-        .ok()
-        .and_then(|g| g.get(provider).cloned())
-        .unwrap_or_default();
-    if disk.is_empty() {
-        return embedded;
-    }
-    if embedded.is_empty() {
-        return disk;
-    }
-    merge_model_lists(&embedded, &disk)
-}
-
-/// Lookup one model using disk overrides when present.
-pub fn merged_get_model(provider: &str, id: &str) -> Option<Model> {
-    merged_models_for_provider(provider)
-        .into_iter()
-        .find(|m| m.id == id)
-        .or_else(|| embedded_get_model(provider, id))
-}
-
-/// Provider ids from embedded ∪ disk overrides, sorted.
-pub fn merged_providers() -> Vec<String> {
-    let mut set: std::collections::BTreeSet<String> = all_builtin_models().keys().map(|k| (*k).to_string()).collect();
-    if let Ok(guard) = overrides().read() {
-        for k in guard.keys() {
-            set.insert(k.clone());
-        }
-    }
-    set.into_iter().collect()
 }
 
 #[derive(Debug, Deserialize)]
@@ -268,38 +160,6 @@ fn parse_compat(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn merge_overlay_replaces_by_id() {
-        let base = vec![Model {
-            id: "a".into(),
-            name: "A".into(),
-            api: "openai-completions".into(),
-            provider: "x".into(),
-            base_url: "https://x".into(),
-            reasoning: false,
-            thinking_level_map: None,
-            input: vec!["text".into()],
-            cost: ModelCost {
-                input: 1.0,
-                output: 1.0,
-                cache_read: 0.0,
-                cache_write: 0.0,
-                tiers: None,
-            },
-            context_window: 1000,
-            max_tokens: 100,
-            headers: None,
-            openai_completions_compat: None,
-            openai_responses_compat: None,
-            anthropic_compat: None,
-        }];
-        let mut overlay = base.clone();
-        overlay[0].name = "A-override".into();
-        let merged = merge_model_lists(&base, &overlay);
-        assert_eq!(merged.len(), 1);
-        assert_eq!(merged[0].name, "A-override");
-    }
 
     #[test]
     fn parse_map_catalog() {

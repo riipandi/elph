@@ -63,6 +63,9 @@ url.workspace = true
 webpki-roots.workspace = true
 zstd.workspace = true
 
+[build-dependencies]
+zstd.workspace = true
+
 [[bin]]
 name = "generate-models"
 path = "bin/generate_models/main.rs"

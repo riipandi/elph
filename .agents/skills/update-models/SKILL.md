@@ -2,8 +2,8 @@
 name: update-models
 description: >-
     Refresh elph-ai chat model catalogs from models.dev (origin) with optional live
-    provider pricing, inject full thinkingLevelMap on every model, regenerate
-    src/models/catalog.rs, and verify registration. Use when the user runs
+    provider pricing, inject full thinkingLevelMap on every model, and verify
+    provider registration. Use when the user runs
     /update-models, asks to sync or regenerate model catalogs, update models.dev
     data, refresh pricing, or keep provider model lists current.
 ---
@@ -17,8 +17,10 @@ description: >-
 
 ## Purpose
 
-Regenerate `crates/elph-ai/models/*.json` and `src/models/catalog.rs` from **models.dev** as the sole catalog origin.
+Regenerate `crates/elph-ai/models/*.json` (+ `models/index.json`) from **models.dev** as the sole catalog origin.
 Pricing prefers live provider APIs when keys/endpoints allow, then models.dev. Every model must include a complete `thinkingLevelMap`.
+
+The JSON files are the only catalog source: `crates/elph-ai/build.rs` compresses them into the binary on the next build, so there is no Rust catalog file to regenerate.
 
 ## When to run
 
@@ -43,12 +45,11 @@ make generate-models ARGS="chat"
 
 Useful flags:
 
-| Flag                      | Effect                                                        |
-| ------------------------- | ------------------------------------------------------------- |
-| `--offline`               | Use cached models.dev only                                    |
-| `--no-live-pricing`       | Skip provider `/models` pricing probes                        |
-| `--no-regenerate-catalog` | Write JSON only                                               |
-| `--force`                 | Bypass the models.dev cache freshness check (always re-fetch) |
+| Flag                | Effect                                                        |
+| ------------------- | ------------------------------------------------------------- |
+| `--offline`         | Use cached models.dev only                                    |
+| `--no-live-pricing` | Skip provider `/models` pricing probes                        |
+| `--force`           | Bypass the models.dev cache freshness check (always re-fetch) |
 
 2. **Optional full pass** (chat + image fixture path)
 
@@ -97,7 +98,8 @@ The generator keeps model data current through three layers:
 - **Do not** invent `api` / `baseUrl` from models.dev; preserve Elph factory overlays.
 - **Do not** remove Elph-only gateway providers; preserve their model ids and enrich.
 - New providers still need a factory in `src/providers/builtin.rs` (generator fails if unregistered).
-- Schema contract for future user overrides: `schemas/provider-schema.json` (runtime merge not implemented yet).
+- Schema contract for user overrides: `schemas/provider-schema.json`.
+- **Never** hand-write a Rust catalog module — `models/*.json` is the source, `build.rs` embeds it.
 
 ## Code map
 
@@ -109,8 +111,10 @@ The generator keeps model data current through three layers:
 | `bin/generate_models/normalize.rs`        | Entry merge + cost fields                    |
 | `bin/generate_models/thinking_map.rs`     | Full 7-key maps                              |
 | `bin/generate_models/pricing.rs`          | Live pricing probes + live model id refresh  |
-| `bin/generate_models/chat.rs`             | Orchestration + catalog.rs                   |
-| `models/*.json`                           | Embedded catalogs                            |
+| `bin/generate_models/chat.rs`             | Orchestration + registration check           |
+| `models/*.json`                           | Catalog source (compressed into the binary)  |
+| `build.rs`                                | zstd frames + provider index for the binary  |
+| `src/models/catalog.rs`                   | Lazy loader (seed + CONFIG_DIR overlay)      |
 | `schemas/provider-schema.json`            | Forward-looking override schema              |
 
 ## Do not

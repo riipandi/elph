@@ -208,7 +208,9 @@ Nine chat APIs are registered in `elph_ai::api::builtin_apis()`:
 
 Image generation uses a separate `openrouter-images` API (see [Image Generation](#image-generation)). Use `api_for("anthropic-messages")` or call modules under `elph_ai::api` for lower-level control.
 
-Model catalogs are embedded as JSON under [`models/`](models/) and loaded at compile time via `include_str!`.
+Model catalogs live as JSON under [`models/`](models/). `build.rs` compresses each file into a zstd frame embedded in the binary (still a single self-contained artifact), and a catalog is decompressed and parsed **lazily** the first time its provider is used.
+
+Point the loader at a directory of user catalogs with `install_provider_catalog_dir("<dir>")`: for every provider, `<dir>/<provider-id>.json` is merged over the embedded seed by model `id`, and files without a matching seed become disk-only providers (`custom_provider_catalogs()`). Each call re-registers the directory and drops cached catalogs, so edited files take effect without a restart.
 
 ### Provider Factories
 
@@ -1005,19 +1007,19 @@ Subcommands:
 
 | Command      | Source                         | Output                                          |
 | ------------ | ------------------------------ | ----------------------------------------------- |
-| `chat`       | models.dev + Elph overlays     | `models/*.json` + `src/models/catalog.rs`       |
+| `chat`       | models.dev + Elph overlays     | `models/*.json` + `models/index.json`           |
 | `enrich`     | same as chat (pricing refresh) | rewritten catalogs                              |
 | `image`      | optional pi image scripts      | `models/images/*.json` + `src/images/models.rs` |
 | `test-image` | local fixture                  | `tests/data/red-circle.png`                     |
 | `all`        | chat + image + test-image      | everything                                      |
 
-Forward-looking user override schema: [`schemas/provider-schema.json`](../../schemas/provider-schema.json) (runtime merge not implemented yet).
+User override schema: [`schemas/provider-schema.json`](../../schemas/provider-schema.json) — files matching it are merged over the embedded catalogs by `install_provider_catalog_dir`.
 
 ### Adding a New Provider
 
 1. **Types** (`src/types/mod.rs`) — add API/provider identifiers and options if needed
 2. **API** (`src/api/<api-id>.rs`) — implement `stream` / `stream_simple` for new wire protocols
-3. **Catalog** — add row in `bin/generate_models/provider_sources.rs` (models.dev keys + defaults); run `generate-models chat`
+3. **Catalog** — add row in `bin/generate_models/provider_sources.rs` (models.dev keys + defaults); run `generate-models chat`. The new `models/<provider>.json` is picked up by `build.rs` on the next build — no Rust catalog source to regenerate.
 4. **Provider factory** (`src/providers/builtin.rs`) — wire catalog + auth + API adapter; **must** register in `builtin_providers()`. `generate-models chat` fails if any catalog provider is missing from `builtin_providers()`.
 5. **OpenAI-compat gateways** — multi-vendor proxies are treated as non-standard in `src/api/openai_compat.rs`. Prefer per-model `compat` when a vendor route needs extra rules.
 6. **Tests** (`tests/`) — keep `catalog_providers_match_builtin_providers` green
@@ -1035,6 +1037,16 @@ cargo nextest run -p elph-ai -- --ignored
 cargo nextest run -p elph-ai --test e2e_live -- --ignored
 cargo nextest run -p elph-ai --test abort_live -- --ignored
 cargo nextest run -p elph-ai --test cross_provider_handoff_live -- --ignored
+cargo nextest run -p elph-ai --test openrouter_cache_write_live -- --ignored
+cargo nextest run -p elph-ai --test tool_call_id_normalization_live -- --ignored
+```
+
+Integration tests mirror upstream coverage: provider auth, SSE parsing and mid-stream abort, HTTP/WebSocket proxy routing, tool schemas, retry/overflow, OAuth, Bedrock endpoint resolution, Codex WebSocket transport, faux provider, and more under [`tests/`](tests/).
+
+## License
+
+Licensed under the [MIT License](https://www.tldrlegal.com/license/mit-license).
+off_live -- --ignored
 cargo nextest run -p elph-ai --test openrouter_cache_write_live -- --ignored
 cargo nextest run -p elph-ai --test tool_call_id_normalization_live -- --ignored
 ```

@@ -116,7 +116,7 @@ Each `*.json` (except `index.json`) is keyed by file stem as the provider id. Sh
 1. **Map** — `modelId → model` (embedded unpack shape).
 2. **Schema wrapper** — `{ "baseUrl"?, "headers"?, "models": { … } }`. Wrapper `baseUrl` / `headers` are stamped onto models that omit them; per-model values win.
 
-Process-wide merge: `set_disk_catalog_overrides` after load. Lookup uses `merged_models_for_provider` / `merged_get_model` (disk overlays replace embedded models by `id`).
+Process-wide registration: `install_provider_catalog_dir` records the directory (and which files are disk-only providers) without parsing anything. `get_builtin_models` / `get_builtin_model` then load `<provider>.json` on first use and merge it over the embedded seed by model `id` (disk wins), caching the result until the directory is re-registered.
 
 **Streaming adapters for disk-only providers:** when a provider id is not built-in, Elph registers a runtime adapter if models use a supported API (`openai-completions`, `openai-responses`, `anthropic-messages`, `google-generative-ai`, `mistral-conversations`, `azure-openai-responses`). Auth resolves from `auth.json` and/or env `PROVIDER_ID_API_KEY` (kebab id → `PROVIDER_ID_API_KEY`). Use `/reload` after editing provider JSON so mid-session catalogs and adapters refresh.
 
@@ -346,9 +346,9 @@ Schema: [schemas/provider-schema.json](../schemas/provider-schema.json) — full
 
 Supported APIs (see schema enum): `openai-completions`, `openai-responses`, `openai-codex-responses`, `azure-openai-responses`, `anthropic-messages`, `google-generative-ai`, `google-vertex`, `bedrock-converse-stream`, `mistral-conversations`.
 
-Embedded chat catalogs are generated from **[models.dev](https://models.dev)** via `make generate-models` / skill `update-models`. On every home bootstrap Elph **unpacks** missing files into `CONFIG_DIR/providers/PROVIDER_ID.json` (kebab-case ids such as `openai`, `anthropic`, `amazon-bedrock`). **Existing files are never overwritten**.
+Embedded chat catalogs are generated from **[models.dev](https://models.dev)** via `make generate-models` / skill `update-models`, then compressed into the binary at build time (single self-contained binary, no external data files). On every home bootstrap Elph **unpacks** missing files into `CONFIG_DIR/providers/PROVIDER_ID.json` (kebab-case ids such as `openai`, `anthropic`, `amazon-bedrock`). **Existing files are never overwritten**.
 
-At runtime, `CONFIG_DIR/providers/*.json` is **merged over the embedded catalog** by model `id` (disk wins). Lists and `resolve_model` honor the merge. Streaming adapters still require a built-in provider id — a pure custom provider file without a matching adapter is logged and skipped for streaming.
+At runtime, `CONFIG_DIR/providers/*.json` is **merged over the embedded catalog** by model `id` (disk wins). Each provider is read and parsed **lazily on first use** and cached for the process; `/reload` (and every bootstrap/session resolve) drops that cache so edited files take effect without a restart. Lists and `resolve_model` honor the merge. Streaming adapters still require a built-in provider id — a pure custom provider file without a matching adapter is logged and skipped for streaming.
 
 Per-model: `reasoning`, `thinkingLevelMap` (required), `compat`, `cost`, `contextWindow`, `maxTokens`, `input`.
 
