@@ -2504,8 +2504,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.06,
-            "output": 0.06
+            "input": 0.08,
+            "output": 0.11
         },
         "id": "gryphe/mythomax-l2-13b",
         "input": ["text"],
@@ -2998,12 +2998,12 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.13,
-            "output": 0.4
+            "input": 0.1,
+            "output": 0.32
         },
         "id": "meta-llama/llama-3.3-70b-instruct",
         "input": ["text"],
-        "maxTokens": 128000,
+        "maxTokens": 16384,
         "name": "Llama-3.3-70B-Instruct",
         "provider": "openrouter",
         "reasoning": false,
@@ -3366,10 +3366,10 @@
         },
         "contextWindow": 204800,
         "cost": {
-            "cacheRead": 0.05,
+            "cacheRead": 0.054,
             "cacheWrite": 0.0,
-            "input": 0.25,
-            "output": 1.0
+            "input": 0.27,
+            "output": 1.08
         },
         "id": "minimax/minimax-m2.7",
         "input": ["text"],
@@ -3870,8 +3870,8 @@
         "cost": {
             "cacheRead": 0.01,
             "cacheWrite": 0.0,
-            "input": 0.075,
-            "output": 0.2
+            "input": 0.09375,
+            "output": 0.25
         },
         "id": "mistralai/mistral-small-3.2-24b-instruct",
         "input": ["image", "text"],
@@ -4079,10 +4079,10 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.2,
+            "cacheRead": 0.0992,
             "cacheWrite": 0.0,
-            "input": 0.6,
-            "output": 3.41
+            "input": 0.589,
+            "output": 2.48
         },
         "id": "moonshotai/kimi-k2.6",
         "input": ["text", "image"],
@@ -7028,8 +7028,8 @@
         "cost": {
             "cacheRead": 0.4,
             "cacheWrite": 0.0,
-            "input": 0.8,
-            "output": 1.0
+            "input": 0.25,
+            "output": 0.75
         },
         "id": "qwen/qwen2.5-vl-72b-instruct",
         "input": ["text", "image"],
@@ -7359,11 +7359,11 @@
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 0.07,
-            "output": 0.28
+            "output": 0.27
         },
         "id": "qwen/qwen3-coder-30b-a3b-instruct",
         "input": ["text"],
-        "maxTokens": 262144,
+        "maxTokens": 32768,
         "name": "Qwen3-Coder 30B-A3B Instruct",
         "provider": "openrouter",
         "reasoning": false,
@@ -7538,12 +7538,12 @@
         "cost": {
             "cacheRead": 0.07,
             "cacheWrite": 0.0,
-            "input": 0.1,
+            "input": 0.09,
             "output": 1.1
         },
         "id": "qwen/qwen3-next-80b-a3b-instruct",
         "input": ["text"],
-        "maxTokens": 262144,
+        "maxTokens": 16384,
         "name": "Qwen3-Next 80B-A3B Instruct",
         "provider": "openrouter",
         "reasoning": false,
@@ -7658,12 +7658,12 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.13,
-            "output": 0.52
+            "input": 0.15,
+            "output": 0.6
         },
         "id": "qwen/qwen3-vl-30b-a3b-instruct",
         "input": ["text", "image"],
-        "maxTokens": 32768,
+        "maxTokens": 16384,
         "name": "Qwen3 VL 30B A3B Instruct",
         "provider": "openrouter",
         "reasoning": false,
@@ -9434,14 +9434,14 @@
         },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.11414,
+            "cacheRead": 0.14,
             "cacheWrite": 0.0,
-            "input": 0.6146,
-            "output": 1.9316
+            "input": 0.76,
+            "output": 2.42
         },
         "id": "z-ai/glm-5.2",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 262144,
         "name": "GLM-5.2",
         "provider": "openrouter",
         "reasoning": true,

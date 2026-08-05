@@ -298,13 +298,13 @@
         "cost": {
             "cacheRead": 0.125,
             "cacheWrite": 0.0,
-            "input": 1.25,
-            "output": 10.0
+            "input": 1.125,
+            "output": 9.0
         },
         "id": "gpt-5-chat-latest",
         "input": ["text", "image"],
         "maxTokens": 128000,
-        "name": "GPT-5 Chat (latest)",
+        "name": "gpt-5-chat-latest",
         "provider": "azure-openai-responses",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -501,13 +501,13 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 21.0,
-            "output": 168.0
+            "input": 18.9,
+            "output": 151.2
         },
         "id": "gpt-5.2-pro",
         "input": ["text", "image"],
         "maxTokens": 128000,
-        "name": "GPT-5.2 Pro",
+        "name": "gpt-5.2-pro",
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {

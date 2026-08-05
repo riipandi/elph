@@ -7,7 +7,7 @@
             "supportsStore": false,
             "thinkingFormat": "qwen"
         },
-        "contextWindow": 196608,
+        "contextWindow": 204800,
         "cost": {
             "cacheRead": 0.03,
             "cacheWrite": 0.375,
@@ -16,7 +16,7 @@
         },
         "id": "MiniMax-M2.5",
         "input": ["text"],
-        "maxTokens": 24576,
+        "maxTokens": 131072,
         "name": "MiniMax-M2.5",
         "provider": "qwen-token-plan",
         "reasoning": true,
@@ -38,17 +38,17 @@
             "supportsStore": false,
             "thinkingFormat": "qwen"
         },
-        "contextWindow": 160000,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.16,
             "cacheWrite": 0.0,
-            "input": 0.33,
-            "output": 0.48
+            "input": 0.28,
+            "output": 0.42
         },
         "id": "deepseek-v3.2",
         "input": ["text"],
-        "maxTokens": 32768,
-        "name": "DeepSeek V3.2",
+        "maxTokens": 128000,
+        "name": "DeepSeek-V3.2",
         "provider": "qwen-token-plan",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -72,14 +72,14 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.028,
+            "cacheRead": 0.003,
             "cacheWrite": 0.0,
-            "input": 0.138,
-            "output": 0.275
+            "input": 0.12,
+            "output": 0.21
         },
         "id": "deepseek-v4-flash",
         "input": ["text"],
-        "maxTokens": 32768,
+        "maxTokens": 131072,
         "name": "DeepSeek V4 Flash",
         "provider": "qwen-token-plan",
         "reasoning": true,
@@ -104,14 +104,14 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.33,
+            "cacheRead": 0.003625,
             "cacheWrite": 0.0,
-            "input": 1.65,
-            "output": 3.301
+            "input": 0.435,
+            "output": 0.87
         },
         "id": "deepseek-v4-pro",
         "input": ["text"],
-        "maxTokens": 32768,
+        "maxTokens": 384000,
         "name": "DeepSeek V4 Pro",
         "provider": "qwen-token-plan",
         "reasoning": true,
@@ -135,14 +135,14 @@
         },
         "contextWindow": 202752,
         "cost": {
-            "cacheRead": 0.2,
+            "cacheRead": 0.1,
             "cacheWrite": 0.43,
-            "input": 1.0,
-            "output": 3.2
+            "input": 0.48,
+            "output": 1.9
         },
         "id": "glm-5",
         "input": ["text"],
-        "maxTokens": 16384,
+        "maxTokens": 202752,
         "name": "GLM-5",
         "provider": "qwen-token-plan",
         "reasoning": true,
@@ -197,14 +197,14 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.26,
+            "cacheRead": 0.3,
             "cacheWrite": 0.0,
-            "input": 1.254,
-            "output": 5.016
+            "input": 1.2,
+            "output": 4.2
         },
         "id": "glm-5.2",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 128000,
         "name": "GLM-5.2",
         "provider": "qwen-token-plan",
         "reasoning": true,
@@ -230,13 +230,13 @@
         "cost": {
             "cacheRead": 0.07,
             "cacheWrite": 0.0,
-            "input": 0.35,
-            "output": 1.7
+            "input": 0.6,
+            "output": 3.0
         },
         "id": "kimi-k2.5",
         "input": ["text", "image", "video"],
         "maxTokens": 32768,
-        "name": "Kimi-K2.5",
+        "name": "Kimi K2.5",
         "provider": "qwen-token-plan",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -259,10 +259,10 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.16,
+            "cacheRead": 0.2508,
             "cacheWrite": 0.0,
-            "input": 0.828,
-            "output": 4.389
+            "input": 0.7524,
+            "output": 4.275
         },
         "id": "kimi-k2.6",
         "input": ["text", "image"],
@@ -290,9 +290,9 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.19,
+            "cacheRead": 0.1881,
             "cacheWrite": 0.0,
-            "input": 0.941,
+            "input": 0.9006,
             "output": 4.389
         },
         "id": "kimi-k2.7-code",
@@ -443,7 +443,7 @@
             "supportsStore": false,
             "thinkingFormat": "qwen"
         },
-        "contextWindow": 991000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.15,
             "cacheWrite": 2.0,
@@ -451,8 +451,8 @@
             "output": 5.0
         },
         "id": "qwen3.8-max-preview",
-        "input": ["text"],
-        "maxTokens": 64000,
+        "input": ["text", "image", "video"],
+        "maxTokens": 131072,
         "name": "Qwen3.8 Max Preview",
         "provider": "qwen-token-plan",
         "reasoning": true,

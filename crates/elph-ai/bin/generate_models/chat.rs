@@ -197,6 +197,7 @@ fn named_factory_provider_id(fn_name: &str) -> Option<&'static str> {
         "github_copilot_provider" => "github-copilot",
         "google_vertex_provider" => "google-vertex",
         "hyper_provider" => "hyper",
+        "infron_provider" => "infron",
         "kimi_coding_provider" => "kimi-coding",
         "mistral_provider" => "mistral",
         "neuralwatt_provider" => "neuralwatt",

@@ -131,7 +131,7 @@
         "id": "claude-3.5-haiku",
         "input": ["text", "image"],
         "maxTokens": 8192,
-        "name": "Anthropic: Claude 3.5 Haiku",
+        "name": "Claude 3.5 Haiku",
         "provider": "cloudflare-ai-gateway",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -182,10 +182,10 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 1.2,
-            "cacheWrite": 15.0,
-            "input": 12.0,
-            "output": 60.0
+            "cacheRead": 1.0,
+            "cacheWrite": 12.5,
+            "input": 10.0,
+            "output": 50.0
         },
         "id": "claude-fable-5",
         "input": ["text", "image"],
@@ -219,7 +219,7 @@
         "id": "claude-haiku-4-5",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
-        "name": "Claude Haiku 4.5 (latest)",
+        "name": "Claude Haiku 4.5",
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -277,7 +277,7 @@
         "id": "claude-opus-4-1",
         "input": ["text", "image", "pdf"],
         "maxTokens": 32000,
-        "name": "Claude Opus 4.1 (latest)",
+        "name": "Claude Opus 4.1",
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -296,16 +296,16 @@
         "compat": {
             "sendSessionAffinityHeaders": true
         },
-        "contextWindow": 198000,
+        "contextWindow": 200000,
         "cost": {
-            "cacheRead": 0.6,
-            "cacheWrite": 7.5,
-            "input": 6.0,
-            "output": 30.0
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "claude-opus-4-5",
-        "input": ["text", "image"],
-        "maxTokens": 32768,
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 64000,
         "name": "Claude Opus 4.5",
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
@@ -328,10 +328,10 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.6,
-            "cacheWrite": 7.5,
-            "input": 6.0,
-            "output": 30.0
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "claude-opus-4-6",
         "input": ["text", "image"],
@@ -359,10 +359,10 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.6,
-            "cacheWrite": 7.5,
-            "input": 6.0,
-            "output": 30.0
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "claude-opus-4-7",
         "input": ["text", "image"],
@@ -390,10 +390,10 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.6,
-            "cacheWrite": 7.5,
-            "input": 6.0,
-            "output": 30.0
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "claude-opus-4-8",
         "input": ["text", "image"],
@@ -421,13 +421,13 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.6,
-            "cacheWrite": 7.5,
-            "input": 6.0,
-            "output": 30.0
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "claude-opus-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 5",
         "provider": "cloudflare-ai-gateway",
@@ -448,7 +448,7 @@
         "compat": {
             "sendSessionAffinityHeaders": true
         },
-        "contextWindow": 200000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.3,
             "cacheWrite": 3.75,
@@ -458,7 +458,7 @@
         "id": "claude-sonnet-4",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
-        "name": "Claude Sonnet 4.5",
+        "name": "Claude Sonnet 4",
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -477,15 +477,15 @@
         "compat": {
             "sendSessionAffinityHeaders": true
         },
-        "contextWindow": 198000,
+        "contextWindow": 200000,
         "cost": {
-            "cacheRead": 0.375,
-            "cacheWrite": 4.69,
-            "input": 3.75,
-            "output": 18.75
+            "cacheRead": 0.3,
+            "cacheWrite": 3.75,
+            "input": 3.0,
+            "output": 15.0
         },
         "id": "claude-sonnet-4-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Sonnet 4.5",
         "provider": "cloudflare-ai-gateway",
@@ -509,10 +509,10 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.36,
-            "cacheWrite": 4.5,
-            "input": 3.6,
-            "output": 18.0
+            "cacheRead": 0.3,
+            "cacheWrite": 3.75,
+            "input": 3.0,
+            "output": 15.0
         },
         "id": "claude-sonnet-4-6",
         "input": ["text", "image"],
@@ -539,8 +539,8 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.3,
-            "cacheWrite": 3.75,
+            "cacheRead": 0.2,
+            "cacheWrite": 2.5,
             "input": 3.0,
             "output": 15.0
         },
@@ -789,7 +789,7 @@
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.18,
-            "cacheWrite": 0.0,
+            "cacheWrite": 1.75,
             "input": 1.75,
             "output": 14.0
         },
@@ -818,7 +818,7 @@
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.25,
-            "cacheWrite": 0.0,
+            "cacheWrite": 2.5,
             "input": 2.5,
             "output": 15.0
         },
@@ -847,7 +847,7 @@
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.5,
-            "cacheWrite": 0.0,
+            "cacheWrite": 5.0,
             "input": 5.0,
             "output": 30.0
         },
@@ -965,7 +965,7 @@
             "output": 60.0
         },
         "id": "o1",
-        "input": ["text", "image", "pdf"],
+        "input": ["text", "image"],
         "maxTokens": 100000,
         "name": "o1",
         "provider": "cloudflare-ai-gateway",

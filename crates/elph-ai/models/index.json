@@ -22,7 +22,7 @@
     {
         "providerId": "baseten",
         "rustMod": "baseten",
-        "count": 14
+        "count": 12
     },
     {
         "providerId": "cerebras",
@@ -72,7 +72,7 @@
     {
         "providerId": "huggingface",
         "rustMod": "huggingface",
-        "count": 129
+        "count": 130
     },
     {
         "providerId": "hyper",
@@ -82,12 +82,12 @@
     {
         "providerId": "infron",
         "rustMod": "infron",
-        "count": 330
+        "count": 321
     },
     {
         "providerId": "kilo",
         "rustMod": "kilo",
-        "count": 346
+        "count": 347
     },
     {
         "providerId": "kimi-coding",
@@ -147,7 +147,7 @@
     {
         "providerId": "opencode",
         "rustMod": "opencode",
-        "count": 19
+        "count": 20
     },
     {
         "providerId": "opencode-go",

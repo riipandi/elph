@@ -431,12 +431,12 @@
             "supportsReasoningEffort": false,
             "supportsStore": false
         },
-        "contextWindow": 256000,
+        "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.07,
+            "cacheRead": 0.05,
             "cacheWrite": 0.0,
-            "input": 0.7,
-            "output": 3.75
+            "input": 0.5,
+            "output": 3.0
         },
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
@@ -445,7 +445,7 @@
             "User-Agent": "GitHubCopilotChat/0.35.0"
         },
         "id": "gemini-3-flash-preview",
-        "input": ["text", "image", "video", "audio", "pdf"],
+        "input": ["text", "image", "audio"],
         "maxTokens": 65536,
         "name": "Gemini 3 Flash Preview",
         "provider": "github-copilot",

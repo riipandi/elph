@@ -1,4 +1,30 @@
 {
+    "allam-2-7b": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.groq.com/openai/v1",
+        "contextWindow": 4096,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "allam-2-7b",
+        "input": ["text"],
+        "maxTokens": 4096,
+        "name": "ALLaM-2-7b",
+        "provider": "groq",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "canopylabs/orpheus-arabic-saudi": {
         "api": "openai-completions",
         "baseUrl": "https://api.groq.com/openai/v1",
@@ -155,32 +181,6 @@
             "xhigh": null
         }
     },
-    "meta-llama/llama-4-scout-17b-16e-instruct": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.groq.com/openai/v1",
-        "contextWindow": 131072,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.11,
-            "output": 0.34
-        },
-        "id": "meta-llama/llama-4-scout-17b-16e-instruct",
-        "input": ["text", "image"],
-        "maxTokens": 8192,
-        "name": "Llama 4 Scout 17B 16E",
-        "provider": "groq",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "meta-llama/llama-prompt-guard-2-22m": {
         "api": "openai-completions",
         "baseUrl": "https://api.groq.com/openai/v1",
@@ -311,29 +311,29 @@
             "xhigh": null
         }
     },
-    "qwen/qwen3-32b": {
+    "qwen/qwen3.6-27b": {
         "api": "openai-completions",
         "baseUrl": "https://api.groq.com/openai/v1",
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.3,
             "cacheWrite": 0.0,
-            "input": 0.29,
-            "output": 0.59
+            "input": 0.6,
+            "output": 3.0
         },
-        "id": "qwen/qwen3-32b",
-        "input": ["text"],
-        "maxTokens": 40960,
-        "name": "Qwen3-32B",
+        "id": "qwen/qwen3.6-27b",
+        "input": ["text", "image"],
+        "maxTokens": 16384,
+        "name": "Qwen3.6 27B",
         "provider": "groq",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "default",
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": "none",
+            "off": null,
             "xhigh": null
         }
     },

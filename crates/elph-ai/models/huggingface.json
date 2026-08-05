@@ -511,17 +511,17 @@
     "Qwen/Qwen2.5-72B-Instruct": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 33000,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.59,
-            "output": 0.59
+            "input": 0.11,
+            "output": 0.38
         },
         "id": "Qwen/Qwen2.5-72B-Instruct",
         "input": ["text"],
-        "maxTokens": 4000,
-        "name": "Qwen/Qwen2.5-72B-Instruct",
+        "maxTokens": 8192,
+        "name": "Qwen 2.5 72B Instruct",
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -1078,17 +1078,17 @@
     "Qwen/Qwen3-VL-30B-A3B-Instruct": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 262000,
+        "contextWindow": 100000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.29,
-            "output": 1.0
+            "input": 0.23,
+            "output": 0.92
         },
         "id": "Qwen/Qwen3-VL-30B-A3B-Instruct",
-        "input": ["text", "image"],
-        "maxTokens": 262000,
-        "name": "Qwen/Qwen3-VL-30B-A3B-Instruct",
+        "input": ["text", "image", "video"],
+        "maxTokens": 100000,
+        "name": "Qwen3 VL 30B",
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -1385,6 +1385,32 @@
             "xhigh": "xhigh"
         }
     },
+    "XiaomiMiMo/MiMo-V2.5-Pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 1.0,
+            "output": 3.0
+        },
+        "id": "XiaomiMiMo/MiMo-V2.5-Pro",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "MiMo-V2.5-Pro",
+        "provider": "huggingface",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
     "aisingapore/Gemma-SEA-LION-v4-27B-IT": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
@@ -1451,6 +1477,32 @@
         "input": ["text"],
         "maxTokens": 64000,
         "name": "allenai/Olmo-3-7B-Instruct",
+        "provider": "huggingface",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "alpindale/WizardLM-2-8x22B": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "alpindale/WizardLM-2-8x22B",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "alpindale/WizardLM-2-8x22B",
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -1706,17 +1758,17 @@
     "deepseek-ai/DeepSeek-V3": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 164000,
+        "contextWindow": 131072,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.25,
-            "output": 1.0
+            "input": 1.25,
+            "output": 1.25
         },
         "id": "deepseek-ai/DeepSeek-V3",
         "input": ["text"],
-        "maxTokens": 164000,
-        "name": "deepseek-ai/DeepSeek-V3",
+        "maxTokens": 131072,
+        "name": "DeepSeek-V3",
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -1732,12 +1784,12 @@
     "deepseek-ai/DeepSeek-V3-0324": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 75000,
+        "contextWindow": 163840,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.2,
-            "output": 0.8
+            "input": 0.25,
+            "output": 0.88
         },
         "id": "deepseek-ai/DeepSeek-V3-0324",
         "input": ["text"],
@@ -1760,7 +1812,7 @@
         "baseUrl": "https://router.huggingface.co/v1",
         "contextWindow": 164000,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.55,
             "cacheWrite": 0.0,
             "input": 0.27,
             "output": 1.0
@@ -1768,7 +1820,7 @@
         "id": "deepseek-ai/DeepSeek-V3.1",
         "input": ["text"],
         "maxTokens": 164000,
-        "name": "deepseek-ai/DeepSeek-V3.1",
+        "name": "DeepSeek V3.1",
         "provider": "huggingface",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1784,17 +1836,17 @@
     "deepseek-ai/DeepSeek-V3.1-Terminus": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 164000,
+        "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.125,
             "cacheWrite": 0.0,
             "input": 0.27,
             "output": 1.0
         },
         "id": "deepseek-ai/DeepSeek-V3.1-Terminus",
         "input": ["text"],
-        "maxTokens": 164000,
-        "name": "deepseek-ai/DeepSeek-V3.1-Terminus",
+        "maxTokens": 8192,
+        "name": "DeepSeek V3.1 Terminus",
         "provider": "huggingface",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1844,12 +1896,12 @@
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 0.27,
-            "output": 0.41
+            "output": 0.4
         },
         "id": "deepseek-ai/DeepSeek-V3.2-Exp",
         "input": ["text"],
         "maxTokens": 164000,
-        "name": "deepseek-ai/DeepSeek-V3.2-Exp",
+        "name": "DeepSeek V3.2 Exp",
         "provider": "huggingface",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1975,16 +2027,16 @@
     "google/gemma-3-27b-it": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 98304,
+        "contextWindow": 37000,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.04,
             "cacheWrite": 0.0,
-            "input": 0.119,
-            "output": 0.2
+            "input": 0.53,
+            "output": 0.76
         },
         "id": "google/gemma-3-27b-it",
         "input": ["text", "image"],
-        "maxTokens": 16384,
+        "maxTokens": 4096,
         "name": "Gemma 3 27B",
         "provider": "huggingface",
         "reasoning": false,
@@ -2005,13 +2057,13 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.05,
+            "output": 0.1
         },
         "id": "google/gemma-3-4b-it",
         "input": ["text", "image"],
         "maxTokens": 16384,
-        "name": "Gemma 3 4B IT",
+        "name": "Gemma 3 4B",
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -2137,17 +2189,17 @@
     "meta-llama/Llama-3.1-8B-Instruct": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 128000,
+        "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0.22,
+            "cacheRead": 0.2,
             "cacheWrite": 0.2,
-            "input": 0.22,
-            "output": 0.22
+            "input": 0.2,
+            "output": 0.2
         },
         "id": "meta-llama/Llama-3.1-8B-Instruct",
         "input": ["text"],
-        "maxTokens": 128000,
-        "name": "Llama 3.1 8B",
+        "maxTokens": 16384,
+        "name": "Llama 3.1 8B Instruct",
         "provider": "huggingface",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -2346,35 +2398,6 @@
             "low": null,
             "max": null,
             "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "moonshotai/Kimi-K2-Thinking": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.huggingface.co/v1",
-        "compat": {
-            "supportsDeveloperRole": false
-        },
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0.15,
-            "cacheWrite": 0.0,
-            "input": 0.6,
-            "output": 2.5
-        },
-        "id": "moonshotai/Kimi-K2-Thinking",
-        "input": ["text"],
-        "maxTokens": 262144,
-        "name": "Kimi-K2-Thinking",
-        "provider": "huggingface",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -2609,17 +2632,17 @@
     "openai/gpt-oss-safeguard-20b": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 128000,
+        "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.037,
             "cacheWrite": 0.0,
             "input": 0.075,
             "output": 0.3
         },
         "id": "openai/gpt-oss-safeguard-20b",
         "input": ["text"],
-        "maxTokens": 16384,
-        "name": "GPT OSS Safeguard 20B",
+        "maxTokens": 65536,
+        "name": "gpt-oss-safeguard-20b",
         "provider": "huggingface",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -2849,17 +2872,17 @@
     "swiss-ai/Apertus-v1.5-70B": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 128000,
+        "contextWindow": 100000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.87,
+            "output": 3.1
         },
         "id": "swiss-ai/Apertus-v1.5-70B",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "swiss-ai/Apertus-v1.5-70B",
+        "input": ["text", "image", "audio"],
+        "maxTokens": 8192,
+        "name": "Apertus v1.5 70B",
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -3418,15 +3441,15 @@
         "baseUrl": "https://router.huggingface.co/v1",
         "contextWindow": 202752,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.182,
             "cacheWrite": 0.0,
-            "input": 0.85,
-            "output": 3.3
+            "input": 1.4,
+            "output": 4.4
         },
         "id": "zai-org/GLM-5.1-FP8",
         "input": ["text"],
         "maxTokens": 131072,
-        "name": "GLM-5.1 FP8",
+        "name": "GLM 5.1",
         "provider": "huggingface",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -3471,16 +3494,16 @@
     "zai-org/GLM-5.2-FP8": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 202752,
         "cost": {
-            "cacheRead": 0.182,
+            "cacheRead": 0.26,
             "cacheWrite": 0.0,
-            "input": 0.979,
-            "output": 3.08
+            "input": 1.2,
+            "output": 4.2
         },
         "id": "zai-org/GLM-5.2-FP8",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 202752,
         "name": "GLM-5.2",
         "provider": "huggingface",
         "reasoning": true,

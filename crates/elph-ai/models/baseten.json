@@ -51,32 +51,6 @@
             "xhigh": "xhigh"
         }
     },
-    "inception/mercury-2": {
-        "api": "openai-completions",
-        "baseUrl": "https://inference.baseten.co/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.024999999999999998,
-            "cacheWrite": 0.0,
-            "input": 0.25,
-            "output": 0.75
-        },
-        "id": "inception/mercury-2",
-        "input": ["text"],
-        "maxTokens": 128000,
-        "name": "Mercury 2",
-        "provider": "baseten",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "moonshotai/Kimi-K2.6": {
         "api": "openai-completions",
         "baseUrl": "https://inference.baseten.co/v1",
@@ -202,32 +176,6 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "sid/sid-1": {
-        "api": "openai-completions",
-        "baseUrl": "https://inference.baseten.co/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "id": "sid/sid-1",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "sid/sid-1",
-        "provider": "baseten",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null

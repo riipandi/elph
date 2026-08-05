@@ -135,7 +135,7 @@
         "id": "deepseek-v4-flash",
         "input": ["text"],
         "maxTokens": 384000,
-        "name": "DeepSeek V4 Flash 0731",
+        "name": "DeepSeek V4 Flash (New)",
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -443,6 +443,32 @@
         "input": ["text"],
         "maxTokens": 32768,
         "name": "Ling-3.0-flash Free",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "longcat-2.0-free": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "longcat-2.0-free",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "LongCat-2.0 Free",
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {

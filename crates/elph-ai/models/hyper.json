@@ -483,7 +483,7 @@
         },
         "contextWindow": 512000,
         "cost": {
-            "cacheRead": 0.064239,
+            "cacheRead": 0.0642392,
             "cacheWrite": 0.0,
             "input": 0.32664,
             "output": 1.30656
@@ -770,7 +770,7 @@
         "id": "qwen3.8-max",
         "input": ["text"],
         "maxTokens": 65536,
-        "name": "Qwen3.8-Max",
+        "name": "Qwen3.8 Max Preview",
         "provider": "hyper",
         "reasoning": false,
         "thinkingLevelMap": {

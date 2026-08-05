@@ -1490,16 +1490,16 @@
     "deepseek/deepseek-v4-pro": {
         "api": "anthropic-messages",
         "baseUrl": "https://ai-gateway.vercel.sh",
-        "contextWindow": 1000000,
+        "contextWindow": 1048600,
         "cost": {
-            "cacheRead": 0.0036,
+            "cacheRead": 0.14,
             "cacheWrite": 0.0,
-            "input": 0.435,
-            "output": 0.87
+            "input": 1.74,
+            "output": 3.48
         },
         "id": "deepseek/deepseek-v4-pro",
         "input": ["text"],
-        "maxTokens": 384000,
+        "maxTokens": 1048600,
         "name": "DeepSeek V4 Pro",
         "provider": "vercel-ai-gateway",
         "reasoning": true,

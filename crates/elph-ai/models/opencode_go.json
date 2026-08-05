@@ -251,8 +251,8 @@
         },
         "id": "hy3-preview",
         "input": ["text"],
-        "maxTokens": 64000,
-        "name": "Hy3 preview",
+        "maxTokens": 128000,
+        "name": "Hy3 Preview",
         "provider": "opencode-go",
         "reasoning": true,
         "thinkingLevelMap": {

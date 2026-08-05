@@ -4,10 +4,10 @@
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.028,
+            "cacheRead": 0.003,
             "cacheWrite": 0.0,
-            "input": 0.138,
-            "output": 0.275
+            "input": 0.12,
+            "output": 0.21
         },
         "id": "deepseek-v4-flash",
         "input": ["text"],
@@ -56,10 +56,10 @@
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.33,
+            "cacheRead": 0.003625,
             "cacheWrite": 0.0,
-            "input": 1.65,
-            "output": 3.301
+            "input": 0.435,
+            "output": 0.87
         },
         "id": "deepseek-v4-pro",
         "input": ["text"],
@@ -134,10 +134,10 @@
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 976000,
         "cost": {
-            "cacheRead": 0.26,
+            "cacheRead": 0.3,
             "cacheWrite": 0.0,
-            "input": 1.254,
-            "output": 5.016
+            "input": 1.2,
+            "output": 4.2
         },
         "id": "glm-5.2",
         "input": ["text"],
@@ -212,10 +212,10 @@
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.16,
+            "cacheRead": 0.2508,
             "cacheWrite": 0.0,
-            "input": 0.828,
-            "output": 4.389
+            "input": 0.7524,
+            "output": 4.275
         },
         "id": "kimi-k2.6",
         "input": ["text", "image"],
@@ -238,9 +238,9 @@
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.19,
+            "cacheRead": 0.1881,
             "cacheWrite": 0.0,
-            "input": 0.941,
+            "input": 0.9006,
             "output": 4.389
         },
         "id": "kimi-k2.7-code",
@@ -264,10 +264,10 @@
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.375,
+            "cacheRead": 0.9405,
             "cacheWrite": 0.0,
-            "input": 3.75,
-            "output": 18.75
+            "input": 3.762,
+            "output": 18.81
         },
         "id": "kimi-k3",
         "input": ["text", "image"],
@@ -290,10 +290,10 @@
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 196608,
         "cost": {
-            "cacheRead": 0.017,
+            "cacheRead": 0.06,
             "cacheWrite": 0.375,
-            "input": 0.08,
-            "output": 0.32
+            "input": 0.819,
+            "output": 3.276
         },
         "id": "minimax-m2.7",
         "input": ["text"],
