@@ -505,7 +505,7 @@ Set provider API keys via environment variables (`BRAVE_SEARCH_API_KEY`, `EXA_AP
 | `tools-collaboration` | no      | `spawn_agent`, `send_message`, …                                                               |
 | `mcp`                 | yes     | MCP client                                                                                     |
 | `extensions`          | yes     | WASM extension host                                                                            |
-| `crawlberg`           | yes     | Crawlberg browser fallback for web tools (derived from Obscura)                                |
+| `crawlberg`           | yes     | Crawlberg browser fallback for web tools                                                       |
 | `tracing`             | no      | `fastrace` instrumentation                                                                     |
 
 ```sh
@@ -516,7 +516,7 @@ cargo build -p elph-agent --no-default-features
 cargo build -p elph-agent --features "mcp,extensions,builtin-tools"
 ```
 
-The first build with the `crawlberg` feature compiles V8 from source and can take a long time.
+The first build with the `crawlberg` feature compiles V8 (the native `crawlberg-browser` backend) from source and can take a long time. The `browser` feature (which pulls in `chromiumoxide`) is also enabled: crawlberg's engine only compiles its browser tier when that feature is present. At runtime the web tools use the native V8 backend (`BrowserBackend::Native`), so no Chromium binary is downloaded.
 
 See [docs/tools.md](./docs/tools.md) for parameters, output formats, truncation limits, and examples.
 
