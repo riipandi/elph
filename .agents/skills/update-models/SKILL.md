@@ -103,19 +103,19 @@ The generator keeps model data current through three layers:
 
 ## Code map
 
-| Path                                      | Role                                         |
-| ----------------------------------------- | -------------------------------------------- |
-| `bin/generate_models/main.rs`             | CLI                                          |
-| `bin/generate_models/models_dev.rs`       | Fetch/cache models.dev (24h TTL + fallback)  |
-| `bin/generate_models/provider_sources.rs` | Elph ↔ models.dev map + live endpoint config |
-| `bin/generate_models/normalize.rs`        | Entry merge + cost fields                    |
-| `bin/generate_models/thinking_map.rs`     | Full 7-key maps                              |
-| `bin/generate_models/pricing.rs`          | Live pricing probes + live model id refresh  |
-| `bin/generate_models/chat.rs`             | Orchestration + registration check           |
-| `models/*.json`                           | Catalog source (compressed into the binary)  |
-| `build.rs`                                | zstd frames + provider index for the binary  |
-| `src/models/catalog.rs`                   | Lazy loader (seed + CONFIG_DIR overlay)      |
-| `schemas/provider-schema.json`            | Forward-looking override schema              |
+| Path                                      | Role                                                          |
+| ----------------------------------------- | ------------------------------------------------------------- |
+| `bin/generate_models/main.rs`             | CLI                                                           |
+| `bin/generate_models/models_dev.rs`       | Fetch/cache models.dev (24h TTL + fallback)                   |
+| `bin/generate_models/provider_sources.rs` | Elph ↔ models.dev map + live endpoint config                  |
+| `bin/generate_models/normalize.rs`        | Entry merge + cost fields                                     |
+| `bin/generate_models/thinking_map.rs`     | Full 7-key maps                                               |
+| `bin/generate_models/pricing.rs`          | Live pricing probes + live model id refresh                   |
+| `bin/generate_models/chat.rs`             | Orchestration + registration check                            |
+| `models/*.json`                           | Catalog source (compressed into the binary)                   |
+| `build.rs`                                | zstd frames + provider index for the binary                   |
+| `src/models/catalog.rs`                   | Lazy loader (seed + CONFIG_DIR overlay)                       |
+| `schemas/provider-schema.json`            | User override schema (merged by install_provider_catalog_dir) |
 
 ## Do not
 
