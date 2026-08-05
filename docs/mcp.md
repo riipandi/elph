@@ -222,13 +222,14 @@ DCR remains available for backward compatibility (spec-deprecated, still support
 
 Credentials: sealed file `CONFIG_DIR/auth.json` (default `~/.config/elph/auth.json`).
 
-The entire document is an **AES-256-GCM envelope** (`v: 2`). The master key lives only in the
-**OS keychain** (zero-trust) — never as `auth.key` beside the store, and no `auth.json.lock`
-sidecar. Logical payload holds MCP OAuth JSON objects and provider API keys / `env:VAR` refs.
+The document is plain JSON with per-field `enc:` encryption (AES-256-GCM). The master
+key is wrapped with a machine-derived key and persisted at `DATA_DIR/auth.lock`
+(default `~/.local/share/elph/auth.lock`) — no OS keychain, no user passphrase. The
+wrapping key is derived via HKDF-SHA256 from this machine's hardware UUID / machine-id,
+so copying `auth.json` + `auth.lock` to another machine will not decrypt. Logical payload
+holds MCP OAuth JSON objects and provider API keys / `env:VAR` refs.
 
 CI/tests may inject a key via `set_process_master_key_for_tests` or `ELPH_AUTH_MASTER_KEY_B64`.
-
-Legacy cleartext stores are **not** migrated — re-run `elph provider connect` / `mcp auth`.
 
 Hosts pass the path via `AuthStorePathBuilder` / `McpLoadOptions.auth_store_path`.
 

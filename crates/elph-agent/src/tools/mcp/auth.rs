@@ -2,8 +2,8 @@
 //!
 //! Credentials live in a plain JSON file (default name [`DEFAULT_AUTH_FILE_NAME`] =
 //! `auth.json`) where individual string values are encrypted with an `enc:` prefix
-//! (AES-256-GCM). The master key is kept only in the OS keychain (zero-trust) —
-//! never as `auth.key` beside the store.
+//! (AES-256-GCM). The master key is wrapped (encrypted) with a machine-derived
+//! key and persisted at `~/.local/share/elph/auth.lock` (zero-trust, no OS keychain, no passphrase).
 //!
 //! On-disk format:
 //! ```json
@@ -139,7 +139,7 @@ pub struct AuthStoreFile {
 }
 
 impl AuthStoreFile {
-    /// Load and decrypt the auth store (OS keychain master key). Missing / empty → empty store.
+    /// Load and decrypt the auth store (machine-bound wrapped master key). Missing / empty → empty store.
     ///
     /// Reads plain JSON with per-field `enc:` values, decrypts them, returns plaintext in memory.
     pub async fn load_from_path(path: &Path) -> Result<Self, AuthError> {
@@ -158,7 +158,7 @@ impl AuthStoreFile {
         Self::from_plain_json_bytes(&bytes, key)
     }
 
-    /// Sync load (CLI probes) using the OS keychain master key.
+    /// Sync load (CLI probes) using the machine-bound wrapped master key.
     pub fn load_from_path_sync(path: &Path) -> Result<Self, AuthError> {
         let key = load_or_create_master_key().map_err(|e| AuthError::InternalError(format!("auth master key: {e}")))?;
         Self::load_from_path_sync_with_key(path, &key)
@@ -379,7 +379,7 @@ impl AuthStoreFile {
 pub struct FileCredentialStore {
     path: PathBuf,
     server_key: String,
-    /// When set, used instead of the OS keychain (tests / injectors).
+    /// When set, used instead of the machine-bound wrapped master key (tests / injectors).
     master_key: Option<Arc<Aes256Key>>,
     cache: Arc<RwLock<Option<StoredCredentials>>>,
 }
@@ -395,7 +395,7 @@ impl FileCredentialStore {
         }
     }
 
-    /// Use an explicit master key (tests). Does not touch the OS keychain.
+    /// Use an explicit master key (tests). Does not touch machine binding.
     pub fn with_key(path: impl Into<PathBuf>, server_key: impl Into<String>, key: Aes256Key) -> Self {
         Self {
             path: path.into(),

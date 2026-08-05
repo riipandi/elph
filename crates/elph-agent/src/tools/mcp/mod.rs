@@ -5,7 +5,7 @@
 //! - **stdio**, **streamable HTTP**, and **SSE** transports (SSE deprecated; prefer HTTP)
 //! - **MCP 2026-07-28** lifecycle (`server/discover` auto/legacy/discover)
 //! - **OAuth 2.1** (PKCE) for remote servers via `mcp auth`; CIMD via `oauthClientMetadataUrl`
-//! - **AES-256-GCM** sealed `auth.json` envelope; master key in OS keychain only
+//! - **AES-256-GCM** sealed `auth.json` envelope; master key wrapped to `auth.lock` via machine-derived key
 //! - **JSON Schema + semantic** config validation
 //! - **Resources**, **prompts**, and **Tasks** bridge tools
 //! - **MRTR** elicitation policy (`mrtrElicitation`: decline/error)
@@ -169,9 +169,7 @@ pub use events::{McpClientService, McpEventBus, McpServerEvent};
 #[cfg(feature = "mcp")]
 pub use key_provider::load_or_create_master_key;
 #[cfg(feature = "mcp")]
-pub use key_provider::{
-    KEYCHAIN_ACCOUNT, KEYCHAIN_SERVICE, clear_process_master_key_for_tests, set_process_master_key_for_tests,
-};
+pub use key_provider::{clear_process_master_key_for_tests, default_auth_lock_path, set_process_master_key_for_tests};
 #[cfg(feature = "mcp")]
 pub use policy::{McpPolicyAction, McpPolicyConfig};
 #[cfg(feature = "mcp")]

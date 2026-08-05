@@ -30,13 +30,15 @@ fastrace = { workspace = true, optional = true }
 fastrace-reqwest = { workspace = true, optional = true }
 fff-search = { workspace = true, optional = true }
 futures.workspace = true
+getrandom.workspace = true
 governor.workspace = true
+hex.workspace = true
+hkdf.workspace = true
 htmd.workspace = true
 http.workspace = true
 ignore.workspace = true
 jsonschema.workspace = true
 kalid.workspace = true
-keyring.workspace = true
 log.workspace = true
 logforth.workspace = true
 memchr.workspace = true
@@ -49,6 +51,7 @@ rmcp = { workspace = true, optional = true }
 serde-jsonlines = { workspace = true, features = ["async"] }
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true
 time.workspace = true

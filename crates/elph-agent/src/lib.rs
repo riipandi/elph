@@ -459,6 +459,8 @@ pub use tools::mcp::decrypt_string_async;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::decrypt_string_sync;
 #[cfg(feature = "mcp")]
+pub use tools::mcp::default_auth_lock_path;
+#[cfg(feature = "mcp")]
 pub use tools::mcp::encrypt_async;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::encrypt_json_async;

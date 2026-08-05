@@ -50,7 +50,7 @@ copy pi JSON or reintroduce `--catalog-dir` / pi npm chat generation.
     - config merge (home + project), schema validate
     - transports: stdio, streamable HTTP, SSE
     - auth: env/token vs OAuth store, conflict policy
-    - crypto: AES-256-GCM `enc:`, `auth.json` + `auth.key`
+    - crypto: AES-256-GCM per-field `enc:`, `auth.json` + wrapped key at `auth.lock` (machine-bound)
     - registry, session pool, policy, truncate, events/progress
     - tool names: `mcp_{server}__{tool}`
 - **Goals** — `src/goals/`

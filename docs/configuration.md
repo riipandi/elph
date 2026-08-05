@@ -40,6 +40,7 @@ Override with `ELPH_HOME` (config) and `ELPH_DATA_DIR` (data).
 └── trust.json               # Trusted workspace directories
 
 ~/.local/share/elph/                         # APP_DATA
+├── auth.lock                # Wrapped AES-256 master key (machine-bound)
 ├── attachments/             # Pasted / uploaded images
 ├── downloads/               # Downloaded files + update artifacts
 ├── logs/
