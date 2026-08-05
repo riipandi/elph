@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::fmt;
+use std::io::IsTerminal;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -33,6 +34,12 @@ fn ok(msg: impl fmt::Display) -> String {
 
 fn err(msg: impl fmt::Display) -> String {
     format!("{}! {}{}", STYLE_ERR.render(), msg, STYLE_ERR.render_reset())
+}
+
+/// Print a dim horizontal rule sized to (at least) the given title width.
+fn print_rule(width: usize) {
+    let width = width.clamp(20, 64);
+    println!("{}{}{}", STYLE_MUTED.render(), "─".repeat(width), STYLE_MUTED.render_reset());
 }
 
 #[derive(Parser, Default)]
@@ -612,12 +619,11 @@ fn handle_update(provider_id: Option<&str>, yes: bool, overwrite: bool, dry_run:
         }
     };
 
-    println!();
     print_report(&report);
     EXIT_SUCCESS
 }
 
-/// Print the plan: one line per provider with its status and change summary.
+/// Print the plan: summary counts, then a list of providers that will change.
 fn print_plan(plan: &elph_ai::ProviderUpdatePlan) {
     let new = plan
         .entries
@@ -631,71 +637,156 @@ fn print_plan(plan: &elph_ai::ProviderUpdatePlan) {
         .filter(|e| matches!(e.status, elph_ai::ProviderUpdateStatus::UpToDate))
         .count();
 
+    let title = "Provider catalog update";
     println!();
-    println!("{}Provider catalog update{}", STYLE_BOLD.render(), STYLE_BOLD.render_reset());
-    println!("  {} up to date · {} new · {} with changes", up, new, conflicts);
+    println!("{}{}{}", STYLE_BOLD.render(), title, STYLE_BOLD.render_reset());
+    print_rule(title.len());
+
+    let summary: [(&str, usize); 3] = [("Up to date", up), ("New", new), ("With changes", conflicts)];
+    let label_w = summary.iter().map(|(l, _)| l.len()).max().unwrap_or(0);
+    for (label, n) in summary {
+        println!(
+            "  {:<width$}  {}{}{}",
+            label,
+            STYLE_BOLD.render(),
+            n,
+            STYLE_BOLD.render_reset(),
+            width = label_w
+        );
+    }
+
+    if new == 0 && conflicts == 0 {
+        println!();
+        println!(
+            "{}All providers are up to date — nothing to do.{}",
+            STYLE_MUTED.render(),
+            STYLE_MUTED.render_reset()
+        );
+        return;
+    }
+
+    println!();
+    let max_name = plan
+        .entries
+        .iter()
+        .map(|e| provider_display_name(&e.provider).len())
+        .max()
+        .unwrap_or(0)
+        .min(40);
 
     for e in &plan.entries {
+        if matches!(e.status, elph_ai::ProviderUpdateStatus::UpToDate) {
+            continue;
+        }
         let name = provider_display_name(&e.provider);
-        let tag = match e.status {
-            elph_ai::ProviderUpdateStatus::UpToDate => {
-                format!("{}up to date{}", STYLE_MUTED.render(), STYLE_MUTED.render_reset())
-            }
+        let (tag, style) = match e.status {
+            elph_ai::ProviderUpdateStatus::New => ("new", STYLE_OK),
+            elph_ai::ProviderUpdateStatus::Conflict => ("conflict", STYLE_ERR),
+            elph_ai::ProviderUpdateStatus::UpToDate => unreachable!(),
+        };
+        let detail = match e.status {
             elph_ai::ProviderUpdateStatus::New => {
-                format!("{}new{}", STYLE_OK.render(), STYLE_OK.render_reset())
+                format!("+ {} model(s) in seed, not on disk", e.added.len())
             }
             elph_ai::ProviderUpdateStatus::Conflict => {
-                format!("{}conflict{}", STYLE_ERR.render(), STYLE_ERR.render_reset())
+                let mut s = format!("~ {} model(s) customized on disk (kept by merge)", e.changed.len());
+                if !e.added.is_empty() {
+                    s.push_str(&format!(", + {} added from seed", e.added.len()));
+                }
+                s
             }
+            elph_ai::ProviderUpdateStatus::UpToDate => String::new(),
         };
-        println!("  - {:<24} {}", name, tag);
-        if !e.added.is_empty() {
-            println!("      + {} model(s) in seed not on disk", e.added.len());
-        }
-        if !e.changed.is_empty() {
-            println!("      ~ {} model(s) customized on disk (kept by merge)", e.changed.len());
-        }
+        println!(
+            "  {:<width$}  {}{}{} - {}{}{}",
+            name,
+            style.render(),
+            tag,
+            style.render_reset(),
+            STYLE_MUTED.render(),
+            detail,
+            STYLE_MUTED.render_reset(),
+            width = max_name
+        );
     }
 }
 
 /// Print the applied-change summary.
 fn print_report(report: &elph_ai::ProviderUpdateReport) {
-    let mut parts = Vec::new();
-    if report.written > 0 {
-        parts.push(format!("{} written", report.written));
+    let title = "Provider catalogs updated";
+    println!();
+    println!("{}{}{}", STYLE_BOLD.render(), title, STYLE_BOLD.render_reset());
+    print_rule(title.len());
+
+    let rows: [(&str, usize, Style); 5] = [
+        ("Written", report.written, STYLE_OK),
+        ("Merged", report.merged, STYLE_BOLD),
+        ("Overwritten", report.overwritten, STYLE_ERR),
+        ("Skipped", report.skipped, STYLE_MUTED),
+        ("Up to date", report.up_to_date, STYLE_MUTED),
+    ];
+    let label_w = rows.iter().map(|(l, _, _)| l.len()).max().unwrap_or(0);
+    for (label, n, style) in rows {
+        if n == 0 {
+            continue;
+        }
+        println!(
+            "  {:<width$}  {}{}{}",
+            label,
+            style.render(),
+            n,
+            style.render_reset(),
+            width = label_w
+        );
     }
-    if report.merged > 0 {
-        parts.push(format!("{} merged", report.merged));
-    }
-    if report.overwritten > 0 {
-        parts.push(format!("{} overwritten", report.overwritten));
-    }
-    if report.skipped > 0 {
-        parts.push(format!("{} skipped", report.skipped));
-    }
-    if report.up_to_date > 0 {
-        parts.push(format!("{} up to date", report.up_to_date));
-    }
+
+    println!();
     println!(
-        "{}Done.{} {}",
-        STYLE_BOLD.render(),
-        STYLE_BOLD.render_reset(),
-        parts.join(" · ")
-    );
-    println!(
-        "{}Restart elph to load the updated catalogs.{}",
+        "{}Tip: restart elph to load the updated catalogs.{}",
         STYLE_MUTED.render(),
         STYLE_MUTED.render_reset()
     );
 }
 
-/// Prompt per-conflict: keep custom config (merge), skip, overwrite, or diff.
-/// `a`/`n` apply the choice to every remaining conflict; `q` aborts.
+/// Present each conflicting provider as an `inquire` selector.
+///
+/// Options: update (merge, keeping custom config), skip, overwrite, show diff,
+/// apply-to-all (update/skip/overwrite), and quit. Conflicts require an interactive
+/// terminal; otherwise `--yes` / `--overwrite` must be supplied (pipe-safe).
 fn interactive_resolve_conflicts(
     dir: &Path,
     plan: &elph_ai::ProviderUpdatePlan,
 ) -> Result<HashMap<String, UpdatePolicy>, ExitCode> {
-    use std::io::Write;
+    if plan.conflicts().is_empty() {
+        return Ok(HashMap::new());
+    }
+    if !std::io::stdin().is_terminal() {
+        eprintln!(
+            "{}",
+            err("Conflicts require an interactive terminal or --yes / --overwrite to resolve non-interactively.")
+        );
+        return Err(EXIT_ERROR);
+    }
+
+    const UPDATE: &str = "Update (keep custom config)";
+    const SKIP: &str = "Skip this provider";
+    const OVERWRITE: &str = "Overwrite with embedded seed";
+    const DIFF: &str = "Show diff";
+    const UPDATE_ALL: &str = "Update all remaining";
+    const SKIP_ALL: &str = "Skip all remaining";
+    const OVERWRITE_ALL: &str = "Overwrite all remaining";
+    const QUIT: &str = "Quit";
+
+    let options = vec![
+        UPDATE.to_string(),
+        SKIP.to_string(),
+        OVERWRITE.to_string(),
+        DIFF.to_string(),
+        UPDATE_ALL.to_string(),
+        SKIP_ALL.to_string(),
+        OVERWRITE_ALL.to_string(),
+        QUIT.to_string(),
+    ];
 
     let mut map: HashMap<String, UpdatePolicy> = HashMap::new();
     let mut global: Option<UpdatePolicy> = None;
@@ -705,68 +796,68 @@ fn interactive_resolve_conflicts(
             map.insert(entry.provider.clone(), p);
             continue;
         }
+
+        let mut message = format!(
+            "{}Conflict — {}{}",
+            STYLE_BOLD.render(),
+            provider_display_name(&entry.provider),
+            STYLE_BOLD.render_reset()
+        );
+        if entry.unparsable {
+            message.push_str(&format!(
+                "  {} (unparsable on disk; merge leaves it untouched)",
+                dir.join(format!("{}.json", entry.provider)).display()
+            ));
+        }
+        if !entry.added.is_empty() {
+            message.push_str(&format!("  +{} new in seed", entry.added.len()));
+        }
+        if !entry.changed.is_empty() {
+            message.push_str(&format!("  ~{} customized on disk", entry.changed.len()));
+        }
+
         loop {
-            println!();
-            println!(
-                "{}Conflict: {}{}",
-                STYLE_BOLD.render(),
-                provider_display_name(&entry.provider),
-                STYLE_BOLD.render_reset()
-            );
-            if entry.unparsable {
-                println!(
-                    "{}  {} could not be parsed; merge will leave it untouched.{}",
-                    STYLE_MUTED.render(),
-                    dir.join(format!("{}.json", entry.provider)).display(),
-                    STYLE_MUTED.render_reset()
-                );
-            }
-            if !entry.added.is_empty() {
-                println!("  + {} model(s) in seed not on disk", entry.added.len());
-            }
-            if !entry.changed.is_empty() {
-                println!("  ~ {} model(s) customized on disk (kept by merge)", entry.changed.len());
-            }
-            print!("  [u]pdate (keep custom) / [s]kip / [o]verwrite / [d]iff  (a=all-update, n=all-skip, q=quit): ");
-            let _ = std::io::stdout().flush();
-            let mut line = String::new();
-            if std::io::stdin().read_line(&mut line).is_err() {
-                return Err(EXIT_ERROR);
-            }
-            match line.trim().to_ascii_lowercase().as_str() {
-                "d" => {
+            let choice = Select::new(&message, options.clone())
+                .with_page_size(options.len())
+                .with_help_message("↑↓ navigate · Enter select · Esc quit")
+                .prompt_skippable();
+
+            match choice {
+                Ok(Some(picked)) if picked.as_str() == DIFF => {
                     print_diff_entry(dir, entry);
                     continue;
                 }
-                "u" | "" => {
+                Ok(Some(picked)) if picked.as_str() == UPDATE => {
                     map.insert(entry.provider.clone(), UpdatePolicy::Merge);
                     break;
                 }
-                "s" => {
+                Ok(Some(picked)) if picked.as_str() == SKIP => {
                     map.insert(entry.provider.clone(), UpdatePolicy::SkipExisting);
                     break;
                 }
-                "o" => {
+                Ok(Some(picked)) if picked.as_str() == OVERWRITE => {
                     map.insert(entry.provider.clone(), UpdatePolicy::Overwrite);
                     break;
                 }
-                "a" => {
+                Ok(Some(picked)) if picked.as_str() == UPDATE_ALL => {
                     global = Some(UpdatePolicy::Merge);
                     map.insert(entry.provider.clone(), UpdatePolicy::Merge);
                     break;
                 }
-                "n" => {
+                Ok(Some(picked)) if picked.as_str() == SKIP_ALL => {
                     global = Some(UpdatePolicy::SkipExisting);
                     map.insert(entry.provider.clone(), UpdatePolicy::SkipExisting);
                     break;
                 }
-                "q" => {
+                Ok(Some(picked)) if picked.as_str() == OVERWRITE_ALL => {
+                    global = Some(UpdatePolicy::Overwrite);
+                    map.insert(entry.provider.clone(), UpdatePolicy::Overwrite);
+                    break;
+                }
+                // QUIT, Esc (None), or any error → abort.
+                Ok(Some(_)) | Ok(None) | Err(_) => {
                     println!("Cancelled.");
                     return Err(EXIT_SUCCESS);
-                }
-                _ => {
-                    println!("  Enter u, s, o, d, a, n, or q.");
-                    continue;
                 }
             }
         }
@@ -774,30 +865,182 @@ fn interactive_resolve_conflicts(
     Ok(map)
 }
 
-/// Show what `merge` vs `overwrite` would do for a single conflicting provider.
+/// Print a concise, field-level diff (no raw JSON) of what `merge` keeps vs
+/// `overwrite` replaces, for a single conflicting provider.
 fn print_diff_entry(dir: &Path, entry: &elph_ai::ProviderUpdatePlanEntry) {
+    print!("{}", format_diff_entry(dir, entry));
+}
+
+/// Build a concise, field-level diff string (no raw JSON dumps).
+fn format_diff_entry(dir: &Path, entry: &elph_ai::ProviderUpdatePlanEntry) -> String {
+    let name = provider_display_name(&entry.provider);
+    let mut out = String::new();
+    out.push_str(&format!(
+        "\n{}Diff — {}{}\n",
+        STYLE_BOLD.render(),
+        name,
+        STYLE_BOLD.render_reset()
+    ));
+
     let path = dir.join(format!("{}.json", entry.provider));
     let disk: Option<Value> = std::fs::read_to_string(&path)
         .ok()
         .and_then(|b| serde_json::from_str(&b).ok());
     let seed = elph_ai::embedded_provider_json(&entry.provider).and_then(|s| serde_json::from_str::<Value>(&s).ok());
 
-    for id in &entry.added {
-        if let Some(s) = seed.as_ref().and_then(|v| v.get(id)) {
-            println!(
-                "  + {id} (new in seed): {}",
-                serde_json::to_string_pretty(s).unwrap_or_default()
-            );
+    if !entry.added.is_empty() {
+        out.push_str(&format!(
+            "{}  Added (in seed, missing on disk):{}\n",
+            STYLE_OK.render(),
+            STYLE_OK.render_reset()
+        ));
+        for id in &entry.added {
+            if let Some(s) = seed.as_ref().and_then(|v| v.get(id)) {
+                out.push_str(&format!("    + {}  ({})\n", model_summary(s), id));
+            }
         }
     }
-    for id in &entry.changed {
-        let d = disk.as_ref().and_then(|v| v.get(id));
-        let s = seed.as_ref().and_then(|v| v.get(id));
-        println!("  ~ {id}:");
-        println!(
-            "      disk: {}",
-            d.map(|v| v.to_string()).unwrap_or_else(|| "<unparsed>".into())
-        );
-        println!("      seed: {}", s.map(|v| v.to_string()).unwrap_or_default());
+
+    if !entry.changed.is_empty() {
+        out.push_str(&format!(
+            "{}  Customized on disk (kept by merge):{}\n",
+            STYLE_ERR.render(),
+            STYLE_ERR.render_reset()
+        ));
+        for id in &entry.changed {
+            let d = disk.as_ref().and_then(|v| v.get(id));
+            let s = seed.as_ref().and_then(|v| v.get(id));
+            let label = s
+                .or(d)
+                .and_then(|v| v.get("name"))
+                .and_then(|v| v.as_str())
+                .unwrap_or(id.as_str())
+                .to_string();
+            out.push_str(&format!("    ~ {}  ({})\n", label, id));
+            match (d, s) {
+                (Some(dv), Some(sv)) => out.push_str(&diff_model_fields(dv, sv)),
+                _ => out.push_str("      (unable to compare values)\n"),
+            }
+        }
+    }
+    out
+}
+
+/// One-line human summary of a model definition value.
+fn model_summary(v: &Value) -> String {
+    let name = v.get("name").and_then(|x| x.as_str()).unwrap_or("?");
+    let ctx = v.get("context_window").and_then(|x| x.as_u64()).unwrap_or(0);
+    let price = v
+        .get("cost")
+        .and_then(|c| c.get("input").and_then(|x| x.as_f64()))
+        .zip(v.get("cost").and_then(|c| c.get("output").and_then(|x| x.as_f64())))
+        .map(|(inp, out)| format!("${inp:.2}/${out:.2} per M"))
+        .unwrap_or_default();
+    let mut s = name.to_string();
+    if ctx > 0 {
+        s.push_str(&format!(" · {ctx} ctx"));
+    }
+    if !price.is_empty() {
+        s.push_str(&format!(" · {price}"));
+    }
+    s
+}
+
+/// Compact single-value rendering (no raw JSON dumps).
+fn short_value(v: &Value) -> String {
+    match v {
+        Value::String(s) => format!("\"{s}\""),
+        Value::Number(n) => n.to_string(),
+        Value::Bool(b) => b.to_string(),
+        Value::Null => "null".into(),
+        Value::Array(_) => "<array>".into(),
+        Value::Object(_) => "<object>".into(),
+    }
+}
+
+/// Field-level differences between two model definitions, as a string.
+fn diff_model_fields(disk: &Value, seed: &Value) -> String {
+    let mut out = String::new();
+    let (Some(d), Some(s)) = (disk.as_object(), seed.as_object()) else {
+        out.push_str("      (unable to compare values)\n");
+        return out;
+    };
+
+    // Union of keys, stable order.
+    let mut keys: Vec<&String> = d.keys().collect();
+    for k in s.keys() {
+        if !keys.contains(&k) {
+            keys.push(k);
+        }
+    }
+
+    for k in keys {
+        let dv = d.get(k);
+        let sv = s.get(k);
+        match (dv, sv) {
+            (Some(a), Some(b)) if a == b => continue,
+            (Some(a), Some(b)) => {
+                if k.as_str() == "cost" && a.is_object() && b.is_object() {
+                    let da = a.as_object().unwrap();
+                    let sb = b.as_object().unwrap();
+                    for ck in ["input", "output", "cache_read", "cache_write"] {
+                        let dprice = da.get(ck).and_then(|x| x.as_f64()).unwrap_or(0.0);
+                        let sprice = sb.get(ck).and_then(|x| x.as_f64()).unwrap_or(0.0);
+                        if (dprice - sprice).abs() > f64::EPSILON {
+                            out.push_str(&format!("      cost.{ck}:  ${dprice:.2} → ${sprice:.2}\n"));
+                        }
+                    }
+                    if da.get("tiers") != sb.get("tiers") {
+                        out.push_str("      cost.tiers:  <differ>\n");
+                    }
+                    continue;
+                }
+                if k.as_str() == "thinking_level_map" {
+                    out.push_str("      thinking:  <levels differ>\n");
+                    continue;
+                }
+                out.push_str(&format!("      {}:  {} → {}\n", k, short_value(a), short_value(b)));
+            }
+            (Some(a), None) => out.push_str(&format!("      {}:  {}  (removed on disk)\n", k, short_value(a))),
+            (None, Some(b)) => out.push_str(&format!("      {}:  (missing on disk) → {}\n", k, short_value(b))),
+            (None, None) => {}
+        }
+    }
+    out
+}
+
+#[cfg(test)]
+mod diff_tests {
+    use super::*;
+
+    #[test]
+    fn diff_is_field_level_not_raw_json() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().to_path_buf();
+
+        // Start from the embedded seed, then customize a few fields on disk.
+        let seed_str = elph_ai::embedded_provider_json("anthropic").expect("embedded seed");
+        let mut seed: serde_json::Value = serde_json::from_str(&seed_str).unwrap();
+        let m = seed.get_mut("claude-opus-4-5").expect("model present");
+        m["name"] = serde_json::json!("Custom Opus");
+        m["context_window"] = serde_json::json!(123456);
+        m["cost"]["input"] = serde_json::json!(9.99);
+        std::fs::write(dir.join("anthropic.json"), serde_json::to_string(&seed).unwrap()).unwrap();
+
+        let entry = elph_ai::ProviderUpdatePlanEntry {
+            provider: "anthropic".into(),
+            status: elph_ai::ProviderUpdateStatus::Conflict,
+            added: vec![],
+            changed: vec!["claude-opus-4-5".into()],
+            unparsable: false,
+        };
+
+        let out = format_diff_entry(&dir, &entry);
+        assert!(out.contains("Custom Opus"), "names the model: {out}");
+        assert!(out.contains("name:"), "shows changed name field: {out}");
+        assert!(out.contains("context_window:"), "shows context_window field: {out}");
+        assert!(out.contains("cost.input:"), "shows cost.input field: {out}");
+        assert!(!out.contains("\"context_window\":"), "must not dump raw JSON: {out}");
+        assert!(!out.contains("\"id\":"), "must not dump raw JSON: {out}");
     }
 }

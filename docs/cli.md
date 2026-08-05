@@ -10,12 +10,12 @@ elph [OPTIONS] [COMMAND]
 
 ## Global options
 
-| Flag                         | Description                                                                 |
-| ---------------------------- | --------------------------------------------------------------------------- |
-| `-V`, `--version`            | Print version                                                               |
-| `-h`, `--help`               | Print help                                                                  |
-| `-c`, `--continue`           | Continue the **most recent session for this project** (CWD / `PROJECT_DIR`); does **not** start a new session |
-| `-r`, `--resume <SESSION_ID>` | Resume a **specific** session by ID                                         |
+| Flag                          | Description                                                                                                   |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `-V`, `--version`             | Print version                                                                                                 |
+| `-h`, `--help`                | Print help                                                                                                    |
+| `-c`, `--continue`            | Continue the **most recent session for this project** (CWD / `PROJECT_DIR`); does **not** start a new session |
+| `-r`, `--resume <SESSION_ID>` | Resume a **specific** session by ID                                                                           |
 
 ### Default (no subcommand)
 
@@ -31,26 +31,26 @@ elph -r <id>              # same as --resume
 
 ## Subcommands
 
-| Command       | Description                                 |
-| ------------- | ------------------------------------------- |
-| `acp`         | Agent Client Protocol server over stdio     |
-| `codegraph`   | Semantic code index + shallow impact graph  |
-| `completions` | Shell completion scripts                    |
-| `doctor`      | Show discovered configuration               |
-| `export`      | Export session transcript or archive        |
-| `import`      | Import sessions                             |
-| `mcp`         | MCP server configuration                    |
-| `memory`      | Inspect and manage agent memory             |
-| `models`      | List available models                       |
-| `plugin`      | Plugins and extensions                      |
-| `provider`    | AI providers and credentials                |
-| `run`         | Non-interactive prompt → stdout             |
-| `server`      | Local REST + WebSocket + web UI             |
-| `session`     | List, search, restore sessions              |
-| `stats`       | Token usage and cost                        |
-| `update`      | Check for updates                           |
-| `version`     | Print version                               |
-| `worktree`    | Git worktrees                               |
+| Command       | Description                                |
+| ------------- | ------------------------------------------ |
+| `acp`         | Agent Client Protocol server over stdio    |
+| `codegraph`   | Semantic code index + shallow impact graph |
+| `completions` | Shell completion scripts                   |
+| `doctor`      | Show discovered configuration              |
+| `export`      | Export session transcript or archive       |
+| `import`      | Import sessions                            |
+| `mcp`         | MCP server configuration                   |
+| `memory`      | Inspect and manage agent memory            |
+| `models`      | List available models                      |
+| `plugin`      | Plugins and extensions                     |
+| `provider`    | AI providers and credentials               |
+| `run`         | Non-interactive prompt → stdout            |
+| `server`      | Local REST + WebSocket + web UI            |
+| `session`     | List, search, restore sessions             |
+| `stats`       | Token usage and cost                       |
+| `update`      | Check for updates                          |
+| `version`     | Print version                              |
+| `worktree`    | Git worktrees                              |
 
 Launch without a subcommand starts the interactive TUI (see global `--continue` / `--resume` above).
 
@@ -75,19 +75,43 @@ See [memory.md](./memory.md).
 
 ### `run`
 
-| Flag                   | Description                       |
-| ---------------------- | --------------------------------- |
-| `-m`, `--model`        | Model (`provider/model`)          |
-| `--output-format`      | Output format (default `text`)    |
-| `-c`, `--continue`     | Continue last session for this project |
+| Flag                   | Description                               |
+| ---------------------- | ----------------------------------------- |
+| `-m`, `--model`        | Model (`provider/model`)                  |
+| `--output-format`      | Output format (default `text`)            |
+| `-c`, `--continue`     | Continue last session for this project    |
 | `-r`, `--resume`       | Resume by session ID (alias: `--session`) |
-| `--fork`               | Fork before continue              |
-| `-f`, `--file`         | Attach files (repeatable)         |
-| `-b`, `--brave`        | Auto-approve tools                |
-| `--max-retries`        | Max retry attempts (default 3)    |
-| `--max-backoff-ms`     | Max backoff delay in ms           |
-| `--circuit-threshold`  | Circuit breaker failure threshold |
-| `--circuit-timeout-ms` | Circuit breaker recovery timeout  |
+| `--fork`               | Fork before continue                      |
+| `-f`, `--file`         | Attach files (repeatable)                 |
+| `-b`, `--brave`        | Auto-approve tools                        |
+| `--max-retries`        | Max retry attempts (default 3)            |
+| `--max-backoff-ms`     | Max backoff delay in ms                   |
+| `--circuit-threshold`  | Circuit breaker failure threshold         |
+| `--circuit-timeout-ms` | Circuit breaker recovery timeout          |
+
+### `models`
+
+List models from the embedded catalogs baked into the binary (source: `elph-ai` built-ins).
+
+| Argument / flag   | Description                                                                 |
+| ----------------- | --------------------------------------------------------------------------- |
+| `[PROVIDER]`      | Optional positional provider filter (matches `id` or display name, case-insensitive). |
+| `--search <QUERY>`| Fuzzy filter across `provider.id`, `model.id`, and `model.name`.            |
+
+Output is grouped by provider. A summary line prints the provider/model counts (and the active query when `--search` is used), followed by one section per provider. Each model line shows the display name, the model id (dimmed), and a compact spec: context window (e.g. `200k`, `1.0M`) plus per-million-token price (e.g. `$5.00/$25.00`; `free` when both rates are zero), tagged `reasoning` when the model supports thinking.
+
+```text
+Models
+──────
+  Providers  1
+  Models     15
+
+Anthropic (anthropic)
+─────────────────────
+  Claude Opus 4.5 (latest)   claude-opus-4-5   · 200k ctx · $5.00/$25.00 per M · reasoning
+```
+
+When nothing matches, a `No models matched.` line is printed with the applied filters shown.
 
 ### `provider`
 
@@ -108,15 +132,24 @@ embedded seed against each on-disk file and reconciles conflicts:
 
 Flags:
 
-| Flag           | Description                                                                 |
-| -------------- | --------------------------------------------------------------------------- |
-| `--yes`        | Apply to all providers without prompting (merge; keeps custom config).       |
-| `--overwrite`  | Replace existing catalogs with the embedded seed (discards custom config).   |
-| `--dry-run`    | Show what would change without writing anything.                             |
+| Flag          | Description                                                                |
+| ------------- | -------------------------------------------------------------------------- |
+| `--yes`       | Apply to all providers without prompting (merge; keeps custom config).     |
+| `--overwrite` | Replace existing catalogs with the embedded seed (discards custom config). |
+| `--dry-run`   | Show what would change without writing anything.                           |
 
-When conflicts exist and neither `--yes` nor `--overwrite` is given, the CLI prompts per file:
-`[u]pdate` (keep custom, merge) / `[s]kip` / `[o]verwrite` / `[d]iff`, with `a` (all-update) and
-`n` (all-skip) shortcuts and `q` to quit. The diff shows added (`+`) and customized (`~`) models.
+When conflicts exist and neither `--yes` nor `--overwrite` is given, the CLI opens an interactive
+`inquire` selector for each conflicting provider (arrow keys, Enter to choose, Esc to quit):
+
+- **Update (keep custom config)** — merge: keep your file, add missing seed models.
+- **Skip this provider** — leave the existing file untouched.
+- **Overwrite with embedded seed** — replace the file (discards custom config).
+- **Show diff** — print a concise, field-level diff (added models and the exact fields that differ, e.g. `name` / `context_window` / `cost.input`), then re-prompt. No raw JSON is dumped.
+- **Update all remaining** / **Skip all remaining** / **Overwrite all remaining** — apply the choice to every remaining conflict.
+- **Quit** — abort with no changes.
+
+Interactive prompts require a TTY; pipe a non-interactive run with conflicts through `--yes` or
+`--overwrite`, otherwise the command errors.
 
 ### `codegraph`
 

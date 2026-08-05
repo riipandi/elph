@@ -22,7 +22,7 @@ Built-in commands always win over extension and template names.
 | `/compact`                  | `/c`          | Compact history; optional percentage arg                                                                                              |
 | `/continue`                 | `/cont`       | Resume an interrupted task (submits the recovery prompt; renders as a `Continuing tasks…` meta line, not a user card)                 |
 | `/reload`                   | —             | Reload providers (+ disk-only streaming adapters), settings, skills/templates, extensions; conflict notices → sticky transcript cards |
-| `/provider`                 | —             | Manage providers: `connect`, `disconnect`, `list`, `update`                                                  |
+| `/provider`                 | —             | Manage providers: `connect`, `disconnect`, `list`, `update`                                                                           |
 | `/diagnostic:list-tools`    | —             | List tools in a detail box                                                                                                            |
 | `/diagnostic:system-prompt` | —             | Show assembled system prompt (collapsed default)                                                                                      |
 | `/diagnostic:open-log`      | —             | Tail session or requests log                                                                                                          |
@@ -47,17 +47,17 @@ Inspired by [Kimi Code CLI slash commands](https://moonshotai.github.io/kimi-cod
 
 ### `/provider` subcommands
 
-| Subcommand                | Description                                                                                       |
-| ------------------------- | ------------------------------------------------------------------------------------------------- |
-| `/provider connect [id]`  | Sign in to a provider (interactive OAuth/API key)                                                 |
-| `/provider disconnect [id]` | Sign out and clear stored credentials                                                           |
-| `/provider list`          | List configured providers in the transcript                                                      |
-| `/provider update [id]`   | Update model catalogs from the embedded seed (`~/.config/elph/providers/*.json`)                 |
+| Subcommand                  | Description                                                                      |
+| --------------------------- | -------------------------------------------------------------------------------- |
+| `/provider connect [id]`    | Sign in to a provider (interactive OAuth/API key)                                |
+| `/provider disconnect [id]` | Sign out and clear stored credentials                                            |
+| `/provider list`            | List configured providers in the transcript                                      |
+| `/provider update [id]`     | Update model catalogs from the embedded seed (`~/.config/elph/providers/*.json`) |
 
 `/provider update` applies a **non-destructive merge** by default: your existing catalog file is kept and
 only seed models that are missing are added, so custom configuration is preserved. Unparsable files are
-left untouched. Conflicts are resolved automatically (no prompt) in the TUI; the CLI offers interactive
-`[u]pdate` / `[s]kip` / `[o]verwrite` / `[d]iff` choices (see [cli.md](./cli.md)).
+left untouched. Conflicts are resolved automatically (no prompt) in the TUI; the CLI offers an
+interactive `inquire` selector per conflict (see [cli.md](./cli.md)).
 
 ## Extension commands
 
