@@ -46,6 +46,7 @@ Override with `ELPH_HOME` (config) and `ELPH_DATA_DIR` (data).
 │   ├── elph.jsonl           # Rolling app log (logforth; daily rotation)
 │   ├── elph-traces.jsonl    # Distributed traces when ELPH_TRACE enabled
 │   ├── crash.log-YYYYMMDD   # Panic reports (dated)
+│   ├── crawlberg.log        # Crawlberg/deno_core + MCP client stderr (redirected from fd 2 to keep the TUI clean)
 │   └── mcp/                 # MCP server/tool stderr captures
 │       └── <MCP_NAME>/
 │           └── <TOOL_NAME>.stderr.log
@@ -90,6 +91,7 @@ Override with `ELPH_HOME` (config) and `ELPH_DATA_DIR` (data).
 | Session artifacts         | `APP_DATA/sessions/<SESSION_ID>/`         | `mcp_cache/` (JSONL tool result cache), `terminals/`, `tool_outputs.jsonl`, optional `event_log.jsonl` |
 | Host MCP cache            | `APP_DATA/mcp_cache/`                     | CLI MCP ops when no session is active (JSONL tool result cache)                                        |
 | App / crash / MCP logs    | `APP_DATA/logs/`                          | Rolling JSONL, dated crash logs, MCP stderr                                                            |
+| Browser (Crawlberg) stderr | `APP_DATA/logs/crawlberg.log`             | Raw fd 2 from the deno_core browser backend + MCP client, redirected out of the TUI (suppression)     |
 | Config files              | `CONFIG_DIR/*.json`                       | Settings, auth, trust, MCP, providers                                                                  |
 | Provider catalogs         | `CONFIG_DIR/providers/*.json`             | Disk model overlays (see below)                                                                        |
 | Bundled assets            | `CONFIG_DIR/bundled/{user-guide,skills}/` | Embedded in the binary; extracted on bootstrap if missing                                              |

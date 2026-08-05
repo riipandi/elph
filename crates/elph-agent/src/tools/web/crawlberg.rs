@@ -1,8 +1,11 @@
 //! Crawlberg-backed web fetch and search.
 //!
 //! Single in-process path via `crawlberg` (native browser backend derived from
-//! Obscura). There is no dedicated worker thread and no `dup2` stderr
-//! redirection — `crawlberg` runs the browser inside the async runtime.
+//! Obscura). There is no dedicated worker thread: `crawlberg` runs the browser
+//! inside the async runtime, but it writes HTTP/console diagnostics directly to
+//! fd 2 (stderr), bypassing the `log` crate. Those writes are redirected to
+//! `<logs_dir>/crawlberg.log` on first engine init (see `engine`) so they do not
+//! corrupt the TUI, mirroring the previous Obscura `dup2` suppression.
 
 use std::sync::OnceLock;
 
@@ -42,6 +45,9 @@ fn engine(slot: &'static OnceLock<CrawlEngineHandle>, mode: BrowserMode) -> Resu
     if let Some(handle) = slot.get() {
         return Ok(handle);
     }
+    // Redirect the browser backend's direct fd 2 writes to a log file so they
+    // stay out of the TUI. Idempotent across both engines (and the MCP client).
+    crate::logger::redirect_stderr_to_file();
     let handle = create_engine(Some(native_config(mode))).map_err(|e| anyhow::anyhow!("crawlberg engine init: {e}"))?;
     Ok(slot.get_or_init(|| handle))
 }

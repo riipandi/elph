@@ -177,6 +177,10 @@ pub async fn connect(config: &McpServerConfig) -> Result<McpClient> {
 
 #[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.mcp.connect"))]
 pub async fn connect_with_context(config: &McpServerConfig, ctx: &McpConnectContext) -> Result<McpClient> {
+    // The rmcp client writes transport/connection diagnostics directly to fd 2,
+    // bypassing the `log` crate. Redirect those to a log file so they stay out
+    // of the TUI (mirrors the browser backend's stderr suppression).
+    crate::logger::redirect_stderr_to_file();
     let lifecycle = resolve_lifecycle(config.lifecycle_mode());
     let result = match config {
         McpServerConfig::Stdio(cfg) => connect_stdio_with_context(cfg, ctx, lifecycle.clone()).await,

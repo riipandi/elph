@@ -5,7 +5,9 @@ pub use crash::{CRASH_LOG_FILE, crash_log_path, install_panic_hook};
 pub use options::{LogRotation, LoggingOptions};
 
 use std::num::NonZeroUsize;
+use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::OnceLock;
 
 use logforth::Filter;
 use logforth::append;
@@ -42,7 +44,70 @@ pub fn init(options: LoggingOptions) -> Option<LogGuard> {
 
     let trace_enabled = options.trace_enabled;
     crate::trace::init(&options);
+    RESOLVED_LOGS_DIR.get_or_init(|| options.logs_dir.clone());
     install_logger(&options, trace_enabled)
+}
+
+/// Resolved logs directory, recorded during [`init`] so other subsystems can
+/// persist redirected stderr next to the application log.
+static RESOLVED_LOGS_DIR: OnceLock<PathBuf> = OnceLock::new();
+
+/// Returns the active logs directory, if logging has been initialized.
+pub fn logs_dir() -> Option<PathBuf> {
+    RESOLVED_LOGS_DIR.get().cloned()
+}
+
+/// Redirects the process stderr (fd 2) to a file inside the logs directory so
+/// third-party libraries that write directly to fd 2 — the Crawlberg/deno_core
+/// browser backend and the MCP (rmcp) client — do not corrupt the TUI. Output
+/// is persisted under `<logs_dir>/crawlberg.log` instead of being discarded.
+///
+/// This mirrors the previous Obscura implementation, which used the same `dup2`
+/// trick but redirected to `/dev/null`. Safe to call from multiple subsystems;
+/// the first call wins and subsequent calls are no-ops (fd 2 is process-global).
+pub fn redirect_stderr_to_file() {
+    #[cfg(unix)]
+    {
+        use std::fs::OpenOptions;
+        use std::os::unix::io::AsRawFd;
+
+        static REDIRECTED: OnceLock<std::fs::File> = OnceLock::new();
+        if REDIRECTED.get().is_some() {
+            return;
+        }
+
+        let dir = logs_dir().unwrap_or_else(default_logs_dir);
+        if std::fs::create_dir_all(&dir).is_err() {
+            return;
+        }
+        let path = dir.join("crawlberg.log");
+        if let Ok(file) = OpenOptions::new().create(true).append(true).open(&path) {
+            unsafe extern "C" {
+                fn dup2(oldfd: std::os::raw::c_int, newfd: std::os::raw::c_int) -> std::os::raw::c_int;
+            }
+            unsafe {
+                dup2(file.as_raw_fd(), 2);
+            }
+            let _ = REDIRECTED.set(file);
+        }
+    }
+}
+
+#[cfg(not(unix))]
+pub fn redirect_stderr_to_file() {}
+
+/// Best-effort logs directory when logging has not been initialized.
+#[cfg(unix)]
+fn default_logs_dir() -> PathBuf {
+    if let Some(data) = std::env::var_os("ELPH_DATA_DIR") {
+        return PathBuf::from(data).join("logs");
+    }
+    if let Some(xdg) = std::env::var_os("XDG_DATA_HOME") {
+        return PathBuf::from(xdg).join("elph").join("logs");
+    }
+    std::env::var_os("HOME")
+        .map(|home| PathBuf::from(home).join(".local/share/elph/logs"))
+        .unwrap_or_else(|| PathBuf::from(".local/share/elph/logs"))
 }
 
 fn level_filter(level: &str) -> Box<dyn Filter> {
