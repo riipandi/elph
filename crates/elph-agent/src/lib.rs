@@ -535,6 +535,6 @@ pub use tools::{WebSearchEngine, WebSearchResult};
 #[cfg(feature = "tools-shell-exec")]
 pub use tools::{create_shell_exec_tool, normalize_shell_exec_args, strip_redundant_cd_prefix};
 #[cfg(feature = "tools-web")]
-pub use tools::{create_web_fetch_tool, create_web_search_tool, create_web_tools};
+pub use tools::{create_web_extract_tool, create_web_fetch_tool, create_web_search_tool, create_web_tools};
 pub use tools::{echo_tool, simple_tool};
 pub use types::*;

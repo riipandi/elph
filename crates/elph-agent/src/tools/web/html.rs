@@ -25,6 +25,50 @@ pub struct FetchPageResult {
     pub body: String,
 }
 
+/// Raw fetched page: undecoded-from-markup body, kept as the original HTML.
+#[derive(Debug)]
+pub struct RawPageResult {
+    pub url: String,
+    pub content_type: String,
+    pub html: String,
+}
+
+/// Fetch a public URL and return the raw HTML body (charset-decoded).
+///
+/// Unlike [`fetch_page`], this does not convert to Markdown — the caller
+/// (e.g. `web_extract`) parses and extracts structured data from the markup.
+pub async fn fetch_raw(raw_url: &str) -> Result<RawPageResult> {
+    let client = http_client();
+    let resp = client
+        .get(raw_url)
+        .header(reqwest::header::USER_AGENT, USER_AGENT)
+        .send()
+        .await
+        .with_context(|| format!("request failed for {raw_url}"))?;
+
+    let status = resp.status();
+    if !status.is_success() {
+        return Err(anyhow::anyhow!("HTTP {} fetching {raw_url}", status.as_u16()));
+    }
+
+    let final_url = resp.url().as_str().to_string();
+    let content_type = resp
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_string();
+
+    let bytes = resp.bytes().await.context("read response body")?;
+    let html = decode_body(&bytes, &content_type);
+
+    Ok(RawPageResult {
+        url: final_url,
+        content_type,
+        html,
+    })
+}
+
 /// Fetch a public URL and convert the response body to Markdown.
 ///
 /// Uses the shared reqwest client (timeouts/SSRF protection live in the

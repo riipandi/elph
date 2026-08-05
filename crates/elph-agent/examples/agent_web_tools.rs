@@ -50,7 +50,7 @@ async fn main() -> anyhow::Result<()> {
     println!("Provider: OpenCode Zen");
     println!("Model:    {} ({})", model.name, model.id);
     println!(
-        "Tools:    web_search, web_fetch, read_file, shell_exec, edit_file, write_file, grep, find_path, list_dir"
+        "Tools:    web_search, web_fetch, web_extract, read_file, shell_exec, edit_file, write_file, grep, find_path, list_dir"
     );
     println!();
 
@@ -81,7 +81,8 @@ async fn main() -> anyhow::Result<()> {
         initial_state: Some(PartialAgentState {
             system_prompt: Some(
                 "You are a research assistant. Use web_search to find information, \
-                 web_fetch to read web pages, and other tools as needed. \
+                 web_fetch to read web pages, web_extract to pull structured data \
+                 (links, images, text, elements) from a page, and other tools as needed. \
                  Always cite your sources."
                     .into(),
             ),

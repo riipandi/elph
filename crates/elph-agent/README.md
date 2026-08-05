@@ -469,7 +469,7 @@ Built-in tools are optional Cargo features. Enable `builtin-tools` for the full 
 | `create_edit_tools`         | `edit_file`, `write_file`, `shell_exec`, `create_dir`, `copy_path`, `delete_path`, `move_path` |
 | `create_search_tools`       | `read_file`, `grep`, `find_path`, `list_dir`                                                   |
 | `create_all_tools`          | all filesystem tools above                                                                     |
-| `create_web_tools`          | `web_search`, `web_fetch`                                                                      |
+| `create_web_tools`          | `web_search`, `web_fetch`, `web_extract`                                                      |
 | `create_all_tools_with_web` | filesystem tools + web tools                                                                   |
 
 ```rust
@@ -501,7 +501,7 @@ Set provider API keys via environment variables (`BRAVE_SEARCH_API_KEY`, `EXA_AP
 | `builtin-tools`       | no      | All built-in tool groups (enabled by `elph` binary)                                            |
 | `tools-edit`          | no      | `edit_file`, `write_file`, `shell_exec`, `create_dir`, `copy_path`, `delete_path`, `move_path` |
 | `tools-search`        | no      | `read_file`, `grep`, `find_path`, `list_dir`                                                   |
-| `tools-web`           | no      | `web_search`, `web_fetch`                                                                      |
+| `tools-web`           | no      | `web_search`, `web_fetch`, `web_extract`                                                      |
 | `tools-collaboration` | no      | `spawn_agent`, `send_message`, …                                                               |
 | `mcp`                 | yes     | MCP client                                                                                     |
 | `extensions`          | yes     | WASM extension host                                                                            |
