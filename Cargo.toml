@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
-members = ["crates/elph-*", "crates/floppy", "crates/turso-db", "elph"]
-exclude = ["crates/ext-hello", "vendor/iocraft"]
+members = ["crates/elph-agent", "crates/elph-ai", "crates/floppy", "crates/turso-db", "elph"]
+exclude = ["crates/elph-cron", "crates/elph-sandbox", "crates/elph-swarm", "crates/ext-hello", "vendor/iocraft"]
 
 [workspace.package]
 homepage = "https://elph.space"
@@ -30,7 +30,7 @@ chrono = { version = "0.4.45", default-features = false, features = ["clock", "s
 clap = { version = "4.6.4", features = ["derive", "usage"] }
 clap_complete = "4.6.8"
 clipboard-rs = "0.3.5"
-crawlberg = { version = "1.1.3", default-features = false, features = ["browser", "browser-native"] }
+crawlberg = { version = "1.1.3", default-features = false, features = ["browser-native"] }
 crossterm = { version = "0.29.0", default-features = false, features = ["bracketed-paste", "events"] }
 elph-agent = { path = "crates/elph-agent", version = "0.0.28" }
 elph-ai = { path = "crates/elph-ai", version = "0.0.28" }
@@ -50,13 +50,13 @@ governor = "0.10.4"
 html-escape = "0.2.14"
 http = "1.5.0"
 httpmock = "0.8.3"
-ignore = "0.4.31"
+ignore = "0.4.33"
 image = "0.25.10"
 inquire = "0.9.4"
 iocraft = "0.8.4"
-jsonschema = "0.49.2"
+jsonschema = "0.49.5"
 kalid = "0.1.0"
-keyring = "3.6.3"
+keyring = "4.1.6"
 libc = "0.2.189"
 linkify = "0.11.0"
 log = "0.4.33"
@@ -72,7 +72,7 @@ logforth = { version = "0.30.1", features = [
 ] }
 memchr = "2.8.3"
 memorable-ids = "0.1.1"
-minijinja = "2.10.2"
+minijinja = "2.22.0"
 parking_lot = "0.12"
 pulldown-cmark = { version = "0.13.4", default-features = false, features = ["simd"] }
 qrcode = "0.14.1"
@@ -91,14 +91,14 @@ rmcp = { version = "3.0.1", features = [
 ] }
 rustc-hash = { version = "2.1.3", features = ["std"] }
 rustix = { version = "1.1.4", features = ["pty", "termios", "process", "fs"] }
-rustls = { version = "0.23.42", default-features = false, features = ["ring", "std", "tls12"] }
-schemars = "1.2.1"
+rustls = { version = "0.23.43", default-features = false, features = ["ring", "std", "tls12"] }
+schemars = "1.2.2"
 serde = { version = "1.0.229", default-features = false, features = ["derive", "std"] }
 serde-jsonlines = "0.7.0"
 serde_json = { version = "1.0.151", default-features = false, features = ["std"] }
 yaml_serde = "0.10.4"
 sha2 = "0.11.0"
-similar = { version = "3.1.1", features = ["inline", "unicode"] }
+similar = { version = "3.1.2", features = ["inline", "unicode"] }
 similar-asserts = "2.0.0"
 supports-color = "3.0.2"
 syntect = { version = "5.3.0", default-features = false, features = [
@@ -119,7 +119,7 @@ toml = "1.1.4"
 toon-format = { version = "0.5.0", default-features = false }
 turso = { version = "0.7.2", default-features = false, features = ["fts"] }
 turso-db = { path = "crates/turso-db", version = "0.0.1" }
-two-face = "0.5.1"
+two-face = { version = "0.5.1", default-features = false, features = ["syntect-fancy"] }
 unicode-linebreak = "0.1.5"
 unicode-segmentation = "1.12.0"
 unicode-width = "0.2.2"
@@ -131,16 +131,22 @@ webpki-roots = "1.0.9"
 zstd = "0.13.3"
 
 [profile.release]
-opt-level = 1 # Optimization: level 2 = balanced, level 1 = faster compile, less optimization
-lto = false # Thin LTO: cross-crate inlining without full-program analysis cost (LTO is very expensive)
-codegen-units = 128 # Parallel codegen: 128 units = faster compile, minimal optimization loss
-panic = "abort" # panic=abort: removes unwind tables — smaller binary, cannot catch panics
-strip = "symbols" # Strip all symbols from final binary
-debug = false # No debug symbols in release
+opt-level = 1
+lto = false
+codegen-units = 128
+panic = "abort"
+strip = "symbols"
+debug = false
+
+[profile.dist]
+inherits = "release"
+opt-level = 3
+lto = "thin"
+codegen-units = 24
 
 [profile.dev]
-incremental = true # Incremental: rebuild only changed code — much faster iteration
-debug = "limited" # Limited debug info: line numbers only, no type/variable debug
+incremental = true
+debug = "limited"
 
 [patch.crates-io]
 # Bracketed multiline paste (`TerminalEvent::Paste`) — not in iocraft 0.8.4 on crates.io.

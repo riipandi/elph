@@ -39,7 +39,7 @@ supports-color.workspace = true
 syntect.workspace = true
 textwrap.workspace = true
 tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "signal", "sync", "time"] }
-two-face.workspace = true
+two-face = { workspace = true, default-features = false, features = ["syntect-fancy"] }
 unicode-linebreak.workspace = true
 unicode-segmentation.workspace = true
 unicode-width.workspace = true
