@@ -161,6 +161,9 @@ async fn handle_acp_slash_command(
             let message = crate::tui::slash_handler::provider_list_slash_message();
             send_text_chunks(connection, session_id, &message).await
         }
+        Some(SlashDispatch::ProviderUpdate { .. }) => Err(anyhow::anyhow!(
+            "Command '/provider update' writes local catalog files and is not available via ACP. Use `elph provider update`."
+        )),
         Some(SlashDispatch::McpAuth { .. }) => Err(anyhow::anyhow!(
             "Command '/mcp auth' opens a TUI OAuth dialog and is not available via ACP. Use `elph mcp auth <name>`."
         )),

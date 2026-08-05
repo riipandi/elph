@@ -184,6 +184,7 @@ impl SlashDispatcher {
                 | SlashDispatch::ProviderConnect { .. }
                 | SlashDispatch::ProviderDisconnect { .. }
                 | SlashDispatch::ProviderList
+                | SlashDispatch::ProviderUpdate { .. }
                 | SlashDispatch::McpAuth { .. }
                 | SlashDispatch::McpLogout { .. }
                 | SlashDispatch::McpList

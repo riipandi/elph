@@ -1,9 +1,14 @@
+use std::collections::HashMap;
 use std::fmt;
+use std::path::Path;
 use std::sync::Arc;
 
 use anstyle::{AnsiColor, Color, Style};
 use clap::{Parser, Subcommand};
 use inquire::Select;
+use serde_json::Value;
+
+use elph_ai::UpdatePolicy;
 
 use super::help;
 use super::interactive;
@@ -63,10 +68,19 @@ pub enum ProviderCommands {
         /// Provider ID to disconnect (disconnects all if omitted)
         provider: Option<String>,
     },
-    /// Update provider metadata and credentials
+    /// Update provider model catalogs from the embedded seed
     Update {
-        /// Provider ID to update (updates all if omitted)
+        /// Provider ID to update (updates all builtin providers if omitted)
         provider_id: Option<String>,
+        /// Apply to all providers without prompting (merge: keeps custom configuration)
+        #[arg(long)]
+        yes: bool,
+        /// Overwrite existing catalog files with the embedded seed (discards custom config)
+        #[arg(long)]
+        overwrite: bool,
+        /// Show what would change without writing anything
+        #[arg(long)]
+        dry_run: bool,
     },
 }
 
@@ -79,7 +93,12 @@ pub fn handle(args: &ProviderArgs) -> ExitCode {
         ProviderCommands::List { json } => handle_list(json),
         ProviderCommands::Connect { provider, env } => handle_connect(provider.as_deref(), env.as_deref()),
         ProviderCommands::Disconnect { provider } => handle_disconnect(provider.as_deref()),
-        ProviderCommands::Update { provider_id } => handle_update(provider_id.as_deref()),
+        ProviderCommands::Update {
+            provider_id,
+            yes,
+            overwrite,
+            dry_run,
+        } => handle_update(provider_id.as_deref(), *yes, *overwrite, *dry_run),
     }
 }
 
@@ -519,10 +538,266 @@ fn handle_disconnect(provider: Option<&str>) -> ExitCode {
     }
 }
 
-fn handle_update(provider_id: Option<&str>) -> ExitCode {
-    help::unimplemented(&format!(
-        "Provider update — not yet implemented (provider_id: {})",
-        provider_id.unwrap_or("<all>")
-    ));
+fn handle_update(provider_id: Option<&str>, yes: bool, overwrite: bool, dry_run: bool) -> ExitCode {
+    let paths = match resolve_paths() {
+        Ok(p) => p,
+        Err(e) => return e,
+    };
+    let dir = paths.providers_dir();
+
+    // Resolve which providers to update.
+    let providers: Vec<String> = if let Some(pid) = provider_id {
+        if !elph_ai::embedded_provider_ids().contains(&pid) {
+            eprintln!("{}", err(format!("Unknown builtin provider: {pid}")));
+            return EXIT_ERROR;
+        }
+        vec![pid.to_string()]
+    } else {
+        elph_ai::embedded_provider_ids().iter().map(|s| s.to_string()).collect()
+    };
+
+    let plan = match elph_ai::plan_provider_update(&dir, &providers) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("{}", err(format!("Plan failed: {e}")));
+            return EXIT_ERROR;
+        }
+    };
+
+    if plan.entries.is_empty() {
+        println!("{}", ok("No builtin provider catalogs to update."));
+        return EXIT_SUCCESS;
+    }
+
+    print_plan(&plan);
+
+    if dry_run {
+        println!();
+        println!(
+            "{}Dry run — nothing written. Re-run without --dry-run to apply.{}",
+            STYLE_MUTED.render(),
+            STYLE_MUTED.render_reset()
+        );
+        return EXIT_SUCCESS;
+    }
+
+    // Decide the policy for each entry.
+    let default_policy = if overwrite {
+        UpdatePolicy::Overwrite
+    } else {
+        UpdatePolicy::Merge
+    };
+
+    let resolved: HashMap<String, UpdatePolicy> = if yes || overwrite {
+        plan.entries
+            .iter()
+            .map(|e| (e.provider.clone(), default_policy))
+            .collect()
+    } else {
+        match interactive_resolve_conflicts(&dir, &plan) {
+            Ok(map) => map,
+            Err(code) => return code,
+        }
+    };
+
+    let resolve = |e: &elph_ai::ProviderUpdatePlanEntry| -> UpdatePolicy {
+        *resolved.get(&e.provider).unwrap_or(&default_policy)
+    };
+
+    let report = match elph_ai::apply_provider_update(&dir, &plan, resolve) {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("{}", err(format!("Update failed: {e}")));
+            return EXIT_ERROR;
+        }
+    };
+
+    println!();
+    print_report(&report);
     EXIT_SUCCESS
+}
+
+/// Print the plan: one line per provider with its status and change summary.
+fn print_plan(plan: &elph_ai::ProviderUpdatePlan) {
+    let new = plan
+        .entries
+        .iter()
+        .filter(|e| matches!(e.status, elph_ai::ProviderUpdateStatus::New))
+        .count();
+    let conflicts = plan.conflicts().len();
+    let up = plan
+        .entries
+        .iter()
+        .filter(|e| matches!(e.status, elph_ai::ProviderUpdateStatus::UpToDate))
+        .count();
+
+    println!();
+    println!("{}Provider catalog update{}", STYLE_BOLD.render(), STYLE_BOLD.render_reset());
+    println!("  {} up to date · {} new · {} with changes", up, new, conflicts);
+
+    for e in &plan.entries {
+        let name = provider_display_name(&e.provider);
+        let tag = match e.status {
+            elph_ai::ProviderUpdateStatus::UpToDate => {
+                format!("{}up to date{}", STYLE_MUTED.render(), STYLE_MUTED.render_reset())
+            }
+            elph_ai::ProviderUpdateStatus::New => {
+                format!("{}new{}", STYLE_OK.render(), STYLE_OK.render_reset())
+            }
+            elph_ai::ProviderUpdateStatus::Conflict => {
+                format!("{}conflict{}", STYLE_ERR.render(), STYLE_ERR.render_reset())
+            }
+        };
+        println!("  - {:<24} {}", name, tag);
+        if !e.added.is_empty() {
+            println!("      + {} model(s) in seed not on disk", e.added.len());
+        }
+        if !e.changed.is_empty() {
+            println!("      ~ {} model(s) customized on disk (kept by merge)", e.changed.len());
+        }
+    }
+}
+
+/// Print the applied-change summary.
+fn print_report(report: &elph_ai::ProviderUpdateReport) {
+    let mut parts = Vec::new();
+    if report.written > 0 {
+        parts.push(format!("{} written", report.written));
+    }
+    if report.merged > 0 {
+        parts.push(format!("{} merged", report.merged));
+    }
+    if report.overwritten > 0 {
+        parts.push(format!("{} overwritten", report.overwritten));
+    }
+    if report.skipped > 0 {
+        parts.push(format!("{} skipped", report.skipped));
+    }
+    if report.up_to_date > 0 {
+        parts.push(format!("{} up to date", report.up_to_date));
+    }
+    println!(
+        "{}Done.{} {}",
+        STYLE_BOLD.render(),
+        STYLE_BOLD.render_reset(),
+        parts.join(" · ")
+    );
+    println!(
+        "{}Restart elph to load the updated catalogs.{}",
+        STYLE_MUTED.render(),
+        STYLE_MUTED.render_reset()
+    );
+}
+
+/// Prompt per-conflict: keep custom config (merge), skip, overwrite, or diff.
+/// `a`/`n` apply the choice to every remaining conflict; `q` aborts.
+fn interactive_resolve_conflicts(
+    dir: &Path,
+    plan: &elph_ai::ProviderUpdatePlan,
+) -> Result<HashMap<String, UpdatePolicy>, ExitCode> {
+    use std::io::Write;
+
+    let mut map: HashMap<String, UpdatePolicy> = HashMap::new();
+    let mut global: Option<UpdatePolicy> = None;
+
+    for entry in plan.conflicts() {
+        if let Some(p) = global {
+            map.insert(entry.provider.clone(), p);
+            continue;
+        }
+        loop {
+            println!();
+            println!(
+                "{}Conflict: {}{}",
+                STYLE_BOLD.render(),
+                provider_display_name(&entry.provider),
+                STYLE_BOLD.render_reset()
+            );
+            if entry.unparsable {
+                println!(
+                    "{}  {} could not be parsed; merge will leave it untouched.{}",
+                    STYLE_MUTED.render(),
+                    dir.join(format!("{}.json", entry.provider)).display(),
+                    STYLE_MUTED.render_reset()
+                );
+            }
+            if !entry.added.is_empty() {
+                println!("  + {} model(s) in seed not on disk", entry.added.len());
+            }
+            if !entry.changed.is_empty() {
+                println!("  ~ {} model(s) customized on disk (kept by merge)", entry.changed.len());
+            }
+            print!("  [u]pdate (keep custom) / [s]kip / [o]verwrite / [d]iff  (a=all-update, n=all-skip, q=quit): ");
+            let _ = std::io::stdout().flush();
+            let mut line = String::new();
+            if std::io::stdin().read_line(&mut line).is_err() {
+                return Err(EXIT_ERROR);
+            }
+            match line.trim().to_ascii_lowercase().as_str() {
+                "d" => {
+                    print_diff_entry(dir, entry);
+                    continue;
+                }
+                "u" | "" => {
+                    map.insert(entry.provider.clone(), UpdatePolicy::Merge);
+                    break;
+                }
+                "s" => {
+                    map.insert(entry.provider.clone(), UpdatePolicy::SkipExisting);
+                    break;
+                }
+                "o" => {
+                    map.insert(entry.provider.clone(), UpdatePolicy::Overwrite);
+                    break;
+                }
+                "a" => {
+                    global = Some(UpdatePolicy::Merge);
+                    map.insert(entry.provider.clone(), UpdatePolicy::Merge);
+                    break;
+                }
+                "n" => {
+                    global = Some(UpdatePolicy::SkipExisting);
+                    map.insert(entry.provider.clone(), UpdatePolicy::SkipExisting);
+                    break;
+                }
+                "q" => {
+                    println!("Cancelled.");
+                    return Err(EXIT_SUCCESS);
+                }
+                _ => {
+                    println!("  Enter u, s, o, d, a, n, or q.");
+                    continue;
+                }
+            }
+        }
+    }
+    Ok(map)
+}
+
+/// Show what `merge` vs `overwrite` would do for a single conflicting provider.
+fn print_diff_entry(dir: &Path, entry: &elph_ai::ProviderUpdatePlanEntry) {
+    let path = dir.join(format!("{}.json", entry.provider));
+    let disk: Option<Value> = std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|b| serde_json::from_str(&b).ok());
+    let seed = elph_ai::embedded_provider_json(&entry.provider).and_then(|s| serde_json::from_str::<Value>(&s).ok());
+
+    for id in &entry.added {
+        if let Some(s) = seed.as_ref().and_then(|v| v.get(id)) {
+            println!(
+                "  + {id} (new in seed): {}",
+                serde_json::to_string_pretty(s).unwrap_or_default()
+            );
+        }
+    }
+    for id in &entry.changed {
+        let d = disk.as_ref().and_then(|v| v.get(id));
+        let s = seed.as_ref().and_then(|v| v.get(id));
+        println!("  ~ {id}:");
+        println!(
+            "      disk: {}",
+            d.map(|v| v.to_string()).unwrap_or_else(|| "<unparsed>".into())
+        );
+        println!("      seed: {}", s.map(|v| v.to_string()).unwrap_or_default());
+    }
 }

@@ -38,6 +38,10 @@ pub use models::{CreateModelsOptions, CreateProviderOptions, Models, MutableMode
 pub use models::{
     OverlayApplyReport, calculate_cost, clamp_thinking_level, create_disk_provider, create_models, create_provider,
 };
+pub use models::{
+    ProviderUpdatePlan, ProviderUpdatePlanEntry, ProviderUpdateReport, ProviderUpdateStatus, UpdatePolicy,
+    apply_provider_update, plan_provider_update,
+};
 pub use models::{builtin_catalog, builtin_provider_ids, invalidate_catalog_cache, merge_model_lists};
 pub use models::{custom_provider_catalogs, custom_provider_ids, install_provider_catalog_dir};
 pub use models::{embedded_provider_ids, embedded_provider_json};

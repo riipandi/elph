@@ -91,9 +91,32 @@ See [memory.md](./memory.md).
 
 ### `provider`
 
-Subcommands: `list`, `connect`, `disconnect`, `add`, `remove`, `catalog`, `update`.
+Subcommands: `list`, `connect`, `disconnect`, `update`.
 
-Design: interactive credential setup, models.dev catalog sync, enable/disable providers.
+- `list` — list configured providers and stored credentials.
+- `connect [id]` — sign in to a provider (interactive OAuth/API key, or `--env VAR` to read a key from an env var).
+- `disconnect [id]` — sign out and clear stored credentials.
+- `update [id]` — refresh model catalogs from the embedded seed baked into the binary.
+
+`elph provider update` writes catalogs to `~/.config/elph/providers/<provider>.json`. It compares the
+embedded seed against each on-disk file and reconciles conflicts:
+
+- **New** — no file yet; the seed is written.
+- **Up to date** — file already matches the seed; nothing happens.
+- **Conflict** — the file differs from the seed. By default it **merges**: your on-disk file is kept and
+  only seed models that are missing are added, so your custom configuration is never overwritten.
+
+Flags:
+
+| Flag           | Description                                                                 |
+| -------------- | --------------------------------------------------------------------------- |
+| `--yes`        | Apply to all providers without prompting (merge; keeps custom config).       |
+| `--overwrite`  | Replace existing catalogs with the embedded seed (discards custom config).   |
+| `--dry-run`    | Show what would change without writing anything.                             |
+
+When conflicts exist and neither `--yes` nor `--overwrite` is given, the CLI prompts per file:
+`[u]pdate` (keep custom, merge) / `[s]kip` / `[o]verwrite` / `[d]iff`, with `a` (all-update) and
+`n` (all-skip) shortcuts and `q` to quit. The diff shows added (`+`) and customized (`~`) models.
 
 ### `codegraph`
 

@@ -78,8 +78,8 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("trust", "Save project trust decision"),
         builtin_with_args_hint(
             "provider",
-            "Manage providers (connect, disconnect, list)",
-            "[connect|disconnect|list]",
+            "Manage providers (connect, disconnect, list, update)",
+            "[connect|disconnect|list|update]",
         ),
         builtin_with_args_hint("mcp", "MCP servers (auth, logout, list)", "[auth|logout|list]"),
         builtin("new", "Start a new session"),
@@ -228,6 +228,10 @@ pub enum SlashDispatch {
     },
     /// List configured providers in the transcript.
     ProviderList,
+    /// Update provider model catalogs from the embedded seed (`/provider update [id]`).
+    ProviderUpdate {
+        provider_id: Option<String>,
+    },
     /// Open MCP OAuth dialog (`/mcp auth [name]`).
     McpAuth {
         server_name: Option<String>,
@@ -333,6 +337,10 @@ const PROVIDER_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
     SlashArgCompletion {
         value: "list",
         description: "List configured providers",
+    },
+    SlashArgCompletion {
+        value: "update",
+        description: "Update model catalogs from the embedded seed",
     },
 ];
 
@@ -458,6 +466,14 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
                 Some(SlashDispatch::ProviderDisconnect { provider_id })
             } else if args.starts_with("list") || args.trim() == "ls" {
                 Some(SlashDispatch::ProviderList)
+            } else if args.starts_with("update") {
+                let provider_id = args.trim_start_matches("update").trim().to_string();
+                let provider_id = if provider_id.is_empty() {
+                    None
+                } else {
+                    Some(provider_id)
+                };
+                Some(SlashDispatch::ProviderUpdate { provider_id })
             } else {
                 Some(SlashDispatch::Unimplemented(format!("/provider {args}")))
             }

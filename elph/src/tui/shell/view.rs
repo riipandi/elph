@@ -1584,6 +1584,23 @@ pub(crate) fn build_shell_view(
                                 suppress_enter_newline.set(true);
                                 return;
                             }
+                            SlashOutcome::OpenProviderUpdateDialog { text } => {
+                                let body_height = (text.lines().count() as u16).saturating_add(3).clamp(6, 40);
+                                open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                                    pending: &mut pending_system_prompt,
+                                    shell_focus: &mut shell_focus,
+                                    title: "Provider Update".to_string(),
+                                    text,
+                                    width_pct: 60,
+                                    body_height: Some(body_height),
+                                    show_copy: false,
+                                });
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
                             SlashOutcome::OpenMemoryResultDialog { text } => {
                                 let body_height = (text.lines().count() as u16).saturating_add(3).clamp(6, 30);
                                 open_scroll_text_dialog(OpenScrollTextDialogArgs {

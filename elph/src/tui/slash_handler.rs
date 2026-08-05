@@ -14,6 +14,7 @@ use crate::agent::{
 use crate::extensions::ExtensionHost;
 use crate::platform::Paths;
 use crate::tui::confetti::confetti_mode_from_slash_args;
+use crate::utils::path::AppPaths;
 
 use super::agent_bridge::{SlashDispatcher, TurnDispatcher};
 
@@ -94,6 +95,10 @@ pub enum SlashOutcome {
     },
     /// Provider list viewer (ScrollTextDialog).
     OpenProviderListDialog {
+        text: String,
+    },
+    /// Provider catalog update result viewer (ScrollTextDialog).
+    OpenProviderUpdateDialog {
         text: String,
     },
     /// Memory operation result viewer (ScrollTextDialog).
@@ -186,6 +191,24 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
         SlashDispatch::ProviderList => SlashOutcome::OpenProviderListDialog {
             text: provider_list_slash_message(),
         },
+        SlashDispatch::ProviderUpdate { provider_id } => {
+            let Some(paths) = ctx.paths else {
+                return SlashOutcome::Status("Paths required for /provider update.".into());
+            };
+            let dir = paths.providers_dir();
+            let providers: Vec<String> = if let Some(pid) = provider_id {
+                if !elph_ai::embedded_provider_ids().contains(&pid.as_str()) {
+                    return SlashOutcome::Status(format!("Unknown builtin provider: {pid}"));
+                }
+                vec![pid.clone()]
+            } else {
+                elph_ai::embedded_provider_ids().iter().map(|s| s.to_string()).collect()
+            };
+            match run_provider_update(&dir, &providers) {
+                Ok(text) => SlashOutcome::OpenProviderUpdateDialog { text },
+                Err(e) => SlashOutcome::Status(format!("Provider update failed: {e}")),
+            }
+        }
         SlashDispatch::McpAuth { server_name } => SlashOutcome::OpenMcpAuthDialog { server_name },
         SlashDispatch::McpLogout { server_name } => {
             let Some(paths) = ctx.paths else {
@@ -311,6 +334,7 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
             | SlashOutcome::OpenProviderConnectDialog { .. }
             | SlashOutcome::OpenProviderDisconnectDialog { .. }
             | SlashOutcome::OpenProviderListDialog { .. }
+            | SlashOutcome::OpenProviderUpdateDialog { .. }
             | SlashOutcome::OpenMcpAuthDialog { .. }
             | SlashOutcome::OpenMemoryResultDialog { .. }
     )
@@ -364,6 +388,68 @@ pub fn provider_list_slash_message() -> String {
     }
 
     lines.join("\n")
+}
+
+/// Plan, apply a non-destructive merge, and produce a result summary for
+/// `/provider update`. Merge keeps the user's on-disk file and only adds seed
+/// models that are missing, so custom configuration is never overwritten. After
+/// writing, the in-memory catalog cache is invalidated so the running session
+/// picks up the new models.
+fn run_provider_update(dir: &Path, providers: &[String]) -> Result<String, String> {
+    let plan = elph_ai::plan_provider_update(dir, providers)?;
+    if plan.entries.is_empty() {
+        return Ok("No builtin provider catalogs to update.".to_string());
+    }
+
+    let resolved = |e: &elph_ai::ProviderUpdatePlanEntry| -> elph_ai::UpdatePolicy {
+        // TUI applies the safe, non-destructive default: merge (keep custom
+        // config). Unparsable files are left untouched rather than clobbered.
+        if e.unparsable {
+            elph_ai::UpdatePolicy::SkipExisting
+        } else {
+            elph_ai::UpdatePolicy::Merge
+        }
+    };
+    let report = elph_ai::apply_provider_update(dir, &plan, resolved)?;
+
+    // Drop the in-memory catalog cache so the next model lookup re-reads disk.
+    elph_ai::invalidate_catalog_cache();
+
+    let mut lines: Vec<String> = vec![
+        "Provider catalogs updated (your custom config is preserved).".to_string(),
+        String::new(),
+    ];
+    for e in &plan.entries {
+        match e.status {
+            elph_ai::ProviderUpdateStatus::UpToDate => continue,
+            _ => {
+                let verb = if matches!(e.status, elph_ai::ProviderUpdateStatus::New) {
+                    "written"
+                } else {
+                    "merged"
+                };
+                let mut detail = Vec::new();
+                if !e.added.is_empty() {
+                    detail.push(format!("+{} new", e.added.len()));
+                }
+                if !e.changed.is_empty() {
+                    detail.push(format!("~{} kept custom", e.changed.len()));
+                }
+                let suffix = if detail.is_empty() {
+                    String::new()
+                } else {
+                    format!(" ({})", detail.join(", "))
+                };
+                lines.push(format!("  {} — {}{}", e.provider, verb, suffix));
+            }
+        }
+    }
+    lines.push(String::new());
+    lines.push(format!(
+        "{} written · {} merged · {} skipped · {} up to date",
+        report.written, report.merged, report.skipped, report.up_to_date
+    ));
+    Ok(lines.join("\n"))
 }
 
 #[cfg(test)]
@@ -707,6 +793,58 @@ mod tests {
                 if message.contains("requires arguments")
                     && message.contains("code-review")
                     && message.contains("<file-path>")
+        ));
+    }
+
+    fn temp_paths() -> Paths {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        Paths::from_dirs(tmp.path().join("config"), tmp.path().join("data"), tmp.path().join("project"))
+    }
+
+    #[test]
+    fn provider_update_writes_catalog_and_returns_dialog() {
+        let paths = temp_paths();
+        let outcome = handle_slash_submit(SlashContext {
+            input: "/provider update anthropic",
+            extensions: None,
+            prompt_templates: None,
+            skills: None,
+            agent_session: None,
+            extension_host: None,
+            paths: Some(&paths),
+            cwd: None,
+            spawn_agent_work: true,
+        });
+        let text = match outcome {
+            SlashOutcome::OpenProviderUpdateDialog { ref text } => text.clone(),
+            other => panic!("expected OpenProviderUpdateDialog, got {other:?}"),
+        };
+        assert!(text.contains("Provider catalogs updated"), "text: {text}");
+        assert!(
+            paths.providers_dir().join("anthropic.json").is_file(),
+            "catalog file should be written"
+        );
+        // The result must be a UI-only outcome (no spawned turn / no prompt echo).
+        assert!(slash_outcome_is_ui_only(&outcome));
+    }
+
+    #[test]
+    fn provider_update_unknown_provider_returns_status() {
+        let paths = temp_paths();
+        let outcome = handle_slash_submit(SlashContext {
+            input: "/provider update not-a-real-provider",
+            extensions: None,
+            prompt_templates: None,
+            skills: None,
+            agent_session: None,
+            extension_host: None,
+            paths: Some(&paths),
+            cwd: None,
+            spawn_agent_work: true,
+        });
+        assert!(matches!(
+            outcome,
+            SlashOutcome::Status(ref message) if message.contains("Unknown builtin provider")
         ));
     }
 }

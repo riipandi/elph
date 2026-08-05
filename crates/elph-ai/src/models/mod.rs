@@ -2,6 +2,7 @@ pub mod catalog;
 pub mod catalog_json;
 pub mod embedded;
 pub mod provider_dir;
+pub mod provider_update;
 
 mod collection;
 
@@ -11,6 +12,10 @@ pub use catalog_json::parse_provider_catalog_json;
 pub use collection::*;
 pub use embedded::{embedded_provider_ids, embedded_provider_json};
 pub use provider_dir::{all_provider_ids, custom_provider_catalogs, custom_provider_ids, install_provider_catalog_dir};
+pub use provider_update::{
+    ProviderUpdatePlan, ProviderUpdatePlanEntry, ProviderUpdateReport, ProviderUpdateStatus, UpdatePolicy,
+    apply_provider_update, plan_provider_update,
+};
 
 /// Model lookup: embedded seed with `CONFIG_DIR/providers` merged over it (see [`catalog`]).
 pub fn get_builtin_model(provider: &str, id: &str) -> Option<crate::types::Model> {
