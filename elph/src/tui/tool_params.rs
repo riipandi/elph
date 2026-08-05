@@ -470,11 +470,11 @@ fn web_search_engine_label(params: &[ToolParam]) -> String {
     }
 }
 
-fn collapsed_tool_target(tool_name: &str, params: &[ToolParam], args_raw: &str) -> String {
+fn collapsed_tool_target(tool_name: &str, params: &[ToolParam], args_raw: &str, max_detail_chars: usize) -> String {
     match tool_base_name(tool_name) {
         "read_file" | "edit_file" | "write_file" | "list_dir" | "delete_path" | "create_dir" => {
             find_param(params, &["path", "file"])
-                .map(|path| abbreviate_path(path, COLLAPSED_TARGET_MAX_CHARS))
+                .map(|path| abbreviate_path(path, max_detail_chars))
                 .unwrap_or_default()
         }
         "shell_exec" => find_param(params, &["command", "cmd"])
@@ -523,17 +523,16 @@ fn collapsed_tool_target(tool_name: &str, params: &[ToolParam], args_raw: &str) 
         }
         "web_search" => {
             let engine = web_search_engine_label(params);
-            let query = find_param(params, &["query", "q", "search"])
-                .map(|q| truncate_chars(q, COLLAPSED_TARGET_MAX_CHARS))
-                .unwrap_or_default();
-            if query.is_empty() {
+            let query = find_param(params, &["query", "q", "search"]).unwrap_or_default();
+            let combined = if query.trim().is_empty() {
                 engine
             } else {
                 format!("{engine} · {query}")
-            }
+            };
+            truncate_chars(&combined, max_detail_chars)
         }
         "web_fetch" => find_param(params, &["url", "uri"])
-            .map(|url| truncate_chars(url, COLLAPSED_TARGET_MAX_CHARS))
+            .map(|url| truncate_chars(url, max_detail_chars))
             .unwrap_or_default(),
         "wait_agent" => find_param(params, &["agent_id", "agent", "id"])
             .map(short_agent_display)
@@ -550,42 +549,42 @@ fn collapsed_tool_target(tool_name: &str, params: &[ToolParam], args_raw: &str) 
             }
         }
         "spawn_agent" => find_param(params, &["task_name", "prompt", "task", "message", "goal"])
-            .map(|text| truncate_chars(&collapse_whitespace(text), COLLAPSED_TARGET_MAX_CHARS))
+            .map(|text| truncate_chars(&collapse_whitespace(text), max_detail_chars))
             .unwrap_or_default(),
         "ask_user" | "ask_user_question" => {
             // Parse raw JSON directly to extract question text (bypasses array flattening)
             if let Ok(Value::Object(map)) = serde_json::from_str::<Value>(args_raw) {
                 // Try "question" field first
                 if let Some(q) = map.get("question").and_then(|v| v.as_str()) {
-                    return truncate_chars(&collapse_whitespace(q), COLLAPSED_TARGET_MAX_CHARS);
+                    return truncate_chars(&collapse_whitespace(q), max_detail_chars);
                 }
                 // Try "questions" array
                 if let Some(Value::Array(items)) = map.get("questions")
                     && let Some(first) = items.first()
                     && let Some(q) = first.get("question").and_then(|v| v.as_str())
                 {
-                    return truncate_chars(&collapse_whitespace(q), COLLAPSED_TARGET_MAX_CHARS);
+                    return truncate_chars(&collapse_whitespace(q), max_detail_chars);
                 }
             }
             // Fallback: use params
             if let Some(text) = find_param(params, &["question", "questions"]) {
-                return truncate_chars(&collapse_whitespace(text), COLLAPSED_TARGET_MAX_CHARS);
+                return truncate_chars(&collapse_whitespace(text), max_detail_chars);
             }
             String::new()
         }
         _ => {
             // Prefer a known summary path; otherwise first scalar value.
             if let Some(summary) = summarize_known_tool(tool_name, params) {
-                return truncate_chars(&summary, COLLAPSED_TARGET_MAX_CHARS);
+                return truncate_chars(&summary, max_detail_chars);
             }
             params
                 .first()
                 .map(|param| {
                     let value = param.value.as_str();
                     if value.contains('/') || value.contains('\\') {
-                        abbreviate_path(value, COLLAPSED_TARGET_MAX_CHARS)
+                        abbreviate_path(value, max_detail_chars)
                     } else {
-                        truncate_chars(value, COLLAPSED_TARGET_MAX_CHARS)
+                        truncate_chars(value, max_detail_chars)
                     }
                 })
                 .unwrap_or_default()
@@ -613,9 +612,19 @@ pub fn format_collapsed_tool_parts(tool_name: &str, args_raw: &str) -> (String, 
 
 /// Like [`format_collapsed_tool_parts`], but keeps the original path for clickable headers.
 pub fn format_collapsed_tool_parts_linked(tool_name: &str, args_raw: &str) -> CollapsedToolParts {
+    format_collapsed_tool_parts_linked_w(tool_name, args_raw, COLLAPSED_TARGET_MAX_CHARS)
+}
+
+/// Like [`format_collapsed_tool_parts_linked`], but truncates the detail to `max_detail_chars`
+/// so the caller can size it to the available terminal width instead of a fixed cap.
+pub fn format_collapsed_tool_parts_linked_w(
+    tool_name: &str,
+    args_raw: &str,
+    max_detail_chars: usize,
+) -> CollapsedToolParts {
     let verb = tool_display_verb(tool_name);
     let params = parse_tool_params(args_raw);
-    let (detail, detail_href) = collapsed_tool_target_linked(tool_name, &params, args_raw);
+    let (detail, detail_href) = collapsed_tool_target_linked(tool_name, &params, args_raw, max_detail_chars);
     CollapsedToolParts {
         verb,
         detail,
@@ -623,12 +632,17 @@ pub fn format_collapsed_tool_parts_linked(tool_name: &str, args_raw: &str) -> Co
     }
 }
 
-fn collapsed_tool_target_linked(tool_name: &str, params: &[ToolParam], args_raw: &str) -> (String, Option<String>) {
+fn collapsed_tool_target_linked(
+    tool_name: &str,
+    params: &[ToolParam],
+    args_raw: &str,
+    max_detail_chars: usize,
+) -> (String, Option<String>) {
     match tool_base_name(tool_name) {
         "read_file" | "edit_file" | "write_file" | "list_dir" | "delete_path" | "create_dir" => {
             match find_param(params, &["path", "file"]) {
                 Some(path) => {
-                    let display = abbreviate_path(path, COLLAPSED_TARGET_MAX_CHARS);
+                    let display = abbreviate_path(path, max_detail_chars);
                     let href = elph_tui::components::markdown::path_to_file_url(path);
                     (display, href)
                 }
@@ -637,14 +651,14 @@ fn collapsed_tool_target_linked(tool_name: &str, params: &[ToolParam], args_raw:
         }
         "web_fetch" => match find_param(params, &["url", "uri"]) {
             Some(url) => {
-                let display = truncate_chars(url, COLLAPSED_TARGET_MAX_CHARS);
+                let display = truncate_chars(url, max_detail_chars);
                 // Prefer the original URL as the OSC 8 target (even when the label is truncated).
                 let href = is_openable_web_url(url).then(|| url.to_string());
                 (display, href)
             }
             None => (String::new(), None),
         },
-        _ => (collapsed_tool_target(tool_name, params, args_raw), None),
+        _ => (collapsed_tool_target(tool_name, params, args_raw, max_detail_chars), None),
     }
 }
 
@@ -1434,6 +1448,22 @@ mod tests {
     fn approval_summary_web_search_includes_engine() {
         let summary = format_tool_approval_summary("web_search", r#"{"query":"rust async","engine":"brave"}"#);
         assert_eq!(summary, "Brave Search · rust async");
+    }
+
+    #[test]
+    fn collapsed_parts_linked_w_truncates_detail_to_budget() {
+        let url = "https://example.com/very/long/path/that/would/otherwise/be/clipped/by/a/fixed/cap";
+        let parts = format_collapsed_tool_parts_linked_w("web_fetch", &format!(r#"{{"url":"{url}"}}"#), 20);
+        assert!(parts.detail.chars().count() <= 20, "{}", parts.detail);
+        assert!(parts.detail.ends_with('…'), "{}", parts.detail);
+        // Original URL is preserved for the OSC 8 click target.
+        assert_eq!(parts.detail_href.as_deref(), Some(url));
+    }
+
+    #[test]
+    fn collapsed_parts_linked_w_keeps_short_detail_intact() {
+        let parts = format_collapsed_tool_parts_linked_w("web_fetch", r#"{"url":"https://example.com/x"}"#, 200);
+        assert_eq!(parts.detail, "https://example.com/x");
     }
 
     #[test]

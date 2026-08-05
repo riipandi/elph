@@ -21,7 +21,7 @@ use crate::tui::theme::{
     USER_INPUT_ACCENT,
 };
 use crate::tui::tool_params::{
-    ToolParamsView, format_collapsed_tool_parts_linked, parse_tool_params, tool_display_verb,
+    ToolParamsView, format_collapsed_tool_parts_linked_w, parse_tool_params, tool_display_verb,
 };
 
 use super::super::types::{
@@ -693,7 +693,15 @@ pub fn tool_call_card(
         // Expanded generic tools: verb only (args/output below).
         // Expanded edit_file with diff: verb + short path so the header still identifies the file.
         let (header_task, header_detail, header_detail_href) = if wait_agent || collapsed || has_diff {
-            let parts = format_collapsed_tool_parts_linked(&tool.name, &tool.args_summary);
+            // Size the header detail to the available terminal width so wide terminals show the
+            // full path/query instead of a hard 44-char cap. Reserve room for the status glyph,
+            // the verb, the duration meta chip, and the flex gaps between them.
+            let meta = process_meta_chip(status, message.duration_secs);
+            let label_w = tool_display_verb(&tool.name).chars().count();
+            let meta_w = meta.as_ref().map_or(0, |m| m.chars().count());
+            let reserved = 2usize + 3usize + label_w + meta_w; // glyph + 3 gaps + label + meta
+            let budget = (inner_width as usize).saturating_sub(reserved).saturating_sub(1).max(8);
+            let parts = format_collapsed_tool_parts_linked_w(&tool.name, &tool.args_summary, budget);
             (parts.verb, parts.detail, parts.detail_href)
         } else {
             (tool_display_verb(&tool.name), String::new(), None)
