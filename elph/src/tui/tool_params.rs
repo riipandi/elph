@@ -1,5 +1,6 @@
 //! Structured parsing and rendering for tool call parameters.
 
+use elph_agent::WebSearchEngine;
 use elph_tui::components::UiTheme;
 use elph_tui::wrapped_text_row_count;
 use iocraft::prelude::*;
@@ -203,8 +204,8 @@ pub fn tool_display_verb(tool_name: &str) -> String {
         "find_path" => "Find".to_string(),
         "copy_path" => "Copy".to_string(),
         "move_path" => "Move".to_string(),
-        "web_search" => "Search".to_string(),
-        "web_fetch" => "Fetch".to_string(),
+        "web_search" => "WebSearch".to_string(),
+        "web_fetch" => "WebFetch".to_string(),
         "spawn_agent" => "Spawning agent".to_string(),
         "wait_agent" => "Waiting agent".to_string(),
         "send_message" => "Messaging agent".to_string(),
@@ -448,6 +449,27 @@ fn truncate_filename(name: &str, max_chars: usize) -> String {
     truncate_chars(name, max_chars)
 }
 
+/// Display label for the `engine` parameter of a `web_search` tool call.
+///
+/// When the caller names an engine it is canonicalized to its display name
+/// (e.g. `ddg` → `DuckDuckGo`); when omitted the search auto-selects an engine
+/// via ranking/fallback, so `Auto` is shown to reflect that behavior.
+fn web_search_engine_label(params: &[ToolParam]) -> String {
+    match find_param(params, &["engine"]) {
+        Some(raw) => {
+            let trimmed = raw.trim();
+            if trimmed.is_empty() {
+                "Auto".to_string()
+            } else if let Some(engine) = WebSearchEngine::from_str_opt(trimmed) {
+                engine.name().to_string()
+            } else {
+                trimmed.to_string()
+            }
+        }
+        None => "Auto".to_string(),
+    }
+}
+
 fn collapsed_tool_target(tool_name: &str, params: &[ToolParam], args_raw: &str) -> String {
     match tool_base_name(tool_name) {
         "read_file" | "edit_file" | "write_file" | "list_dir" | "delete_path" | "create_dir" => {
@@ -499,9 +521,17 @@ fn collapsed_tool_target(tool_name: &str, params: &[ToolParam], args_raw: &str) 
                 format!("{from} \u{2192} {to}")
             }
         }
-        "web_search" => find_param(params, &["query", "q", "search"])
-            .map(|q| truncate_chars(q, COLLAPSED_TARGET_MAX_CHARS))
-            .unwrap_or_default(),
+        "web_search" => {
+            let engine = web_search_engine_label(params);
+            let query = find_param(params, &["query", "q", "search"])
+                .map(|q| truncate_chars(q, COLLAPSED_TARGET_MAX_CHARS))
+                .unwrap_or_default();
+            if query.is_empty() {
+                engine
+            } else {
+                format!("{engine} · {query}")
+            }
+        }
         "web_fetch" => find_param(params, &["url", "uri"])
             .map(|url| truncate_chars(url, COLLAPSED_TARGET_MAX_CHARS))
             .unwrap_or_default(),
@@ -807,7 +837,14 @@ fn summarize_known_tool(tool_name: &str, params: &[ToolParam]) -> Option<String>
             let to = find_param(params, &["to", "destination", "dest", "target"])?;
             Some(join_summary_parts([shorten_path(from), format!("→ {}", shorten_path(to))]))
         }
-        "web_search" => find_param(params, &["query", "q", "search"]).map(|query| truncate_chars(query, 72)),
+        "web_search" => {
+            let engine = web_search_engine_label(params);
+            let query = find_param(params, &["query", "q", "search"]).map(|query| truncate_chars(query, 72));
+            Some(match query {
+                Some(query) => format!("{engine} · {query}"),
+                None => engine,
+            })
+        }
         "web_fetch" => find_param(params, &["url", "uri"]).map(|url| truncate_chars(url, 72)),
         "spawn_agent" => find_param(params, &["prompt", "task", "message", "goal"])
             .map(|text| truncate_chars(&collapse_whitespace(text), 72)),
@@ -1369,9 +1406,34 @@ mod tests {
     fn collapsed_web_fetch_href_keeps_full_url_when_truncated() {
         let url = "https://example.com/very/long/path/that/will/be/truncated/for/display/page";
         let parts = format_collapsed_tool_parts_linked("web_fetch", &format!(r#"{{"url":"{url}"}}"#));
-        assert_eq!(parts.verb, "Fetch");
+        assert_eq!(parts.verb, "WebFetch");
         assert!(parts.detail.chars().count() <= COLLAPSED_TARGET_MAX_CHARS);
         assert_eq!(parts.detail_href.as_deref(), Some(url));
+    }
+
+    #[test]
+    fn collapsed_web_search_shows_engine_and_query() {
+        let label = format_collapsed_tool_label("web_search", r#"{"query":"rust async","engine":"duckduckgo"}"#);
+        // Verb renamed to WebSearch, engine canonicalized (ddg-style alias resolved), query kept.
+        assert_eq!(label, "WebSearch DuckDuckGo · rust async");
+    }
+
+    #[test]
+    fn collapsed_web_search_resolves_engine_alias() {
+        let label = format_collapsed_tool_label("web_search", r#"{"query":"latest news","engine":"ddg"}"#);
+        assert!(label.starts_with("WebSearch DuckDuckGo ·"), "{label}");
+    }
+
+    #[test]
+    fn collapsed_web_search_defaults_to_auto_without_engine() {
+        let label = format_collapsed_tool_label("web_search", r#"{"query":"rust async"}"#);
+        assert_eq!(label, "WebSearch Auto · rust async");
+    }
+
+    #[test]
+    fn approval_summary_web_search_includes_engine() {
+        let summary = format_tool_approval_summary("web_search", r#"{"query":"rust async","engine":"brave"}"#);
+        assert_eq!(summary, "Brave Search · rust async");
     }
 
     #[test]
