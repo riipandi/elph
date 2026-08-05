@@ -513,6 +513,8 @@ pub use tools::mcp::resolve_oauth_access_token;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::resolve_remote_auth;
 #[cfg(feature = "mcp")]
+pub use tools::mcp::rewrap_master_key;
+#[cfg(feature = "mcp")]
 pub use tools::mcp::run_oauth_flow;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::run_oauth_flow_with_scopes;

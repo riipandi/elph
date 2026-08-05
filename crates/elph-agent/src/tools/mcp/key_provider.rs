@@ -64,14 +64,16 @@ pub fn default_auth_lock_path() -> PathBuf {
 /// Load the master key from the process override, else unwrap from the machine-bound file.
 ///
 /// On first run (no `auth.lock` present), a random master key is generated,
-/// wrapped with the machine-derived key, and persisted.
+/// wrapped with the machine-derived key, and persisted. An exclusive flock
+/// guards creation so concurrent processes cannot race to create different
+/// master keys.
 pub fn load_or_create_master_key() -> Result<Aes256Key> {
     if let Some(key) = process_override().lock().unwrap_or_else(|e| e.into_inner()).clone() {
         return Ok(key);
     }
 
     // Optional CI escape hatch: full 32-byte key as URL-safe base64 (no pad).
-    if let Ok(b64) = std::env::var("ELPH_AUTH_MASTER_KEY_B64") {
+    if let Ok(b64) = std::env::var("ELPH_AUTH_KEY") {
         let trimmed = b64.trim();
         if !trimmed.is_empty() {
             return key_from_b64(trimmed);
@@ -79,15 +81,102 @@ pub fn load_or_create_master_key() -> Result<Aes256Key> {
     }
 
     let lock_path = default_auth_lock_path();
-    let wrapping_key = derive_machine_wrapping_key()?;
 
+    // Fast path: file exists → derive wrapping key from stored salt and unwrap.
     if lock_path.exists() {
-        unwrap_master_key(&lock_path, &wrapping_key)
-    } else {
-        let master = Aes256Key::generate();
-        wrap_master_key(&master, &wrapping_key, &lock_path).context("persist wrapped master key to auth.lock")?;
-        Ok(master)
+        return unwrap_master_key(&lock_path).or_else(|e| {
+            // Provide actionable guidance when the machine fingerprint has
+            // changed (hardware swap, VM clone) or the file was tampered with.
+            bail!(
+                "{e}. This happens when the machine identifier changes (hardware \
+                 change, VM clone) or auth.lock is corrupt. Recovery: delete \
+                 auth.lock and auth.json, then re-connect providers/MCP. Set \
+                 ELPH_AUTH_KEY to preserve the same key across machines."
+            );
+        });
     }
+
+    // Slow path: create a new master key under an exclusive lock so concurrent
+    // processes cannot race.
+    create_master_key_locked(&lock_path)
+}
+
+/// Create a new wrapped master key at `path`, guarded by an exclusive lock.
+///
+/// If another process wins the lock and creates the file first, we fall back to
+/// reading its file instead of overwriting. Uses a `.lock` sidecar with
+/// `create_new` for atomic lock acquisition across platforms.
+fn create_master_key_locked(path: &Path) -> Result<Aes256Key> {
+    // Ensure parent dir exists before locking.
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).with_context(|| format!("create {}", parent.display()))?;
+    }
+
+    let lock_sidecar = path.with_extension("lock");
+
+    // Spin briefly to acquire the lock sidecar. The holder creates auth.lock
+    // then deletes the sidecar; waiters re-check auth.lock each iteration.
+    for _ in 0..200 {
+        // Try to atomically create the sidecar.
+        match std::fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&lock_sidecar)
+        {
+            Ok(_lock_handle) => {
+                // We hold the lock. Re-check: another process may have
+                // created auth.lock between our existence check and now.
+                if path.exists() {
+                    let _ = std::fs::remove_file(&lock_sidecar);
+                    return unwrap_master_key(path);
+                }
+
+                // Create the master key.
+                let salt = random_salt();
+                let wrapping_key = derive_machine_wrapping_key_with_salt(&salt)?;
+                let master = Aes256Key::generate();
+                wrap_master_key(&master, &wrapping_key, &salt, path)
+                    .context("persist wrapped master key to auth.lock")?;
+
+                // Release the lock.
+                let _ = std::fs::remove_file(&lock_sidecar);
+                return Ok(master);
+            }
+            Err(_) => {
+                // Sidecar exists — another process is creating. Wait briefly
+                // then re-check for auth.lock.
+                std::thread::sleep(std::time::Duration::from_millis(50));
+                if path.exists() {
+                    return unwrap_master_key(path);
+                }
+            }
+        }
+    }
+
+    // Timeout: the holder may have crashed. Clean up and retry once.
+    let _ = std::fs::remove_file(&lock_sidecar);
+    bail!(
+        "timed out waiting for auth.lock creation. A previous process may have \
+         crashed mid-creation. Try deleting {} and restarting.",
+        lock_sidecar.display()
+    );
+}
+
+/// Re-wrap the master key with the current machine fingerprint.
+///
+/// Call this after a hardware change / OS reinstall when you want to keep using
+/// the existing `auth.json` (encrypted credentials) but the old `auth.lock` no
+/// longer unwraps. The caller must supply the current plaintext master key (e.g.
+/// via `ELPH_AUTH_KEY` or after a successful unwrap with the old
+/// machine identity).
+///
+/// If `auth.lock` is missing, this generates a brand-new master key — which will
+/// NOT be able to decrypt the existing `auth.json`. Use with care.
+pub fn rewrap_master_key(master: &Aes256Key) -> Result<()> {
+    let path = default_auth_lock_path();
+    let salt = random_salt();
+    let wrapping_key = derive_machine_wrapping_key_with_salt(&salt)?;
+    wrap_master_key(master, &wrapping_key, &salt, &path)
 }
 
 // ---------------------------------------------------------------------------
@@ -107,8 +196,7 @@ struct WrappedKeyFile {
     blob: String,
 }
 
-fn wrap_master_key(master: &Aes256Key, wrapping_key: &Aes256Key, path: &Path) -> Result<()> {
-    let salt = random_salt();
+fn wrap_master_key(master: &Aes256Key, wrapping_key: &Aes256Key, salt: &[u8; 16], path: &Path) -> Result<()> {
     let (nonce, ciphertext) = super::crypto::encrypt_sync_bytes(wrapping_key, master.as_bytes())?;
 
     let mut packed = Vec::with_capacity(nonce.len() + ciphertext.len());
@@ -124,12 +212,38 @@ fn wrap_master_key(master: &Aes256Key, wrapping_key: &Aes256Key, path: &Path) ->
     write_wrapped_key_file(path, &file)
 }
 
-fn unwrap_master_key(path: &Path, wrapping_key: &Aes256Key) -> Result<Aes256Key> {
+#[cfg(test)]
+/// Read the salt from an existing lock file, if present and parseable.
+fn read_salt_from_lock(path: &Path) -> Option<[u8; 16]> {
+    if !path.exists() {
+        return None;
+    }
+    let raw = std::fs::read_to_string(path).ok()?;
+    let file: WrappedKeyFile = serde_json::from_str(&raw).ok()?;
+    let salt_bytes = hex::decode(&file.salt).ok()?;
+    if salt_bytes.len() != 16 {
+        return None;
+    }
+    let mut salt = [0u8; 16];
+    salt.copy_from_slice(&salt_bytes);
+    Some(salt)
+}
+
+fn unwrap_master_key(path: &Path) -> Result<Aes256Key> {
     let file = read_wrapped_key_file(path)?;
 
     if file.v != WRAPPED_KEY_VERSION {
         bail!("unsupported auth.lock version {} (expected {WRAPPED_KEY_VERSION})", file.v);
     }
+
+    // Decode the salt stored in the same file and derive the wrapping key.
+    let salt_bytes = hex::decode(&file.salt).context("decode salt from auth.lock")?;
+    if salt_bytes.len() != 16 {
+        bail!("auth.lock salt has unexpected length {}", salt_bytes.len());
+    }
+    let mut salt = [0u8; 16];
+    salt.copy_from_slice(&salt_bytes);
+    let wrapping_key = derive_machine_wrapping_key_with_salt(&salt)?;
 
     let packed = URL_SAFE_NO_PAD
         .decode(file.blob.trim())
@@ -139,8 +253,8 @@ fn unwrap_master_key(path: &Path, wrapping_key: &Aes256Key) -> Result<Aes256Key>
     }
 
     let (nonce, ct) = packed.split_at(super::crypto::NONCE_LEN);
-    let master_bytes = super::crypto::decrypt_sync_bytes(wrapping_key, nonce, ct)
-        .context("unwrap master key (wrong machine or corrupted auth.lock)")?;
+    let master_bytes = super::crypto::decrypt_sync_bytes(&wrapping_key, nonce, ct)
+        .context("unwrap master key (machine identifier may have changed, or auth.lock is corrupt)")?;
 
     if master_bytes.len() != KEY_LEN {
         bail!("unwrapped master key has unexpected length {}", master_bytes.len());
@@ -161,13 +275,20 @@ fn write_wrapped_key_file(path: &Path, file: &WrappedKeyFile) -> Result<()> {
         std::fs::create_dir_all(parent).with_context(|| format!("create {}", parent.display()))?;
     }
     let json = serde_json::to_string_pretty(file).context("serialize wrapped key file")?;
-    std::fs::write(path, json).with_context(|| format!("write {}", path.display()))?;
+
+    // Atomic write via temp file + rename: a crash mid-write cannot corrupt
+    // the existing lock file.
+    let mut tmp_path = path.as_os_str().to_os_string();
+    tmp_path.push(".tmp");
+    let tmp_path = PathBuf::from(tmp_path);
+    std::fs::write(&tmp_path, json).with_context(|| format!("write temp {}", tmp_path.display()))?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))
-            .with_context(|| format!("chmod {}", path.display()))?;
+        std::fs::set_permissions(&tmp_path, std::fs::Permissions::from_mode(0o600))
+            .with_context(|| format!("chmod {}", tmp_path.display()))?;
     }
+    std::fs::rename(&tmp_path, path).with_context(|| format!("rename {} → {}", tmp_path.display(), path.display()))?;
     Ok(())
 }
 
@@ -175,19 +296,37 @@ fn write_wrapped_key_file(path: &Path, file: &WrappedKeyFile) -> Result<()> {
 // Machine fingerprint + HKDF wrapping key
 // ---------------------------------------------------------------------------
 
-/// Derive the wrapping key from this machine's hardware identity.
+/// Derive the wrapping key from this machine's hardware identity using a
+/// specific salt.
 ///
-/// Collects one or more stable, machine-unique identifiers (platform UUID,
-/// hardware serial, machine-id) and feeds them through HKDF-SHA256 so the
-/// wrapping key is stable per-machine yet opaque.
-fn derive_machine_wrapping_key() -> Result<Aes256Key> {
-    let salt = random_salt();
+/// The salt must be stable across wrap and unwrap: `wrap_master_key` generates
+/// a random salt and stores it in `auth.lock`; `unwrap_master_key` reads that
+/// same salt back so the HKDF output is identical.
+fn derive_machine_wrapping_key_with_salt(salt: &[u8]) -> Result<Aes256Key> {
     let ikm = machine_fingerprint()?;
     let mut okm = [0u8; KEY_LEN];
-    hkdf::Hkdf::<sha2::Sha256>::new(Some(&salt), &ikm)
+    hkdf::Hkdf::<sha2::Sha256>::new(Some(salt), &ikm)
         .expand(WRAPPING_KEY_INFO.as_bytes(), &mut okm)
         .map_err(|e| anyhow::anyhow!("HKDF expand failed: {e}"))?;
     Ok(Aes256Key::from_bytes(okm))
+}
+
+/// Generate a fresh random salt for a new wrapping operation.
+fn random_salt() -> [u8; 16] {
+    let mut salt = [0u8; 16];
+    if getrandom::fill(&mut salt).is_ok() {
+        return salt;
+    }
+    // Fallback: seeded from time. Acceptable for a salt that only needs
+    // to be unique within this process, not secret.
+    let seed = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    let bytes = seed.to_le_bytes();
+    salt[..8].copy_from_slice(&bytes);
+    salt[8..].copy_from_slice(&bytes);
+    salt
 }
 
 /// Stable, machine-unique identifier material for HKDF input keying material.
@@ -262,7 +401,7 @@ fn machine_fingerprint() -> Result<Vec<u8>> {
 
     bail!(
         "could not determine a stable machine identifier on this platform. \
-         Set ELPH_AUTH_MASTER_KEY_B64 to provide an explicit master key."
+         Set ELPH_AUTH_KEY to provide an explicit master key."
     );
 }
 
@@ -280,25 +419,6 @@ fn read_command_stdout(cmd: &[&str], extractor: impl FnOnce(&str) -> Option<Stri
     }
     let stdout = String::from_utf8_lossy(&output.stdout);
     Ok(extractor(&stdout))
-}
-
-fn random_salt() -> [u8; 16] {
-    let mut salt = [0u8; 16];
-    // getrandom is the right tool for cryptographic randomness; falls back
-    // gracefully inside sandboxes and early-boot environments.
-    if getrandom::fill(&mut salt).is_ok() {
-        return salt;
-    }
-    // Fallback: seeded from time. Acceptable for a salt that only needs
-    // to be unique within this process, not secret.
-    let seed = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos();
-    let bytes = seed.to_le_bytes();
-    salt[..8].copy_from_slice(&bytes);
-    salt[8..].copy_from_slice(&bytes);
-    salt
 }
 
 fn key_from_b64(secret: &str) -> Result<Aes256Key> {
@@ -346,37 +466,46 @@ mod tests {
         assert!(key_from_b64(&long).is_err());
     }
 
+    /// Wrap with one salt, then read that salt back and unwrap — verifies the
+    /// actual persist → reload flow where the salt is stored in the file.
     #[test]
-    fn wrap_unwrap_roundtrip() {
-        clear_process_master_key_for_tests();
-
+    fn wrap_persist_unwrap_roundtrip() {
         let dir = tempdir().unwrap();
         let path = dir.path().join("auth.lock");
 
         let master = Aes256Key::generate();
-        let wrapping = Aes256Key::generate();
+        let salt = random_salt();
+        let wrapping = derive_machine_wrapping_key_with_salt(&salt).unwrap();
 
-        wrap_master_key(&master, &wrapping, &path).unwrap();
+        wrap_master_key(&master, &wrapping, &salt, &path).unwrap();
         assert!(path.exists());
 
-        let unwrapped = unwrap_master_key(&path, &wrapping).unwrap();
+        // unwrap_master_key reads the salt from the file itself.
+        let unwrapped = unwrap_master_key(&path).unwrap();
         assert_eq!(unwrapped.as_bytes(), master.as_bytes());
     }
 
     #[test]
-    fn unwrap_fails_with_wrong_wrapping_key() {
-        clear_process_master_key_for_tests();
-
+    fn unwrap_rejects_tampered_blob() {
         let dir = tempdir().unwrap();
         let path = dir.path().join("auth.lock");
 
         let master = Aes256Key::generate();
-        let wrapping = Aes256Key::generate();
-        let other = Aes256Key::generate();
+        let salt = random_salt();
+        let wrapping = derive_machine_wrapping_key_with_salt(&salt).unwrap();
+        wrap_master_key(&master, &wrapping, &salt, &path).unwrap();
 
-        wrap_master_key(&master, &wrapping, &path).unwrap();
+        // Tamper with the stored file: keep the same salt, corrupt the blob.
+        let mut file: WrappedKeyFile = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        let mut blob_bytes = URL_SAFE_NO_PAD.decode(&file.blob).unwrap();
+        // Flip a byte in the ciphertext region (after the nonce).
+        if blob_bytes.len() > crate::tools::mcp::crypto::NONCE_LEN + 5 {
+            blob_bytes[crate::tools::mcp::crypto::NONCE_LEN + 5] ^= 0xff;
+        }
+        file.blob = URL_SAFE_NO_PAD.encode(&blob_bytes);
+        std::fs::write(&path, serde_json::to_string(&file).unwrap()).unwrap();
 
-        let err = unwrap_master_key(&path, &other).unwrap_err();
+        let err = unwrap_master_key(&path).unwrap_err();
         let msg = err.to_string().to_ascii_lowercase();
         assert!(
             msg.contains("unwrap") || msg.contains("decrypt") || msg.contains("aes"),
@@ -386,17 +515,18 @@ mod tests {
 
     #[test]
     fn load_or_create_generates_and_reloads() {
-        clear_process_master_key_for_tests();
-
-        // Derive a wrapping key from this machine's fingerprint and exercise
-        // the wrap → persist → reload → unwrap cycle that load_or_create uses.
+        // Exercise the full wrap → persist → reload cycle using the real
+        // machine fingerprint. This mirrors what load_or_create does.
         let dir = tempdir().unwrap();
         let path = dir.path().join("auth.lock");
 
         let master = Aes256Key::generate();
-        let wrapping = derive_machine_wrapping_key().unwrap();
-        wrap_master_key(&master, &wrapping, &path).unwrap();
-        let reloaded = unwrap_master_key(&path, &wrapping).unwrap();
+        let salt = random_salt();
+        let wrapping = derive_machine_wrapping_key_with_salt(&salt).unwrap();
+        wrap_master_key(&master, &wrapping, &salt, &path).unwrap();
+
+        // Now unwrap using only the file (reads its own salt).
+        let reloaded = unwrap_master_key(&path).unwrap();
         assert_eq!(reloaded.as_bytes(), master.as_bytes());
 
         // File must contain JSON with the wrapped blob, not the raw key.
@@ -406,17 +536,44 @@ mod tests {
     }
 
     #[test]
+    fn read_salt_from_lock_roundtrip() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("auth.lock");
+
+        let salt = random_salt();
+        let wrapping = derive_machine_wrapping_key_with_salt(&salt).unwrap();
+        wrap_master_key(&Aes256Key::generate(), &wrapping, &salt, &path).unwrap();
+
+        let stored_salt = read_salt_from_lock(&path).unwrap();
+        assert_eq!(stored_salt, salt);
+    }
+
+    #[test]
+    fn read_salt_from_lock_returns_none_when_missing() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("auth.lock");
+        assert!(read_salt_from_lock(&path).is_none());
+    }
+
+    #[test]
+    fn read_salt_from_lock_returns_none_when_malformed() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("auth.lock");
+        std::fs::write(&path, "not json").unwrap();
+        assert!(read_salt_from_lock(&path).is_none());
+    }
+
+    #[test]
     fn default_auth_lock_path_uses_xdg() {
-        let original = std::env::var_os("XDG_DATA_HOME");
+        let original_xdg = std::env::var_os("XDG_DATA_HOME");
         let original_home = std::env::var_os("HOME");
         unsafe {
             std::env::set_var("XDG_DATA_HOME", "/tmp/xdg-data");
         }
         let p = default_auth_lock_path();
         assert_eq!(p, PathBuf::from("/tmp/xdg-data/elph/auth.lock"));
-        // restore
         unsafe {
-            match original {
+            match original_xdg {
                 Some(v) => std::env::set_var("XDG_DATA_HOME", v),
                 None => std::env::remove_var("XDG_DATA_HOME"),
             };
@@ -425,5 +582,15 @@ mod tests {
                 None => std::env::remove_var("HOME"),
             };
         }
+    }
+
+    /// rewrap_master_key should succeed without panic — it is a thin
+    /// wrap around wrap_master_key using the current machine fingerprint.
+    /// (Full wrap → unwrap semantics are already tested above.)
+    #[test]
+    fn rewrap_master_key_does_not_panic() {
+        let master = Aes256Key::generate();
+        // This calls default_auth_lock_path() internally.
+        rewrap_master_key(&master).unwrap();
     }
 }

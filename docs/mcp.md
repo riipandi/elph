@@ -229,7 +229,7 @@ wrapping key is derived via HKDF-SHA256 from this machine's hardware UUID / mach
 so copying `auth.json` + `auth.lock` to another machine will not decrypt. Logical payload
 holds MCP OAuth JSON objects and provider API keys / `env:VAR` refs.
 
-CI/tests may inject a key via `set_process_master_key_for_tests` or `ELPH_AUTH_MASTER_KEY_B64`.
+CI/tests may inject a key via `set_process_master_key_for_tests` or `ELPH_AUTH_KEY`.
 
 Hosts pass the path via `AuthStorePathBuilder` / `McpLoadOptions.auth_store_path`.
 

@@ -169,6 +169,8 @@ pub use events::{McpClientService, McpEventBus, McpServerEvent};
 #[cfg(feature = "mcp")]
 pub use key_provider::load_or_create_master_key;
 #[cfg(feature = "mcp")]
+pub use key_provider::rewrap_master_key;
+#[cfg(feature = "mcp")]
 pub use key_provider::{clear_process_master_key_for_tests, default_auth_lock_path, set_process_master_key_for_tests};
 #[cfg(feature = "mcp")]
 pub use policy::{McpPolicyAction, McpPolicyConfig};
