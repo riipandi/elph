@@ -1,8 +1,21 @@
 [build]
 rustflags = ["-C", "target-cpu=native"]
 
-# Using lld as the linker greatly improves compilation time.
+################################################################################
+# Using alternative linker to improves compilation time.
 # Since Rust 1.90 lld is the default linker on x86_64-unknown-linux-gnu
+# @ref: https://nnethercote.github.io/perf-book/build-configuration.html
+# @ref: https://github.com/wild-linker/wild
+################################################################################
+
+[target.aarch64-apple-darwin]
+linker = "clang"
+rustflags = ["-C", "link-arg=--ld-path=/usr/bin/ld"]
+
+[target.x86_64-unknown-linux-gnu]
+linker = "clang"
+rustflags = ["-Clink-arg=--ld-path=wild"]
+
 [target.x86_64-unknown-linux-musl]
 rustflags = ["-C", "link-args=-fuse-ld=lld"]
 
