@@ -10,13 +10,14 @@ use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
 
 use super::common::{FETCH_MAX_BYTES, parse_public_url};
+use super::html::FetchPageResult;
 
 pub fn create_web_fetch_tool() -> AgentTool {
     simple_tool(
         Tool {
             name: "web_fetch".into(),
 constrained_sampling: None,
-            description: "Fetches a URL and optionally returns the content as Markdown. HTML is converted to plain text. Falls back to the Crawlberg headless browser for JavaScript-heavy pages. Useful for providing docs as context.".into(),
+            description: "Fetches a URL and returns the content as Markdown. HTML is converted with htmd; JavaScript-heavy pages are returned as fetched (no in-process browser). Useful for providing docs as context.".into(),
             parameters: json!({
                 "type": "object",
                 "properties": {
@@ -66,7 +67,7 @@ async fn fetch_url(raw_url: &str) -> anyhow::Result<FetchResult> {
     // Check resilience before fetching
     elph_ai::resilience::check_provider_resilience(&provider_id)?;
 
-    let result = match super::crawlberg::fetch_page(parsed.as_str()).await {
+    let result = match super::html::fetch_page(parsed.as_str()).await {
         Ok(page) => page,
         Err(e) => {
             elph_ai::resilience::record_provider_failure(&provider_id);
@@ -76,15 +77,16 @@ async fn fetch_url(raw_url: &str) -> anyhow::Result<FetchResult> {
 
     elph_ai::resilience::record_provider_success(&provider_id);
 
-    let mut body = result.body;
+    let page: FetchPageResult = result;
+    let mut body = page.body;
     if body.len() > FETCH_MAX_BYTES {
         body.truncate(FETCH_MAX_BYTES);
         body.push_str("\n\n(output truncated)");
     }
 
     Ok(FetchResult {
-        url: result.url,
-        content_type: result.content_type,
+        url: page.url,
+        content_type: page.content_type,
         body: body.trim_end().to_string(),
     })
 }

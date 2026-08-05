@@ -11,17 +11,15 @@ use crate::types::{AgentTool, AgentToolResult};
 
 use super::common::http_client;
 use super::engines::search_engine;
+use super::html::search_duckduckgo;
 use super::ranking::Engine;
 use super::ranking::{format_results, ordered_try_list};
-
-#[cfg(feature = "crawlberg")]
-use super::crawlberg;
 
 pub fn create_web_search_tool() -> AgentTool {
     simple_tool(
         Tool {
             name: "web_search".into(),
-constrained_sampling: None,
+            constrained_sampling: None,
             description: "Searches the web for information, providing results with snippets and links from relevant web pages. Supports multiple engines with automatic ranking and fallback. Useful for accessing real-time information.".into(),
             parameters: json!({
                 "type": "object",
@@ -104,9 +102,8 @@ async fn run_search(
         }
     }
 
-    #[cfg(feature = "crawlberg")]
     {
-        match crawlberg::search_duckduckgo(query).await {
+        match search_duckduckgo(query).await {
             Ok(results) if !results.is_empty() => {
                 let limited = if results.len() > limit {
                     results[..limit].to_vec()
@@ -115,8 +112,8 @@ async fn run_search(
                 };
                 return Ok((Engine::DuckDuckGo, limited));
             }
-            Ok(_) => errors.push("Crawlberg: no results".into()),
-            Err(error) => errors.push(format!("Crawlberg: {error}")),
+            Ok(_) => errors.push("DuckDuckGo fallback: no results".into()),
+            Err(error) => errors.push(format!("DuckDuckGo fallback: {error}")),
         }
     }
 

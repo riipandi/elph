@@ -428,7 +428,7 @@ web_fetch url="https://doc.rust-lang.org/book/"
 web_fetch url="https://crates.io/api/v1/crates/serde"
 ```
 
-**Catatan:** Tool ini menggunakan Crawlberg headless browser untuk halaman yang banyak menggunakan JavaScript.
+**Catatan:** HTML dikonversi ke Markdown dengan `htmd`; halaman yang bergantung pada JavaScript dieksekusi (JS-rendered) dikembalikan apa adanya, tidak melalui browser in-process.
 
 ---
 

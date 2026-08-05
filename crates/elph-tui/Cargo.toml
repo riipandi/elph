@@ -48,6 +48,7 @@ url.workspace = true
 # Wayland clipboard backend (Linux). macOS/Windows use platform-native APIs.
 [target.'cfg(target_os = "linux")'.dependencies]
 clipboard-rs = { workspace = true, features = ["wayland"] }
+
 [dev-dependencies]
 futures.workspace = true
 lipsum = "0.9.1"

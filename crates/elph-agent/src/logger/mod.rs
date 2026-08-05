@@ -58,13 +58,12 @@ pub fn logs_dir() -> Option<PathBuf> {
 }
 
 /// Redirects the process stderr (fd 2) to a file inside the logs directory so
-/// third-party libraries that write directly to fd 2 — the Crawlberg/deno_core
-/// browser backend and the MCP (rmcp) client — do not corrupt the TUI. Output
-/// is persisted under `<logs_dir>/crawlberg.log` instead of being discarded.
+/// third-party libraries that write directly to fd 2 — the MCP (rmcp) client —
+/// do not corrupt the TUI. Output is persisted under `<logs_dir>/mcp.log`
+/// instead of being discarded.
 ///
-/// This mirrors the previous Obscura implementation, which used the same `dup2`
-/// trick but redirected to `/dev/null`. Safe to call from multiple subsystems;
-/// the first call wins and subsequent calls are no-ops (fd 2 is process-global).
+/// Safe to call from multiple subsystems; the first call wins and subsequent
+/// calls are no-ops (fd 2 is process-global).
 pub fn redirect_stderr_to_file() {
     #[cfg(unix)]
     {
@@ -80,7 +79,7 @@ pub fn redirect_stderr_to_file() {
         if std::fs::create_dir_all(&dir).is_err() {
             return;
         }
-        let path = dir.join("crawlberg.log");
+        let path = dir.join("mcp.log");
         if let Ok(file) = OpenOptions::new().create(true).append(true).open(&path) {
             unsafe extern "C" {
                 fn dup2(oldfd: std::os::raw::c_int, newfd: std::os::raw::c_int) -> std::os::raw::c_int;

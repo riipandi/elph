@@ -15,14 +15,77 @@ publish = true
 name = "elph_agent"
 path = "src/lib.rs"
 
+[dependencies]
+aes-gcm.workspace = true
+anyhow.workspace = true
+astral-tl.workspace = true
+async-trait = "0.1"
+backon.workspace = true
+base64.workspace = true
+bytes.workspace = true
+elph-ai.workspace = true
+encoding_rs.workspace = true
+failsafe.workspace = true
+fastrace = { workspace = true, optional = true }
+fastrace-reqwest = { workspace = true, optional = true }
+fff-search = { workspace = true, optional = true }
+futures.workspace = true
+governor.workspace = true
+htmd.workspace = true
+http.workspace = true
+ignore.workspace = true
+jsonschema.workspace = true
+kalid.workspace = true
+keyring.workspace = true
+log.workspace = true
+logforth.workspace = true
+memchr.workspace = true
+memorable-ids.workspace = true
+parking_lot.workspace = true
+rand.workspace = true
+regex.workspace = true
+reqwest.workspace = true
+rmcp = { workspace = true, optional = true }
+serde-jsonlines = { workspace = true, features = ["async"] }
+serde.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+time.workspace = true
+tokio = { workspace = true, features = [
+  "fs",
+  "io-util",
+  "macros",
+  "net",
+  "process",
+  "rt",
+  "rt-multi-thread",
+  "signal",
+  "sync",
+  "time",
+] }
+tokio-util = { workspace = true, features = ["rt"] }
+toml.workspace = true
+toon-format.workspace = true
+turso-db.workspace = true
+turso.workspace = true
+url.workspace = true
+urlencoding.workspace = true
+walkdir = { workspace = true, optional = true }
+wasmtime = { workspace = true, optional = true }
+yaml_serde.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+rustix = { workspace = true }
+
+
 [features]
-default = ["crawlberg"]
+default = []
 full = ["mcp", "prompt-templates", "extensions", "builtin-tools"]
 builtin-tools = ["tools-edit", "tools-search", "tools-web", "tools-collaboration"]
 extensions = ["dep:wasmtime", "dep:walkdir"]
 mcp = ["dep:rmcp"]
 prompt-templates = []
-crawlberg = ["dep:crawlberg"]
 tools-collaboration = []
 tools-copy-path = []
 tools-create-dir = []
@@ -47,67 +110,6 @@ tools-search = ["tools-read-file", "tools-grep", "tools-find-path", "tools-list-
 tools-web = []
 tools-write-file = []
 tracing = ["dep:fastrace", "dep:fastrace-reqwest", "fastrace/enable", "elph-ai/tracing"]
-
-[dependencies]
-aes-gcm.workspace = true
-anyhow.workspace = true
-async-trait = "0.1"
-backon.workspace = true
-base64.workspace = true
-bytes.workspace = true
-crawlberg = { workspace = true, optional = true }
-elph-ai.workspace = true
-failsafe.workspace = true
-fastrace = { workspace = true, optional = true }
-fastrace-reqwest = { workspace = true, optional = true }
-fff-search = { workspace = true, optional = true }
-futures.workspace = true
-governor.workspace = true
-http.workspace = true
-ignore.workspace = true
-jsonschema.workspace = true
-kalid.workspace = true
-keyring.workspace = true
-log.workspace = true
-logforth.workspace = true
-memchr.workspace = true
-memorable-ids.workspace = true
-parking_lot.workspace = true
-rand.workspace = true
-regex.workspace = true
-reqwest.workspace = true
-rmcp = { workspace = true, optional = true }
-serde.workspace = true
-serde-jsonlines = { workspace = true, features = ["async"] }
-serde_json.workspace = true
-yaml_serde.workspace = true
-tempfile.workspace = true
-thiserror.workspace = true
-time.workspace = true
-tokio = { workspace = true, features = [
-  "fs",
-  "io-util",
-  "macros",
-  "net",
-  "process",
-  "rt",
-  "rt-multi-thread",
-  "signal",
-  "sync",
-  "time",
-] }
-tokio-util = { workspace = true, features = ["rt"] }
-toml.workspace = true
-toon-format.workspace = true
-turso.workspace = true
-turso-db.workspace = true
-url.workspace = true
-urlencoding.workspace = true
-walkdir = { workspace = true, optional = true }
-wasmtime = { workspace = true, optional = true }
-
-[target.'cfg(unix)'.dependencies]
-rustix = { workspace = true }
 
 [[example]]
 name = "faux_agent"

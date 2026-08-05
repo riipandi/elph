@@ -71,7 +71,6 @@ Other Tools
 | `tools-list-dir`      | no      | `list_dir` only (pulls in `walkdir`)                                                           |
 | `mcp`                 | yes     | MCP client — see [mcp.md](./mcp.md)                                                            |
 | `extensions`          | yes     | WASM extension host                                                                            |
-| `crawlberg`           | yes     | Crawlberg browser fallback for web tools                                                       |
 | `tracing`             | no      | `fastrace` spans + HTTP trace propagation — see [observability.md](./observability.md)         |
 
 The `elph` binary enables `builtin-tools` (and `tracing`) by default:
@@ -145,7 +144,7 @@ Filesystem tools resolve paths through `ExecutionEnv::absolute_path` and perform
 
 `list_dir` resolves the directory path via `ExecutionEnv`, then lists immediate children with [`walkdir`](https://crates.io/crates/walkdir) on a blocking thread pool.
 
-`web_search` and `web_fetch` do not use `ExecutionEnv`. They perform outbound HTTP requests and route JavaScript-heavy pages through the Crawlberg headless browser in-process.
+`web_search` and `web_fetch` do not use `ExecutionEnv`. They perform outbound HTTP requests; HTML responses are converted to Markdown with `htmd`, and DuckDuckGo fallback search is extracted with the lightweight `astral-tl` selector engine. JavaScript-heavy pages are returned as fetched (no in-process browser).
 
 ## Tool reference
 
@@ -289,7 +288,7 @@ Search the web using multiple providers with automatic ranking and fallback.
 
 #### Ranking and availability
 
-Auto mode picks the highest-ranked configured engine. DuckDuckGo is always tried last as a fallback. When all HTTP engines fail and the `crawlberg` feature is enabled (on by default), Crawlberg scrapes DuckDuckGo via the headless browser.
+Auto mode picks the highest-ranked configured engine. DuckDuckGo is always tried last as a fallback. When every HTTP engine fails, `web_search` falls back to the DuckDuckGo HTML endpoint, which is fetched and parsed with the `astral-tl` selector engine (no API key, no in-process browser).
 
 | Rank | Engine     | Env var                | Key required |
 | ---- | ---------- | ---------------------- | ------------ |
@@ -322,13 +321,13 @@ results: 3
 
 #### `web_fetch`
 
-Fetch content from a public HTTP(S) URL. HTML responses are rendered and converted to Markdown by Crawlberg. Blocks private and loopback addresses (SSRF protection).
+Fetch content from a public HTTP(S) URL. HTML responses are converted to Markdown with `htmd`. Blocks private and loopback addresses (SSRF protection).
 
 | Parameter | Type   | Required | Description                |
 | --------- | ------ | -------- | -------------------------- |
 | `url`     | string | yes      | HTTP or HTTPS URL to fetch |
 
-Fetching is routed through Crawlberg (`crawlberg` feature, on by default). For JavaScript-heavy pages it navigates the page in an in-process headless browser, then extracts content from the rendered DOM. Plain HTTP responses are returned directly.
+Fetching is performed with the shared reqwest client. The response body is decoded (charset via `encoding_rs` when the `Content-Type` header declares one) and converted to Markdown by `htmd`, which skips layout and chrome tags (`script`, `style`, `nav`, `header`, `footer`, `aside`, etc.). Plain HTTP responses are returned as-is; JavaScript-heavy pages return the fetched HTML rather than a fully rendered DOM (no in-process browser).
 
 Response bodies are capped at 256 KB. HTML is converted to Markdown; other content types are returned as-is.
 

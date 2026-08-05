@@ -482,7 +482,7 @@ let tools = BuiltinToolsBuilder::all(env).build();
 
 `grep` and `find` use [`fff-search`](https://crates.io/crates/fff-search) for fast filesystem indexing and content search. `ls` uses [`walkdir`](https://crates.io/crates/walkdir) on a blocking thread pool. `read`, `write`, `edit`, and `shell_exec` use `ExecutionEnv` directly.
 
-`websearch` and `webfetch` query the public web via HTTP. They support multiple search providers with automatic ranking and fallback, and optionally use the [Crawlberg](https://crates.io/crates/crawlberg) headless browser for scraping when HTTP alone is insufficient. Web tools do not require an `ExecutionEnv`.
+`websearch` and `webfetch` query the public web via HTTP. They support multiple search providers with automatic ranking and fallback. HTML responses are converted to Markdown with [`htmd`](https://crates.io/crates/htmd), and the DuckDuckGo fallback is parsed with the lightweight [`astral-tl`](https://crates.io/crates/astral-tl) selector engine. Web tools do not require an `ExecutionEnv`.
 
 ```rust
 use elph_agent::create_web_tools;
@@ -505,7 +505,6 @@ Set provider API keys via environment variables (`BRAVE_SEARCH_API_KEY`, `EXA_AP
 | `tools-collaboration` | no      | `spawn_agent`, `send_message`, …                                                               |
 | `mcp`                 | yes     | MCP client                                                                                     |
 | `extensions`          | yes     | WASM extension host                                                                            |
-| `crawlberg`           | yes     | Crawlberg browser fallback for web tools                                                       |
 | `tracing`             | no      | `fastrace` instrumentation                                                                     |
 
 ```sh
@@ -515,8 +514,6 @@ cargo build -p elph-agent --no-default-features
 # Full coding agent stack (as used by elph)
 cargo build -p elph-agent --features "mcp,extensions,builtin-tools"
 ```
-
-The first build with the `crawlberg` feature compiles V8 (the native `crawlberg-browser` backend) from source and can take a long time. The `browser` feature (which pulls in `chromiumoxide`) is also enabled: crawlberg's engine only compiles its browser tier when that feature is present. At runtime the web tools use the native V8 backend (`BrowserBackend::Native`), so no Chromium binary is downloaded.
 
 See [docs/tools.md](./docs/tools.md) for parameters, output formats, truncation limits, and examples.
 
