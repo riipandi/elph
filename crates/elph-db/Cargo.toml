@@ -1,5 +1,5 @@
 [package]
-name = "turso-db"
+name = "elph-db"
 version = "0.0.1"
 license = "MIT"
 description = "Shared Turso (local SQLite) open/connect/retry/lock-error helpers for Elph"
@@ -10,7 +10,7 @@ edition.workspace = true
 publish = false
 
 [lib]
-name = "turso_db"
+name = "elph_db"
 path = "src/lib.rs"
 
 [dependencies]

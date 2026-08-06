@@ -9,10 +9,10 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, Mutex, OnceLock};
 
+use elph_db::clear_broken_wal_sidecars;
 use std::time::{SystemTime, UNIX_EPOCH};
 use turso::params;
 use turso::{Connection, Database};
-use turso_db::clear_broken_wal_sidecars;
 
 pub use crate::core::embed::EmbedFn;
 use crate::core::util::{DEFAULT_EMBEDDING_DIMS, drain_rows};
@@ -210,7 +210,7 @@ impl MemoryStore {
         // when `store.db` itself is healthy (or when the main file is missing).
         clear_broken_wal_sidecars(&self.db_path);
 
-        turso_db::open_local(
+        elph_db::open_local(
             Path::new(&self.db_path),
             |b| b.experimental_multiprocess_wal(true).experimental_index_method(true),
             true,
@@ -223,7 +223,7 @@ impl MemoryStore {
         Fut: Future<Output = Result<T>>,
     {
         let db = self.open_db().await?;
-        let conn = turso_db::connect(&db).await?;
+        let conn = elph_db::connect(&db).await?;
         f(conn).await
     }
     pub async fn init(&self) -> Result<()> {

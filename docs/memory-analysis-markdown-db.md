@@ -99,14 +99,14 @@ A single 500-line assistant reply parsed into ~800 `MarkdownLine` × ~2000 `Styl
 
 **Problem:** `save_transcript_snapshot` calls `append_custom_entry(TRANSCRIPT_SNAPSHOT_CUSTOM_TYPE, ...)` which **appends** a new `SessionTreeEntry::Custom` on every `RunCompleted`. The session tree keeps ALL entries. On resume, `messages_from_snapshot_data` reads only the **latest** snapshot, so all prior snapshots are dead weight. After 40 turns, there are 40 full transcript snapshots in the session tree (each 1-5 MB JSON = 40-200 MB wasted).
 
-**Fix applied (session 1):** Archive + session save now share a single `Arc` clone instead of two. But the root issue (append-only, no pruning) remains.
+**ROOT CAUSE (verified):** 346 snapshot rows × ~2 MB average = **682 MB** (95% of 789 MB store.db). Snapshots appended every turn, never pruned.
 
-**Proposed fix:**
+**Fix applied (session 3):**
+1. **Overwrite semantics:** New `save_transcript_snapshot_to_cache()` writes to `TranscriptCache` (metadata.db) with `INSERT OR REPLACE` — only latest snapshot kept.
+2. **Legacy pruning:** `TranscriptCache::open()` auto-prunes all `elph.transcript.snapshot` entries from `session_entries` on first open.
+3. **WAL checkpoint:** Auto-checkpoints on startup.
 
-1. Before appending a new snapshot, delete prior `elph.transcript.snapshot` entries from the session tree (they're superseded).
-2. Or use a dedicated key/value store (not the append-only tree) for the snapshot.
-
-**Estimated savings:** 40-200 MB accumulated over a session.
+**Verified result:** 682 MB freed (346 rows → 0 rows). Remaining store.db: ~68 MB (messages + metadata).
 
 ---
 
@@ -160,7 +160,7 @@ A single 500-line assistant reply parsed into ~800 `MarkdownLine` × ~2000 `Styl
 
 ### Issue L3 (LOW): WAL file grows if `PRAGMA wal_autocheckpoint` is not tuned
 
-**File:** `crates/turso-db/src/lib.rs` — no explicit autocheckpoint
+**File:** `crates/elph-db/src/lib.rs` — no explicit autocheckpoint
 
 **Problem:** Turso's default WAL autocheckpoint is 1000 pages. With frequent appends (transcript archive + session tree), the WAL can grow to several MB before checkpointing. Not a memory issue, but disk usage.
 
@@ -170,19 +170,19 @@ A single 500-line assistant reply parsed into ~800 `MarkdownLine` × ~2000 `Styl
 
 ## Summary of Fixes by Impact
 
-| ID  | Impact              | Category                     | Status                          | Est. Savings |
-| --- | ------------------- | ---------------------------- | ------------------------------- | ------------ |
-| H1  | High                | Markdown render              | ✅ Fast path for completed msgs (session 1) | 150-300 MB   |
-| H2  | High                | Markdown buffer              | ✅ `drop_cached_documents` (session 1)      | 200-500 MB   |
-| H4  | High                | DB snapshot                  | ✅ Strip diff text from snapshot (session 2) | 100-300 MB |
-| M4  | Medium              | DB batch insert              | ✅ Wrap in transaction (session 2)          | I/O + latency |
-| H3  | High                | DB snapshot                  | ⏸ Out of scope (append-only tree)           | —            |
-| M5  | Medium              | DB connection                | ⏸ Deferred (needs ShellCtx threading)       | —            |
-| M1  | Medium              | Markdown tail parse          | 🔲 Incremental tail parse                   | 30-60 MB/sec |
-| M2  | Medium              | Code block wrap              | 🔲 Cache wrapped rows                       | 5-10 MB      |
-| M3  | Medium              | Span allocation              | 🔲 `Arc<str>` / small-string                | 20-40% doc mem |
-| L1  | Low                 | Highlight alloc              | 🔲 Stream highlight                         | Spike        |
-| L2  | Low                 | Resume parse                 | 🔲 Lazy parse                               | Latency      |
-| L3  | Low                 | WAL size                     | 🔲 Lower autocheckpoint                     | Disk         |
+| ID  | Impact | Category            | Status                                       | Est. Savings   |
+| --- | ------ | ------------------- | -------------------------------------------- | -------------- |
+| H1  | High   | Markdown render     | ✅ Fast path for completed msgs (session 1)  | 150-300 MB     |
+| H2  | High   | Markdown buffer     | ✅ `drop_cached_documents` (session 1)       | 200-500 MB     |
+| H4  | High   | DB snapshot         | ✅ Strip diff text from snapshot (session 2) | 100-300 MB     |
+| M4  | Medium | DB batch insert     | ✅ Wrap in transaction (session 2)           | I/O + latency  |
+| H3  | High   | DB snapshot         | ⏸ Out of scope (append-only tree)            | —              |
+| M5  | Medium | DB connection       | ⏸ Deferred (needs ShellCtx threading)        | —              |
+| M1  | Medium | Markdown tail parse | 🔲 Incremental tail parse                    | 30-60 MB/sec   |
+| M2  | Medium | Code block wrap     | 🔲 Cache wrapped rows                        | 5-10 MB        |
+| M3  | Medium | Span allocation     | 🔲 `Arc<str>` / small-string                 | 20-40% doc mem |
+| L1  | Low    | Highlight alloc     | 🔲 Stream highlight                          | Spike          |
+| L2  | Low    | Resume parse        | 🔲 Lazy parse                                | Latency        |
+| L3  | Low    | WAL size            | 🔲 Lower autocheckpoint                      | Disk           |
 
 ✅ = applied · 🔲 = proposed for future · ⏸ = deferred/out of scope

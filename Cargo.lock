@@ -2983,6 +2983,7 @@ dependencies = [
  "crossterm",
  "elph-agent",
  "elph-ai",
+ "elph-db",
  "elph-tui",
  "floppy",
  "futures-util",
@@ -3004,7 +3005,6 @@ dependencies = [
  "tokio",
  "tokio-util",
  "turso",
- "turso-db",
  "yaml_serde",
 ]
 
@@ -3020,6 +3020,7 @@ dependencies = [
  "base64 0.23.1",
  "bytes",
  "elph-ai",
+ "elph-db",
  "encoding_rs",
  "failsafe",
  "fastrace",
@@ -3058,7 +3059,6 @@ dependencies = [
  "toml 1.1.4+spec-1.1.0",
  "toon-format",
  "turso",
- "turso-db",
  "url",
  "urlencoding",
  "walkdir",
@@ -3114,6 +3114,18 @@ dependencies = [
  "url",
  "webpki-roots 1.0.9",
  "zstd",
+]
+
+[[package]]
+name = "elph-db"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "log",
+ "rand 0.10.2",
+ "tempfile",
+ "tokio",
+ "turso",
 ]
 
 [[package]]
@@ -3661,6 +3673,7 @@ dependencies = [
  "ast-grep-core",
  "ast-grep-language",
  "chrono",
+ "elph-db",
  "embed_anything",
  "ignore",
  "kalid",
@@ -3677,7 +3690,6 @@ dependencies = [
  "tempfile",
  "tokio",
  "turso",
- "turso-db",
 ]
 
 [[package]]
@@ -10896,18 +10908,6 @@ dependencies = [
  "turso_core",
  "turso_sdk_kit",
  "turso_sync_sdk_kit",
-]
-
-[[package]]
-name = "turso-db"
-version = "0.0.1"
-dependencies = [
- "anyhow",
- "log",
- "rand 0.10.2",
- "tempfile",
- "tokio",
- "turso",
 ]
 
 [[package]]

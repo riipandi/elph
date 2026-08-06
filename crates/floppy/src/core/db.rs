@@ -1,7 +1,7 @@
 //! Shared local Turso open/connect helpers (memory + codegraph).
 //!
 //! Delegates the open/connect/retry/`busy_timeout`/lock-error logic to the
-//! `turso-db` crate, keeping `floppy`'s exact behaviour:
+//! `elph-db` crate, keeping `floppy`'s exact behaviour:
 //! - `experimental_multiprocess_wal` + `experimental_index_method` + `experimental_vacuum`
 //! - one-pass WAL sidecar recovery on `SQLITE_IOERR`/WAL read errors
 //! - `PRAGMA busy_timeout = 5000` propagated on connect
@@ -15,7 +15,7 @@ use turso::{Connection, Database};
 
 #[cfg(test)]
 #[cfg(test)]
-use turso_db::{clear_broken_wal_sidecars, database_in_use};
+use elph_db::{clear_broken_wal_sidecars, database_in_use};
 
 /// Multiprocess-WAL builder flags used by every `floppy` open site.
 fn multiprocess_wal(b: turso::Builder) -> turso::Builder {
@@ -33,9 +33,9 @@ pub async fn open_local_db(db_path: &str) -> Result<Database> {
     }
 
     // Drop broken WAL sidecars before the first open (matches prior behaviour).
-    turso_db::clear_broken_wal_sidecars(db_path);
+    elph_db::clear_broken_wal_sidecars(db_path);
 
-    turso_db::open_local(Path::new(db_path), multiprocess_wal, true).await
+    elph_db::open_local(Path::new(db_path), multiprocess_wal, true).await
 }
 
 /// Open short-lived connection, run `f`, drop conn + db (Turso locks at connect).
@@ -45,7 +45,7 @@ where
     Fut: Future<Output = Result<T>>,
 {
     let db = open_local_db(db_path).await?;
-    let conn = turso_db::connect(&db).await?;
+    let conn = elph_db::connect(&db).await?;
     f(conn).await
 }
 
@@ -77,7 +77,7 @@ impl ConnectionPool {
             .await
             .map_err(|_| anyhow::anyhow!("Connection pool semaphore closed"))?;
 
-        turso_db::connect(&self.db).await
+        elph_db::connect(&self.db).await
     }
 
     /// Get the max number of concurrent connections.

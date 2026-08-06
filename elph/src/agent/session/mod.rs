@@ -737,6 +737,10 @@ impl CodingAgentSession {
 
     /// Persist a full TUI transcript snapshot so `--resume` restores live card state
     /// (thinking, tools, durations, expand flags, edit_file diffs, …).
+    ///
+    /// **Deprecated:** This appends to the session tree which is append-only and never
+    /// pruned — snapshots (7-8 MB each) accumulated to 600+ MB over a session. Use
+    /// `save_transcript_snapshot_to_cache` instead, which overwrites the prior snapshot.
     pub async fn save_transcript_snapshot(&self, messages: &[crate::tui::transcript::TranscriptMessage]) -> Result<()> {
         use crate::tui::transcript::{TRANSCRIPT_SNAPSHOT_CUSTOM_TYPE, build_snapshot_data};
         let data = build_snapshot_data(messages);
@@ -744,6 +748,25 @@ impl CodingAgentSession {
             .append_custom_entry(TRANSCRIPT_SNAPSHOT_CUSTOM_TYPE, Some(data))
             .await
             .map_err(|e| anyhow::anyhow!("{e}"))
+    }
+
+    /// Persist the transcript snapshot to the TranscriptCache (overwrite semantics).
+    ///
+    /// This keeps only the latest snapshot per session, eliminating the unbounded
+    /// growth from appending to the session tree. The `db_path` and `session_id`
+    /// identify the per-project metadata DB.
+    pub async fn save_transcript_snapshot_to_cache(
+        &self,
+        messages: &[crate::tui::transcript::TranscriptMessage],
+        db_path: &std::path::Path,
+        session_id: &str,
+    ) -> Result<()> {
+        use crate::tui::transcript::build_snapshot_data;
+        let data = build_snapshot_data(messages);
+        let json = serde_json::to_string(&data).map_err(|e| anyhow::anyhow!("{e}"))?;
+        let cache = crate::tui::transcript::TranscriptCache::open(db_path, session_id).await?;
+        cache.save_snapshot(&json).await?;
+        Ok(())
     }
 
     pub async fn resolve_plan(&self, choice: PlanConfirmationChoice) -> Result<()> {

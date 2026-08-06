@@ -5,7 +5,7 @@
 //! [`open_connection`] to handle this correctly.
 //!
 //! The open/connect/retry/`busy_timeout`/lock-error logic lives in the
-//! `turso-db` crate; this module re-exports the parts `elph-agent` depends on
+//! `elph-db` crate; this module re-exports the parts `elph-agent` depends on
 //! and wraps `open_local` with a hard timeout.
 
 use std::path::Path;
@@ -15,7 +15,7 @@ use anyhow::Result;
 use tokio::time::timeout;
 use turso::{Connection, Database};
 
-pub use turso_db::{cleanup_stale_shared_memory, is_lock_err};
+pub use elph_db::{cleanup_stale_shared_memory, is_lock_err};
 
 const DB_OPEN_TIMEOUT_MS: u64 = 10000; // 10 seconds timeout for database open
 
@@ -28,11 +28,11 @@ fn multiprocess_wal(b: turso::Builder) -> turso::Builder {
 ///
 /// Retries on lock errors with jittered exponential backoff (capped at 5x),
 /// wrapped in a timeout to prevent indefinite hangs. Delegates the open/retry
-/// logic to [`turso_db::open_local`].
+/// logic to [`elph_db::open_local`].
 pub async fn open_local(path: &Path) -> Result<Database> {
     timeout(
         Duration::from_millis(DB_OPEN_TIMEOUT_MS),
-        turso_db::open_local(path, multiprocess_wal, false),
+        elph_db::open_local(path, multiprocess_wal, false),
     )
     .await
     .map_err(|_| anyhow::anyhow!("database open timeout after {}ms", DB_OPEN_TIMEOUT_MS))?
@@ -43,8 +43,8 @@ pub async fn open_local(path: &Path) -> Result<Database> {
 /// Sets `PRAGMA busy_timeout = 5000` on the connection (best-effort: a failure
 /// to set the pragma is logged but does not abort the connection).
 pub async fn connect(db: &Database) -> Result<Connection> {
-    let conn = turso_db::connect_retry(db).await?;
-    if let Err(e) = turso_db::set_busy_timeout(&conn).await {
+    let conn = elph_db::connect_retry(db).await?;
+    if let Err(e) = elph_db::set_busy_timeout(&conn).await {
         log::warn!("Failed to set busy_timeout: {e}");
     }
     Ok(conn)
@@ -55,7 +55,7 @@ pub async fn connect(db: &Database) -> Result<Connection> {
 /// Returns `(Database, Connection)`. Caller must hold `Database` alive
 /// for the lifetime of `Connection` (Connection borrows from Database).
 pub async fn open_connection(path: &Path) -> Result<(Database, Connection)> {
-    turso_db::open_connection(path, multiprocess_wal, false).await
+    elph_db::open_connection(path, multiprocess_wal, false).await
 }
 
 /// Open a connection, run an async closure, then drop both.
@@ -67,7 +67,7 @@ where
     F: FnOnce(Connection) -> Fut,
     Fut: std::future::Future<Output = Result<T>>,
 {
-    turso_db::with_conn(path, multiprocess_wal, false, f).await
+    elph_db::with_conn(path, multiprocess_wal, false, f).await
 }
 
 #[cfg(test)]

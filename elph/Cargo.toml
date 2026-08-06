@@ -28,13 +28,7 @@ chrono.workspace = true
 clap.workspace = true
 clap_complete.workspace = true
 crossterm.workspace = true
-elph-agent = { workspace = true, features = [
-  "tracing",
-  "builtin-tools",
-  "mcp",
-  "prompt-templates",
-  "extensions",
-] }
+elph-agent = { workspace = true, features = ["tracing", "builtin-tools", "mcp", "prompt-templates", "extensions"] }
 elph-ai = { workspace = true, features = ["tracing"] }
 elph-tui = { workspace = true }
 floppy = { workspace = true, features = ["full"] }
@@ -62,10 +56,12 @@ tokio = { workspace = true, features = [
   "rt-multi-thread",
   "sync",
   "time",
+  "process",
+  "signal",
 ] }
+turso = { workspace = true, features = ["fts"] }
 tokio-util = { workspace = true }
-turso.workspace = true
-turso-db.workspace = true
+elph-db.workspace = true
 yaml_serde.workspace = true
 
 [target.'cfg(unix)'.dependencies]

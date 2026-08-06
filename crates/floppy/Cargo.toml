@@ -47,12 +47,13 @@ full = ["memory", "embed", "codegraph"]
 [dependencies]
 anyhow.workspace = true
 ast-grep-core = { workspace = true, optional = true }
-log = { workspace = true, optional = true }
 ast-grep-language = { workspace = true, optional = true }
 chrono.workspace = true
+elph-db.workspace = true
 embed_anything = { workspace = true, optional = true }
 ignore = { workspace = true, optional = true }
 kalid.workspace = true
+log = { workspace = true, optional = true }
 memorable-ids.workspace = true
 parking_lot.workspace = true
 rand.workspace = true
@@ -64,7 +65,6 @@ serde_json.workspace = true
 sha2 = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["io-util", "macros", "rt", "rt-multi-thread", "sync", "time"] }
 turso.workspace = true
-turso-db.workspace = true
 
 # CPU backend is selected per target:
 # - macOS               -> Apple Accelerate (vecLib/BLAS)

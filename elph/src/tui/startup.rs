@@ -357,7 +357,7 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
     }
 
     // Load persisted chat history from the session branch (for --resume / --continue).
-    let history_messages = load_chat_history(session.as_ref()).await;
+    let history_messages = load_chat_history(session.as_ref(), &config.paths).await;
     if is_resume && history_messages.is_empty() {
         log::warn!(
             "resumed session {session_id} has no reconstructable transcript entries (empty tree or missing snapshot)"
@@ -380,10 +380,33 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
 /// Load persisted chat history from the session's branch entries and convert them
 /// to transcript messages for display on resume.
 ///
-/// Prefer the latest `elph.transcript.snapshot` custom entry (exact live TUI state).
-/// Fall back to reconstructing cards from LLM messages + tool results when no snapshot
-/// exists (e.g. interrupted turn before snapshot was written).
-async fn load_chat_history(session: &CodingAgentSession) -> Vec<TranscriptMessage> {
+/// Prefer the TranscriptCache snapshot (overwrite semantics, latest only). Fall back to
+/// the session-tree `elph.transcript.snapshot` custom entry, then to reconstructing cards
+/// from LLM messages + tool results when no snapshot exists (e.g. interrupted turn).
+async fn load_chat_history(session: &CodingAgentSession, paths: &crate::platform::Paths) -> Vec<TranscriptMessage> {
+    // 1. Try the TranscriptCache first (new overwrite-based storage).
+    let session_id = session.session_id().to_string();
+    if let Ok(cache) = crate::tui::transcript::TranscriptCache::open(&paths.transcript_db_path(), &session_id).await
+    {
+        if let Ok(Some(json)) = cache.load_snapshot().await
+        {
+            match serde_json::from_str::<serde_json::Value>(&json) {
+                Ok(value) => {
+                    let messages = crate::tui::transcript::messages_from_snapshot_data(&value);
+                    if let Some(msgs) = messages {
+                        if !msgs.is_empty() {
+                            return msgs;
+                        }
+                    }
+                }
+                Err(err) => {
+                    log::warn!("transcript snapshot cache parse failed: {err:#}");
+                }
+            }
+        }
+    }
+
+    // 2. Fall back to session-tree entries (legacy path).
     let Ok(entries) = session.branch_entries().await else {
         return Vec::new();
     };
@@ -392,6 +415,7 @@ async fn load_chat_history(session: &CodingAgentSession) -> Vec<TranscriptMessag
         return messages;
     }
 
+    // 3. Last resort: reconstruct from LLM entries.
     let cwd = session.harness().env().cwd().to_string();
     reconstruct_transcript_from_llm_entries(&entries, &cwd)
 }
