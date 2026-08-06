@@ -121,6 +121,7 @@ impl<'a> ParserState<'a> {
             table: Some(MarkdownTable {
                 rows: std::mem::take(&mut self.table_rows),
             }),
+            mermaid_source: None,
         });
         self.block_has_content = true;
     }
@@ -168,6 +169,7 @@ impl<'a> ParserState<'a> {
             spans: std::mem::take(&mut self.current_spans),
             code_background: false,
             table: None,
+            mermaid_source: None,
         });
         self.block_has_content = true;
     }
@@ -280,6 +282,7 @@ impl<'a> ParserState<'a> {
             spans: Vec::new(),
             code_background: false,
             table: None,
+            mermaid_source: None,
         });
     }
 
@@ -337,6 +340,7 @@ fn attach_orphan_url_lines_to_list_items(lines: &mut [MarkdownLine]) {
             spans,
             code_background: false,
             table: None,
+            mermaid_source: None,
         };
         index += 1;
     }
@@ -642,6 +646,7 @@ pub fn parse_markdown_document_with_theme(source: &str, theme: &MarkdownTheme) -
             spans: vec![StyledSpan::plain("", theme.body)],
             code_background: false,
             table: None,
+            mermaid_source: None,
         });
     }
     doc

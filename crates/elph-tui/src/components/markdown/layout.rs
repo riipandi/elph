@@ -87,6 +87,13 @@ fn line_row_count(line: &MarkdownLine, wrap_width: u16) -> u16 {
     if line.kind == MarkdownLineKind::Rule {
         return 1;
     }
+    // Mermaid: render the diagram at the actual width to count its rows. This keeps measure
+    // and paint in parity — the row count matches exactly what render_mermaid_card paints.
+    if let Some(source) = &line.mermaid_source {
+        let inner = code_content_width(wrap_width);
+        let rendered = super::highlight::render_mermaid_at_width(source, inner).unwrap_or_else(|_| source.clone());
+        return rendered.lines().count().max(1) as u16;
+    }
     if line.code_background {
         let inner = code_content_width(wrap_width);
         return code_line_row_count(&line_plain_text(line), inner).max(1);

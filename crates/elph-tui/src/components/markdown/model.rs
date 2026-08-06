@@ -71,6 +71,11 @@ pub struct MarkdownLine {
     pub code_background: bool,
     /// Matrix for [`MarkdownLineKind::Table`] lines.
     pub table: Option<MarkdownTable>,
+    /// When set, this code line holds raw Mermaid source to be rendered lazily at
+    /// paint/measure time with the actual terminal width. Deferring from parse-time
+    /// (width unknown) to render-time (width known) makes diagrams responsive to
+    /// terminal size instead of using a hardcoded column budget.
+    pub mermaid_source: Option<String>,
 }
 
 impl MarkdownLine {
@@ -80,6 +85,7 @@ impl MarkdownLine {
             spans: Vec::new(),
             code_background: false,
             table: None,
+            mermaid_source: None,
         }
     }
 
@@ -91,6 +97,10 @@ impl MarkdownLine {
             return false;
         }
         if matches!(self.kind, MarkdownLineKind::Rule) {
+            return false;
+        }
+        // Mermaid lines carry deferred source — they render at paint time, so they're never blank.
+        if self.mermaid_source.is_some() {
             return false;
         }
         self.spans.iter().all(|span| span.text.trim().is_empty())

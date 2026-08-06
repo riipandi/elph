@@ -403,6 +403,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ascii-dag"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd898d2dcffeeb51015c511a2849a8637c894b833afc946936d48b1e5c8aa6ec"
+
+[[package]]
 name = "assert-json-diff"
 version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3128,6 +3134,7 @@ dependencies = [
  "log",
  "macro_rules_attribute",
  "memchr",
+ "mermaid-text",
  "mexprp",
  "pulldown-cmark",
  "qrcode",
@@ -6440,6 +6447,17 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.19",
+]
+
+[[package]]
+name = "mermaid-text"
+version = "0.57.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "830067de2eb67eff2201ad257af77099a32de25126dd06b0848f677589e13862"
+dependencies = [
+ "ascii-dag",
+ "chrono",
+ "unicode-width 0.2.2",
 ]
 
 [[package]]

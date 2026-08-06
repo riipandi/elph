@@ -27,6 +27,7 @@ iocraft.workspace = true
 linkify.workspace = true
 log.workspace = true
 memchr.workspace = true
+mermaid-text.workspace = true
 pulldown-cmark.workspace = true
 qrcode.workspace = true
 reqwest.workspace = true
