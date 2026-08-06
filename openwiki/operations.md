@@ -11,7 +11,7 @@ See [Architecture Overview](architecture/overview.md) for the system architectur
 
 ## CLI Subcommands
 
-The `elph` binary provides 19 subcommands (from `crates/coding-agent/src/cli/mod.rs`):
+The `elph` binary provides 18 subcommands (from `crates/coding-agent/src/cli/mod.rs`):
 
 | Subcommand    | Alias | Description                                                                        |
 | ------------- | ----- | ---------------------------------------------------------------------------------- |
@@ -30,10 +30,11 @@ The `elph` binary provides 19 subcommands (from `crates/coding-agent/src/cli/mod
 | `server`      | —     | Local Elph REST+WS+Web UI server                                                   |
 | `session`     | —     | List/search/restore sessions                                                       |
 | `stats`       | —     | Token usage and cost statistics                                                    |
-| `tools`       | —     | List available agent tools                                                         |
 | `update`      | —     | Check for updates or install a version                                             |
 | `version`     | —     | Print version                                                                      |
 | `worktree`    | —     | Manage git worktrees                                                               |
+
+CLI flags: `--continue/-c` (resume last session), `--resume/-r <SESSION_ID>` (resume specific session), `--version/-V` (print version).
 
 ## Environment Variables
 
@@ -51,19 +52,21 @@ The `elph` binary provides 19 subcommands (from `crates/coding-agent/src/cli/mod
 
 From `crates/coding-agent/src/platform/paths.rs`:
 
-| Path                            | Method                             | Description              |
-| ------------------------------- | ---------------------------------- | ------------------------ |
-| `~/.elph/`                      | `Paths::home_dir()`                | Home config directory    |
-| `<project>/.elph/`              | `Paths::project_elph_dir()`        | Project-level config     |
-| `<project>/.elph/settings.json` | `Paths::project_settings_path()`   | Project settings         |
-| `~/.elph/settings.json`         | `Paths::home_settings_path()`      | Home settings (override) |
-| `<project>/.elph/mcp.json`      | `Paths::project_mcp_config_path()` | MCP server config        |
-| `<project>/.elph/store.db`      | `Paths::memory_db_path()`          | Floppy memory DB         |
-| `<project>/.elph/plans/`        | `Paths::plans_dir()`               | Plan files               |
-| `<data>/metadata.db`            | `Paths::metadata_db_path()`        | Metadata database        |
-| `<data>/models/`                | `Paths::models_dir()`              | Model catalogs           |
-| `~/.elph/extensions/`           | `Paths::global_extensions_dir()`   | Global extensions        |
-| `<project>/.elph/extensions/`   | `Paths::project_extensions_dir()`  | Project extensions       |
+| Path                            | Method                             | Description                          |
+| ------------------------------- | ---------------------------------- | ------------------------------------ |
+| `~/.elph/`                      | `Paths::home_dir()`                | Home config directory                |
+| `<project>/.elph/`              | `Paths::project_elph_dir()`        | Project-level config                 |
+| `<project>/.elph/settings.json` | `Paths::project_settings_path()`   | Project settings                     |
+| `~/.elph/settings.json`         | `Paths::home_settings_path()`      | Home settings (override)             |
+| `<project>/.elph/mcp.json`      | `Paths::project_mcp_config_path()` | MCP server config                    |
+| `<project>/.elph/store.db`      | `Paths::memory_db_path()`          | Floppy memory DB                     |
+| `<project>/.elph/metadata.db`   | `Paths::transcript_db_path()`      | Transcript cache (Turso)             |
+| `<project>/.elph/plans/`        | `Paths::plans_dir()`               | Plan files                           |
+| `<data>/sessions/`              | `AppPaths::sessions_dir()`         | Session artifacts (commit `a37c38f`) |
+| `<data>/models/`                | `AppPaths::models_dir()`           | Embedding model cache                |
+| `<data>/logs/`                  | `AppPaths::logs_dir()`             | Log output                           |
+| `~/.elph/extensions/`           | `Paths::global_extensions_dir()`   | Global extensions                    |
+| `<project>/.elph/extensions/`   | `Paths::project_extensions_dir()`  | Project extensions                   |
 
 ## Makefile Targets
 

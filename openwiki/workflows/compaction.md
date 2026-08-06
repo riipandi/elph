@@ -7,20 +7,20 @@ tags: [compaction, context-window, summarization, estimation]
 
 # Compaction
 
-Compaction manages the LLM context window by summarizing older conversation turns when the context approaches the model's token limit. Defined in `crates/elph-agent/src/compaction/`. Compaction runs after each turn in the [Agent Loop](agent-loop.md) when `should_compact()` returns true. It is invoked from the `AgentHarness` (see [Architecture Overview](../architecture/overview.md)) via `compaction_ops.rs`.
+Compaction manages the LLM context window by summarizing older conversation turns when the context approaches the model's token limit. Defined in `crates/elph-agent/src/compaction/`. Compaction runs after each turn in the [Agent Loop](agent-loop.md) when `should_compact()` returns true. It is invoked from the `AgentHarness` (see [Architecture Overview](../architecture/overview.md)) via `compaction_ops.rs` with retry support (commit `4cedf40`).
 
 ## Module Structure
 
 ```
 crates/elph-agent/src/compaction/
-├── mod.rs                — re-exports
-├── estimation.rs         — token counting, ContextUsageEstimate, find_cut_point
-├── compact.rs            — compact() — the main compaction entry point
-├── preparation.rs        — prepare_compaction() — builds CompactionPreparation
-├── summarization.rs      — generate_summary() — LLM-based summarization
+├── mod.rs                — re-exports, public API
+├── estimation.rs         — token counting, ContextUsageEstimate, find_cut_point, should_compact
+├── compact.rs            — compact() — takes CompactionPreparation
+├── preparation.rs        — prepare_compaction() — builds CompactionPreparation from session entries
+├── summarization.rs      — generate_summary(), generate_turn_prefix_summary() — LLM-based summarization
 ├── branch_summarization.rs — branch-level summary generation
 ├── types.rs              — CompactionResult, CompactionDetails
-└── utils.rs              — serialize_conversation(), compute_file_lists(), format_file_operations()
+└── utils.rs              — serialize_conversation(), compute_file_lists(), format_file_operations(), create_file_ops()
 ```
 
 ## Compaction Flow
@@ -29,9 +29,9 @@ crates/elph-agent/src/compaction/
 flowchart TD
     A[Turn completes] --> B{should_compact?}
     B -->|No| C[Continue]
-    B -->|Yes| D[estimate_context_tokens]
-    D --> E[find_cut_point]
-    E --> F[prepare_compaction]
+    B -->|Yes| D[compact_with_retry in harness]
+    D --> E[prepare_compaction]
+    E --> F[compact takes CompactionPreparation]
     F --> G[generate_summary]
     G --> H[CompactionResult persisted]
     H --> I[Session entries replaced with summary]
@@ -42,17 +42,18 @@ flowchart TD
 
 ### `should_compact()` — `estimation.rs`
 
-Checks whether compaction is needed based on `CompactionSettings`:
+Simplified signature (commit `6015a35`):
 
 ```rust
-pub fn should_compact(
-    entries: &[SessionTreeEntry],
-    model_max_tokens: u64,
-    settings: &CompactionSettings,
-) -> bool {
-    // 1. Calculate estimate via estimate_context_tokens()
-    // 2. Compare against model_max_tokens * settings.threshold (default 0.75)
-    // 3. Return true if exceeded
+pub fn should_compact(context_tokens: u64, context_window: u64, settings: CompactionSettings) -> bool {
+    if !settings.enabled {
+        return false;
+    }
+    let threshold = match settings.threshold_pct {
+        Some(pct) => context_window * (pct as u64) / 100,
+        None => context_window.saturating_sub(settings.reserve_tokens),
+    };
+    context_tokens > threshold
 }
 ```
 
@@ -69,51 +70,82 @@ pub struct ContextUsageEstimate {
 }
 ```
 
+### `estimate_tokens_with_system_prompt()` — `estimation.rs`
+
+Added to avoid double-counting system prompt tokens when provider usage data is available (commit `eb93ec2`):
+
+```rust
+pub fn estimate_tokens_with_system_prompt(estimate: ContextUsageEstimate, system_prompt: Option<&str>) -> u64
+```
+
 ### `find_cut_point()` — `estimation.rs`
 
-Selects the oldest entries to summarize. Uses `get_last_assistant_usage()` to find the timestamp-gated boundary (commit `#6464` — timestamp-aware estimate).
+Selects the oldest entries to summarize. Uses `get_last_assistant_usage()` to find the timestamp-gated boundary.
 
 ### `compact()` — `compact.rs`
 
-The main compaction entry:
+Refactored to take a single `CompactionPreparation` struct (commit `4cedf40`):
 
 ```rust
 pub async fn compact(
-    session: &impl SessionStorage,
-    context: &mut AgentContext,
-    entries: &[SessionTreeEntry],
-    settings: &CompactionSettings,
+    preparation: CompactionPreparation,
+    models: &Models,
     model: &Model,
-    model_max_tokens: u64,
-    file_ops: FileOperations,
-    skills: &[SourcedSkill],
-    resources: &AgentHarnessResources,
-    hook_registry: &HookRegistry,
-    state: &mut AgentState,
+    custom_instructions: Option<&str>,
     signal: Option<CancellationToken>,
-) -> Result<CompactResult, CompactionError>
+    thinking_level: Option<ThinkingLevel>,
+) -> Result<CompactionResult, CompactionError>
+```
+
+### `prepare_compaction()` — `preparation.rs`
+
+Builds `CompactionPreparation` from session entries for the harness:
+
+```rust
+pub async fn prepare_compaction(...) -> Result<CompactionPreparation, CompactionError>
 ```
 
 ### `generate_summary()` — `summarization.rs`
 
-Uses the LLM to produce a summary via `SUMMARIZATION_SYSTEM_PROMPT` (`crates/elph-agent/src/prompt/builtin/compaction.rs`). Produces a `CompactionResult` with:
+Uses the LLM to produce a summary via `SUMMARIZATION_SYSTEM_PROMPT` (`crates/elph-agent/src/compaction/mod.rs` re-exports `crate::prompt::builtin::compaction::SUMMARIZATION_SYSTEM_PROMPT`). Produces a `CompactionResult` with:
 
 - `summary` — the LLM-generated summary text
 - `metadata` — provenance (tokens, model used, timestamps)
 - `file_operations` — aggregated file operations since last compaction
 
+### `generate_turn_prefix_summary()` — `summarization.rs`
+
+Added for split-turn compaction support (commit `4cedf40`).
+
 ## CompactionSettings
 
 ```rust
 pub struct CompactionSettings {
-    pub threshold: f64,          // default 0.75 — fraction of model_max_tokens
-    pub min_tokens: u64,         // minimum tokens to keep (not compacted)
-    pub max_tokens: u64,         // maximum tokens for summarization output
-    pub enabled: bool,           // master switch
+    pub enabled: bool,                   // master switch
+    pub reserve_tokens: u64,             // tokens reserved (default 16384)
+    pub threshold_pct: Option<u8>,       // percentage of context window — Some(80) = compact at 80%
+    pub keep_recent_tokens: u64,         // minimum tokens to keep (default 20000)
 }
 ```
 
-Default: `DEFAULT_COMPACTION_SETTINGS` (exported from `crates/elph-agent/src/agent/harness/types.rs`).
+Default: `DEFAULT_COMPACTION_SETTINGS` (from `crates/elph-agent/src/agent/harness/types/options.rs`):
+
+```rust
+pub const DEFAULT_COMPACTION_SETTINGS: CompactionSettings = CompactionSettings {
+    enabled: true,
+    reserve_tokens: 16384,
+    threshold_pct: Some(80),
+    keep_recent_tokens: 20000,
+};
+```
+
+## Compaction Retry
+
+The harness wraps compaction in `compact_with_retry()` (from `compaction_ops.rs`) with exponential backoff:
+
+- `COMPACTION_MAX_RETRIES: u32 = 3`
+- `COMPACTION_RETRY_BASE_DELAY_MS: u64 = 1000`
+- Emits `CompactionRetry` lifecycle events for each attempt
 
 ## Branch Summarization
 
@@ -122,13 +154,16 @@ Default: `DEFAULT_COMPACTION_SETTINGS` (exported from `crates/elph-agent/src/age
 - `collect_entries_for_branch_summary()` — gathers entries spanning a branch
 - `generate_branch_summary()` — produces a summary for a branch
 - `BranchPreparation` — intermediate state for branch-level compaction
+- `prepare_branch_entries()` — prepares branch entries for summarization
 
 ## Source References
 
-- `crates/elph-agent/src/compaction/estimation.rs` — `estimate_context_tokens()`, `find_cut_point()`, `should_compact()`
-- `crates/elph-agent/src/compaction/compact.rs` — `compact()` entry point
-- `crates/elph-agent/src/compaction/summarization.rs` — `generate_summary()`
+- `crates/elph-agent/src/compaction/estimation.rs` — `estimate_context_tokens()`, `find_cut_point()`, `should_compact()`, `estimate_tokens_with_system_prompt()`
+- `crates/elph-agent/src/compaction/compact.rs` — `compact()` entry point (takes `CompactionPreparation`)
+- `crates/elph-agent/src/compaction/preparation.rs` — `prepare_compaction()`
+- `crates/elph-agent/src/compaction/summarization.rs` — `generate_summary()`, `generate_turn_prefix_summary()`
 - `crates/elph-agent/src/compaction/branch_summarization.rs` — branch-level compaction
 - `crates/elph-agent/src/compaction/types.rs` — `CompactionResult`, `CompactionDetails`
-- `crates/elph-agent/src/compaction/utils.rs` — `serialize_conversation()`, `compute_file_lists()`
-- `crates/elph-agent/src/agent/harness/types.rs` — `CompactionSettings`, `DEFAULT_COMPACTION_SETTINGS`
+- `crates/elph-agent/src/compaction/utils.rs` — `serialize_conversation()`, `compute_file_lists()`, `create_file_ops()`
+- `crates/elph-agent/src/agent/harness/compaction_ops.rs` — `compact_with_retry()`, harness integration
+- `crates/elph-agent/src/agent/harness/types/options.rs` — `CompactionSettings`, `DEFAULT_COMPACTION_SETTINGS`

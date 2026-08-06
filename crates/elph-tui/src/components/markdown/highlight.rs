@@ -95,6 +95,7 @@ pub fn highlight_code_block(language: Option<&str>, code: &str, theme: &Markdown
 /// 2. **Strict ASCII** — denser glyphs may fit where Unicode can't.
 /// 3. **Soft Unicode/ASCII** — best-effort compaction, then any over-wide lines are truncated
 ///    with an ellipsis so the diagram stays inside the column budget.
+///
 /// Only a genuinely *invalid* mermaid source returns an error.
 pub fn render_mermaid_at_width(source: &str, max_width: u16) -> Result<String, mermaid_text::Error> {
     let max_width_usize = max_width.max(1) as usize;
@@ -106,28 +107,28 @@ pub fn render_mermaid_at_width(source: &str, max_width: u16) -> Result<String, m
         hasher.finish()
     };
     let cache_key = MermaidCacheKey { source_hash, max_width };
-    if let Ok(cache) = mermaid_cache().lock() {
-        if let Some(cached) = cache.get(&cache_key) {
-            return Ok(cached.clone());
-        }
+    if let Ok(cache) = mermaid_cache().lock()
+        && let Some(cached) = cache.get(&cache_key)
+    {
+        return Ok(cached.clone());
     }
 
     // Not cached — render (up to 4 attempts).
     let output = render_mermaid_uncached(source, max_width_usize);
 
     // Store in cache on success. Evict if cache is too large.
-    if let Ok(ref rendered) = output {
-        if let Ok(mut cache) = mermaid_cache().lock() {
-            if cache.len() >= MERMAID_CACHE_MAX_ENTRIES {
-                // Drain half the cache (oldest-first via iteration order).
-                let to_remove = cache.len() / 2;
-                let keys: Vec<_> = cache.keys().take(to_remove).copied().collect();
-                for key in keys {
-                    cache.remove(&key);
-                }
+    if let Ok(ref rendered) = output
+        && let Ok(mut cache) = mermaid_cache().lock()
+    {
+        if cache.len() >= MERMAID_CACHE_MAX_ENTRIES {
+            // Drain half the cache (oldest-first via iteration order).
+            let to_remove = cache.len() / 2;
+            let keys: Vec<_> = cache.keys().take(to_remove).copied().collect();
+            for key in keys {
+                cache.remove(&key);
             }
-            cache.insert(cache_key, rendered.clone());
         }
+        cache.insert(cache_key, rendered.clone());
     }
 
     output
@@ -190,7 +191,7 @@ fn truncate_diagram_lines(output: &str, max_width: usize) -> String {
     output
         .lines()
         .map(|line| {
-            if line.width() as usize > max_width {
+            if line.width() > max_width {
                 crate::utils::truncate_with_ellipsis(line, max_width)
             } else {
                 line.to_string()

@@ -206,6 +206,27 @@ impl TranscriptCache {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Serialization helpers
+// ---------------------------------------------------------------------------
+
+fn style_to_str(style: TranscriptStyle) -> &'static str {
+    match style {
+        TranscriptStyle::User => "user",
+        TranscriptStyle::Thinking => "thinking",
+        TranscriptStyle::Assistant => "assistant",
+        TranscriptStyle::SkillPrompt => "skill_prompt",
+        TranscriptStyle::Meta => "meta",
+        TranscriptStyle::Error => "error",
+        TranscriptStyle::ToolRunning => "tool_running",
+        TranscriptStyle::ToolSuccess => "tool_success",
+        TranscriptStyle::ToolFailed => "tool_failed",
+        TranscriptStyle::StatusRunning => "status_running",
+        TranscriptStyle::StatusSuccess => "status_success",
+        TranscriptStyle::StatusFailed => "status_failed",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -247,26 +268,5 @@ mod tests {
         let db_path = tmp.path().join("test.db");
         let cache = TranscriptCache::open(&db_path, "sess-empty").await.expect("open");
         assert!(cache.load_snapshot().await.expect("load").is_none());
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Serialization helpers
-// ---------------------------------------------------------------------------
-
-fn style_to_str(style: TranscriptStyle) -> &'static str {
-    match style {
-        TranscriptStyle::User => "user",
-        TranscriptStyle::Thinking => "thinking",
-        TranscriptStyle::Assistant => "assistant",
-        TranscriptStyle::SkillPrompt => "skill_prompt",
-        TranscriptStyle::Meta => "meta",
-        TranscriptStyle::Error => "error",
-        TranscriptStyle::ToolRunning => "tool_running",
-        TranscriptStyle::ToolSuccess => "tool_success",
-        TranscriptStyle::ToolFailed => "tool_failed",
-        TranscriptStyle::StatusRunning => "status_running",
-        TranscriptStyle::StatusSuccess => "status_success",
-        TranscriptStyle::StatusFailed => "status_failed",
     }
 }

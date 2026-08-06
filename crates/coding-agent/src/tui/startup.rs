@@ -386,20 +386,20 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
 async fn load_chat_history(session: &CodingAgentSession, paths: &crate::platform::Paths) -> Vec<TranscriptMessage> {
     // 1. Try the TranscriptCache first (new overwrite-based storage).
     let session_id = session.session_id().to_string();
-    if let Ok(cache) = crate::tui::transcript::TranscriptCache::open(&paths.transcript_db_path(), &session_id).await {
-        if let Ok(Some(json)) = cache.load_snapshot().await {
-            match serde_json::from_str::<serde_json::Value>(&json) {
-                Ok(value) => {
-                    let messages = crate::tui::transcript::messages_from_snapshot_data(&value);
-                    if let Some(msgs) = messages {
-                        if !msgs.is_empty() {
-                            return msgs;
-                        }
-                    }
+    if let Ok(cache) = crate::tui::transcript::TranscriptCache::open(&paths.transcript_db_path(), &session_id).await
+        && let Ok(Some(json)) = cache.load_snapshot().await
+    {
+        match serde_json::from_str::<serde_json::Value>(&json) {
+            Ok(value) => {
+                let messages = crate::tui::transcript::messages_from_snapshot_data(&value);
+                if let Some(msgs) = messages
+                    && !msgs.is_empty()
+                {
+                    return msgs;
                 }
-                Err(err) => {
-                    log::warn!("transcript snapshot cache parse failed: {err:#}");
-                }
+            }
+            Err(err) => {
+                log::warn!("transcript snapshot cache parse failed: {err:#}");
             }
         }
     }

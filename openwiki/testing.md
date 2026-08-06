@@ -29,10 +29,11 @@ Each crate has its own `tests/` directory:
 
 | Crate        | Test Files                           | Focus                                                               |
 | ------------ | ------------------------------------ | ------------------------------------------------------------------- |
-| `elph-agent` | 30 test files                        | Agent loop, compaction, harness, goals, MCP, skills, sessions, etc. |
+| `elph-agent` | 30+ test files                       | Agent loop, compaction, harness, goals, MCP, skills, sessions, etc. |
 | `elph-ai`    | ~15 test files                       | Provider adapters, auth, message transformation, tool schemas       |
 | `elph-tui`   | ~5 test files                        | UI component tests                                                  |
 | `elph`       | `tests/bootstrap.rs`, `tests/cli.rs` | Bootstrap, CLI subcommands                                          |
+| `elph-db`    | `tests/`                             | Turso open/connect/retry/lock-error helpers                         |
 
 ## Test Patterns
 

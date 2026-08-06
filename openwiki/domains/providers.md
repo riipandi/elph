@@ -33,19 +33,32 @@ Each provider adapter implements this trait. The `complete()` method:
 
 From `crates/elph-ai/src/providers/builtin.rs` and `adapter.rs`:
 
-| Adapter                         | API Format              | Provider(s)                                                        |
-| ------------------------------- | ----------------------- | ------------------------------------------------------------------ |
-| `anthropic_messages_api()`      | Anthropic Messages      | Anthropic, Anthropic-compatible gateways                           |
-| `openai_completions_api()`      | OpenAI Chat Completions | OpenAI, xAI, Mistral, NeuralWatt, Hyper, Nvidia, OpenGateway, etc. |
-| `openai_responses_api()`        | OpenAI Responses API    | OpenAI (newer format)                                              |
-| `openai_codex_responses_api()`  | OpenAI Codex Responses  | OpenAI Codex                                                       |
-| `azure_openai_responses_api()`  | Azure OpenAI Responses  | Azure OpenAI                                                       |
-| `bedrock_converse_stream_api()` | AWS Bedrock Converse    | Amazon Bedrock                                                     |
-| `google_generative_ai_api()`    | Google Generative AI    | Google Gemini                                                      |
-| `google_vertex_api()`           | Google Vertex AI        | Google Vertex                                                      |
-| `mistral_conversations_api()`   | Mistral Conversations   | Mistral                                                            |
-| `mixed_gateway_apis()`          | Auto-detect             | Cloudflare AI Gateway                                              |
-| `mixed_openai_apis()`           | OpenAI-compatible       | Sumopod, Kilo, etc.                                                |
+| Adapter                         | API Format              | Provider(s)                                                                |
+| ------------------------------- | ----------------------- | -------------------------------------------------------------------------- |
+| `anthropic_messages_api()`      | Anthropic Messages      | Anthropic, Anthropic-compatible gateways                                   |
+| `openai_completions_api()`      | OpenAI Chat Completions | OpenAI, xAI, Mistral, NeuralWatt, Hyper, Nvidia, OpenGateway, Infron, etc. |
+| `openai_responses_api()`        | OpenAI Responses API    | OpenAI (newer format)                                                      |
+| `openai_codex_responses_api()`  | OpenAI Codex Responses  | OpenAI Codex                                                               |
+| `azure_openai_responses_api()`  | Azure OpenAI Responses  | Azure OpenAI                                                               |
+| `bedrock_converse_stream_api()` | AWS Bedrock Converse    | Amazon Bedrock                                                             |
+| `google_generative_ai_api()`    | Google Generative AI    | Google Gemini                                                              |
+| `google_vertex_api()`           | Google Vertex AI        | Google Vertex                                                              |
+| `mistral_conversations_api()`   | Mistral Conversations   | Mistral                                                                    |
+| `mixed_gateway_apis()`          | Auto-detect             | Cloudflare AI Gateway                                                      |
+| `mixed_openai_apis()`           | OpenAI-compatible       | Sumopod, Kilo, etc.                                                        |
+
+## New Providers (Since Last Audit)
+
+| Provider           | Adapter              | Commit    | Details                                       |
+| ------------------ | -------------------- | --------- | --------------------------------------------- |
+| Infron             | `openai_completions` | `892b5bd` | OpenAI-compatible API, model catalog          |
+| Baseten            | `openai_completions` | `a5befd8` | OpenAI-compatible API                         |
+| Ollama Cloud       | `openai_completions` | `a5befd8` | OpenAI-compatible API                         |
+| TokenRouter        | `openai_completions` | `a5befd8` | OpenAI-compatible API                         |
+| OpenGateway        | `openai_completions` | `a5befd8` | OpenAI-compatible API                         |
+| Kimi (OAuth)       | `openai_completions` | `ec33716` | OAuth-based provider with `Kimi` compat flags |
+| OpenRouter (OAuth) | `openai_completions` | `ec33716` | OAuth-based provider with PKCE exchange       |
+| Radius (OAuth)     | `openai_completions` | `ec33716` | OAuth-based provider                          |
 
 ## Provider Factory Functions
 
@@ -66,7 +79,7 @@ pub fn sumopod_provider() -> Provider;
 pub fn xai_provider() -> Provider;
 ```
 
-Plus additional providers from the catalog: Kilo, OpenGateway, Xiaomi, ZAI, and more (~30+ total).
+Plus additional providers: Infron, Kilo, OpenGateway, Xiaomi, ZAI, Kimi, Baseten, Ollama Cloud, TokenRouter, Radius, and more (~35+ total).
 
 ## Compat Flags
 
@@ -150,7 +163,16 @@ pub enum SessionAffinityFormat {
 
 ## Provider Catalog
 
-Model catalogs live in `crates/elph-ai/models/*.json` and are loaded by `crates/elph-ai/src/models/catalog.rs`. Regenerated via `make generate-models` (reads from `../../earendil-works/pi/packages/ai`).
+Model catalogs live in `crates/elph-ai/models/*.zstd` (compressed JSON, commit `85069b1` — replaced generated Rust code). They are loaded by `crates/elph-ai/src/models/catalog.rs`. Regenerated via `make generate-models` (reads from `../../earendil-works/pi/packages/ai`).
+
+## Browser Backend
+
+The `web_fetch` and `web_extract` tools use a browser backend for DOM rendering:
+
+| Backend          | Status      | Details                                                              |
+| ---------------- | ----------- | -------------------------------------------------------------------- |
+| Crawlberg        | Default     | Replaced Obscura (commit `0b2b522`), feature-gated via `crawlberg`   |
+| htmd + astral-tl | Alternative | Used for structured DOM extraction (`web_extract`), commit `a86a01f` |
 
 ## Source References
 

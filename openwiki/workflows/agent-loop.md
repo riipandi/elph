@@ -10,7 +10,7 @@ tags: [agent-loop, turn-cycle, tool-execution, compaction]
 The agent loop is the core turn execution engine. It lives in two layers:
 
 1. **`AgentHarness<S>`** (`crates/elph-agent/src/agent/harness/`) — hook-rich orchestration with session persistence, event emission, and compaction. See [Architecture Overview](../architecture/overview.md) for the harness structure.
-2. **`run_agent_loop()`** (`crates/elph-agent/src/runtime/run_loop.rs`) — the inner turn iteration that streams LLM responses, executes tools, and repeats.
+2. **`run_agent_loop()`** (`crates/elph-agent/src/runtime/run_loop.rs`) — the inner turn iteration that streams LLM responses, executes tools, and repeats. The harness's `run_loop/` directory (`crates/elph-agent/src/agent/harness/run_loop/`) provides the turn execution layer that wraps this inner loop with session persistence, event emission, and compaction.
 
 ## Entry Point: `AgentHarness::prompt()`
 
@@ -127,9 +127,10 @@ The loop supports `get_steering_messages` and `get_follow_up_messages` callbacks
 ## Source References
 
 - `crates/elph-agent/src/agent/harness/prompt_ops.rs` — `prompt()`, `skill()`, queue management
+- `crates/elph-agent/src/agent/harness/run_loop/` — run loop sub-modules (loop_config, queue_drain, session_writes, turn_execution)
 - `crates/elph-agent/src/runtime/run_loop.rs` — core turn iteration
 - `crates/elph-agent/src/runtime/stream.rs` — `stream_assistant_response()`
 - `crates/elph-agent/src/runtime/exec/execute.rs` — `execute_tool_calls()`
 - `crates/elph-agent/src/runtime/exec/messages.rs` — tool result to message conversion
 - `crates/elph-agent/src/runtime/loop_config.rs` — `AgentLoopConfig`, `AgentContext`, `AgentEvent`
-- `crates/elph-agent/src/types/enums.rs` — `AgentEvent`, `StopReason`, `QueueMode`
+- `crates/elph-agent/src/agent/harness/types/events.rs` — `AgentEvent`, `StopReason`, `QueueMode`

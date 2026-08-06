@@ -11,8 +11,9 @@ tags: [architecture, agent-loop, session, persistence]
 
 ```
                 ┌─────────────────────────────────────────────────┐
-                │                   elph (product)                │
-                │  CLI · TUI (iocraft) · Agent wiring · Memory   │
+                │              elph (crates/coding-agent/)         │
+                │  CLI · TUI (iocraft) · Agent wiring · Memory    │
+                │  Codegraph · Platform · Extensions              │
                 └──────┬──────────┬────────────┬─────────────────┘
                        │          │            │
           ┌────────────┘          │            └──────────────┐
@@ -25,16 +26,18 @@ tags: [architecture, agent-loop, session, persistence]
    │ Skills, Tools │    └──────────────────┘        └──────────────────┘
    └──────┬────────┘
           │
-          ▼
-   ┌──────────────┐
-   │  elph-exec   │
-   │ Shell, PTY   │
-   └──────────────┘
+   ┌──────▼────────┐
+   │    elph-db    │
+   │ Turso SQLite  │
+   │ open/connect  │
+   │ retry helpers │
+   └───────────────┘
 ```
 
 - `elph-agent` depends on `elph-ai` for all LLM communication.
-- `elph-agent` depends on `elph-exec` for shell execution and PTY.
-- `elph` (product) depends on `elph-agent` (with `full` features), `elph-ai`, `elph-tui`, and `floppy`.
+- `elph-agent` depends on `elph-db` for shared Turso SQLite helpers.
+- `elph-exec` was merged into `elph-agent` as `crate::exec` (commit `c8f65ab`).
+- `elph` (product) depends on `elph-agent` (with `full` features), `elph-ai`, `elph-tui`, `elph-db`, and `floppy`.
 
 ## Agent Loop Phases
 
@@ -88,13 +91,16 @@ loop {
 
 ## Session Persistence
 
-`AgentHarness` is generic over `S: SessionStorage + Clone + Send + Sync + 'static`. The product uses `SessionDirStorage` (Turso-based flat-file session store).
+`AgentHarness` is generic over `S: SessionStorage + Clone + Send + Sync + 'static`. The product uses `TursoSessionStorage` (Turso-backed session store with pi-aligned schema, commit `e225323`).
 
 Session entries are stored as a tree (`SessionTreeEntry` enum):
 
 - `Message { message, metadata }` — LLM messages
 - `ToolResult { tool_name, result, metadata }` — tool execution results
 - `Summary { summary, metadata }` — compaction summaries
+- `CustomMessage { custom_type, content, display, details, timestamp }` — custom entry types
+- `BranchSummary { summary, from_id, timestamp }` — branch-level summaries
+- `Compaction { summary, tokens_before, timestamp }` — compaction summaries
 
 The `SessionStorage` trait (from `crates/elph-agent/src/session/types.rs`) defines:
 
@@ -113,6 +119,7 @@ The `SessionStorage` trait (from `crates/elph-agent/src/session/types.rs`) defin
 | `ModelsStore`     | `crates/elph-ai/src/auth/models_store.rs`      | Dynamic provider catalog storage — see [Auth](../workflows/auth.md)   |
 | `ProviderStreams` | `crates/elph-ai/src/providers/adapter.rs`      | Provider API adapter trait — see [Providers](../domains/providers.md) |
 | `ExecutionEnv`    | `crates/elph-agent/src/agent/harness/types.rs` | Filesystem and shell execution — see [Tools](../domains/tools.md)     |
+| `elph-db`         | `crates/elph-db/src/lib.rs`                    | Shared Turso SQLite helpers (open/connect/retry/lock-error)           |
 
 ## Session Persistence Lifecycle
 
@@ -142,6 +149,9 @@ sequenceDiagram
 
 - `crates/elph-agent/src/agent/harness/mod.rs` — harness module structure
 - `crates/elph-agent/src/agent/harness/prompt_ops.rs` — `prompt()` and `skill()` entry points
+- `crates/elph-agent/src/agent/harness/run_loop/` — run loop sub-modules (loop_config, queue_drain, session_writes, turn_execution)
 - `crates/elph-agent/src/runtime/run_loop.rs` — core turn iteration
 - `crates/elph-agent/src/session/types.rs` — `SessionStorage` trait
-- `crates/elph-agent/src/agent/harness/types.rs` — `AgentHarnessPhase`, `AgentHarnessError`, `CompactionSettings`
+- `crates/elph-agent/src/agent/harness/types/` — `AgentHarnessPhase`, `AgentHarnessError`, `CompactionSettings`, `AgentHarnessResources`
+- `crates/elph-agent/src/agent/harness/compaction_ops.rs` — `compact_with_retry()`
+- `crates/elph-db/src/lib.rs` — shared Turso helpers

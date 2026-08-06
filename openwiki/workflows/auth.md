@@ -38,13 +38,14 @@ pub trait CredentialStore: Send + Sync {
 
 Credential types:
 
-| Variant                                   | Description                               |
-| ----------------------------------------- | ----------------------------------------- |
-| `Credential::ApiKey(ApiKeyCredential)`    | API key + optional base URL               |
-| `Credential::OAuth(OAuthCredential)`      | OAuth token set (access, refresh, expiry) |
-| `Credential::EnvApiKey(ApiKeyCredential)` | Environment variable-backed API key       |
+| Variant                                   | Description                                                                                  |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `Credential::ApiKey(ApiKeyCredential)`    | API key + optional base URL                                                                  |
+| `Credential::OAuth(OAuthCredential)`      | OAuth token set (access, refresh, expiry)                                                    |
+| `Credential::EnvApiKey(ApiKeyCredential)` | Environment variable-backed API key                                                          |
+| `Credential::EnvRef(ApiKeyCredential)`    | `env:` prefix reference (commit `f85a127`) — stores plaintext env var name instead of secret |
 
-`InMemoryCredentialStore` (from `credential_store.rs`) is the default implementation, backed by `Arc<RwLock<HashMap>>`.
+`InMemoryCredentialStore` (from `credential_store.rs`) is the default implementation, backed by `Arc<RwLock<HashMap>>`. The product layer uses `FileCredentialStore` (encrypted via `MCP` crypto module) for persistent storage.
 
 ## ModelsStore
 
@@ -79,6 +80,8 @@ Built-in OAuth providers (from `oauth/mod.rs`):
 | Anthropic      | `anthropic`      | `anthropic_oauth()`                            |
 | OpenAI Codex   | `openai-codex`   | `openai_codex_oauth()` (browser + device code) |
 | GitHub Copilot | `github-copilot` | `github_copilot_oauth()`                       |
+| OpenRouter     | `openrouter`     | PKCE exchange (commit `c421386`)               |
+| Kimi           | `kimi`           | OAuth config (commit `ec33716`)                |
 
 Key functions:
 

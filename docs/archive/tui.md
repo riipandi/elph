@@ -201,7 +201,7 @@ pending turn (up to **4** images). Files are saved under `~/.local/share/elph/at
 | ---------------- | --------------------------------------------------------------------------- |
 | Input suffix     | `[images: paste_….png, …]` on the prompt line                               |
 | Hint row         | Count + shortcuts; bullet list of relative paths                            |
-| Footer **◐**   | Shown when `provider.SupportsImageInput(model.Input)` is true               |
+| Footer **◐**     | Shown when `provider.SupportsImageInput(model.Input)` is true               |
 | Non-vision model | Paste blocked with a system message; switch model via **Ctrl+L** / `/model` |
 
 On submit, images are sent as `TurnOptions.UserImages` to the provider API. For non-vision models,
@@ -263,12 +263,12 @@ The footer is painted eagerly from the configured model and project snapshot. Du
 
 ### Line 1
 
-| Segment     | Color                    | Notes                    |
-| ----------- | ------------------------ | ------------------------ |
-| MODEL_NAME  | `ThinkingColor(level)`   | Adapts to thinking level |
-| `           · PROVIDER                 · T: level                 ◐`                                                | `dimText` | **◐** when the active model supports image input (`provider.SupportsImageInput`) |
-| `$0.00`     | `ContextUsageColor(pct)` | Cost                     |
-| `X%` or `X% | 262k`or`262k`            | `ContextUsageColor(pct)` | Token usage (configurable via `footerTokenDisplay`) |
+| Segment                                                              | Color                    | Notes                                                                            |
+| -------------------------------------------------------------------- | ------------------------ | -------------------------------------------------------------------------------- |
+| MODEL_NAME                                                           | `ThinkingColor(level)`   | Adapts to thinking level                                                         |
+| `           · PROVIDER                 · T: level                 ◐` | `dimText`                | **◐** when the active model supports image input (`provider.SupportsImageInput`) |
+| `$0.00`                                                              | `ContextUsageColor(pct)` | Cost                                                                             |
+| `X%` or `X%                                                          | 262k`or`262k`            | `ContextUsageColor(pct)`                                                         | Token usage (configurable via `footerTokenDisplay`) |
 
 ### Line 2
 
@@ -344,28 +344,28 @@ Until a full refresh runs, `[+N -N]` may show stale values while the branch name
 
 ## Keybindings
 
-| Key                       | Action                                                                                             |
-| ------------------------- | -------------------------------------------------------------------------------------------------- |
-| `Ctrl+C`                  | First press: quit notice; second press: quit (or clear input + attachments if typing)              |
-| `Ctrl+X`                  | Cancel / Quit                                                                                      |
-| `Ctrl+D`                  | Exit application                                                                                   |
-| `Tab`                     | Toggle focus between prompt textarea and transcript                                                |
-| `Shift+Tab`               | Cycle agent mode                                                                                   |
-| `Ctrl+~`                  | Cycle thinking level (`Ctrl+\`` also accepted)                                                     |
-| `Enter`                   | Send message; while agent is busy, enqueue as follow-up; in slash palette, run or complete command |
-| `Ctrl+Enter`              | If queue non-empty: send top item now (interject). Else interject editor text mid-turn             |
+| Key                       | Action                                                                                                                                           |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Ctrl+C`                  | First press: quit notice; second press: quit (or clear input + attachments if typing)                                                            |
+| `Ctrl+X`                  | Cancel / Quit                                                                                                                                    |
+| `Ctrl+D`                  | Exit application                                                                                                                                 |
+| `Tab`                     | Toggle focus between prompt textarea and transcript                                                                                              |
+| `Shift+Tab`               | Cycle agent mode                                                                                                                                 |
+| `Ctrl+~`                  | Cycle thinking level (`Ctrl+\`` also accepted)                                                                                                   |
+| `Enter`                   | Send message; while agent is busy, enqueue as follow-up; in slash palette, run or complete command                                               |
+| `Ctrl+Enter`              | If queue non-empty: send top item now (interject). Else interject editor text mid-turn                                                           |
 | `Ctrl+R`                  | Retry the last transient error (stream cutoff / 5xx) — submits a Continue-style recovery prompt without re-typing (hint shown on the error card) |
-| `Ctrl+Q`                  | Open/close numbered prompt queue manager (edit / cancel items)                                     |
-| `Ctrl+J`                  | Insert newline in input                                                                            |
-| `Shift+Enter`             | Insert newline in input                                                                            |
-| `Ctrl+L`                  | Open model selector                                                                                |
-| `Ctrl+Shift+T`            | Cycle theme: Auto → Light → Dark (saved to `ui.theme`)                                             |
-| `Ctrl+P` / `Shift+Ctrl+P` | Cycle scoped models forward / backward                                                             |
-| Click copy hint           | Copy that assistant message (raw source) — see [AI response formatting](#ai-response-formatting)   |
-| `Ctrl+V`                  | Paste image from clipboard (**Cmd+V** on macOS); falls back to text paste                          |
-| `Ctrl+O`                  | Preview/edit pasted block (input); else expand/collapse newest collapsible block                   |
-| Click header/footer       | Expand/collapse that specific block                                                                |
-| `:q` / `:q!`              | Quit (vim-style)                                                                                   |
+| `Ctrl+Q`                  | Open/close numbered prompt queue manager (edit / cancel items)                                                                                   |
+| `Ctrl+J`                  | Insert newline in input                                                                                                                          |
+| `Shift+Enter`             | Insert newline in input                                                                                                                          |
+| `Ctrl+L`                  | Open model selector                                                                                                                              |
+| `Ctrl+Shift+T`            | Cycle theme: Auto → Light → Dark (saved to `ui.theme`)                                                                                           |
+| `Ctrl+P` / `Shift+Ctrl+P` | Cycle scoped models forward / backward                                                                                                           |
+| Click copy hint           | Copy that assistant message (raw source) — see [AI response formatting](#ai-response-formatting)                                                 |
+| `Ctrl+V`                  | Paste image from clipboard (**Cmd+V** on macOS); falls back to text paste                                                                        |
+| `Ctrl+O`                  | Preview/edit pasted block (input); else expand/collapse newest collapsible block                                                                 |
+| Click header/footer       | Expand/collapse that specific block                                                                                                              |
+| `:q` / `:q!`              | Quit (vim-style)                                                                                                                                 |
 
 Agent modes (`build`, `plan`, `ask`, `brave`) are also clickable in the footer. Mode is **per-session** (default `build` for new sessions) and is not written to shared `settings.json` — see [agent-runtime.md](./agent-runtime.md).
 

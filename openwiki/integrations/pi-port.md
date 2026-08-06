@@ -14,6 +14,36 @@ Elph is a Rust port of the [earendil-works/pi](https://github.com/earendil-works
 - **Upstream commit:** `cee5ff75` (_ref: remove openclaw reference from readme_)
 - **Package version:** `v0.82.1` (released 2026-07-25) + Unreleased
 - **Last audit:** 2026-07-29T20:00:00Z
+- **Elph HEAD:** `dc726d9` — moved `elph/` to `crates/coding-agent/`
+
+## Crate Mapping
+
+| pi TypeScript Package                                       | Elph Rust Crate                  | Status                   |
+| ----------------------------------------------------------- | -------------------------------- | ------------------------ |
+| `@earendil-works/pi-ai` (`packages/ai`)                     | `crates/elph-ai`                 | [Parity] (post Sprint 5) |
+| `@earendil-works/pi-agent-core` (`packages/agent`)          | `crates/elph-agent`              | [Parity] (core)          |
+| `@earendil-works/pi-coding-agent` (`packages/coding-agent`) | `crates/coding-agent/` (product) | [Partial]                |
+
+## Structural Changes Since Last Audit
+
+| Change                                    | Commit    | Details                                                                |
+| ----------------------------------------- | --------- | ---------------------------------------------------------------------- |
+| `elph/` → `crates/coding-agent/`          | `dc726d9` | Product binary moved into workspace crates/ directory                  |
+| `elph-exec` merged into `elph-agent`      | `c8f65ab` | Now `crate::exec` with `PtySize`, `open_pty()`, `exec_shell_command()` |
+| `elph-db` extracted                       | `431cee2` | Shared Turso open/connect/retry helpers from `elph-agent`              |
+| `rendown` crate added                     | —         | Streaming markdown renderer, excluded from workspace                   |
+| `ext-hello` moved to `crates/ext-hello/`  | `f12fba4` | WASM extension example                                                 |
+| `tools` CLI subcommand removed            | `ddf8919` | Tools are now listed via `list_available_tools` agent tool             |
+| Model catalogs as compressed JSON         | `85069b1` | Replaced generated Rust code with embedded `models/*.zstd`             |
+| `prompt-templates` no deps                | `ebcd802` | `minijinja` dependency removed from `elph-agent` (moved to product)    |
+| `rmcp` v3.0.0                             | `5b658eb` | Upgraded MCP client library with OAuth/client lifecycle changes        |
+| TursoSessionStorage                       | `e225323` | Replaced `SessionDirStorage` with pi-aligned Turso-backed schema       |
+| Compaction threshold_pct                  | `6484604` | `CompactionSettings.threshold_pct` replaces `threshold` field          |
+| `compact()` takes `CompactionPreparation` | `4cedf40` | Simplified compact signature, preparation done upstream                |
+| Crawlberg replaces Obscura                | `0b2b522` | Browser backend for web tools                                          |
+| `env:` credential prefix                  | `f85a127` | Store plaintext env var references for provider credentials            |
+| OAuth: Kimi, OpenRouter, Radius           | `ec33716` | New OAuth providers added                                              |
+| Providers: Infron, Baseten, etc.          | `a5befd8` | New provider adapters (see [Providers](../domains/providers.md))       |
 
 ## Crate Mapping
 
@@ -32,7 +62,7 @@ Elph is a Rust port of the [earendil-works/pi](https://github.com/earendil-works
 | Feature                                         | Status       | Details                                |
 | ----------------------------------------------- | ------------ | -------------------------------------- |
 | Architecture (Models, providers, auth, streams) | [Parity]     | Core abstractions ported               |
-| Model catalogs (GPT-5.6, tiers, max maps)       | [Parity]     | Hyper is Elph-only                     |
+| Model catalogs (GPT-5.6, tiers, max maps)       | [Parity]     | Hyper is Elph-only; compressed JSON    |
 | Thinking levels + `max`                         | [Parity]     | `ThinkingLevel::Max` support           |
 | Deferred / dynamic tools                        | [Parity]     | `Message::ToolResult.added_tool_names` |
 | Cost accounting tiers                           | [Parity]     | `ModelCostTier`, `calculate_cost()`    |
@@ -47,7 +77,8 @@ Elph is a Rust port of the [earendil-works/pi](https://github.com/earendil-works
 | `SessionAffinityFormat`                         | [Parity]     | Sprint 5                               |
 | `ANTHROPIC_AUTH_TOKEN` bearer                   | [Parity]     | Sprint 5                               |
 | Retry patterns (DNS, gRPC, socket-drop, HTTP/2) | [Parity]     | Sprint 5                               |
-| Hyper provider                                  | [Elph delta] | Not in pi                              |
+| Infron provider                                 | [Elph delta] | Not in pi                              |
+| Baseten, Ollama Cloud, TokenRouter, OpenGateway | [Elph delta] | New provider adapters                  |
 
 ### elph-agent ↔ pi-agent-core
 
@@ -59,8 +90,10 @@ Elph is a Rust port of the [earendil-works/pi](https://github.com/earendil-works
 | `AgentThinkingLevel::Max`             | [Parity]     |                                      |
 | `added_tool_names` on tool results    | [Parity]     |                                      |
 | Session entry transforms / projectors | [Parity]     |                                      |
-| Compaction estimate timestamp gate    | [Parity]     |                                      |
+| Compaction estimate timestamp gate    | [Parity]     | `threshold_pct` replaces `threshold` |
 | Usage metadata on tool results        | [Parity]     | Sprint 5                             |
+| Shell execution (was `elph-exec`)     | [Parity]     | Merged as `crate::exec`              |
+| TOON prompt encoding                  | [Elph delta] | Not in pi-agent-core                 |
 | Goals, MCP, subagent, plugins, tools  | [Elph delta] | Product modules not in pi-agent-core |
 
 ### elph (product) ↔ pi-coding-agent
@@ -83,33 +116,35 @@ Elph is a Rust port of the [earendil-works/pi](https://github.com/earendil-works
 
 ## Known Gaps
 
-From `docs/porting/pi-agent.md`:
+From `docs/porting/pi-agent.md` and recent git history:
 
-| Gap                                      | Priority | Description                                                       |
-| ---------------------------------------- | -------- | ----------------------------------------------------------------- |
-| `AgentHarnessTool` + `toolContext`       | P1       | pi v0.82.0 replaced `ExecutionEnv` with app-defined tool contexts |
-| `SessionStorage` API v2                  | P1       | pi v0.81.0 broke interface with cursor-based reads                |
-| `AgentHarnessTool` context-aware tools   | P1       | pi ships read/write/edit/bash as library                          |
-| Retry policy for compaction              | P2       | pi v0.81.1                                                        |
-| Fresh routing session IDs for compaction | P2       | pi v0.82.0                                                        |
-| Split-turn summary serialization         | P2       | Confirm coverage                                                  |
-| JSONL v3 header metadata                 | P2/N/A   | Only if cross-compat needed                                       |
+| Gap                                      | Priority | Status   | Description                                                       |
+| ---------------------------------------- | -------- | -------- | ----------------------------------------------------------------- |
+| `AgentHarnessTool` + `toolContext`       | P1       | [Open]   | pi v0.82.0 replaced `ExecutionEnv` with app-defined tool contexts |
+| `SessionStorage` API v2                  | P1       | [Open]   | pi v0.81.0 broke interface with cursor-based reads                |
+| `AgentHarnessTool` context-aware tools   | P1       | [Open]   | pi ships read/write/edit/bash as library                          |
+| Retry policy for compaction              | P2       | [Closed] | `compaction_ops.rs` added retry (commit `4cedf40`)                |
+| Fresh routing session IDs for compaction | P2       | [Open]   | pi v0.82.0                                                        |
+| Split-turn summary serialization         | P2       | [Closed] | `compact.rs` handles split-turn via `turn_prefix_messages`        |
+| JSONL v3 header metadata                 | P2/N/A   | [Open]   | Only if cross-compat needed                                       |
 
 ## Elph-Only Extensions
 
 These features exist in Elph but not in pi:
 
-- **Hyper provider** (`crates/elph-ai/src/providers/builtin.rs`)
+- **Infron, Baseten, Ollama Cloud, TokenRouter, OpenGateway providers** — new provider adapters
 - **Memory system** (`crates/coding-agent/src/memory/`) — floppy/Turso-backed vector memory
-- **Codegraph** (`crates/coding-agent/src/codegraph/`) — structural knowledge graph for code reviews
+- **Codegraph** (`crates/coding-agent/src/codegraph/`) — semantic code index and impact graph
 - **ACP** — Agent Client Protocol (alternative to pi RPC)
-- **WASM extensions** — `extensions/` + `plugins/` (WASM Component Model)
+- **WASM extensions** — `extensions/` + `crates/elph-agent/src/plugins/` (WASM Component Model)
 - **Swarm** — `crates/elph-swarm/` (multi-agent orchestration, skeleton)
 - **Cron** — `crates/elph-cron/` (scheduled tasks, skeleton)
 - **Sandbox** — `crates/elph-sandbox/` (zerobox-powered, skeleton)
-- **TOON prompt encoding** — `crates/elph-agent/src/prompt/encoding/`
+- **TOON prompt encoding** — `crates/elph-agent/src/prompt/` (string encoding for prompts)
 - **Collaboration tools** — `crates/elph-agent/src/collaboration/`
-- **Datastore** — `crates/elph-agent/src/datastore/` (session_dir + Turso)
+- **`elph-db`** — `crates/elph-db/` (shared Turso SQLite helpers)
+- **`rendown`** — `crates/rendown/` (streaming markdown renderer)
+- **`web_extract` tool** — structured DOM data extraction via `htmd` and `astral-tl`
 
 ## Sync Workflow
 

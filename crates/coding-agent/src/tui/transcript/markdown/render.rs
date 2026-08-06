@@ -211,17 +211,18 @@ fn build_cached_document(
         };
 
         // Cache hit — return cloned cached document.
-        if let Ok(cache) = built_doc_cache().lock() {
-            if let Some(cached) = cache.get(&key) {
-                return cached.clone();
-            }
+        if let Ok(cache) = built_doc_cache().lock()
+            && let Some(cached) = cache.get(&key)
+        {
+            return cached.clone();
         }
 
         // Cache miss — build and cache.
         let doc = build_assistant_markdown_document(buffer, raw, tail_foreground);
         if let Ok(mut cache) = built_doc_cache().lock() {
             if cache.len() >= BUILT_DOC_CACHE_MAX {
-                // Drain half (oldest-first via iteration order).
+                // Drain half (oldest-first via iteration order) while holding the lock,
+                // so a concurrent writer can't re-overfill the cache between drain and insert.
                 let to_remove = cache.len() / 2;
                 let keys: Vec<_> = cache.keys().take(to_remove).copied().collect();
                 for k in keys {
@@ -271,7 +272,7 @@ mod tests {
             "mermaid diagram must render even before worker parses, got lines: {:?}",
             doc.lines
                 .iter()
-                .map(|l| (l.kind.clone(), l.mermaid_source.is_some()))
+                .map(|l| (l.kind, l.mermaid_source.is_some()))
                 .collect::<Vec<_>>()
         );
     }
@@ -321,7 +322,7 @@ mod tests {
         use crate::tui::transcript::types::{TranscriptMessage, TranscriptStyle};
 
         // Simulate chunks arriving like a real LLM stream.
-        let chunks = vec![
+        let chunks = [
             "Here is a diagram:\n\n",
             "```mermaid\n",
             "graph TD\n",
@@ -362,7 +363,7 @@ mod tests {
 
             let has_diagram = merged.lines.iter().any(|l| l.mermaid_source.is_some());
             // Fence is "closed" when we've seen the full ```mermaid ... ``` pair.
-            let fence_closed = raw.contains("```mermaid") && count_fences(raw.as_str()) % 2 == 0;
+            let fence_closed = raw.contains("```mermaid") && count_fences(raw.as_str()).is_multiple_of(2);
 
             if fence_closed {
                 assert!(
@@ -371,7 +372,7 @@ mod tests {
                     merged
                         .lines
                         .iter()
-                        .map(|l| (l.kind.clone(), l.mermaid_source.is_some()))
+                        .map(|l| (l.kind, l.mermaid_source.is_some()))
                         .collect::<Vec<_>>()
                 );
             }
@@ -591,7 +592,7 @@ mod tests {
         // Verify cache has an entry.
         let cache = built_doc_cache().lock().expect("lock");
         assert!(
-            cache.len() >= 1,
+            !cache.is_empty(),
             "cache should have at least one entry after building, got {}",
             cache.len()
         );

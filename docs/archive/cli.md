@@ -93,10 +93,10 @@ See [memory.md](./memory.md).
 
 List models from the embedded catalogs baked into the binary (source: `elph-ai` built-ins).
 
-| Argument / flag   | Description                                                                 |
-| ----------------- | --------------------------------------------------------------------------- |
-| `[PROVIDER]`      | Optional positional provider filter (matches `id` or display name, case-insensitive). |
-| `--search <QUERY>`| Fuzzy filter across `provider.id`, `model.id`, and `model.name`.            |
+| Argument / flag    | Description                                                                           |
+| ------------------ | ------------------------------------------------------------------------------------- |
+| `[PROVIDER]`       | Optional positional provider filter (matches `id` or display name, case-insensitive). |
+| `--search <QUERY>` | Fuzzy filter across `provider.id`, `model.id`, and `model.name`.                      |
 
 Output is grouped by provider. A summary line prints the provider/model counts (and the active query when `--search` is used), followed by one section per provider. Each model line shows the display name, the model id (dimmed), and a compact spec: context window (e.g. `200k`, `1.0M`) plus per-million-token price (e.g. `$5.00/$25.00`; `free` when both rates are zero), tagged `reasoning` when the model supports thinking.
 

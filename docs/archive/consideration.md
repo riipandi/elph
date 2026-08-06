@@ -91,7 +91,7 @@ Schema: [schemas/elph-schema.json](../schemas/elph-schema.json).
 | Verdict   | Item                                            | Rationale                                                          |
 | --------- | ----------------------------------------------- | ------------------------------------------------------------------ |
 | **Keep**  | log + logforth, fastrace, chrono, memchr, rayon | Structured logs, trace spans, time, parsing, parallel fuzzy filter |
-| **Defer** | rapidhash                                       | Fingerprints                                                        |
+| **Defer** | rapidhash                                       | Fingerprints                                                       |
 | **Skip**  | Duplicate transitive deps                       | Add only when needed in-tree                                       |
 
 ---

@@ -102,6 +102,7 @@ A single 500-line assistant reply parsed into ~800 `MarkdownLine` × ~2000 `Styl
 **ROOT CAUSE (verified):** 346 snapshot rows × ~2 MB average = **682 MB** (95% of 789 MB store.db). Snapshots appended every turn, never pruned.
 
 **Fix applied (session 3):**
+
 1. **Overwrite semantics:** New `save_transcript_snapshot_to_cache()` writes to `TranscriptCache` (metadata.db) with `INSERT OR REPLACE` — only latest snapshot kept.
 2. **Legacy pruning:** `TranscriptCache::open()` auto-prunes all `elph.transcript.snapshot` entries from `session_entries` on first open.
 3. **WAL checkpoint:** Auto-checkpoints on startup.

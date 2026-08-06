@@ -7,7 +7,7 @@ tags: [mcp, model-context-protocol, rmcp, transports, encryption]
 
 # MCP
 
-Model Context Protocol (MCP) integration lives in `crates/elph-agent/src/tools/mcp/`. It uses the `rmcp` crate for client-side MCP communication. MCP tools are exposed as standard [Agent Tools](../domains/tools.md) and are invoked during the [Agent Loop](../workflows/agent-loop.md) turn cycle.
+Model Context Protocol (MCP) integration lives in `crates/elph-agent/src/tools/mcp/`. It uses the `rmcp` crate (v3.0.0+, upgraded from `5b658eb`) for client-side MCP communication. MCP tools are exposed as standard [Agent Tools](../domains/tools.md) and are invoked during the [Agent Loop](../workflows/agent-loop.md) turn cycle.
 
 ## Module Structure
 
@@ -69,6 +69,24 @@ MCP credentials are encrypted at rest using AES-256-GCM (via `aes-gcm` crate):
 ```
 
 The `AuthStoreFile` (from `auth.rs`) manages a shared `auth.json` file with encrypted credential entries. `FileCredentialStore` implements the `CredentialStore` trait for MCP-specific credentials.
+
+**Key wrapping:** Commit `7b7ffc2` replaced OS keychain master key with machine-bound wrapped key in `auth.lock` using `rewrap_master_key` + `flock()` for concurrent access safety.
+
+## Key Features Added Since Last Audit
+
+| Feature                                 | Commit    | Details                                                    |
+| --------------------------------------- | --------- | ---------------------------------------------------------- |
+| `rmcp` v3.0.0 upgrade                   | `5b658eb` | Refactored OAuth/client lifecycle, 2026-07-28 protocol     |
+| Lazy per-server discovery               | `d07576b` | On-demand discovery with progress reporting                |
+| Call-tool-once + on-demand per-server   | `65ccc01` | `call_tool_once()` replaces eager discovery                |
+| Discovery retry + graceful degradation  | `2a87cf5` | Retry on transient server failures                         |
+| MCP 2026-07-28 lifecycle                | `d6127b6` | MRTR elicitation, Tasks, CIMD support                      |
+| Lifecycle mode support                  | `c30c2b3` | MCP server protocol lifecycle modes                        |
+| Tool result cache (Turso → in-memory)   | `ba083e6` | Switched to in-memory HashMap + JSONL file for persistence |
+| Rewrap master key + flock               | `7b7ffc2` | Machine-bound wrapped key, concurrent key creation safety  |
+| TUI slash commands for MCP OAuth        | `ad35e32` | `/mcp:login`, `/mcp:logout` in TUI                         |
+| Legacy v2 envelope support              | `703a7b4` | Compatibility with older MCP credential formats            |
+| Lazy/eager load strategy (lazy default) | `70a6ffd` | Configurable per-server discovery strategy                 |
 
 ## McpToolRegistry
 

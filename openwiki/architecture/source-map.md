@@ -13,13 +13,14 @@ Crate-by-crate module map with file paths, noting pi port origins vs Elph-only e
 
 **Path:** `crates/coding-agent/src/`
 **Pi mapping:** `@earendil-works/pi-coding-agent` → `crates/coding-agent/`
+**Status:** Moved from `elph/` to `crates/coding-agent/` (commit `dc726d9`)
 **Key files:**
 
 | Module                     | Path                                                 | Status                                  |
 | -------------------------- | ---------------------------------------------------- | --------------------------------------- |
 | `main.rs`                  | `crates/coding-agent/src/main.rs`                    | [Elph delta] — CLI entry via clap       |
 | `lib.rs`                   | `crates/coding-agent/src/lib.rs`                     | [Elph delta] — re-exports all modules   |
-| `cli/`                     | `crates/coding-agent/src/cli/` (19 subcommand files) | [Elph delta] — CLI subcommands          |
+| `cli/`                     | `crates/coding-agent/src/cli/` (18 subcommand files) | [Elph delta] — CLI subcommands          |
 | `agent/`                   | `crates/coding-agent/src/agent/`                     | [Partial] — pi-coding-agent equivalent  |
 | `agent/runtime.rs`         | `crates/coding-agent/src/agent/runtime.rs`           | [Partial] — session factory             |
 | `agent/session/`           | `crates/coding-agent/src/agent/session/`             | [Partial] — CodingAgentSession          |
@@ -35,10 +36,12 @@ Crate-by-crate module map with file paths, noting pi port origins vs Elph-only e
 | `platform/paths.rs`        | `crates/coding-agent/src/platform/paths.rs`          | [Elph delta] — ELPH_HOME, paths         |
 | `platform/settings.rs`     | `crates/coding-agent/src/platform/settings.rs`       | [Elph delta] — settings merge           |
 | `memory/`                  | `crates/coding-agent/src/memory/`                    | [Elph delta] — floppy memory            |
-| `extensions/`              | `crates/coding-agent/src/extensions/`                | [Elph delta] — WASM extension host      |
 | `codegraph/`               | `crates/coding-agent/src/codegraph/`                 | [Elph delta] — code review graph        |
-| `worktree/`                | `crates/coding-agent/src/worktree/`                  | [Elph delta]                            |
-| `types.rs`                 | `crates/coding-agent/src/types.rs`                   | [Elph delta] — AgentMode, ThinkingLevel |
+| `extensions/`              | `crates/coding-agent/src/extensions/`                | [Elph delta] — WASM extension host      |
+| `command/`                 | `crates/coding-agent/src/command/`                   | [Elph delta] — shell command helpers    |
+| `types/`                   | `crates/coding-agent/src/types.rs`                   | [Elph delta] — AgentMode, ThinkingLevel |
+| `utils/`                   | `crates/coding-agent/src/utils/`                     | [Elph delta] — shared utilities         |
+| `worktree/`                | `crates/coding-agent/src/worktree/`                  | [Elph delta] — git worktree management  |
 
 ## `elph-agent` (agent runtime)
 
@@ -46,32 +49,38 @@ Crate-by-crate module map with file paths, noting pi port origins vs Elph-only e
 **Pi mapping:** `@earendil-works/pi-agent-core` → `crates/elph-agent`
 **Key files:**
 
-| Module                        | Path                                                | Status                          |
-| ----------------------------- | --------------------------------------------------- | ------------------------------- |
-| `lib.rs`                      | `crates/elph-agent/src/lib.rs`                      | [Parity] — re-exports           |
-| `agent/`                      | `crates/elph-agent/src/agent/`                      | [Parity] — Agent struct, events |
-| `agent/harness/`              | `crates/elph-agent/src/agent/harness/`              | [Parity] — AgentHarness         |
-| `agent/harness/mod.rs`        | `crates/elph-agent/src/agent/harness/mod.rs`        | [Parity]                        |
-| `agent/harness/prompt_ops.rs` | `crates/elph-agent/src/agent/harness/prompt_ops.rs` | [Parity]                        |
-| `agent/harness/run_loop/`     | `crates/elph-agent/src/agent/harness/run_loop/`     | [Parity]                        |
-| `agent/subagent/`             | `crates/elph-agent/src/agent/subagent/`             | [Elph delta]                    |
-| `runtime/`                    | `crates/elph-agent/src/runtime/`                    | [Parity]                        |
-| `runtime/run_loop.rs`         | `crates/elph-agent/src/runtime/run_loop.rs`         | [Parity]                        |
-| `runtime/exec/`               | `crates/elph-agent/src/runtime/exec/`               | [Parity]                        |
-| `runtime/local_env/`          | `crates/elph-agent/src/runtime/local_env/`          | [Parity]                        |
-| `compaction/`                 | `crates/elph-agent/src/compaction/`                 | [Parity]                        |
-| `session/`                    | `crates/elph-agent/src/session/`                    | [Parity]                        |
-| `tools/`                      | `crates/elph-agent/src/tools/`                      | [Elph delta] — product tools    |
-| `tools/types.rs`              | `crates/elph-agent/src/tools/types.rs`              | [Elph delta]                    |
-| `tools/mcp/`                  | `crates/elph-agent/src/tools/mcp/`                  | [Elph delta] — MCP client       |
-| `tools/web/`                  | `crates/elph-agent/src/tools/web/`                  | [Elph delta]                    |
-| `skills/`                     | `crates/elph-agent/src/skills/`                     | [Elph delta] — SKILL.md system  |
-| `goals/`                      | `crates/elph-agent/src/goals/`                      | [Elph delta]                    |
-| `plugins/`                    | `crates/elph-agent/src/plugins/`                    | [Elph delta] — WASM plugins     |
-| `collaboration/`              | `crates/elph-agent/src/collaboration/`              | [Elph delta]                    |
-| `datastore/`                  | `crates/elph-agent/src/datastore/`                  | [Elph delta]                    |
-| `prompt/`                     | `crates/elph-agent/src/prompt/`                     | [Elph delta] — TOON encoding    |
-| `builder.rs`                  | `crates/elph-agent/src/builder.rs`                  | [Elph delta]                    |
+| Module                        | Path                                                | Status                                                  |
+| ----------------------------- | --------------------------------------------------- | ------------------------------------------------------- |
+| `lib.rs`                      | `crates/elph-agent/src/lib.rs`                      | [Parity] — re-exports                                   |
+| `agent/`                      | `crates/elph-agent/src/agent/`                      | [Parity] — Agent struct, events                         |
+| `agent/harness/`              | `crates/elph-agent/src/agent/harness/`              | [Parity] — AgentHarness                                 |
+| `agent/harness/mod.rs`        | `crates/elph-agent/src/agent/harness/mod.rs`        | [Parity]                                                |
+| `agent/harness/prompt_ops.rs` | `crates/elph-agent/src/agent/harness/prompt_ops.rs` | [Parity]                                                |
+| `agent/harness/run_loop/`     | `crates/elph-agent/src/agent/harness/run_loop/`     | [Parity]                                                |
+| `agent/subagent/`             | `crates/elph-agent/src/agent/subagent/`             | [Elph delta]                                            |
+| `runtime/`                    | `crates/elph-agent/src/runtime/`                    | [Parity]                                                |
+| `runtime/run_loop.rs`         | `crates/elph-agent/src/runtime/run_loop.rs`         | [Parity]                                                |
+| `runtime/exec/`               | `crates/elph-agent/src/runtime/exec/`               | [Parity]                                                |
+| `runtime/local_env/`          | `crates/elph-agent/src/runtime/local_env/`          | [Parity]                                                |
+| `exec/`                       | `crates/elph-agent/src/exec/`                       | [Elph delta] — merged from elph-exec (commit `c8f65ab`) |
+| `compaction/`                 | `crates/elph-agent/src/compaction/`                 | [Parity]                                                |
+| `session/`                    | `crates/elph-agent/src/session/`                    | [Parity]                                                |
+| `tools/`                      | `crates/elph-agent/src/tools/`                      | [Elph delta] — product tools                            |
+| `tools/types.rs`              | `crates/elph-agent/src/tools/types.rs`              | [Elph delta]                                            |
+| `tools/mcp/`                  | `crates/elph-agent/src/tools/mcp/`                  | [Elph delta] — MCP client                               |
+| `tools/web/`                  | `crates/elph-agent/src/tools/web/`                  | [Elph delta] — web_fetch, web_search, web_extract       |
+| `skills/`                     | `crates/elph-agent/src/skills/`                     | [Elph delta] — SKILL.md system                          |
+| `goals/`                      | `crates/elph-agent/src/goals/`                      | [Elph delta]                                            |
+| `plugins/`                    | `crates/elph-agent/src/plugins/`                    | [Elph delta] — WASM plugins                             |
+| `collaboration/`              | `crates/elph-agent/src/collaboration/`              | [Elph delta]                                            |
+| `datastore/`                  | `crates/elph-agent/src/datastore/`                  | [Elph delta]                                            |
+| `prompt/`                     | `crates/elph-agent/src/prompt/`                     | [Elph delta] — TOON encoding                            |
+| `builder.rs`                  | `crates/elph-agent/src/builder.rs`                  | [Elph delta]                                            |
+| `fs/`                         | `crates/elph-agent/src/fs/`                         | [Elph delta]                                            |
+| `logger/`                     | `crates/elph-agent/src/logger/`                     | [Elph delta]                                            |
+| `messages/`                   | `crates/elph-agent/src/messages/`                   | [Elph delta]                                            |
+| `trace/`                      | `crates/elph-agent/src/trace/`                      | [Elph delta]                                            |
+| `utils/`                      | `crates/elph-agent/src/utils/`                      | [Elph delta]                                            |
 
 ## `elph-ai` (LLM API layer)
 
@@ -121,19 +130,22 @@ Crate-by-crate module map with file paths, noting pi port origins vs Elph-only e
 | `clipboard.rs`    | `crates/elph-tui/src/clipboard.rs`                                                        |
 | `types.rs`        | `crates/elph-tui/src/types.rs`                                                            |
 
-## `elph-exec` (shell execution)
+## `elph-exec` (shell execution) — merged into `elph-agent`
 
-**Path:** `crates/elph-exec/src/`
-**Status:** [Elph delta]
+**Former path:** `crates/elph-exec/src/`
+**Status:** [Elph delta] — merged into `crates/elph-agent/src/exec/` (commit `c8f65ab`)
 
-| Module      | Path                             |
-| ----------- | -------------------------------- |
-| `lib.rs`    | `crates/elph-exec/src/lib.rs`    |
-| `shell.rs`  | `crates/elph-exec/src/shell.rs`  |
-| `types.rs`  | `crates/elph-exec/src/types.rs`  |
-| `error.rs`  | `crates/elph-exec/src/error.rs`  |
-| `output.rs` | `crates/elph-exec/src/output.rs` |
-| `pty/`      | `crates/elph-exec/src/pty/`      |
+The `elph-exec` crate was absorbed into `elph-agent` as `crate::exec`. Key modules:
+
+| Module      | Path                              |
+| ----------- | --------------------------------- |
+| `exec/`     | `crates/elph-agent/src/exec/`     |
+| `exec/pty/` | `crates/elph-agent/src/exec/pty/` |
+
+Public API re-exported from `elph_agent`:
+
+- `exec_shell_command()`, `resolve_shell()`, `ShellConfig`, `ExecError`, `ExecErrorCode`
+- `PtySize`, `open_pty()` (unix only)
 
 ## `floppy` (memory)
 
@@ -151,6 +163,26 @@ Crate-by-crate module map with file paths, noting pi port origins vs Elph-only e
 | `store/`        | `crates/floppy/src/store/`        |
 | `scoring.rs`    | `crates/floppy/src/scoring.rs`    |
 | `types/`        | `crates/floppy/src/types/`        |
+
+## `elph-db` (shared Turso helpers)
+
+**Path:** `crates/elph-db/src/`
+**Status:** [Elph delta] — extracted from `elph-agent` (commit `431cee2`)
+
+A single-file crate providing shared Turso (local SQLite) open/connect/retry/lock-error helpers.
+
+| Module   | Path                        |
+| -------- | --------------------------- |
+| `lib.rs` | `crates/elph-db/src/lib.rs` |
+
+## `rendown` (markdown renderer)
+
+**Path:** `crates/rendown/src/`
+**Status:** [Elph delta] — streaming markdown renderer, excluded from workspace
+
+| Module   | Path                        |
+| -------- | --------------------------- |
+| `lib.rs` | `crates/rendown/src/lib.rs` |
 
 ## Skeleton crates
 
