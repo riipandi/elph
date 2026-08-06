@@ -116,6 +116,18 @@ impl AssistantMarkdownBuffer {
     pub fn mark_stream_complete(&mut self) {
         self.stream_complete = true;
     }
+
+    /// Drop cached parsed documents to free memory while keeping streaming state.
+    ///
+    /// The retained `stable_end`, `stream_complete`, `wrap_width`, and row counts let the
+    /// layout path continue to measure correctly; the worker will re-parse the document
+    /// on the next tick (the stable source is still in the message content). This is used
+    /// by the archive path to shed memory from old, no-longer-rendered assistant messages.
+    pub fn drop_cached_documents(&mut self) {
+        for part in &mut self.parts {
+            part.document = None;
+        }
+    }
 }
 
 #[cfg(test)]

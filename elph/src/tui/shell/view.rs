@@ -1785,6 +1785,17 @@ pub(crate) fn build_shell_view(
                         scroll_tick: subagent_output_scroll_tick.get(),
                         has_focus: true,
                         on_esc: move |_| {
+                            // Free the output buffer when closing the dialog — these
+                            // buffers otherwise accumulate across the whole session.
+                            if let Some(id) = pending_subagent_output
+                                .read()
+                                .as_ref()
+                                .map(|p| p.agent_id.clone())
+                            {
+                                let buffers_arc = subagent_output_buffers_state.read().clone();
+                                let mut buffers = buffers_arc.write().expect("subagent output buffers lock");
+                                buffers.remove(&id);
+                            }
                             pending_subagent_output.set(None);
                             shell_focus.set(ShellFocus::Prompt);
                         },

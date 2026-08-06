@@ -27,6 +27,21 @@ impl IncrementalLayoutCache {
         self.row_counts.clear();
         self.start_rows.clear();
     }
+
+    /// Shrink internal Vecs to fit their length — call after a large message drain
+    /// (e.g. archival) so the layout cache does not retain capacity for hundreds
+    /// of retired messages.
+    pub fn shrink_to_fit(&mut self) {
+        self.fingerprints.shrink_to_fit();
+        self.row_counts.shrink_to_fit();
+        self.start_rows.shrink_to_fit();
+    }
+
+    /// True when the cache holds slots for many more messages than `active_count` —
+    /// signals that a `shrink_to_fit` would reclaim meaningful memory.
+    pub fn capacity_exceeds(&self, active_count: usize) -> bool {
+        self.fingerprints.len() > active_count.saturating_mul(2)
+    }
 }
 
 /// Full recompute (tests / cold path without a retained cache).
@@ -178,8 +193,8 @@ fn message_row_count(message: &TranscriptMessage, wrap_width: u16) -> u32 {
                 .max(1) as u32
         };
         if message.style == TranscriptStyle::Thinking {
-            let body_visible = message.is_thinking_streaming()
-                || (!message.is_thinking_collapsed() && !message.content.is_empty());
+            let body_visible =
+                message.is_thinking_streaming() || (!message.is_thinking_collapsed() && !message.content.is_empty());
             if body_visible && text.contains('\n') {
                 rows = rows.saturating_add(1);
             }
@@ -292,8 +307,7 @@ mod tests {
                 .map(|m| m.transcript_margin_bottom(None) as u32)
                 .unwrap_or(0);
 
-            let bubbles =
-                crate::tui::transcript::card::build_transcript_bubbles(width, &messages, None, None);
+            let bubbles = crate::tui::transcript::card::build_transcript_bubbles(width, &messages, None, None);
             let rendered =
                 element! { View(width: width, flex_direction: FlexDirection::Column) { #(bubbles) } }.to_string();
             let painted = rendered.lines().count() as u32;
@@ -316,8 +330,8 @@ mod tests {
     /// total so no content is skipped and no over-count scroll clips the start.
     #[test]
     fn windowed_view_total_matches_full_measure() {
-        use iocraft::prelude::*;
         use crate::tui::transcript::card::build_transcript_bubbles_windowed;
+        use iocraft::prelude::*;
 
         let mut messages = Vec::new();
         for i in 0..30 {
@@ -355,15 +369,8 @@ mod tests {
             // View the very bottom (auto-scroll pinned state) — windowed must not drift.
             let view_rows = 12u32;
             let view_start = total.saturating_sub(view_rows);
-            let bubbles = build_transcript_bubbles_windowed(
-                width,
-                &messages,
-                &layouts,
-                view_start,
-                view_rows,
-                None,
-                None,
-            );
+            let bubbles =
+                build_transcript_bubbles_windowed(width, &messages, &layouts, view_start, view_rows, None, None);
             let rendered =
                 element! { View(width: width, flex_direction: FlexDirection::Column) { #(bubbles) } }.to_string();
             let painted = rendered.lines().count() as u32;

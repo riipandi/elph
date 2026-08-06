@@ -182,6 +182,11 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
             .map(|c| c.layout_cache.clone())
             .unwrap_or_default();
         let row_layouts = layout_transcript_rows_cached(&messages, props.screen_width, &mut layout_cache);
+        // After archival the message count drops sharply; release the layout cache's
+        // retired capacity so it does not hold memory for hundreds of gone messages.
+        if layout_cache.capacity_exceeds(row_layouts.len()) {
+            layout_cache.shrink_to_fit();
+        }
         let is_sticky_prompt: Vec<_> = messages.iter().map(|m| m.style.is_sticky_prompt()).collect();
         render_cache.set(Some(TranscriptRenderCache {
             messages_revision: cache_key.0,

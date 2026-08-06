@@ -12,9 +12,9 @@ use super::kinds::{
 use super::toggle_ctx::CollapsibleToggleCtx;
 
 /// Extra rows above/below the viewport when windowing transcript cards.
-const WINDOW_OVERSCAN_ROWS: u32 = 24;
+const WINDOW_OVERSCAN_ROWS: u32 = 12;
 /// Always keep at least this many trailing messages fully mounted (streaming tail).
-const WINDOW_MIN_TAIL_MESSAGES: usize = 12;
+const WINDOW_MIN_TAIL_MESSAGES: usize = 6;
 
 /// Subagent click handler type: (agent_id, title).
 pub type SubagentClickHandler = HandlerMut<'static, (String, String)>;
@@ -343,9 +343,7 @@ mod tests {
         let mut messages = Vec::new();
         for i in 0..60 {
             messages.push(TranscriptMessage::text(
-                format!(
-                    "status log line {i} — a status row with a longer label that stays on one line"
-                ),
+                format!("status log line {i} — a status row with a longer label that stays on one line"),
                 TranscriptStyle::StatusSuccess,
             ));
         }
@@ -373,15 +371,7 @@ mod tests {
 
             // Scroll to the TOP — viewport starts at row 0.
             let view_rows = 14u32;
-            let bubbles = build_transcript_bubbles_windowed(
-                width,
-                &messages,
-                &layouts,
-                0,
-                view_rows,
-                None,
-                None,
-            );
+            let bubbles = build_transcript_bubbles_windowed(width, &messages, &layouts, 0, view_rows, None, None);
             let rendered =
                 element! { View(width: width, flex_direction: FlexDirection::Column) { #(bubbles) } }.to_string();
             let painted = rendered.lines().count() as u32;
@@ -434,24 +424,21 @@ mod tests {
                 .unwrap_or(0);
             let expected_total = total.saturating_add(trailing);
 
-            for view_start in [0u32, total / 4, total / 2, (total.saturating_mul(3)) / 4, total.saturating_sub(1)]
-            {
+            for view_start in [
+                0u32,
+                total / 4,
+                total / 2,
+                (total.saturating_mul(3)) / 4,
+                total.saturating_sub(1),
+            ] {
                 let view_rows = 10u32;
-                let bubbles = build_transcript_bubbles_windowed(
-                    width,
-                    &messages,
-                    &layouts,
-                    view_start,
-                    view_rows,
-                    None,
-                    None,
-                );
-                let rendered = element! { View(width: width, flex_direction: FlexDirection::Column) { #(bubbles) } }
-                    .to_string();
+                let bubbles =
+                    build_transcript_bubbles_windowed(width, &messages, &layouts, view_start, view_rows, None, None);
+                let rendered =
+                    element! { View(width: width, flex_direction: FlexDirection::Column) { #(bubbles) } }.to_string();
                 let painted = rendered.lines().count() as u32;
                 assert_eq!(
-                    expected_total,
-                    painted,
+                    expected_total, painted,
                     "width {width} view_start {view_start}: windowed {painted} != measured {expected_total}"
                 );
                 // The viewport window must show *something* that belongs to its region:

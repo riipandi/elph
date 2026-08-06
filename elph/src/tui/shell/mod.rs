@@ -295,9 +295,17 @@ const TRANSCRIPT_PUBLISH_HEAVY_MS: u64 = 150;
 const TRANSCRIPT_PUBLISH_BURST_MS: u64 = 180;
 
 /// Max messages kept in memory before oldest are archived to SQLite.
-const MAX_MESSAGES_BEFORE_ARCHIVE: usize = 500;
+/// Lowered from 500 to cap peak memory — each message carries a full
+/// `AssistantMarkdownBuffer` (parsed MarkdownDocument) plus tool diff text.
+const MAX_MESSAGES_BEFORE_ARCHIVE: usize = 150;
 /// How many recent messages to keep after archival.
-const KEEP_MESSAGES: usize = 200;
+/// Lowered from 200: old retained messages have their markdown cache dropped
+/// (see `drop_old_markdown_caches`), so keeping fewer live messages is enough.
+const KEEP_MESSAGES: usize = 60;
+/// How many trailing messages keep their parsed markdown cache. Older retained
+/// messages have their `AssistantMarkdownBuffer` documents dropped to free memory
+/// (the source text is still archived to SQLite and can be re-parsed on demand).
+const MARKED_MESSAGES_WITH_MARKDOWN_CACHE: usize = 20;
 const MAX_UI_EVENTS_PER_TICK: usize = 48;
 const MAX_BOOTSTRAP_EVENTS_PER_TICK: usize = 32;
 /// How long the status row shows turn elapsed after completion before returning to tips.

@@ -14,6 +14,18 @@ pub fn assistant_row_count(content: &str, markdown: Option<&AssistantMarkdownBuf
     let Some(md) = markdown else {
         return wrapped_text_row_count(content, wrap_width as usize).min(u16::MAX as usize) as u16;
     };
+    // Fast path: a completed message whose stable prefix covers the whole content and whose
+    // cached document is present can be measured directly from the cache — no need to clone
+    // the document through `build_assistant_markdown_document`. This avoids the biggest
+    // per-frame allocation in the layout path and covers the vast majority of messages on
+    // screen in a long session.
+    if md.stream_complete
+        && md.stable_end >= content.len()
+        && md.wrap_width == wrap_width
+        && md.parts.first().is_some_and(|p| p.document.is_some())
+    {
+        return markdown_document_row_count(md.parts[0].document.as_ref().expect("checked above"), wrap_width);
+    }
     // Build the exact same merged document the renderer paints, then measure it. Summing the
     // stable and tail row counts independently missed the inter-segment gap at the stable↔tail
     // boundary, so the measured height ran one row short and the scroll viewport clipped the
@@ -164,7 +176,8 @@ mod tests {
             // Paint and count rows.
             let painted = painted_rows(buffer, &raw, 80) as u16;
             assert_eq!(
-                measured, painted,
+                measured,
+                painted,
                 "stream phase {:?}: measured {measured} != painted {painted}",
                 truncate_debug(&raw)
             );
@@ -209,10 +222,7 @@ mod tests {
         let md = msg.markdown.as_ref().expect("buffer");
         let measured = assistant_row_count(&content_trimmed, Some(md), 80);
         let painted = painted_rows(md, &content_trimmed, 80) as u16;
-        assert_eq!(
-            measured, painted,
-            "after refresh: measured {measured} != painted {painted}"
-        );
+        assert_eq!(measured, painted, "after refresh: measured {measured} != painted {painted}");
     }
 
     fn truncate_debug(text: &str) -> String {

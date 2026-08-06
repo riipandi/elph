@@ -101,6 +101,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         mut user_shell_abort,
         mut user_shell_channel,
         mut thinking_level,
+        pending_subagent_output,
         ..
     } = ctx;
     loop {
@@ -754,9 +755,18 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                             ));
                         }
                     }
+                    // When a subagent finishes AND its output dialog is not open, free the
+                    // output buffer — these grow unbounded over a long session otherwise.
                     crate::agent::SubagentUiPhase::Done | crate::agent::SubagentUiPhase::Error => {
                         if let Some((_text, is_running)) = buffers.get(agent_id) {
                             is_running.store(false, std::sync::atomic::Ordering::Relaxed);
+                        }
+                        let dialog_open = pending_subagent_output
+                            .read()
+                            .as_ref()
+                            .is_some_and(|p| p.agent_id == *agent_id);
+                        if !dialog_open {
+                            buffers.remove(agent_id);
                         }
                     }
                     _ => {}
@@ -874,6 +884,8 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
 
         if run_completed {
             // ── Archive old messages to SQLite when memory grows large ──
+            // Single shared snapshot avoids cloning the transcript twice (archive + snapshot
+            // save both need the data) — peak memory is cut roughly in half on archive turns.
             let should_archive = {
                 let msgs = messages_arc_inner.read().unwrap();
                 msgs.len() > MAX_MESSAGES_BEFORE_ARCHIVE
@@ -881,9 +893,12 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             if should_archive {
                 let paths_for_archive = paths.read().clone();
                 let sid = live_session_id.read().clone();
-                let snapshot: Vec<TranscriptMessage> = messages_arc_inner.read().unwrap().clone();
+                // One shared Arc snapshot for both archive and session save.
+                let snapshot_arc = Arc::new(messages_arc_inner.read().unwrap().clone());
+                let snapshot_for_archive = Arc::clone(&snapshot_arc);
                 tokio::spawn(async move {
                     if let Ok(cache) = TranscriptCache::open(&paths_for_archive.transcript_db_path(), &sid).await {
+                        let snapshot = snapshot_for_archive;
                         let archive_count = snapshot.len().saturating_sub(KEEP_MESSAGES);
                         let archived: Vec<(usize, &TranscriptMessage)> =
                             snapshot[..archive_count].iter().enumerate().collect();
@@ -894,6 +909,8 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 });
                 // Truncate messages_arc_inner. The panel reads the arc directly, so the
                 // State copy can stay as-is until the next event tick re-syncs it.
+                // Also drop parsed markdown caches from old retained messages — the source
+                // text is still archived to SQLite and can be re-parsed on resume.
                 let keep = KEEP_MESSAGES;
                 {
                     let mut msgs = messages_arc_inner.write().unwrap();
@@ -901,6 +918,43 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     if archive_count > 0 {
                         msgs.drain(..archive_count);
                     }
+                    // Drop parsed markdown documents from retained messages beyond the
+                    // cache window. Keeps AssistantMarkdownBuffer metadata (stable_end,
+                    // stream_complete, row counts) so layout stays correct; the worker
+                    // re-parses the cached document on demand. This sheds the biggest
+                    // memory consumer (parsed MarkdownDocument with styled spans + tables).
+                    let markdown_keep = super::MARKED_MESSAGES_WITH_MARKDOWN_CACHE;
+                    let n = msgs.len();
+                    if n > markdown_keep {
+                        for msg in msgs[..n - markdown_keep].iter_mut() {
+                            if let Some(ref mut md) = msg.markdown {
+                                md.drop_cached_documents();
+                            }
+                        }
+                    }
+                }
+                // Re-sync the State copy so it also drops the markdown caches.
+                *messages.write() = messages_arc_inner.read().unwrap().clone();
+                // Session snapshot reuses the shared Arc (no second full clone).
+                if let Some(session) = agent_session_for_loop.as_ref() {
+                    let session = Arc::clone(session);
+                    let snapshot_for_session = Arc::clone(&snapshot_arc);
+                    tokio::spawn(async move {
+                        if let Err(err) = session.save_transcript_snapshot(&snapshot_for_session).await {
+                            log::warn!("transcript snapshot save failed: {err:#}");
+                        }
+                    });
+                }
+            } else {
+                // No archive this turn — persist session snapshot with a single clone.
+                if let Some(session) = agent_session_for_loop.as_ref() {
+                    let snapshot = messages.read().clone();
+                    let session = Arc::clone(session);
+                    tokio::spawn(async move {
+                        if let Err(err) = session.save_transcript_snapshot(&snapshot).await {
+                            log::warn!("transcript snapshot save failed: {err:#}");
+                        }
+                    });
                 }
             }
 
