@@ -60,6 +60,10 @@ pub fn layout_transcript_rows_cached(
     }
 
     // Walk backward to find the first changed message (streaming usually appends at the tail).
+    // We find the SMALLEST changed index: with a fresh cache every slot differs (fingerprint 0),
+    // so scanning must continue to index 0 rather than stopping at the highest changed index —
+    // otherwise earlier messages would be emitted with stale zero row counts and the measured
+    // total would undercount, pushing the auto-scroll viewport past the top of the transcript.
     let mut first_changed = messages.len();
     for index in (0..messages.len()).rev() {
         let message = &messages[index];
@@ -67,7 +71,7 @@ pub fn layout_transcript_rows_cached(
         let fingerprint = message_layout_fingerprint(message, wrap_width);
         if cache.fingerprints[index] != fingerprint {
             first_changed = index;
-            break;
+            // Keep scanning toward the front — a fresh cache invalidates every earlier slot.
         }
     }
 
@@ -149,11 +153,36 @@ fn message_row_count(message: &TranscriptMessage, wrap_width: u16) -> u32 {
         // Plain-text cards (thinking body, tool output, status) paint with word-wrap; measure
         // with the same wrap so the scroll viewport matches the painted height exactly.
         let text = message.layout_text();
-        let mut rows = wrapped_text_row_count(&text, wrap_width as usize).min(u32::MAX as usize) as u32;
-        // thinking_card paints a 1-row gap between the phase header and the body
-        // (phase_card_shell gap), which layout_text's "header\nbody" has no blank row for.
-        if message.style == TranscriptStyle::Thinking && text.contains('\n') {
-            rows = rows.saturating_add(1);
+        if text.trim().is_empty() {
+            return 0;
+        }
+        // `wrapped_text_row_count` counts *wrap breaks* (painted lines − 1): a single line
+        // that fits returns 0. A non-empty message always paints at least one row, so floor
+        // at 1 — otherwise status rows and single-line cards are measured as zero-height,
+        // shrinking the measured total below the painted height and making the auto-scroll
+        // viewport skip the beginning of the transcript.
+        //
+        // Thinking body_visible cards render a 1-row flex gap between header and body
+        // (phase_card_shell gap); `layout_text` emits "header\nbody", which wrapped already
+        // counts as lines−1 — the gap needs one extra row.
+        //
+        // Status lines render their label via `ProcessStatusRow` with `TextWrap::NoWrap`
+        // (glyph + label + detail in one row), so they are always exactly 1 row regardless of
+        // length — measuring by wrap would over-count and push the viewport past the top.
+        let is_status = message.style.is_status_line();
+        let mut rows = if is_status {
+            if text.trim().is_empty() { 0 } else { 1 }
+        } else {
+            wrapped_text_row_count(&text, wrap_width as usize)
+                .min(u32::MAX as usize)
+                .max(1) as u32
+        };
+        if message.style == TranscriptStyle::Thinking {
+            let body_visible = message.is_thinking_streaming()
+                || (!message.is_thinking_collapsed() && !message.content.is_empty());
+            if body_visible && text.contains('\n') {
+                rows = rows.saturating_add(1);
+            }
         }
         rows
     };
@@ -230,6 +259,121 @@ mod tests {
     use super::*;
     use crate::tui::transcript::card::FLUSH_CARD_PAD;
     use crate::tui::transcript::types::{EPHEMERAL_NOTICE_EXTRA_PAD_TOP, TranscriptMessage, TranscriptStyle};
+
+    /// Simulate a long assistant reply with a table at/near the START. If measurement
+    /// over-counts rows (or windowing spacer misplaces content), the auto-scrolled viewport
+    /// skips the top half. Assert full paint == measured total at every width.
+    #[test]
+    fn long_reply_with_early_table_full_paint_matches_measure() {
+        use iocraft::prelude::*;
+
+        let content = format!(
+            "## Available tools\n\n| Tool | Group | Description |\n| --- | --- | --- |\n{}\n\nThen a long prose section that wraps over many lines so the reply is tall enough to\nscroll: {}",
+            (0..20)
+                .map(|i| format!("| `tool_{i:02}` | Read | Does a thing {} |", "x".repeat(20 + i)))
+                .collect::<Vec<_>>()
+                .join("\n"),
+            "Sentence with enough words to wrap across the terminal width. ".repeat(24),
+        );
+
+        let messages = vec![
+            TranscriptMessage::text("show tools", TranscriptStyle::User),
+            TranscriptMessage::assistant_markdown(content),
+        ];
+
+        for width in [60u16, 100, 140] {
+            let layouts = layout_transcript_rows(&messages, width);
+            let total = layouts
+                .last()
+                .map(|l| l.start_row.saturating_add(l.row_count))
+                .unwrap_or(0);
+            let trailing = messages
+                .last()
+                .map(|m| m.transcript_margin_bottom(None) as u32)
+                .unwrap_or(0);
+
+            let bubbles =
+                crate::tui::transcript::card::build_transcript_bubbles(width, &messages, None, None);
+            let rendered =
+                element! { View(width: width, flex_direction: FlexDirection::Column) { #(bubbles) } }.to_string();
+            let painted = rendered.lines().count() as u32;
+            assert_eq!(
+                total.saturating_add(trailing),
+                painted,
+                "width {width}: measured total {total} (+ {trailing}) != painted {painted}"
+            );
+
+            // The table content must be present in the paint output.
+            assert!(
+                rendered.contains("tool_00") && rendered.contains("tool_19"),
+                "width {width}: table rows missing from paint (clipped)"
+            );
+        }
+    }
+
+    /// Simulate long history + windowed view near the bottom. Off-screen prefix becomes
+    /// spacers; the total painted rows (spacers + mounted bubbles) must equal the measured
+    /// total so no content is skipped and no over-count scroll clips the start.
+    #[test]
+    fn windowed_view_total_matches_full_measure() {
+        use iocraft::prelude::*;
+        use crate::tui::transcript::card::build_transcript_bubbles_windowed;
+
+        let mut messages = Vec::new();
+        for i in 0..30 {
+            messages.push(TranscriptMessage::text(
+                format!("status log line {i} with enough content to wrap on narrow width"),
+                TranscriptStyle::StatusSuccess,
+            ));
+        }
+        let assistant = "## Result\n\nA paragraph that wraps to multiple lines with enough text.\n\n```mermaid\ngraph TD\n    A[Start] --> B[End]\n```\n\nFinal paragraph.\n";
+        messages.push(TranscriptMessage::assistant_markdown(assistant.to_string()));
+
+        for width in [50u16, 80, 120] {
+            let mut cache = IncrementalLayoutCache::default();
+            let layouts = layout_transcript_rows_cached(&messages, width, &mut cache);
+            let total = layouts
+                .last()
+                .map(|l| l.start_row.saturating_add(l.row_count))
+                .unwrap_or(0);
+            let trailing = messages
+                .last()
+                .map(|m| m.transcript_margin_bottom(None) as u32)
+                .unwrap_or(0);
+
+            // Full paint for the same messages at this width must equal measure.
+            let full = crate::tui::transcript::card::build_transcript_bubbles(width, &messages, None, None);
+            let full_rendered =
+                element! { View(width: width, flex_direction: FlexDirection::Column) { #(full) } }.to_string();
+            let full_painted = full_rendered.lines().count() as u32;
+            assert_eq!(
+                total.saturating_add(trailing),
+                full_painted,
+                "width {width}: FULL paint {full_painted} != measured total {total} — every status row must be measured ≥1"
+            );
+
+            // View the very bottom (auto-scroll pinned state) — windowed must not drift.
+            let view_rows = 12u32;
+            let view_start = total.saturating_sub(view_rows);
+            let bubbles = build_transcript_bubbles_windowed(
+                width,
+                &messages,
+                &layouts,
+                view_start,
+                view_rows,
+                None,
+                None,
+            );
+            let rendered =
+                element! { View(width: width, flex_direction: FlexDirection::Column) { #(bubbles) } }.to_string();
+            let painted = rendered.lines().count() as u32;
+            assert_eq!(
+                total.saturating_add(trailing),
+                painted,
+                "width {width}: windowed paint {painted} != measured total {total} + {trailing}"
+            );
+        }
+    }
 
     #[test]
     fn ephemeral_notice_row_layout_includes_extra_top_padding() {

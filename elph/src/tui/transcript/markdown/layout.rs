@@ -132,4 +132,53 @@ mod tests {
         let painted = painted_rows(&buf, content, 80);
         assert_eq!(measured, painted as u16, "measured {measured} != painted {painted}");
     }
+
+    /// Full streaming scenario: assistant content with paragraphs, table, and mermaid diagram.
+    /// Measure must equal paint at every stage so the scroll viewport never clips content.
+    #[test]
+    fn mixed_content_measure_matches_paint_across_stream() {
+        use crate::tui::transcript::markdown::worker::partition_assistant_markdown;
+        use crate::tui::transcript::types::TranscriptMessage;
+
+        // Chunks arrive like an LLM stream — paragraph, table, mermaid, closing paragraph.
+        let chunks = vec![
+            "# Plan\n\n",
+            "First paragraph introducing the plan.\n\n",
+            "| Step | Tool |\n| --- | --- |\n| 1 | read_file |\n| 2 | edit_file |\n",
+            "\nThen a diagram:\n\n",
+            "```mermaid\ngraph TD\n    A[Start] --> B[End]\n```\n",
+            "\nFinal conclusion paragraph.\n",
+        ];
+
+        let mut messages = vec![TranscriptMessage::assistant_markdown(String::new())];
+        let mut raw = String::new();
+
+        for chunk in &chunks {
+            raw.push_str(chunk);
+            messages[0].content = raw.clone();
+            partition_assistant_markdown(&mut messages, 80);
+
+            // Measure the rendered height.
+            let buffer = messages[0].markdown.as_ref().expect("buffer");
+            let measured = assistant_row_count(&raw, Some(buffer), 80);
+            // Paint and count rows.
+            let painted = painted_rows(buffer, &raw, 80) as u16;
+            assert_eq!(
+                measured, painted,
+                "stream phase {:?}: measured {measured} != painted {painted}",
+                truncate_debug(&raw)
+            );
+        }
+    }
+
+    fn truncate_debug(text: &str) -> String {
+        let mut out = String::new();
+        for c in text.chars().take(60) {
+            out.push(c);
+        }
+        if text.chars().count() > 60 {
+            out.push('…');
+        }
+        out
+    }
 }
