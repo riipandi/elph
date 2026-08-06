@@ -176,4 +176,28 @@ mod tests {
         assert!(buf.apply_document(hash, doc));
         assert!(buf.parts[0].document.is_some());
     }
+
+    #[test]
+    fn drop_cached_documents_frees_document_keeps_metadata() {
+        let mut buf = AssistantMarkdownBuffer::new();
+        let raw = "## Plan\n\nA paragraph that wraps across the width nicely.\n\n| Col | Val |\n| --- | --- |\n| a | 1 |\n| b | 2 |\n\nLast paragraph.\n";
+        buf.mark_stream_complete();
+        assert!(buf.refresh_stable(raw, 80));
+        let doc = elph_tui::parse_markdown_document(raw);
+        let hash = buf.parts[0].source_hash;
+        assert!(buf.apply_document(hash, doc));
+        assert!(buf.parts[0].document.is_some());
+        let row_count_before = buf.parts[0].row_count;
+        assert!(row_count_before > 0);
+
+        // Drop the cached document — simulates what the archive path does for old messages.
+        buf.drop_cached_documents();
+        assert!(buf.parts[0].document.is_none(), "document must be freed");
+        // Streaming metadata is preserved so layout still measures correctly.
+        assert_eq!(buf.stable_end, raw.len());
+        assert!(buf.stream_complete);
+        assert_eq!(buf.wrap_width, 80);
+        assert_eq!(buf.parts[0].row_count, row_count_before);
+        assert_eq!(buf.parts[0].source_hash, hash);
+    }
 }

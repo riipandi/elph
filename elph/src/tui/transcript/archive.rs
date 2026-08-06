@@ -56,10 +56,22 @@ fn snapshot_version_default() -> u32 {
 
 impl From<&TranscriptMessage> for ArchivedTranscriptMessage {
     fn from(message: &TranscriptMessage) -> Self {
+        // Strip tool diff text (old_text/new_text) from the snapshot. These can be
+        // hundreds of KB per edit_file tool and are only needed for live diff rendering —
+        // on resume the tool card renders collapsed without the embedded diff. This keeps
+        // the snapshot (which is appended on every turn and never pruned) from ballooning.
+        let tool = message.tool.as_ref().map(|t| ToolCardDetail {
+            name: t.name.clone(),
+            args_summary: t.args_summary.clone(),
+            output: t.output.clone(),
+            old_text: None,
+            new_text: None,
+            file_path: t.file_path.clone(),
+        });
         Self {
             content: message.content.clone(),
             style: message.style,
-            tool: message.tool.clone(),
+            tool,
             duration_secs: message.duration_secs,
             submitted_at: message.submitted_at,
             local_slash_response: message.local_slash_response,
@@ -190,7 +202,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn snapshot_round_trip_preserves_tool_diff_and_duration() {
+    fn snapshot_round_trip_preserves_tool_metadata_strips_diff_text() {
         let mut msg = TranscriptMessage::tool_call("edit_file", r#"{"path":"a.rs"}"#, TranscriptStyle::ToolSuccess);
         {
             let tool = msg.tool.as_mut().unwrap();
@@ -209,9 +221,16 @@ mod tests {
         assert_eq!(restored[0].duration_secs, Some(1.25));
         assert!(restored[0].detail_expanded);
         let tool = restored[0].tool.as_ref().unwrap();
-        assert_eq!(tool.old_text.as_deref(), Some("old\n"));
-        assert_eq!(tool.new_text.as_deref(), Some("new\n"));
-        assert!(tool.has_inline_diff());
+        // Tool metadata (name, output, file_path) is preserved across snapshot.
+        assert_eq!(tool.name, "edit_file");
+        assert_eq!(tool.output, "Edited a.rs");
+        assert_eq!(tool.file_path.as_deref(), Some("/tmp/a.rs"));
+        // Diff text (old_text/new_text) is intentionally stripped from the snapshot to
+        // keep snapshot size bounded — on resume the tool card renders collapsed without
+        // the embedded diff. The diff text can reach hundreds of KB per edit_file tool.
+        assert_eq!(tool.old_text, None, "diff text must be stripped from snapshot");
+        assert_eq!(tool.new_text, None, "diff text must be stripped from snapshot");
+        assert!(!tool.has_inline_diff(), "without diff text there is no inline diff");
     }
 
     #[test]
