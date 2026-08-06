@@ -1355,7 +1355,8 @@ mod tests {
         // Very long path is truncated; either `…/parent/file` (outside CWD)
         // or abbreviated-project-path form (inside CWD). Either way the file
         // extension and size limit are respected.
-        let path = "/opt/workspace/riipandi/elph/crates/crates/coding-agent/src/very-long-file-name-that-should-be-truncated.rs";
+        let path =
+            "/opt/workspace/riipandi/elph/crates/coding-agent/src/very-long-file-name-that-should-be-truncated.rs";
         let short = abbreviate_path(path, 44);
         assert!(short.ends_with(".rs"), "{short}");
         assert!(short.chars().count() <= 44, "{} chars", short.chars().count());

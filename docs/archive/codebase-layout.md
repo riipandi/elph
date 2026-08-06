@@ -20,12 +20,12 @@ Implementation detail lives in [openwiki](../openwiki/quickstart.md); this docum
 | `elph-agent`   | Generic runtime: harness, agent loop, optional MCP/skills, `SystemPromptBuilder` (MiniJinja)    |
 | `elph-ai`      | Provider layer: `api/`, `auth/`, `models/`, `providers/`, `utils/`                              |
 | `elph-tui`     | Reusable widgets: `diff/`, `prompt/`, `chrome/`, `shell/`                                       |
-| `elph`         | Coding agent product: `agent/` (prompts, modes, session factory), `shell/`, `cli/`, `platform/` |
+| `coding-agent` | Coding agent product: `agent/` (prompts, modes, session factory), `shell/`, `cli/`, `platform/` |
 
-## `elph` module map
+## `coding-agent` module map
 
 ```
-elph/
+crates/coding-agent/
 ├── src/
 │   ├── main.rs              # Entry: clap → cli::run
 │   ├── lib.rs               # Public modules (for integration tests)
