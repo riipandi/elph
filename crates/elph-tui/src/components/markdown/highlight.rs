@@ -57,34 +57,82 @@ pub fn highlight_code_block(language: Option<&str>, code: &str, theme: &Markdown
 /// Render a mermaid diagram to Unicode box-drawing text, compacting to fit `max_width`.
 ///
 /// Shared by both the paint path ([`super::render`]) and the measure path ([`super::layout`])
-/// so that what you see is exactly what was measured. Uses `max_width_strict` so that a diagram
-/// that cannot fit even at minimum gaps returns [`mermaid_text::Error::TooWide`] instead of an
-/// over-wide string — letting the caller fall back to raw source knowingly.
+/// so that what you see is exactly what was measured.
 ///
-/// Strategy: try Unicode first; if it overflows, try ASCII (denser); if that also fails, return
-/// the error so the caller can fall back to the raw source text.
+/// Strategy (the output **never exceeds** `max_width`, so it never overflows the terminal):
+/// 1. **Strict Unicode** — compact to fit `max_width`. If it fits, great.
+/// 2. **Strict ASCII** — denser glyphs may fit where Unicode can't.
+/// 3. **Soft Unicode/ASCII** — best-effort compaction, then any over-wide lines are truncated
+///    with an ellipsis so the diagram stays inside the column budget.
+/// Only a genuinely *invalid* mermaid source returns an error.
 pub fn render_mermaid_at_width(source: &str, max_width: u16) -> Result<String, mermaid_text::Error> {
-    let options = mermaid_text::RenderOptions {
-        max_width: Some(max_width as usize),
+    let max_width = max_width.max(1) as usize;
+
+    // 1. Strict Unicode — compact to fit.
+    let strict_unicode = mermaid_text::RenderOptions {
+        max_width: Some(max_width),
         max_width_strict: true,
         ascii: false,
         color: false,
         ..Default::default()
     };
-    match mermaid_text::render_with_options(source, &options) {
-        Ok(output) => Ok(output),
-        Err(err) => {
-            // Unicode didn't fit — try ASCII which is denser and may fit where Unicode can't.
-            let ascii_options = mermaid_text::RenderOptions {
-                max_width: Some(max_width as usize),
-                max_width_strict: true,
-                ascii: true,
-                color: false,
-                ..Default::default()
-            };
-            mermaid_text::render_with_options(source, &ascii_options).map_err(|_| err)
-        }
+    if let Ok(output) = mermaid_text::render_with_options(source, &strict_unicode) {
+        return Ok(output);
     }
+
+    // 2. Strict ASCII — denser glyphs may fit where Unicode can't.
+    let strict_ascii = mermaid_text::RenderOptions {
+        max_width: Some(max_width),
+        max_width_strict: true,
+        ascii: true,
+        color: false,
+        ..Default::default()
+    };
+    if let Ok(output) = mermaid_text::render_with_options(source, &strict_ascii) {
+        return Ok(output);
+    }
+
+    // 3. Soft budget (non-strict) — render at whatever width the layout produces, then
+    // truncate any over-wide lines so the diagram can never overflow the terminal.
+    // This keeps a valid diagram as a diagram (never a raw code block) while guaranteeing
+    // it fits inside the available columns.
+    let soft_unicode = mermaid_text::RenderOptions {
+        max_width: Some(max_width),
+        max_width_strict: false,
+        ascii: false,
+        color: false,
+        ..Default::default()
+    };
+    if let Ok(output) = mermaid_text::render_with_options(source, &soft_unicode) {
+        return Ok(truncate_diagram_lines(&output, max_width));
+    }
+
+    let soft_ascii = mermaid_text::RenderOptions {
+        max_width: Some(max_width),
+        max_width_strict: false,
+        ascii: true,
+        color: false,
+        ..Default::default()
+    };
+    mermaid_text::render_with_options(source, &soft_ascii).map(|output| truncate_diagram_lines(&output, max_width))
+}
+
+/// Truncate each diagram line so no line exceeds `max_width` display columns.
+/// Uses the same ellipsis style as table-cell truncation for a consistent look.
+fn truncate_diagram_lines(output: &str, max_width: usize) -> String {
+    use unicode_width::UnicodeWidthStr;
+
+    output
+        .lines()
+        .map(|line| {
+            if line.width() as usize > max_width {
+                crate::utils::truncate_with_ellipsis(line, max_width)
+            } else {
+                line.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 fn fallback_plain_code_block(code: &str, theme: &MarkdownTheme, use_card: bool) -> Vec<MarkdownLine> {
@@ -151,25 +199,30 @@ mod tests {
     }
 
     #[test]
-    fn mermaid_render_falls_back_to_ascii_on_overflow() {
-        // A diagram that overflows at a given width: if it can't fit even at minimum gaps
-        // (in both Unicode and ASCII), it returns Err so the caller can fall back to raw source.
+    fn mermaid_render_never_reverts_on_overflow() {
+        // A diagram that overflows at a very narrow width must STILL render as a diagram
+        // (truncated), never reverting to raw source and never overflowing the budget.
         let src = "graph LR; A[Build] --> B[Test] --> C[Deploy] --> D[Verify] --> E[Release]";
-        let result = render_mermaid_at_width(src, 20);
-        // At width 20 this chain cannot fit even in ASCII — expect Err, not panic.
-        assert!(
-            result.is_err(),
-            "diagram that cannot fit returns Err (caller falls back to raw source)"
-        );
+        let output = render_mermaid_at_width(src, 20).expect("valid diagram must render");
+        // Every line must fit within the width budget (20 cols), so no terminal overflow.
+        for line in output.lines() {
+            assert!(
+                line.chars().count() <= 20,
+                "line exceeds width: {line:?} ({} chars)",
+                line.chars().count()
+            );
+        }
+        // The diagram retains its structure (box-drawing characters present).
+        assert!(output.contains('─') || output.contains('-'), "diagram keeps its edges");
     }
 
     #[test]
-    fn mermaid_render_strict_width_rejects_overflow() {
-        // Strict mode: a diagram that exceeds the budget returns TooWide, not an over-wide string.
+    fn mermaid_render_compacts_to_fit_wide_diagram() {
+        // A diagram that CAN fit should be compacted (strict width path succeeds).
         let src = "graph LR; A[Build] --> B[Test] --> C[Deploy]";
-        // At width 10 the diagram definitely cannot fit.
-        let result = render_mermaid_at_width(src, 10);
-        assert!(result.is_err(), "strict width rejects overflow");
+        let output = render_mermaid_at_width(src, 80).expect("fits within 80 cols");
+        assert!(output.contains("Build"));
+        assert!(output.contains("Deploy"));
     }
 
     #[test]
@@ -179,6 +232,17 @@ mod tests {
         let output = render_mermaid_at_width(src, 80).expect("fits within 80 cols");
         assert!(output.contains("Build"));
         assert!(output.contains("Deploy"));
+    }
+
+    #[test]
+    fn mermaid_render_truncates_overflowing_lines() {
+        // Even if the layout can't compact enough, individual lines are truncated so the
+        // diagram never exceeds the column budget.
+        let src = "graph LR; A[Build] --> B[Test] --> C[Deploy] --> D[Verify] --> E[Release]";
+        let output = render_mermaid_at_width(src, 16).expect("renders");
+        for line in output.lines() {
+            assert!(line.chars().count() <= 16, "overflowing line not truncated: {line:?}");
+        }
     }
 
     #[test]

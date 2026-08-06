@@ -419,6 +419,7 @@ pub fn error_card(screen_width: u16, message: &TranscriptMessage, margin_bottom:
             padding_left: chrome.padding_h,
             padding_right: chrome.padding_h,
             align_items: AlignItems::FlexStart,
+            padding_top: 1,
         ) {
             View(
                 width: inner_width,

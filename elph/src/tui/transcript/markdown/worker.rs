@@ -171,12 +171,17 @@ mod tests {
 
     #[test]
     fn incomplete_assistant_stream_keeps_table_in_tail() {
+        // Table with a header separator is syntactically complete — it freezes into the stable
+        // prefix even without a trailing blank line, so it can't be truncated by the tail cap.
         let content = "## Tools\n\n| Tool | Group |\n| --- | --- |\n| `a` | G |\n| `b` | G |";
         let mut messages = vec![TranscriptMessage::assistant_markdown(content.to_string())];
-        // No stream_complete — only the heading freezes past the first blank line.
         let _ = partition_assistant_markdown(&mut messages, 100);
         let buffer = messages[0].markdown.as_ref().expect("markdown buffer");
-        assert!(buffer.stable_end < content.len());
-        assert!(buffer.tail(content).contains("| Tool |"));
+        assert_eq!(
+            buffer.stable_end,
+            content.len(),
+            "complete table must freeze into stable prefix, not linger in tail"
+        );
+        assert!(buffer.tail(content).is_empty());
     }
 }

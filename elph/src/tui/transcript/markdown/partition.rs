@@ -22,6 +22,7 @@ pub fn find_stable_boundary(raw: &str, force_flush: bool) -> usize {
         0
     };
     boundary = extend_past_closed_fences(raw, boundary, search_end);
+    boundary = extend_past_closed_tables(raw, boundary, search_end);
 
     while boundary > 0
         && (has_unclosed_inline_markers(&raw[..boundary]) || elph_tui::markdown_has_open_container_at(raw, boundary))
@@ -36,6 +37,88 @@ pub fn find_stable_boundary(raw: &str, force_flush: bool) -> usize {
     }
 
     boundary
+}
+
+/// Advance through complete GFM tables that start at or after `boundary`.
+///
+/// GFM tables are terminated only by a blank line, a block boundary, or end-of-input — there
+/// is no closing fence. Without this, a table at the end of a message (no trailing blank line)
+/// never becomes stable: it stays in the streaming tail forever, where a long reply's
+/// 4K cap can truncate it or its neighbors.
+///
+/// A table is "complete" when it has a header separator row (`| --- | --- |`), so we never
+/// freeze a half-typed table.
+fn extend_past_closed_tables(raw: &str, boundary: usize, search_end: usize) -> usize {
+    let mut end = boundary;
+
+    // Scan consecutive lines that participate in a table (start with `|` or `:` separators).
+    // Only freeze past the end of the table when the header separator row has been seen.
+    let mut scan = boundary;
+    let mut seen_separator = false;
+    let mut table_end = 0usize;
+
+    while scan <= search_end {
+        let line_end = raw[scan..search_end]
+            .find('\n')
+            .map(|nl| scan + nl + 1)
+            .unwrap_or(search_end);
+        let line = &raw[scan..line_end];
+        let trimmed = line.trim();
+
+        if trimmed.is_empty() {
+            // Blank line ends the table (but does not extend the boundary past the blank).
+            if seen_separator && table_end > end {
+                end = table_end;
+            }
+            break;
+        }
+
+        if is_table_line(trimmed) {
+            table_end = line_end;
+            if is_table_separator_row(trimmed) {
+                seen_separator = true;
+            }
+        } else {
+            // Non-table line — the table (if any) ended before this line.
+            if seen_separator && table_end > end {
+                end = table_end;
+            }
+            break;
+        }
+        scan = line_end;
+    }
+
+    // Table runs to end of input (no blank line): freeze it if complete.
+    if seen_separator && table_end > end {
+        end = table_end;
+    }
+    end
+}
+
+/// A GFM table data row starts with `|` (or is all `:`/`|`/`-` for separators).
+fn is_table_line(line: &str) -> bool {
+    let trimmed = line.trim();
+    trimmed.starts_with('|') && trimmed.ends_with('|') || trimmed.starts_with('|')
+}
+
+/// A GFM header separator row: cells of `-`, `:`, and `|` (e.g. `| --- | :---: |`).
+fn is_table_separator_row(line: &str) -> bool {
+    let trimmed = line.trim().trim_start_matches('|').trim_end_matches('|');
+    if trimmed.is_empty() {
+        return false;
+    }
+    let cells_text = trimmed.replace('|', " ");
+    let cells_valid = cells_text.split_whitespace().all(|cell| {
+        !cell.is_empty()
+            && cell
+                .trim_matches(':')
+                .chars()
+                .all(|c| c == '-' || c == ' ' || c == ':' || c == '|')
+    });
+    cells_valid
+        && cells_text
+            .split_whitespace()
+            .all(|cell| cell.trim_matches(':').contains('-'))
 }
 
 /// Advance through fully closed fenced blocks that start at or after `boundary`.
@@ -165,6 +248,47 @@ fn has_unclosed_html_tag(line: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn table_at_end_of_stream_stays_in_stable_prefix() {
+        // A GFM table at the end (no following \n\n) must be fully included in the stable
+        // prefix once it's syntactically complete — otherwise it renders as broken text
+        // during streaming.
+        let raw = "## Tools\n\n| Tool | Status |\n| --- | --- |\n| grep | ✅ |\n";
+        let boundary = find_stable_boundary(raw, false);
+        assert_eq!(
+            boundary,
+            raw.len(),
+            "complete table at end must be stable, got boundary {boundary} < {}",
+            raw.len()
+        );
+    }
+
+    #[test]
+    fn incomplete_table_stays_in_tail() {
+        // While the table is still missing its header separator row (only the header line is
+        // present), the boundary stops before it so no half-table is frozen.
+        let raw = "## Tools\n\n| Tool | Status |\n";
+        let boundary = find_stable_boundary(raw, false);
+        assert!(
+            boundary < raw.len(),
+            "table without separator must stay in tail (got boundary {boundary})"
+        );
+        // The boundary should stop right after the heading paragraph (before the table).
+        let heading_block = raw.find("\n\n").map(|i| i + 2).unwrap_or(0);
+        assert_eq!(boundary, heading_block, "boundary stops after heading, before table");
+    }
+
+    #[test]
+    fn complete_table_with_data_rows_is_stable() {
+        let raw = "## Tools\n\n| Tool | Status |\n| --- | --- |\n| grep | ✅ |\n| rg | ✅ |\n";
+        let boundary = find_stable_boundary(raw, false);
+        assert_eq!(
+            boundary,
+            raw.len(),
+            "complete multi-row table at end must be stable, got {boundary}"
+        );
+    }
 
     #[test]
     fn empty_buffer_has_no_stable_prefix() {

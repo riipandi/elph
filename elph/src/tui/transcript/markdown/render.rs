@@ -1,7 +1,7 @@
 //! Paint cached markdown documents into transcript cards.
 
 use elph_tui::MarkdownDocument;
-use elph_tui::{plain_text_document, render_linkified_plain_text, render_markdown_block, streaming_tail_document};
+use elph_tui::{render_linkified_plain_text, render_markdown_block, streaming_tail_document};
 use iocraft::prelude::*;
 
 use super::buffer::AssistantMarkdownBuffer;
@@ -32,10 +32,15 @@ fn has_unclosed_fence(content: &str) -> bool {
 
 /// Render one stable markdown slice from cache.
 ///
-/// When no cached document is available, we render the source as plain text (not markdown),
-/// because the stable boundary might have split content in a way that produces incorrect
-/// markdown when parsed in isolation. Plain text avoids introducing structural artifacts
-/// (e.g., codeblocks split across stable/tail boundaries).
+/// When no cached document is available, we parse the stable slice as markdown directly.
+/// The stable boundary (`find_stable_boundary`) guarantees the slice ends at a safe position,
+/// so parsing in isolation is safe — it won't tear a code block, list, or table in half.
+///
+/// Parsing (rather than plain-text) keeps formatting consistent between the worker-cached
+/// document and the fallback: headings, tables, lists, bold/italic, and mermaid diagrams all
+/// render identically before and after the worker finishes. (The previous plain-text fallback
+/// caused formatting to "jump" when the worker landed — headings lost their styling, tables
+/// collapsed, and mermaid lost its diagram.)
 fn render_markdown_part(
     document: Option<&MarkdownDocument>,
     fallback_source: &str,
@@ -44,9 +49,10 @@ fn render_markdown_part(
     if let Some(doc) = document {
         return doc.clone();
     }
-    // Fallback to plain text — avoids creating partial/incomplete markdown structures
-    // when the stable boundary splits content at a non-markdown-safe position.
-    plain_text_document(fallback_source, fallback_foreground)
+    // Parse the stable slice as markdown so formatting stays consistent. The boundary is
+    // guaranteed markdown-safe, so isolated parsing cannot produce structural artifacts.
+    let _ = fallback_foreground;
+    streaming_tail_document(fallback_source)
 }
 
 /// Build the merged markdown document for an assistant message — the cached stable parts plus
@@ -134,4 +140,269 @@ pub fn render_markdown_buffer(
         return render_linkified_plain_text(raw, tail_foreground, width);
     }
     render_markdown_block(&document, width)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tui::transcript::markdown::buffer::AssistantMarkdownBuffer;
+
+    /// Simulate the streaming→settled transition: a closed mermaid fence moves from the
+    /// tail into the stable part, but the worker hasn't parsed it yet (document = None).
+    /// The diagram must still render — not collapse into a plain code block.
+    #[test]
+    fn mermaid_renders_during_worker_parse_window() {
+        let raw = "Here is a diagram:\n\n```mermaid\ngraph LR; A[Build] --> B[Deploy]\n```\n";
+        let foreground = Color::Reset;
+
+        // Stable boundary has advanced past the closed fence, but worker hasn't parsed yet.
+        let mut buffer = AssistantMarkdownBuffer::new();
+        buffer.wrap_width = 80;
+        buffer.stable_end = raw.len();
+        buffer.stream_complete = true;
+        // One stable part with NO cached document (worker still parsing).
+        buffer.parts = vec![crate::tui::transcript::markdown::buffer::RenderedPart {
+            source_end: raw.len(),
+            source_hash: 0,
+            row_count: 0,
+            document: None,
+        }];
+
+        let doc = build_assistant_markdown_document(&buffer, raw, foreground);
+
+        // The merged document must contain a deferred mermaid line.
+        assert!(
+            doc.lines.iter().any(|line| line.mermaid_source.is_some()),
+            "mermaid diagram must render even before worker parses, got lines: {:?}",
+            doc.lines
+                .iter()
+                .map(|l| (l.kind.clone(), l.mermaid_source.is_some()))
+                .collect::<Vec<_>>()
+        );
+    }
+
+    /// End-to-end: worker finishes parsing and applies the document. The deferred mermaid
+    /// line must survive the worker round-trip and render as a diagram.
+    #[test]
+    fn mermaid_survives_worker_apply_roundtrip() {
+        use crate::tui::transcript::markdown::worker::{apply_markdown_parse_result, parse_markdown_on_worker};
+        use crate::tui::transcript::types::{TranscriptMessage, TranscriptStyle};
+
+        let raw = "Diagram:\n\n```mermaid\ngraph TD\n    A[Start] --> B[End]\n```\n";
+        let mut messages = vec![TranscriptMessage::assistant_markdown(raw.to_string())];
+
+        // Partition to establish stable boundary.
+        crate::tui::transcript::markdown::worker::partition_assistant_markdown(&mut messages, 80);
+
+        // Simulate worker: parse the stable source and apply.
+        let jobs = crate::tui::transcript::markdown::worker::collect_markdown_parse_jobs(&messages);
+        assert!(!jobs.is_empty(), "should have a parse job for stable part");
+        let doc = parse_markdown_on_worker(&jobs[0].source);
+        assert!(
+            doc.lines.iter().any(|l| l.mermaid_source.is_some()),
+            "worker-parsed doc must contain deferred mermaid line"
+        );
+        assert!(apply_markdown_parse_result(&mut messages, &jobs[0], doc));
+
+        // After apply, rendering must still produce a diagram.
+        let buffer = messages[0].markdown.as_ref().expect("buffer exists");
+        let foreground = TranscriptStyle::Assistant.text_color();
+        let merged = build_assistant_markdown_document(buffer, raw, foreground);
+        assert!(
+            merged.lines.iter().any(|l| l.mermaid_source.is_some()),
+            "after worker apply, mermaid must still be present"
+        );
+    }
+
+    /// Simulate the FULL streaming lifecycle: content grows incrementally, partition runs
+    /// after each chunk, worker parses and applies. The diagram must NEVER revert to a
+    /// code block at any point in the stream.
+    #[test]
+    fn mermaid_stays_diagram_across_full_stream() {
+        use crate::tui::transcript::markdown::worker::{
+            apply_markdown_parse_result, collect_markdown_parse_jobs, parse_markdown_on_worker,
+            partition_assistant_markdown,
+        };
+        use crate::tui::transcript::types::{TranscriptMessage, TranscriptStyle};
+
+        // Simulate chunks arriving like a real LLM stream.
+        let chunks = vec![
+            "Here is a diagram:\n\n",
+            "```mermaid\n",
+            "graph TD\n",
+            "    A[Start] --> B{Choice}\n",
+            "    B -->|Yes| C[End]\n",
+            "    B -->|No| A\n",
+            "```\n",
+            "\nDone with the diagram.\n",
+        ];
+
+        let mut messages = vec![TranscriptMessage::assistant_markdown(String::new())];
+        let mut raw = String::new();
+
+        for (i, chunk) in chunks.iter().enumerate() {
+            raw.push_str(chunk);
+            messages[0].content = raw.clone();
+
+            // Partition may advance the stable boundary.
+            let _ = partition_assistant_markdown(&mut messages, 80);
+
+            // Simulate worker: parse any pending jobs and apply.
+            loop {
+                let jobs = collect_markdown_parse_jobs(&messages);
+                if jobs.is_empty() {
+                    break;
+                }
+                let jobs_snapshot = jobs;
+                for job in jobs_snapshot {
+                    let doc = parse_markdown_on_worker(&job.source);
+                    apply_markdown_parse_result(&mut messages, &job, doc);
+                }
+            }
+
+            // After each chunk, the diagram must be present (if the fence is closed).
+            let buffer = messages[0].markdown.as_ref().expect("buffer exists");
+            let foreground = TranscriptStyle::Assistant.text_color();
+            let merged = build_assistant_markdown_document(buffer, &raw, foreground);
+
+            let has_diagram = merged.lines.iter().any(|l| l.mermaid_source.is_some());
+            // Fence is "closed" when we've seen the full ```mermaid ... ``` pair.
+            let fence_closed = raw.contains("```mermaid") && count_fences(raw.as_str()) % 2 == 0;
+
+            if fence_closed {
+                assert!(
+                    has_diagram,
+                    "chunk {i}: fence closed but diagram lost! raw={raw:?}, lines={:?}",
+                    merged
+                        .lines
+                        .iter()
+                        .map(|l| (l.kind.clone(), l.mermaid_source.is_some()))
+                        .collect::<Vec<_>>()
+                );
+            }
+        }
+    }
+
+    /// Count backtick fences (for tests only) — odd = unclosed, even = closed.
+    fn count_fences(raw: &str) -> usize {
+        let mut count = 0usize;
+        let mut pos = 0usize;
+        while let Some(rel) = raw[pos..].find("```") {
+            count += 1;
+            pos = pos + rel + 3;
+        }
+        count
+    }
+
+    /// Simulate a GFM table moving from tail to stable part during streaming. The stable-part
+    /// fallback must parse as markdown (not plain text) so the table renders as a grid both
+    /// before and after the worker finishes. This guards against "table becomes broken text"
+    /// regressions.
+    #[test]
+    fn table_renders_consistently_during_streaming() {
+        let raw = "## Tools\n\n| Tool | Status |\n| --- | --- |\n| grep | ✅ |\n| rg | ✅ |\n";
+        let foreground = Color::Reset;
+
+        // Stable boundary advanced past the table, but worker hasn't parsed yet.
+        let mut buffer = AssistantMarkdownBuffer::new();
+        buffer.wrap_width = 80;
+        buffer.stable_end = raw.len();
+        buffer.stream_complete = true;
+        buffer.parts = vec![crate::tui::transcript::markdown::buffer::RenderedPart {
+            source_end: raw.len(),
+            source_hash: 0,
+            row_count: 0,
+            document: None,
+        }];
+
+        let doc = build_assistant_markdown_document(&buffer, raw, foreground);
+
+        // The stable part MUST parse as markdown → table lines present with a grid.
+        let table_line = doc
+            .lines
+            .iter()
+            .find(|l| matches!(l.kind, elph_tui::MarkdownLineKind::Table))
+            .expect("table must render as markdown from stable-part fallback");
+        assert!(table_line.table.is_some(), "table line carries its matrix");
+
+        // Heading must also keep its markdown styling.
+        assert!(
+            doc.lines
+                .iter()
+                .any(|l| matches!(l.kind, elph_tui::MarkdownLineKind::Heading(2))),
+            "heading must render as heading from stable-part fallback"
+        );
+    }
+
+    /// The uncached stable fallback must produce the SAME document as the worker-parsed cache,
+    /// so there's no visible "formatting jump" when the worker finishes.
+    #[test]
+    fn fallback_matches_worker_document() {
+        let raw = "## Tools\n\n| Tool | Status |\n| --- | --- |\n| grep | ✅ |\n| rg | ✅ |\n\n**Done.**\n";
+        let foreground = Color::Reset;
+
+        // Fallback (document = None) parses as markdown.
+        let mut buffer = AssistantMarkdownBuffer::new();
+        buffer.wrap_width = 80;
+        buffer.stable_end = raw.len();
+        buffer.stream_complete = true;
+        buffer.parts = vec![crate::tui::transcript::markdown::buffer::RenderedPart {
+            source_end: raw.len(),
+            source_hash: 0,
+            row_count: 0,
+            document: None,
+        }];
+        let fallback_doc = build_assistant_markdown_document(&buffer, raw, foreground);
+
+        // Worker-parsed (document = Some) path.
+        let worker_doc = elph_tui::parse_markdown_document(raw);
+        assert_eq!(
+            fallback_doc.lines.len(),
+            worker_doc.lines.len(),
+            "fallback and worker docs must have the same line count (no jump)"
+        );
+    }
+
+    /// Simulate the ASYNC worker race: the worker collects a job, content grows, and the
+    /// worker applies the STALE job afterward. The hash guard must reject the stale apply,
+    /// and the diagram must still render.
+    #[test]
+    fn mermaid_survives_stale_worker_apply() {
+        use crate::tui::transcript::markdown::worker::{
+            apply_markdown_parse_result, collect_markdown_parse_jobs, parse_markdown_on_worker,
+            partition_assistant_markdown,
+        };
+        use crate::tui::transcript::types::{TranscriptMessage, TranscriptStyle};
+
+        // Phase 1: fence closed, worker collects a job.
+        let mut messages = vec![TranscriptMessage::assistant_markdown(
+            "Diagram:\n\n```mermaid\nA --> B\n```\n".to_string(),
+        )];
+        partition_assistant_markdown(&mut messages, 80);
+        let jobs = collect_markdown_parse_jobs(&messages);
+        assert_eq!(jobs.len(), 1, "one job in phase 1");
+        let stale_job = jobs[0].clone();
+        let stale_doc = parse_markdown_on_worker(&stale_job.source);
+        assert!(
+            stale_doc.lines.iter().any(|l| l.mermaid_source.is_some()),
+            "stale doc should have mermaid"
+        );
+
+        // Phase 2: content grows (new paragraph after the fence) — stable_end advances.
+        let grown = "Diagram:\n\n```mermaid\nA --> B\n```\n\nDone with the diagram.\n";
+        messages[0].content = grown.to_string();
+        partition_assistant_markdown(&mut messages, 80);
+
+        // Worker applies the STALE job now — must be rejected (hash mismatch).
+        let applied = apply_markdown_parse_result(&mut messages, &stale_job, stale_doc);
+        assert!(!applied, "stale apply must be rejected by hash guard");
+
+        // Diagram must still render.
+        let buffer = messages[0].markdown.as_ref().expect("buffer");
+        let merged = build_assistant_markdown_document(buffer, grown, TranscriptStyle::Assistant.text_color());
+        assert!(
+            merged.lines.iter().any(|l| l.mermaid_source.is_some()),
+            "diagram must survive stale apply rejection"
+        );
+    }
 }
