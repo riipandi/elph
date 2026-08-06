@@ -12,7 +12,6 @@ use super::McpToolRegistry;
 use super::expose_tool_name;
 
 impl McpToolRegistry {
-
     /// Convert discovered MCP tools (+ resource/prompt bridge tools) into harness [`AgentTool`]s.
     ///
     /// For lazy-loaded registries, this triggers deferred discovery on first call.

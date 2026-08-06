@@ -4,17 +4,17 @@ use std::time::Duration;
 use anyhow::{Context, Result};
 use futures::stream::{self, StreamExt};
 use rmcp::model::{Prompt, Resource, Tool as McpTool};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tokio::sync::mpsc;
 
-use super::McpToolRegistry;
-use super::{McpLoadReport, McpServerLoadReport, McpToolDescriptor, McpResourceDescriptor, McpPromptDescriptor};
-use super::expose_tool_name;
 use super::super::client::validate_server_config;
 use super::super::config::{McpConfig, McpServerConfig, McpServerLoadProgress};
 use super::super::events::McpServerEvent;
 use super::super::policy::mcp_tool_requires_approval;
 use super::super::session::McpSessionPool;
+use super::McpToolRegistry;
+use super::expose_tool_name;
+use super::{McpLoadReport, McpPromptDescriptor, McpResourceDescriptor, McpServerLoadReport, McpToolDescriptor};
 
 impl McpToolRegistry {
     pub async fn discover_tools(&self) -> Result<()> {
@@ -752,4 +752,3 @@ fn prompt_descriptor(server_name: &str, prompt: &Prompt) -> McpPromptDescriptor 
         arguments_schema,
     }
 }
-

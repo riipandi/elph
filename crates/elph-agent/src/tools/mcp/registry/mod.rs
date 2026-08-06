@@ -42,13 +42,12 @@ use super::policy::McpPolicyConfig;
 use super::policy::mcp_tool_requires_approval;
 use super::session::McpSessionPool;
 
-use discovery::{ServerDiscovery, build_catalogs_from_results, discover_one, server_discovery_progress};
 use super::truncate::{DEFAULT_MAX_STRUCTURED_DETAIL_CHARS, DEFAULT_MAX_TOOL_RESULT_CHARS};
 use super::truncate::{truncate_json_value, truncate_tool_content};
+use discovery::{ServerDiscovery, build_catalogs_from_results, discover_one, server_discovery_progress};
 
-
-mod discovery;
 mod bridge;
+mod discovery;
 
 /// A discovered MCP tool ready for exposure to the model.
 #[derive(Debug, Clone)]
