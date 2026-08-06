@@ -11,34 +11,34 @@ Crate-by-crate module map with file paths, noting pi port origins vs Elph-only e
 
 ## `elph` (product binary + library)
 
-**Path:** `elph/src/`
-**Pi mapping:** `@earendil-works/pi-coding-agent` → `elph/`
+**Path:** `crates/coding-agent/src/`
+**Pi mapping:** `@earendil-works/pi-coding-agent` → `crates/coding-agent/`
 **Key files:**
 
-| Module                     | Path                                  | Status                                  |
-| -------------------------- | ------------------------------------- | --------------------------------------- |
-| `main.rs`                  | `elph/src/main.rs`                    | [Elph delta] — CLI entry via clap       |
-| `lib.rs`                   | `elph/src/lib.rs`                     | [Elph delta] — re-exports all modules   |
-| `cli/`                     | `elph/src/cli/` (19 subcommand files) | [Elph delta] — CLI subcommands          |
-| `agent/`                   | `elph/src/agent/`                     | [Partial] — pi-coding-agent equivalent  |
-| `agent/runtime.rs`         | `elph/src/agent/runtime.rs`           | [Partial] — session factory             |
-| `agent/session/`           | `elph/src/agent/session/`             | [Partial] — CodingAgentSession          |
-| `agent/session_manager.rs` | `elph/src/agent/session_manager.rs`   | [Partial]                               |
-| `agent/slash_commands.rs`  | `elph/src/agent/slash_commands.rs`    | [Partial]                               |
-| `agent/mode_change.rs`     | `elph/src/agent/mode_change.rs`       | [Elph delta]                            |
-| `agent/run_mode.rs`        | `elph/src/agent/run_mode.rs`          | [Partial] — non-interactive mode        |
-| `agent/tool_policy.rs`     | `elph/src/agent/tool_policy.rs`       | [Elph delta]                            |
-| `agent/mcp_bootstrap.rs`   | `elph/src/agent/mcp_bootstrap.rs`     | [Elph delta]                            |
-| `agent/prompt/`            | `elph/src/agent/prompt/`              | [Partial]                               |
-| `tui/`                     | `elph/src/tui/` (35+ files)           | [Elph delta] — iocraft-based TUI        |
-| `platform/`                | `elph/src/platform/`                  | [Elph delta]                            |
-| `platform/paths.rs`        | `elph/src/platform/paths.rs`          | [Elph delta] — ELPH_HOME, paths         |
-| `platform/settings.rs`     | `elph/src/platform/settings.rs`       | [Elph delta] — settings merge           |
-| `memory/`                  | `elph/src/memory/`                    | [Elph delta] — floppy memory            |
-| `extensions/`              | `elph/src/extensions/`                | [Elph delta] — WASM extension host      |
-| `codegraph/`               | `elph/src/codegraph/`                 | [Elph delta] — code review graph        |
-| `worktree/`                | `elph/src/worktree/`                  | [Elph delta]                            |
-| `types.rs`                 | `elph/src/types.rs`                   | [Elph delta] — AgentMode, ThinkingLevel |
+| Module                     | Path                                                 | Status                                  |
+| -------------------------- | ---------------------------------------------------- | --------------------------------------- |
+| `main.rs`                  | `crates/coding-agent/src/main.rs`                    | [Elph delta] — CLI entry via clap       |
+| `lib.rs`                   | `crates/coding-agent/src/lib.rs`                     | [Elph delta] — re-exports all modules   |
+| `cli/`                     | `crates/coding-agent/src/cli/` (19 subcommand files) | [Elph delta] — CLI subcommands          |
+| `agent/`                   | `crates/coding-agent/src/agent/`                     | [Partial] — pi-coding-agent equivalent  |
+| `agent/runtime.rs`         | `crates/coding-agent/src/agent/runtime.rs`           | [Partial] — session factory             |
+| `agent/session/`           | `crates/coding-agent/src/agent/session/`             | [Partial] — CodingAgentSession          |
+| `agent/session_manager.rs` | `crates/coding-agent/src/agent/session_manager.rs`   | [Partial]                               |
+| `agent/slash_commands.rs`  | `crates/coding-agent/src/agent/slash_commands.rs`    | [Partial]                               |
+| `agent/mode_change.rs`     | `crates/coding-agent/src/agent/mode_change.rs`       | [Elph delta]                            |
+| `agent/run_mode.rs`        | `crates/coding-agent/src/agent/run_mode.rs`          | [Partial] — non-interactive mode        |
+| `agent/tool_policy.rs`     | `crates/coding-agent/src/agent/tool_policy.rs`       | [Elph delta]                            |
+| `agent/mcp_bootstrap.rs`   | `crates/coding-agent/src/agent/mcp_bootstrap.rs`     | [Elph delta]                            |
+| `agent/prompt/`            | `crates/coding-agent/src/agent/prompt/`              | [Partial]                               |
+| `tui/`                     | `crates/coding-agent/src/tui/` (35+ files)           | [Elph delta] — iocraft-based TUI        |
+| `platform/`                | `crates/coding-agent/src/platform/`                  | [Elph delta]                            |
+| `platform/paths.rs`        | `crates/coding-agent/src/platform/paths.rs`          | [Elph delta] — ELPH_HOME, paths         |
+| `platform/settings.rs`     | `crates/coding-agent/src/platform/settings.rs`       | [Elph delta] — settings merge           |
+| `memory/`                  | `crates/coding-agent/src/memory/`                    | [Elph delta] — floppy memory            |
+| `extensions/`              | `crates/coding-agent/src/extensions/`                | [Elph delta] — WASM extension host      |
+| `codegraph/`               | `crates/coding-agent/src/codegraph/`                 | [Elph delta] — code review graph        |
+| `worktree/`                | `crates/coding-agent/src/worktree/`                  | [Elph delta]                            |
+| `types.rs`                 | `crates/coding-agent/src/types.rs`                   | [Elph delta] — AgentMode, ThinkingLevel |
 
 ## `elph-agent` (agent runtime)
 

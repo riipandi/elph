@@ -16,14 +16,14 @@ See [GitHub Releases](https://github.com/riipandi/elph/releases).
 **Pre-built binaries** (Linux and macOS, x86_64 and arm64):
 
 ```sh
-curl -fsSL https://elph.space/elph/install.sh | bash
+curl -fsSL https://elph.space/install.sh | bash
 ```
 
 Pin a version or install the latest pre-release:
 
 ```sh
-curl -fsSL https://elph.space/elph/install.sh | bash -s -- --version 0.0.26
-curl -fsSL https://elph.space/elph/install.sh | bash -s -- --canary
+curl -fsSL https://elph.space/install.sh | bash -s -- --version 0.0.26
+curl -fsSL https://elph.space/install.sh | bash -s -- --canary
 ```
 
 **From crates.io** (requires [Rust >= 1.97][rust]):

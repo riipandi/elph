@@ -2,9 +2,9 @@
 
 **Repo:** `riipandi/elph`, branch `codegraph` (TUI code is unrelated to the codegraph feature —
 same repo state, different subsystem).
-**Scope:** `elph/src/tui/transcript/*` (panel, layout, card/builder, markdown/*, archive),
+**Scope:** `crates/coding-agent/src/tui/transcript/*` (panel, layout, card/builder, markdown/*, archive),
 `crates/elph-tui/src/components/scroll_box.rs` and related scroll primitives,
-`elph/src/platform/settings.rs` (new config section).
+`crates/coding-agent/src/platform/settings.rs` (new config section).
 **Constraints:** no backward-compat concerns — internal APIs, cache structures, and settings
 schema may change freely. Do not change the on-disk session snapshot format
 (`ArchivedTranscriptMessage` / `TranscriptSnapshot`) without a version bump in `version` field —
@@ -157,7 +157,7 @@ likely direct cause of "laggy scroll."
 
 ## Phase 3 — Bound live transcript memory (fixes: inefficient / growing memory usage)
 
-`elph/src/tui/transcript/archive.rs` only handles **persisting** the transcript to disk for
+`crates/coding-agent/src/tui/transcript/archive.rs` only handles **persisting** the transcript to disk for
 session resume (`build_snapshot_data`) — it does not evict anything from the **live** in-memory
 `Vec<TranscriptMessage>` (`panel.rs:33`, held via `State<Vec<TranscriptMessage>>` or
 `Arc<RwLock<Vec<TranscriptMessage>>>`). For long-running agent sessions this vec only grows:
@@ -217,7 +217,7 @@ there is duplicated state, apply 3.2's settle+compact treatment to it too.
 ## Phase 4 — User-configurable settings (`settings.json`)
 
 Follow the same convention already used for `CodegraphSettings`/`EmbedSettings` in
-`elph/src/platform/settings.rs` — `#[serde(default = "fn_name")]` per field, camelCase JSON,
+`crates/coding-agent/src/platform/settings.rs` — `#[serde(default = "fn_name")]` per field, camelCase JSON,
 doc comment per field. Add a new `TranscriptSettings` struct (nested under the existing `ui`
 section, i.e. `UiSettings.transcript: TranscriptSettings`, since transcript rendering is a UI
 concern — check `UiSettings`'s existing sub-sections at `settings.rs:126+` for the nesting
@@ -239,7 +239,7 @@ convention to match).
    `MARKDOWN_DEBOUNCE_MS`, `MARKDOWN_STREAMING_DEBOUNCE_MS`) out of their current hardcoded
    `const` locations in `card/builder.rs` and `transcript/panel.rs`, into `TranscriptPanelProps`
    (add fields there) or a settings-derived struct passed down from wherever `TranscriptPanel` is
-   mounted (check the shell/view layer, likely `elph/src/tui/shell/view.rs`) — populate from the
+   mounted (check the shell/view layer, likely `crates/coding-agent/src/tui/shell/view.rs`) — populate from the
    loaded `Settings` at that call site.
 3. Add `max_live_messages` plumbing per Phase 3.1/3.2, read at the point where messages are
    appended (wherever `messages_state.write().push(...)` / `messages_arc.write().push(...)`

@@ -1,6 +1,6 @@
-# Code Splitting Plan — `elph/src`
+# Code Splitting Plan — `crates/coding-agent/src`
 
-> **Scope:** `elph/src` (binary crate).  
+> **Scope:** `crates/coding-agent/src` (binary crate).  
 > **Triggered by:** inspection of files ≥400 lines after the `tui/shell` split.  
 > **Constraint:** keep public API stable via `mod.rs` re-exports; each increment verified with `make check` / `make lint` / `make test` + `cargo clippy --workspace --all-targets --features full -- -D warnings`.
 

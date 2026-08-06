@@ -17,11 +17,11 @@ Elph is a Rust port of the [earendil-works/pi](https://github.com/earendil-works
 
 ## Crate Mapping
 
-| pi TypeScript Package                                       | Elph Rust Crate     | Status                   |
-| ----------------------------------------------------------- | ------------------- | ------------------------ |
-| `@earendil-works/pi-ai` (`packages/ai`)                     | `crates/elph-ai`    | [Parity] (post Sprint 5) |
-| `@earendil-works/pi-agent-core` (`packages/agent`)          | `crates/elph-agent` | [Parity] (core)          |
-| `@earendil-works/pi-coding-agent` (`packages/coding-agent`) | `elph/` (product)   | [Partial]                |
+| pi TypeScript Package                                       | Elph Rust Crate                  | Status                   |
+| ----------------------------------------------------------- | -------------------------------- | ------------------------ |
+| `@earendil-works/pi-ai` (`packages/ai`)                     | `crates/elph-ai`                 | [Parity] (post Sprint 5) |
+| `@earendil-works/pi-agent-core` (`packages/agent`)          | `crates/elph-agent`              | [Parity] (core)          |
+| `@earendil-works/pi-coding-agent` (`packages/coding-agent`) | `crates/coding-agent/` (product) | [Partial]                |
 
 ## Parity Status Overview
 
@@ -67,19 +67,19 @@ Elph is a Rust port of the [earendil-works/pi](https://github.com/earendil-works
 
 **Status:** [Partial]
 
-| Feature                        | Status       | Details                                                      |
-| ------------------------------ | ------------ | ------------------------------------------------------------ |
-| Module layout / product intent | [Partial]    | `elph/src/agent/` is the declared pi-coding-agent equivalent |
-| Session orchestration          | [Partial]    | `CodingAgentSession`, wiring exist                           |
-| Interactive TUI                | [Partial]    | Shell/TUI wired; overlays stubbed                            |
-| Print / non-interactive mode   | [Partial]    | `elph run` exists                                            |
-| Built-in tools                 | [Parity]     | Via `elph-agent` tools + Elph extras                         |
-| Extensions                     | [Partial]    | WASM Component Model (pi: JS/TS host)                        |
-| Skills + prompt templates      | [Partial]    | Load paths in agent crate                                    |
-| RPC / JSON automation          | [Gap]        | Elph has ACP instead ([Elph delta])                          |
-| Public SDK                     | [Gap]        | Library = crates, not pi-compatible SDK                      |
-| Export HTML / share gist       | [Gap]        | CLI export stub                                              |
-| Memory / codegraph / server    | [Elph delta] | Elph-only features                                           |
+| Feature                        | Status       | Details                                                                     |
+| ------------------------------ | ------------ | --------------------------------------------------------------------------- |
+| Module layout / product intent | [Partial]    | `crates/coding-agent/src/agent/` is the declared pi-coding-agent equivalent |
+| Session orchestration          | [Partial]    | `CodingAgentSession`, wiring exist                                          |
+| Interactive TUI                | [Partial]    | Shell/TUI wired; overlays stubbed                                           |
+| Print / non-interactive mode   | [Partial]    | `elph run` exists                                                           |
+| Built-in tools                 | [Parity]     | Via `elph-agent` tools + Elph extras                                        |
+| Extensions                     | [Partial]    | WASM Component Model (pi: JS/TS host)                                       |
+| Skills + prompt templates      | [Partial]    | Load paths in agent crate                                                   |
+| RPC / JSON automation          | [Gap]        | Elph has ACP instead ([Elph delta])                                         |
+| Public SDK                     | [Gap]        | Library = crates, not pi-compatible SDK                                     |
+| Export HTML / share gist       | [Gap]        | CLI export stub                                                             |
+| Memory / codegraph / server    | [Elph delta] | Elph-only features                                                          |
 
 ## Known Gaps
 
@@ -100,8 +100,8 @@ From `docs/porting/pi-agent.md`:
 These features exist in Elph but not in pi:
 
 - **Hyper provider** (`crates/elph-ai/src/providers/builtin.rs`)
-- **Memory system** (`elph/src/memory/`) — floppy/Turso-backed vector memory
-- **Codegraph** (`elph/src/codegraph/`) — structural knowledge graph for code reviews
+- **Memory system** (`crates/coding-agent/src/memory/`) — floppy/Turso-backed vector memory
+- **Codegraph** (`crates/coding-agent/src/codegraph/`) — structural knowledge graph for code reviews
 - **ACP** — Agent Client Protocol (alternative to pi RPC)
 - **WASM extensions** — `extensions/` + `plugins/` (WASM Component Model)
 - **Swarm** — `crates/elph-swarm/` (multi-agent orchestration, skeleton)

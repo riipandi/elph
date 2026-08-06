@@ -11,7 +11,7 @@ See [Architecture Overview](architecture/overview.md) for the system architectur
 
 ## CLI Subcommands
 
-The `elph` binary provides 19 subcommands (from `elph/src/cli/mod.rs`):
+The `elph` binary provides 19 subcommands (from `crates/coding-agent/src/cli/mod.rs`):
 
 | Subcommand    | Alias | Description                                                                        |
 | ------------- | ----- | ---------------------------------------------------------------------------------- |
@@ -37,19 +37,19 @@ The `elph` binary provides 19 subcommands (from `elph/src/cli/mod.rs`):
 
 ## Environment Variables
 
-| Variable           | Purpose                              | Defined In                                        |
-| ------------------ | ------------------------------------ | ------------------------------------------------- |
-| `ELPH_HOME`        | Override config/home directory       | `elph/src/platform/paths.rs`                      |
-| `ELPH_DATA_DIR`    | Override data directory              | `elph/src/platform/paths.rs`, `cli/mod.rs`        |
-| `ELPH_PROJECT_DIR` | Override project directory           | `elph/src/platform/paths.rs`                      |
-| `ELPH_QUIET`       | Suppress init progress output        | `cli/mod.rs`, `bootstrap.rs`                      |
-| `ELPH_PROVIDER`    | Default provider override            | `agent/provider.rs`                               |
-| `ELPH_MODEL`       | Default model override               | `agent/provider.rs`                               |
-| `ELPH_` prefix     | Agent env prefix for extended config | `cli/mod.rs` — `AgentBuilder::env_prefix("ELPH")` |
+| Variable           | Purpose                              | Defined In                                                |
+| ------------------ | ------------------------------------ | --------------------------------------------------------- |
+| `ELPH_HOME`        | Override config/home directory       | `crates/coding-agent/src/platform/paths.rs`               |
+| `ELPH_DATA_DIR`    | Override data directory              | `crates/coding-agent/src/platform/paths.rs`, `cli/mod.rs` |
+| `ELPH_PROJECT_DIR` | Override project directory           | `crates/coding-agent/src/platform/paths.rs`               |
+| `ELPH_QUIET`       | Suppress init progress output        | `cli/mod.rs`, `bootstrap.rs`                              |
+| `ELPH_PROVIDER`    | Default provider override            | `agent/provider.rs`                                       |
+| `ELPH_MODEL`       | Default model override               | `agent/provider.rs`                                       |
+| `ELPH_` prefix     | Agent env prefix for extended config | `cli/mod.rs` — `AgentBuilder::env_prefix("ELPH")`         |
 
 ## Config Paths
 
-From `elph/src/platform/paths.rs`:
+From `crates/coding-agent/src/platform/paths.rs`:
 
 | Path                            | Method                             | Description              |
 | ------------------------------- | ---------------------------------- | ------------------------ |
@@ -107,7 +107,7 @@ elph.agent.turn     — AgentHarness::prompt() (top-level turn span)
 
 ### Logging
 
-`logforth` is the logging framework (configured in `elph/src/platform/bootstrap.rs`):
+`logforth` is the logging framework (configured in `crates/coding-agent/src/platform/bootstrap.rs`):
 
 ```toml
 # Cargo.toml workspace dependency
@@ -136,10 +136,10 @@ From `crates/elph-ai/src/session_resources.rs`:
 
 ## Source References
 
-- `elph/src/cli/mod.rs` — CLI subcommand definitions
-- `elph/src/platform/paths.rs` — `Paths` struct, `PathResolver`, env var handling
-- `elph/src/platform/settings.rs` — Settings loading/merging
-- `elph/src/platform/bootstrap.rs` — logging initialization
+- `crates/coding-agent/src/cli/mod.rs` — CLI subcommand definitions
+- `crates/coding-agent/src/platform/paths.rs` — `Paths` struct, `PathResolver`, env var handling
+- `crates/coding-agent/src/platform/settings.rs` — Settings loading/merging
+- `crates/coding-agent/src/platform/bootstrap.rs` — logging initialization
 - `Makefile` — build targets
 - `crates/elph-ai/src/utils/diagnostics.rs` — diagnostic utilities
 - `crates/elph-ai/src/session_resources.rs` — session resource cleanup

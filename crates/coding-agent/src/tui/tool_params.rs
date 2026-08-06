@@ -261,12 +261,12 @@ fn title_case_snake(name: &str) -> String {
 /// Inside the project directory, leading path components are abbreviated to
 /// their first character so the project context is clear with minimal space:
 ///
-/// - `/Users/ariss/Developer/github.com/riipandi/elph/src/tui/shell/mod.rs`
-///   → `/U/a/d/g/r/elph/src/tui/shell/mod.rs`
+/// - `/Users/ariss/Developer/github.com/riipandi/crates/coding-agent/src/tui/shell/mod.rs`
+///   → `/U/a/d/g/r/crates/coding-agent/src/tui/shell/mod.rs`
 ///
 /// Outside the project directory the path is shown in full with `~` for home:
 ///
-/// - `/Users/me/dev/elph/src/main.rs` → `~/dev/elph/src/main.rs`
+/// - `/Users/me/dev/crates/coding-agent/src/main.rs` → `~/dev/crates/coding-agent/src/main.rs`
 /// - `/opt/vendor/lib.rs` → `/opt/vendor/lib.rs`
 pub fn abbreviate_path(path: &str, max_chars: usize) -> String {
     let max_chars = max_chars.max(12);
@@ -668,7 +668,7 @@ fn is_openable_web_url(s: &str) -> bool {
     s.starts_with("https://") || s.starts_with("http://")
 }
 
-/// Collapsed transcript header: `Edit /U/a/D/elph/src/main.rs` (verb + concise target).
+/// Collapsed transcript header: `Edit /U/a/D/crates/coding-agent/src/main.rs` (verb + concise target).
 pub fn format_collapsed_tool_label(tool_name: &str, args_raw: &str) -> String {
     let (verb, target) = format_collapsed_tool_parts(tool_name, args_raw);
     if target.is_empty() {
@@ -1322,26 +1322,26 @@ mod tests {
     #[test]
     fn abbreviate_path_shows_full_path() {
         // Absolute path stays full (with `~` for home).
-        let path = "/opt/workspace/riipandi/elph/src/main.rs";
+        let path = "/opt/workspace/riipandi/crates/coding-agent/src/main.rs";
         let short = abbreviate_path(path, 60);
-        assert_eq!(short, "/opt/workspace/riipandi/elph/src/main.rs", "{short}");
+        assert_eq!(short, "/opt/workspace/riipandi/crates/coding-agent/src/main.rs", "{short}");
     }
 
     #[test]
     fn abbreviate_path_uses_tilde_for_home() {
         if let Ok(home) = std::env::var("HOME") {
-            let path = format!("{home}/projects/demo/elph/src/lib.rs");
+            let path = format!("{home}/projects/demo/crates/coding-agent/src/lib.rs");
             let short = abbreviate_path(&path, 60);
             assert!(short.starts_with("~/"), "{short}");
-            assert!(short.ends_with("/projects/demo/elph/src/lib.rs"), "{short}");
+            assert!(short.ends_with("/projects/demo/crates/coding-agent/src/lib.rs"), "{short}");
             assert!(!short.contains(&home), "{short}");
         }
     }
 
     #[test]
     fn abbreviate_path_relative_stays_full() {
-        let short = abbreviate_path("crates/elph/src/tui/tool_params.rs", 50);
-        assert_eq!(short, "crates/elph/src/tui/tool_params.rs", "{short}");
+        let short = abbreviate_path("crates/crates/coding-agent/src/tui/tool_params.rs", 50);
+        assert_eq!(short, "crates/crates/coding-agent/src/tui/tool_params.rs", "{short}");
     }
 
     #[test]
@@ -1355,7 +1355,7 @@ mod tests {
         // Very long path is truncated; either `…/parent/file` (outside CWD)
         // or abbreviated-project-path form (inside CWD). Either way the file
         // extension and size limit are respected.
-        let path = "/opt/workspace/riipandi/elph/crates/elph/src/very-long-file-name-that-should-be-truncated.rs";
+        let path = "/opt/workspace/riipandi/elph/crates/crates/coding-agent/src/very-long-file-name-that-should-be-truncated.rs";
         let short = abbreviate_path(path, 44);
         assert!(short.ends_with(".rs"), "{short}");
         assert!(short.chars().count() <= 44, "{} chars", short.chars().count());
@@ -1543,7 +1543,7 @@ mod tests {
         }
 
         // Relative paths stay as-is.
-        let result = abbreviate_path("crates/elph/src/lib.rs", 50);
-        assert_eq!(result, "crates/elph/src/lib.rs", "{result}");
+        let result = abbreviate_path("crates/crates/coding-agent/src/lib.rs", 50);
+        assert_eq!(result, "crates/crates/coding-agent/src/lib.rs", "{result}");
     }
 }

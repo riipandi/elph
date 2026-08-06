@@ -1,7 +1,7 @@
 # Plan: Active Floppy Memory Integration
 
 > **Status:** plan only — implement phase-by-phase; this document is the source of truth for the work.  
-> **Scope (code):** `crates/floppy`, `elph/src/memory`, `elph/src/agent`, `elph/templates/agent`, memory-related settings/CLI wiring in `elph`.  
+> **Scope (code):** `crates/floppy`, `crates/coding-agent/src/memory`, `crates/coding-agent/src/agent`, `crates/coding-agent/templates/agent`, memory-related settings/CLI wiring in `elph`.  
 > **Goal:** memory aktif by default — auto-recall, auto-record work/changes, reduce repeated filesystem scans, avoid redoing completed or failed work.  
 > **Self-contained:** do not rely on other documents under `docs/` for design details; verify behavior against the source files listed here.
 
@@ -71,7 +71,7 @@ Floppy is wired into Elph but under-used for day-to-day coding efficiency.
 ### 3.1 Runtime flow today
 
 ```
-create_coding_session (elph/src/agent/runtime.rs)
+create_coding_session (crates/coding-agent/src/agent/runtime.rs)
   ├─ create_memory_tools(paths)          // lazy OnceCell store in tools.rs
   ├─ build_memories_context(paths)       // open_store(needs_embed=false); top by weight
   ├─ SystemPrompt::Dynamic appends memory section
@@ -95,21 +95,21 @@ Session end:
 
 ### 3.2 Key files (authoritative)
 
-| Concern                             | Path                                                                                                          |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Floppy store / task / report        | `crates/floppy/src/store/{mod,tasks,write,read,embed}.rs`                                                     |
-| Floppy query                        | `crates/floppy/src/query/{memories,tasks,search,status,timeline}.rs`                                          |
-| Floppy types / categories / scoring | `crates/floppy/src/types/*`, `scoring.rs`, `util.rs`                                                          |
-| Schema                              | `crates/floppy/src/migrations.rs` (V1–V3, `LAST_VERSION = 3`)                                                 |
-| Host open store                     | `elph/src/memory/store.rs` (`session_id` currently `"elph-cli"`)                                              |
-| Host hooks                          | `elph/src/memory/hooks.rs`                                                                                    |
-| Host tools                          | `elph/src/memory/tools.rs`                                                                                    |
-| Slash / CLI entry                   | `elph/src/memory/mod.rs`, `elph/src/memory/cmd.rs`, `elph/src/cli/memory.rs`                                  |
-| Session factory                     | `elph/src/agent/runtime.rs`                                                                                   |
-| Prompt templates                    | `elph/templates/agent/coding_base.md`, `mode_*.md`                                                            |
-| Prompt assembly                     | `elph/src/agent/prompt/builder.rs`                                                                            |
-| Harness hooks API                   | `crates/elph-agent/src/agent/harness/hooks.rs`                                                                |
-| Hook event shapes                   | `BeforeAgentStartEvent { prompt, system_prompt, ... }`, `ToolResultEvent { tool_name, input, is_error, ... }` |
+| Concern                             | Path                                                                                                                      |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Floppy store / task / report        | `crates/floppy/src/store/{mod,tasks,write,read,embed}.rs`                                                                 |
+| Floppy query                        | `crates/floppy/src/query/{memories,tasks,search,status,timeline}.rs`                                                      |
+| Floppy types / categories / scoring | `crates/floppy/src/types/*`, `scoring.rs`, `util.rs`                                                                      |
+| Schema                              | `crates/floppy/src/migrations.rs` (V1–V3, `LAST_VERSION = 3`)                                                             |
+| Host open store                     | `crates/coding-agent/src/memory/store.rs` (`session_id` currently `"elph-cli"`)                                           |
+| Host hooks                          | `crates/coding-agent/src/memory/hooks.rs`                                                                                 |
+| Host tools                          | `crates/coding-agent/src/memory/tools.rs`                                                                                 |
+| Slash / CLI entry                   | `crates/coding-agent/src/memory/mod.rs`, `crates/coding-agent/src/memory/cmd.rs`, `crates/coding-agent/src/cli/memory.rs` |
+| Session factory                     | `crates/coding-agent/src/agent/runtime.rs`                                                                                |
+| Prompt templates                    | `crates/coding-agent/templates/agent/coding_base.md`, `mode_*.md`                                                         |
+| Prompt assembly                     | `crates/coding-agent/src/agent/prompt/builder.rs`                                                                         |
+| Harness hooks API                   | `crates/elph-agent/src/agent/harness/hooks.rs`                                                                            |
+| Hook event shapes                   | `BeforeAgentStartEvent { prompt, system_prompt, ... }`, `ToolResultEvent { tool_name, input, is_error, ... }`             |
 
 ### 3.3 Floppy APIs already available (reuse first)
 
@@ -236,7 +236,7 @@ Observe recall/write/task lifecycle without changing user-visible behavior.
 
 ### Task 0.1 — Structured log points
 
-**Files:** `elph/src/memory/hooks.rs`, optionally `tools.rs`
+**Files:** `crates/coding-agent/src/memory/hooks.rs`, optionally `tools.rs`
 
 Add `log::debug!` / `log::info!` (no new user UI) for:
 
@@ -264,7 +264,7 @@ Run once and record results in the PR description (not a separate design doc):
 
 ### Task 0.3 — Verify existing tests still pass
 
-- CLI memory tests under `elph/tests/`
+- CLI memory tests under `crates/coding-agent/tests/`
 - Floppy unit tests under `crates/floppy`
 
 ## Acceptance criteria
@@ -289,8 +289,8 @@ Single `MemoryRuntime` so tools, hooks, and maintenance share store + active tas
 
 ### Task 1.1 — Introduce `MemoryRuntime`
 
-**New file:** `elph/src/memory/runtime.rs`  
-**Wire:** `elph/src/memory/mod.rs`, `store.rs`, `tools.rs`, `hooks.rs`, `elph/src/agent/runtime.rs`
+**New file:** `crates/coding-agent/src/memory/runtime.rs`  
+**Wire:** `crates/coding-agent/src/memory/mod.rs`, `store.rs`, `tools.rs`, `hooks.rs`, `crates/coding-agent/src/agent/runtime.rs`
 
 **Suggested type shape:**
 
@@ -390,12 +390,12 @@ Prefer setting via existing `start_task` / `end_task` path when using shared sto
 
 ### Task 1.7 — Tests
 
-| Test                                                                  | Location                                                 |
-| --------------------------------------------------------------------- | -------------------------------------------------------- |
-| Runtime lazy init once                                                | `elph/src/memory/runtime.rs` cfg(test) or dedicated test |
-| active_task_id set/cleared without thread_local                       | unit                                                     |
-| format_memory_context includes id + respects cap                      | unit                                                     |
-| Floppy: source_task linked when report after start_task on same store | floppy store_tests                                       |
+| Test                                                                  | Location                                                                |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Runtime lazy init once                                                | `crates/coding-agent/src/memory/runtime.rs` cfg(test) or dedicated test |
+| active_task_id set/cleared without thread_local                       | unit                                                                    |
+| format_memory_context includes id + respects cap                      | unit                                                                    |
+| Floppy: source_task linked when report after start_task on same store | floppy store_tests                                                      |
 
 ## Acceptance criteria
 
@@ -424,7 +424,7 @@ Automatically persist **what the agent did** (work + file footprint) so later tu
 
 ### Task 2.1 — Add `MemoryCategory::Work`
 
-**Files:** `crates/floppy/src/types/config.rs` (or category enum location), `util.rs` (`category_str` / `category_from_str`), `scoring.rs` (`initial_weight`), format filters in `elph/src/memory/format.rs`, slash help strings.
+**Files:** `crates/floppy/src/types/config.rs` (or category enum location), `util.rs` (`category_str` / `category_from_str`), `scoring.rs` (`initial_weight`), format filters in `crates/coding-agent/src/memory/format.rs`, slash help strings.
 
 **Scoring default:** `initial_weight(Work) = 1.0` (ephemeral operational; Phase 6 may decay faster).
 
@@ -434,7 +434,7 @@ Automatically persist **what the agent did** (work + file footprint) so later tu
 
 ### Task 2.2 — Content templates module
 
-**New file:** `elph/src/memory/templates.rs` (or `capture.rs` helpers)
+**New file:** `crates/coding-agent/src/memory/templates.rs` (or `capture.rs` helpers)
 
 ```text
 [work] <one-line outcome>
@@ -551,7 +551,7 @@ Make the model **prefer memory** over redundant scanning and **trust/repair** re
 
 ### Task 3.1 — `coding_base.md` section
 
-**File:** `elph/templates/agent/coding_base.md`
+**File:** `crates/coding-agent/templates/agent/coding_base.md`
 
 Insert `<memory_and_context>` after `<context_and_rules>` (or before `<execution>`).
 
@@ -582,7 +582,7 @@ Insert `<memory_and_context>` after `<context_and_rules>` (or before `<execution
 
 ### Task 3.3 — Tool description rewrites
 
-**File:** `elph/src/memory/tools.rs`
+**File:** `crates/coding-agent/src/memory/tools.rs`
 
 | Tool                | Description intent                                                                        |
 | ------------------- | ----------------------------------------------------------------------------------------- |
@@ -596,7 +596,7 @@ Insert `<memory_and_context>` after `<context_and_rules>` (or before `<execution
 
 ### Task 3.4 — Prompt assembly test
 
-**File:** `elph/src/agent/prompt/builder.rs` tests (or adjacent)
+**File:** `crates/coding-agent/src/agent/prompt/builder.rs` tests (or adjacent)
 
 - Render coding prompt in Build mode with memory tool names in `active_tool_names` if required by template conditionals.
 - Assert substring `memory_and_context` or distinctive policy phrase present.
@@ -627,7 +627,7 @@ Inject **relevant, actual** context from multiple sources under a hard budget; s
 
 ### Task 4.1 — Rank/merge pure module
 
-**New file:** `elph/src/memory/rank.rs`
+**New file:** `crates/coding-agent/src/memory/rank.rs`
 
 ```rust
 pub struct RankedMemory {
@@ -675,7 +675,7 @@ Then `merge_and_rank` → take until budget.
 
 ### Task 4.3 — Context packer
 
-**File:** `elph/src/memory/pack.rs` (or same as rank)
+**File:** `crates/coding-agent/src/memory/pack.rs` (or same as rank)
 
 Emit sections:
 
@@ -753,7 +753,7 @@ On TurnEnd (rate-limited):
 - Build short `[discovery]` text:
 
 ```text
-[discovery] Area: elph/src/memory/
+[discovery] Area: crates/coding-agent/src/memory/
 Observed tools: list_dir×2, read_file×4
 Notes: hooks.rs (auto recall), tools.rs (agent tools), store.rs (open_store)
 ```
@@ -959,7 +959,7 @@ All of the following must hold:
 At implementation time, resolve exact tool names from the builtin catalog (do not assume):
 
 ```text
-grep / search BuiltinToolsBuilder, tool name strings under crates/elph-agent and elph/src/agent
+grep / search BuiltinToolsBuilder, tool name strings under crates/elph-agent and crates/coding-agent/src/agent
 ```
 
 Map only confirmed names into the capture allow-list in Task 2.4.

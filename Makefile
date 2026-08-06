@@ -6,7 +6,7 @@ CROSS      := $$(which cross)
 UNAME_S    := $(shell uname -s)
 
 _ELPH_PKGS   := elph elph-agent elph-ai
-ELPH_VERSION  := $(shell grep '^version' elph/Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')
+ELPH_VERSION  := $(shell grep '^version' crates/coding-agent/Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')
 BUILD_HASH    := $(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
 APP_BINS      := $(ELPH_BIN)
 INSTALL_DIR   := $(HOME)/.local/bin
@@ -237,7 +237,7 @@ version: ## Compare app versions with latest GitHub releases (APP=, TAG=)
 	@APP="$(APP)" TAG="$(TAG)" ./scripts/version.sh
 
 # Independent version streams:
-#   bump-elph  — elph/Cargo.toml
+#   bump-elph  — crates/coding-agent/Cargo.toml
 #   bump-libs  — crates/elph-{core,agent,ai,tui,swarm} (+ workspace pins)
 #   bump       — bump-libs + bump-elph
 #
@@ -281,7 +281,7 @@ endef
 bump-elph: ## Bump elph app version (patch|minor|major required)
 	$(call _require_bump_level,$(_BUMP_LEVEL),bump-elph)
 	@echo "bump-elph ($(_BUMP_LEVEL))..."
-	$(call _bump_manifest,elph/Cargo.toml,$(_BUMP_LEVEL))
+	$(call _bump_manifest,crates/coding-agent/Cargo.toml,$(_BUMP_LEVEL))
 	@echo "Done."
 
 bump-libs: ## Bump all library crates independently (patch|minor|major required)

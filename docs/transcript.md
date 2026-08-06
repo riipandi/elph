@@ -325,22 +325,22 @@ in `platform/paths.rs`.
 
 ## File Map
 
-| File                                      | Role                                                                                                   |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `elph/src/tui/transcript/cache.rs`        | `TranscriptCache` (SQLite archive store)                                                               |
-| `elph/src/tui/transcript/mod.rs`          | Module exports                                                                                         |
-| `elph/src/tui/transcript/panel.rs`        | TranscriptPanel component + render cache                                                               |
-| `elph/src/tui/transcript/layout.rs`       | `IncrementalLayoutCache` + row layout                                                                  |
-| `elph/src/tui/transcript/types.rs`        | `TranscriptMessage`, `TranscriptStyle`, `ToolCardDetail`                                               |
-| `elph/src/tui/transcript/card/builder.rs` | Bubble building + windowing                                                                            |
-| `elph/src/tui/transcript/markdown/`       | Streaming markdown buffer + parse workers                                                              |
-| `elph/src/tui/tool_params.rs`             | Tool display labels + MCP server names                                                                 |
-| `elph/src/tui/agent_bridge.rs`            | Event applier + streaming content caps                                                                 |
-| `elph/src/tui/shell/`                     | Shell component (`mod.rs`), event loop (`tick.rs`), key handling (`keys.rs`), view builder (`view.rs`) |
-| `elph/src/platform/paths.rs`              | `transcript_db_path()`                                                                                 |
+| File                                                     | Role                                                                                                   |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `crates/coding-agent/src/tui/transcript/cache.rs`        | `TranscriptCache` (SQLite archive store)                                                               |
+| `crates/coding-agent/src/tui/transcript/mod.rs`          | Module exports                                                                                         |
+| `crates/coding-agent/src/tui/transcript/panel.rs`        | TranscriptPanel component + render cache                                                               |
+| `crates/coding-agent/src/tui/transcript/layout.rs`       | `IncrementalLayoutCache` + row layout                                                                  |
+| `crates/coding-agent/src/tui/transcript/types.rs`        | `TranscriptMessage`, `TranscriptStyle`, `ToolCardDetail`                                               |
+| `crates/coding-agent/src/tui/transcript/card/builder.rs` | Bubble building + windowing                                                                            |
+| `crates/coding-agent/src/tui/transcript/markdown/`       | Streaming markdown buffer + parse workers                                                              |
+| `crates/coding-agent/src/tui/tool_params.rs`             | Tool display labels + MCP server names                                                                 |
+| `crates/coding-agent/src/tui/agent_bridge.rs`            | Event applier + streaming content caps                                                                 |
+| `crates/coding-agent/src/tui/shell/`                     | Shell component (`mod.rs`), event loop (`tick.rs`), key handling (`keys.rs`), view builder (`view.rs`) |
+| `crates/coding-agent/src/platform/paths.rs`              | `transcript_db_path()`                                                                                 |
 
-[`TranscriptMessage`]: https://github.com/riipandi/elph/blob/main/elph/src/tui/transcript/types.rs
-[`TranscriptStyle`]: https://github.com/riipandi/elph/blob/main/elph/src/tui/transcript/types.rs
-[`IncrementalLayoutCache`]: https://github.com/riipandi/elph/blob/main/elph/src/tui/transcript/layout.rs
-[`parse_exposed_tool_name`]: https://github.com/riipandi/elph/blob/main/elph/src/tui/tool_params.rs
-[`Paths::transcript_db_path()`]: https://github.com/riipandi/elph/blob/main/elph/src/platform/paths.rs
+[`TranscriptMessage`]: https://github.com/riipandi/elph/blob/main/crates/coding-agent/src/tui/transcript/types.rs
+[`TranscriptStyle`]: https://github.com/riipandi/elph/blob/main/crates/coding-agent/src/tui/transcript/types.rs
+[`IncrementalLayoutCache`]: https://github.com/riipandi/elph/blob/main/crates/coding-agent/src/tui/transcript/layout.rs
+[`parse_exposed_tool_name`]: https://github.com/riipandi/elph/blob/main/crates/coding-agent/src/tui/tool_params.rs
+[`Paths::transcript_db_path()`]: https://github.com/riipandi/elph/blob/main/crates/coding-agent/src/platform/paths.rs

@@ -500,7 +500,7 @@ Working approach: unknown"#;
 
     #[test]
     fn presents_work_entry() {
-        let content = "[work] Fixed memory status formatting\nPaths: elph/src/memory/format.rs\nOutcome: success\nNote: auto-captured";
+        let content = "[work] Fixed memory status formatting\nPaths: crates/coding-agent/src/memory/format.rs\nOutcome: success\nNote: auto-captured";
         let card = present_memory(MemoryCategory::Work, content);
         assert!(card.headline.contains("Fixed memory") || card.headline.contains("format"));
         // success + auto-captured are noise — may or may not show files

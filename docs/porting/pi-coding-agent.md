@@ -4,7 +4,7 @@
 **Upstream:** `@earendil-works/pi-coding-agent` · `packages/coding-agent` · **v0.80.6** + Unreleased
 **Upstream commit:** `4c18610` (2026-07-11)
 **Local clone:** `/Users/ariss/Developer/github.com/earendil-works/pi`
-**Elph crate:** `elph/` (binary + library; product shell)
+**Elph crate:** `crates/coding-agent/` (binary + library; product shell)
 **Depends on:** `elph-agent`, `elph-ai`, `elph-tui` — see [pi-ai.md](./pi-ai.md), [pi-agent.md](./pi-agent.md)
 
 ---
@@ -24,7 +24,7 @@ Elph deliberately **diverges** in product design (memory, codegraph, ACP, WASM e
 
 ## At a glance
 
-- Module layout / product intent — **[Partial]** — `elph/src/agent/` is the declared pi-coding-agent equivalent; many CLI/TUI surfaces are stubs
+- Module layout / product intent — **[Partial]** — `crates/coding-agent/src/agent/` is the declared pi-coding-agent equivalent; many CLI/TUI surfaces are stubs
 - Session orchestration above harness — **[Partial]** — `CodingAgentSession`, wiring, session manager exist; UX completeness lags
 - Interactive TUI — **[Partial]** — shell/TUI wired; overlays and slash handlers largely stubbed
 - Print / non-interactive mode — **[Partial]** — `elph run` exists; flags incomplete (fork, files)
@@ -47,13 +47,13 @@ Elph deliberately **diverges** in product design (memory, codegraph, ACP, WASM e
 
 **Upstream baseline:** unchanged (`4c18610`, v0.80.6 + Unreleased).
 
-Full quality-gate pass across `elph/` + workspace:
+Full quality-gate pass across `crates/coding-agent/` + workspace:
 
 - **26 clippy violations fixed** — `manual_clamp`, `collapsible_if` ×2, `collapsible_str_replace`, `clone_on_copy` ×7, `if_same_then_else`, `unnecessary_lazy_evaluations`, 4× `too_many_arguments` suppressed with TODO refactor markers.
 - **2 test failures repaired** — `agent_creates_with_custom_initial_state` and `agent_updates_state_with_mutators` used `get_model("openai", "gpt-4o-mini")` which no longer resolves (direct `openai` provider removed from catalog). Changed to `get_models(None).next()`.
 - **Dead code removed** — 17 items across provider connect, credential store, plan confirmation, paths, and tool approval modules (see below).
 
-**Provider connect dialog** (`elph/src/tui/provider_connect_dialog.rs`):
+**Provider connect dialog** (`crates/coding-agent/src/tui/provider_connect_dialog.rs`):
 
 Removed dead wrapper functions that were part of the WIP wiring but never called:
 
@@ -61,17 +61,17 @@ Removed dead wrapper functions that were part of the WIP wiring but never called
 - `clamp_selected()`, `transition_to_api_key_step()`, `transition_to_select_provider_step()`
 - `ProviderConnectFocus::ApiKeyInput` enum variant
 
-**Credential store** (`elph/src/tui/provider_credential_store.rs`):
+**Credential store** (`crates/coding-agent/src/tui/provider_credential_store.rs`):
 
 Removed three dead credential helpers (`load_provider_credential`, `load_all_provider_credentials`, `remove_provider_credential`) that were only reachable through the dead wrapper chain. `save_provider_credential` retained — used from OAuth flow in `shell/mod.rs`.
 
-**Plan confirmation** (`elph/src/tui/tool_approval.rs`, `status_dialog.rs`, `shell/mod.rs`):
+**Plan confirmation** (`crates/coding-agent/src/tui/tool_approval.rs`, `status_dialog.rs`, `shell/mod.rs`):
 
 - `PendingPlanConfirmation.plan_id` — stored but never read. Removed from struct, `From` impl, and `shell/mod.rs` constructor.
 - `StatusDialogKind::PlanConfirmation.plan_id` — same; removed from variant and builder.
 - `MODE_CHANGE_DEFAULT_INDEX` — dead constant removed.
 
-**Paths** (`elph/src/platform/paths.rs`):
+**Paths** (`crates/coding-agent/src/platform/paths.rs`):
 
 - Removed `project_sessions_dir()` and `project_sessions_dir_for()` — never called.
 - Fixed misplaced doc comment on `global_extensions_dir()`.
@@ -79,7 +79,7 @@ Removed three dead credential helpers (`load_provider_credential`, `load_all_pro
 
 ### 2026-07-11T12:14:13Z @ `4c18610` (v0.80.6 + Unreleased)
 
-Initial product gap audit: tree compare `packages/coding-agent` vs `elph/`, design docs, CLI stubs, slash registry, modes. **Analysis only — no product code changes.**
+Initial product gap audit: tree compare `packages/coding-agent` vs `crates/coding-agent/`, design docs, CLI stubs, slash registry, modes. **Analysis only — no product code changes.**
 
 ---
 
@@ -307,9 +307,9 @@ head -80 packages/coding-agent/CHANGELOG.md
 # - packages/coding-agent/docs/**
 
 # Against:
-# - elph/src/agent/**
-# - elph/src/shell/**
-# - elph/src/cli/**
+# - crates/coding-agent/src/agent/**
+# - crates/coding-agent/src/shell/**
+# - crates/coding-agent/src/cli/**
 # - docs/slash-commands.md, docs/cli.md, docs/tui.md
 ```
 

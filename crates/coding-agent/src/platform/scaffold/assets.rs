@@ -19,10 +19,10 @@ use super::bundled::BundledManifest;
 /// Paths use `/` separators. Sources live in the workspace `assets/` tree and are
 /// embedded at compile time via `include_str!`.
 fn embedded_bundled_files() -> &'static [(&'static str, &'static str)] {
-    // Paths relative to the `elph` crate manifest: `elph/../assets/…`
+    // Paths relative to the `elph` crate manifest: `crates/coding-agent/../assets/…`
     macro_rules! asset {
         ($rel:literal) => {
-            ($rel, include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../assets/", $rel)))
+            ($rel, include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/", $rel)))
         };
     }
     &[

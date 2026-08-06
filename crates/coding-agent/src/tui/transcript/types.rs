@@ -67,8 +67,7 @@ impl ToolCardDetail {
 
     /// Approximate heap size of the diff text (old + new), in bytes.
     pub fn diff_text_size(&self) -> usize {
-        self.old_text.as_ref().map_or(0, |s| s.capacity())
-            + self.new_text.as_ref().map_or(0, |s| s.capacity())
+        self.old_text.as_ref().map_or(0, |s| s.capacity()) + self.new_text.as_ref().map_or(0, |s| s.capacity())
     }
 
     pub fn is_edit_file(&self) -> bool {
@@ -1101,7 +1100,7 @@ mod tests {
     fn tool_card_layout_collapses_finished_body() {
         let mut message = TranscriptMessage::tool_call(
             "edit_file",
-            r#"{"path":"/Users/ariss/Developer/elph/src/main.rs"}"#,
+            r#"{"path":"/Users/ariss/Developer/crates/coding-agent/src/main.rs"}"#,
             TranscriptStyle::ToolSuccess,
         );
         message.tool.as_mut().expect("tool detail").output = "ok".to_string();

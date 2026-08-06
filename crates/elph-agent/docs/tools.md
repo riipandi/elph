@@ -9,7 +9,7 @@ Register them with [`BuiltinToolsBuilder`](../src/builder.rs), group helpers, or
 | ---------------- | --------------------- | ---------------------------------------------------------------------------------------------- |
 | Read & Search    | `tools-search`        | `read_file`, `grep`, `find_path`, `list_dir`                                                   |
 | Edit             | `tools-edit`          | `edit_file`, `write_file`, `shell_exec`, `create_dir`, `copy_path`, `delete_path`, `move_path` |
-| Web              | `tools-web`           | `web_search`, `web_fetch`, `web_extract`                                                      |
+| Web              | `tools-web`           | `web_search`, `web_fetch`, `web_extract`                                                       |
 | Collaboration    | `tools-collaboration` | `spawn_agent`, `send_message`, `followup_task`, `wait_agent`, `list_agents`                    |
 | Meta             | —                     | `list_available_tools` (auto-included by `BuiltinToolsBuilder`)                                |
 | All of the above | `builtin-tools`       | meta feature                                                                                   |
@@ -57,7 +57,7 @@ Other Tools
 | `builtin-tools`       | no      | Meta — enables all groups below                                                                |
 | `tools-edit`          | no      | `edit_file`, `write_file`, `shell_exec`, `create_dir`, `copy_path`, `delete_path`, `move_path` |
 | `tools-search`        | no      | `read_file`, `grep`, `find_path`, `list_dir`                                                   |
-| `tools-web`           | no      | `web_search`, `web_fetch`, `web_extract`                                                      |
+| `tools-web`           | no      | `web_search`, `web_fetch`, `web_extract`                                                       |
 | `tools-collaboration` | no      | `spawn_agent`, `send_message`, … (harness injection)                                           |
 | `tools-read-file`     | no      | `read_file` only                                                                               |
 | `tools-shell-exec`    | no      | `shell_exec` only                                                                              |
@@ -77,7 +77,7 @@ Other Tools
 The `elph` binary enables `builtin-tools` (and `tracing`) by default:
 
 ```toml
-# elph/Cargo.toml
+# crates/coding-agent/Cargo.toml
 elph-agent = { workspace = true, features = ["tracing", "builtin-tools"] }
 ```
 
@@ -123,7 +123,7 @@ let fs_tools = BuiltinToolsBuilder::new(env).without_web().build();
 | `create_edit_tools`          | `tools-edit`          | `edit_file`, `write_file`, `shell_exec`, `create_dir`, `copy_path`, `delete_path`, `move_path` |
 | `create_search_tools`        | `tools-search`        | `read_file`, `grep`, `find_path`, `list_dir`                                                   |
 | `create_all_tools`           | edit-tools/search     | all filesystem tools                                                                           |
-| `create_web_tools`           | `tools-web`           | `web_search`, `web_fetch`, `web_extract`                                                      |
+| `create_web_tools`           | `tools-web`           | `web_search`, `web_fetch`, `web_extract`                                                       |
 | `create_all_tools_with_web`  | edit-tools/search/web | filesystem + web tools                                                                         |
 | `create_collaboration_tools` | `tools-collaboration` | harness-only collaboration tools                                                               |
 
@@ -336,12 +336,12 @@ Response bodies are capped at 256 KB. HTML is converted to Markdown; other conte
 
 Extract **structured** data from a public HTTP(S) page as JSON — links, images, cleaned text, and matched elements — rather than converting prose to Markdown. Extraction is powered by the `astral-tl` CSS-selector engine. Blocks private and loopback addresses (SSRF protection).
 
-| Parameter  | Type             | Required | Description                                                                                                                              |
-| ---------- | ---------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `url`      | string           | yes      | HTTP or HTTPS URL to extract from                                                                                                        |
-| `selector` | string           | no       | CSS selector to scope extraction to a subtree (e.g. `"article"`, `".product"`, `"#main"`). When set, links/images/text are read from within that subtree and `elements` contains the matched nodes. |
-| `extract`  | array of string  | no       | Which data to return. Defaults to `["links", "text", "elements"]`. Allowed values: `links`, `images`, `text`, `elements`.                |
-| `limit`    | number           | no       | Maximum number of links/elements/images to return. Default `100`, max `1000`.                                                            |
+| Parameter  | Type            | Required | Description                                                                                                                                                                                         |
+| ---------- | --------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `url`      | string          | yes      | HTTP or HTTPS URL to extract from                                                                                                                                                                   |
+| `selector` | string          | no       | CSS selector to scope extraction to a subtree (e.g. `"article"`, `".product"`, `"#main"`). When set, links/images/text are read from within that subtree and `elements` contains the matched nodes. |
+| `extract`  | array of string | no       | Which data to return. Defaults to `["links", "text", "elements"]`. Allowed values: `links`, `images`, `text`, `elements`.                                                                           |
+| `limit`    | number          | no       | Maximum number of links/elements/images to return. Default `100`, max `1000`.                                                                                                                       |
 
 Links and image `src` values are resolved to absolute URLs against the page. Text is the whitespace-collapsed concatenated text of the scoped subtree(s), capped at 32 KB. The whole result is pretty-printed JSON and truncated to the same 256 KB cap as `web_fetch`.
 
@@ -349,26 +349,24 @@ Links and image `src` values are resolved to absolute URLs against the page. Tex
 
 ```json
 {
-  "url": "https://example.com/page",
-  "content_type": "text/html",
-  "title": "Example Page",
-  "selector": "#main",
-  "links": [
-    { "href": "https://example.com/about", "text": "About" },
-    { "href": "https://example.com/contact", "text": "Contact" }
-  ],
-  "images": [
-    { "src": "https://example.com/logo.png", "alt": "Logo" }
-  ],
-  "text": "Heading Some bold text here",
-  "elements": [
-    {
-      "tag": "a",
-      "attributes": { "href": "/about", "class": "link" },
-      "text": "About",
-      "html": "<a href=\"/about\" class=\"link\">About</a>"
-    }
-  ]
+    "url": "https://example.com/page",
+    "content_type": "text/html",
+    "title": "Example Page",
+    "selector": "#main",
+    "links": [
+        { "href": "https://example.com/about", "text": "About" },
+        { "href": "https://example.com/contact", "text": "Contact" }
+    ],
+    "images": [{ "src": "https://example.com/logo.png", "alt": "Logo" }],
+    "text": "Heading Some bold text here",
+    "elements": [
+        {
+            "tag": "a",
+            "attributes": { "href": "/about", "class": "link" },
+            "text": "About",
+            "html": "<a href=\"/about\" class=\"link\">About</a>"
+        }
+    ]
 }
 ```
 
@@ -453,12 +451,12 @@ See the [README](../README.md#tools) for a minimal custom-tool example.
 
 ## Tests
 
-| Test file                              | Coverage                            |
-| -------------------------------------- | ----------------------------------- |
-| `crates/elph-agent/tests/tools_fff.rs` | `grep`, `find_path`                 |
+| Test file                              | Coverage                                                      |
+| -------------------------------------- | ------------------------------------------------------------- |
+| `crates/elph-agent/tests/tools_fff.rs` | `grep`, `find_path`                                           |
 | `crates/elph-agent/tests/web_tools.rs` | `web_search`/`web_fetch`/`web_extract` registration + ranking |
-| `crates/elph-agent/tests/plan_mode.rs` | Plan mode policy and harness events |
-| `crates/elph-agent/tests/subagent.rs`  | Subagent spawn and list             |
+| `crates/elph-agent/tests/plan_mode.rs` | Plan mode policy and harness events                           |
+| `crates/elph-agent/tests/subagent.rs`  | Subagent spawn and list                                       |
 
 ```sh
 cargo test -p elph-agent --features builtin-tools --test tools_fff

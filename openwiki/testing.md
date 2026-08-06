@@ -127,7 +127,7 @@ make coverage                  # With cargo-llvm-cov
 
 - `crates/elph-agent/tests/` — 30 integration test files
 - `crates/elph-ai/tests/` — provider adapter tests + live tests
-- `elph/tests/bootstrap.rs` — home bootstrapping tests
-- `elph/tests/cli.rs` — CLI subcommand tests
+- `crates/coding-agent/tests/bootstrap.rs` — home bootstrapping tests
+- `crates/coding-agent/tests/cli.rs` — CLI subcommand tests
 - `crates/elph-agent/src/tools/types.rs` — `AgentTool`, `AgentToolResult`
 - `crates/elph-ai/src/providers/faux/` — `FauxProviderHandle`, `FauxResponseStep`

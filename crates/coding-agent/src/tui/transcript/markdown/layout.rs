@@ -10,7 +10,11 @@ pub fn markdown_part_row_count(source: &str, wrap_width: u16) -> u16 {
     wrapped_text_row_count(source, wrap_width as usize).min(u16::MAX as usize) as u16
 }
 
-pub fn assistant_row_count(content: &str, markdown: Option<&std::sync::Arc<AssistantMarkdownBuffer>>, wrap_width: u16) -> u16 {
+pub fn assistant_row_count(
+    content: &str,
+    markdown: Option<&std::sync::Arc<AssistantMarkdownBuffer>>,
+    wrap_width: u16,
+) -> u16 {
     let Some(md) = markdown else {
         return wrapped_text_row_count(content, wrap_width as usize).min(u16::MAX as usize) as u16;
     };

@@ -2,7 +2,7 @@
 
 How far Elph crates lag (or lead) upstream **pi** projects:
 
-- TypeScript **[earendil-works/pi](https://github.com/earendil-works/pi)** → `elph-ai`, `elph-agent`, `elph/`
+- TypeScript **[earendil-works/pi](https://github.com/earendil-works/pi)** → `elph-ai`, `elph-agent`, `coding-agent`
 
 **Readability:** these pages prefer short prose, bullets, and timeline entries.
 Avoid packing status into wide tables.
@@ -11,7 +11,7 @@ Avoid packing status into wide tables.
 
 - **[pi-ai.md](./pi-ai.md)** — `@earendil-works/pi-ai` (`packages/ai`) → `crates/elph-ai`
 - **[pi-agent.md](./pi-agent.md)** — `@earendil-works/pi-agent-core` (`packages/agent`) → `crates/elph-agent`
-- **[pi-coding-agent.md](./pi-coding-agent.md)** — `@earendil-works/pi-coding-agent` (`packages/coding-agent`) → `elph/` (product CLI + TUI)
+- **[pi-coding-agent.md](./pi-coding-agent.md)** — `@earendil-works/pi-coding-agent` (`packages/coding-agent`) → `crates/coding-agent/` (product CLI + TUI)
 - **[feature-comparison.md](./feature-comparison.md)** — Detailed feature-by-feature table across all four crates
 
 ## Why these docs exist
@@ -30,9 +30,9 @@ Last documented **2026-07-29T19:50:00Z** (pi snapshot). Catalog SSOT note update
 - **Local clone (analysis):** `/Users/ariss/Developer/github.com/earendil-works/pi`
 - **Snapshot commit:** `cced6a21` (_fix(coding-agent): stop loading AGENTS.md twice in nested git worktrees_)
 - **Package version:** `0.82.1` (released 2026-07-25) + **Unreleased** on `main`
-- **Mapping:** `packages/ai` → `elph-ai`, `packages/agent` → `elph-agent`, `packages/coding-agent` → `elph/`
+- **Mapping:** `packages/ai` → `elph-ai`, `packages/agent` → `elph-agent`, `packages/coding-agent` → `crates/coding-agent/`
 - **Last library implementation pass:** 2026-07-29 — Sprint 7: remaining P2 gap port (Kimi OAuth, OpenRouter OAuth, Radius OAuth, pi-messages, JsonlSessionStorage, file mutation queue, image tool)
-- **Last product gap audit:** 2026-07-29 — dead code cleanup + clippy hardening across `elph/` TUI modules
+- **Last product gap audit:** 2026-07-29 — dead code cleanup + clippy hardening across `crates/coding-agent/` TUI modules
 - **Catalog SSOT (settled):** chat models from **models.dev** via `elph-ai` `generate-models` / skill `update-models` — **not** from pi `packages/ai` data. Port gap analysis skill: `pi-port-gap` (adopt intent, implement Elph shape).
 
 ## Status tags
@@ -79,7 +79,7 @@ Do not copy pi’s TypeScript layout or catalog scripts. Agent skill:
 
 - Chat catalogs: origin **models.dev** (`generate-models chat`); full `thinkingLevelMap` on every model; live pricing preferred when available
 - Gateways preserved (Hyper, Kilo, TokenRouter, OpenGateway, Sumopod, …); registration gate vs `builtin_providers()`
-- Skills: **`update-models`** for catalog regen; **`pi-port-gap`** doctrine = adopt pi *gaps only*, implement on Elph architecture (no pi JSON seed, no dual SSOT)
+- Skills: **`update-models`** for catalog regen; **`pi-port-gap`** doctrine = adopt pi _gaps only_, implement on Elph architecture (no pi JSON seed, no dual SSOT)
 - Obsolete for chat: `--catalog-dir` / pi npm generate / “re-add Hyper after wipe”
 
 ### 2026-07-29 — Sprint 5: pi-ai gap port (7 features)
@@ -126,7 +126,7 @@ Details in [feature-comparison.md](./feature-comparison.md).
 
 ### 2026-07-29 — Rust verify & harden + dead code cleanup
 
-**Scope:** `elph/` product crate + `elph-tui`, `elph-agent` tests.
+**Scope:** `crates/coding-agent/` product crate + `elph-tui`, `elph-agent` tests.
 
 - `make lint` brought to zero violations: 26 clippy errors fixed across 5 files.
 - `make test` repaired: 2 `elph-agent` tests broke due to model catalog restructure (direct `openai` provider removed; models now served through gateway providers). Updated to use `get_models(None).next()`.

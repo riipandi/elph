@@ -113,11 +113,11 @@ Start here, then explore:
 
 ## Backlog
 
-| Area                   | Source Anchor                                            | Reason Deferred                                                                  |
-| ---------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Memory (floppy)        | `crates/floppy/src/`                                     | Vector memory, Welford scoring, embedding details — large specialized domain     |
-| Extensions (WASM)      | `crates/elph-agent/src/plugins/`, `elph/src/extensions/` | Plugin system is evolving; `extensions/say-hello` is the only example            |
-| Terminal UI (elph-tui) | `crates/elph-tui/src/`                                   | Component library with 15+ widgets — separate doc needed                         |
-| Agent Modes            | `elph/src/types.rs`                                      | Build/Plan/Ask/Brave modes — documented in overview but needs mode-specific page |
-| Prompts & Templates    | `elph/templates/agent/`, `crates/elph-agent/src/prompt/` | MiniJinja template engine, system prompt builder — separate domain page needed   |
-| ACP Protocol           | `elph/src/cli/acp.rs`, `elph/src/platform/acp/`          | Agent Client Protocol server — needs its own integration page                    |
+| Area                   | Source Anchor                                                                 | Reason Deferred                                                                  |
+| ---------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Memory (floppy)        | `crates/floppy/src/`                                                          | Vector memory, Welford scoring, embedding details — large specialized domain     |
+| Extensions (WASM)      | `crates/elph-agent/src/plugins/`, `crates/coding-agent/src/extensions/`       | Plugin system is evolving; `extensions/say-hello` is the only example            |
+| Terminal UI (elph-tui) | `crates/elph-tui/src/`                                                        | Component library with 15+ widgets — separate doc needed                         |
+| Agent Modes            | `crates/coding-agent/src/types.rs`                                            | Build/Plan/Ask/Brave modes — documented in overview but needs mode-specific page |
+| Prompts & Templates    | `crates/coding-agent/templates/agent/`, `crates/elph-agent/src/prompt/`       | MiniJinja template engine, system prompt builder — separate domain page needed   |
+| ACP Protocol           | `crates/coding-agent/src/cli/acp.rs`, `crates/coding-agent/src/platform/acp/` | Agent Client Protocol server — needs its own integration page                    |

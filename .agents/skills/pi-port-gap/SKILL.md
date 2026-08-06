@@ -47,7 +47,7 @@ Answer two questions in every run:
 Not an empty checklist. Deliver **changelog-style drift** plus **design/implementation differences** that support prioritization.
 
 **Default scope:** `@earendil-works/pi-ai` → `crates/elph-ai`, `@earendil-works/pi-agent-core` → `crates/elph-agent`.
-**Expand only if asked:** `pi-coding-agent` → `elph/`.
+**Expand only if asked:** `pi-coding-agent` → `crates/coding-agent`.
 
 ### Porting doctrine (mandatory)
 
@@ -58,7 +58,7 @@ Elph is a **port of intent**, not a line-by-line TypeScript rewrite. When
    type, test intent, or error-handling rule from pi. Do **not** copy pi’s file
    layout, package graph, TypeScript catalog scripts, or generator assumptions.
 2. **Implement on Elph architecture** — Wire into existing elph-ai / elph-agent
-   modules, factories, auth, and product surfaces (`elph/` only when
+   modules, factories, auth, and product surfaces (`crates/coding-agent/` only when
    product-facing). Prefer current Elph patterns (Rust modules, `builtin_providers`,
    harness/runtime split, MCP under `tools/mcp/`, etc.) over reintroducing
    pi-only paths.
@@ -86,7 +86,7 @@ Use this after a gap audit, not during a read-only `/pi-port-gap` run:
 | 3. Shape           | Translate types/flags into Rust idioms already used in the crate (enums, `Option`, error types). Do not invent parallel TS-shaped APIs.                  |
 | 4. Catalog data    | If the gap is “new model / pricing / context window” → **`/update-models`** or `generate-models chat`. Never seed from `packages/ai/src/providers/data`. |
 | 5. Runtime gap     | Adapter/auth/stream/tool/loop changes go in Elph source; add/adjust unit tests next to the code.                                                         |
-| 6. Product surface | Only touch `elph/` when the gap is user-visible (picker, slash, TUI key). Keep library behavior in crates.                                               |
+| 6. Product surface | Only touch `crates/coding-agent/` when the gap is user-visible (picker, slash, TUI key). Keep library behavior in crates.                                |
 | 7. Verify          | `cargo test -p elph-ai` / `elph-agent` for touched crates; catalog registration test if providers changed.                                               |
 | 8. Docs            | Significant behavior → update `docs/` (and timeline in `docs/porting/*` if this was a port pass). English for persisted docs.                            |
 

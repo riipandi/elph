@@ -39,12 +39,12 @@ When a design is implemented, technical detail belongs in openwiki — not dupli
 
 Living **gap logs** for the TypeScript → Rust port (timestamps, pi vs elph matrices). Not product design specs — operational tracking for mainstream sync.
 
-| Upstream                          | Elph crate   | Doc                                                        |
-| --------------------------------- | ------------ | ---------------------------------------------------------- |
-| `@earendil-works/pi-ai`           | `elph-ai`    | [porting/pi-ai.md](./porting/pi-ai.md)                     |
-| `@earendil-works/pi-agent-core`   | `elph-agent` | [porting/pi-agent.md](./porting/pi-agent.md)               |
-| `@earendil-works/pi-coding-agent` | `elph/`      | [porting/pi-coding-agent.md](./porting/pi-coding-agent.md) |
-| Index + audit workflow            | —            | [porting/README.md](./porting/README.md)                   |
+| Upstream                          | Elph crate             | Doc                                                        |
+| --------------------------------- | ---------------------- | ---------------------------------------------------------- |
+| `@earendil-works/pi-ai`           | `elph-ai`              | [porting/pi-ai.md](./porting/pi-ai.md)                     |
+| `@earendil-works/pi-agent-core`   | `elph-agent`           | [porting/pi-agent.md](./porting/pi-agent.md)               |
+| `@earendil-works/pi-coding-agent` | `crates/coding-agent/` | [porting/pi-coding-agent.md](./porting/pi-coding-agent.md) |
+| Index + audit workflow            | —                      | [porting/README.md](./porting/README.md)                   |
 
 ## Design principles
 

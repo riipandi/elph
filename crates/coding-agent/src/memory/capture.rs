@@ -98,7 +98,7 @@ pub fn area_key_from_path(path: &str) -> String {
     }
 }
 
-/// Top-level prefix for read aggregation (`elph/src/foo.rs` → `elph`).
+/// Top-level prefix for read aggregation (`crates/coding-agent/src/foo.rs` → `elph`).
 pub fn top_level_prefix(path: &str) -> String {
     let normalized = path.trim().replace('\\', "/");
     let stripped = normalized.trim_start_matches("./");
@@ -314,7 +314,7 @@ mod tests {
         assert!(is_sensitive_path(".env"));
         assert!(is_sensitive_path("app/.env.local"));
         assert!(is_sensitive_path("secrets/token.json"));
-        assert!(!is_sensitive_path("elph/src/memory/hooks.rs"));
+        assert!(!is_sensitive_path("crates/coding-agent/src/memory/hooks.rs"));
     }
 
     #[test]
@@ -333,13 +333,13 @@ mod tests {
     #[test]
     fn exploration_threshold_triggers_discovery() {
         let mut scratch = ExplorationScratch::default();
-        record_exploration(&mut scratch, "list_dir", &json!({"path": "elph/src/memory"}));
-        record_exploration(&mut scratch, "list_dir", &json!({"path": "elph/src/memory"}));
+        record_exploration(&mut scratch, "list_dir", &json!({"path": "crates/coding-agent/src/memory"}));
+        record_exploration(&mut scratch, "list_dir", &json!({"path": "crates/coding-agent/src/memory"}));
         let entries =
             build_discovery_entries(&scratch.list_dir_roots, &scratch.read_prefixes, &scratch.basename_notes, 42);
         assert_eq!(entries.len(), 1);
         assert!(entries[0].1.contains("[discovery]"));
-        assert!(entries[0].1.contains("elph/src/memory"));
+        assert!(entries[0].1.contains("crates/coding-agent/src/memory"));
         assert!(entries[0].1.contains("list_dir×2"));
         assert!(entries[0].1.contains("unix=42"));
         assert!(!entries[0].1.contains("fn main"));

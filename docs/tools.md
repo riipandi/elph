@@ -15,7 +15,7 @@ Built-in tools live in `elph-agent` and are **optional Cargo features**. The `el
 | Meta             | —                     | `list_available_tools` (auto-included)                                                         |
 | All of the above | `builtin-tools`       | meta feature                                                                                   |
 
-Registration in host apps uses [`BuiltinToolsBuilder`](../crates/elph-agent/src/builder.rs). Elph wires tools in `elph/src/agent/runtime.rs`:
+Registration in host apps uses [`BuiltinToolsBuilder`](../crates/elph-agent/src/builder.rs). Elph wires tools in `crates/coding-agent/src/agent/runtime.rs`:
 
 ```rust
 let mut tools = BuiltinToolsBuilder::all(env.clone()).build();
@@ -32,7 +32,7 @@ The `elph` binary adds two tools on top of the `elph-agent` catalog:
 | `diagnostics`       | Read & Search | Gets errors and warnings for a file or the entire project (runs `cargo check`) |
 | `ask_user_question` | Collaboration | Asks the user a question (text, select, or confirm mode)                       |
 
-These tools are defined in `elph/src/agent/` and are not available in the `elph-agent` crate.
+These tools are defined in `crates/coding-agent/src/agent/` and are not available in the `elph-agent` crate.
 
 ## Permission classes
 
@@ -66,10 +66,10 @@ These tools are defined in `elph/src/agent/` and are not available in the `elph-
 
 ## Web Tools
 
-| Tool         | Default approval | Description                                                |
-| ------------ | ---------------- | ---------------------------------------------------------- |
+| Tool         | Default approval | Description                                           |
+| ------------ | ---------------- | ----------------------------------------------------- |
 | `web_fetch`  | Auto-allow       | HTTP fetch; HTML → Markdown via htmd; SSRF protection |
-| `web_search` | Auto-allow       | Multi-engine search with ranking and fallback              |
+| `web_search` | Auto-allow       | Multi-engine search with ranking and fallback         |
 
 ## Collaboration Tools
 

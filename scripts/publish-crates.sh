@@ -23,7 +23,7 @@ PACKAGES=(
 pkg_manifest() {
     local pkg=$1
     case "$pkg" in
-    elph) echo "elph/Cargo.toml" ;;
+    elph) echo "crates/coding-agent/Cargo.toml" ;;
     *) echo "crates/${pkg}/Cargo.toml" ;;
     esac
 }

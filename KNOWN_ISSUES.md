@@ -55,7 +55,6 @@ All changes are **additive** — no existing APIs are modified:
 - The terminal must support OSC 8 (iTerm2, Kitty, WezTerm, Alacritty, Windows Terminal,
   etc.) and the user needs to **Cmd+Click** (macOS) or **Ctrl+Click** (Linux/Windows).
 
-
 ## GPU Support: Available via compile-time features
 
 GPU acceleration for embeddings is available via cargo features. candle-kernels 0.11.0 is available on crates.io.
@@ -78,7 +77,8 @@ cargo build --features metal
 cargo build --features cuda
 ```
 
-Or enable in `elph/Cargo.toml` dependency on floppy:
+Or enable in `crates/coding-agent/Cargo.toml` dependency on floppy:
+
 ```toml
 floppy = { path = "../crates/floppy", version = "0.0.1", features = ["full", "metal"] }
 # or
@@ -88,17 +88,19 @@ floppy = { path = "../crates/floppy", version = "0.0.1", features = ["full", "cu
 ### Settings Configuration
 
 Configure GPU acceleration mode in `settings.json`:
+
 ```json
 {
-  "models": {
-    "embed": {
-      "gpuAcceleration": "auto"
+    "models": {
+        "embed": {
+            "gpuAcceleration": "auto"
+        }
     }
-  }
 }
 ```
 
 Options:
+
 - `"auto"` (default): Auto-detect and use GPU if available
 - `"on"`: Always use GPU (fails if GPU unavailable or feature not enabled)
 - `"off"`: Never use GPU (CPU-only)

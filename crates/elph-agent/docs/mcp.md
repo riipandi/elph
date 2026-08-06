@@ -100,7 +100,7 @@ tools.extend(registry.create_agent_tools().await);
 // pass tools into AgentHarness / AgentLoop
 ```
 
-Elph app wiring: `elph/src/agent/runtime.rs` loads `mcp.json` and extends the tool list.
+Elph app wiring: `crates/coding-agent/src/agent/runtime.rs` loads `mcp.json` and extends the tool list.
 
 ## Sealed auth store (zero-trust)
 

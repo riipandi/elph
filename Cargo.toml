@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/elph-agent", "crates/elph-ai", "crates/floppy", "crates/elph-db", "elph"]
+members = ["crates/coding-agent", "crates/elph-agent", "crates/elph-ai", "crates/elph-db", "crates/floppy"]
 exclude = [
   "crates/control-plane",
   "crates/elph-cron",

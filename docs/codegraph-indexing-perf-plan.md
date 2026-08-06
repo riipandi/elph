@@ -4,7 +4,7 @@
 **Scope:** `crates/floppy/src/core/embed.rs`, `crates/floppy/src/codegraph/index.rs`,
 `crates/floppy/src/codegraph/types.rs`, `crates/floppy/src/memory/store/embed.rs`,
 `crates/floppy/src/memory/store/mod.rs` (or wherever `EmbedFn` is constructed/consumed),
-`elph/src/codegraph/*` (call sites only, if any use `EmbedFn` directly).
+`crates/coding-agent/src/codegraph/*` (call sites only, if any use `EmbedFn` directly).
 
 **Constraints:**
 
@@ -184,7 +184,7 @@ defeats the purpose of this change.
 rg -n "EmbedFn|\.embed\)\(|embed_fn\(" --type rust
 ```
 
-Also check `elph/src/codegraph/*.rs` (the CLI/onboarding layer, not just `crates/floppy`) for any
+Also check `crates/coding-agent/src/codegraph/*.rs` (the CLI/onboarding layer, not just `crates/floppy`) for any
 place that constructs or wraps an `EmbedFn` directly (e.g. a test/mock embedder, or a wrapper
 that adds logging/timing around calls) — those need the same signature update.
 
@@ -219,7 +219,7 @@ let device = None; // hardcoded, comment says "ignored (always CPU)"
     - `Some("cuda")` / `Some("cuda:N")` → `Device::new_cuda(N)` (only compiles under the `cuda` feature)
 2. In `crates/floppy/src/codegraph/index.rs` / wherever `Indexer.gpu_acceleration` is read to
    build the estimate string, also pass that same value through to `EmbedOptions::device(...)`
-   when the embedder is constructed (check the caller in `elph/src/codegraph/cmd.rs` or
+   when the embedder is constructed (check the caller in `crates/coding-agent/src/codegraph/cmd.rs` or
    `onboard.rs` — this is likely where `create_embedder`/`create_embedder_with_timeout` is
    actually invoked with user-facing GPU flags).
 3. Verify feature-gating: the `metal`/`cuda` code paths must only compile when the corresponding
@@ -312,7 +312,7 @@ Do not consider this done until measured, not assumed.
 ## Phase 5 — User-configurable settings (`settings.json`)
 
 The repo already has a working settings convention: `Settings` struct in
-`elph/src/platform/settings.rs`, serialized `camelCase` to `CONFIG_DIR/settings.json` (home,
+`crates/coding-agent/src/platform/settings.rs`, serialized `camelCase` to `CONFIG_DIR/settings.json` (home,
 default write target) merged with `<project>/.elph/settings.json` (project override). It already
 has `CodegraphSettings` (`enabled`, `maxChunkLines`, `maxFileBytes`, `maxDbConnections`,
 `toolTimeoutMs`) and `EmbedSettings` (`model`, `quantized`, `gpuAcceleration`) — **extend these
@@ -341,7 +341,7 @@ existing structs, do not create a new top-level settings section.**
 
 ### 5.3 Implementation steps
 
-1. Add the three new fields to `CodegraphSettings` in `elph/src/platform/settings.rs` following
+1. Add the three new fields to `CodegraphSettings` in `crates/coding-agent/src/platform/settings.rs` following
    the existing pattern exactly (serde `#[serde(default = "fn_name")]` + a `default_codegraph_*()`
    free function per field, same as `default_codegraph_max_chunk_lines()` etc.).
 2. Add matching doc comments above each field in the same style as the existing ones (see
@@ -352,7 +352,7 @@ existing structs, do not create a new top-level settings section.**
    `db_commit_batch_files: usize`, `embed_concurrency: usize` fields to `CodegraphConfig`,
    defaulted in `CodegraphConfig::new(...)` to match the same defaults (`64`, `200`, `1`), and
    have the CLI/settings-loading call site (wherever `CodegraphConfig::new` is currently invoked,
-   likely in `elph/src/codegraph/cmd.rs`) populate them from the loaded `Settings`.
+   likely in `crates/coding-agent/src/codegraph/cmd.rs`) populate them from the loaded `Settings`.
 4. Replace the hardcoded `EMBED_BATCH_SIZE` and `DB_TXN_BATCH_FILES` constants from Phase 1.2 and
    Phase 3.2 with reads from `self.embed_batch_size` / `self.db_commit_batch_files` on `Indexer`
    (add these as fields on `Indexer<'a>` alongside `max_chunk_lines`, `max_file_bytes`, mirroring
@@ -462,7 +462,7 @@ release compile.
   `scan()` now commits `db_commit_batch_files` (default 200) per transaction.
 - **Phase 5 (settings):** `embedBatchSize` / `dbCommitBatchFiles` / `embedConcurrency` added to
   `CodegraphSettings`, `CodegraphConfig`, and `Indexer`; 0-clamped with a `log::warn` in
-  `elph/src/codegraph/store.rs`. Documented in `docs/configuration.md`.
+  `crates/coding-agent/src/codegraph/store.rs`. Documented in `docs/configuration.md`.
 - **Phase 4 (verification):** timing instrumentation + correctness tests + measured run (above).
 
 **Deviations (documented, intentional):**

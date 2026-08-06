@@ -86,7 +86,7 @@ line instead of an empty section: `No undocumented drift since <commit>.`
 Streamable HTTP / SSE, OAuth + AES-256 `auth.json` (`enc:`), project merge
 `~/.elph` + `.elph/mcp.json`, tool-output truncation.
 
-**Implications:** product wiring in `elph/` CLI/runtime; unrelated to model
+**Implications:** product wiring in `crates/coding-agent/` CLI/runtime; unrelated to model
 catalog regen; pi-agent drift rarely touches this area.
 
 ### Hyper / gateway providers (`crates/elph-ai`)

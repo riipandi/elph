@@ -243,7 +243,7 @@ mod tests {
                 MemoryCategory::Discovery,
                 1.0,
                 0.7,
-                "[discovery] Area: elph/src/memory/\nObserved tools: list_dir×2\nNotes: hooks.rs",
+                "[discovery] Area: crates/coding-agent/src/memory/\nObserved tools: list_dir×2\nNotes: hooks.rs",
             ),
         ];
         let packed = pack_ranked_context(&items, 3000);

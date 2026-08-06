@@ -1,6 +1,6 @@
 //! TUI demo - basic chat layout
 //!
-//! Mirrors `elph/src/tui.rs` shell layout.
+//! Mirrors `crates/coding-agent/src/tui.rs` shell layout.
 //! Color reference: https://www.ditig.com/256-colors-cheat-sheet
 //!
 //! ```sh

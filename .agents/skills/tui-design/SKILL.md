@@ -17,7 +17,7 @@ Help implement and refine:
 1. **Interactive TUIs** with **iocraft** — mental model, layout, hooks, a11y.
 2. **CLI / slash command output** — structured, scannable text with optional **ANSI color** (`anstyle`), good defaults, and safe behavior when color is off or output is not a TTY.
 
-Read existing TUI and CLI code in the repo first; match local conventions (e.g. `elph/src/cli/*`, `elph/src/memory/format.rs`, provider/interactive styles).
+Read existing TUI and CLI code in the repo first; match local conventions (e.g. `crates/coding-agent/src/cli/*`, `crates/coding-agent/src/memory/format.rs`, provider/interactive styles).
 
 ## Mental model
 
@@ -272,7 +272,7 @@ Do not invent product-specific copy, palettes, or zone layouts unless the user o
 
 ## CLI & slash command UX (structured + colored output)
 
-When implementing **`elph <cmd>` subcommands** or **slash commands** that print reports (status, lists, help, search), treat the terminal as a **readable document**, not a dump of raw structs. Prefer patterns already used in this repo (`elph/src/cli/interactive.rs`, `cli/provider.rs`, `memory/format.rs`).
+When implementing **`elph <cmd>` subcommands** or **slash commands** that print reports (status, lists, help, search), treat the terminal as a **readable document**, not a dump of raw structs. Prefer patterns already used in this repo (`crates/coding-agent/src/cli/interactive.rs`, `cli/provider.rs`, `memory/format.rs`).
 
 ### Goals
 
@@ -377,7 +377,7 @@ Tip: memory recent · memory search <q>
 
 1.  Tool `edit_file` failed
    Correction · weight 1.5 · 4m ago
-   · path  elph/src/memory/format.rs
+   · path  crates/coding-agent/src/memory/format.rs
 
 2.  Merged 2 related memories
    Consolidated · 4m ago

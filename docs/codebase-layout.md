@@ -123,10 +123,10 @@ crates/elph-agent/src/
 | ------------------- | --------------------------- | ------------------------------------------------------------------------------------- |
 | Unit                | `#[cfg(test)]` in same file | `paths.rs` path helpers, `settings` merge                                             |
 | Integration         | `<crate>/tests/*.rs`        | `elph-agent` harness, `elph-tui` keys, `elph` CLI                                     |
-| App integration     | `elph/tests/*.rs`           | CLI `--help`, bootstrap dirs, SIGINT channel                                          |
+| App integration     | `crates/coding-agent/tests/*.rs`           | CLI `--help`, bootstrap dirs, SIGINT channel                                          |
 | Shared test helpers | `<crate>/tests/common/`     | `elph-agent/tests/common/`, `elph-ai/tests/common/` (`mod common;` in each test file) |
 
-Each crate's integration tests exercise that crate's public API. `elph/tests/` covers only the `elph` binary and library glue (`cli.rs`, `bootstrap.rs`, `sigint.rs`).
+Each crate's integration tests exercise that crate's public API. `crates/coding-agent/tests/` covers only the `elph` binary and library glue (`cli.rs`, `bootstrap.rs`, `sigint.rs`).
 
 ## Naming conventions
 
