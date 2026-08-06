@@ -918,17 +918,22 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     if archive_count > 0 {
                         msgs.drain(..archive_count);
                     }
-                    // Drop parsed markdown documents from retained messages beyond the
-                    // cache window. Keeps AssistantMarkdownBuffer metadata (stable_end,
-                    // stream_complete, row counts) so layout stays correct; the worker
-                    // re-parses the cached document on demand. This sheds the biggest
-                    // memory consumer (parsed MarkdownDocument with styled spans + tables).
+                    // Drop parsed markdown documents and tool diff text from retained
+                    // messages beyond the cache window. This sheds the two biggest memory
+                    // consumers for old messages:
+                    //   - Parsed MarkdownDocument (styled spans + tables): 1-5 MB per message
+                    //   - Tool diff text (old_text/new_text): ~500 KB per edit_file tool
+                    // Keeps AssistantMarkdownBuffer metadata (stable_end, stream_complete,
+                    // row counts) so layout stays correct.
                     let markdown_keep = super::MARKED_MESSAGES_WITH_MARKDOWN_CACHE;
                     let n = msgs.len();
                     if n > markdown_keep {
                         for msg in msgs[..n - markdown_keep].iter_mut() {
                             if let Some(ref mut md) = msg.markdown {
-                                md.drop_cached_documents();
+                                std::sync::Arc::make_mut(md).drop_cached_documents();
+                            }
+                            if let Some(ref mut tool) = msg.tool {
+                                tool.strip_diff_text();
                             }
                         }
                     }

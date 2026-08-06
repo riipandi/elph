@@ -631,7 +631,7 @@ fn reconstruct_transcript_from_llm_entries(
                                 let document = parse_markdown_on_worker(&msg.content);
                                 md.apply_document(hash, document);
                             }
-                            msg.markdown = Some(md);
+                            msg.markdown = Some(std::sync::Arc::new(md));
                             msg.detail_expanded = true;
                             messages.push(msg);
                         }

@@ -35,10 +35,10 @@ pub fn partition_assistant_markdown(messages: &mut [TranscriptMessage], screen_w
         }
         let wrap_width = message.content_inner_width(screen_width);
         if message.markdown.is_none() {
-            message.markdown = Some(AssistantMarkdownBuffer::new());
+            message.markdown = Some(std::sync::Arc::new(AssistantMarkdownBuffer::new()));
         }
         if let Some(buffer) = message.markdown.as_mut()
-            && buffer.refresh_stable(&message.content, wrap_width)
+            && std::sync::Arc::make_mut(buffer).refresh_stable(&message.content, wrap_width)
         {
             changed = true;
         }
@@ -105,7 +105,7 @@ pub fn apply_markdown_parse_result(
     let Some(buffer) = message.markdown.as_mut() else {
         return false;
     };
-    buffer.apply_document(job.source_hash, document)
+    std::sync::Arc::make_mut(buffer).apply_document(job.source_hash, document)
 }
 
 /// Parse on a worker thread (safe to call inside `spawn_blocking`).

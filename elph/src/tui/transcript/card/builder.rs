@@ -353,8 +353,8 @@ mod tests {
             "## Result\n\nFirst paragraph that wraps across the width nicely.\n\n| Col | Val |\n| --- | --- |\n| a | 1 |\n| b | 2 |\n\nLast paragraph.\n",
         );
         if let Some(md) = assistant.markdown.as_mut() {
-            md.mark_stream_complete();
-            md.refresh_stable(&assistant.content, 80);
+            std::sync::Arc::make_mut(md).mark_stream_complete();
+            std::sync::Arc::make_mut(md).refresh_stable(&assistant.content, 80);
         }
         messages.push(assistant);
 
@@ -407,8 +407,8 @@ mod tests {
             "## Result\n\nA completed paragraph.\n\n```mermaid\ngraph TD\n    A[Start] --> B[End]\n```\n\nDone.\n",
         );
         if let Some(md) = assistant.markdown.as_mut() {
-            md.mark_stream_complete();
-            md.refresh_stable(&assistant.content, 80);
+            std::sync::Arc::make_mut(md).mark_stream_complete();
+            std::sync::Arc::make_mut(md).refresh_stable(&assistant.content, 80);
         }
         messages.push(assistant);
 

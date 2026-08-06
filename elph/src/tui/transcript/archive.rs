@@ -116,7 +116,7 @@ impl ArchivedTranscriptMessage {
                 let document = parse_markdown_on_worker(&message.content);
                 md.apply_document(hash, document);
             }
-            message.markdown = Some(md);
+            message.markdown = Some(std::sync::Arc::new(md));
         }
 
         message

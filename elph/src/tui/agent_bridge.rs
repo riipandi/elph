@@ -754,7 +754,7 @@ impl TranscriptEventApplier {
         }
         self.begin_assistant(messages);
         let mut message = TranscriptMessage::text(delta, TranscriptStyle::Assistant);
-        message.markdown = Some(AssistantMarkdownBuffer::new());
+        message.markdown = Some(std::sync::Arc::new(AssistantMarkdownBuffer::new()));
         messages.push(message);
         true
     }
@@ -879,10 +879,10 @@ impl TranscriptEventApplier {
         }
         trim_flush_trailing_ws(last);
         if last.markdown.is_none() {
-            last.markdown = Some(AssistantMarkdownBuffer::new());
+            last.markdown = Some(std::sync::Arc::new(AssistantMarkdownBuffer::new()));
         }
         if let Some(markdown) = last.markdown.as_mut() {
-            markdown.mark_stream_complete();
+            std::sync::Arc::make_mut(markdown).mark_stream_complete();
         }
         true
     }

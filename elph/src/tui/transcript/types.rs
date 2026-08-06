@@ -54,6 +54,23 @@ impl ToolCardDetail {
         self.name.rsplit("__").next().unwrap_or(self.name.as_str())
     }
 
+    /// Strip diff text (old_text/new_text) to free memory for old retained messages.
+    ///
+    /// The diff text can be hundreds of KB per edit_file tool (full file content before/after).
+    /// For messages beyond the visible/cache window, the embedded DiffView is never rendered,
+    /// so the diff text is dead weight. Stripping it sheds ~500 KB per edit_file tool.
+    /// The archived snapshot also strips this text (see `ArchivedTranscriptMessage::from`).
+    pub fn strip_diff_text(&mut self) {
+        self.old_text = None;
+        self.new_text = None;
+    }
+
+    /// Approximate heap size of the diff text (old + new), in bytes.
+    pub fn diff_text_size(&self) -> usize {
+        self.old_text.as_ref().map_or(0, |s| s.capacity())
+            + self.new_text.as_ref().map_or(0, |s| s.capacity())
+    }
+
     pub fn is_edit_file(&self) -> bool {
         self.base_name() == "edit_file"
     }
@@ -137,7 +154,13 @@ pub struct TranscriptMessage {
     pub content: String,
     pub style: TranscriptStyle,
     pub tool: Option<ToolCardDetail>,
-    pub markdown: Option<AssistantMarkdownBuffer>,
+    /// Markdown buffer wrapped in Arc so that cloning TranscriptMessage is O(1)
+    /// regardless of how large the parsed document is. Without Arc, every message
+    /// sync (during streaming, ~100 ms) deep-clones the entire MarkdownDocument
+    /// (lines, styled spans, tables), causing hundreds of MB/s of allocations
+    /// and visible TUI lag. With Arc, clone is a single atomic increment.
+    /// Mutations use Arc::make_mut() which clones only when shared.
+    pub markdown: Option<std::sync::Arc<AssistantMarkdownBuffer>>,
     /// Wall time spent in this process segment (thinking, tool, response, subagent status, …).
     pub duration_secs: Option<f64>,
     /// When the user submitted this prompt from the editor (`None` for seeded or pre-populated rows).
@@ -237,7 +260,7 @@ impl TranscriptMessage {
 
     pub fn assistant_markdown(content: impl Into<String>) -> Self {
         let mut message = Self::text(content, TranscriptStyle::Assistant);
-        message.markdown = Some(AssistantMarkdownBuffer::new());
+        message.markdown = Some(std::sync::Arc::new(AssistantMarkdownBuffer::new()));
         message
     }
 
@@ -248,7 +271,7 @@ impl TranscriptMessage {
         // GFM tables and other multi-line blocks freeze into the stable markdown cache
         // instead of remaining in the streaming tail (plain wrap / no table grid).
         if let Some(markdown) = message.markdown.as_mut() {
-            markdown.mark_stream_complete();
+            std::sync::Arc::make_mut(markdown).mark_stream_complete();
         }
         message
     }

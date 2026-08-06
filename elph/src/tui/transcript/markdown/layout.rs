@@ -10,7 +10,7 @@ pub fn markdown_part_row_count(source: &str, wrap_width: u16) -> u16 {
     wrapped_text_row_count(source, wrap_width as usize).min(u16::MAX as usize) as u16
 }
 
-pub fn assistant_row_count(content: &str, markdown: Option<&AssistantMarkdownBuffer>, wrap_width: u16) -> u16 {
+pub fn assistant_row_count(content: &str, markdown: Option<&std::sync::Arc<AssistantMarkdownBuffer>>, wrap_width: u16) -> u16 {
     let Some(md) = markdown else {
         return wrapped_text_row_count(content, wrap_width as usize).min(u16::MAX as usize) as u16;
     };
@@ -84,7 +84,7 @@ mod tests {
         // inter-segment gap so the scroll viewport does not clip the first line of the tail.
         let content = "Para1.\n\nPara2.\n\nPara3.";
         for width in [36u16, 40, 60, 80, 120] {
-            let buf = make_buffer(content, width, true);
+            let buf = std::sync::Arc::new(make_buffer(content, width, true));
             let measured = assistant_row_count(content, Some(&buf), width);
             let painted = painted_rows(&buf, content, width);
             assert_eq!(
@@ -98,7 +98,7 @@ mod tests {
     fn measure_matches_paint_with_code_block_in_tail() {
         let content = "Intro.\n\n```rust\nfn main() {\n    let x = 1;\n}\n```\n\nAfter.";
         for width in [40u16, 60, 80] {
-            let buf = make_buffer(content, width, true);
+            let buf = std::sync::Arc::new(make_buffer(content, width, true));
             let measured = assistant_row_count(content, Some(&buf), width);
             let painted = painted_rows(&buf, content, width);
             assert_eq!(
@@ -114,7 +114,7 @@ mod tests {
         // measurement path must mirror that fallback exactly.
         let content = "Here is the plan.\n\n- First, understand the cause.\n- Second, add a guard.\n\nDone.";
         for width in [44u16, 60, 80] {
-            let buf = make_buffer(content, width, false);
+            let buf = std::sync::Arc::new(make_buffer(content, width, false));
             let measured = assistant_row_count(content, Some(&buf), width);
             let painted = painted_rows(&buf, content, width);
             assert_eq!(
@@ -140,6 +140,7 @@ mod tests {
             wrap_width: 80,
             stream_complete: true,
         };
+        let buf = std::sync::Arc::new(buf);
         let measured = assistant_row_count(content, Some(&buf), 80);
         let painted = painted_rows(&buf, content, 80);
         assert_eq!(measured, painted as u16, "measured {measured} != painted {painted}");
@@ -200,7 +201,7 @@ mod tests {
         // Simulate finalize_turn.
         msg.content = content_trimmed.clone();
         if let Some(md) = msg.markdown.as_mut() {
-            md.mark_stream_complete();
+            std::sync::Arc::make_mut(md).mark_stream_complete();
             // NOTE: no refresh_stable here — the worker tick runs 120ms later, so the buffer
             // still holds the PRE-trim stable_end (which can exceed the trimmed length).
         }
@@ -217,7 +218,7 @@ mod tests {
 
         // After the worker catches up (refresh_stable), parity must hold too.
         if let Some(md) = msg.markdown.as_mut() {
-            md.refresh_stable(&msg.content, 80);
+            std::sync::Arc::make_mut(md).refresh_stable(&msg.content, 80);
         }
         let md = msg.markdown.as_ref().expect("buffer");
         let measured = assistant_row_count(&content_trimmed, Some(md), 80);
