@@ -45,10 +45,12 @@ pub async fn create_coding_session_with_events(
     CodingAgentSession,
     tokio::sync::mpsc::UnboundedReceiver<super::events::AgentUiEvent>,
 )> {
-    crate::platform::ensure_datastore(options.paths).await?;
+    // Open the shared store DB once and share the handle with every store so
+    // they all connect from one open database instead of each opening the file.
+    let database = Arc::new(crate::platform::datastore::ensure_database(options.paths).await?);
 
     let env = Arc::new(LocalExecutionEnv::new(options.cwd));
-    let session_manager = SessionManager::new(options.paths, options.cwd)?;
+    let session_manager = SessionManager::new_with_database(options.paths, options.cwd, database.clone())?;
     let session = session_manager.create(options.resume_id).await?;
     let session_id = {
         use elph_agent::session::types::HasSessionId;
@@ -89,14 +91,18 @@ pub async fn create_coding_session_with_events(
 
     // Shared memory runtime (tools + hooks + bootstrap use one store / task id).
     let memory_opts = crate::memory::runtime::MemoryRuntimeOptions::from_settings(&options.settings.memory);
-    let memory_runtime = Arc::new(crate::memory::MemoryRuntime::with_options(
+    let memory_runtime = Arc::new(crate::memory::MemoryRuntime::with_options_and_db(
         options.paths.clone(),
         session_id.clone(),
         memory_opts,
+        Some(database.clone()),
     ));
     tools.extend(crate::memory::tools::create_memory_tools(Arc::clone(&memory_runtime)));
     if options.settings.codegraph.enabled {
-        tools.extend(crate::codegraph::tools::create_codegraph_tools(options.paths.clone()));
+        tools.extend(crate::codegraph::tools::create_codegraph_tools_with_db(
+            options.paths.clone(),
+            Some(database.clone()),
+        ));
     }
 
     // Create shared UI event channel for ask_user tool and session.
@@ -108,7 +114,7 @@ pub async fn create_coding_session_with_events(
         tools.extend(mcp_registry.create_agent_tools().await);
     }
 
-    let goal_store = Arc::new(GoalStore::new(options.paths.memory_db_path()));
+    let goal_store = Arc::new(GoalStore::new(options.paths.memory_db_path()).with_database(database.clone()));
     let goal_runtime = Arc::new(GoalRuntime::new(goal_store.clone(), session_id.clone()));
     // Goals bridge: terminal goal status → work memory for future recall.
     let memory_for_goals = Arc::clone(&memory_runtime);
@@ -131,7 +137,7 @@ pub async fn create_coding_session_with_events(
         let clamped = raw.clamp_for_model(&selection.model);
         to_agent_thinking(clamped)
     };
-    let agent_graph = Arc::new(AgentGraphStore::new(options.paths.memory_db_path()));
+    let agent_graph = Arc::new(AgentGraphStore::new(options.paths.memory_db_path()).with_database(database.clone()));
     // Map host settings → agnostic harness stream options (elph-agent never reads settings.json).
     let stream_options = AgentHarnessStreamOptions {
         timeout_ms: options.settings.provider_timeout_ms(),
@@ -146,6 +152,7 @@ pub async fn create_coding_session_with_events(
         thinking_level: thinking,
         prompt_encoding: options.settings.prompt_encoding.clone(),
         agent_graph: Some(agent_graph),
+        database: Some(database.clone()),
     };
 
     // Agent mode is per-session; default build unless the host overrides (e.g. --brave).

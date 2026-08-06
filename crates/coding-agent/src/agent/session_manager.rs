@@ -8,6 +8,8 @@ use elph_agent::{
 };
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use turso::Database;
 
 use crate::platform::Paths;
 
@@ -22,6 +24,16 @@ impl SessionManager {
     pub fn new(paths: &Paths, cwd: &Path) -> Result<Self> {
         Ok(Self {
             repo: TursoSessionRepo::new(paths.memory_db_path()),
+            cwd: normalize_cwd(cwd),
+            data_dir: paths.data_dir().clone(),
+        })
+    }
+
+    /// Create a session manager whose repo connects from a shared, already-open
+    /// database handle instead of opening the store file on every operation.
+    pub fn new_with_database(paths: &Paths, cwd: &Path, database: Arc<Database>) -> Result<Self> {
+        Ok(Self {
+            repo: TursoSessionRepo::new(paths.memory_db_path()).with_database(database),
             cwd: normalize_cwd(cwd),
             data_dir: paths.data_dir().clone(),
         })

@@ -1,11 +1,12 @@
 //! Turso-backed goal persistence.
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use anyhow::{Context, Result, bail};
 use turso::Connection;
 
-use crate::datastore::{is_lock_err, with_conn};
+use crate::datastore::{connect, is_lock_err, with_conn};
 
 use super::types::{Goal, GoalStatus};
 
@@ -16,13 +17,27 @@ const GOAL_COLUMNS: &str = "id, session_id, objective, completion_criterion, sta
 #[derive(Clone)]
 pub struct GoalStore {
     db_path: PathBuf,
+    /// Shared database handle injected by the host. When present, the store
+    /// connects from this handle instead of opening `db_path` — the host owns
+    /// the open/apply-migrations lifetime.
+    database: Option<Arc<turso::Database>>,
 }
 
 impl GoalStore {
     pub fn new(db_path: impl Into<PathBuf>) -> Self {
         Self {
             db_path: db_path.into(),
+            database: None,
         }
+    }
+
+    /// Attach a shared, already-open database handle. When set, the store
+    /// connects from this handle on each operation instead of opening
+    /// [`db_path`] — the host is responsible for opening the database and
+    /// applying migrations.
+    pub fn with_database(mut self, database: Arc<turso::Database>) -> Self {
+        self.database = Some(database);
+        self
     }
 
     pub fn db_path(&self) -> &Path {
@@ -34,9 +49,15 @@ impl GoalStore {
         F: FnOnce(Connection) -> Fut,
         Fut: std::future::Future<Output = Result<T>>,
     {
-        with_conn(&self.db_path, f)
-            .await
-            .with_context(|| format!("open goal database {}", self.db_path.display()))
+        match &self.database {
+            Some(db) => {
+                let conn = connect(db).await?;
+                f(conn).await
+            }
+            None => with_conn(&self.db_path, f)
+                .await
+                .with_context(|| format!("open goal database {}", self.db_path.display())),
+        }
     }
 
     pub async fn get_active_goal(&self, session_id: &str) -> Result<Option<Goal>> {

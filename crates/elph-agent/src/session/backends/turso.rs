@@ -5,6 +5,7 @@
 //! this backend never mutates those tables.
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use crate::datastore::migrations::run as run_migrations;
 use crate::session::id::{generate_entry_id, generate_session_id};
@@ -17,6 +18,7 @@ use crate::session::types::{
     CheckpointTail, CursorPosition, SessionError, SessionErrorCode, SessionIndex, SessionMetadata, SessionStatistics,
     SessionStorage, SessionTreeEntry, TursoSessionMetadata,
 };
+use turso::Database;
 
 /// Options when creating a session row in a shared database.
 #[derive(Debug, Clone, Default)]
@@ -38,14 +40,32 @@ pub struct TursoSessionStorage {
     session_id: String,
     metadata: TursoSessionMetadata,
     index: SessionIndex,
+    /// Shared database handle injected by the host. When present, the storage
+    /// connects from this handle instead of opening `db_path` — the host owns
+    /// the open/apply-migrations lifetime.
+    database: Option<Arc<Database>>,
 }
 
 impl TursoSessionStorage {
-    pub async fn open(db_path: impl AsRef<Path>, session_id: impl Into<String>) -> Result<Self, SessionError> {
+    /// Open a session, loading its metadata and entry tree.
+    ///
+    /// When `database` is supplied, the storage connects from that shared
+    /// handle (the host must have applied the session-tree migrations already);
+    /// otherwise it opens `db_path` and applies migrations itself.
+    pub async fn open(
+        db_path: impl AsRef<Path>,
+        session_id: impl Into<String>,
+        database: Option<Arc<Database>>,
+    ) -> Result<Self, SessionError> {
         let db_path = db_path.as_ref().to_path_buf();
         let session_id = session_id.into();
-        let db = open_db(&db_path).await?;
-        let conn = db.connect().map_err(map_storage_error)?;
+        let conn = match &database {
+            Some(db) => db.connect().map_err(map_storage_error)?,
+            None => {
+                let db = open_db(&db_path).await?;
+                db.connect().map_err(map_storage_error)?
+            }
+        };
         let metadata = load_metadata(&conn, &session_id, &db_path).await?;
         let entries = load_entries(&conn, &session_id).await?;
         let leaf_id = load_leaf_id(&conn, &session_id).await?;
@@ -55,16 +75,18 @@ impl TursoSessionStorage {
             session_id,
             metadata,
             index,
+            database,
         })
     }
 
     pub async fn create(db_path: impl AsRef<Path>, session_id: Option<String>) -> Result<Self, SessionError> {
-        Self::create_with_options(
+        Self::create_with_options_with_db(
             db_path,
             TursoSessionCreateOptions {
                 session_id,
                 ..Default::default()
             },
+            None,
         )
         .await
     }
@@ -73,13 +95,29 @@ impl TursoSessionStorage {
         db_path: impl AsRef<Path>,
         options: TursoSessionCreateOptions,
     ) -> Result<Self, SessionError> {
+        Self::create_with_options_with_db(db_path, options, None).await
+    }
+
+    /// Create a session, optionally using a shared, already-open database
+    /// handle. When `database` is `None`, `db_path` is opened and the
+    /// session-tree migrations are applied.
+    pub async fn create_with_options_with_db(
+        db_path: impl AsRef<Path>,
+        options: TursoSessionCreateOptions,
+        database: Option<Arc<Database>>,
+    ) -> Result<Self, SessionError> {
         let db_path = db_path.as_ref().to_path_buf();
         if let Some(parent) = db_path.parent() {
             std::fs::create_dir_all(parent).map_err(map_storage_error)?;
         }
         let session_id = options.session_id.unwrap_or_else(generate_session_id);
-        let db = open_db(&db_path).await?;
-        let conn = db.connect().map_err(map_storage_error)?;
+        let conn = match &database {
+            Some(db) => db.connect().map_err(map_storage_error)?,
+            None => {
+                let db = open_db(&db_path).await?;
+                db.connect().map_err(map_storage_error)?
+            }
+        };
         let created_at = crate::messages::now_iso_timestamp();
         let cwd = options.cwd.unwrap_or_default();
         let agent_mode = options.agent_mode.unwrap_or_else(|| "build".to_string());
@@ -130,6 +168,7 @@ impl TursoSessionStorage {
             session_id,
             metadata,
             index: build_index(Vec::new(), None)?,
+            database,
         })
     }
 
@@ -142,8 +181,13 @@ impl TursoSessionStorage {
     }
 
     async fn connection(&self) -> Result<turso::Connection, SessionError> {
-        let db = open_db(&self.db_path).await?;
-        db.connect().map_err(map_storage_error)
+        match &self.database {
+            Some(db) => db.connect().map_err(map_storage_error),
+            None => {
+                let db = open_db(&self.db_path).await?;
+                db.connect().map_err(map_storage_error)
+            }
+        }
     }
 
     async fn persist_leaf_id(&self, conn: &turso::Connection, leaf_id: Option<&str>) -> Result<(), SessionError> {

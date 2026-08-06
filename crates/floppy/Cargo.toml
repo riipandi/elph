@@ -39,7 +39,6 @@ codegraph = [
   "dep:sha2",
   "dep:regex",
   "dep:rayon",
-  "dep:log",
 ]
 # Convenience: full surface for hosts (Elph).
 full = ["memory", "embed", "codegraph"]
@@ -49,11 +48,10 @@ anyhow.workspace = true
 ast-grep-core = { workspace = true, optional = true }
 ast-grep-language = { workspace = true, optional = true }
 chrono.workspace = true
-elph-db.workspace = true
 embed_anything = { workspace = true, optional = true }
 ignore = { workspace = true, optional = true }
 kalid.workspace = true
-log = { workspace = true, optional = true }
+log.workspace = true
 memorable-ids.workspace = true
 parking_lot.workspace = true
 rand.workspace = true

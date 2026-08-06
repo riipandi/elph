@@ -7,3 +7,4 @@
 - https://github.com/fed-stew/streamdown-rs
 - https://github.com/phiresky/sqlite-zstd
 - https://github.com/Canop/termimad
+- https://crates.io/crates/memmap2

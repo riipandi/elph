@@ -70,7 +70,6 @@ tokio = { workspace = true, features = [
 tokio-util = { workspace = true, features = ["rt"] }
 toml.workspace = true
 toon-format.workspace = true
-elph-db.workspace = true
 turso.workspace = true
 url.workspace = true
 urlencoding.workspace = true

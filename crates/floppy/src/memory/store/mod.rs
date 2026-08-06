@@ -9,10 +9,11 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, Mutex, OnceLock};
 
-use elph_db::clear_broken_wal_sidecars;
 use std::time::{SystemTime, UNIX_EPOCH};
 use turso::params;
 use turso::{Connection, Database};
+
+use crate::core::db::clear_broken_wal_sidecars;
 
 pub use crate::core::embed::EmbedFn;
 use crate::core::util::{DEFAULT_EMBEDDING_DIMS, drain_rows};
@@ -131,6 +132,11 @@ pub struct MemoryStore {
     dimensions: u32,
     apply_migrations: bool,
 
+    /// Shared database handle injected by the host. When present, [`with_db`]
+    /// connects from this instead of opening `db_path` — the host owns the
+    /// open/apply-migrations lifetime.
+    database: Option<Arc<Database>>,
+
     initialized: Mutex<bool>,
     current_task_id: Mutex<Option<String>>,
     baseline: Mutex<TaskBaseline>,
@@ -149,10 +155,20 @@ impl MemoryStore {
             decay_rate: config.decay_rate.unwrap_or(0.995),
             dimensions: config.dimensions.unwrap_or(DEFAULT_EMBEDDING_DIMS),
             apply_migrations: config.apply_migrations.unwrap_or(true),
+            database: None,
             initialized: Mutex::new(false),
             current_task_id: Mutex::new(None),
             baseline: Mutex::new(empty_baseline()),
         }
+    }
+
+    /// Attach a shared, already-open database handle. When set, the store
+    /// connects from this handle on each operation instead of opening
+    /// [`FloppyConfig::db_path`] — the host is responsible for opening the
+    /// database and applying migrations.
+    pub fn with_database(mut self, database: Arc<Database>) -> Self {
+        self.database = Some(database);
+        self
     }
 
     pub fn dimensions(&self) -> u32 {
@@ -196,6 +212,23 @@ impl MemoryStore {
         self.decay_rate
     }
 
+    /// Connect a short-lived [`Connection`]. Uses the host-injected database
+    /// handle when present; otherwise opens `db_path` on the fly.
+    pub(crate) async fn with_db<T, F, Fut>(&self, f: F) -> Result<T>
+    where
+        F: FnOnce(Connection) -> Fut,
+        Fut: Future<Output = Result<T>>,
+    {
+        let conn = match &self.database {
+            Some(db) => crate::core::db::connect(db).await?,
+            None => {
+                let db = self.open_db().await?;
+                crate::core::db::connect(&db).await?
+            }
+        };
+        f(conn).await
+    }
+
     async fn open_db(&self) -> Result<Database> {
         // Parent dir must exist; Turso creates `store.db` on first open but not parents.
         if let Some(parent) = Path::new(&self.db_path).parent()
@@ -210,21 +243,7 @@ impl MemoryStore {
         // when `store.db` itself is healthy (or when the main file is missing).
         clear_broken_wal_sidecars(&self.db_path);
 
-        elph_db::open_local(
-            Path::new(&self.db_path),
-            |b| b.experimental_multiprocess_wal(true).experimental_index_method(true),
-            true,
-        )
-        .await
-    }
-    pub(crate) async fn with_db<T, F, Fut>(&self, f: F) -> Result<T>
-    where
-        F: FnOnce(Connection) -> Fut,
-        Fut: Future<Output = Result<T>>,
-    {
-        let db = self.open_db().await?;
-        let conn = elph_db::connect(&db).await?;
-        f(conn).await
+        crate::core::db::open_memory_db(&self.db_path).await
     }
     pub async fn init(&self) -> Result<()> {
         if *self.initialized.lock().unwrap() {

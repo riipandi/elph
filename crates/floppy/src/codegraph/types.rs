@@ -22,6 +22,9 @@ pub struct CodegraphConfig {
     pub embed_concurrency: usize,
     /// GPU acceleration mode used for embeddings (on/off/auto/detected).
     pub gpu_acceleration: Option<String>,
+    /// Shared, already-open database handle. When set, the store connects from
+    /// this handle instead of opening [`db_path`].
+    pub database: Option<std::sync::Arc<turso::Database>>,
 }
 
 impl CodegraphConfig {
@@ -39,6 +42,7 @@ impl CodegraphConfig {
             db_commit_batch_files: 200,
             embed_concurrency: 1,
             gpu_acceleration: None,
+            database: None,
         }
     }
 }

@@ -8,7 +8,7 @@
 use std::path::Path;
 
 use anyhow::Result;
-use elph_db::{connect, open_local};
+use elph_agent::datastore::{connect, open_local_with};
 use turso::{Connection, params};
 
 use super::types::{TranscriptMessage, TranscriptStyle};
@@ -27,7 +27,7 @@ impl TranscriptCache {
     /// On first open after upgrade, prunes legacy transcript snapshots from the session
     /// tree (which accumulated to 600+ MB in some projects) and checkpoints the WAL.
     pub async fn open(db_path: &Path, session_id: &str) -> Result<Self> {
-        let db = open_local(db_path, |b| b.experimental_multiprocess_wal(true), false).await?;
+        let db = open_local_with(db_path, |b| b.experimental_multiprocess_wal(true), false).await?;
         let conn = connect(&db).await?;
         let cache = Self {
             conn,

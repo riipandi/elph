@@ -64,7 +64,9 @@ async fn turso_storage_create_append_open_roundtrip() {
 
     drop(storage);
 
-    let reopened = TursoSessionStorage::open(&db, "sess_roundtrip").await.expect("open");
+    let reopened = TursoSessionStorage::open(&db, "sess_roundtrip", None)
+        .await
+        .expect("open");
     let entries = reopened.get_entries().await;
     assert_eq!(entries.len(), 1);
     assert_eq!(entries[0].id(), "e1");

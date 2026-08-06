@@ -2983,7 +2983,6 @@ dependencies = [
  "crossterm",
  "elph-agent",
  "elph-ai",
- "elph-db",
  "elph-tui",
  "floppy",
  "futures-util",
@@ -3020,7 +3019,6 @@ dependencies = [
  "base64 0.23.1",
  "bytes",
  "elph-ai",
- "elph-db",
  "encoding_rs",
  "failsafe",
  "fastrace",
@@ -3114,18 +3112,6 @@ dependencies = [
  "url",
  "webpki-roots 1.0.9",
  "zstd",
-]
-
-[[package]]
-name = "elph-db"
-version = "0.0.1"
-dependencies = [
- "anyhow",
- "log",
- "rand 0.10.2",
- "tempfile",
- "tokio",
- "turso",
 ]
 
 [[package]]
@@ -3673,7 +3659,6 @@ dependencies = [
  "ast-grep-core",
  "ast-grep-language",
  "chrono",
- "elph-db",
  "embed_anything",
  "ignore",
  "kalid",

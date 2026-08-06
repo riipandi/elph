@@ -1,4 +1,5 @@
 use super::*;
+use crate::core::db::{clear_broken_wal_sidecars, is_lock_err, is_wal_io_err};
 use crate::core::embed::noop_embedder;
 use crate::create_memory_store;
 use crate::memory::scoring::{compute_credit, update_weight};
@@ -6,7 +7,6 @@ use crate::memory::types::{
     FloppyConfig, MemoryCategory, MemoryReportInput, MemoryReportType, ReportCorrectionInput, ReportUserInput,
 };
 use crate::memory::types::{SelfReportEntry, TaskEndInput, TaskStatus, TimelineEventKind, UserInputSource};
-use elph_db::{clear_broken_wal_sidecars, is_lock_err, is_wal_io_err};
 use std::sync::Arc;
 
 fn mock_embed() -> EmbedFn {

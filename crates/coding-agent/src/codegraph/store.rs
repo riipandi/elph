@@ -7,11 +7,22 @@ use floppy::{
     CodegraphConfig, CodegraphStore, DEFAULT_EMBEDDING_DIMS, EMBEDDER_INIT_TIMEOUT, EmbedOptions, GpuBackend,
     GpuConfig, create_embedder_with_timeout, embedding_dims, noop_embedder, resolve_embedding_model,
 };
+use std::sync::Arc;
+use turso::Database;
 
 /// Open codegraph store sharing `<project>/.elph/store.db` with memory.
 ///
 /// When `needs_embed` is true, uses the same MiniLM settings as floppy memory.
 pub fn open_store(paths: &Paths, needs_embed: bool) -> Result<CodegraphStore> {
+    open_store_with_db(paths, needs_embed, None)
+}
+
+/// Open codegraph store with an optional shared database handle.
+///
+/// When `database` is provided, the store connects from that shared handle
+/// instead of opening the store file itself — the host owns the open/apply-
+/// migrations lifetime.
+pub fn open_store_with_db(paths: &Paths, needs_embed: bool, database: Option<Arc<Database>>) -> Result<CodegraphStore> {
     std::fs::create_dir_all(paths.project_elph_dir())
         .with_context(|| format!("create {}", paths.project_elph_dir().display()))?;
 
@@ -100,6 +111,7 @@ pub fn open_store(paths: &Paths, needs_embed: bool) -> Result<CodegraphStore> {
         db_commit_batch_files,
         embed_concurrency,
         gpu_acceleration,
+        database,
     };
     Ok(CodegraphStore::new(cg_config))
 }

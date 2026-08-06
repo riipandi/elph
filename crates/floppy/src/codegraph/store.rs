@@ -2,8 +2,9 @@
 
 use anyhow::Result;
 use std::path::Path;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tokio::sync::OnceCell;
+use turso::{Connection, Database};
 
 use super::index::{self, Indexer};
 use super::migrations;
@@ -26,6 +27,9 @@ pub struct CodegraphStore {
     db_commit_batch_files: usize,
     embed_concurrency: usize,
     gpu_acceleration: Option<String>,
+    /// Shared database handle injected by the host. When present, connects
+    /// from this handle instead of opening `db_path`.
+    database: Option<Arc<Database>>,
 }
 
 impl CodegraphStore {
@@ -44,7 +48,31 @@ impl CodegraphStore {
             db_commit_batch_files: config.db_commit_batch_files,
             embed_concurrency: config.embed_concurrency,
             gpu_acceleration: config.gpu_acceleration,
+            database: config.database,
         }
+    }
+
+    /// Connect a short-lived [`Connection`]. Uses the host-injected database
+    /// handle when present; otherwise opens `db_path` on the fly.
+    async fn connect(&self) -> Result<Connection> {
+        match &self.database {
+            Some(db) => db::connect(db).await,
+            None => {
+                let db = db::open_local_db(&self.db_path).await?;
+                db::connect(&db).await
+            }
+        }
+    }
+
+    /// Connect, run an async closure, then drop the connection. Uses the
+    /// host-injected database handle when present.
+    async fn with_conn<T, F, Fut>(&self, f: F) -> Result<T>
+    where
+        F: FnOnce(Connection) -> Fut,
+        Fut: std::future::Future<Output = Result<T>>,
+    {
+        let conn = self.connect().await?;
+        f(conn).await
     }
 
     async fn get_connection_pool(&self) -> Result<&ConnectionPool> {
@@ -52,8 +80,13 @@ impl CodegraphStore {
             return Ok(pool);
         }
 
-        let db = db::open_local_db(&self.db_path).await?;
-        let pool = ConnectionPool::new(db, self.max_db_connections);
+        let pool = match &self.database {
+            Some(db) => ConnectionPool::new(db.as_ref().clone(), self.max_db_connections),
+            None => {
+                let db = db::open_local_db(&self.db_path).await?;
+                ConnectionPool::new(db, self.max_db_connections)
+            }
+        };
         self.connection_pool
             .set(pool)
             .map_err(|_| anyhow::anyhow!("Failed to initialize connection pool"))?;
@@ -65,7 +98,7 @@ impl CodegraphStore {
             return Ok(());
         }
         let apply = self.apply_migrations;
-        db::with_local_db(&self.db_path, move |conn| async move {
+        self.with_conn(move |conn| async move {
             if apply {
                 migrations::apply(&conn).await?;
             }
@@ -121,7 +154,7 @@ impl CodegraphStore {
 
     pub async fn status(&self) -> Result<CodegraphStatus> {
         self.init().await?;
-        db::with_local_db(&self.db_path, |conn| async move {
+        self.with_conn(|conn| async move {
             let (file_count, chunk_count, node_count, edge_count) = index::status_counts(&conn).await?;
             let merkle_root = index::load_meta(&conn, "merkle_root").await?;
             let last = index::load_meta(&conn, "last_indexed_at")
@@ -143,7 +176,8 @@ impl CodegraphStore {
 
     pub async fn purge(&self) -> Result<()> {
         self.init().await?;
-        db::with_local_db(&self.db_path, |conn| async move { index::purge_all(&conn).await }).await
+        self.with_conn(|conn| async move { index::purge_all(&conn).await })
+            .await
     }
 
     pub async fn search(&self, opts: SearchOptions) -> Result<Vec<ChunkHit>> {
@@ -153,16 +187,14 @@ impl CodegraphStore {
         }
         let embed = self.embed.clone();
         let q = opts;
-        db::with_local_db(&self.db_path, move |conn| async move {
-            search::hybrid_search(&conn, &embed, &q).await
-        })
-        .await
+        self.with_conn(move |conn| async move { search::hybrid_search(&conn, &embed, &q).await })
+            .await
     }
 
     pub async fn impact(&self, target: &str, max_depth: u32, limit: u32) -> Result<Vec<ImpactNode>> {
         self.init().await?;
         let target = target.to_string();
-        db::with_local_db(&self.db_path, move |conn| async move {
+        self.with_conn(move |conn| async move {
             search::impact(&conn, &target, max_depth.clamp(0, 4), limit.clamp(1, 100)).await
         })
         .await

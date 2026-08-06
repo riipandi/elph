@@ -1,5 +1,6 @@
 use anyhow::Result;
 use anyhow::bail;
+use std::sync::Arc;
 
 use crate::core::embed::EmbedOptions;
 use crate::core::embed::create_embedder;
@@ -14,12 +15,16 @@ use crate::core::paths::FloppyPaths;
 use crate::core::util::DEFAULT_EMBEDDING_DIMS;
 use crate::memory::store::MemoryStore;
 use crate::memory::types::{FloppyConfig, VectorType};
+use turso::Database;
 
 /// Builder for a [`MemoryStore`] with explicit configuration (no environment variables).
 pub struct FloppyBuilder {
     config: FloppyConfig,
     embed_fn: Option<EmbedFn>,
     embed_opts: Option<EmbedOptions>,
+    /// Shared, already-open database handle. When set, the store connects from
+    /// this handle instead of opening [`FloppyConfig::db_path`].
+    database: Option<Arc<Database>>,
 }
 
 impl FloppyBuilder {
@@ -28,6 +33,7 @@ impl FloppyBuilder {
             config: FloppyConfig::new(db_path, session_id),
             embed_fn: None,
             embed_opts: None,
+            database: None,
         }
     }
 
@@ -63,6 +69,17 @@ impl FloppyBuilder {
     /// Skip floppy migrations in [`MemoryStore::init`] when the host already applied them.
     pub fn apply_migrations(mut self, apply: bool) -> Self {
         self.config = self.config.apply_migrations(apply);
+        self
+    }
+
+    /// Use an already-open [`Database`] instead of opening [`FloppyConfig::db_path`].
+    ///
+    /// The store connects from this shared handle on each operation; the host
+    /// is responsible for opening the database and applying migrations. Use
+    /// this when the host (e.g. Elph) already holds an open database that the
+    /// store should share.
+    pub fn with_database(mut self, database: Arc<Database>) -> Self {
+        self.database = Some(database);
         self
     }
 
@@ -108,7 +125,12 @@ impl FloppyBuilder {
             }
             (Some(_), Some(_)) => bail!("cannot set both a custom embedder and embed options"),
         };
-        Ok(MemoryStore::new(self.config, embed))
+        let store = MemoryStore::new(self.config, embed);
+        let store = match self.database {
+            Some(db) => store.with_database(db),
+            None => store,
+        };
+        Ok(store)
     }
 }
 

@@ -8,8 +8,9 @@ use anyhow::{Context, Result};
 use elph_agent::{AgentTool, AgentToolResult};
 use elph_ai::Tool;
 use serde_json::{Value, json};
+use turso::Database;
 
-use super::store::open_store;
+use super::store::open_store_with_db;
 use crate::platform::{Paths, Settings};
 use floppy::SearchOptions;
 
@@ -17,12 +18,18 @@ pub const CODEGRAPH_TOOL_NAMES: &[&str] = &["code_search", "code_impact", "code_
 
 /// Create agent-facing codegraph tools (no build/purge).
 pub fn create_codegraph_tools(paths: Paths) -> Vec<AgentTool> {
+    create_codegraph_tools_with_db(paths, None)
+}
+
+/// Create codegraph tools that connect from a shared, already-open database
+/// handle instead of opening the store file on each call.
+pub fn create_codegraph_tools_with_db(paths: Paths, database: Option<Arc<Database>>) -> Vec<AgentTool> {
     let paths = Arc::new(paths);
     vec![
-        create_search_tool(Arc::clone(&paths)),
-        create_impact_tool(Arc::clone(&paths)),
-        create_status_tool(Arc::clone(&paths)),
-        create_reindex_tool(paths),
+        create_search_tool(Arc::clone(&paths), database.clone()),
+        create_impact_tool(Arc::clone(&paths), database.clone()),
+        create_status_tool(Arc::clone(&paths), database.clone()),
+        create_reindex_tool(paths, database),
     ]
 }
 
@@ -53,7 +60,7 @@ fn timeout_result(tool: &str, timeout_ms: u64) -> AgentToolResult {
     }
 }
 
-fn create_search_tool(paths: Arc<Paths>) -> AgentTool {
+fn create_search_tool(paths: Arc<Paths>, database: Option<Arc<Database>>) -> AgentTool {
     elph_agent::simple_tool(
         Tool {
             name: "code_search".into(),
@@ -81,8 +88,11 @@ fn create_search_tool(paths: Arc<Paths>) -> AgentTool {
         "code_search",
         move |_, args| {
             let paths = Arc::clone(&paths);
+            let database = database.clone();
             let timeout = codegraph_tool_timeout(&paths);
-            Box::pin(async move { run_with_timeout("code_search", timeout, execute_search(paths, args)).await })
+            Box::pin(
+                async move { run_with_timeout("code_search", timeout, execute_search(paths, args, database)).await },
+            )
         },
     )
 }
@@ -103,7 +113,7 @@ async fn run_with_timeout(
     }
 }
 
-async fn execute_search(paths: Arc<Paths>, args: Value) -> Result<AgentToolResult> {
+async fn execute_search(paths: Arc<Paths>, args: Value, database: Option<Arc<Database>>) -> Result<AgentToolResult> {
     let query = args
         .get("query")
         .and_then(Value::as_str)
@@ -117,7 +127,7 @@ async fn execute_search(paths: Arc<Paths>, args: Value) -> Result<AgentToolResul
         .unwrap_or(10)
         .clamp(1, 50);
 
-    let store = open_store(&paths, true).context("open codegraph store")?;
+    let store = open_store_with_db(&paths, true, database).context("open codegraph store")?;
     let status = store.status().await?;
     if status.file_count == 0 {
         let text = "Code index is empty. Ask the user to run: elph codegraph build";
@@ -178,7 +188,7 @@ async fn execute_search(paths: Arc<Paths>, args: Value) -> Result<AgentToolResul
     })
 }
 
-fn create_impact_tool(paths: Arc<Paths>) -> AgentTool {
+fn create_impact_tool(paths: Arc<Paths>, database: Option<Arc<Database>>) -> AgentTool {
     elph_agent::simple_tool(
         Tool {
             name: "code_impact".into(),
@@ -208,13 +218,16 @@ fn create_impact_tool(paths: Arc<Paths>) -> AgentTool {
         "code_impact",
         move |_, args| {
             let paths = Arc::clone(&paths);
+            let database = database.clone();
             let timeout = codegraph_tool_timeout(&paths);
-            Box::pin(async move { run_with_timeout("code_impact", timeout, execute_impact(paths, args)).await })
+            Box::pin(
+                async move { run_with_timeout("code_impact", timeout, execute_impact(paths, args, database)).await },
+            )
         },
     )
 }
 
-async fn execute_impact(paths: Arc<Paths>, args: Value) -> Result<AgentToolResult> {
+async fn execute_impact(paths: Arc<Paths>, args: Value, database: Option<Arc<Database>>) -> Result<AgentToolResult> {
     let target = args
         .get("target")
         .and_then(Value::as_str)
@@ -228,7 +241,7 @@ async fn execute_impact(paths: Arc<Paths>, args: Value) -> Result<AgentToolResul
         .map(|n| n as u32)
         .unwrap_or(30);
 
-    let store = open_store(&paths, false)?;
+    let store = open_store_with_db(&paths, false, database)?;
     let nodes = store.impact(target, depth, limit).await?;
     let list: Vec<Value> = nodes
         .iter()
@@ -268,7 +281,7 @@ async fn execute_impact(paths: Arc<Paths>, args: Value) -> Result<AgentToolResul
     })
 }
 
-fn create_status_tool(paths: Arc<Paths>) -> AgentTool {
+fn create_status_tool(paths: Arc<Paths>, database: Option<Arc<Database>>) -> AgentTool {
     elph_agent::simple_tool(
         Tool {
             name: "code_status".into(),
@@ -284,14 +297,15 @@ fn create_status_tool(paths: Arc<Paths>) -> AgentTool {
         "code_status",
         move |_, _args| {
             let paths = Arc::clone(&paths);
+            let database = database.clone();
             let timeout = codegraph_tool_timeout(&paths);
-            Box::pin(async move { run_with_timeout("code_status", timeout, execute_status(paths)).await })
+            Box::pin(async move { run_with_timeout("code_status", timeout, execute_status(paths, database)).await })
         },
     )
 }
 
-async fn execute_status(paths: Arc<Paths>) -> Result<AgentToolResult> {
-    let store = open_store(&paths, false)?;
+async fn execute_status(paths: Arc<Paths>, database: Option<Arc<Database>>) -> Result<AgentToolResult> {
+    let store = open_store_with_db(&paths, false, database)?;
     let st = store.status().await?;
     let text = format!(
         "codegraph: files={} chunks={} nodes={} edges={} merkle={} empty={}",
@@ -319,7 +333,7 @@ async fn execute_status(paths: Arc<Paths>) -> Result<AgentToolResult> {
     })
 }
 
-fn create_reindex_tool(paths: Arc<Paths>) -> AgentTool {
+fn create_reindex_tool(paths: Arc<Paths>, database: Option<Arc<Database>>) -> AgentTool {
     elph_agent::simple_tool(
         Tool {
             name: "code_reindex".into(),
@@ -335,14 +349,15 @@ fn create_reindex_tool(paths: Arc<Paths>) -> AgentTool {
         "code_reindex",
         move |_, _args| {
             let paths = Arc::clone(&paths);
+            let database = database.clone();
             let timeout = codegraph_tool_timeout(&paths);
-            Box::pin(async move { run_with_timeout("code_reindex", timeout, execute_reindex(paths)).await })
+            Box::pin(async move { run_with_timeout("code_reindex", timeout, execute_reindex(paths, database)).await })
         },
     )
 }
 
-async fn execute_reindex(paths: Arc<Paths>) -> Result<AgentToolResult> {
-    let store = open_store(&paths, true)?;
+async fn execute_reindex(paths: Arc<Paths>, database: Option<Arc<Database>>) -> Result<AgentToolResult> {
+    let store = open_store_with_db(&paths, true, database)?;
     let stats = store.update().await?;
     let text = format!(
         "reindex done: walked={} indexed={} unchanged={} chunks={} (walk {}ms · reindex {}ms · finalize {}ms)",

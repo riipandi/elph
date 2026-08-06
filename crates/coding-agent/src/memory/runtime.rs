@@ -1,10 +1,11 @@
 //! Shared memory runtime: one store + async-safe task/turn state for tools and hooks.
 
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
 use tokio::time::timeout;
+use turso::Database;
 
 use floppy::{
     Memory, MemoryCategory, MemoryRecord, MemoryStore, ReportCorrectionInput, ReportUserInput, SelfReportEntry,
@@ -96,14 +97,26 @@ pub struct MemoryRuntime {
     store: tokio::sync::Mutex<Option<MemoryStore>>,
     active_task_id: Mutex<Option<String>>,
     turn: Mutex<TurnScratch>,
+    /// Shared, already-open database handle. When present, the store connects
+    /// from this handle instead of opening the store file itself.
+    database: Option<Arc<Database>>,
 }
 
 impl MemoryRuntime {
     pub fn new(paths: Paths, session_id: impl Into<String>) -> Self {
-        Self::with_options(paths, session_id, MemoryRuntimeOptions::default())
+        Self::with_options_and_db(paths, session_id, MemoryRuntimeOptions::default(), None)
     }
 
     pub fn with_options(paths: Paths, session_id: impl Into<String>, options: MemoryRuntimeOptions) -> Self {
+        Self::with_options_and_db(paths, session_id, options, None)
+    }
+
+    pub fn with_options_and_db(
+        paths: Paths,
+        session_id: impl Into<String>,
+        options: MemoryRuntimeOptions,
+        database: Option<Arc<Database>>,
+    ) -> Self {
         Self {
             paths,
             session_id: session_id.into(),
@@ -111,6 +124,7 @@ impl MemoryRuntime {
             store: tokio::sync::Mutex::new(None),
             active_task_id: Mutex::new(None),
             turn: Mutex::new(TurnScratch::default()),
+            database,
         }
     }
 
@@ -201,7 +215,7 @@ impl MemoryRuntime {
         }
 
         let started = Instant::now();
-        let result = open_store_with_session(&self.paths, true, &self.session_id);
+        let result = open_store_with_session(&self.paths, true, &self.session_id, self.database.clone());
         match result {
             Ok(store) => {
                 let init = store.init().await;

@@ -1,4 +1,6 @@
 use anyhow::{Context, Result};
+use std::sync::Arc;
+use turso::Database;
 
 use crate::platform::{GpuAcceleration, Paths, Settings};
 use crate::utils::path::AppPaths;
@@ -11,11 +13,20 @@ use floppy::{GpuConfig, embedding_dims, resolve_embedding_model};
 /// (downloading model weights on first use). When false, a noop embedder is used
 /// for read-only operations (status, list, tasks, timeline, purge).
 pub fn open_store(paths: &Paths, needs_embed: bool) -> Result<MemoryStore> {
-    open_store_with_session(paths, needs_embed, "elph-cli")
+    open_store_with_session(paths, needs_embed, "elph-cli", None)
 }
 
 /// Open a store with an explicit session id (coding session attribution).
-pub fn open_store_with_session(paths: &Paths, needs_embed: bool, session_id: &str) -> Result<MemoryStore> {
+///
+/// When `database` is provided, the store connects from that shared handle
+/// instead of opening the store file itself — the host owns the open/apply-
+/// migrations lifetime.
+pub fn open_store_with_session(
+    paths: &Paths,
+    needs_embed: bool,
+    session_id: &str,
+    database: Option<Arc<Database>>,
+) -> Result<MemoryStore> {
     std::fs::create_dir_all(paths.project_elph_dir())
         .with_context(|| format!("create {}", paths.project_elph_dir().display()))?;
 
@@ -38,6 +49,10 @@ pub fn open_store_with_session(paths: &Paths, needs_embed: bool, session_id: &st
         .dimensions(dims)
         .top_k(top_k)
         .apply_migrations(true);
+
+    if let Some(db) = database {
+        builder = builder.with_database(db);
+    }
 
     if needs_embed {
         std::fs::create_dir_all(paths.models_dir())

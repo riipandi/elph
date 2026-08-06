@@ -57,4 +57,7 @@ pub struct SubagentBootstrap {
     /// TOON prompt-encoding config inherited from the parent; `None` falls back to env.
     pub prompt_encoding: Option<PromptEncodingConfig>,
     pub agent_graph: Option<Arc<AgentGraphStore>>,
+    /// Shared, already-open database handle. When present, child repos connect
+    /// from this handle instead of opening [`store_db_path`] themselves.
+    pub database: Option<Arc<turso::Database>>,
 }
