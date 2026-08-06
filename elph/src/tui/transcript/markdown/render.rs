@@ -1,10 +1,39 @@
 //! Paint cached markdown documents into transcript cards.
 
+use std::collections::HashMap;
+use std::sync::Mutex;
+
 use elph_tui::MarkdownDocument;
 use elph_tui::{render_linkified_plain_text, render_markdown_block, streaming_tail_document};
 use iocraft::prelude::*;
 
 use super::buffer::AssistantMarkdownBuffer;
+
+/// Cache key for the built (merged) markdown document per (stable_hash, wrap_width).
+///
+/// `build_assistant_markdown_document` clones the cached `MarkdownDocument` and merges
+/// it with the streaming tail — an O(n) allocation that runs on every paint for every
+/// visible assistant message. For completed messages (which don't change), we cache the
+/// built document and reuse it across frames. This eliminates the per-frame clone for
+/// the vast majority of visible messages in a long session.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct BuiltDocCacheKey {
+    stable_hash: u64,
+    wrap_width: u16,
+    stream_complete: bool,
+}
+
+/// Global cache for built documents. Keyed by (stable_hash, wrap_width, stream_complete).
+/// Each entry holds a `MarkdownDocument` (a few KB to a few hundred KB). Bounded to 64 entries.
+static BUILT_DOC_CACHE: std::sync::OnceLock<Mutex<HashMap<BuiltDocCacheKey, MarkdownDocument>>> =
+    std::sync::OnceLock::new();
+
+fn built_doc_cache() -> &'static Mutex<HashMap<BuiltDocCacheKey, MarkdownDocument>> {
+    BUILT_DOC_CACHE.get_or_init(|| Mutex::new(HashMap::with_capacity(32)))
+}
+
+/// Max cached built documents. When exceeded, half the cache is drained (oldest first).
+const BUILT_DOC_CACHE_MAX: usize = 64;
 
 fn merge_documents(mut base: MarkdownDocument, extension: MarkdownDocument) -> MarkdownDocument {
     if !extension.lines.is_empty() {
@@ -142,11 +171,70 @@ pub fn render_markdown_buffer(
     width: u16,
 ) -> AnyElement<'static> {
     let width = width.max(1);
-    let document = build_assistant_markdown_document(buffer, raw, tail_foreground);
+    let document = build_cached_document(buffer, raw, tail_foreground, width);
     if document.is_empty() {
         return render_linkified_plain_text(raw, tail_foreground, width);
     }
     render_markdown_block(&document, width)
+}
+
+/// Get the built (merged) document, using a cache for completed messages.
+///
+/// For completed messages (`stream_complete == true` and the stable prefix covers the
+/// whole content), the built document is cached per `(stable_hash, wrap_width)`. This
+/// avoids cloning the cached `MarkdownDocument` + merging on every paint — an O(n)
+/// allocation that was a significant contributor to scroll/resize lag.
+///
+/// Streaming messages always rebuild (the tail changes every frame).
+fn build_cached_document(
+    buffer: &AssistantMarkdownBuffer,
+    raw: &str,
+    tail_foreground: Color,
+    wrap_width: u16,
+) -> MarkdownDocument {
+    // Only cache completed messages whose stable prefix covers the whole content.
+    // During streaming, the document changes every frame — caching would waste memory.
+    let can_cache = buffer.stream_complete
+        && buffer.stable_end >= raw.len()
+        && buffer.wrap_width == wrap_width
+        && buffer.parts.first().is_some_and(|p| p.document.is_some());
+
+    if can_cache {
+        let Some(part) = buffer.parts.first() else {
+            return build_assistant_markdown_document(buffer, raw, tail_foreground);
+        };
+        let stable_hash = part.source_hash;
+        let key = BuiltDocCacheKey {
+            stable_hash,
+            wrap_width,
+            stream_complete: true,
+        };
+
+        // Cache hit — return cloned cached document.
+        if let Ok(cache) = built_doc_cache().lock() {
+            if let Some(cached) = cache.get(&key) {
+                return cached.clone();
+            }
+        }
+
+        // Cache miss — build and cache.
+        let doc = build_assistant_markdown_document(buffer, raw, tail_foreground);
+        if let Ok(mut cache) = built_doc_cache().lock() {
+            if cache.len() >= BUILT_DOC_CACHE_MAX {
+                // Drain half (oldest-first via iteration order).
+                let to_remove = cache.len() / 2;
+                let keys: Vec<_> = cache.keys().take(to_remove).copied().collect();
+                for k in keys {
+                    cache.remove(&k);
+                }
+            }
+            cache.insert(key, doc.clone());
+        }
+        return doc;
+    }
+
+    // Streaming or incomplete — always rebuild.
+    build_assistant_markdown_document(buffer, raw, tail_foreground)
 }
 
 #[cfg(test)]
@@ -469,6 +557,43 @@ mod tests {
             streaming_text.matches("A paragraph of regular text").count()
                 < text.matches("A paragraph of regular text").count(),
             "while streaming, the cap should drop some repeated body repeats"
+        );
+    }
+
+    #[test]
+    fn built_document_cached_for_completed_messages() {
+        use crate::tui::transcript::markdown::buffer::RenderedPart;
+
+        let raw = "## Plan\n\nA paragraph that wraps across the width nicely.\n\n| Col | Val |\n| --- | --- |\n| a | 1 |\n| b | 2 |\n\nLast paragraph.\n";
+        let doc = elph_tui::parse_markdown_document(raw);
+        let hash = crate::tui::transcript::markdown::buffer::stable_source_hash(raw);
+
+        let buffer = AssistantMarkdownBuffer {
+            stable_end: raw.len(),
+            parts: vec![RenderedPart {
+                source_end: raw.len(),
+                source_hash: hash,
+                row_count: 1,
+                document: Some(doc.clone()),
+            }],
+            wrap_width: 80,
+            stream_complete: true,
+        };
+
+        // First call — builds and caches.
+        let first = build_cached_document(&buffer, raw, Color::Reset, 80);
+        assert!(!first.is_empty());
+
+        // Second call — cache hit, returns cloned cached document.
+        let second = build_cached_document(&buffer, raw, Color::Reset, 80);
+        assert_eq!(first.lines.len(), second.lines.len());
+
+        // Verify cache has an entry.
+        let cache = built_doc_cache().lock().expect("lock");
+        assert!(
+            cache.len() >= 1,
+            "cache should have at least one entry after building, got {}",
+            cache.len()
         );
     }
 }

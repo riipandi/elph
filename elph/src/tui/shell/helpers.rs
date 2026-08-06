@@ -22,10 +22,48 @@ pub(crate) fn merge_layout_screen_size(layout_size: &mut State<(u16, u16)>, hook
     }
 }
 
+/// Debounced terminal-size polling.
+///
+/// During a resize drag, the terminal reports a new size every frame (~50 ms).
+/// Applying each change immediately triggers a full transcript re-measure + re-render
+/// (including expensive mermaid renders at every intermediate width), causing visible
+/// lag. Instead, we record the latest pending size and only commit it after
+/// `DEBOUNCE_MS` of no further changes — coalescing the rapid stream of resize events
+/// into a single update when the user "settles" on a size.
+static PENDING_SIZE: std::sync::OnceLock<Mutex<(u16, u16, u64)>> = std::sync::OnceLock::new();
+
+/// How long to wait after the last resize event before applying the new size.
+const RESIZE_DEBOUNCE_TICKS: u64 = 3; // ~150 ms at 50 ms/tick
+
+fn pending_size() -> &'static Mutex<(u16, u16, u64)> {
+    PENDING_SIZE.get_or_init(|| Mutex::new((0, 0, 0)))
+}
+
 pub(crate) fn poll_layout_screen_size(layout_size: &mut State<(u16, u16)>) {
     if let Ok((width, height)) = crossterm::terminal::size() {
         let next = (width.max(1), height.max(1));
-        if layout_size.get() != next {
+        let current = layout_size.get();
+
+        if next == current {
+            // Size matches committed state — clear any pending debounce.
+            if let Ok(mut pending) = pending_size().lock() {
+                pending.2 = 0;
+            }
+            return;
+        }
+
+        // Size changed — record it and start/continue debounce countdown.
+        if let Ok(mut pending) = pending_size().lock() {
+            let tick = pending.2.saturating_add(1);
+            *pending = (next.0, next.1, tick);
+
+            if tick >= RESIZE_DEBOUNCE_TICKS {
+                // Debounced long enough — commit the new size.
+                layout_size.set(next);
+                pending.2 = 0;
+            }
+        } else {
+            // Lock failed — apply immediately as fallback.
             layout_size.set(next);
         }
     }

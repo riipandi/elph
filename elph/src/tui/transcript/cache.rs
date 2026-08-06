@@ -154,9 +154,7 @@ impl TranscriptCache {
     /// Force a WAL checkpoint to flush pending writes and truncate the WAL file.
     /// Call after large deletes to reclaim disk space immediately.
     pub async fn checkpoint_wal(&self) -> Result<()> {
-        self.conn
-            .execute("PRAGMA wal_checkpoint(TRUNCATE)", ())
-            .await?;
+        self.conn.execute("PRAGMA wal_checkpoint(TRUNCATE)", ()).await?;
         Ok(())
     }
 
@@ -233,7 +231,13 @@ mod tests {
             .query("SELECT COUNT(*) FROM transcript_snapshot", ())
             .await
             .expect("count");
-        let count: i64 = rows.next().await.expect("next").expect("row").get(0).expect("get count");
+        let count: i64 = rows
+            .next()
+            .await
+            .expect("next")
+            .expect("row")
+            .get(0)
+            .expect("get count");
         assert_eq!(count, 1, "snapshot table must have exactly one row (overwrite semantics)");
     }
 

@@ -945,7 +945,11 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     let sid_for_snapshot = live_session_id.read().clone();
                     tokio::spawn(async move {
                         if let Err(err) = session
-                            .save_transcript_snapshot_to_cache(&snapshot_for_cache, &paths_for_snapshot.transcript_db_path(), &sid_for_snapshot)
+                            .save_transcript_snapshot_to_cache(
+                                &snapshot_for_cache,
+                                &paths_for_snapshot.transcript_db_path(),
+                                &sid_for_snapshot,
+                            )
                             .await
                         {
                             log::warn!("transcript snapshot cache save failed: {err:#}");
@@ -961,7 +965,11 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     let sid_for_snapshot = live_session_id.read().clone();
                     tokio::spawn(async move {
                         if let Err(err) = session
-                            .save_transcript_snapshot_to_cache(&snapshot, &paths_for_snapshot.transcript_db_path(), &sid_for_snapshot)
+                            .save_transcript_snapshot_to_cache(
+                                &snapshot,
+                                &paths_for_snapshot.transcript_db_path(),
+                                &sid_for_snapshot,
+                            )
                             .await
                         {
                             log::warn!("transcript snapshot cache save failed: {err:#}");

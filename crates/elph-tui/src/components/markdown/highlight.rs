@@ -1,10 +1,37 @@
 //! Fenced code block highlighting via syntect and `anstyle-syntect`.
 
+use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
+use std::sync::Mutex;
+
 use super::blocks::code_block_uses_card_background;
 use super::colors::syntect_to_styled_span;
 use super::model::{MarkdownLine, MarkdownLineKind, StyledSpan};
 use super::syntax::syntax_highlight_raw;
 use super::theme::MarkdownTheme;
+
+/// Cache key for rendered mermaid diagrams: (source_hash, max_width).
+/// Mermaid rendering is CPU-intensive (up to 4 render attempts per call), so we cache
+/// the result per (source, width) pair to avoid re-rendering unchanged diagrams
+/// every frame. Without this, a visible diagram causes 4–8 full mermaid renders
+/// per frame (measure + paint), making the TUI laggy.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct MermaidCacheKey {
+    source_hash: u64,
+    max_width: u16,
+}
+
+/// Global render cache for mermaid diagrams. Bounded to prevent unbounded growth —
+/// when full, the least-recently-used entry is evicted (simple drain-half strategy).
+static MERMAID_RENDER_CACHE: std::sync::OnceLock<Mutex<HashMap<MermaidCacheKey, String>>> = std::sync::OnceLock::new();
+
+fn mermaid_cache() -> &'static Mutex<HashMap<MermaidCacheKey, String>> {
+    MERMAID_RENDER_CACHE.get_or_init(|| Mutex::new(HashMap::with_capacity(64)))
+}
+
+/// Max cached rendered diagrams. When exceeded, half the cache is drained (oldest first
+/// via HashMap iteration order — approximate LRU without the overhead of a linked map).
+const MERMAID_CACHE_MAX_ENTRIES: usize = 128;
 
 /// Highlight a fenced code block into per-line styled spans.
 pub fn highlight_code_block(language: Option<&str>, code: &str, theme: &MarkdownTheme) -> Vec<MarkdownLine> {
@@ -59,6 +86,10 @@ pub fn highlight_code_block(language: Option<&str>, code: &str, theme: &Markdown
 /// Shared by both the paint path ([`super::render`]) and the measure path ([`super::layout`])
 /// so that what you see is exactly what was measured.
 ///
+/// Results are cached per `(source_hash, max_width)` because mermaid rendering is
+/// CPU-intensive (up to 4 render attempts per call). Without caching, a visible diagram
+/// triggers 4–8 full renders per frame (measure + paint paths), causing TUI lag.
+///
 /// Strategy (the output **never exceeds** `max_width`, so it never overflows the terminal):
 /// 1. **Strict Unicode** — compact to fit `max_width`. If it fits, great.
 /// 2. **Strict ASCII** — denser glyphs may fit where Unicode can't.
@@ -66,8 +97,44 @@ pub fn highlight_code_block(language: Option<&str>, code: &str, theme: &Markdown
 ///    with an ellipsis so the diagram stays inside the column budget.
 /// Only a genuinely *invalid* mermaid source returns an error.
 pub fn render_mermaid_at_width(source: &str, max_width: u16) -> Result<String, mermaid_text::Error> {
-    let max_width = max_width.max(1) as usize;
+    let max_width_usize = max_width.max(1) as usize;
 
+    // Check cache first.
+    let source_hash = {
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        source.hash(&mut hasher);
+        hasher.finish()
+    };
+    let cache_key = MermaidCacheKey { source_hash, max_width };
+    if let Ok(cache) = mermaid_cache().lock() {
+        if let Some(cached) = cache.get(&cache_key) {
+            return Ok(cached.clone());
+        }
+    }
+
+    // Not cached — render (up to 4 attempts).
+    let output = render_mermaid_uncached(source, max_width_usize);
+
+    // Store in cache on success. Evict if cache is too large.
+    if let Ok(ref rendered) = output {
+        if let Ok(mut cache) = mermaid_cache().lock() {
+            if cache.len() >= MERMAID_CACHE_MAX_ENTRIES {
+                // Drain half the cache (oldest-first via iteration order).
+                let to_remove = cache.len() / 2;
+                let keys: Vec<_> = cache.keys().take(to_remove).copied().collect();
+                for key in keys {
+                    cache.remove(&key);
+                }
+            }
+            cache.insert(cache_key, rendered.clone());
+        }
+    }
+
+    output
+}
+
+/// Uncached mermaid rendering — tries 4 strategies in order of preference.
+fn render_mermaid_uncached(source: &str, max_width: usize) -> Result<String, mermaid_text::Error> {
     // 1. Strict Unicode — compact to fit.
     let strict_unicode = mermaid_text::RenderOptions {
         max_width: Some(max_width),
@@ -94,8 +161,6 @@ pub fn render_mermaid_at_width(source: &str, max_width: u16) -> Result<String, m
 
     // 3. Soft budget (non-strict) — render at whatever width the layout produces, then
     // truncate any over-wide lines so the diagram can never overflow the terminal.
-    // This keeps a valid diagram as a diagram (never a raw code block) while guaranteeing
-    // it fits inside the available columns.
     let soft_unicode = mermaid_text::RenderOptions {
         max_width: Some(max_width),
         max_width_strict: false,
@@ -270,5 +335,26 @@ mod tests {
         assert!(lines[0].mermaid_source.is_none(), "non-mermaid has no deferred source");
         // Rust syntax highlighting should produce styled spans (not plain fallback).
         assert!(!lines[0].spans.is_empty());
+    }
+
+    #[test]
+    fn mermaid_render_caches_per_source_and_width() {
+        // Same source + width returns cached result (no re-render).
+        let src = "graph LR; A[Build] --> B[Test] --> C[Deploy]";
+        let first = render_mermaid_at_width(src, 80).expect("renders");
+        let second = render_mermaid_at_width(src, 80).expect("renders");
+        assert_eq!(first, second);
+
+        // Different width → different cache entry → re-rendered (may differ).
+        let _wide = render_mermaid_at_width(src, 120).expect("renders");
+        let _narrow = render_mermaid_at_width(src, 40).expect("renders");
+
+        // Cache should contain entries for our renders.
+        let cache = mermaid_cache().lock().expect("lock");
+        assert!(
+            cache.len() >= 2,
+            "cache should have entries for different (source, width) pairs, got {}",
+            cache.len()
+        );
     }
 }
