@@ -92,11 +92,17 @@ pub(crate) fn build_assistant_markdown_document(
         // When unclosed, we MUST show the entire tail to avoid truncating
         // the codeblock mid-content.
         let has_unclosed = has_unclosed_fence(raw);
+        // A COMPLETED reply must always render its full content. The tail cap below exists
+        // only to keep the live stream cheap; once the stream is done (before the worker
+        // re-partitions the buffer, or after a resize/restore), a stale `stable_end` can
+        // leave a long tail whose head would be cut by the cap — silently dropping the
+        // beginning/middle of an otherwise-finished answer. So cap only while streaming.
+        let streaming_tail = !buffer.stream_complete;
 
         if has_unclosed {
             // In an unclosed codeblock: render the entire tail as markdown
             // to preserve codeblock structure and syntax highlighting.
-            let tail_doc = if tail.len() > 12_000 {
+            let tail_doc = if streaming_tail && tail.len() > 12_000 {
                 // Safety cap: only last 12K chars for very long streams
                 let start = tail.char_indices().rev().nth(11_999).map(|(i, _)| i).unwrap_or(0);
                 streaming_tail_document(&tail[start..])
@@ -105,9 +111,10 @@ pub(crate) fn build_assistant_markdown_document(
             };
             document = merge_documents(document, tail_doc);
         } else {
-            // Outside codeblock: use capped tail for performance
-            const TAIL_PAINT_MAX: usize = 4_000;
-            let capped_tail = if tail.len() > TAIL_PAINT_MAX {
+            // Outside codeblock: use capped tail for performance while streaming.
+            // Completed replies render the full tail — no truncation of finished content.
+            let capped_tail = if streaming_tail && tail.len() > 4_000 {
+                const TAIL_PAINT_MAX: usize = 4_000;
                 let start = tail
                     .char_indices()
                     .rev()
@@ -403,6 +410,65 @@ mod tests {
         assert!(
             merged.lines.iter().any(|l| l.mermaid_source.is_some()),
             "diagram must survive stale apply rejection"
+        );
+    }
+
+    /// A COMPLETED reply must render its full tail — never truncate finished content. The tail
+    /// cap exists only to keep live-stream paint cheap; once `stream_complete` is set (but the
+    /// worker has not yet re-partitioned, e.g. right after finalize or after a resize/restore),
+    /// a stale `stable_end` can leave a long tail. Truncating it would silently drop the middle
+    /// of an already-finished answer — the "top content clipped after stream completes" bug.
+    #[test]
+    fn completed_stream_renders_full_tail_without_cap() {
+        let foreground = Color::Reset;
+
+        // Long well-formed reply (> 4K chars) that sits entirely in the tail because the
+        // buffer's stable_end is still 0 (worker hasn't re-partitioned after completion).
+        let section = "A paragraph of regular text that is long enough to wrap and repeat.\n\n";
+        let body = section.repeat(160); // ~ 13K chars — far beyond the 4K tail cap
+        let closing = "## Done\n\nFinal paragraph.\n";
+        let raw = format!("{body}{closing}");
+
+        let mut buffer = AssistantMarkdownBuffer::new();
+        buffer.wrap_width = 80;
+        buffer.stable_end = 0; // everything still in tail
+        buffer.stream_complete = true; // completed — cap must be bypassed
+        buffer.parts = vec![];
+
+        let doc = build_assistant_markdown_document(&buffer, &raw, foreground);
+        let text: String = doc
+            .lines
+            .iter()
+            .map(|l| l.spans.iter().map(|s| s.text.as_str()).collect::<String>())
+            .collect::<Vec<_>>()
+            .join("\n");
+        // The FILLED body and the closing heading must both be present (no truncation).
+        assert!(
+            text.contains("## Done") && text.contains("Final paragraph."),
+            "completed stream must render the closing content, got tail: {}",
+            text.chars().rev().take(80).collect::<String>()
+        );
+        assert!(text.contains("A paragraph of regular text"), "head content must not be clipped");
+
+        // Same buffer while STILL streaming: cap applies, tail is truncated to ~last 4K chars.
+        let mut streaming = buffer.clone();
+        streaming.stream_complete = false;
+        let streaming_doc = build_assistant_markdown_document(&streaming, &raw, foreground);
+        let streaming_text: String = streaming_doc
+            .lines
+            .iter()
+            .map(|l| l.spans.iter().map(|s| s.text.as_str()).collect::<String>())
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(
+            streaming_text.contains("## Done"),
+            "streaming tail must still contain the recent tail (closing section)"
+        );
+        // The head BODY may be dropped while streaming (cap) — but only then.
+        assert!(
+            streaming_text.matches("A paragraph of regular text").count()
+                < text.matches("A paragraph of regular text").count(),
+            "while streaming, the cap should drop some repeated body repeats"
         );
     }
 }

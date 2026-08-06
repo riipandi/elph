@@ -5,8 +5,8 @@ use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 use elph_tui::{
-    StickyHeaderLayout, active_sticky_user_message_index, layout_sticky_header, scroll_view_down,
-    scroll_view_max_offset, scroll_view_up, sticky_source_bubble_suppressed, transcript_bubble_inner_width,
+    StickyHeaderLayout, active_sticky_user_message_index, layout_sticky_header, scroll_view_max_offset,
+    sticky_source_bubble_suppressed, transcript_bubble_inner_width,
 };
 use iocraft::prelude::*;
 
@@ -476,25 +476,41 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
                 _ => TRANSCRIPT_SCROLL_STEP,
             };
 
+            // Scroll math is anchored to the authoritative layout-measured content height
+            // (clamped copy), NOT the ScrollView handle's peak-holding content_height.
+            // While streaming, the handle's peak can exceed the final layout height; after the
+            // stream completes, using that stale peak lets the user scroll past the real end of
+            // the transcript — the top content then appears clipped because the windowing
+            // offset no longer matches any mounted row. Anchoring to the layout height keeps
+            // offset clamping and windowing in lockstep before and after completion.
+            let layout_max = scroll_view_max_offset(layout_content_u16, scroll_zone);
+
             if transcript_focused && transcript_nav_key(code, kind, modifiers) {
                 match code {
                     KeyCode::Up | KeyCode::PageUp => {
-                        scroll_view_up(&mut scroll_handle.write(), scroll_step);
+                        if scroll_handle.read().is_auto_scroll_pinned() {
+                            scroll_handle.write().scroll_to(layout_max.saturating_sub(scroll_step));
+                        } else {
+                            scroll_handle.write().scroll_by(-scroll_step);
+                        }
                     }
                     KeyCode::Down | KeyCode::PageDown => {
-                        scroll_view_down(&mut scroll_handle.write(), scroll_step);
+                        if scroll_handle.read().is_auto_scroll_pinned() {
+                            // Already pinned to the (layout) bottom — nothing to do.
+                        } else {
+                            let offset = scroll_handle.read().scroll_offset();
+                            if offset + scroll_step >= layout_max {
+                                scroll_handle.write().scroll_to(layout_max);
+                            } else {
+                                scroll_handle.write().scroll_by(scroll_step);
+                            }
+                        }
                     }
                     KeyCode::Home => {
                         scroll_handle.write().scroll_to(0);
                     }
                     KeyCode::End => {
-                        let (content_height, viewport_height) = {
-                            let h = scroll_handle.read();
-                            (h.content_height(), h.viewport_height())
-                        };
-                        scroll_handle
-                            .write()
-                            .scroll_to(scroll_view_max_offset(content_height, viewport_height));
+                        scroll_handle.write().scroll_to(layout_max);
                     }
                     _ => {}
                 }
@@ -504,10 +520,25 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
             {
                 match code {
                     KeyCode::Up => {
-                        scroll_view_up(&mut scroll_handle.write(), TRANSCRIPT_SCROLL_STEP);
+                        if scroll_handle.read().is_auto_scroll_pinned() {
+                            scroll_handle
+                                .write()
+                                .scroll_to(layout_max.saturating_sub(TRANSCRIPT_SCROLL_STEP));
+                        } else {
+                            scroll_handle.write().scroll_by(-TRANSCRIPT_SCROLL_STEP);
+                        }
                     }
                     KeyCode::Down => {
-                        scroll_view_down(&mut scroll_handle.write(), TRANSCRIPT_SCROLL_STEP);
+                        if scroll_handle.read().is_auto_scroll_pinned() {
+                            // Nothing to scroll down when already pinned.
+                        } else {
+                            let offset = scroll_handle.read().scroll_offset();
+                            if offset + TRANSCRIPT_SCROLL_STEP >= layout_max {
+                                scroll_handle.write().scroll_to(layout_max);
+                            } else {
+                                scroll_handle.write().scroll_by(TRANSCRIPT_SCROLL_STEP);
+                            }
+                        }
                     }
                     _ => {}
                 }

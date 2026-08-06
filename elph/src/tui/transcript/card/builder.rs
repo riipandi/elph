@@ -331,4 +331,144 @@ mod tests {
         // Should still show at least the last message
         assert!(!bubbles.is_empty(), "should show content even with extreme scroll position");
     }
+
+    /// After a long stream completes, scrolling back to the TOP must still render the first
+    /// messages in full. This guards against the "scrolled up after stream completes, top
+    /// content still clipped" bug: the leading spacer must equal the measured offset of the
+    /// first mounted message, and the windowed column must total exactly the measured rows.
+    #[test]
+    fn windowed_build_scroll_to_top_preserves_leading_content() {
+        use iocraft::prelude::*;
+
+        let mut messages = Vec::new();
+        for i in 0..60 {
+            messages.push(TranscriptMessage::text(
+                format!(
+                    "status log line {i} — a status row with a longer label that stays on one line"
+                ),
+                TranscriptStyle::StatusSuccess,
+            ));
+        }
+        // A completed assistant reply (stream finished) — stable, cached markdown. We simulate
+        // completion by force-flushing the buffer like `mark_stream_complete` → `refresh_stable`.
+        let mut assistant = TranscriptMessage::assistant_markdown(
+            "## Result\n\nFirst paragraph that wraps across the width nicely.\n\n| Col | Val |\n| --- | --- |\n| a | 1 |\n| b | 2 |\n\nLast paragraph.\n",
+        );
+        if let Some(md) = assistant.markdown.as_mut() {
+            md.mark_stream_complete();
+            md.refresh_stable(&assistant.content, 80);
+        }
+        messages.push(assistant);
+
+        for width in [50u16, 80, 120] {
+            let layouts = layout_transcript_rows(&messages, width);
+            let total = layouts
+                .last()
+                .map(|l| l.start_row.saturating_add(l.row_count))
+                .unwrap_or(0);
+            let trailing = messages
+                .last()
+                .map(|m| m.transcript_margin_bottom(None) as u32)
+                .unwrap_or(0);
+
+            // Scroll to the TOP — viewport starts at row 0.
+            let view_rows = 14u32;
+            let bubbles = build_transcript_bubbles_windowed(
+                width,
+                &messages,
+                &layouts,
+                0,
+                view_rows,
+                None,
+                None,
+            );
+            let rendered =
+                element! { View(width: width, flex_direction: FlexDirection::Column) { #(bubbles) } }.to_string();
+            let painted = rendered.lines().count() as u32;
+            // Windowed column must still total the full measured height (spacers + mounted).
+            assert_eq!(
+                total.saturating_add(trailing),
+                painted,
+                "width {width}: scrolled-to-top windowed paint {painted} != measured total {total}"
+            );
+            // The very first status message must be present at the top (not skipped).
+            assert!(
+                rendered.contains("status log line 0"),
+                "width {width}: first status message missing when scrolled to top"
+            );
+        }
+    }
+
+    /// Sweep every scroll position (top → bottom) after stream completion. The windowed
+    /// column must total the measured height at EVERY offset, and each visible message must
+    /// be present in the paint (no gaps or clipped rows).
+    #[test]
+    fn windowed_build_sweeps_scroll_positions_after_completion() {
+        use iocraft::prelude::*;
+
+        let mut messages = Vec::new();
+        for i in 0..40 {
+            messages.push(TranscriptMessage::text(
+                format!("status row {i} with a moderately long single-line label"),
+                TranscriptStyle::StatusSuccess,
+            ));
+        }
+        let mut assistant = TranscriptMessage::assistant_markdown(
+            "## Result\n\nA completed paragraph.\n\n```mermaid\ngraph TD\n    A[Start] --> B[End]\n```\n\nDone.\n",
+        );
+        if let Some(md) = assistant.markdown.as_mut() {
+            md.mark_stream_complete();
+            md.refresh_stable(&assistant.content, 80);
+        }
+        messages.push(assistant);
+
+        for width in [60u16, 100] {
+            let layouts = layout_transcript_rows(&messages, width);
+            let total = layouts
+                .last()
+                .map(|l| l.start_row.saturating_add(l.row_count))
+                .unwrap_or(0);
+            let trailing = messages
+                .last()
+                .map(|m| m.transcript_margin_bottom(None) as u32)
+                .unwrap_or(0);
+            let expected_total = total.saturating_add(trailing);
+
+            for view_start in [0u32, total / 4, total / 2, (total.saturating_mul(3)) / 4, total.saturating_sub(1)]
+            {
+                let view_rows = 10u32;
+                let bubbles = build_transcript_bubbles_windowed(
+                    width,
+                    &messages,
+                    &layouts,
+                    view_start,
+                    view_rows,
+                    None,
+                    None,
+                );
+                let rendered = element! { View(width: width, flex_direction: FlexDirection::Column) { #(bubbles) } }
+                    .to_string();
+                let painted = rendered.lines().count() as u32;
+                assert_eq!(
+                    expected_total,
+                    painted,
+                    "width {width} view_start {view_start}: windowed {painted} != measured {expected_total}"
+                );
+                // The viewport window must show *something* that belongs to its region:
+                // at the top end, the first message is mounted; near the bottom, the tail.
+                if view_start == 0 {
+                    assert!(
+                        rendered.contains("status row 0"),
+                        "width {width}: message 0 missing at view_start 0"
+                    );
+                }
+                if view_start >= total.saturating_sub(1) {
+                    assert!(
+                        rendered.contains("## Result") || rendered.contains("Done."),
+                        "width {width}: assistant tail missing near bottom"
+                    );
+                }
+            }
+        }
+    }
 }

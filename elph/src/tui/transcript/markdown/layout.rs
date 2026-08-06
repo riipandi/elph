@@ -171,6 +171,50 @@ mod tests {
         }
     }
 
+    /// Mirror `agent_bridge::finalize_turn` exactly: trim trailing whitespace on the content
+    /// and mark the buffered stream complete — but the worker refresh has NOT run yet, so the
+    /// buffer's `stable_end` may exceed the trimmed content length. Measure must still equal
+    /// paint (no drift) so scrolling up after completion never shows clipped content.
+    #[test]
+    fn finalized_stream_measure_matches_paint_with_pending_worker() {
+        use crate::tui::transcript::types::TranscriptMessage;
+
+        // Long enough to wrap, with trailing whitespace that finalize_turn trims.
+        let base = "## Plan\n\nParagraph that is long enough to wrap across the width several times over.\n\n| Tool | Note |\n| --- | --- |\n| read_file | reads |\n| write_file | writes |\n\nDone.\n";
+        let mut msg = TranscriptMessage::assistant_markdown(format!("{base}   \n\n"));
+        let content_trimmed = msg.content.trim_end().to_string();
+
+        // Simulate finalize_turn.
+        msg.content = content_trimmed.clone();
+        if let Some(md) = msg.markdown.as_mut() {
+            md.mark_stream_complete();
+            // NOTE: no refresh_stable here — the worker tick runs 120ms later, so the buffer
+            // still holds the PRE-trim stable_end (which can exceed the trimmed length).
+        }
+
+        let md = msg.markdown.as_ref().expect("buffer");
+        for width in [44u16, 60, 80] {
+            let measured = assistant_row_count(&content_trimmed, Some(md), width);
+            let painted = painted_rows(md, &content_trimmed, width) as u16;
+            assert_eq!(
+                measured, painted,
+                "width {width}: after finalize, measured {measured} != painted {painted}"
+            );
+        }
+
+        // After the worker catches up (refresh_stable), parity must hold too.
+        if let Some(md) = msg.markdown.as_mut() {
+            md.refresh_stable(&msg.content, 80);
+        }
+        let md = msg.markdown.as_ref().expect("buffer");
+        let measured = assistant_row_count(&content_trimmed, Some(md), 80);
+        let painted = painted_rows(md, &content_trimmed, 80) as u16;
+        assert_eq!(
+            measured, painted,
+            "after refresh: measured {measured} != painted {painted}"
+        );
+    }
+
     fn truncate_debug(text: &str) -> String {
         let mut out = String::new();
         for c in text.chars().take(60) {
