@@ -45,13 +45,22 @@ _RESIDUAL_ := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 $(foreach a,$(_RESIDUAL_),$(eval .PHONY: $a))
 $(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
 
+# _after <list> <needle> — returns the words following the first occurrence of
+# <needle> (pure make, used to extract `--features <name>` residual values).
+define _after
+$(if $(filter $(2),$(firstword $(1))),$(wordlist 2,$(words $(1)),$(1)),$(if $(wordlist 2,$(words $(1)),$(1)),$(call _after,$(wordlist 2,$(words $(1)),$(1)),$(2))))
+endef
+
 # Build profile: debug by default (faster for day-to-day install).
 # Release (any of):
 #   make install RELEASE=1
 #   make install -- --release
 #   make build -- --release
-# Dist (for production builds):
+# Dist (any of):
 #   make install PROFILE=dist
+#   make install -- --dist
+# Feature flags via residual goals (any platform):
+#   make install -- --features metal      (macOS GPU; also --features cuda on Linux)
 # Note: `make install --release` is rejected by GNU make (unknown option). Use `-- --release`.
 # Do not use residual goal `release` — it collides with the cross `release` target.
 _RELEASE_REQUESTED :=
@@ -67,6 +76,14 @@ ifneq ($(filter dist,$(PROFILE)),)
 endif
 ifneq ($(filter --release,$(MAKECMDGOALS) $(_RESIDUAL_)),)
   _RELEASE_REQUESTED := 1
+endif
+ifneq ($(filter --dist,$(MAKECMDGOALS) $(_RESIDUAL_)),)
+  _DIST_REQUESTED := 1
+endif
+# Explicit `--features <name>` residual overrides the auto-detected default.
+_AFTER_FEATURES := $(call _after,$(MAKECMDGOALS),--features)
+ifneq ($(strip $(_AFTER_FEATURES)),)
+  ELPH_METAL_FEATURE := --features $(firstword $(_AFTER_FEATURES))
 endif
 
 ifeq ($(_DIST_REQUESTED),1)
@@ -343,10 +360,12 @@ publish-dry-run: ## Dry-run publish checks (elph-ai first)
 help: ## Show this help
 	@printf '\033[33mUsage:\033[0m make \033[36m<target>\033[0m\n'
 	@awk -F ':.*## ' '/^[a-zA-Z_-]+:.*## / {printf " \033[36m%-18s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
-	@printf ' \n\033[33mBuild profile (build / install):\033[0m\n'
+	@printf ' \033[33mBuild profile (build / install):\033[0m\n'
 	@printf ' \033[36mmake install\033[0m                  debug -> elph-dev\n'
 	@printf ' \033[36mmake install RELEASE=1\033[0m        release -> elph-next\n'
 	@printf ' \033[36mmake install PROFILE=dist\033[0m      dist -> elph\n'
 	@printf ' \033[36mmake install -- --release\033[0m     release (GNU make end-of-options)\n'
+	@printf ' \033[36mmake install -- --dist\033[0m        dist (GNU make end-of-options)\n'
+	@printf ' \033[36mmake install -- --features metal\033[0m  enable metal feature (GPU)\n'
 	@printf ' \033[36mmake build PROFILE=release\033[0m    same as RELEASE=1\n'
 	@printf ' note: \033[36mmake install --release\033[0m  is invalid (make option parse)\n'
