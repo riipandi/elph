@@ -153,19 +153,42 @@ fn run_scan_with_spinner(paths: &Paths, full_build: bool) -> Result<ScanStats> {
     let progress: ProgressFn = Arc::new(move |ev| {
         let msg = match ev.phase {
             IndexPhase::Starting => "Opening store…".into(),
-            IndexPhase::Scanning => "Scanning files…".into(),
+            IndexPhase::Scanning => {
+                if ev.files_walked > 0 {
+                    format!("Scanning files… ({} seen)", ev.files_walked)
+                } else {
+                    "Scanning files…".into()
+                }
+            }
             IndexPhase::IndexingFile => {
-                let base = match &ev.current_path {
-                    Some(p) => format!("{p}  ({} reindexed · {} seen)", ev.files_indexed, ev.files_walked),
-                    None => format!("Indexing…  ({} reindexed · {} seen)", ev.files_indexed, ev.files_walked),
+                let base = if let Some(p) = &ev.current_path {
+                    // Show relative path for brevity
+                    let display_path = if p.len() > 40 {
+                        format!("…{}", &p[p.len() - 38..])
+                    } else {
+                        p.clone()
+                    };
+                    format!("{}  ({} of {} files)", display_path, ev.files_indexed, ev.files_walked)
+                } else {
+                    format!("Indexing…  ({} of {} files)", ev.files_indexed, ev.files_walked)
                 };
+                
                 if let (Some(total), Some(estimate)) = (ev.files_to_index, ev.estimated_seconds) {
+                    let progress_pct = if total > 0 {
+                        ((ev.files_indexed as f64 / total as f64) * 100.0) as u32
+                    } else {
+                        0
+                    };
+                    
                     let time_str = if estimate < 60 {
                         format!("{}s", estimate)
+                    } else if estimate < 3600 {
+                        format!("{}m {}s", estimate / 60, estimate % 60)
                     } else {
-                        format!("{}m", estimate / 60)
+                        format!("{}h {}m", estimate / 3600, (estimate % 3600) / 60)
                     };
-                    format!("{} · {} files · ~{}", base, total, time_str)
+                    
+                    format!("{} · {}% · ~{} remaining", base, progress_pct, time_str)
                 } else {
                     base
                 }
@@ -188,19 +211,49 @@ fn run_scan_with_spinner(paths: &Paths, full_build: bool) -> Result<ScanStats> {
 
 fn print_scan(sty: &CliStyle, label: &str, stats: &ScanStats) {
     let mut out = String::new();
-    style::section(&mut out, *sty, &format!("Codegraph {label}"));
-    style::kv(&mut out, *sty, "Walked", stats.files_walked);
-    style::kv(&mut out, *sty, "Skipped", stats.files_skipped);
-    style::kv(&mut out, *sty, "Unchanged", stats.files_unchanged);
-    style::kv(&mut out, *sty, "Indexed", stats.files_indexed);
-    style::kv(&mut out, *sty, "Chunks", stats.chunks_indexed);
-    style::kv(&mut out, *sty, "Embedded", stats.chunks_embedded);
-    style::kv(&mut out, *sty, "Bytes read", style::fmt_bytes(stats.bytes_read));
-    style::kv(&mut out, *sty, "Walk time", style::fmt_duration(stats.walk_ms));
-    style::kv(&mut out, *sty, "Reindex time", style::fmt_duration(stats.reindex_ms));
-    style::kv(&mut out, *sty, "Finalize time", style::fmt_duration(stats.finalize_ms));
-    if let Some(gpu) = &stats.gpu_acceleration {
-        style::kv(&mut out, *sty, "GPU acceleration", gpu);
+    
+    // Success header with context
+    let action = if label == "build" { "built" } else { "updated" };
+    style::success(&mut out, *sty, &format!("Codegraph {action} successfully"));
+    
+    use std::fmt::Write;
+    let _ = writeln!(out);
+    
+    // Key metrics in a compact format
+    let files = stats.files_indexed;
+    let chunks = stats.chunks_indexed;
+    let _ = writeln!(
+        out,
+        "  {} {} indexed  ({} chunks)",
+        sty.paint(S_ACCENT, format!("{}", files)),
+        if files == 1 { "file" } else { "files" },
+        chunks
+    );
+    
+    // GPU status - prominent and clear
+    let gpu_status = match stats.gpu_acceleration.as_deref() {
+        Some(s) if s.contains("metal") => format!("{} Metal active", sty.paint(S_ACCENT, "✓")),
+        Some(s) if s.contains("cuda") => format!("{} CUDA active", sty.paint(S_ACCENT, "✓")),
+        Some(s) if s.contains("disabled") => format!("{} CPU only", sty.paint(S_MUTED, "○")),
+        Some(other) => format!("{} {}", sty.paint(S_ACCENT, "✓"), other),
+        None => format!("{} CPU only", sty.paint(S_MUTED, "○")),
+    };
+    let _ = writeln!(out, "  GPU: {}", gpu_status);
+    
+    // Total time
+    let total_ms = stats.walk_ms + stats.reindex_ms + stats.finalize_ms;
+    let time_str = if total_ms < 1000 {
+        format!("{}ms", total_ms)
+    } else {
+        format!("{:.1}s", total_ms as f64 / 1000.0)
+    };
+    let _ = writeln!(out, "  Time: {}", sty.paint(S_BODY, time_str));
+    
+    // Additional context for no-op updates
+    if stats.files_indexed == 0 && stats.files_unchanged > 0 {
+        let _ = writeln!(out);
+        style::info(&mut out, *sty, sty.paint(S_MUTED, "No changes detected"));
     }
+    
     print!("{out}");
 }

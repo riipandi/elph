@@ -218,17 +218,25 @@ impl Indexer<'_> {
         // Calculate estimation after walk phase
         let files_to_index_count = files_to_process.len() as u32;
         let estimated_seconds = if files_to_index_count > 0 {
-            // Estimate: assume ~0.5 seconds per file (CPU) or ~0.1 seconds per file (GPU).
-            let seconds_per_file = if self
+            // Improved estimation: account for chunk count and actual GPU/CPU speed
+            // Base: GPU ~0.08s per chunk, CPU ~0.25s per chunk (measured from typical runs)
+            let chunks_estimate = files_to_index_count as f64 * 2.5; // ~2.5 chunks per file average
+            
+            let seconds_per_chunk = if self
                 .gpu_acceleration
                 .as_ref()
                 .is_some_and(|s| s.contains("metal") || s.contains("cuda"))
             {
-                0.1 // GPU is faster
+                0.08 // GPU: faster, Metal typically ~0.08s per chunk
             } else {
-                0.5 // CPU is slower
+                0.25 // CPU: slower, ~0.25s per chunk
             };
-            Some((files_to_index_count as f64 * seconds_per_file).ceil() as u64)
+            
+            // Add walk time overhead (usually small but non-zero)
+            let walk_overhead = stats.walk_ms as f64 / 1000.0 * 0.1; // 10% of walk time as overhead
+            
+            let total_estimate = (chunks_estimate * seconds_per_chunk) + walk_overhead;
+            Some(total_estimate.ceil() as u64)
         } else {
             None
         };
@@ -323,6 +331,7 @@ impl Indexer<'_> {
         estimated_seconds: Option<u64>,
     ) -> Result<()> {
         let db_start = Instant::now();
+        let phase_start = Instant::now();
 
         // Delete old paths first
         for old in existing.keys() {
@@ -336,12 +345,28 @@ impl Indexer<'_> {
         for chunk in final_processed.chunks(txn_batch) {
             conn.execute("BEGIN TRANSACTION", ()).await?;
             for processed in chunk {
+                // Dynamic estimation update based on actual progress
+                let dynamic_estimate = if stats.files_indexed > 0 && files_to_index_count > 0 {
+                    let elapsed = phase_start.elapsed().as_secs_f64();
+                    let files_done = stats.files_indexed as f64;
+                    let files_remaining = (files_to_index_count - stats.files_indexed) as f64;
+                    if files_done > 0.0 {
+                        let avg_time_per_file = elapsed / files_done;
+                        let remaining = avg_time_per_file * files_remaining;
+                        Some(remaining.ceil() as u64)
+                    } else {
+                        estimated_seconds
+                    }
+                } else {
+                    estimated_seconds
+                };
+
                 self.report(
                     IndexPhase::IndexingFile,
                     stats,
                     Some(&processed.rel),
                     Some(files_to_index_count),
-                    estimated_seconds,
+                    dynamic_estimate,
                 );
                 self.batch_insert_file(conn, processed, stats)
                     .await
@@ -354,7 +379,7 @@ impl Indexer<'_> {
                         stats,
                         Some(&processed.rel),
                         Some(files_to_index_count),
-                        estimated_seconds,
+                        dynamic_estimate,
                     );
                 }
             }
@@ -403,10 +428,18 @@ impl Indexer<'_> {
         // The surrounding call in `scan` opens the enclosing transaction; we just
         // insert this file's rows within it.
 
-        // Insert file record
+        // Delete existing data for this path first (for updates)
+        let path = processed.rel.as_str();
+        let file_node = file_node_id(path);
+        
+        conn.execute("DELETE FROM cg_chunks WHERE path = ?", params![path]).await?;
+        conn.execute("DELETE FROM cg_nodes WHERE path = ?", params![path]).await?;
+        conn.execute("DELETE FROM cg_edges WHERE src = ? OR dst = ?", params![file_node.as_str(), file_node.as_str()]).await?;
+
+        // Insert file record (use INSERT OR REPLACE to handle updates)
         let now = now_secs();
         conn.execute(
-            "INSERT INTO cg_files(path, file_hash, lang, updated_at) VALUES (?, ?, ?, ?)",
+            "INSERT OR REPLACE INTO cg_files(path, file_hash, lang, updated_at) VALUES (?, ?, ?, ?)",
             params![
                 processed.rel.as_str(),
                 processed.hash.as_str(),
@@ -419,25 +452,24 @@ impl Indexer<'_> {
         // Batch insert nodes
         let nodes = nodes_for_chunks(&processed.chunks);
         if !nodes.is_empty() {
-            for (id, path, name, kind, start, end) in nodes {
+            for (id, node_path, name, kind, start, end) in nodes {
                 conn.execute(
                     "INSERT OR REPLACE INTO cg_nodes(id, path, name, kind, start_line, end_line)
                      VALUES (?, ?, ?, ?, ?, ?)",
-                    params![id, path, name, kind, start as i64, end as i64],
+                    params![id, node_path, name, kind, start as i64, end as i64],
                 )
                 .await?;
             }
         }
 
         // Batch insert edges
-        let src_node = file_node_id(&processed.rel);
         let targets = extract_import_targets(&processed.rel, &processed.source);
         if !targets.is_empty() {
             for target in targets {
                 let dst = format!("import:{target}");
                 conn.execute(
                     "INSERT OR IGNORE INTO cg_edges(src, dst, kind) VALUES (?, ?, 'imports')",
-                    params![src_node.clone(), dst],
+                    params![file_node.as_str(), dst],
                 )
                 .await?;
             }
