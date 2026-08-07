@@ -6,6 +6,7 @@ use elph_ai::{Message, Model, UserContent};
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 
+use super::harness::SubagentHarness;
 use super::harness::spawn_subagent_harness;
 use super::id::MAX_NAME_ATTEMPTS;
 use super::id::generate_agent_name;
@@ -64,6 +65,11 @@ impl AgentControl {
         self.registry.clone()
     }
 
+    /// Fetch a spawned subagent's harness by id (used for inspection/testing).
+    pub async fn subagent_harness(&self, id: &str) -> Option<Arc<SubagentHarness>> {
+        self.registry.get(id).await.map(|record| record.harness)
+    }
+
     pub async fn set_event_forwarder(&self, forwarder: Option<SubagentEventForwarder>) {
         *self.event_forwarder.lock().await = forwarder;
     }
@@ -73,6 +79,14 @@ impl AgentControl {
         config.system_prompt = system_prompt;
         config.model = model;
         config.base_tools = base_tools;
+    }
+
+    /// Keep the spawned subagent model in sync with the parent harness's current
+    /// active model. Called by the harness whenever the live model changes, so a
+    /// subagent spawned later inherits the active selection instead of the stale
+    /// `defaultModel` captured at harness construction.
+    pub async fn set_model(&self, model: Model) {
+        self.config.lock().await.model = model;
     }
 
     pub async fn list_agents(&self, path_prefix: Option<&str>) -> Vec<SubagentInfo> {

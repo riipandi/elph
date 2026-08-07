@@ -131,6 +131,85 @@ async fn spawn_and_list_subagents_with_turso_sessions() {
     assert_eq!(opened.metadata().await.id, child_session_id);
 }
 
+/// A subagent must inherit the parent harness's *current* active model, not the
+/// model that was configured when the parent `AgentControl` was constructed.
+/// Regression test for subagents silently falling back to `defaultModel`.
+#[tokio::test(flavor = "multi_thread")]
+async fn subagent_inherits_current_model_after_switch() {
+    let temp = tempfile::TempDir::new().expect("tempdir");
+    let env = Arc::new(LocalExecutionEnv::new(temp.path()));
+    let (faux, models) = common::new_faux();
+    faux.set_responses(vec![FauxResponseStep::Static(faux_assistant_message(
+        vec![faux_text("ok")],
+        Some(StopReason::Stop),
+    ))]);
+    let stream_fn = common::faux_stream_fn(&faux);
+    let tools = create_search_tools(env.clone());
+
+    let graph_db = temp.path().join("metadata.db");
+    ensure_database(&graph_db, PLATFORM_LIKE)
+        .await
+        .expect("platform migrate");
+
+    let bootstrap = SubagentBootstrap {
+        cwd: temp.path().to_string_lossy().to_string(),
+        store_db_path: graph_db.to_string_lossy().to_string(),
+        resources: AgentHarnessResources::default(),
+        stream_options: AgentHarnessStreamOptions::default(),
+        thinking_level: Default::default(),
+        prompt_encoding: None,
+        database: None,
+        agent_graph: Some(Arc::new(AgentGraphStore::new(&graph_db))),
+        outputs_root: Some(temp.path().join("outputs")),
+    };
+
+    let registry = Arc::new(elph_agent::AgentRegistry::new());
+    let parent_path = elph_agent::generate_agent_name();
+    let model_a = faux.provider.get_models()[0].clone();
+    let mut model_b = model_a.clone();
+    model_b.id = "switched-model".to_string();
+    model_b.name = "Switched Model".to_string();
+
+    let control = AgentControl::new(
+        SubagentSpawnConfig {
+            env,
+            model: model_a.clone(),
+            system_prompt: "subagent".into(),
+            base_tools: tools,
+            stream_fn,
+            models,
+            root_session_id: "parent_sess".into(),
+            bootstrap: Some(bootstrap),
+        },
+        SubagentLimits::default(),
+        0,
+        registry,
+        parent_path,
+    );
+
+    // First subagent uses the construction-time model.
+    let id1 = control
+        .spawn_agent("first", Some("do first".into()))
+        .await
+        .expect("spawn");
+    control.wait_agent(&id1).await.expect("wait");
+    let used1 = control.subagent_harness(&id1).await.unwrap().model().await;
+    assert_eq!(used1.id, model_a.id, "first subagent should use the initially configured model");
+
+    // Switch the active model, then spawn again — the new subagent must follow it.
+    control.set_model(model_b.clone()).await;
+    let id2 = control
+        .spawn_agent("second", Some("do second".into()))
+        .await
+        .expect("spawn");
+    control.wait_agent(&id2).await.expect("wait");
+    let used2 = control.subagent_harness(&id2).await.unwrap().model().await;
+    assert_eq!(
+        used2.id, model_b.id,
+        "second subagent must inherit the switched active model, not the construction-time default"
+    );
+}
+
 /// Rapid `followup_task` + `wait_agent` interleaving must never hang or return
 /// before the dispatched turn starts (the historical "no output" flake).
 #[tokio::test(flavor = "multi_thread")]

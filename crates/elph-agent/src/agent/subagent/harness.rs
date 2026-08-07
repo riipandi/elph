@@ -40,6 +40,12 @@ impl SubagentHarness {
         &self.harness
     }
 
+    /// Model the subagent will use for its turns (inherited from the parent's
+    /// active model at spawn time).
+    pub async fn model(&self) -> elph_ai::Model {
+        self.harness.get_model().await
+    }
+
     /// Last completed turn output (final assistant text, trimmed).
     pub async fn last_output(&self) -> String {
         self.last_output.lock().await.trim().to_string()
