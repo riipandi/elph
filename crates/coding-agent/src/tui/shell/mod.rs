@@ -576,6 +576,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let turn_cancel_requested = hooks.use_ref(|| false);
     let pending_quit_confirm = hooks.use_ref(|| false);
     let turn_token_tracker = hooks.use_ref(|| None::<TurnTokenTracker>);
+    // Track if an approval dialog (mode change / tool approval) set the activity label.
+    // Cleared on RunCompleted to reset status when turn finishes.
+    let pending_approval_label = hooks.use_ref(|| false);
     // Path to the plan file being actively implemented (set on Implement, cleared on RunCompleted).
     // Used to transition frontmatter `Status` from `in_progress` to `completed` when the turn finishes.
     let active_plan_file = hooks.use_ref(|| None::<String>);
@@ -773,6 +776,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         transcript_pending,
         turn_cancel_requested,
         turn_token_tracker,
+        pending_approval_label,
         ui_events_slot,
         user_shell_abort,
         user_shell_channel,

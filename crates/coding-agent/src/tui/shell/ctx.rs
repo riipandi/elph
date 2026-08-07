@@ -165,6 +165,7 @@ pub(crate) struct ShellCtx {
     pub(crate) transcript_pending: Ref<bool>,
     pub(crate) turn_cancel_requested: Ref<bool>,
     pub(crate) turn_token_tracker: Ref<Option<TurnTokenTracker>>,
+    pub(crate) pending_approval_label: Ref<bool>,
     pub(crate) ui_events_slot: Ref<Option<Arc<Mutex<UnboundedReceiver<AgentUiEvent>>>>>,
     pub(crate) user_shell_abort: Ref<Option<CancellationToken>>,
     pub(crate) user_shell_channel: Ref<UserShellChannel>,

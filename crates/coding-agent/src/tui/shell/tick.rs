@@ -42,6 +42,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         mut idle_status_notice,
         mut last_activity_label,
         mut last_event_burst,
+        mut pending_approval_label,
         mut last_transcript_publish,
         mut layout_screen_size_for_loop,
         mut live_draft,
@@ -548,6 +549,8 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 approval_selected.set(TOOL_APPROVAL_DEFAULT_INDEX);
                 shell_focus.set(ShellFocus::StatusDialog);
                 pending_tool_approval.set(Some(PendingToolApproval::from_request(req)));
+                // Mark that we set a pending approval label so we can clear it on completion
+                pending_approval_label.set(true);
                 // Desktop notification: tool permission request
                 {
                     let paths = paths.read().clone();
@@ -642,6 +645,8 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     msgs.push(row);
                 }
                 transcript_changed = true;
+                // Mark that we set a pending approval label so we can clear it on completion
+                pending_approval_label.set(true);
                 continue;
             }
 
@@ -1010,6 +1015,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 activity_started_at.set(None);
                 activity_label.set(String::new());
                 turn_token_tracker.set(None);
+                pending_approval_label.set(false);
                 chrome_refresh_pending.set(true);
             }
             // Follow-up prompts are drained inside the harness agent loop; no TUI re-spawn.
