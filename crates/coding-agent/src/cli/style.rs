@@ -54,8 +54,8 @@ impl CliStyle {
 pub fn section(out: &mut String, sty: CliStyle, title: &str) {
     use std::fmt::Write;
     let _ = writeln!(out, "{}", sty.paint(S_TITLE, title));
-    let bar = "─".repeat(title.chars().count().clamp(12, 48));
-    let _ = writeln!(out, "{}", sty.paint(S_MUTED, bar));
+    // Use separator line matching terminal width for consistency
+    let _ = writeln!(out, "{}", sty.paint(S_MUTED, "────────────────────────────────────────────────────"));
 }
 
 /// Write a key-value pair with aligned label.
