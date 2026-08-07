@@ -202,14 +202,24 @@ pub struct PromptQueueView {
     items: Vec<QueuedPromptItem>,
     /// Texts removed via **Send** (interject). Hidden until the harness no longer holds them
     /// (Send re-queues as steer, which would otherwise reappear in the list).
-    suppressed_sent: Vec<String>,
+    /// Each entry tracks how many consecutive snapshots the text has been absent — suppression
+    /// is only cleared after 2+ absences so a remove→re-add cycle (spawn_interject_queued) does
+    /// not briefly resurrect the row in between.
+    suppressed_sent: Vec<(String, u8)>,
 }
 
 impl PromptQueueView {
     pub fn replace(&mut self, items: Vec<QueuedPromptItem>) {
-        // Drop suppress entries that are no longer in the harness snapshot (drained/consumed).
-        self.suppressed_sent
-            .retain(|text| items.iter().any(|item| item.text == *text));
+        // Advance absent counters: reset to 0 when present, increment when absent.
+        for (text, absent) in self.suppressed_sent.iter_mut() {
+            if items.iter().any(|item| item.text == *text) {
+                *absent = 0;
+            } else {
+                *absent = absent.saturating_add(1);
+            }
+        }
+        // Drop only after 2+ consecutive absences (genuinely consumed, not mid remove→re-add).
+        self.suppressed_sent.retain(|(_, absent)| *absent < 2);
         self.items = Self::filter_suppressed(items, &self.suppressed_sent);
         self.renumber_seq();
     }
@@ -238,7 +248,7 @@ impl PromptQueueView {
             return;
         }
         // New enqueue should not stay hidden if the same string was previously Sent.
-        self.suppressed_sent.retain(|t| t != &text);
+        self.suppressed_sent.retain(|(t, _)| t != &text);
         let kind_index = self
             .items
             .iter()
@@ -274,11 +284,11 @@ impl PromptQueueView {
         if text.is_empty() {
             return;
         }
-        if !self.suppressed_sent.iter().any(|t| t == &text) {
-            self.suppressed_sent.push(text);
+        if !self.suppressed_sent.iter().any(|(t, _)| t == &text) {
+            self.suppressed_sent.push((text, 0));
         }
         self.items
-            .retain(|item| !self.suppressed_sent.iter().any(|t| t == &item.text));
+            .retain(|item| !self.suppressed_sent.iter().any(|(t, _)| t == &item.text));
         self.renumber_seq();
     }
 
@@ -288,13 +298,13 @@ impl PromptQueueView {
         }
     }
 
-    fn filter_suppressed(items: Vec<QueuedPromptItem>, suppressed: &[String]) -> Vec<QueuedPromptItem> {
+    fn filter_suppressed(items: Vec<QueuedPromptItem>, suppressed: &[(String, u8)]) -> Vec<QueuedPromptItem> {
         if suppressed.is_empty() {
             return items;
         }
         items
             .into_iter()
-            .filter(|item| !suppressed.iter().any(|t| t == &item.text))
+            .filter(|item| !suppressed.iter().any(|(t, _)| t == &item.text))
             .collect()
     }
 
@@ -1352,6 +1362,43 @@ mod tests {
         // Same text re-queued later is visible again.
         queue.push_follow_up_local("do the thing".into());
         assert_eq!(queue.len(), 2);
+    }
+
+    #[test]
+    fn prompt_queue_suppress_survives_remove_then_readd() {
+        // Simulates spawn_interject_queued: remove from harness, then re-add as steer.
+        // The suppressed row must NOT briefly reappear in between.
+        let mut queue = PromptQueueView::default();
+        queue.replace(vec![QueuedPromptItem {
+            seq: 1,
+            kind: QueuedPromptKind::FollowUp,
+            kind_index: 0,
+            text: "do the thing".into(),
+        }]);
+        queue.suppress_sent("do the thing");
+
+        // Step 1: remove_queued succeeds → harness snapshot drops the item.
+        queue.replace(vec![]);
+        assert!(queue.is_empty(), "suppressed row reappeared after remove");
+
+        // Step 2: queue_steer re-adds it as steer — must stay hidden.
+        queue.replace(vec![QueuedPromptItem {
+            seq: 1,
+            kind: QueuedPromptKind::Steer,
+            kind_index: 0,
+            text: "do the thing".into(),
+        }]);
+        assert!(queue.is_empty(), "suppressed row reappeared as steer");
+
+        // Step 3: item consumed by model → stays hidden on first absent snapshot.
+        queue.replace(vec![]);
+        assert!(queue.is_empty());
+
+        // Step 4: second consecutive absent snapshot prunes the suppression.
+        queue.replace(vec![]);
+        // Suppression pruned — now a re-queue of the same text would be visible.
+        queue.push_follow_up_local("do the thing".into());
+        assert_eq!(queue.len(), 1);
     }
 
     #[test]
