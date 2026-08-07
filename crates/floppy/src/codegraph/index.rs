@@ -16,6 +16,177 @@ use super::walk::{looks_binary, should_skip_path};
 use crate::core::embed::EmbedFn;
 use crate::core::util::{drain_rows, is_zero, vec_buf};
 
+/// Check if a file path matches any of the include/exclude patterns.
+/// Patterns are applied in order; first matching pattern wins.
+/// Patterns starting with ! are exclude patterns.
+fn matches_patterns(path: &str, include_patterns: &[String], exclude_patterns: &[String]) -> bool {
+    // If no patterns are set, include everything
+    if include_patterns.is_empty() && exclude_patterns.is_empty() {
+        return true;
+    }
+
+    // Process include_patterns in order
+    for pattern in include_patterns {
+        let is_exclude = pattern.starts_with('!');
+        let pattern_str = if is_exclude { &pattern[1..] } else { pattern };
+
+        if glob_match(pattern_str, path) {
+            return !is_exclude;
+        }
+    }
+
+    // Process legacy exclude_patterns
+    for pattern in exclude_patterns {
+        if glob_match(pattern, path) {
+            return false;
+        }
+    }
+
+    // If no pattern matches, include by default
+    true
+}
+
+/// Simple glob matching supporting **, *, and ? wildcards.
+fn glob_match(pattern: &str, text: &str) -> bool {
+    let pattern = pattern.trim_start_matches('!');
+    let regex_pattern = glob_to_regex(pattern);
+    regex_match(&regex_pattern, text)
+}
+
+/// Convert glob pattern to regex pattern.
+fn glob_to_regex(glob: &str) -> String {
+    let mut regex = String::new();
+    let mut chars = glob.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        match c {
+            '*' => {
+                if chars.peek() == Some(&'*') {
+                    chars.next(); // consume second *
+                    regex.push_str(".*"); // ** matches any sequence
+                } else {
+                    regex.push_str("[^/]*"); // * matches any sequence except /
+                }
+            }
+            '?' => {
+                regex.push_str("[^/]"); // ? matches any single character except /
+            }
+            '.' | '+' | '(' | ')' | '[' | ']' | '{' | '}' | '^' | '$' | '|' => {
+                regex.push('\\');
+                regex.push(c);
+            }
+            _ => {
+                regex.push(c);
+            }
+        }
+    }
+
+    format!("^{}$", regex)
+}
+
+/// Simple regex matching.
+fn regex_match(pattern: &str, text: &str) -> bool {
+    // Very basic regex matching - only supporting what we generate
+    let p_chars = pattern.chars().peekable();
+    let t_chars = text.chars().peekable();
+
+    let p_vec: Vec<char> = p_chars.collect();
+    let t_vec: Vec<char> = t_chars.collect();
+
+    if p_vec.is_empty() {
+        return t_vec.is_empty();
+    }
+
+    if p_vec[0] != '^' || p_vec.last() != Some(&'$') {
+        return false;
+    }
+
+    let p = &p_vec[1..p_vec.len() - 1];
+    let t = &t_vec;
+
+    match_regex(p, t, 0, 0)
+}
+
+fn match_regex(pattern: &[char], text: &[char], p_idx: usize, t_idx: usize) -> bool {
+    if p_idx == pattern.len() && t_idx == text.len() {
+        return true;
+    }
+
+    if p_idx == pattern.len() {
+        return false;
+    }
+
+    if t_idx == text.len() {
+        // Check if remaining pattern can match empty
+        for i in p_idx..pattern.len() {
+            if pattern[i] != '*' {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    match pattern[p_idx] {
+        '\\' => {
+            // Escaped character
+            if p_idx + 1 < pattern.len() {
+                if pattern[p_idx + 1] == text[t_idx] {
+                    match_regex(pattern, text, p_idx + 2, t_idx + 1)
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        }
+        '.' => match_regex(pattern, text, p_idx + 1, t_idx + 1),
+        '*' => {
+            // .* matches any sequence
+            match_regex(pattern, text, p_idx + 1, t_idx) || match_regex(pattern, text, p_idx, t_idx + 1)
+        }
+        '[' => {
+            // Character class - simplified
+            if p_idx + 1 < pattern.len() && pattern[p_idx + 1] == '^' {
+                // Negated class [^...]
+                // Find closing ]
+                let end = pattern[p_idx + 2..].iter().position(|&c| c == ']');
+                if let Some(pos) = end {
+                    let class_end = p_idx + 2 + pos + 1;
+                    let negated = !pattern[p_idx + 2..class_end - 1].contains(&text[t_idx]);
+                    if negated {
+                        match_regex(pattern, text, class_end, t_idx + 1)
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            } else {
+                // Find closing ]
+                let end = pattern[p_idx + 1..].iter().position(|&c| c == ']');
+                if let Some(pos) = end {
+                    let class_end = p_idx + 1 + pos + 1;
+                    let matches = pattern[p_idx + 1..class_end - 1].contains(&text[t_idx]);
+                    if matches {
+                        match_regex(pattern, text, class_end, t_idx + 1)
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            }
+        }
+        c => {
+            if c == text[t_idx] {
+                match_regex(pattern, text, p_idx + 1, t_idx + 1)
+            } else {
+                false
+            }
+        }
+    }
+}
+
 const META_ROOT: &str = "merkle_root";
 const META_LAST: &str = "last_indexed_at";
 const META_DIR: &str = "root_dir";
@@ -50,6 +221,10 @@ pub struct Indexer<'a> {
     pub embed_concurrency: usize,
     pub progress: Option<&'a ProgressFn>,
     pub gpu_acceleration: Option<String>,
+    /// File inclusion/exclusion patterns. Applied in order; first matching pattern wins.
+    pub include_patterns: &'a [String],
+    /// Deprecated: use include_patterns with !negation instead.
+    pub exclude_patterns: &'a [String],
 }
 
 impl Indexer<'_> {
@@ -186,6 +361,12 @@ impl Indexer<'_> {
                     continue;
                 }
             };
+
+            // Apply include/exclusion patterns
+            if !matches_patterns(&rel, self.include_patterns, self.exclude_patterns) {
+                stats.files_skipped += 1;
+                continue;
+            }
 
             let bytes = match std::fs::read(path) {
                 Ok(b) if !looks_binary(&b) => b,
@@ -775,5 +956,65 @@ mod tests {
         for (i, t) in texts.iter().enumerate() {
             assert_eq!(all[i], embed_of(t), "order broken at index {i}");
         }
+    }
+
+    #[test]
+    fn test_glob_match_basic() {
+        assert!(glob_match("*.rs", "main.rs"));
+        assert!(glob_match("*.rs", "test.rs"));
+        assert!(!glob_match("*.rs", "main.js"));
+    }
+
+    #[test]
+    fn test_glob_match_double_star() {
+        assert!(glob_match("**/*.rs", "src/main.rs"));
+        assert!(glob_match("**/*.rs", "a/b/c/d/test.rs"));
+        assert!(!glob_match("**/*.rs", "main.js"));
+    }
+
+    #[test]
+    fn test_glob_match_question_mark() {
+        assert!(glob_match("test?.rs", "test1.rs"));
+        assert!(glob_match("test?.rs", "testA.rs"));
+        assert!(!glob_match("test?.rs", "test.rs"));
+        assert!(!glob_match("test?.rs", "test12.rs"));
+    }
+
+    #[test]
+    fn test_glob_match_negation() {
+        // Negation is handled at the pattern level in matches_patterns, not in glob_match
+        // glob_match only matches the pattern itself (without ! prefix)
+        assert!(glob_match("test/*.rs", "test/main.rs"));
+        assert!(!glob_match("test/*.rs", "src/main.rs"));
+    }
+
+    #[test]
+    fn test_matches_patterns() {
+        // Include only .rs files
+        assert!(matches_patterns("src/main.rs", &["**/*.rs".to_string()], &[]));
+        assert!(!matches_patterns("src/main.js", &["**/*.rs".to_string()], &[]));
+
+        // Include .rs but exclude test
+        assert!(matches_patterns(
+            "src/main.rs",
+            &["**/*.rs".to_string(), "!**/test/**/*.rs".to_string()],
+            &[]
+        ));
+        assert!(!matches_patterns(
+            "test/test.rs",
+            &["**/*.rs".to_string(), "!**/test/**/*.rs".to_string()],
+            &[]
+        ));
+
+        // Empty patterns include everything
+        assert!(matches_patterns("any/file.txt", &[], &[]));
+
+        // Test negation with ! prefix
+        assert!(!matches_patterns("test/main.rs", &["!test/*.rs".to_string()], &[]));
+        assert!(matches_patterns("src/main.rs", &["!test/*.rs".to_string()], &[]));
+
+        // Test legacy exclude_patterns
+        assert!(!matches_patterns("test/main.rs", &[], &["test/*.rs".to_string()]));
+        assert!(matches_patterns("src/main.rs", &[], &["test/*.rs".to_string()]));
     }
 }

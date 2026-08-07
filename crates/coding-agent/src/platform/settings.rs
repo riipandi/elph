@@ -485,6 +485,13 @@ pub struct CodegraphSettings {
     /// at once; otherwise batches run sequentially regardless of this value.
     #[serde(default = "default_codegraph_embed_concurrency")]
     pub embed_concurrency: usize,
+    /// File inclusion/exclusion patterns. Applied in order; first matching pattern wins.
+    /// Supports globs with **, *, ? and !negation. Examples: ["**/*.rs", "!**/test/**/*.rs", "!**/vendor/**"]
+    #[serde(default)]
+    pub include_patterns: Vec<String>,
+    /// Deprecated: use include_patterns with !negation instead.
+    #[serde(default)]
+    pub exclude_patterns: Vec<String>,
 }
 
 fn default_codegraph_max_chunk_lines() -> u32 {

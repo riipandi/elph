@@ -440,6 +440,26 @@
                     "maximum": 16,
                     "default": 4,
                     "description": "Max concurrent DB connections for parallel writes (more = faster, more memory)."
+                },
+                "includePatterns": {
+                    "type": "array",
+                    "default": [],
+                    "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Glob patterns for files to include (e.g., \"**/*.rs\", \"src/**/*\"). Supports **, *, and ? wildcards. Patterns starting with ! are treated as exclude patterns."
+                    },
+                    "description": "File inclusion/exclusion patterns. Applied in order; first matching pattern wins. Supports globs with **, *, ? and !negation. Examples: [\"**/*.rs\", \"!**/test/**/*.rs\", \"!**/vendor/**\"]"
+                },
+                "excludePatterns": {
+                    "type": "array",
+                    "default": [],
+                    "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Glob patterns for files to exclude (e.g., \"**/*.min.js\", \"**/*.map\"). Supports **, *, and ? wildcards."
+                    },
+                    "description": "Deprecated: use includePatterns with !negation instead. Array of glob patterns to exclude. Applied after includePatterns."
                 }
             }
         },

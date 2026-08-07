@@ -55,7 +55,11 @@ pub fn section(out: &mut String, sty: CliStyle, title: &str) {
     use std::fmt::Write;
     let _ = writeln!(out, "{}", sty.paint(S_TITLE, title));
     // Use separator line matching terminal width for consistency
-    let _ = writeln!(out, "{}", sty.paint(S_MUTED, "────────────────────────────────────────────────────"));
+    let _ = writeln!(
+        out,
+        "{}",
+        sty.paint(S_MUTED, "────────────────────────────────────────────────────")
+    );
 }
 
 /// Write a key-value pair with aligned label.
