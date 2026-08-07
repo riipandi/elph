@@ -255,8 +255,8 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             }
             SlashOutcome::SpawnAgentTurnQuiet
         }
-        SlashDispatch::Compact | SlashDispatch::PromptTemplate { .. } => {
-            let is_compact = matches!(dispatch, SlashDispatch::Compact);
+        SlashDispatch::Compact { .. } | SlashDispatch::PromptTemplate { .. } => {
+            let is_compact = matches!(dispatch, SlashDispatch::Compact { .. });
             if ctx.agent_session.is_none() {
                 return SlashOutcome::Status("Agent session required for this command.".into());
             }

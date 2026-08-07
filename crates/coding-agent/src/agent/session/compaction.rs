@@ -82,6 +82,7 @@ impl CodingAgentSession {
         source: CompactSource,
         custom_instructions: Option<&str>,
         will_message: Option<String>,
+        model_override: Option<&Model>,
     ) -> Result<CompactResult> {
         let had_will = will_message.is_some();
         if let Some(msg) = will_message {
@@ -99,7 +100,9 @@ impl CodingAgentSession {
         let _ = self.ui_tx.send(AgentUiEvent::Status(running.to_string()));
 
         let before = self.estimate_context_usage().await.ok().map(|(t, _)| t);
-        let model = self.resolve_compaction_model();
+        let model = model_override
+            .cloned()
+            .unwrap_or_else(|| self.resolve_compaction_model());
         let result = self
             .harness
             .compact(custom_instructions, Some(&model))
@@ -140,7 +143,7 @@ impl CodingAgentSession {
         }
         let will = auto_compact_will_message(used, window, prompt_tokens, settings);
         match self
-            .run_compact_with_notices(CompactSource::Automatic, None, Some(will))
+            .run_compact_with_notices(CompactSource::Automatic, None, Some(will), None)
             .await
         {
             Ok(result) => !result.is_noop(),
@@ -173,7 +176,7 @@ impl CodingAgentSession {
         }
         let will = "Context may exceed the model limit — compacting history before retrying…".to_string();
         match self
-            .run_compact_with_notices(CompactSource::Automatic, None, Some(will))
+            .run_compact_with_notices(CompactSource::Automatic, None, Some(will), None)
             .await
         {
             Ok(result) => !result.is_noop(),
@@ -240,7 +243,7 @@ impl CodingAgentSession {
                 ))
             };
             match self
-                .run_compact_with_notices(CompactSource::ModelSwitch, None, will_msg)
+                .run_compact_with_notices(CompactSource::ModelSwitch, None, will_msg, None)
                 .await
             {
                 Ok(r) if r.is_noop() => break,

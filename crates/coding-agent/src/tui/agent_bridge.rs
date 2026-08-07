@@ -103,9 +103,9 @@ impl SlashDispatcher {
         tokio::spawn(async move {
             let ui_tx = session.ui_event_sender();
             match dispatch {
-                SlashDispatch::Compact => {
+                SlashDispatch::Compact { options } => {
                     // Lifecycle notices are emitted by CodingAgentSession::compact.
-                    if let Err(err) = session.compact().await {
+                    if let Err(err) = session.compact_with_options(options).await {
                         let _ = ui_tx.send(AgentUiEvent::TranscriptNotice(format!("Compaction failed: {err}")));
                     }
                 }

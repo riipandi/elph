@@ -83,7 +83,11 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         ),
         builtin_with_args_hint("mcp", "MCP servers (auth, logout, list)", "[auth|logout|list]"),
         builtin("new", "Start a new session"),
-        builtin("compact", "Compact conversation history"),
+        builtin_with_args_hint(
+            "compact",
+            "Compact conversation history",
+            "[--threshold PCT] [--keep-recent TOKENS] [--model MODEL] [--memory-flush]",
+        ),
         builtin("continue", "Resume the interrupted task"),
         builtin("resume", "Resume a different session"),
         builtin("reload", "Reload providers, settings, skills, templates, extensions"),
@@ -172,11 +176,26 @@ pub enum OverlayCommand {
     ProviderConnect { provider_id: Option<String> },
 }
 
+/// Options for the `/compact` slash command.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct CompactOptions {
+    /// Override compaction threshold percentage (1-100).
+    pub threshold_pct: Option<u8>,
+    /// Override tokens to keep after compaction.
+    pub keep_recent_tokens: Option<u64>,
+    /// Override model for summarization (e.g., "openai/gpt-4").
+    pub model: Option<String>,
+    /// Enable memory flush before compaction.
+    pub memory_flush: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SlashDispatch {
     Quit,
     NewSession,
-    Compact,
+    Compact {
+        options: CompactOptions,
+    },
     /// Submit the `RETRY_CONTINUE_PROMPT` recovery prompt (`/continue`) so the model
     /// resumes an interrupted task without re-doing completed tool work. Rendered as a
     /// slim "Continuing tasks…" meta line rather than a user prompt card.
@@ -407,6 +426,130 @@ pub fn confetti_mode_from_args(args: &str) -> &'static str {
     }
 }
 
+/// Parse `/compact` command arguments.
+///
+/// Supported args:
+/// - `--threshold <pct>`: Override compaction threshold (1-100)
+/// - `--keep-recent <tokens>`: Override tokens to keep
+/// - `--model <model>`: Override model for summarization
+/// - `--memory-flush`: Enable memory flush before compaction
+fn parse_compact_args(args: &str) -> CompactOptions {
+    let mut options = CompactOptions::default();
+    let mut tokens = args.split_whitespace().peekable();
+
+    while let Some(token) = tokens.next() {
+        match token {
+            "--threshold" => {
+                if let Some(value) = tokens.next() {
+                    if let Ok(pct) = value.parse::<u8>() {
+                        options.threshold_pct = Some(pct.clamp(1, 100));
+                    }
+                }
+            }
+            "--keep-recent" => {
+                if let Some(value) = tokens.next() {
+                    if let Ok(tokens) = value.parse::<u64>() {
+                        options.keep_recent_tokens = Some(tokens);
+                    }
+                }
+            }
+            "--model" => {
+                if let Some(value) = tokens.next() {
+                    options.model = Some(value.to_string());
+                }
+            }
+            "--memory-flush" => {
+                options.memory_flush = true;
+            }
+            _ => {
+                // Ignore unknown args
+            }
+        }
+    }
+
+    options
+}
+
+#[cfg(test)]
+mod compact_args_tests {
+    use super::*;
+
+    #[test]
+    fn parse_compact_args_empty() {
+        let opts = parse_compact_args("");
+        assert_eq!(opts.threshold_pct, None);
+        assert_eq!(opts.keep_recent_tokens, None);
+        assert_eq!(opts.model, None);
+        assert!(!opts.memory_flush);
+    }
+
+    #[test]
+    fn parse_compact_args_threshold() {
+        let opts = parse_compact_args("--threshold 85");
+        assert_eq!(opts.threshold_pct, Some(85));
+        assert_eq!(opts.keep_recent_tokens, None);
+        assert_eq!(opts.model, None);
+        assert!(!opts.memory_flush);
+    }
+
+    #[test]
+    fn parse_compact_args_threshold_clamped() {
+        let opts = parse_compact_args("--threshold 150");
+        assert_eq!(opts.threshold_pct, Some(100)); // clamped to max
+    }
+
+    #[test]
+    fn parse_compact_args_keep_recent() {
+        let opts = parse_compact_args("--keep-recent 20000");
+        assert_eq!(opts.threshold_pct, None);
+        assert_eq!(opts.keep_recent_tokens, Some(20000));
+        assert_eq!(opts.model, None);
+        assert!(!opts.memory_flush);
+    }
+
+    #[test]
+    fn parse_compact_args_model() {
+        let opts = parse_compact_args("--model openai/gpt-4");
+        assert_eq!(opts.threshold_pct, None);
+        assert_eq!(opts.keep_recent_tokens, None);
+        assert_eq!(opts.model, Some("openai/gpt-4".to_string()));
+        assert!(!opts.memory_flush);
+    }
+
+    #[test]
+    fn parse_compact_args_memory_flush() {
+        let opts = parse_compact_args("--memory-flush");
+        assert_eq!(opts.threshold_pct, None);
+        assert_eq!(opts.keep_recent_tokens, None);
+        assert_eq!(opts.model, None);
+        assert!(opts.memory_flush);
+    }
+
+    #[test]
+    fn parse_compact_args_multiple() {
+        let opts = parse_compact_args("--threshold 90 --keep-recent 15000 --model anthropic/claude-3 --memory-flush");
+        assert_eq!(opts.threshold_pct, Some(90));
+        assert_eq!(opts.keep_recent_tokens, Some(15000));
+        assert_eq!(opts.model, Some("anthropic/claude-3".to_string()));
+        assert!(opts.memory_flush);
+    }
+
+    #[test]
+    fn parse_compact_args_unknown_ignored() {
+        let opts = parse_compact_args("--unknown foo --threshold 80");
+        assert_eq!(opts.threshold_pct, Some(80));
+        assert_eq!(opts.keep_recent_tokens, None);
+        assert_eq!(opts.model, None);
+        assert!(!opts.memory_flush);
+    }
+
+    #[test]
+    fn parse_compact_args_invalid_value_ignored() {
+        let opts = parse_compact_args("--threshold abc");
+        assert_eq!(opts.threshold_pct, None);
+    }
+}
+
 /// Overlay slash commands that run immediately when confirmed from the palette.
 ///
 /// Commands with arg completions (e.g. `tools`, `goal`, `confetti`) are **not** listed —
@@ -421,7 +564,9 @@ pub fn slash_palette_submit_on_enter(command_name: &str) -> bool {
 fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
     match name {
         "exit" | "quit" | "q" => Some(SlashDispatch::Quit),
-        "compact" | "c" => Some(SlashDispatch::Compact),
+        "compact" | "c" => Some(SlashDispatch::Compact {
+            options: parse_compact_args(&args),
+        }),
         "continue" | "cont" => Some(SlashDispatch::Continue),
         "goal" | "goals" => Some(SlashDispatch::Goal { args }),
         "help" | "h" | "?" => Some(SlashDispatch::Help),
@@ -619,7 +764,9 @@ mod tests {
         assert_eq!(dispatch_slash_command("/exit", None, None, None), Some(SlashDispatch::Quit));
         assert_eq!(
             dispatch_slash_command("/compact", None, None, None),
-            Some(SlashDispatch::Compact)
+            Some(SlashDispatch::Compact {
+                options: CompactOptions::default()
+            })
         );
         assert_eq!(
             dispatch_slash_command("/continue", None, None, None),

@@ -86,7 +86,7 @@ async fn handle_acp_slash_command(
         }
 
         // ── Agent-action commands (run through session) ──────────────────────
-        Some(SlashDispatch::Compact) => {
+        Some(SlashDispatch::Compact { .. }) => {
             let (session, _ui_rx, _) = lookup_session(state, &key)?;
             session.compact().await?;
             Ok(())

@@ -609,8 +609,55 @@ impl CodingAgentSession {
         let _guard = self.turn_gate.lock().await;
         let started = Instant::now();
         let result = self
-            .run_compact_with_notices(compaction::CompactSource::Manual, None, None)
+            .run_compact_with_notices(compaction::CompactSource::Manual, None, None, None)
             .await;
+        self.finish_ui_turn(started).await;
+        if let Err(err) = &result {
+            self.notice_compact_failed(err);
+        }
+        result.map(|_| ())
+    }
+
+    /// Compact with runtime options (threshold, keep-recent, model, memory-flush).
+    pub async fn compact_with_options(&self, options: crate::agent::slash_commands::CompactOptions) -> Result<()> {
+        let _guard = self.turn_gate.lock().await;
+        let started = Instant::now();
+
+        // Build custom instructions from options
+        let custom_instructions = if options.memory_flush {
+            Some("First, run a memory flush to summarize important information from the conversation.".to_string())
+        } else {
+            None
+        };
+
+        // Resolve model override if provided
+        let model_override = if let Some(model_ref) = &options.model {
+            match compaction::resolve_settings_model_ref(model_ref, &self.selection.read().model) {
+                Ok(m) => Some(m),
+                Err(err) => {
+                    let _ = self.ui_tx.send(AgentUiEvent::TranscriptNotice(format!(
+                        "Invalid model reference '{model_ref}': {err}. Using session model."
+                    )));
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
+        // Note: threshold_pct and keep_recent_tokens overrides would require extending
+        // the harness API to accept per-operation settings. For now, only model and
+        // memory-flush are fully supported.
+
+        let result = self
+            .run_compact_with_notices(
+                compaction::CompactSource::Manual,
+                custom_instructions.as_deref(),
+                None,
+                model_override.as_ref(),
+            )
+            .await;
+
         self.finish_ui_turn(started).await;
         if let Err(err) = &result {
             self.notice_compact_failed(err);
