@@ -890,8 +890,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.063,
-            "input": 0.126,
-            "output": 0.42
+            "input": 0.111,
+            "output": 0.557
         },
         "id": "gemma-4-26b-a4b-it",
         "input": ["text", "image"],
@@ -916,8 +916,8 @@
         "cost": {
             "cacheRead": 0.02,
             "cacheWrite": 0.0,
-            "input": 0.1,
-            "output": 0.3
+            "input": 0.223,
+            "output": 0.39
         },
         "id": "gemma-4-31b-it",
         "input": ["text", "image"],

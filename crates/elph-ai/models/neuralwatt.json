@@ -194,7 +194,7 @@
             "output": 4.275
         },
         "id": "kimi-k2.6",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 262144,
         "name": "Kimi K2.6",
         "provider": "neuralwatt",
@@ -254,7 +254,7 @@
             "output": 4.389
         },
         "id": "kimi-k2.7-code",
-        "input": ["text"],
+        "input": ["text", "image", "video"],
         "maxTokens": 262144,
         "name": "Kimi K2.7 Code",
         "provider": "neuralwatt",

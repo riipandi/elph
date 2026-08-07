@@ -1,30 +1,4 @@
 {
-    "deepseek-v4-flash": {
-        "api": "openai-completions",
-        "baseUrl": "https://ollama.com/v1",
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.003,
-            "cacheWrite": 0.0,
-            "input": 0.12,
-            "output": 0.21
-        },
-        "id": "deepseek-v4-flash",
-        "input": ["text"],
-        "maxTokens": 1048576,
-        "name": "deepseek-v4-flash",
-        "provider": "ollama-cloud",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": null,
-            "max": "max",
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "deepseek-v4-flash:0731": {
         "api": "openai-completions",
         "baseUrl": "https://ollama.com/v1",
@@ -51,15 +25,41 @@
             "xhigh": null
         }
     },
+    "deepseek-v4-flash:preview": {
+        "api": "openai-completions",
+        "baseUrl": "https://ollama.com/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "deepseek-v4-flash:preview",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "deepseek-v4-flash:preview",
+        "provider": "ollama-cloud",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "deepseek-v4-pro": {
         "api": "openai-completions",
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.003625,
+            "cacheRead": 0.33,
             "cacheWrite": 0.0,
-            "input": 0.435,
-            "output": 0.87
+            "input": 1.65,
+            "output": 3.301
         },
         "id": "deepseek-v4-pro",
         "input": ["text"],
@@ -110,8 +110,8 @@
         "cost": {
             "cacheRead": 0.26,
             "cacheWrite": 0.0,
-            "input": 1.756,
-            "output": 5.518
+            "input": 1.4,
+            "output": 4.4
         },
         "id": "glm-5.1",
         "input": ["text"],
@@ -134,10 +134,10 @@
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 976000,
         "cost": {
-            "cacheRead": 0.3,
+            "cacheRead": 0.26,
             "cacheWrite": 0.0,
-            "input": 1.2,
-            "output": 4.2
+            "input": 1.4,
+            "output": 4.4
         },
         "id": "glm-5.2",
         "input": ["text"],
@@ -264,10 +264,10 @@
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.9405,
+            "cacheRead": 0.375,
             "cacheWrite": 0.0,
-            "input": 3.762,
-            "output": 18.81
+            "input": 3.75,
+            "output": 18.75
         },
         "id": "kimi-k3",
         "input": ["text", "image"],
@@ -292,8 +292,8 @@
         "cost": {
             "cacheRead": 0.06,
             "cacheWrite": 0.375,
-            "input": 0.819,
-            "output": 3.276
+            "input": 0.3,
+            "output": 1.2
         },
         "id": "minimax-m2.7",
         "input": ["text"],
@@ -316,10 +316,10 @@
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 512000,
         "cost": {
-            "cacheRead": 0.06,
+            "cacheRead": 0.099,
             "cacheWrite": 0.0,
-            "input": 0.3,
-            "output": 1.2
+            "input": 0.395,
+            "output": 1.977
         },
         "id": "minimax-m3",
         "input": ["text", "image", "video"],

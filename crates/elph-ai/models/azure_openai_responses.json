@@ -218,7 +218,7 @@
             "output": 10.0
         },
         "id": "gpt-4o-2024-11-20",
-        "input": ["text", "image", "audio"],
+        "input": ["text", "image"],
         "maxTokens": 16384,
         "name": "GPT-4o (2024-11-20)",
         "provider": "azure-openai-responses",
@@ -298,13 +298,13 @@
         "cost": {
             "cacheRead": 0.125,
             "cacheWrite": 0.0,
-            "input": 1.125,
-            "output": 9.0
+            "input": 1.25,
+            "output": 10.0
         },
         "id": "gpt-5-chat-latest",
         "input": ["text", "image"],
         "maxTokens": 128000,
-        "name": "gpt-5-chat-latest",
+        "name": "GPT-5 Chat (latest)",
         "provider": "azure-openai-responses",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -468,7 +468,7 @@
         "compat": {
             "supportsOpenAIGrammarTools": true
         },
-        "contextWindow": 400000,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.175,
             "cacheWrite": 0.0,
@@ -477,8 +477,8 @@
         },
         "id": "gpt-5.2-chat-latest",
         "input": ["text", "image"],
-        "maxTokens": 128000,
-        "name": "GPT-5.2 Chat Latest",
+        "maxTokens": 16384,
+        "name": "gpt-5.2-chat-latest",
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -501,13 +501,13 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 18.9,
-            "output": 151.2
+            "input": 21.0,
+            "output": 168.0
         },
         "id": "gpt-5.2-pro",
         "input": ["text", "image"],
         "maxTokens": 128000,
-        "name": "gpt-5.2-pro",
+        "name": "GPT-5.2 Pro",
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -526,7 +526,7 @@
         "compat": {
             "supportsOpenAIGrammarTools": true
         },
-        "contextWindow": 400000,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.175,
             "cacheWrite": 0.0,
@@ -535,8 +535,8 @@
         },
         "id": "gpt-5.3-chat-latest",
         "input": ["text", "image"],
-        "maxTokens": 128000,
-        "name": "GPT-5.3 Chat Latest",
+        "maxTokens": 16384,
+        "name": "GPT-5.3 Chat (latest)",
         "provider": "azure-openai-responses",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -592,8 +592,8 @@
             "output": 14.0
         },
         "id": "gpt-5.3-codex-spark",
-        "input": ["text"],
-        "maxTokens": 128000,
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 32000,
         "name": "GPT-5.3 Codex Spark",
         "provider": "azure-openai-responses",
         "reasoning": true,
@@ -1006,7 +1006,7 @@
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 20.0,
-            "output": 40.0
+            "output": 80.0
         },
         "id": "o3-pro",
         "input": ["text", "image"],

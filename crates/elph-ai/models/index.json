@@ -12,7 +12,7 @@
     {
         "providerId": "anthropic",
         "rustMod": "anthropic",
-        "count": 15
+        "count": 13
     },
     {
         "providerId": "azure-openai-responses",
@@ -72,22 +72,22 @@
     {
         "providerId": "huggingface",
         "rustMod": "huggingface",
-        "count": 130
+        "count": 131
     },
     {
         "providerId": "hyper",
         "rustMod": "hyper",
-        "count": 25
+        "count": 24
     },
     {
         "providerId": "infron",
         "rustMod": "infron",
-        "count": 321
+        "count": 290
     },
     {
         "providerId": "kilo",
         "rustMod": "kilo",
-        "count": 347
+        "count": 349
     },
     {
         "providerId": "kimi-coding",
@@ -147,7 +147,7 @@
     {
         "providerId": "opencode",
         "rustMod": "opencode",
-        "count": 20
+        "count": 21
     },
     {
         "providerId": "opencode-go",
@@ -162,7 +162,7 @@
     {
         "providerId": "openrouter",
         "rustMod": "openrouter",
-        "count": 338
+        "count": 400
     },
     {
         "providerId": "qwen-token-plan",
@@ -187,7 +187,7 @@
     {
         "providerId": "tokenrouter",
         "rustMod": "tokenrouter",
-        "count": 120
+        "count": 121
     },
     {
         "providerId": "vercel-ai-gateway",

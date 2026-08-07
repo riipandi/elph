@@ -135,7 +135,7 @@
         "id": "deepseek-v4-flash",
         "input": ["text"],
         "maxTokens": 384000,
-        "name": "DeepSeek V4 Flash (New)",
+        "name": "DeepSeek V4 Flash",
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -167,7 +167,7 @@
         "id": "deepseek-v4-flash-free",
         "input": ["text"],
         "maxTokens": 128000,
-        "name": "DeepSeek V4 Flash Free (New)",
+        "name": "DeepSeek V4 Flash Free",
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -443,6 +443,32 @@
         "input": ["text"],
         "maxTokens": 32768,
         "name": "Ling-3.0-flash Free",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "ling-3.0-tiny-free": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "ling-3.0-tiny-free",
+        "input": ["text"],
+        "maxTokens": 32768,
+        "name": "Ling-3.0-tiny Free",
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {

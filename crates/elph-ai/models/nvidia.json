@@ -275,7 +275,7 @@
             "cacheRead": 0.015,
             "cacheWrite": 0.0,
             "input": 0.05,
-            "output": 0.1
+            "output": 0.15
         },
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
@@ -392,8 +392,8 @@
         "cost": {
             "cacheRead": 0.1,
             "cacheWrite": 0.0,
-            "input": 0.14,
-            "output": 0.4
+            "input": 0.13,
+            "output": 0.38
         },
         "id": "google/gemma-4-31b-it",
         "input": ["text", "image", "video"],
@@ -1216,8 +1216,8 @@
         "cost": {
             "cacheRead": 0.16,
             "cacheWrite": 1.25,
-            "input": 0.95,
-            "output": 4.0
+            "input": 0.75,
+            "output": 3.5
         },
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
@@ -1825,7 +1825,7 @@
             "cacheRead": 0.03,
             "cacheWrite": 0.0,
             "input": 0.05,
-            "output": 0.24
+            "output": 0.2
         },
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
@@ -2382,10 +2382,10 @@
         },
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.08,
-            "output": 0.44
+            "cacheRead": 0.015,
+            "cacheWrite": 0.18,
+            "input": 0.15,
+            "output": 0.6
         },
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
@@ -2419,10 +2419,10 @@
         },
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0.03,
-            "cacheWrite": 0.0,
-            "input": 0.05,
-            "output": 0.2
+            "cacheRead": 0.035,
+            "cacheWrite": 0.07,
+            "input": 0.07,
+            "output": 0.3
         },
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
@@ -2617,8 +2617,8 @@
         "cost": {
             "cacheRead": 0.0288,
             "cacheWrite": 0.0,
-            "input": 0.15,
-            "output": 1.5
+            "input": 0.09,
+            "output": 1.1
         },
         "id": "qwen/qwen3-next-80b-a3b-instruct",
         "input": ["text"],
@@ -2643,8 +2643,8 @@
         "cost": {
             "cacheRead": 0.125,
             "cacheWrite": 0.625,
-            "input": 0.115,
-            "output": 0.917
+            "input": 0.29,
+            "output": 2.4
         },
         "id": "qwen/qwen3.5-122b-a10b",
         "input": ["text", "image", "video", "audio"],
@@ -2669,8 +2669,8 @@
         "cost": {
             "cacheRead": 0.0344,
             "cacheWrite": 0.0,
-            "input": 0.172,
-            "output": 1.032
+            "input": 0.39,
+            "output": 2.34
         },
         "id": "qwen/qwen3.5-397b-a17b",
         "input": ["text", "image"],
@@ -2790,10 +2790,10 @@
         },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.374,
+            "cacheRead": 0.17,
             "cacheWrite": 0.0,
-            "input": 1.87,
-            "output": 4.68
+            "input": 1.0,
+            "output": 4.05
         },
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
@@ -2853,10 +2853,10 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.375,
+            "cacheRead": 0.3,
             "cacheWrite": 1.2,
-            "input": 1.5,
-            "output": 4.5
+            "input": 1.2,
+            "output": 4.4
         },
         "headers": {
             "NVCF-POLL-SECONDS": "3600"

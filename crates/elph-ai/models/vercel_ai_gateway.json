@@ -1776,7 +1776,7 @@
     "google/gemma-4-31b-it": {
         "api": "anthropic-messages",
         "baseUrl": "https://ai-gateway.vercel.sh",
-        "contextWindow": 262144,
+        "contextWindow": 256000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -1854,7 +1854,7 @@
     "inclusionai/ling-3.0-flash-free": {
         "api": "anthropic-messages",
         "baseUrl": "https://ai-gateway.vercel.sh",
-        "contextWindow": 256000,
+        "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -1863,8 +1863,8 @@
         },
         "id": "inclusionai/ling-3.0-flash-free",
         "input": ["text"],
-        "maxTokens": 256000,
-        "name": "Ling 3.0 Flash",
+        "maxTokens": 32768,
+        "name": "Ling-3.0-flash Free",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -4922,7 +4922,7 @@
     "zai/glm-5.1": {
         "api": "anthropic-messages",
         "baseUrl": "https://ai-gateway.vercel.sh",
-        "contextWindow": 202000,
+        "contextWindow": 202800,
         "cost": {
             "cacheRead": 0.26,
             "cacheWrite": 0.0,
@@ -4931,7 +4931,7 @@
         },
         "id": "zai/glm-5.1",
         "input": ["text"],
-        "maxTokens": 202000,
+        "maxTokens": 64000,
         "name": "GLM 5.1",
         "provider": "vercel-ai-gateway",
         "reasoning": true,

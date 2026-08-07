@@ -87,64 +87,6 @@
             "xhigh": null
         }
     },
-    "claude-opus-4-1": {
-        "api": "anthropic-messages",
-        "baseUrl": "https://api.anthropic.com",
-        "compat": {
-            "supportsStrictTools": true
-        },
-        "contextWindow": 200000,
-        "cost": {
-            "cacheRead": 1.5,
-            "cacheWrite": 18.75,
-            "input": 15.0,
-            "output": 75.0
-        },
-        "id": "claude-opus-4-1",
-        "input": ["text", "image", "pdf"],
-        "maxTokens": 32000,
-        "name": "Claude Opus 4.1 (latest)",
-        "provider": "anthropic",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": "max",
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": "xhigh"
-        }
-    },
-    "claude-opus-4-1-20250805": {
-        "api": "anthropic-messages",
-        "baseUrl": "https://api.anthropic.com",
-        "compat": {
-            "supportsStrictTools": true
-        },
-        "contextWindow": 200000,
-        "cost": {
-            "cacheRead": 1.5,
-            "cacheWrite": 18.75,
-            "input": 15.0,
-            "output": 75.0
-        },
-        "id": "claude-opus-4-1-20250805",
-        "input": ["text", "image", "pdf"],
-        "maxTokens": 32000,
-        "name": "Claude Opus 4.1",
-        "provider": "anthropic",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": "max",
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": "xhigh"
-        }
-    },
     "claude-opus-4-5": {
         "api": "anthropic-messages",
         "baseUrl": "https://api.anthropic.com",
