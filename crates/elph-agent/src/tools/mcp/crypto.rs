@@ -19,8 +19,8 @@ use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 /// Prefix for encrypted string values written to disk.
 pub const ENC_PREFIX: &str = "enc:";
 
-const NONCE_LEN: usize = 12;
-const KEY_LEN: usize = 32;
+pub(crate) const NONCE_LEN: usize = 12;
+pub(crate) const KEY_LEN: usize = 32;
 
 /// 256-bit AES key. Drop clears bytes in-process when possible.
 #[derive(Clone)]

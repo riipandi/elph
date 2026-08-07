@@ -12,7 +12,6 @@ CREATE TABLE IF NOT EXISTS sessions (
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     cwd TEXT,
-    work_dir TEXT,
     parent_session_id TEXT,
     provider_id TEXT,
     model_id TEXT,
@@ -24,7 +23,6 @@ CREATE TABLE IF NOT EXISTS sessions (
 ) STRICT;
 CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(created_at);
 CREATE INDEX IF NOT EXISTS idx_sessions_cwd ON sessions(cwd);
-CREATE INDEX IF NOT EXISTS idx_sessions_work_dir ON sessions(work_dir);
 CREATE INDEX IF NOT EXISTS idx_sessions_parent ON sessions(parent_session_id);
 
 CREATE TABLE IF NOT EXISTS session_entries (

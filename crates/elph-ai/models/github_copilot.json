@@ -394,7 +394,7 @@
             "supportsReasoningEffort": false,
             "supportsStore": false
         },
-        "contextWindow": 128000,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.125,
             "cacheWrite": 0.0,
@@ -409,7 +409,7 @@
         },
         "id": "gemini-2.5-pro",
         "input": ["text", "image", "audio", "video", "pdf"],
-        "maxTokens": 64000,
+        "maxTokens": 65536,
         "name": "Gemini 2.5 Pro",
         "provider": "github-copilot",
         "reasoning": true,
@@ -431,12 +431,12 @@
             "supportsReasoningEffort": false,
             "supportsStore": false
         },
-        "contextWindow": 128000,
+        "contextWindow": 256000,
         "cost": {
-            "cacheRead": 0.05,
+            "cacheRead": 0.07,
             "cacheWrite": 0.0,
-            "input": 0.5,
-            "output": 3.0
+            "input": 0.7,
+            "output": 3.75
         },
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
@@ -446,7 +446,7 @@
         },
         "id": "gemini-3-flash-preview",
         "input": ["text", "image", "video", "audio", "pdf"],
-        "maxTokens": 64000,
+        "maxTokens": 65536,
         "name": "Gemini 3 Flash Preview",
         "provider": "github-copilot",
         "reasoning": true,
@@ -859,10 +859,10 @@
         },
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.1,
+            "cacheRead": 0.02,
             "cacheWrite": 1.25,
-            "input": 1.0,
-            "output": 6.0
+            "input": 0.2,
+            "output": 1.2
         },
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
@@ -929,10 +929,10 @@
         },
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.25,
+            "cacheRead": 0.2,
             "cacheWrite": 3.125,
-            "input": 2.5,
-            "output": 15.0
+            "input": 2.0,
+            "output": 12.0
         },
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",

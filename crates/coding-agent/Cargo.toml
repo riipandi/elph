@@ -1,0 +1,87 @@
+[package]
+name = "elph"
+version = "0.0.1"
+license = "Apache-2.0"
+description = "Minimalist AI agent companion for coding"
+keywords = ["ai", "agent", "cli", "coding", "llm"]
+categories = ["command-line-utilities", "development-tools"]
+homepage.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+publish = true
+
+[lib]
+name = "elph"
+path = "src/lib.rs"
+
+[[bin]]
+name = "elph"
+path = "src/main.rs"
+
+[features]
+# Forward Metal GPU acceleration for local embeddings (codegraph + memory) to
+# floppy. Enabling this requires building on Apple Silicon macOS (the `metal`
+# code path only compiles there). See `make build` which adds it automatically
+# on macOS aarch64.
+metal = ["floppy/metal"]
+
+[dependencies]
+agent-client-protocol.workspace = true
+anstyle.workspace = true
+anyhow.workspace = true
+chord_macro.workspace = true
+chrono.workspace = true
+clap.workspace = true
+clap_complete.workspace = true
+crossterm.workspace = true
+elph-agent = { workspace = true, features = ["tracing", "builtin-tools", "mcp", "prompt-templates", "extensions"] }
+elph-ai = { workspace = true, features = ["tracing"] }
+elph-tui = { workspace = true }
+floppy = { workspace = true, features = ["full"] }
+futures-util.workspace = true
+git2 = { workspace = true, features = ["cred"] }
+inquire.workspace = true
+iocraft.workspace = true
+log.workspace = true
+logforth.workspace = true
+memorable-ids.workspace = true
+minijinja = { workspace = true, features = ["custom_syntax"] }
+parking_lot.workspace = true
+rand.workspace = true
+regex.workspace = true
+rustc-hash.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio = { workspace = true, features = [
+  "fs",
+  "io-util",
+  "io-std",
+  "macros",
+  "net",
+  "rt",
+  "rt-multi-thread",
+  "sync",
+  "time",
+  "process",
+  "signal",
+] }
+turso = { workspace = true, features = ["fts"] }
+tokio-util = { workspace = true }
+yaml_serde.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+libc.workspace = true
+
+[dev-dependencies]
+elph-agent = { workspace = true, features = ["full"] }
+libc.workspace = true
+tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time", "sync"] }
+
+[lints.rust]
+linker_messages = "allow"
+
+[[example]]
+name = "test_notifications"
+path = "examples/test_notifications.rs"

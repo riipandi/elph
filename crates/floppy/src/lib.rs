@@ -1,62 +1,87 @@
-//! Agent memory store for task-scoped retrieval, scoring, and weight updates.
+//! # floppy
 //!
-//! Ported from the [memelord](https://github.com/glommer/memelord) SDK
-//! (`packages/sdk`). The original code is licensed under the
-//! [MIT License](https://opensource.org/licenses/MIT).
-//! Copyright (c) 2026 Glauber Costa.
+//! Domain-oriented library for **agent memory** and optional **semantic code indexing**,
+//! backed by Turso (embedded SQLite + vectors + FTS).
 //!
-//! This Rust port preserves the core design (Turso-backed vector search,
-//! Welford baseline scoring, EMA weight updates) with platform-specific
-//! adaptations for the Turso Rust driver.
+//! ## Crate layout
 //!
-//! Configuration is explicit: use [`FloppyBuilder`] or [`FloppyConfig`] builder methods.
-//! No environment variables are read inside this module.
+//! | Module | Domain | Feature |
+//! | ------ | ------ | ------- |
+//! | [`core`] | Shared DB open, embed adapters, paths, FTS query sanitizer, migration ledger | always |
+//! | [`memory`] | Task-scoped memory store (memelord-compatible design) | `memory` (default) |
+//! | [`codegraph`] | Codebase chunk index + hybrid search | `codegraph` |
+//!
+//! Designed for use as an **in-process library** (e.g. Elph) or a future **standalone CLI / MCP server**.
+//! Configuration is always explicit — no environment variables are read inside this crate
+//! (hosts may still set `HF_HOME` via embed options).
+//!
+//! ## Quick start (memory)
+//!
+//! ```ignore
+//! use floppy::{create_embedder, create_memory_store, EmbedOptions, FloppyConfig};
+//!
+//! let embed = create_embedder(EmbedOptions::default())?;
+//! let store = create_memory_store(FloppyConfig::new("store.db", "session"), embed);
+//! store.init().await?;
+//! ```
 
-mod builder;
-mod embed;
-pub mod migrations;
-mod paths;
-mod query;
-mod report;
-mod scoring;
-mod store;
-mod types;
-mod util;
+#![doc(html_root_url = "https://docs.rs/floppy")]
 
-pub use builder::FloppyBuilder;
+pub mod core;
+
+#[cfg(feature = "memory")]
+pub mod memory;
+
+#[cfg(feature = "codegraph")]
+pub mod codegraph;
+
+// ── Core re-exports (always available) ──────────────────────────────────────
+
+pub use core::db::{open_local_db, with_local_db};
+pub use core::embed::{DEFAULT_EMBED_MODEL, EmbedFn, EmbedFuture, EmbedOptions, create_embedder, noop_embedder};
 #[cfg(feature = "embed")]
-pub use embed::ResolvedEmbeddingModel;
-pub use embed::create_embedder;
-pub use embed::{DEFAULT_EMBED_MODEL, EmbedOptions};
-#[cfg(feature = "embed")]
-pub use embed::{embedding_dims, resolve_embedding_model};
-pub use migrations::FloppyMigration;
-pub use migrations::{LAST_VERSION, MIGRATIONS, V1_NAME, V1_UP, V2_NAME, V2_UP, V3_NAME, V3_UP};
-pub use paths::FloppyPaths;
-pub use paths::{DB_FILE_NAME, DEFAULT_DATA_DIR};
-pub use store::noop_embedder;
-pub use store::{EmbedFn, MemoryStore};
-pub use types::{
+pub use core::embed::{
+    EMBEDDER_INIT_TIMEOUT, ResolvedEmbeddingModel, create_embedder_with_timeout, embedding_dims,
+    resolve_embedding_model,
+};
+pub use core::gpu::{GpuBackend, GpuConfig};
+pub use core::migration::{FloppyMigration, apply_set};
+pub use core::paths::{DB_FILE_NAME, DEFAULT_DATA_DIR, FloppyPaths};
+pub use core::util::{DEFAULT_EMBEDDING_DIMS, VALID_EMBEDDING_BYTES, drain_rows, is_zero, vec_buf};
+
+// ── Memory re-exports (feature = "memory") ──────────────────────────────────
+
+#[cfg(feature = "memory")]
+pub use memory::create_memory_store;
+/// Memory migrations module (hosts map into their own runners).
+#[cfg(feature = "memory")]
+pub use memory::migrations;
+#[cfg(feature = "memory")]
+pub use memory::migrations::{
+    LAST_VERSION, MIGRATIONS, V1_NAME, V1_UP, V2_NAME, V2_UP, V3_NAME, V3_UP, V4_NAME, V4_UP,
+};
+#[cfg(feature = "memory")]
+pub use memory::{
     CategoryCount, ConsolidateResult, ContradictResult, DecayResult, EmbeddingStatus, EndTaskWithDecayResult,
-    FloppyConfig, FlushResult, Memory,
+    FloppyBuilder, FloppyConfig, FlushResult, Memory, MemoryCategory, MemoryRecord, MemoryReportInput,
+    MemoryReportType, MemoryStats, MemoryStore, ReportCorrectionInput, ReportUserInput, SelfReportEntry,
+    StartTaskResult, StoreStatus, TaskBaseline, TaskCreatedMemory, TaskEndInput, TaskRecord, TaskRetrieval, TaskStatus,
+    TimelineEvent, TimelineEventKind, TopMemory, UserInputSource, VectorType, category_str,
 };
-pub use types::{
-    MemoryCategory, MemoryRecord, MemoryReportInput, MemoryReportType, MemoryStats, ReportCorrectionInput,
-};
-pub use types::{
-    ReportUserInput, SelfReportEntry, StartTaskResult, StoreStatus, TaskBaseline, TaskCreatedMemory, TaskEndInput,
-};
-pub use types::{
-    TaskRecord, TaskRetrieval, TaskStatus, TimelineEvent, TimelineEventKind, TopMemory, UserInputSource, VectorType,
-};
-pub use util::category_str;
-pub use util::{DEFAULT_EMBEDDING_DIMS, VALID_EMBEDDING_BYTES};
 
-pub fn create_memory_store(config: FloppyConfig, embed: EmbedFn) -> MemoryStore {
-    MemoryStore::new(config, embed)
-}
+// ── Codegraph re-exports (feature = "codegraph") ────────────────────────────
 
-#[cfg(test)]
+/// Codegraph migrations module (hosts map into their own runners).
+#[cfg(feature = "codegraph")]
+pub use codegraph::migrations as codegraph_migrations;
+
+#[cfg(feature = "codegraph")]
+pub use codegraph::{
+    ChunkHit, CodegraphConfig, CodegraphStatus, CodegraphStore, ImpactNode, IndexPhase, IndexProgress, ProgressFn,
+    ScanStats, SearchOptions,
+};
+
+#[cfg(all(test, feature = "memory"))]
 mod tests {
     use super::*;
 
@@ -74,7 +99,10 @@ mod tests {
             decay_rate: None,
             apply_migrations: None,
         };
-        let embed: EmbedFn = std::sync::Arc::new(|_| Box::pin(async { Ok(vec![1.0, 0.0, 0.0, 0.0]) }));
+        let embed: EmbedFn = std::sync::Arc::new(|texts: &[String]| {
+            let n = texts.len();
+            Box::pin(async move { Ok(vec![vec![1.0, 0.0, 0.0, 0.0]; n]) })
+        });
         let _store = create_memory_store(config, embed);
     }
 }

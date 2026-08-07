@@ -138,11 +138,12 @@ pub use agent::subagent::SubagentEventForwarder;
 pub use agent::subagent::SubagentHarness;
 pub use agent::subagent::SubagentInfo;
 pub use agent::subagent::SubagentLimits;
+pub use agent::subagent::SubagentOutput;
 pub use agent::subagent::SubagentSpawnConfig;
 pub use agent::subagent::SubagentStatus;
 pub use agent::subagent::generate_agent_name;
+pub use agent::subagent::subagent_persist_event;
 pub use agent::{Agent, AgentListener, AgentOptions, AgentSubscription, PartialAgentState};
-pub use builder::InitProgress;
 pub use builder::{AgentBuilder, AgentInit, BuiltinToolsBuilder};
 pub use collaboration::ToolExposurePolicy;
 pub use collaboration::assistant_message_text;
@@ -196,6 +197,7 @@ pub use datastore::Migration;
 pub use datastore::{ensure_database, ensure_databases, ensure_databases_once};
 pub use elph_ai::{OnPayloadCallback, OnResponseCallback};
 pub use fs::{ensure_dirs, write_file_if_missing, write_json_file, write_private_file};
+pub use goals::{BUDGET_LIMIT_PROMPT_PREFIX, CONTINUATION_PROMPT_PREFIX};
 pub use goals::{Goal, GoalRuntime, GoalStatus, GoalStore};
 pub use goals::{GoalStatusHook, create_goal_tools, create_goal_tools_with_hook};
 pub use logger::{LogRotation, LoggingOptions};
@@ -240,9 +242,8 @@ pub use prompt::substitute_args;
 pub use prompt::{DEFAULT_SYSTEM_PROMPT, resolve_system_prompt_text};
 #[cfg(feature = "prompt-templates")]
 pub use prompt::{
-    PromptAssemblyMode, PromptRenderError, PromptTemplateEngine, SystemPromptBuildError, SystemPromptBuilder,
-    SystemPromptTemplateContext, ToolByKindContext, ToolNamesContext, custom_prompt_syntax, default_prompt_engine,
-    format_project_context, tool_names_context,
+    PromptAssemblyMode, PromptRenderError, SystemPromptBuildError, SystemPromptBuilder, SystemPromptTemplateContext,
+    ToolByKindContext, ToolNamesContext, format_project_context, render_base_template, tool_names_context,
 };
 pub use runtime::event_stream::{AgentEventSink, AgentEventStream};
 pub use runtime::local_env::LocalExecutionEnv;
@@ -377,6 +378,8 @@ pub use tools::mcp::McpAuthSource;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::McpAuthSourceReport;
 #[cfg(feature = "mcp")]
+pub use tools::mcp::McpCacheStore;
+#[cfg(feature = "mcp")]
 pub use tools::mcp::McpClient;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::McpClientService;
@@ -459,6 +462,8 @@ pub use tools::mcp::decrypt_string_async;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::decrypt_string_sync;
 #[cfg(feature = "mcp")]
+pub use tools::mcp::default_auth_lock_path;
+#[cfg(feature = "mcp")]
 pub use tools::mcp::encrypt_async;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::encrypt_json_async;
@@ -511,6 +516,8 @@ pub use tools::mcp::resolve_oauth_access_token;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::resolve_remote_auth;
 #[cfg(feature = "mcp")]
+pub use tools::mcp::rewrap_master_key;
+#[cfg(feature = "mcp")]
 pub use tools::mcp::run_oauth_flow;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::run_oauth_flow_with_scopes;
@@ -535,6 +542,6 @@ pub use tools::{WebSearchEngine, WebSearchResult};
 #[cfg(feature = "tools-shell-exec")]
 pub use tools::{create_shell_exec_tool, normalize_shell_exec_args, strip_redundant_cd_prefix};
 #[cfg(feature = "tools-web")]
-pub use tools::{create_web_fetch_tool, create_web_search_tool, create_web_tools};
+pub use tools::{create_web_extract_tool, create_web_fetch_tool, create_web_search_tool, create_web_tools};
 pub use tools::{echo_tool, simple_tool};
 pub use types::*;

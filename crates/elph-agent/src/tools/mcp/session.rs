@@ -16,6 +16,7 @@ use tokio::sync::Mutex;
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 
+use super::cache::{McpCacheStore, is_read_only_tool};
 use super::client::call_tool_on_client;
 use super::client::cancel_task_on_client;
 use super::client::connect_with_context;
@@ -424,6 +425,8 @@ pub struct McpSessionPool {
     auth_store_path: Option<PathBuf>,
     response_cache: McpResponseCacheConfig,
     event_bus: McpEventBus,
+    cache_store: Option<Arc<McpCacheStore>>,
+    default_cache_ttl_ms: u64,
 }
 
 impl Default for McpSessionPool {
@@ -439,6 +442,8 @@ impl McpSessionPool {
             auth_store_path: None,
             response_cache: McpResponseCacheConfig::default(),
             event_bus: McpEventBus::new(),
+            cache_store: None,
+            default_cache_ttl_ms: super::cache::DEFAULT_CACHE_TTL_MS,
         }
     }
 
@@ -449,6 +454,18 @@ impl McpSessionPool {
 
     pub fn with_response_cache(mut self, response_cache: McpResponseCacheConfig) -> Self {
         self.response_cache = response_cache;
+        self
+    }
+
+    pub fn with_cache_store(mut self, cache_store: Option<Arc<McpCacheStore>>) -> Self {
+        self.cache_store = cache_store;
+        self
+    }
+
+    /// Set the default tool result cache TTL (ms) used when a server does not
+    /// override it via `cacheTtlMs`. `0` disables caching.
+    pub fn with_default_cache_ttl(mut self, ttl_ms: u64) -> Self {
+        self.default_cache_ttl_ms = ttl_ms;
         self
     }
 
@@ -563,8 +580,27 @@ impl McpSessionPool {
         if config.is_disabled() {
             bail!("MCP server \"{name}\" is disabled");
         }
+
+        // Cache hit: return immediately for read-only tools.
+        if is_read_only_tool(tool_name)
+            && let Some(cache) = &self.cache_store
+            && let Some(cached) = cache.get(name, tool_name, &args)
+        {
+            return Ok(cached);
+        }
+
+        let ttl = config.cache_ttl_ms().unwrap_or(self.default_cache_ttl_ms);
         let session = self.get_or_insert(name, config).await;
-        session.call_tool(tool_name, args).await
+        let result = session.call_tool(tool_name, args.clone()).await?;
+
+        // Cache miss: store result for read-only tools.
+        if is_read_only_tool(tool_name)
+            && let Some(cache) = &self.cache_store
+        {
+            let _ = cache.set(name, tool_name, &args, &result, ttl);
+        }
+
+        Ok(result)
     }
 
     pub async fn get_task(

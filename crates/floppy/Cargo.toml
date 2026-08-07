@@ -2,33 +2,81 @@
 name = "floppy"
 version = "0.0.1"
 license = "MIT"
-description = "AI memory with vector search powered by Turso"
+description = "Agent memory + semantic code index library (Turso), embeddable or standalone"
 homepage.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 edition.workspace = true
 publish = true
+readme = "README.md"
+keywords = ["ai", "memory", "vector", "codegraph", "sqlite"]
+categories = ["database", "development-tools"]
 
 [lib]
 name = "floppy"
 path = "src/lib.rs"
 
 [features]
-default = []
+# Library defaults: memory domain on, heavy parsers off.
+default = ["memory"]
+# Task-scoped agent memory (memelord-compatible design).
+memory = []
+# Local Candle embeddings via embed_anything (ONNX Runtime is not used).
+# The CPU backend is selected per target: Apple Accelerate on macOS
+# (see the target-specific dependency table below); other platforms use
+# Candle's default CPU backend. GPU backends are opt-in via `metal`/`cuda`.
 embed = ["dep:embed_anything"]
+# GPU acceleration (optional, requires matching hardware):
+# - metal: Apple Silicon GPU (macOS)
+# - cuda: NVIDIA GPU (Linux/Windows)
+metal = ["embed", "embed_anything/metal"]
+cuda = ["embed", "embed_anything/cuda"]
+# Semantic codebase index (ast-grep chunking + FTS/vector). Optional; heavy.
+codegraph = [
+  "dep:ast-grep-core",
+  "dep:ast-grep-language",
+  "dep:ignore",
+  "dep:sha2",
+  "dep:regex",
+  "dep:rayon",
+]
+# Convenience: full surface for hosts (Elph).
+full = ["memory", "embed", "codegraph"]
 
 [dependencies]
 anyhow.workspace = true
+ast-grep-core = { workspace = true, optional = true }
+ast-grep-language = { workspace = true, optional = true }
 chrono.workspace = true
 embed_anything = { workspace = true, optional = true }
+ignore = { workspace = true, optional = true }
 kalid.workspace = true
+log.workspace = true
 memorable-ids.workspace = true
 parking_lot.workspace = true
 rand.workspace = true
+rayon = { workspace = true, optional = true }
+regex = { workspace = true, optional = true }
+rustc-hash.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2 = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["io-util", "macros", "rt", "rt-multi-thread", "sync", "time"] }
 turso.workspace = true
+
+# CPU backend is selected per target:
+# - macOS               -> Apple Accelerate (vecLib/BLAS)
+# - x86_64 (non-macOS)  -> Intel MKL
+# - other (e.g. ARM)    -> Candle's default CPU backend
+[target.'cfg(target_os = "macos")'.dependencies.embed_anything]
+workspace = true
+optional = true
+features = ["rustls-tls", "accelerate"]
+
+[target.'cfg(all(not(target_os = "macos"), target_arch = "x86_64"))'.dependencies.embed_anything]
+workspace = true
+optional = true
+features = ["rustls-tls", "mkl"]
 
 [dev-dependencies]
 tempfile.workspace = true

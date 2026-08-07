@@ -1,0 +1,6 @@
+name = "say-hello"
+version = "0.1.0"
+description = "Adds /say-hello slash command"
+component = "component.wasm"
+enabled = true
+trusted = true

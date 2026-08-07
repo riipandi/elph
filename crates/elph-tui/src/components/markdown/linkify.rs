@@ -178,23 +178,22 @@ fn looks_like_path(token: &str) -> bool {
     if token.starts_with("http://") || token.starts_with("https://") || token.starts_with("mailto:") {
         return false;
     }
-    // Absolute unix / home-relative
-    if token.starts_with('/') || token.starts_with("~/") || token == "~" {
-        return true;
+    // Avoid matching protocol-looking tokens (already handled as URLs above).
+    if token.contains("://") {
+        return false;
     }
-    // Relative with directory separators and a file-ish tail
+    // A token is only path-like when it carries a file-ish component (a filename with
+    // an extension, a `Makefile`/`Dockerfile`, or an explicit directory tail). This keeps
+    // slash-separated word lists such as `stuck/freeze/berhenti` rendered as plain,
+    // neutral text instead of being mis-colored as a filesystem path.
+    let last = token.rsplit('/').next().unwrap_or(token);
+    let has_file = last.contains('.') || last == "Makefile" || last == "Dockerfile";
+    let is_explicit_dir = token.ends_with('/') || token.starts_with("./") || token.starts_with("../");
+    if token.starts_with('/') || token.starts_with("~/") || token == "~" {
+        return has_file || is_explicit_dir;
+    }
     if token.contains('/') {
-        // Avoid matching pure URLs fragments or protocol-looking tokens
-        if token.contains("://") {
-            return false;
-        }
-        // Require at least one path segment that looks like a file or known dir
-        let has_dot_file = token
-            .rsplit('/')
-            .next()
-            .is_some_and(|name| name.contains('.') || name == "Makefile" || name == "Dockerfile");
-        let has_dir = token.matches('/').count() >= 1;
-        return has_dir && (has_dot_file || token.starts_with("./") || token.starts_with("../"));
+        return has_file || is_explicit_dir;
     }
     false
 }
@@ -226,6 +225,26 @@ mod tests {
         assert_eq!(spans[0].text, "no links here");
         assert_eq!(spans[0].color, theme.body);
         assert!(spans[0].href.is_none());
+    }
+
+    #[test]
+    fn slash_separated_words_stay_neutral() {
+        // Regression: a slash-separated word list must not be mis-colored as a path.
+        let theme = MarkdownTheme::default();
+        let spans = spans_with_links("stuck/freeze/berhenti", theme.body, Weight::Normal, false, theme.link);
+        assert_eq!(spans.len(), 1, "slash-separated words must not be linkified");
+        assert_eq!(spans[0].text, "stuck/freeze/berhenti");
+        assert_eq!(spans[0].color, theme.body);
+        assert!(spans[0].href.is_none());
+    }
+
+    #[test]
+    fn explicit_directory_tail_is_linkified() {
+        let theme = MarkdownTheme::default();
+        let spans = spans_with_links("see /tmp/demo/ here", theme.body, Weight::Normal, false, theme.link);
+        let dir_span = spans.iter().find(|s| s.text == "/tmp/demo/").expect("directory span");
+        assert_eq!(dir_span.color, theme.link);
+        assert!(dir_span.href.as_deref().is_some_and(|h| h.starts_with("file://")));
     }
 
     #[test]

@@ -27,6 +27,7 @@ iocraft.workspace = true
 linkify.workspace = true
 log.workspace = true
 memchr.workspace = true
+mermaid-text.workspace = true
 pulldown-cmark.workspace = true
 qrcode.workspace = true
 reqwest.workspace = true
@@ -39,7 +40,7 @@ supports-color.workspace = true
 syntect.workspace = true
 textwrap.workspace = true
 tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "signal", "sync", "time"] }
-two-face.workspace = true
+two-face = { workspace = true, default-features = false, features = ["syntect-fancy"] }
 unicode-linebreak.workspace = true
 unicode-segmentation.workspace = true
 unicode-width.workspace = true
@@ -48,6 +49,7 @@ url.workspace = true
 # Wayland clipboard backend (Linux). macOS/Windows use platform-native APIs.
 [target.'cfg(target_os = "linux")'.dependencies]
 clipboard-rs = { workspace = true, features = ["wayland"] }
+
 [dev-dependencies]
 futures.workspace = true
 lipsum = "0.9.1"

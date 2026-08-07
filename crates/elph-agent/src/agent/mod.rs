@@ -259,8 +259,12 @@ impl Agent {
         }
     }
 
-    pub async fn reset(&self) {
+    pub async fn reset(&self) -> Result<(), anyhow::Error> {
+        if self.active_run.lock().await.is_some() {
+            anyhow::bail!("Agent is already processing. Wait for completion before resetting.");
+        }
         self.state.lock().await.reset();
         self.clear_all_queues();
+        Ok(())
     }
 }

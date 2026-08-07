@@ -126,6 +126,14 @@ fn render_code_block(
     margin_bottom: u16,
 ) -> AnyElement<'static> {
     let use_card = lines.iter().any(|line| line.code_background);
+
+    // Mermaid: render the deferred source at the actual terminal width for a crisp,
+    // responsive diagram. Falls back to raw source if it cannot fit.
+    if let Some(source) = lines.iter().find_map(|line| line.mermaid_source.as_ref()) {
+        let inner_width = code_content_width(width);
+        return render_mermaid_card(source, inner_width, width, theme, margin_bottom);
+    }
+
     if !use_card {
         // No card background (single-line fences): render wrapped rows inline at full width.
         let row_elements: Vec<AnyElement<'static>> = lines
@@ -154,6 +162,50 @@ fn render_code_block(
     element! {
         View(
             width: width,
+            margin_bottom: margin_bottom,
+            background_color: theme.code_bg,
+            padding_top: CODE_BLOCK_INSET_V,
+            padding_bottom: CODE_BLOCK_INSET_V,
+            padding_left: CODE_BLOCK_INSET_H,
+            padding_right: CODE_BLOCK_INSET_H,
+            flex_direction: FlexDirection::Column,
+            gap: 0,
+            flex_shrink: 0f32,
+        ) {
+            #(row_elements)
+        }
+    }
+    .into()
+}
+
+/// Render a mermaid diagram as a tinted code card, sized to `inner_width` columns.
+fn render_mermaid_card(
+    source: &str,
+    inner_width: u16,
+    outer_width: u16,
+    theme: &MarkdownTheme,
+    margin_bottom: u16,
+) -> AnyElement<'static> {
+    // Render with strict width; on failure (TooWide / invalid) fall back to raw source lines.
+    let rendered =
+        super::highlight::render_mermaid_at_width(source, inner_width).unwrap_or_else(|_| source.to_string());
+    let row_elements: Vec<AnyElement<'static>> = rendered
+        .lines()
+        .map(|line| {
+            element! {
+                View(width: inner_width, flex_shrink: 0f32) {
+                    MixedText(
+                        contents: vec![MixedTextContent::new(line).color(theme.body)],
+                        wrap: TextWrap::NoWrap,
+                    )
+                }
+            }
+            .into()
+        })
+        .collect();
+    element! {
+        View(
+            width: outer_width,
             margin_bottom: margin_bottom,
             background_color: theme.code_bg,
             padding_top: CODE_BLOCK_INSET_V,
@@ -347,6 +399,7 @@ pub fn plain_text_document(text: &str, foreground: Color) -> MarkdownDocument {
                 spans: spans_with_links(line, foreground, Weight::Normal, false, theme.link),
                 code_background: false,
                 table: None,
+                mermaid_source: None,
             });
         }
     }
@@ -356,6 +409,7 @@ pub fn plain_text_document(text: &str, foreground: Color) -> MarkdownDocument {
             spans: spans_with_links(text, foreground, Weight::Normal, false, theme.link),
             code_background: false,
             table: None,
+            mermaid_source: None,
         });
     }
     MarkdownDocument { lines }.normalize()
@@ -490,5 +544,58 @@ mod tests {
         let rendered = element! { View(width: 40) { #(vec![block]) } }.to_string();
         assert!(rendered.contains("hello"));
         assert!(!doc.lines[0].code_background);
+    }
+
+    #[test]
+    fn mermaid_fence_produces_code_line_with_deferred_source() {
+        let src = "```mermaid\ngraph LR; A[Build] --> B[Deploy]\n```";
+        let doc = parse_markdown_document(src);
+        let mermaid_line = doc
+            .lines
+            .iter()
+            .find(|line| line.mermaid_source.is_some())
+            .expect("mermaid fence produces a deferred line");
+        assert_eq!(mermaid_line.kind, MarkdownLineKind::Code);
+        assert!(mermaid_line.code_background);
+    }
+
+    #[test]
+    fn mermaid_measure_matches_rendered_rows() {
+        // Critical invariant: the measured row count must match the rendered row count,
+        // otherwise the scroll viewport clips the diagram. Both paths call
+        // render_mermaid_at_width with the same inner width, so they stay in parity.
+        let src = "```mermaid\ngraph TD\n    A[Start] --> B{Decision}\n    B -->|Yes| C[End]\n    B -->|No| A\n```";
+        let width = 60u16;
+        let doc = parse_markdown_document(src);
+        let block = render_markdown_block(&doc, width);
+        let rendered = element! { View(width: width) { #(vec![block]) } }.to_string();
+        let rendered_rows = rendered.lines().count();
+        let measured = markdown_document_row_count(&doc, width);
+        assert_eq!(
+            rendered_rows, measured as usize,
+            "measured rows ({measured}) must match rendered rows ({rendered_rows}) for mermaid"
+        );
+    }
+
+    #[test]
+    fn mermaid_renders_responsive_to_width() {
+        // The diagram should render at different widths without panicking, and the
+        // rendered output should adapt (narrower width → more compact diagram).
+        let src = "```mermaid\ngraph LR; A[Build] --> B[Test] --> C[Deploy]\n```";
+        let doc = parse_markdown_document(src);
+
+        // Wide terminal
+        let wide_block = render_markdown_block(&doc, 120);
+        let wide_rendered = element! { View(width: 120) { #(vec![wide_block]) } }.to_string();
+        assert!(wide_rendered.contains("Build"));
+        assert!(wide_rendered.contains("Deploy"));
+
+        // Narrow terminal — should still render (possibly more compact or fallback).
+        let narrow_block = render_markdown_block(&doc, 40);
+        let narrow_rendered = element! { View(width: 40) { #(vec![narrow_block]) } }.to_string();
+        assert!(
+            narrow_rendered.contains("Build") || narrow_rendered.contains("graph"),
+            "narrow render should show diagram or fallback source"
+        );
     }
 }

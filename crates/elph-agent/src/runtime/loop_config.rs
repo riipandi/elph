@@ -31,6 +31,9 @@ pub struct BeforeToolCallResult {
     pub reason: Option<String>,
     /// Override validated args without re-running schema validation (elph-agent `beforeToolCall` mutation semantics).
     pub args: Option<Value>,
+    /// Hint that the agent should stop after the current tool batch when this call is blocked.
+    /// Early termination only happens when every finalized tool result in the batch sets this to true.
+    pub terminate: Option<bool>,
 }
 
 #[derive(Debug, Clone)]

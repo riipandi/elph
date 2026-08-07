@@ -110,6 +110,7 @@ where
                             block: true,
                             reason: Some(plan_mode_block_reason(&tool_name)),
                             args: None,
+                            terminate: None,
                         });
                     }
                     let result = hooks.emit_tool_call(&event).await.ok()??;
@@ -117,6 +118,7 @@ where
                         block: result.block,
                         reason: result.reason,
                         args: None,
+                        terminate: None,
                     })
                 })
             }));
@@ -169,7 +171,10 @@ where
 
         // ToolContext is constructed synchronously with a default plan mode.
         // The actual plan mode check is done by the before_tool_call hook.
-        let tool_context = crate::tools::types::ToolContext::new(self.shared.env.clone()).with_plan_mode(false);
+        let tool_context = crate::tools::types::ToolContext::new(self.shared.env.clone())
+            .with_plan_mode(false)
+            .with_headless(self.shared.headless)
+            .with_terminals_dir(self.shared.terminals_dir.clone());
 
         AgentLoopConfig {
             model,

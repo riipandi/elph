@@ -8,6 +8,7 @@
 //! keeps tool definitions stateless.
 
 use std::future::Future;
+use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
 
@@ -32,6 +33,13 @@ pub struct ToolContext {
     pub cwd: String,
     /// Whether the current turn is in plan mode (tool may be blocked).
     pub is_plan_mode: bool,
+    /// Whether the agent is running in headless mode (`elph run`), which relaxes
+    /// some tool defaults (e.g. no background-task timeout by default).
+    pub is_headless: bool,
+    /// Session terminal-capture directory (`APP_DATA/sessions/<SESSION_ID>/terminals`),
+    /// when the harness is wired to a persistent session. `None` for stateless
+    /// contexts (tests, examples) where output is not persisted to disk.
+    pub terminals_dir: Option<PathBuf>,
 }
 
 impl ToolContext {
@@ -40,6 +48,8 @@ impl ToolContext {
             env,
             cwd: String::new(),
             is_plan_mode: false,
+            is_headless: false,
+            terminals_dir: None,
         }
     }
 
@@ -50,6 +60,16 @@ impl ToolContext {
 
     pub fn with_plan_mode(mut self, plan_mode: bool) -> Self {
         self.is_plan_mode = plan_mode;
+        self
+    }
+
+    pub fn with_headless(mut self, headless: bool) -> Self {
+        self.is_headless = headless;
+        self
+    }
+
+    pub fn with_terminals_dir(mut self, terminals_dir: Option<PathBuf>) -> Self {
+        self.terminals_dir = terminals_dir;
         self
     }
 }

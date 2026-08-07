@@ -403,6 +403,46 @@ async fn scroll_view_pinned_up_and_down() {
 }
 
 #[apply(test!)]
+async fn pause_auto_scroll_disengages_pin_without_moving() {
+    #[component]
+    fn PauseScroll(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
+        let mut system = hooks.use_context_mut::<SystemContext>();
+        let mut tick = hooks.use_state(|| 0u32);
+        let mut handle = hooks.use_ref_default::<ScrollViewHandle>();
+        hooks.use_effect(
+            move || {
+                // While pinned to the bottom, pausing must disengage the bottom-pin so an
+                // expanded card stays in view, yet leave the offset untouched (no jump).
+                let mut h = handle.write();
+                assert!(h.is_auto_scroll_pinned(), "starts pinned at the bottom");
+                let offset_before = h.scroll_offset();
+                h.pause_auto_scroll();
+                assert!(!h.is_auto_scroll_pinned(), "pause disengages the pin");
+                assert_eq!(h.scroll_offset(), offset_before, "pause keeps the offset");
+            },
+            (),
+        );
+        hooks.use_future(async move {
+            tick.set(1);
+        });
+        if tick.get() >= 1 {
+            system.exit();
+        }
+        let lines: Vec<_> = (0..30)
+            .map(|i| element! { Text(content: format!("row {i}")) })
+            .collect();
+        element! {
+            View(height: 6u16, width: 20u16) {
+                ScrollView(handle: Some(handle), auto_scroll: true) {
+                    View(flex_direction: FlexDirection::Column) { #(lines) }
+                }
+            }
+        }
+    }
+    render_exit(element!(PauseScroll)).await;
+}
+
+#[apply(test!)]
 async fn auto_scroll_mouse_wheel_steps_from_bottom_without_jumping_to_top() {
     #[component]
     fn AutoScrollMouse(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {

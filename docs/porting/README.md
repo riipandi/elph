@@ -2,7 +2,7 @@
 
 How far Elph crates lag (or lead) upstream **pi** projects:
 
-- TypeScript **[earendil-works/pi](https://github.com/earendil-works/pi)** → `elph-ai`, `elph-agent`, `elph/`
+- TypeScript **[earendil-works/pi](https://github.com/earendil-works/pi)** → `elph-ai`, `elph-agent`, `coding-agent`
 
 **Readability:** these pages prefer short prose, bullets, and timeline entries.
 Avoid packing status into wide tables.
@@ -11,7 +11,7 @@ Avoid packing status into wide tables.
 
 - **[pi-ai.md](./pi-ai.md)** — `@earendil-works/pi-ai` (`packages/ai`) → `crates/elph-ai`
 - **[pi-agent.md](./pi-agent.md)** — `@earendil-works/pi-agent-core` (`packages/agent`) → `crates/elph-agent`
-- **[pi-coding-agent.md](./pi-coding-agent.md)** — `@earendil-works/pi-coding-agent` (`packages/coding-agent`) → `elph/` (product CLI + TUI)
+- **[pi-coding-agent.md](./pi-coding-agent.md)** — `@earendil-works/pi-coding-agent` (`packages/coding-agent`) → `crates/coding-agent/` (product CLI + TUI)
 - **[feature-comparison.md](./feature-comparison.md)** — Detailed feature-by-feature table across all four crates
 
 ## Why these docs exist
@@ -28,11 +28,11 @@ Last documented **2026-07-29T19:50:00Z** (pi snapshot). Catalog SSOT note update
 
 - **Upstream:** https://github.com/earendil-works/pi
 - **Local clone (analysis):** `/Users/ariss/Developer/github.com/earendil-works/pi`
-- **Snapshot commit:** `cced6a21` (_fix(coding-agent): stop loading AGENTS.md twice in nested git worktrees_)
-- **Package version:** `0.82.1` (released 2026-07-25) + **Unreleased** on `main`
-- **Mapping:** `packages/ai` → `elph-ai`, `packages/agent` → `elph-agent`, `packages/coding-agent` → `elph/`
-- **Last library implementation pass:** 2026-07-29 — Sprint 7: remaining P2 gap port (Kimi OAuth, OpenRouter OAuth, Radius OAuth, pi-messages, JsonlSessionStorage, file mutation queue, image tool)
-- **Last product gap audit:** 2026-07-29 — dead code cleanup + clippy hardening across `elph/` TUI modules
+- **Snapshot commit:** `7aca0d7b3` (_fix(agent): make JSONL decode errors explicit_)
+- **Package version:** `0.84.1` (released 2026-08-07) + **Unreleased** on `main`
+- **Mapping:** `packages/ai` → `elph-ai`, `packages/agent` → `elph-agent`, `packages/coding-agent` → `crates/coding-agent/`
+- **Last gap audit:** 2026-08-07 — full walk from `cced6a21` (v0.82.1) to `7aca0d7b3` (v0.84.1), 404 commits; the dominant change is a v4 lane-based session/repo overhaul in pi-agent (`packages/agent/src/harness/session/`).
+- **Last library implementation pass:** 2026-08-07 — Sprint 8: safe additive Pi gaps (BeforeToolCallResult.terminate, Agent.reset idle-guard, samplingParams, thinking_token_budget, supportsFinishReason).
 - **Catalog SSOT (settled):** chat models from **models.dev** via `elph-ai` `generate-models` / skill `update-models` — **not** from pi `packages/ai` data. Port gap analysis skill: `pi-port-gap` (adopt intent, implement Elph shape).
 
 ## Status tags
@@ -73,13 +73,27 @@ Do not copy pi’s TypeScript layout or catalog scripts. Agent skill:
 
 ### Timeline
 
+### 2026-08-07 — Sprint 8: safe additive Pi gap port (5 features)
+
+**Scope:** `elph-ai` + `elph-agent` library crates. Upstream commit `7aca0d7b3` (v0.84.1 + Unreleased). Doctrine applied: no existing Elph architecture was changed; each gap was ported as an additive, opt-in complement on top of the current shape.
+
+- **`BeforeToolCallResult.terminate` (P2)** — pi v0.84.1 #7715. `crates/elph-agent/src/runtime/loop_config.rs`: new `terminate: Option<bool>` field. `crates/elph-agent/src/runtime/exec/prepare.rs`: a blocked `beforeToolCall` result now propagates `terminate` into the `AgentToolResult.terminate`, feeding the existing `should_terminate_tool_batch` batch-early-termination rule. **[Parity]** for the before-hook path (the after-hook path was already ported).
+- **`Agent.reset()` idle-guard (P2)** — pi v0.84.1 #7717. `crates/elph-agent/src/agent/mod.rs`: `reset()` now returns `Result<(), anyhow::Error>` and bails with `"Agent is already processing. Wait for completion before resetting."` when an `activeRun` is in flight, instead of clearing transcript/runtime state mid-run. No external callers; faithful Rust port of the pi throw.
+- **`samplingParams` passthrough (P2)** — pi v0.84.0 #7568. `crates/elph-ai/src/types/mod.rs`: new `sampling_params: Option<HashMap<String, Value>>` on `StreamOptions` and `OpenAICompletionsCompat`. `crates/elph-ai/src/api/openai_completions.rs` `apply_sampling_params` / `apply_sampling_map`: merges model-level defaults with per-request overrides into the OpenAI-completions body without clobbering explicit options (`temperature`, `max_tokens`). Latent until opted in via JSON model `compat`.
+- **`thinking_token_budget` compat flag (P2)** — pi v0.84.0 #7638. `crates/elph-ai/src/types/mod.rs` + `crates/elph-ai/src/api/openai_compat.rs`: new `supports_thinking_token_budget` on `OpenAICompletionsCompat` / `ResolvedOpenAICompletionsCompat` (default `false` in `detect_compat`, mapped through `merge_compat`). `crates/elph-ai/src/api/openai_completions.rs` `apply_thinking_token_budget`: when opted in, emits `thinking_token_budget` to reserve output tokens for vLLM-style providers where reasoning and answer share `max_tokens`.
+- **`supportsFinishReason` inference (P2)** — pi v0.84.0. `crates/elph-ai/src/types/mod.rs` + `crates/elph-ai/src/api/openai_compat.rs`: new `supports_finish_reason` (default `true`). `crates/elph-ai/src/api/openai_completions.rs` `infer_stop_reason`: when a provider omits streamed `finish_reason` and compat declares it unsupported, the adapter infers `StopReason::ToolUse` (if any tool call was streamed) or `StopReason::Stop` instead of erroring the stream.
+
+**Gap — not ported (intentional):** the pi-agent v4 lane-based session/repo model (`packages/agent/src/harness/session/{types,session,state,memory,jsonl/search}.ts`, `reducer.ts`, `telemetry.ts`). This is a ground-up architectural rewrite (lanes, durable operation records, `SessionRepo` contract, `findOpenOperations` recovery, `FileSystem.renameFile` requirement) that would reshape Elph's existing tree-entry `SessionStorage` design. Remains **[Gap P1 architectural]** — deferred pending an explicit architecture decision, not a safe additive port. See [pi-agent.md](./pi-agent.md#remaining--watch).
+
+Details in [pi-ai.md](./pi-ai.md#timeline) and [pi-agent.md](./pi-agent.md#timeline).
+
 ### 2026-08-01 — Catalog SSOT cutover + porting doctrine
 
 **Scope:** `elph-ai` generator + agent skills / porting docs (not a pi version bump).
 
 - Chat catalogs: origin **models.dev** (`generate-models chat`); full `thinkingLevelMap` on every model; live pricing preferred when available
 - Gateways preserved (Hyper, Kilo, TokenRouter, OpenGateway, Sumopod, …); registration gate vs `builtin_providers()`
-- Skills: **`update-models`** for catalog regen; **`pi-port-gap`** doctrine = adopt pi *gaps only*, implement on Elph architecture (no pi JSON seed, no dual SSOT)
+- Skills: **`update-models`** for catalog regen; **`pi-port-gap`** doctrine = adopt pi _gaps only_, implement on Elph architecture (no pi JSON seed, no dual SSOT)
 - Obsolete for chat: `--catalog-dir` / pi npm generate / “re-add Hyper after wipe”
 
 ### 2026-07-29 — Sprint 5: pi-ai gap port (7 features)
@@ -126,7 +140,7 @@ Details in [feature-comparison.md](./feature-comparison.md).
 
 ### 2026-07-29 — Rust verify & harden + dead code cleanup
 
-**Scope:** `elph/` product crate + `elph-tui`, `elph-agent` tests.
+**Scope:** `crates/coding-agent/` product crate + `elph-tui`, `elph-agent` tests.
 
 - `make lint` brought to zero violations: 26 clippy errors fixed across 5 files.
 - `make test` repaired: 2 `elph-agent` tests broke due to model catalog restructure (direct `openai` provider removed; models now served through gateway providers). Updated to use `get_models(None).next()`.

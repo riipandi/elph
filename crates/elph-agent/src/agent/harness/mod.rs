@@ -204,6 +204,10 @@ where
     prompt_encoding: std::sync::Mutex<Option<PromptEncodingConfig>>,
     goal_runtime: Option<Arc<GoalRuntime>>,
     subagent_bootstrap: Option<crate::agent::subagent::SubagentBootstrap>,
+    /// Whether the harness runs in headless mode (`elph run`).
+    headless: bool,
+    /// Session terminal-capture directory for persisting raw tool output.
+    terminals_dir: Option<std::path::PathBuf>,
 }
 
 /// Session-backed agent harness with hooks, queues, and pending session writes.
@@ -338,6 +342,8 @@ where
                 prompt_encoding: std::sync::Mutex::new(None),
                 goal_runtime: options.goal_runtime,
                 subagent_bootstrap: options.subagent_bootstrap,
+                headless: options.headless,
+                terminals_dir: options.terminals_dir,
                 steer_queue: Mutex::new(Vec::new()),
                 steering_queue_mode: Mutex::new(options.steering_mode),
                 follow_up_queue: Mutex::new(Vec::new()),

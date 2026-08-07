@@ -9,7 +9,7 @@ Register them with [`BuiltinToolsBuilder`](../src/builder.rs), group helpers, or
 | ---------------- | --------------------- | ---------------------------------------------------------------------------------------------- |
 | Read & Search    | `tools-search`        | `read_file`, `grep`, `find_path`, `list_dir`                                                   |
 | Edit             | `tools-edit`          | `edit_file`, `write_file`, `shell_exec`, `create_dir`, `copy_path`, `delete_path`, `move_path` |
-| Web              | `tools-web`           | `web_search`, `web_fetch`                                                                      |
+| Web              | `tools-web`           | `web_search`, `web_fetch`, `web_extract`                                                       |
 | Collaboration    | `tools-collaboration` | `spawn_agent`, `send_message`, `followup_task`, `wait_agent`, `list_agents`                    |
 | Meta             | —                     | `list_available_tools` (auto-included by `BuiltinToolsBuilder`)                                |
 | All of the above | `builtin-tools`       | meta feature                                                                                   |
@@ -38,6 +38,7 @@ Edit Tools
 Web Tools
   - web_fetch    : Fetches a URL and optionally returns the content as Markdown. Useful for providing docs as context.
   - web_search   : Searches the web for information, providing results with snippets and links from relevant web pages, useful for accessing real-time information.
+  - web_extract  : Extracts structured data from a web page (links, images, cleaned text, and matched elements) as JSON, using a CSS `selector` to scope a subtree. Useful for scraping/mining page structure rather than reading prose.
 
 Collaboration Tools
   - ask_user_question  : Ask the user a question to gather structured input, then returns the user's response. It can be a single question or a structured input request.
@@ -56,7 +57,7 @@ Other Tools
 | `builtin-tools`       | no      | Meta — enables all groups below                                                                |
 | `tools-edit`          | no      | `edit_file`, `write_file`, `shell_exec`, `create_dir`, `copy_path`, `delete_path`, `move_path` |
 | `tools-search`        | no      | `read_file`, `grep`, `find_path`, `list_dir`                                                   |
-| `tools-web`           | no      | `web_search`, `web_fetch`                                                                      |
+| `tools-web`           | no      | `web_search`, `web_fetch`, `web_extract`                                                       |
 | `tools-collaboration` | no      | `spawn_agent`, `send_message`, … (harness injection)                                           |
 | `tools-read-file`     | no      | `read_file` only                                                                               |
 | `tools-shell-exec`    | no      | `shell_exec` only                                                                              |
@@ -71,13 +72,12 @@ Other Tools
 | `tools-list-dir`      | no      | `list_dir` only (pulls in `walkdir`)                                                           |
 | `mcp`                 | yes     | MCP client — see [mcp.md](./mcp.md)                                                            |
 | `extensions`          | yes     | WASM extension host                                                                            |
-| `obscura`             | no      | Obscura browser fallback for web tools                                                         |
 | `tracing`             | no      | `fastrace` spans + HTTP trace propagation — see [observability.md](./observability.md)         |
 
 The `elph` binary enables `builtin-tools` (and `tracing`) by default:
 
 ```toml
-# elph/Cargo.toml
+# crates/coding-agent/Cargo.toml
 elph-agent = { workspace = true, features = ["tracing", "builtin-tools"] }
 ```
 
@@ -123,7 +123,7 @@ let fs_tools = BuiltinToolsBuilder::new(env).without_web().build();
 | `create_edit_tools`          | `tools-edit`          | `edit_file`, `write_file`, `shell_exec`, `create_dir`, `copy_path`, `delete_path`, `move_path` |
 | `create_search_tools`        | `tools-search`        | `read_file`, `grep`, `find_path`, `list_dir`                                                   |
 | `create_all_tools`           | edit-tools/search     | all filesystem tools                                                                           |
-| `create_web_tools`           | `tools-web`           | `web_search`, `web_fetch`                                                                      |
+| `create_web_tools`           | `tools-web`           | `web_search`, `web_fetch`, `web_extract`                                                       |
 | `create_all_tools_with_web`  | edit-tools/search/web | filesystem + web tools                                                                         |
 | `create_collaboration_tools` | `tools-collaboration` | harness-only collaboration tools                                                               |
 
@@ -145,7 +145,7 @@ Filesystem tools resolve paths through `ExecutionEnv::absolute_path` and perform
 
 `list_dir` resolves the directory path via `ExecutionEnv`, then lists immediate children with [`walkdir`](https://crates.io/crates/walkdir) on a blocking thread pool.
 
-`web_search` and `web_fetch` do not use `ExecutionEnv`. They perform outbound HTTP requests and optionally delegate to an Obscura browser worker thread.
+`web_search` and `web_fetch` do not use `ExecutionEnv`. They perform outbound HTTP requests; HTML responses are converted to Markdown with `htmd`, and DuckDuckGo fallback search is extracted with the lightweight `astral-tl` selector engine. JavaScript-heavy pages are returned as fetched (no in-process browser).
 
 ## Tool reference
 
@@ -227,10 +227,17 @@ Write file contents. Creates parent directories when needed.
 
 Run a shell command in the environment working directory. Output is truncated to the last 2000 lines or 50 KB.
 
-| Parameter | Type   | Required | Description        |
-| --------- | ------ | -------- | ------------------ |
-| `command` | string | yes      | Command to execute |
-| `timeout` | number | no       | Timeout in seconds |
+| Parameter           | Type    | Required | Description                                                                  |
+| ------------------- | ------- | -------- | ---------------------------------------------------------------------------- |
+| `command`           | string  | yes      | Command to execute                                                           |
+| `timeout`           | number  | no       | Timeout in seconds                                                           |
+| `run_in_background` | boolean | no       | Run as a background task; returns immediately with a task id and output file |
+| `disable_timeout`   | boolean | no       | Remove the timeout limit (foreground and background)                         |
+| `description`       | string  | no\*     | Background task description; **required** when `run_in_background` is true   |
+
+\* `description` is required when `run_in_background` is true. Background tasks default to a 10-minute timeout (600s) in interactive mode and no timeout in headless `elph run`; `disable_timeout` or an explicit `timeout` override this.
+
+Each `shell_exec` run (foreground and background) persists its raw output to the session terminal directory `~/.local/share/elph/sessions/<SESSION_ID>/terminals/*.txt` (`shell-<toolCallId>.txt` for foreground, `shell-<taskId>.txt` for background). The file path is returned in `details.outputPath` and is also referenced from `tool_outputs.jsonl` (the session transcript) so output survives session resume. In stateless contexts (e.g. tests) output falls back to a temp file and `outputPath` is omitted.
 
 #### `create_dir`
 
@@ -282,7 +289,7 @@ Search the web using multiple providers with automatic ranking and fallback.
 
 #### Ranking and availability
 
-Auto mode picks the highest-ranked configured engine. DuckDuckGo is always tried last as a fallback. When all HTTP engines fail and the `obscura` feature is enabled, Obscura scrapes DuckDuckGo via a headless browser.
+Auto mode picks the highest-ranked configured engine. DuckDuckGo is always tried last as a fallback. When every HTTP engine fails, `web_search` falls back to the DuckDuckGo HTML endpoint, which is fetched and parsed with the `astral-tl` selector engine (no API key, no in-process browser).
 
 | Rank | Engine     | Env var                | Key required |
 | ---- | ---------- | ---------------------- | ------------ |
@@ -315,25 +322,52 @@ results: 3
 
 #### `web_fetch`
 
-Fetch content from a public HTTP(S) URL. HTML responses are converted to Markdown using [`htmd`](https://crates.io/crates/htmd). Blocks private and loopback addresses (SSRF protection).
+Fetch content from a public HTTP(S) URL. HTML responses are converted to Markdown with `htmd`. Blocks private and loopback addresses (SSRF protection).
 
 | Parameter | Type   | Required | Description                |
 | --------- | ------ | -------- | -------------------------- |
 | `url`     | string | yes      | HTTP or HTTPS URL to fetch |
 
-HTTP fetch is attempted first via `reqwest`. When that fails and the `obscura` feature is enabled, Obscura navigates to the page on a dedicated browser worker thread (`crossbeam-channel` + `tokio`), then extracts content from the rendered DOM.
+Fetching is performed with the shared reqwest client. The response body is decoded (charset via `encoding_rs` when the `Content-Type` header declares one) and converted to Markdown by `htmd`, which skips layout and chrome tags (`script`, `style`, `nav`, `header`, `footer`, `aside`, etc.). Plain HTTP responses are returned as-is; JavaScript-heavy pages return the fetched HTML rather than a fully rendered DOM (no in-process browser).
 
 Response bodies are capped at 256 KB. HTML is converted to Markdown; other content types are returned as-is.
 
+#### `web_extract`
+
+Extract **structured** data from a public HTTP(S) page as JSON — links, images, cleaned text, and matched elements — rather than converting prose to Markdown. Extraction is powered by the `astral-tl` CSS-selector engine. Blocks private and loopback addresses (SSRF protection).
+
+| Parameter  | Type            | Required | Description                                                                                                                                                                                         |
+| ---------- | --------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `url`      | string          | yes      | HTTP or HTTPS URL to extract from                                                                                                                                                                   |
+| `selector` | string          | no       | CSS selector to scope extraction to a subtree (e.g. `"article"`, `".product"`, `"#main"`). When set, links/images/text are read from within that subtree and `elements` contains the matched nodes. |
+| `extract`  | array of string | no       | Which data to return. Defaults to `["links", "text", "elements"]`. Allowed values: `links`, `images`, `text`, `elements`.                                                                           |
+| `limit`    | number          | no       | Maximum number of links/elements/images to return. Default `100`, max `1000`.                                                                                                                       |
+
+Links and image `src` values are resolved to absolute URLs against the page. Text is the whitespace-collapsed concatenated text of the scoped subtree(s), capped at 32 KB. The whole result is pretty-printed JSON and truncated to the same 256 KB cap as `web_fetch`.
+
 #### Output format
 
-```
-url: https://example.com
-content_type: text/html
-
-# Example Domain
-
-This domain is for use in illustrative examples in documents.
+```json
+{
+    "url": "https://example.com/page",
+    "content_type": "text/html",
+    "title": "Example Page",
+    "selector": "#main",
+    "links": [
+        { "href": "https://example.com/about", "text": "About" },
+        { "href": "https://example.com/contact", "text": "Contact" }
+    ],
+    "images": [{ "src": "https://example.com/logo.png", "alt": "Logo" }],
+    "text": "Heading Some bold text here",
+    "elements": [
+        {
+            "tag": "a",
+            "attributes": { "href": "/about", "class": "link" },
+            "text": "About",
+            "html": "<a href=\"/about\" class=\"link\">About</a>"
+        }
+    ]
+}
 ```
 
 ### Collaboration Tools
@@ -417,12 +451,12 @@ See the [README](../README.md#tools) for a minimal custom-tool example.
 
 ## Tests
 
-| Test file                              | Coverage                            |
-| -------------------------------------- | ----------------------------------- |
-| `crates/elph-agent/tests/tools_fff.rs` | `grep`, `find_path`                 |
-| `crates/elph-agent/tests/web_tools.rs` | `web_search` ranking, `web_fetch`   |
-| `crates/elph-agent/tests/plan_mode.rs` | Plan mode policy and harness events |
-| `crates/elph-agent/tests/subagent.rs`  | Subagent spawn and list             |
+| Test file                              | Coverage                                                      |
+| -------------------------------------- | ------------------------------------------------------------- |
+| `crates/elph-agent/tests/tools_fff.rs` | `grep`, `find_path`                                           |
+| `crates/elph-agent/tests/web_tools.rs` | `web_search`/`web_fetch`/`web_extract` registration + ranking |
+| `crates/elph-agent/tests/plan_mode.rs` | Plan mode policy and harness events                           |
+| `crates/elph-agent/tests/subagent.rs`  | Subagent spawn and list                                       |
 
 ```sh
 cargo test -p elph-agent --features builtin-tools --test tools_fff

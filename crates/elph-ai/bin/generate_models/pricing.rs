@@ -11,7 +11,7 @@ use super::term;
 
 pub type PriceTriple = (f64, f64, f64); // input, output, cache_read
 
-/// Try live OpenAI-compatible `/models` pricing for providers with base URL + env key set.
+/// Fetch live OpenAI-compatible `/models` pricing for providers with base URL + env key set.
 pub fn fetch_all_live_pricing(skip: bool) -> HashMap<String, HashMap<String, PriceTriple>> {
     let mut out = HashMap::new();
     if skip {
@@ -35,6 +35,59 @@ pub fn fetch_all_live_pricing(skip: bool) -> HashMap<String, HashMap<String, Pri
         }
     }
     out
+}
+
+/// Live model id list for a provider (OpenAI-compatible `/models`), when a
+/// base URL + env key are configured. Returns `None` when not configured or
+/// the probe fails (caller falls back to the previous catalog).
+///
+/// When the API exposes a `category_type` field (e.g. Infron/OneRouter), only
+/// `LLM` entries are kept so image/video models never pollute the chat catalog.
+pub fn fetch_live_model_ids(src: &ProviderSource) -> Option<Vec<String>> {
+    let base = src.live_pricing_base?;
+    if let Some(var) = src.live_pricing_env
+        && env::var(var).is_err()
+    {
+        return None;
+    }
+    let url = if base.ends_with("/models") {
+        base.to_string()
+    } else {
+        format!("{}/models", base.trim_end_matches('/'))
+    };
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(20))
+        .build()
+        .ok()?;
+    let mut req = client.get(&url);
+    if let Some(var) = src.live_pricing_env
+        && let Ok(key) = env::var(var)
+    {
+        req = req.bearer_auth(key);
+    }
+    let resp = req.send().ok()?;
+    if !resp.status().is_success() {
+        return None;
+    }
+    let body: Value = resp.json().ok()?;
+    let ids: Vec<String> = body
+        .get("data")
+        .and_then(|d| d.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter(|e| {
+                    // Keep LLM chat models only when the API categorizes them.
+                    match e.get("category_type").and_then(|v| v.as_str()) {
+                        Some("LLM") => true,
+                        Some(_) => false,
+                        None => true, // no category field → keep all
+                    }
+                })
+                .filter_map(|e| e.get("id").and_then(|v| v.as_str()).map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default();
+    if ids.is_empty() { None } else { Some(ids) }
 }
 
 fn fetch_live_provider_pricing(src: &ProviderSource, base_url: &str) -> HashMap<String, PriceTriple> {
@@ -72,20 +125,41 @@ fn fetch_live_provider_pricing(src: &ProviderSource, base_url: &str) -> HashMap<
                 Some(id) => id.to_string(),
                 None => continue,
             };
-            if let Some(pricing) = entry.get("metadata").and_then(|m| m.get("pricing")) {
-                let inp = pricing.get("input_per_million").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                let outp = pricing
+            // Try several pricing shapes across providers:
+            // 1. models.dev style: metadata.pricing.{input_per_million,...}
+            // 2. Hyper style:      pricing.{input,output,cache_hit,cache_create}
+            // 3. Infron style:     min_prompt_price / min_completion_price (per 1M)
+            let (inp, outp, cached) = if let Some(pricing) = entry.get("metadata").and_then(|m| m.get("pricing")) {
+                let i = pricing.get("input_per_million").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let o = pricing
                     .get("output_per_million")
                     .and_then(|v| v.as_f64())
                     .unwrap_or(0.0);
-                let cached = pricing
+                let c = pricing
                     .get("cached_input_per_million")
                     .or_else(|| pricing.get("cache_read_per_million"))
                     .and_then(|v| v.as_f64())
                     .unwrap_or(0.0);
-                if inp > 0.0 || outp > 0.0 {
-                    out.insert(mid, (inp, outp, cached));
-                }
+                (i, o, c)
+            } else if let Some(pricing) = entry.get("pricing") {
+                let i = pricing.get("input").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let o = pricing.get("output").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let c = pricing
+                    .get("cache_hit")
+                    .or_else(|| pricing.get("cache_read"))
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.0);
+                (i, o, c)
+            } else {
+                let i = entry.get("min_prompt_price").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let o = entry
+                    .get("min_completion_price")
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.0);
+                (i, o, 0.0)
+            };
+            if inp > 0.0 || outp > 0.0 {
+                out.insert(mid, (inp, outp, cached));
             }
         }
     }

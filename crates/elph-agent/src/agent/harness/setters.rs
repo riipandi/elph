@@ -49,6 +49,10 @@ where
             self.enqueue_pending_write(write).await?;
         }
         *self.shared.model.lock().await = model.clone();
+        // Keep the subagent (AgentControl) model in sync so a child spawned after a
+        // model switch inherits the active selection, never the `defaultModel` captured
+        // at harness construction. `create_turn_state` also refreshes this at turn start.
+        self.shared.agent_control.lock().await.set_model(model.clone()).await;
         self.emit_own(AgentHarnessOwnEvent::ModelUpdate(
             crate::agent::harness::types::ModelUpdateEvent {
                 model,

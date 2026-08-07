@@ -5,6 +5,7 @@
 //! this backend never mutates those tables.
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use crate::datastore::migrations::run as run_migrations;
 use crate::session::id::{generate_entry_id, generate_session_id};
@@ -17,6 +18,7 @@ use crate::session::types::{
     CheckpointTail, CursorPosition, SessionError, SessionErrorCode, SessionIndex, SessionMetadata, SessionStatistics,
     SessionStorage, SessionTreeEntry, TursoSessionMetadata,
 };
+use turso::Database;
 
 /// Options when creating a session row in a shared database.
 #[derive(Debug, Clone, Default)]
@@ -38,14 +40,32 @@ pub struct TursoSessionStorage {
     session_id: String,
     metadata: TursoSessionMetadata,
     index: SessionIndex,
+    /// Shared database handle injected by the host. When present, the storage
+    /// connects from this handle instead of opening `db_path` — the host owns
+    /// the open/apply-migrations lifetime.
+    database: Option<Arc<Database>>,
 }
 
 impl TursoSessionStorage {
-    pub async fn open(db_path: impl AsRef<Path>, session_id: impl Into<String>) -> Result<Self, SessionError> {
+    /// Open a session, loading its metadata and entry tree.
+    ///
+    /// When `database` is supplied, the storage connects from that shared
+    /// handle (the host must have applied the session-tree migrations already);
+    /// otherwise it opens `db_path` and applies migrations itself.
+    pub async fn open(
+        db_path: impl AsRef<Path>,
+        session_id: impl Into<String>,
+        database: Option<Arc<Database>>,
+    ) -> Result<Self, SessionError> {
         let db_path = db_path.as_ref().to_path_buf();
         let session_id = session_id.into();
-        let db = open_db(&db_path).await?;
-        let conn = db.connect().map_err(map_storage_error)?;
+        let conn = match &database {
+            Some(db) => db.connect().map_err(map_storage_error)?,
+            None => {
+                let db = open_db(&db_path).await?;
+                db.connect().map_err(map_storage_error)?
+            }
+        };
         let metadata = load_metadata(&conn, &session_id, &db_path).await?;
         let entries = load_entries(&conn, &session_id).await?;
         let leaf_id = load_leaf_id(&conn, &session_id).await?;
@@ -55,16 +75,18 @@ impl TursoSessionStorage {
             session_id,
             metadata,
             index,
+            database,
         })
     }
 
     pub async fn create(db_path: impl AsRef<Path>, session_id: Option<String>) -> Result<Self, SessionError> {
-        Self::create_with_options(
+        Self::create_with_options_with_db(
             db_path,
             TursoSessionCreateOptions {
                 session_id,
                 ..Default::default()
             },
+            None,
         )
         .await
     }
@@ -73,13 +95,29 @@ impl TursoSessionStorage {
         db_path: impl AsRef<Path>,
         options: TursoSessionCreateOptions,
     ) -> Result<Self, SessionError> {
+        Self::create_with_options_with_db(db_path, options, None).await
+    }
+
+    /// Create a session, optionally using a shared, already-open database
+    /// handle. When `database` is `None`, `db_path` is opened and the
+    /// session-tree migrations are applied.
+    pub async fn create_with_options_with_db(
+        db_path: impl AsRef<Path>,
+        options: TursoSessionCreateOptions,
+        database: Option<Arc<Database>>,
+    ) -> Result<Self, SessionError> {
         let db_path = db_path.as_ref().to_path_buf();
         if let Some(parent) = db_path.parent() {
             std::fs::create_dir_all(parent).map_err(map_storage_error)?;
         }
         let session_id = options.session_id.unwrap_or_else(generate_session_id);
-        let db = open_db(&db_path).await?;
-        let conn = db.connect().map_err(map_storage_error)?;
+        let conn = match &database {
+            Some(db) => db.connect().map_err(map_storage_error)?,
+            None => {
+                let db = open_db(&db_path).await?;
+                db.connect().map_err(map_storage_error)?
+            }
+        };
         let created_at = crate::messages::now_iso_timestamp();
         let cwd = options.cwd.unwrap_or_default();
         let agent_mode = options.agent_mode.unwrap_or_else(|| "build".to_string());
@@ -98,14 +136,13 @@ impl TursoSessionStorage {
 
         conn.execute(
             "INSERT INTO sessions (
-                id, created_at, updated_at, cwd, work_dir, parent_session_id,
+                id, created_at, updated_at, cwd, parent_session_id,
                 provider_id, model_id, agent_mode, name, system_prompt, metadata, active_leaf_id
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)",
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)",
             turso::params![
                 session_id.as_str(),
                 created_at.as_str(),
                 created_at.as_str(),
-                cwd.as_str(),
                 cwd.as_str(),
                 options.parent_session_id.as_deref(),
                 options.provider_id.as_deref(),
@@ -131,6 +168,7 @@ impl TursoSessionStorage {
             session_id,
             metadata,
             index: build_index(Vec::new(), None)?,
+            database,
         })
     }
 
@@ -143,12 +181,16 @@ impl TursoSessionStorage {
     }
 
     async fn connection(&self) -> Result<turso::Connection, SessionError> {
-        let db = open_db(&self.db_path).await?;
-        db.connect().map_err(map_storage_error)
+        match &self.database {
+            Some(db) => db.connect().map_err(map_storage_error),
+            None => {
+                let db = open_db(&self.db_path).await?;
+                db.connect().map_err(map_storage_error)
+            }
+        }
     }
 
-    async fn persist_leaf_id(&self, leaf_id: Option<&str>) -> Result<(), SessionError> {
-        let conn = self.connection().await?;
+    async fn persist_leaf_id(&self, conn: &turso::Connection, leaf_id: Option<&str>) -> Result<(), SessionError> {
         let updated_at = crate::messages::now_iso_timestamp();
         conn.execute(
             "UPDATE sessions SET active_leaf_id = ?, updated_at = ? WHERE id = ?",
@@ -160,9 +202,13 @@ impl TursoSessionStorage {
     }
 
     async fn allocate_seq(&self, conn: &turso::Connection) -> Result<i64, SessionError> {
+        // Atomic read-modify-write: bump `next_seq` and return the new value in a
+        // single statement so two concurrent writers cannot observe the same seq.
+        // The caller wraps this in a `BEGIN IMMEDIATE` transaction for full isolation.
         let mut rows = conn
             .query(
-                "SELECT next_seq FROM session_sequences WHERE session_id = ?",
+                "UPDATE session_sequences SET next_seq = next_seq + 1
+                 WHERE session_id = ? RETURNING next_seq",
                 turso::params![self.session_id.as_str()],
             )
             .await
@@ -173,21 +219,11 @@ impl TursoSessionStorage {
                 format!("session_sequences missing for {}", self.session_id),
             ));
         };
-        let seq: i64 = row.get(0).map_err(map_storage_error)?;
-        while rows.next().await.map_err(map_storage_error)?.is_some() {}
-
-        conn.execute(
-            "UPDATE session_sequences SET next_seq = next_seq + 1 WHERE session_id = ?",
-            turso::params![self.session_id.as_str()],
-        )
-        .await
-        .map_err(map_storage_error)?;
-        Ok(seq)
+        row.get::<i64>(0).map_err(map_storage_error)
     }
 
-    async fn persist_entry(&self, entry: &SessionTreeEntry) -> Result<(), SessionError> {
-        let conn = self.connection().await?;
-        let seq = self.allocate_seq(&conn).await?;
+    async fn persist_entry(&self, conn: &turso::Connection, entry: &SessionTreeEntry) -> Result<(), SessionError> {
+        let seq = self.allocate_seq(conn).await?;
         let payload = serde_json::to_string(entry).map_err(map_storage_error)?;
         let updated_at = crate::messages::now_iso_timestamp();
         conn.execute(
@@ -207,17 +243,40 @@ impl TursoSessionStorage {
         .await
         .map_err(map_storage_error)?;
 
-        let leaf = self.index.leaf_id.as_deref();
-        // leaf is updated after append_to_index; caller persists leaf after index update.
-        // Touch updated_at here so list order advances even if leaf unchanged mid-call.
+        // Touch updated_at so list ordering advances even when the leaf is unchanged.
         conn.execute(
             "UPDATE sessions SET updated_at = ? WHERE id = ?",
             turso::params![updated_at.as_str(), self.session_id.as_str()],
         )
         .await
         .map_err(map_storage_error)?;
-        let _ = leaf;
         Ok(())
+    }
+
+    /// Open one connection and persist `entry` + the new `leaf_id` inside a single
+    /// `BEGIN IMMEDIATE` … `COMMIT` transaction, rolling back on error. Using one
+    /// connection per call (instead of one per write) avoids re-opening the
+    /// multiprocess-WAL database on every append and removes the sequence-allocation
+    /// race under concurrent, multi-process writers.
+    async fn persist_txn(&self, entry: &SessionTreeEntry, leaf_id: Option<&str>) -> Result<(), SessionError> {
+        let conn = self.connection().await?;
+        conn.execute("BEGIN IMMEDIATE", ()).await.map_err(map_storage_error)?;
+        let outcome = async {
+            self.persist_entry(&conn, entry).await?;
+            self.persist_leaf_id(&conn, leaf_id).await?;
+            Ok::<(), SessionError>(())
+        }
+        .await;
+        match outcome {
+            Ok(()) => {
+                conn.execute("COMMIT", ()).await.map_err(map_storage_error)?;
+                Ok(())
+            }
+            Err(error) => {
+                let _ = conn.execute("ROLLBACK", ()).await;
+                Err(error)
+            }
+        }
     }
 }
 
@@ -237,7 +296,7 @@ async fn load_metadata(
 ) -> Result<TursoSessionMetadata, SessionError> {
     let mut rows = conn
         .query(
-            "SELECT created_at, updated_at, cwd, work_dir, parent_session_id,
+            "SELECT created_at, updated_at, cwd, parent_session_id,
                     provider_id, model_id, agent_mode, name
              FROM sessions WHERE id = ?",
             turso::params![session_id],
@@ -256,15 +315,14 @@ async fn load_metadata(
         .map_err(map_storage_error)
         .unwrap_or_else(|_| created_at.clone());
     let cwd: Option<String> = row.get(2).map_err(map_storage_error)?;
-    let work_dir: Option<String> = row.get(3).map_err(map_storage_error)?;
-    let parent_session_id: Option<String> = row.get(4).map_err(map_storage_error)?;
-    let provider_id: Option<String> = row.get(5).map_err(map_storage_error)?;
-    let model_id: Option<String> = row.get(6).map_err(map_storage_error)?;
-    let agent_mode: Option<String> = row.get(7).map_err(map_storage_error)?;
-    let name: Option<String> = row.get(8).map_err(map_storage_error)?;
+    let parent_session_id: Option<String> = row.get(3).map_err(map_storage_error)?;
+    let provider_id: Option<String> = row.get(4).map_err(map_storage_error)?;
+    let model_id: Option<String> = row.get(5).map_err(map_storage_error)?;
+    let agent_mode: Option<String> = row.get(6).map_err(map_storage_error)?;
+    let name: Option<String> = row.get(7).map_err(map_storage_error)?;
     while rows.next().await.map_err(map_storage_error)?.is_some() {}
 
-    let cwd = cwd.filter(|s| !s.is_empty()).or(work_dir).unwrap_or_default();
+    let cwd = cwd.filter(|s| !s.is_empty()).unwrap_or_default();
 
     Ok(TursoSessionMetadata {
         id: session_id.to_string(),
@@ -344,9 +402,8 @@ impl SessionStorage for TursoSessionStorage {
             ));
         }
         let entry = create_leaf_entry(self.index.leaf_id.clone(), leaf_id.clone(), &self.index.by_id);
-        self.persist_entry(&entry).await?;
+        self.persist_txn(&entry, leaf_id.as_deref()).await?;
         append_to_index(&mut self.index, entry);
-        self.persist_leaf_id(self.index.leaf_id.as_deref()).await?;
         Ok(())
     }
 
@@ -355,9 +412,9 @@ impl SessionStorage for TursoSessionStorage {
     }
 
     async fn append_entry(&mut self, entry: SessionTreeEntry) -> Result<(), SessionError> {
-        self.persist_entry(&entry).await?;
+        // The appended entry becomes the new leaf.
+        self.persist_txn(&entry, Some(entry.id())).await?;
         append_to_index(&mut self.index, entry);
-        self.persist_leaf_id(self.index.leaf_id.as_deref()).await?;
         // Refresh updated_at in cached metadata for callers of get_metadata.
         self.metadata.updated_at = crate::messages::now_iso_timestamp();
         Ok(())

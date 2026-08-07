@@ -1,4 +1,30 @@
 {
+    "deepseek-ai/DeepSeek-V4-Flash-0731": {
+        "api": "openai-completions",
+        "baseUrl": "https://inference.baseten.co/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.028,
+            "cacheWrite": 0.0,
+            "input": 0.13,
+            "output": 0.26
+        },
+        "id": "deepseek-ai/DeepSeek-V4-Flash-0731",
+        "input": ["text"],
+        "maxTokens": 1048576,
+        "name": "Deepseek V4 Flash 0731",
+        "provider": "baseten",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
     "deepseek-ai/DeepSeek-V4-Pro": {
         "api": "openai-completions",
         "baseUrl": "https://inference.baseten.co/v1",
@@ -23,6 +49,32 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
+        }
+    },
+    "moonshotai/Kimi-K2.6": {
+        "api": "openai-completions",
+        "baseUrl": "https://inference.baseten.co/v1",
+        "contextWindow": 262000,
+        "cost": {
+            "cacheRead": 0.16,
+            "cacheWrite": 0.0,
+            "input": 0.95,
+            "output": 4.0
+        },
+        "id": "moonshotai/Kimi-K2.6",
+        "input": ["text", "image"],
+        "maxTokens": 262000,
+        "name": "Kimi K2.6",
+        "provider": "baseten",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "moonshotai/Kimi-K2.7-Code": {
@@ -77,32 +129,6 @@
             "xhigh": null
         }
     },
-    "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B": {
-        "api": "openai-completions",
-        "baseUrl": "https://inference.baseten.co/v1",
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
-        },
-        "id": "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B",
-        "input": ["text"],
-        "maxTokens": 65536,
-        "name": "Nemotron 3 Super 120B",
-        "provider": "baseten",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B": {
         "api": "openai-completions",
         "baseUrl": "https://inference.baseten.co/v1",
@@ -129,7 +155,33 @@
             "xhigh": null
         }
     },
-    "thinkingmachines/Inkling": {
+    "openai/gpt-oss-120b": {
+        "api": "openai-completions",
+        "baseUrl": "https://inference.baseten.co/v1",
+        "contextWindow": 128072,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.1,
+            "output": 0.5
+        },
+        "id": "openai/gpt-oss-120b",
+        "input": ["text"],
+        "maxTokens": 128072,
+        "name": "OpenAI GPT 120B",
+        "provider": "baseten",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "thinkingmachines/inkling": {
         "api": "openai-completions",
         "baseUrl": "https://inference.baseten.co/v1",
         "contextWindow": 1048576,
@@ -139,7 +191,7 @@
             "input": 1.0,
             "output": 4.05
         },
-        "id": "thinkingmachines/Inkling",
+        "id": "thinkingmachines/inkling",
         "input": ["text", "image"],
         "maxTokens": 32768,
         "name": "Inkling",
@@ -148,11 +200,63 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": "minimal",
             "off": null,
             "xhigh": "xhigh"
+        }
+    },
+    "thinkingmachines/inkling-small": {
+        "api": "openai-completions",
+        "baseUrl": "https://inference.baseten.co/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.1,
+            "cacheWrite": 0.0,
+            "input": 0.5,
+            "output": 1.2
+        },
+        "id": "thinkingmachines/inkling-small",
+        "input": ["text", "image"],
+        "maxTokens": 32768,
+        "name": "Inkling Small",
+        "provider": "baseten",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "zai-org/GLM-4.7": {
+        "api": "openai-completions",
+        "baseUrl": "https://inference.baseten.co/v1",
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 0.12,
+            "cacheWrite": 0.0,
+            "input": 0.6,
+            "output": 2.2
+        },
+        "id": "zai-org/GLM-4.7",
+        "input": ["text"],
+        "maxTokens": 200000,
+        "name": "GLM 4.7",
+        "provider": "baseten",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "zai-org/GLM-5.2": {

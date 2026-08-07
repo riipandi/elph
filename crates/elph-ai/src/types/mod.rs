@@ -92,6 +92,9 @@ pub struct StreamOptions {
     /// Custom HTTP client for per-request fetch injection.
     /// When set, provider adapters use this client instead of building their own.
     pub client: Option<reqwest::Client>,
+    /// Arbitrary sampling parameters (e.g. `top_p`, `top_k`, `min_p`, `repetition_penalty`)
+    /// merged into OpenAI-compatible request bodies. Overrides any model-level defaults.
+    pub sampling_params: Option<HashMap<String, Value>>,
 }
 
 pub type OnPayloadCallback =
@@ -512,6 +515,16 @@ pub struct OpenAICompletionsCompat {
     pub send_session_affinity_headers: Option<bool>,
     pub session_affinity_format: Option<SessionAffinityFormat>,
     pub supports_long_cache_retention: Option<bool>,
+    /// Whether streamed responses include `finish_reason`. When false, the adapter infers
+    /// `stop` or `toolUse` when the stream ends instead of erroring.
+    pub supports_finish_reason: Option<bool>,
+    /// Whether the provider supports top-level `thinking_token_budget` to cap reasoning tokens
+    /// (e.g. vLLM). Reasoning and the answer share `max_tokens`, so without a budget a
+    /// reasoning-heavy turn can emit no answer.
+    pub supports_thinking_token_budget: Option<bool>,
+    /// Arbitrary sampling parameters (top_p, top_k, min_p, repetition_penalty, ...) merged into
+    /// OpenAI-compatible request bodies. Per-request `StreamOptions` values override these.
+    pub sampling_params: Option<HashMap<String, Value>>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

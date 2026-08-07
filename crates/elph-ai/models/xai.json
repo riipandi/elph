@@ -257,7 +257,7 @@
             "output": 0.0
         },
         "id": "grok-imagine-video-1.5",
-        "input": ["text", "image", "pdf"],
+        "input": ["text", "image", "audio", "pdf"],
         "maxTokens": 0,
         "name": "Grok Imagine Video 1.5",
         "provider": "xai",

@@ -34,7 +34,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, macos-14]
-        # os: [depot-ubuntu-24.04, macos-14]
+        # os: [depot-ubuntu-24.04, depot-macos-26]
+        # os: [namespace-profile-macos-base-arm64, namespace-profile-linux-base-amd64]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:

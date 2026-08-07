@@ -30,8 +30,8 @@
         "baseUrl": "https://api.minimaxi.com/anthropic",
         "contextWindow": 204800,
         "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
+            "cacheRead": 0.03,
+            "cacheWrite": 0.375,
             "input": 0.3,
             "output": 1.2
         },

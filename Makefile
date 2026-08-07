@@ -4,9 +4,20 @@ ELPH_BIN   := elph
 CARGO      := $$(which cargo)
 CROSS      := $$(which cross)
 UNAME_S    := $(shell uname -s)
+UNAME_M    := $(shell uname -m)
+
+# On Apple Silicon macOS, default to Metal GPU acceleration for local embeddings
+# (codegraph + memory). The `metal` feature only compiles there; other platforms
+# stay on the CPU backend. Override with `make build ELPH_METAL=`.
+ifeq ($(UNAME_S),Darwin)
+  ifeq ($(UNAME_M),arm64)
+    ELPH_METAL_FEATURE ?= --features metal
+  endif
+endif
+ELPH_METAL_FEATURE ?=
 
 _ELPH_PKGS   := elph elph-agent elph-ai
-ELPH_VERSION  := $(shell grep '^version' elph/Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')
+ELPH_VERSION  := $(shell grep '^version' crates/coding-agent/Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')
 BUILD_HASH    := $(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
 APP_BINS      := $(ELPH_BIN)
 INSTALL_DIR   := $(HOME)/.local/bin
@@ -34,25 +45,51 @@ _RESIDUAL_ := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 $(foreach a,$(_RESIDUAL_),$(eval .PHONY: $a))
 $(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
 
+# _after <list> <needle> — returns the words following the first occurrence of
+# <needle> (pure make, used to extract `--features <name>` residual values).
+define _after
+$(if $(filter $(2),$(firstword $(1))),$(wordlist 2,$(words $(1)),$(1)),$(if $(wordlist 2,$(words $(1)),$(1)),$(call _after,$(wordlist 2,$(words $(1)),$(1)),$(2))))
+endef
+
 # Build profile: debug by default (faster for day-to-day install).
 # Release (any of):
 #   make install RELEASE=1
 #   make install -- --release
 #   make build -- --release
+# Dist (any of):
+#   make install PROFILE=dist
+#   make install -- --dist
+# Feature flags via residual goals (any platform):
+#   make install -- --features metal      (macOS GPU; also --features cuda on Linux)
 # Note: `make install --release` is rejected by GNU make (unknown option). Use `-- --release`.
 # Do not use residual goal `release` — it collides with the cross `release` target.
 _RELEASE_REQUESTED :=
+_DIST_REQUESTED :=
 ifneq ($(filter 1 true yes,$(RELEASE)),)
   _RELEASE_REQUESTED := 1
 endif
 ifneq ($(filter release,$(PROFILE)),)
   _RELEASE_REQUESTED := 1
 endif
+ifneq ($(filter dist,$(PROFILE)),)
+  _DIST_REQUESTED := 1
+endif
 ifneq ($(filter --release,$(MAKECMDGOALS) $(_RESIDUAL_)),)
   _RELEASE_REQUESTED := 1
 endif
+ifneq ($(filter --dist,$(MAKECMDGOALS) $(_RESIDUAL_)),)
+  _DIST_REQUESTED := 1
+endif
+# Explicit `--features <name>` residual overrides the auto-detected default.
+_AFTER_FEATURES := $(call _after,$(MAKECMDGOALS),--features)
+ifneq ($(strip $(_AFTER_FEATURES)),)
+  ELPH_METAL_FEATURE := --features $(firstword $(_AFTER_FEATURES))
+endif
 
-ifeq ($(_RELEASE_REQUESTED),1)
+ifeq ($(_DIST_REQUESTED),1)
+  CARGO_BUILD_FLAGS := --profile dist
+  BUILD_PROFILE     := dist
+else ifeq ($(_RELEASE_REQUESTED),1)
   CARGO_BUILD_FLAGS := --release
   BUILD_PROFILE     := release
 else
@@ -77,7 +114,7 @@ build: build-elph ## Build elph binary (debug default; RELEASE=1 or -- --release
 build-elph: ## Build elph binary (debug default; RELEASE=1 or -- --release)
 	@echo "Building $(ELPH_BIN) v$(ELPH_VERSION) ($(BUILD_HASH)) [$(BUILD_PROFILE)] ($$RUSTC_WRAPPER)"
 	@_start=$$(python3 -c "import time; print(int(time.time()*1000))"); \
-	$(CARGO) build $(CARGO_BUILD_FLAGS) --bin $(ELPH_BIN) 2>&1; \
+	$(CARGO) build $(CARGO_BUILD_FLAGS) $(ELPH_METAL_FEATURE) --bin $(ELPH_BIN) 2>&1; \
 	_end=$$(python3 -c "import time; print(int(time.time()*1000))"); \
 	_elapsed=$$(( _end - _start )); \
 	echo ""; \
@@ -97,14 +134,17 @@ build-elph: ## Build elph binary (debug default; RELEASE=1 or -- --release)
 	done; \
 	printf "Build time:  %d.%03ds\n" $$(( _elapsed / 1000 )) $$(( _elapsed % 1000 ))
 
-install: build ## Install elph (debug -> elph-dev; release -> elph-next)
+install: build ## Install elph (debug -> elph-dev; release -> elph-next; dist -> elph)
 	@mkdir -p $(INSTALL_DIR) && echo
 	@for bin in $(APP_BINS); do \
-	  if [ "$(BUILD_PROFILE)" = "release" ]; then \
+	  if [ "$(BUILD_PROFILE)" = "dist" ]; then \
+	    _suffix=""; \
+	  else if [ "$(BUILD_PROFILE)" = "release" ]; then \
 	    _suffix="-next"; \
 	  else \
 	    _suffix="-dev"; \
-	  fi; \
+	  fi; fi; \
+      rm -f "$(INSTALL_DIR)/$$bin$${_suffix}"; \
 	  cp "$(BUILD_DIR)/$$bin" "$(INSTALL_DIR)/$$bin$${_suffix}"; \
 	  echo "$$bin$${_suffix} installed at: $(INSTALL_DIR)/$$bin$${_suffix} [$(BUILD_PROFILE)]"; \
 	done
@@ -236,7 +276,7 @@ version: ## Compare app versions with latest GitHub releases (APP=, TAG=)
 	@APP="$(APP)" TAG="$(TAG)" ./scripts/version.sh
 
 # Independent version streams:
-#   bump-elph  — elph/Cargo.toml
+#   bump-elph  — crates/coding-agent/Cargo.toml
 #   bump-libs  — crates/elph-{core,agent,ai,tui,swarm} (+ workspace pins)
 #   bump       — bump-libs + bump-elph
 #
@@ -280,7 +320,7 @@ endef
 bump-elph: ## Bump elph app version (patch|minor|major required)
 	$(call _require_bump_level,$(_BUMP_LEVEL),bump-elph)
 	@echo "bump-elph ($(_BUMP_LEVEL))..."
-	$(call _bump_manifest,elph/Cargo.toml,$(_BUMP_LEVEL))
+	$(call _bump_manifest,crates/coding-agent/Cargo.toml,$(_BUMP_LEVEL))
 	@echo "Done."
 
 bump-libs: ## Bump all library crates independently (patch|minor|major required)
@@ -320,9 +360,12 @@ publish-dry-run: ## Dry-run publish checks (elph-ai first)
 help: ## Show this help
 	@printf '\033[33mUsage:\033[0m make \033[36m<target>\033[0m\n'
 	@awk -F ':.*## ' '/^[a-zA-Z_-]+:.*## / {printf " \033[36m%-18s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
-	@printf ' \n\033[33mBuild profile (build / install):\033[0m\n'
+	@printf ' \033[33mBuild profile (build / install):\033[0m\n'
 	@printf ' \033[36mmake install\033[0m                  debug -> elph-dev\n'
 	@printf ' \033[36mmake install RELEASE=1\033[0m        release -> elph-next\n'
+	@printf ' \033[36mmake install PROFILE=dist\033[0m      dist -> elph\n'
 	@printf ' \033[36mmake install -- --release\033[0m     release (GNU make end-of-options)\n'
+	@printf ' \033[36mmake install -- --dist\033[0m        dist (GNU make end-of-options)\n'
+	@printf ' \033[36mmake install -- --features metal\033[0m  enable metal feature (GPU)\n'
 	@printf ' \033[36mmake build PROFILE=release\033[0m    same as RELEASE=1\n'
 	@printf ' note: \033[36mmake install --release\033[0m  is invalid (make option parse)\n'

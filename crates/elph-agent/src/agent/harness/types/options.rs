@@ -1,6 +1,7 @@
 //! Harness configuration and resource types.
 
 use std::future::Future;
+use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
 
@@ -278,6 +279,13 @@ where
     pub compaction_settings: CompactionSettings,
     pub shared_registry: Option<std::sync::Arc<crate::agent::subagent::AgentRegistry>>,
     pub agent_control: Option<std::sync::Arc<crate::agent::subagent::AgentControl>>,
+    /// Whether the harness runs in headless mode (`elph run`). Relaxes some tool
+    /// defaults (e.g. no background-task timeout by default).
+    pub headless: bool,
+    /// Session terminal-capture directory (`APP_DATA/sessions/<SESSION_ID>/terminals`),
+    /// threaded into tool contexts so tools like `shell_exec` can persist raw
+    /// output. `None` for stateless contexts (tests, examples).
+    pub terminals_dir: Option<PathBuf>,
 }
 
 /// Policy when restored active tool names are missing from the host registry.

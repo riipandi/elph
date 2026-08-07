@@ -9,7 +9,7 @@ use crate::auth::oauth::{
     anthropic_oauth, github_copilot_oauth, hyper_api_base_url, hyper_oauth, hyper_user_agent, kimi_oauth,
 };
 use crate::auth::{AuthResolveInput, AuthResult, ModelAuth, ProviderAuth};
-use crate::models::catalog::*;
+use crate::models::catalog::builtin_catalog;
 use crate::models::{CreateModelsOptions, CreateProviderOptions, MutableModels, Provider, ProviderApi};
 use crate::models::{create_models, create_provider};
 use crate::providers::adapter::openai_responses_api;
@@ -22,7 +22,7 @@ use crate::providers::adapter::{
 use crate::providers::cloudflare_auth::{cloudflare_ai_gateway_auth, cloudflare_workers_ai_auth};
 
 macro_rules! simple_provider {
-    ($id:expr, $name:expr, $models:expr, $api:expr, $env:expr) => {
+    ($id:expr, $name:expr, $api:expr, $env:expr) => {
         create_provider(CreateProviderOptions {
             id: $id.to_string(),
             name: Some($name.to_string()),
@@ -32,7 +32,7 @@ macro_rules! simple_provider {
                 api_key: Some(env_api_key_auth($env.1, $env.0.to_vec())),
                 oauth: None,
             },
-            models: $models.to_vec(),
+            models: builtin_catalog($id).as_ref().clone(),
             refresh_models: None,
             api: ProviderApi::Single($api()),
         })
@@ -49,7 +49,7 @@ pub fn amazon_bedrock_provider() -> Provider {
             api_key: Some(bedrock_auth()),
             oauth: None,
         },
-        models: AMAZON_BEDROCK_MODELS.to_vec(),
+        models: builtin_catalog("amazon-bedrock").as_ref().clone(),
         refresh_models: None,
         api: ProviderApi::Single(bedrock_converse_stream_api()),
     })
@@ -121,7 +121,7 @@ pub fn google_vertex_provider() -> Provider {
             api_key: Some(vertex_auth()),
             oauth: None,
         },
-        models: GOOGLE_VERTEX_MODELS.to_vec(),
+        models: builtin_catalog("google-vertex").as_ref().clone(),
         refresh_models: None,
         api: ProviderApi::Single(google_vertex_api()),
     })
@@ -193,7 +193,7 @@ pub fn anthropic_provider() -> Provider {
             )),
             oauth: Some(anthropic_oauth()),
         },
-        models: ANTHROPIC_MODELS.to_vec(),
+        models: builtin_catalog("anthropic").as_ref().clone(),
         refresh_models: None,
         api: ProviderApi::Single(anthropic_messages_api()),
     })
@@ -209,7 +209,7 @@ pub fn openai_codex_provider() -> Provider {
             api_key: None,
             oauth: Some(openai_codex_oauth()),
         },
-        models: OPENAI_CODEX_MODELS.to_vec(),
+        models: builtin_catalog("openai-codex").as_ref().clone(),
         refresh_models: None,
         api: ProviderApi::Single(openai_codex_responses_api()),
     })
@@ -225,7 +225,7 @@ pub fn openai_provider() -> Provider {
             api_key: Some(env_api_key_auth("OpenAI API key", vec!["OPENAI_API_KEY"])),
             oauth: None,
         },
-        models: OPENAI_MODELS.to_vec(),
+        models: builtin_catalog("openai").as_ref().clone(),
         refresh_models: None,
         api: ProviderApi::Single(openai_responses_api()),
     })
@@ -241,7 +241,7 @@ pub fn opencode_provider() -> Provider {
             api_key: Some(env_api_key_auth("OpenCode API key", vec!["OPENCODE_API_KEY"])),
             oauth: None,
         },
-        models: OPENCODE_MODELS.to_vec(),
+        models: builtin_catalog("opencode").as_ref().clone(),
         refresh_models: None,
         api: mixed_gateway_apis(),
     })
@@ -257,7 +257,7 @@ pub fn opencode_go_provider() -> Provider {
             api_key: Some(env_api_key_auth("OpenCode API key", vec!["OPENCODE_API_KEY"])),
             oauth: None,
         },
-        models: OPENCODE_GO_MODELS.to_vec(),
+        models: builtin_catalog("opencode-go").as_ref().clone(),
         refresh_models: None,
         api: mixed_openai_apis(),
     })
@@ -273,7 +273,7 @@ pub fn github_copilot_provider() -> Provider {
             api_key: Some(env_api_key_auth("GitHub Copilot token", vec!["COPILOT_GITHUB_TOKEN"])),
             oauth: Some(github_copilot_oauth()),
         },
-        models: GITHUB_COPILOT_MODELS.to_vec(),
+        models: builtin_catalog("github-copilot").as_ref().clone(),
         refresh_models: None,
         api: mixed_openai_apis(),
     })
@@ -291,7 +291,23 @@ pub fn hyper_provider() -> Provider {
             api_key: Some(env_api_key_auth("Hyper API key", vec!["HYPER_API_KEY"])),
             oauth: Some(hyper_oauth()),
         },
-        models: HYPER_MODELS.to_vec(),
+        models: builtin_catalog("hyper").as_ref().clone(),
+        refresh_models: None,
+        api: ProviderApi::Single(openai_completions_api()),
+    })
+}
+
+pub fn infron_provider() -> Provider {
+    create_provider(CreateProviderOptions {
+        id: "infron".to_string(),
+        name: Some("Infron".to_string()),
+        base_url: Some("https://llm.onerouter.pro/v1".to_string()),
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("Infron API key", vec!["INFRON_API_KEY"])),
+            oauth: None,
+        },
+        models: builtin_catalog("infron").as_ref().clone(),
         refresh_models: None,
         api: ProviderApi::Single(openai_completions_api()),
     })
@@ -307,7 +323,7 @@ pub fn cloudflare_ai_gateway_provider() -> Provider {
             api_key: Some(cloudflare_ai_gateway_auth()),
             oauth: None,
         },
-        models: CLOUDFLARE_AI_GATEWAY_MODELS.to_vec(),
+        models: builtin_catalog("cloudflare-ai-gateway").as_ref().clone(),
         refresh_models: None,
         api: mixed_openai_apis(),
     })
@@ -323,7 +339,7 @@ pub fn cloudflare_workers_ai_provider() -> Provider {
             api_key: Some(cloudflare_workers_ai_auth()),
             oauth: None,
         },
-        models: CLOUDFLARE_WORKERS_AI_MODELS.to_vec(),
+        models: builtin_catalog("cloudflare-workers-ai").as_ref().clone(),
         refresh_models: None,
         api: ProviderApi::Single(openai_completions_api()),
     })
@@ -342,7 +358,7 @@ pub fn fireworks_provider() -> Provider {
             api_key: Some(env_api_key_auth("Fireworks API key", vec!["FIREWORKS_API_KEY"])),
             oauth: None,
         },
-        models: FIREWORKS_MODELS.to_vec(),
+        models: builtin_catalog("fireworks").as_ref().clone(),
         refresh_models: None,
         api: ProviderApi::Map(map),
     })
@@ -358,7 +374,7 @@ pub fn kimi_coding_provider() -> Provider {
             api_key: Some(env_api_key_auth("Moonshot API key", vec!["MOONSHOT_API_KEY"])),
             oauth: Some(kimi_oauth()),
         },
-        models: KIMI_CODING_MODELS.to_vec(),
+        models: builtin_catalog("kimi-coding").as_ref().clone(),
         refresh_models: None,
         api: ProviderApi::Single(anthropic_messages_api()),
     })
@@ -387,7 +403,7 @@ pub fn xai_provider() -> Provider {
                 Arc::new(|| Box::pin(async { xai_oauth() })),
             )),
         },
-        models: XAI_MODELS.to_vec(),
+        models: builtin_catalog("xai").as_ref().clone(),
         refresh_models: None,
         api: ProviderApi::Map(api_map),
     })
@@ -403,7 +419,7 @@ pub fn mistral_provider() -> Provider {
             api_key: Some(env_api_key_auth("Mistral API key", vec!["MISTRAL_API_KEY"])),
             oauth: None,
         },
-        models: MISTRAL_MODELS.to_vec(),
+        models: builtin_catalog("mistral").as_ref().clone(),
         refresh_models: None,
         api: ProviderApi::Single(mistral_conversations_api()),
     })
@@ -419,7 +435,7 @@ pub fn neuralwatt_provider() -> Provider {
             api_key: Some(env_api_key_auth("Neuralwatt API key", vec!["NEURALWATT_API_KEY"])),
             oauth: None,
         },
-        models: NEURALWATT_MODELS.to_vec(),
+        models: builtin_catalog("neuralwatt").as_ref().clone(),
         refresh_models: None,
         api: ProviderApi::Single(openai_completions_api()),
     })
@@ -435,7 +451,7 @@ pub fn nvidia_provider() -> Provider {
             api_key: Some(env_api_key_auth("NVIDIA API key", vec!["NVIDIA_API_KEY"])),
             oauth: None,
         },
-        models: NVIDIA_MODELS.to_vec(),
+        models: builtin_catalog("nvidia").as_ref().clone(),
         refresh_models: None,
         api: ProviderApi::Single(openai_completions_api()),
     })
@@ -451,7 +467,7 @@ pub fn sumopod_provider() -> Provider {
             api_key: Some(env_api_key_auth("Sumopod API key", vec!["SUMOPOD_AI_API_KEY"])),
             oauth: None,
         },
-        models: SUMOPOD_MODELS.to_vec(),
+        models: builtin_catalog("sumopod").as_ref().clone(),
         refresh_models: None,
         api: ProviderApi::Single(openai_completions_api()),
     })
@@ -463,7 +479,6 @@ pub fn builtin_providers() -> Vec<Provider> {
         simple_provider!(
             "ant-ling",
             "Ant Ling",
-            ANT_LING_MODELS,
             openai_completions_api,
             (vec!["ANT_LING_API_KEY"], "Ant Ling API key")
         ),
@@ -471,21 +486,18 @@ pub fn builtin_providers() -> Vec<Provider> {
         simple_provider!(
             "azure-openai-responses",
             "Azure OpenAI",
-            AZURE_OPENAI_RESPONSES_MODELS,
             azure_openai_responses_api,
             (vec!["AZURE_OPENAI_API_KEY"], "Azure OpenAI API key")
         ),
         simple_provider!(
             "baseten",
             "Baseten",
-            BASETEN_MODELS,
             openai_completions_api,
             (vec!["BASETEN_API_KEY"], "Baseten API key")
         ),
         simple_provider!(
             "cerebras",
             "Cerebras",
-            CEREBRAS_MODELS,
             openai_completions_api,
             (vec!["CEREBRAS_API_KEY"], "Cerebras API key")
         ),
@@ -494,7 +506,6 @@ pub fn builtin_providers() -> Vec<Provider> {
         simple_provider!(
             "deepseek",
             "DeepSeek",
-            DEEPSEEK_MODELS,
             openai_completions_api,
             (vec!["DEEPSEEK_API_KEY"], "DeepSeek API key")
         ),
@@ -503,22 +514,14 @@ pub fn builtin_providers() -> Vec<Provider> {
         simple_provider!(
             "google",
             "Google",
-            GOOGLE_MODELS,
             google_generative_ai_api,
             (vec!["GEMINI_API_KEY"], "Gemini API key")
         ),
         google_vertex_provider(),
-        simple_provider!(
-            "groq",
-            "Groq",
-            GROQ_MODELS,
-            openai_completions_api,
-            (vec!["GROQ_API_KEY"], "Groq API key")
-        ),
+        simple_provider!("groq", "Groq", openai_completions_api, (vec!["GROQ_API_KEY"], "Groq API key")),
         simple_provider!(
             "huggingface",
             "Hugging Face",
-            HUGGINGFACE_MODELS,
             openai_completions_api,
             (vec!["HF_TOKEN"], "Hugging Face token")
         ),
@@ -528,19 +531,18 @@ pub fn builtin_providers() -> Vec<Provider> {
         simple_provider!(
             "ollama-cloud",
             "Ollama Cloud",
-            OLLAMA_CLOUD_MODELS,
             openai_completions_api,
             (vec!["OLLAMA_API_KEY"], "Ollama API key")
         ),
         openai_provider(),
         openai_codex_provider(),
         hyper_provider(),
+        infron_provider(),
         // Kilo AI Gateway — OpenAI-compatible (https://kilo.ai/docs/gateway).
         // Base URL: https://api.kilo.ai/api/gateway · key: KILO_API_KEY
         simple_provider!(
             "kilo",
             "Kilo Gateway",
-            KILO_MODELS,
             openai_completions_api,
             (vec!["KILO_API_KEY"], "Kilo API key")
         ),
@@ -548,28 +550,24 @@ pub fn builtin_providers() -> Vec<Provider> {
         simple_provider!(
             "minimax",
             "MiniMax",
-            MINIMAX_MODELS,
             openai_completions_api,
             (vec!["MINIMAX_API_KEY"], "MiniMax API key")
         ),
         simple_provider!(
             "minimax-cn",
             "MiniMax (China)",
-            MINIMAX_CN_MODELS,
             openai_completions_api,
             (vec!["MINIMAX_API_KEY"], "MiniMax API key")
         ),
         simple_provider!(
             "moonshotai",
             "Moonshot AI",
-            MOONSHOTAI_MODELS,
             openai_completions_api,
             (vec!["MOONSHOT_API_KEY"], "Moonshot API key")
         ),
         simple_provider!(
             "moonshotai-cn",
             "Moonshot AI (China)",
-            MOONSHOTAI_CN_MODELS,
             openai_completions_api,
             (vec!["MOONSHOT_API_KEY"], "Moonshot API key")
         ),
@@ -578,28 +576,24 @@ pub fn builtin_providers() -> Vec<Provider> {
         simple_provider!(
             "opengateway",
             "OpenGateway",
-            OPENGATEWAY_MODELS,
             openai_completions_api,
             (vec!["OGW_API_KEY"], "OpenGateway API key")
         ),
         simple_provider!(
             "openrouter",
             "OpenRouter",
-            OPENROUTER_MODELS,
             openai_completions_api,
             (vec!["OPENROUTER_API_KEY"], "OpenRouter API key")
         ),
         simple_provider!(
             "qwen-token-plan",
             "Qwen Token Plan",
-            QWEN_TOKEN_PLAN_MODELS,
             openai_completions_api,
             (vec!["QWEN_TOKEN_PLAN_API_KEY"], "Qwen Token Plan API key")
         ),
         simple_provider!(
             "qwen-token-plan-cn",
             "Qwen Token Plan (China)",
-            QWEN_TOKEN_PLAN_CN_MODELS,
             openai_completions_api,
             (vec!["QWEN_TOKEN_PLAN_CN_API_KEY"], "Qwen Token Plan CN API key")
         ),
@@ -607,21 +601,18 @@ pub fn builtin_providers() -> Vec<Provider> {
         simple_provider!(
             "tokenrouter",
             "TokenRouter",
-            TOKENROUTER_MODELS,
             openai_completions_api,
             (vec!["TOKENROUTER_API_KEY"], "TokenRouter API key")
         ),
         simple_provider!(
             "together",
             "Together AI",
-            TOGETHER_MODELS,
             openai_completions_api,
             (vec!["TOGETHER_API_KEY"], "Together API key")
         ),
         simple_provider!(
             "vercel-ai-gateway",
             "Vercel AI Gateway",
-            VERCEL_AI_GATEWAY_MODELS,
             openai_completions_api,
             (vec!["VERCEL_AI_GATEWAY_API_KEY"], "Vercel AI Gateway API key")
         ),
@@ -629,42 +620,36 @@ pub fn builtin_providers() -> Vec<Provider> {
         simple_provider!(
             "xiaomi",
             "Xiaomi MiMo",
-            XIAOMI_MODELS,
             openai_completions_api,
             (vec!["XIAOMI_API_KEY"], "Xiaomi API key")
         ),
         simple_provider!(
             "xiaomi-token-plan-ams",
             "Xiaomi Token Plan (AMS)",
-            XIAOMI_TOKEN_PLAN_AMS_MODELS,
             anthropic_messages_api,
             (vec!["XIAOMI_API_KEY"], "Xiaomi API key")
         ),
         simple_provider!(
             "xiaomi-token-plan-cn",
             "Xiaomi Token Plan (CN)",
-            XIAOMI_TOKEN_PLAN_CN_MODELS,
             anthropic_messages_api,
             (vec!["XIAOMI_API_KEY"], "Xiaomi API key")
         ),
         simple_provider!(
             "xiaomi-token-plan-sgp",
             "Xiaomi Token Plan (SGP)",
-            XIAOMI_TOKEN_PLAN_SGP_MODELS,
             anthropic_messages_api,
             (vec!["XIAOMI_API_KEY"], "Xiaomi API key")
         ),
         simple_provider!(
             "zai",
             "ZAI Coding Plan",
-            ZAI_MODELS,
             openai_completions_api,
             (vec!["ZAI_API_KEY"], "ZAI API key")
         ),
         simple_provider!(
             "zai-coding-cn",
             "ZAI Coding Plan (China)",
-            ZAI_CODING_CN_MODELS,
             openai_completions_api,
             (vec!["ZAI_API_KEY"], "ZAI API key")
         ),

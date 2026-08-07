@@ -25,7 +25,7 @@ use std::path::Path;
 use anyhow::Result;
 
 pub use conn::{cleanup_stale_shared_memory, is_lock_err};
-pub(crate) use conn::{connect, open_connection, open_local, with_conn};
+pub use conn::{connect, open_connection, open_local, open_local_with, with_conn};
 pub use lazy::ensure_databases_once;
 pub use migrations::{Migration, run as run_migrations};
 

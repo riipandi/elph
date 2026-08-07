@@ -255,7 +255,14 @@ async fn run_openai_completions(
     if is_request_aborted(&options.base.signal) {
         output.stop_reason = StopReason::Aborted;
     } else if !has_finish {
-        return Err(anyhow::anyhow!("Stream ended without finish_reason"));
+        // Some OpenAI-compatible providers omit `finish_reason`. When the model compat
+        // declares it unsupported, infer the stop reason instead of failing the stream.
+        let compat = get_compat(model);
+        if !compat.supports_finish_reason {
+            output.stop_reason = infer_stop_reason(&output.content);
+        } else {
+            return Err(anyhow::anyhow!("Stream ended without finish_reason"));
+        }
     }
     stream.push(AssistantMessageEvent::Done {
         reason: output.stop_reason,
@@ -484,7 +491,89 @@ fn build_params(model: &Model, context: &Context, options: &OpenAICompletionsOpt
     if let Some(choice) = &options.tool_choice {
         params["tool_choice"] = choice.clone();
     }
+    apply_sampling_params(model, &compat, &options.base, &mut params);
     Ok(params)
+}
+
+/// Merge arbitrary sampling parameters into the request body. Model-level defaults come from
+/// `OpenAICompletionsCompat.sampling_params`; per-request `StreamOptions.sampling_params` win.
+fn apply_sampling_params(
+    model: &Model,
+    compat: &ResolvedOpenAICompletionsCompat,
+    base: &crate::types::StreamOptions,
+    params: &mut Value,
+) {
+    apply_sampling_map(model, base, params);
+    apply_thinking_token_budget(compat, base, params);
+}
+
+/// Merge arbitrary sampling parameters into the request body. Model-level defaults come from
+/// `OpenAICompletionsCompat.sampling_params`; per-request `StreamOptions.sampling_params` win.
+/// Existing explicit options (`temperature`, `max_tokens`, ...) are never clobbered.
+fn apply_sampling_map(model: &Model, base: &crate::types::StreamOptions, params: &mut Value) {
+    let model_defaults = model
+        .openai_completions_compat
+        .as_ref()
+        .and_then(|c| c.sampling_params.as_ref());
+    let Some(merged) = merge_sampling_maps(model_defaults, base.sampling_params.as_ref()) else {
+        return;
+    };
+    if let Value::Object(map) = params {
+        for (key, value) in merged {
+            if !map.contains_key(&key) {
+                map.insert(key, value);
+            }
+        }
+    }
+}
+
+/// vLLM-style providers share `max_tokens` between reasoning and the answer. When opted in,
+/// reserve output tokens for the final answer so a reasoning-heavy turn still emits one.
+fn apply_thinking_token_budget(
+    compat: &ResolvedOpenAICompletionsCompat,
+    base: &crate::types::StreamOptions,
+    params: &mut Value,
+) {
+    if !compat.supports_thinking_token_budget {
+        return;
+    }
+    let Some(max_tokens) = base.max_tokens else {
+        return;
+    };
+    let budget = (max_tokens / 4).max(1024).min(max_tokens.saturating_sub(1024));
+    if let Some(obj) = params.as_object_mut()
+        && !obj.contains_key("thinking_token_budget")
+    {
+        obj.insert("thinking_token_budget".to_string(), json!(budget));
+    }
+}
+
+fn merge_sampling_maps(
+    defaults: Option<&HashMap<String, Value>>,
+    overrides: Option<&HashMap<String, Value>>,
+) -> Option<HashMap<String, Value>> {
+    match (defaults, overrides) {
+        (None, None) => None,
+        (Some(d), None) => {
+            if d.is_empty() {
+                None
+            } else {
+                Some(d.clone())
+            }
+        }
+        (None, Some(o)) => {
+            if o.is_empty() {
+                None
+            } else {
+                Some(o.clone())
+            }
+        }
+        (Some(d), Some(o)) => {
+            let mut merged = d.clone();
+            merged.extend(o.clone());
+            Some(merged)
+        }
+    }
 }
 
 fn apply_thinking_params(
@@ -877,6 +966,19 @@ fn map_stop_reason(reason: &str) -> StopReason {
         "function_call" | "tool_calls" => StopReason::ToolUse,
         "content_filter" | "network_error" => StopReason::Error,
         _ => StopReason::Error,
+    }
+}
+
+/// Infer a stop reason when the provider omits `finish_reason`.
+/// If any tool call was streamed, treat it as a tool-use stop; otherwise a normal stop.
+fn infer_stop_reason(content: &[AssistantContentBlock]) -> StopReason {
+    if content
+        .iter()
+        .any(|block| matches!(block, AssistantContentBlock::ToolCall(_)))
+    {
+        StopReason::ToolUse
+    } else {
+        StopReason::Stop
     }
 }
 

@@ -3,7 +3,7 @@
 use thiserror::Error;
 
 use super::context::SystemPromptTemplateContext;
-use super::template::{PromptRenderError, PromptTemplateEngine, default_prompt_engine};
+use super::template::{PromptRenderError, render_base_template};
 
 /// How a domain-specific body is combined with the generic base template.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -43,10 +43,8 @@ fn append_project_context(out: &mut String, agents_md: &str) {
 /// Builder for host- and domain-specific system prompts.
 #[derive(Debug, Clone)]
 pub struct SystemPromptBuilder {
-    engine: PromptTemplateEngine,
     mode: PromptAssemblyMode,
     context: SystemPromptTemplateContext,
-    domain_template: Option<&'static str>,
     domain_body: Option<String>,
 }
 
@@ -59,20 +57,8 @@ impl Default for SystemPromptBuilder {
 impl SystemPromptBuilder {
     pub fn new() -> Self {
         Self {
-            engine: default_prompt_engine(),
             mode: PromptAssemblyMode::Extend,
             context: SystemPromptTemplateContext::default(),
-            domain_template: None,
-            domain_body: None,
-        }
-    }
-
-    pub fn with_engine(engine: PromptTemplateEngine) -> Self {
-        Self {
-            engine,
-            mode: PromptAssemblyMode::Extend,
-            context: SystemPromptTemplateContext::default(),
-            domain_template: None,
             domain_body: None,
         }
     }
@@ -92,20 +78,6 @@ impl SystemPromptBuilder {
         self
     }
 
-    pub fn domain_template(mut self, name: &'static str) -> Self {
-        self.domain_template = Some(name);
-        self
-    }
-
-    pub fn register_domain_template(
-        mut self,
-        name: &'static str,
-        source: &'static str,
-    ) -> Result<Self, SystemPromptBuildError> {
-        self.engine.register_embedded(name, source)?;
-        Ok(self)
-    }
-
     pub fn domain_body(mut self, body: impl Into<String>) -> Self {
         self.domain_body = Some(body.into());
         self
@@ -114,15 +86,12 @@ impl SystemPromptBuilder {
     pub fn render(&self) -> Result<String, SystemPromptBuildError> {
         match self.mode {
             PromptAssemblyMode::Extend => {
-                let mut out = self.engine.render("base", &self.context)?;
-                if let Some(body) = &self.domain_body {
-                    if !body.trim().is_empty() {
-                        out.push_str("\n\n");
-                        out.push_str(body);
-                    }
-                } else if let Some(name) = self.domain_template {
+                let mut out = render_base_template(&self.context);
+                if let Some(body) = &self.domain_body
+                    && !body.trim().is_empty()
+                {
                     out.push_str("\n\n");
-                    out.push_str(&self.engine.render(name, &self.context)?);
+                    out.push_str(body);
                 }
                 if !self.context.mode_section.trim().is_empty() {
                     out.push_str("\n\n");
@@ -132,13 +101,7 @@ impl SystemPromptBuilder {
                 Ok(out)
             }
             PromptAssemblyMode::Full => {
-                let mut out = if let Some(name) = self.domain_template {
-                    self.engine.render(name, &self.context)?
-                } else if let Some(body) = &self.domain_body {
-                    body.clone()
-                } else {
-                    return Err(SystemPromptBuildError::MissingDomain);
-                };
+                let mut out = self.domain_body.clone().ok_or(SystemPromptBuildError::MissingDomain)?;
                 if !self.context.mode_section.trim().is_empty() {
                     out.push_str("\n\n");
                     out.push_str(&self.context.mode_section);

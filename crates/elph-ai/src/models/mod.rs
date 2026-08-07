@@ -1,29 +1,35 @@
 pub mod catalog;
-pub mod disk_catalog;
-pub mod embedded_json;
+pub mod catalog_json;
+pub mod embedded;
+pub mod provider_dir;
+pub mod provider_update;
 
 mod collection;
 
+pub use catalog::{builtin_catalog, builtin_provider_ids, invalidate_catalog_cache, merge_model_lists};
+pub use catalog::{provider_catalog_dir, set_provider_catalog_dir};
+pub use catalog_json::parse_provider_catalog_json;
 pub use collection::*;
-pub use disk_catalog::{
-    disk_catalog_overrides, load_provider_catalogs_dir, merge_model_lists, merged_get_model,
-    merged_models_for_provider, merged_providers, parse_provider_catalog_json, set_disk_catalog_overrides,
+pub use embedded::{embedded_provider_ids, embedded_provider_json};
+pub use provider_dir::{all_provider_ids, custom_provider_catalogs, custom_provider_ids, install_provider_catalog_dir};
+pub use provider_update::{
+    ProviderUpdatePlan, ProviderUpdatePlanEntry, ProviderUpdateReport, ProviderUpdateStatus, UpdatePolicy,
+    apply_provider_update, plan_provider_update,
 };
-pub use embedded_json::embedded_provider_json;
 
-/// Model lookup with optional process-wide disk overrides (see [`set_disk_catalog_overrides`]).
+/// Model lookup: embedded seed with `CONFIG_DIR/providers` merged over it (see [`catalog`]).
 pub fn get_builtin_model(provider: &str, id: &str) -> Option<crate::types::Model> {
-    disk_catalog::merged_get_model(provider, id)
+    catalog::get_builtin_model(provider, id)
 }
 
-/// Models for a provider with disk overrides merged over the embedded catalog.
+/// Models for a provider: embedded seed with the disk catalog merged over it.
 pub fn get_builtin_models(provider: &str) -> Vec<crate::types::Model> {
-    disk_catalog::merged_models_for_provider(provider)
+    catalog::get_builtin_models(provider)
 }
 
-/// Provider ids from embedded catalogs ∪ installed disk overrides (sorted).
+/// Provider ids from embedded catalogs ∪ disk-only providers (sorted).
 pub fn get_builtin_providers() -> Vec<String> {
-    disk_catalog::merged_providers()
+    provider_dir::all_provider_ids()
 }
 
 use crate::types::{Model, ModelCostRates, ThinkingLevel, Usage};

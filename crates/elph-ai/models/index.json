@@ -12,7 +12,7 @@
     {
         "providerId": "anthropic",
         "rustMod": "anthropic",
-        "count": 15
+        "count": 13
     },
     {
         "providerId": "azure-openai-responses",
@@ -22,7 +22,7 @@
     {
         "providerId": "baseten",
         "rustMod": "baseten",
-        "count": 8
+        "count": 12
     },
     {
         "providerId": "cerebras",
@@ -47,7 +47,7 @@
     {
         "providerId": "fireworks",
         "rustMod": "fireworks",
-        "count": 16
+        "count": 17
     },
     {
         "providerId": "github-copilot",
@@ -72,17 +72,22 @@
     {
         "providerId": "huggingface",
         "rustMod": "huggingface",
-        "count": 51
+        "count": 131
     },
     {
         "providerId": "hyper",
         "rustMod": "hyper",
-        "count": 20
+        "count": 24
+    },
+    {
+        "providerId": "infron",
+        "rustMod": "infron",
+        "count": 290
     },
     {
         "providerId": "kilo",
         "rustMod": "kilo",
-        "count": 353
+        "count": 349
     },
     {
         "providerId": "kimi-coding",
@@ -102,7 +107,7 @@
     {
         "providerId": "mistral",
         "rustMod": "mistral",
-        "count": 30
+        "count": 33
     },
     {
         "providerId": "moonshotai",
@@ -127,7 +132,7 @@
     {
         "providerId": "ollama-cloud",
         "rustMod": "ollama_cloud",
-        "count": 19
+        "count": 18
     },
     {
         "providerId": "openai",
@@ -142,12 +147,12 @@
     {
         "providerId": "opencode",
         "rustMod": "opencode",
-        "count": 59
+        "count": 21
     },
     {
         "providerId": "opencode-go",
         "rustMod": "opencode_go",
-        "count": 16
+        "count": 25
     },
     {
         "providerId": "opengateway",
@@ -157,7 +162,7 @@
     {
         "providerId": "openrouter",
         "rustMod": "openrouter",
-        "count": 303
+        "count": 400
     },
     {
         "providerId": "qwen-token-plan",
@@ -182,7 +187,7 @@
     {
         "providerId": "tokenrouter",
         "rustMod": "tokenrouter",
-        "count": 76
+        "count": 121
     },
     {
         "providerId": "vercel-ai-gateway",

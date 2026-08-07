@@ -469,7 +469,7 @@ Built-in tools are optional Cargo features. Enable `builtin-tools` for the full 
 | `create_edit_tools`         | `edit_file`, `write_file`, `shell_exec`, `create_dir`, `copy_path`, `delete_path`, `move_path` |
 | `create_search_tools`       | `read_file`, `grep`, `find_path`, `list_dir`                                                   |
 | `create_all_tools`          | all filesystem tools above                                                                     |
-| `create_web_tools`          | `web_search`, `web_fetch`                                                                      |
+| `create_web_tools`          | `web_search`, `web_fetch`, `web_extract`                                                      |
 | `create_all_tools_with_web` | filesystem tools + web tools                                                                   |
 
 ```rust
@@ -482,7 +482,7 @@ let tools = BuiltinToolsBuilder::all(env).build();
 
 `grep` and `find` use [`fff-search`](https://crates.io/crates/fff-search) for fast filesystem indexing and content search. `ls` uses [`walkdir`](https://crates.io/crates/walkdir) on a blocking thread pool. `read`, `write`, `edit`, and `shell_exec` use `ExecutionEnv` directly.
 
-`websearch` and `webfetch` query the public web via HTTP. They support multiple search providers with automatic ranking and fallback, and optionally use the [Obscura](https://docs.obscura.sh/guides/use-as-a-rust-library) headless browser for scraping when HTTP alone is insufficient. Web tools do not require an `ExecutionEnv`.
+`websearch` and `webfetch` query the public web via HTTP. They support multiple search providers with automatic ranking and fallback. HTML responses are converted to Markdown with [`htmd`](https://crates.io/crates/htmd), and the DuckDuckGo fallback is parsed with the lightweight [`astral-tl`](https://crates.io/crates/astral-tl) selector engine. Web tools do not require an `ExecutionEnv`.
 
 ```rust
 use elph_agent::create_web_tools;
@@ -501,11 +501,10 @@ Set provider API keys via environment variables (`BRAVE_SEARCH_API_KEY`, `EXA_AP
 | `builtin-tools`       | no      | All built-in tool groups (enabled by `elph` binary)                                            |
 | `tools-edit`          | no      | `edit_file`, `write_file`, `shell_exec`, `create_dir`, `copy_path`, `delete_path`, `move_path` |
 | `tools-search`        | no      | `read_file`, `grep`, `find_path`, `list_dir`                                                   |
-| `tools-web`           | no      | `web_search`, `web_fetch`                                                                      |
+| `tools-web`           | no      | `web_search`, `web_fetch`, `web_extract`                                                      |
 | `tools-collaboration` | no      | `spawn_agent`, `send_message`, …                                                               |
 | `mcp`                 | yes     | MCP client                                                                                     |
 | `extensions`          | yes     | WASM extension host                                                                            |
-| `obscura`             | no      | Obscura browser fallback for web tools                                                         |
 | `tracing`             | no      | `fastrace` instrumentation                                                                     |
 
 ```sh
@@ -515,8 +514,6 @@ cargo build -p elph-agent --no-default-features
 # Full coding agent stack (as used by elph)
 cargo build -p elph-agent --features "mcp,extensions,builtin-tools"
 ```
-
-The first build with `obscura` compiles V8 from source and can take a long time.
 
 See [docs/tools.md](./docs/tools.md) for parameters, output formats, truncation limits, and examples.
 

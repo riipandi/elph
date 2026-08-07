@@ -14,6 +14,8 @@ Design lineage: [pi-agent observability](https://github.com/earendil-works/pi/bl
 
 Logging and tracing are initialized together through `AgentBuilder`'s logging initializer. The returned [`LogGuard`](../src/logger/mod.rs) must live for the process lifetime; on drop it flushes async log writers and calls `fastrace::flush()`.
 
+Third-party libraries that bypass the `log` crate by writing straight to fd 2 — the MCP (rmcp) client — are redirected to `{logs_dir}/mcp.log` on first use so their output stays out of the TUI. See [`logger::redirect_stderr_to_file`](../src/logger/mod.rs).
+
 ```rust
 let init = AgentBuilder::new(env!("CARGO_PKG_VERSION"))
     .env_prefix("ELPH")

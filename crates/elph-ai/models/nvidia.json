@@ -274,8 +274,8 @@
         "cost": {
             "cacheRead": 0.015,
             "cacheWrite": 0.0,
-            "input": 0.04,
-            "output": 0.13
+            "input": 0.05,
+            "output": 0.15
         },
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
@@ -311,8 +311,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.04,
-            "output": 0.08
+            "input": 0.05,
+            "output": 0.1
         },
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
@@ -366,8 +366,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.02,
-            "output": 0.04
+            "input": 0.06,
+            "output": 0.12
         },
         "id": "google/gemma-3n-e4b-it",
         "input": ["text", "image"],
@@ -392,8 +392,8 @@
         "cost": {
             "cacheRead": 0.1,
             "cacheWrite": 0.0,
-            "input": 0.14,
-            "output": 0.4
+            "input": 0.13,
+            "output": 0.38
         },
         "id": "google/gemma-4-31b-it",
         "input": ["text", "image", "video"],
@@ -924,7 +924,7 @@
         "baseUrl": "https://integrate.api.nvidia.com/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.05,
             "cacheWrite": 0.0,
             "input": 0.1,
             "output": 0.4
@@ -987,7 +987,7 @@
         "baseUrl": "https://integrate.api.nvidia.com/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.5,
             "cacheWrite": 0.0,
             "input": 1.0,
             "output": 3.0
@@ -1102,7 +1102,7 @@
         "baseUrl": "https://integrate.api.nvidia.com/v1",
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.2,
             "cacheWrite": 0.0,
             "input": 0.4,
             "output": 1.4
@@ -1214,8 +1214,8 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.375,
-            "cacheWrite": 0.0,
+            "cacheRead": 0.16,
+            "cacheWrite": 1.25,
             "input": 0.75,
             "output": 3.5
         },
@@ -1859,7 +1859,7 @@
         },
         "contextWindow": 256000,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.0525,
             "cacheWrite": 0.0,
             "input": 0.105,
             "output": 0.42
@@ -2382,10 +2382,10 @@
         },
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.039,
-            "output": 0.19
+            "cacheRead": 0.015,
+            "cacheWrite": 0.18,
+            "input": 0.15,
+            "output": 0.6
         },
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
@@ -2419,10 +2419,10 @@
         },
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.03,
-            "output": 0.14
+            "cacheRead": 0.035,
+            "cacheWrite": 0.07,
+            "input": 0.07,
+            "output": 0.3
         },
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
@@ -2450,8 +2450,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.01,
-            "output": 0.0
+            "input": 0.0023,
+            "output": 0.0023
         },
         "id": "openai/whisper-large-v3",
         "input": ["audio"],
@@ -2615,7 +2615,7 @@
         "baseUrl": "https://integrate.api.nvidia.com/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.07,
+            "cacheRead": 0.0288,
             "cacheWrite": 0.0,
             "input": 0.09,
             "output": 1.1
@@ -2641,10 +2641,10 @@
         "baseUrl": "https://integrate.api.nvidia.com/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.26,
-            "output": 2.08
+            "cacheRead": 0.125,
+            "cacheWrite": 0.625,
+            "input": 0.29,
+            "output": 2.4
         },
         "id": "qwen/qwen3.5-122b-a10b",
         "input": ["text", "image", "video", "audio"],
@@ -2667,7 +2667,7 @@
         "baseUrl": "https://integrate.api.nvidia.com/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.0344,
             "cacheWrite": 0.0,
             "input": 0.39,
             "output": 2.34
@@ -2719,10 +2719,10 @@
         "baseUrl": "https://integrate.api.nvidia.com/v1",
         "contextWindow": 256000,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.05,
             "cacheWrite": 0.0,
-            "input": 0.2,
-            "output": 0.5
+            "input": 0.1,
+            "output": 0.3
         },
         "id": "stepfun-ai/step-3.5-flash",
         "input": ["text"],

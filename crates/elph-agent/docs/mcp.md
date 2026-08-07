@@ -100,12 +100,14 @@ tools.extend(registry.create_agent_tools().await);
 // pass tools into AgentHarness / AgentLoop
 ```
 
-Elph app wiring: `elph/src/agent/runtime.rs` loads `mcp.json` and extends the tool list.
+Elph app wiring: `crates/coding-agent/src/agent/runtime.rs` loads `mcp.json` and extends the tool list.
 
 ## Sealed auth store (zero-trust)
 
-`auth.json` is an **AES-256-GCM envelope** (`v: 2`). Master key lives only in the **OS keychain**
-(`space.elph.auth` / `auth-store-master-v2`) — never `auth.key` on disk. No `auth.json.lock`.
+`auth.json` uses per-field `enc:` encryption (AES-256-GCM). The master key is wrapped
+with a machine-derived key and persisted at `DATA_DIR/auth.lock`
+(default `~/.local/share/elph/auth.lock`) — no OS keychain, no user passphrase. The
+wrapping key is derived via HKDF-SHA256 from this machine's hardware UUID / machine-id.
 
 Legacy cleartext stores are not migrated; re-authenticate providers/MCP.
 

@@ -10,7 +10,7 @@ use crate::auth::oauth::{
     openrouter_oauth_loader, radius_oauth_loader, xai_oauth_loader,
 };
 use crate::auth::types::{AuthLoginCallbacks, ModelAuth, OAuthAuth, OAuthCredential};
-use crate::models::catalog::GITHUB_COPILOT_MODELS;
+use crate::models::catalog::builtin_catalog;
 use crate::types::Model;
 
 pub type OAuthProviderId = String;
@@ -249,5 +249,5 @@ pub fn builtin_oauth_provider_ids() -> Vec<&'static str> {
 }
 
 pub fn github_copilot_catalog_models() -> Vec<Model> {
-    GITHUB_COPILOT_MODELS.iter().cloned().collect()
+    builtin_catalog("github-copilot").as_ref().clone()
 }

@@ -21,7 +21,6 @@ use elph_agent::skills::{format_skill_invocation, load_skills_with_options};
 use elph_agent::{Agent, AgentEvent, AgentOptions, PartialAgentState};
 use elph_ai::{Message, StopReason};
 use elph_ai::{builtin_models, get_builtin_model};
-use elph_tui::progress_spinner;
 use tempfile::TempDir;
 
 const PROVIDER: &str = "opencode";
@@ -143,10 +142,9 @@ Answer: [final result]
     println!("Model:    {} ({})", model.name, model.id);
     println!();
 
-    let setup = progress_spinner("Resolving auth...");
+    eprintln!("Resolving auth...");
     let models = builtin_models(None);
     let auth = models.get_auth(&model).await?;
-    setup.finish_and_clear();
 
     if let Some(auth) = &auth {
         println!("Auth:     configured via {}", auth.source.as_deref().unwrap_or("unknown"));
@@ -190,12 +188,11 @@ When answering math questions, follow the instructions in the skill above."#,
     println!("{}\n", args.question);
 
     println!("=== Answer ===");
-    let generating = progress_spinner("Calculating...");
+    eprintln!("Calculating...");
     let saw_delta = Arc::new(AtomicBool::new(false));
 
     agent
         .subscribe(Arc::new(move |event, _token| {
-            let generating = generating.clone();
             let saw_delta = saw_delta.clone();
             Box::pin(async move {
                 match event {
@@ -204,15 +201,10 @@ When answering math questions, follow the instructions in the skill above."#,
                         ..
                     } => {
                         if let elph_ai::AssistantMessageEvent::TextDelta { delta, .. } = &*assistant_message_event {
-                            if !saw_delta.swap(true, Ordering::SeqCst) {
-                                generating.finish_and_clear();
-                            }
+                            saw_delta.store(true, Ordering::SeqCst);
                             print!("{delta}");
                             let _ = std::io::stdout().flush();
                         }
-                    }
-                    AgentEvent::AgentEnd { .. } if !saw_delta.load(Ordering::SeqCst) => {
-                        generating.finish_and_clear();
                     }
                     AgentEvent::AgentEnd { .. } => {}
                     _ => {}

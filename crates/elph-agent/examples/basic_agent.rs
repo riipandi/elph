@@ -15,7 +15,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use elph_agent::{Agent, AgentEvent, AgentOptions, PartialAgentState};
 use elph_ai::{AssistantContentBlock, Message, StopReason};
 use elph_ai::{builtin_models, get_builtin_model};
-use elph_tui::progress_spinner;
 
 const PROVIDER: &str = "opencode";
 const MODEL_ID: &str = "big-pickle";
@@ -49,10 +48,9 @@ async fn main() -> anyhow::Result<()> {
     println!("API:      {}", model.api);
     println!();
 
-    let setup = progress_spinner("Resolving auth...");
+    eprintln!("Resolving auth...");
     let models = builtin_models(None);
     let auth = models.get_auth(&model).await?;
-    setup.finish_and_clear();
 
     if let Some(auth) = &auth {
         println!("Auth:     configured via {}", auth.source.as_deref().unwrap_or("unknown"));
@@ -77,12 +75,11 @@ async fn main() -> anyhow::Result<()> {
         ..Default::default()
     });
 
-    let generating = progress_spinner("Streaming from big-pickle via elph-agent...");
+    eprintln!("Streaming from big-pickle via elph-agent...");
     let saw_delta = Arc::new(AtomicBool::new(false));
 
     agent
         .subscribe(Arc::new(move |event, _token| {
-            let generating = generating.clone();
             let saw_delta = saw_delta.clone();
             Box::pin(async move {
                 match event {
@@ -91,15 +88,10 @@ async fn main() -> anyhow::Result<()> {
                         ..
                     } => {
                         if let elph_ai::AssistantMessageEvent::TextDelta { delta, .. } = &*assistant_message_event {
-                            if !saw_delta.swap(true, Ordering::SeqCst) {
-                                generating.finish_and_clear();
-                            }
+                            saw_delta.store(true, Ordering::SeqCst);
                             print!("{delta}");
                             let _ = std::io::stdout().flush();
                         }
-                    }
-                    AgentEvent::AgentEnd { .. } if !saw_delta.load(Ordering::SeqCst) => {
-                        generating.finish_and_clear();
                     }
                     AgentEvent::AgentEnd { .. } => {}
                     _ => {}

@@ -1,0 +1,203 @@
+//! Incremental markdown cache for one streaming assistant message.
+
+use std::hash::{Hash, Hasher};
+
+use elph_tui::MarkdownDocument;
+use elph_tui::markdown_document_row_count;
+
+use super::layout::markdown_part_row_count;
+use super::partition::find_stable_boundary;
+
+/// One stable markdown segment with optional parsed document cache.
+#[derive(Clone)]
+pub struct RenderedPart {
+    pub source_end: usize,
+    pub source_hash: u64,
+    pub row_count: u16,
+    pub document: Option<MarkdownDocument>,
+}
+
+/// Streaming markdown state for [`crate::tui::transcript::TranscriptMessage`].
+#[derive(Clone, Default)]
+pub struct AssistantMarkdownBuffer {
+    pub stable_end: usize,
+    pub parts: Vec<RenderedPart>,
+    pub wrap_width: u16,
+    pub stream_complete: bool,
+}
+
+pub fn stable_source_hash(source: &str) -> u64 {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    source.hash(&mut hasher);
+    hasher.finish()
+}
+
+impl AssistantMarkdownBuffer {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn tail<'a>(&self, raw: &'a str) -> &'a str {
+        raw.get(self.stable_end..).unwrap_or("")
+    }
+
+    pub fn has_rendered_body(&self) -> bool {
+        !self.parts.is_empty() || self.stable_end > 0
+    }
+
+    pub fn needs_parse(&self) -> bool {
+        self.parts
+            .iter()
+            .any(|part| part.document.is_none() && part.source_end > 0)
+    }
+
+    /// Advance stable boundary (cheap — no parsing).
+    ///
+    /// Returns `true` when `parts` or `stable_end` changed.
+    pub fn refresh_stable(&mut self, raw: &str, wrap_width: u16) -> bool {
+        if wrap_width == 0 {
+            return false;
+        }
+        if self.wrap_width != wrap_width && self.has_rendered_body() {
+            self.stable_end = 0;
+            self.parts.clear();
+        }
+        self.wrap_width = wrap_width;
+
+        let force = self.stream_complete;
+        let mut new_end = find_stable_boundary(raw, force);
+        // Clamp to a char boundary so multi-byte stream text never panics on slice.
+        if new_end > raw.len() {
+            new_end = raw.len();
+        } else if new_end < raw.len() && !raw.is_char_boundary(new_end) {
+            new_end = raw.floor_char_boundary(new_end);
+        }
+        if new_end <= self.stable_end {
+            return false;
+        }
+
+        let Some(stable) = raw.get(..new_end) else {
+            return false;
+        };
+        let hash = stable_source_hash(stable);
+        let preserved_doc = self
+            .parts
+            .first()
+            .filter(|part| part.source_hash == hash)
+            .and_then(|part| part.document.clone());
+
+        let row_count = preserved_doc
+            .as_ref()
+            .map(|doc| markdown_document_row_count(doc, wrap_width))
+            .unwrap_or_else(|| markdown_part_row_count(stable, wrap_width));
+
+        self.parts = vec![RenderedPart {
+            source_end: new_end,
+            source_hash: hash,
+            row_count,
+            document: preserved_doc,
+        }];
+        self.stable_end = new_end;
+        true
+    }
+
+    pub fn apply_document(&mut self, expected_hash: u64, document: MarkdownDocument) -> bool {
+        let Some(part) = self.parts.first_mut() else {
+            return false;
+        };
+        if part.source_hash != expected_hash {
+            return false;
+        }
+        part.row_count = markdown_document_row_count(&document, self.wrap_width);
+        part.document = Some(document);
+        true
+    }
+
+    pub fn mark_stream_complete(&mut self) {
+        self.stream_complete = true;
+    }
+
+    /// Drop cached parsed documents to free memory while keeping streaming state.
+    ///
+    /// The retained `stable_end`, `stream_complete`, `wrap_width`, and row counts let the
+    /// layout path continue to measure correctly; the worker will re-parse the document
+    /// on the next tick (the stable source is still in the message content). This is used
+    /// by the archive path to shed memory from old, no-longer-rendered assistant messages.
+    pub fn drop_cached_documents(&mut self) {
+        for part in &mut self.parts {
+            part.document = None;
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn refresh_grows_stable_prefix() {
+        let mut buf = AssistantMarkdownBuffer::new();
+        let raw = "# Hi\n\nParagraph.";
+        assert!(buf.refresh_stable(raw, 40));
+        assert_eq!(buf.stable_end, 6);
+        buf.mark_stream_complete();
+        assert!(buf.refresh_stable(raw, 40));
+        assert_eq!(buf.stable_end, raw.len());
+        assert_eq!(buf.parts.len(), 1);
+        assert!(buf.parts[0].row_count > 0);
+    }
+
+    #[test]
+    fn refresh_skips_when_boundary_unchanged() {
+        let mut buf = AssistantMarkdownBuffer::new();
+        let raw = "no paragraph break yet";
+        assert!(!buf.refresh_stable(raw, 40));
+        assert_eq!(buf.stable_end, 0);
+        assert!(buf.parts.is_empty());
+    }
+
+    #[test]
+    fn width_change_invalidates_cache() {
+        let mut buf = AssistantMarkdownBuffer::new();
+        let raw = "A\n\nB";
+        assert!(buf.refresh_stable(raw, 40));
+        assert!(buf.refresh_stable(raw, 30));
+        assert_eq!(buf.wrap_width, 30);
+    }
+
+    #[test]
+    fn apply_document_updates_row_count() {
+        let mut buf = AssistantMarkdownBuffer::new();
+        let raw = "Hello **world**";
+        buf.mark_stream_complete();
+        assert!(buf.refresh_stable(raw, 40));
+        let hash = buf.parts[0].source_hash;
+        let doc = elph_tui::parse_markdown_document(raw);
+        assert!(buf.apply_document(hash, doc));
+        assert!(buf.parts[0].document.is_some());
+    }
+
+    #[test]
+    fn drop_cached_documents_frees_document_keeps_metadata() {
+        let mut buf = AssistantMarkdownBuffer::new();
+        let raw = "## Plan\n\nA paragraph that wraps across the width nicely.\n\n| Col | Val |\n| --- | --- |\n| a | 1 |\n| b | 2 |\n\nLast paragraph.\n";
+        buf.mark_stream_complete();
+        assert!(buf.refresh_stable(raw, 80));
+        let doc = elph_tui::parse_markdown_document(raw);
+        let hash = buf.parts[0].source_hash;
+        assert!(buf.apply_document(hash, doc));
+        assert!(buf.parts[0].document.is_some());
+        let row_count_before = buf.parts[0].row_count;
+        assert!(row_count_before > 0);
+
+        // Drop the cached document — simulates what the archive path does for old messages.
+        buf.drop_cached_documents();
+        assert!(buf.parts[0].document.is_none(), "document must be freed");
+        // Streaming metadata is preserved so layout still measures correctly.
+        assert_eq!(buf.stable_end, raw.len());
+        assert!(buf.stream_complete);
+        assert_eq!(buf.wrap_width, 80);
+        assert_eq!(buf.parts[0].row_count, row_count_before);
+        assert_eq!(buf.parts[0].source_hash, hash);
+    }
+}

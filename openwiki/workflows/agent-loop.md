@@ -10,7 +10,7 @@ tags: [agent-loop, turn-cycle, tool-execution, compaction]
 The agent loop is the core turn execution engine. It lives in two layers:
 
 1. **`AgentHarness<S>`** (`crates/elph-agent/src/agent/harness/`) — hook-rich orchestration with session persistence, event emission, and compaction. See [Architecture Overview](../architecture/overview.md) for the harness structure.
-2. **`run_agent_loop()`** (`crates/elph-agent/src/runtime/run_loop.rs`) — the inner turn iteration that streams LLM responses, executes tools, and repeats.
+2. **`run_agent_loop()`** (`crates/elph-agent/src/runtime/run_loop.rs`) — the inner turn iteration that streams LLM responses, executes tools, and repeats. The harness's `run_loop/` directory (`crates/elph-agent/src/agent/harness/run_loop/`) provides the turn execution layer that wraps this inner loop with session persistence, event emission, and compaction.
 
 ## Entry Point: `AgentHarness::prompt()`
 
@@ -114,6 +114,24 @@ Defined in `crates/elph-agent/src/runtime/exec/`:
 3. `fail_tool_calls_from_truncated_message()` — handles truncation edge cases.
 4. Results are patched back into the context via `ToolResultPatch`.
 
+### BeforeToolCallResult.terminate (commit `f398e03`)
+
+`BeforeToolCallResult` in `crates/elph-agent/src/runtime/loop_config.rs` added:
+
+```rust
+pub struct BeforeToolCallResult {
+    pub block: bool,
+    pub reason: Option<String>,
+    pub args: Option<Value>,
+    /// Hint that the agent should stop after the current tool batch when this
+    /// call is blocked. Early termination only happens when every finalized tool
+    /// result in the batch sets this to true.
+    pub terminate: Option<bool>,
+}
+```
+
+When `terminate: Some(true)` is set on every blocked tool call in a batch, the agent loop stops after the current batch instead of continuing. Used by plan mode tool blocking in `crates/elph-agent/src/agent/harness/run_loop/loop_config.rs`.
+
 Tools are registered as `AgentTool` instances. See [Tools](../domains/tools.md) for built-in tools and feature flags, and [MCP](../domains/mcp.md) for MCP-bridged tools.
 
 ## Steering and Follow-up Messages
@@ -127,9 +145,10 @@ The loop supports `get_steering_messages` and `get_follow_up_messages` callbacks
 ## Source References
 
 - `crates/elph-agent/src/agent/harness/prompt_ops.rs` — `prompt()`, `skill()`, queue management
+- `crates/elph-agent/src/agent/harness/run_loop/` — run loop sub-modules (loop_config, queue_drain, session_writes, turn_execution)
 - `crates/elph-agent/src/runtime/run_loop.rs` — core turn iteration
 - `crates/elph-agent/src/runtime/stream.rs` — `stream_assistant_response()`
 - `crates/elph-agent/src/runtime/exec/execute.rs` — `execute_tool_calls()`
 - `crates/elph-agent/src/runtime/exec/messages.rs` — tool result to message conversion
 - `crates/elph-agent/src/runtime/loop_config.rs` — `AgentLoopConfig`, `AgentContext`, `AgentEvent`
-- `crates/elph-agent/src/types/enums.rs` — `AgentEvent`, `StopReason`, `QueueMode`
+- `crates/elph-agent/src/agent/harness/types/events.rs` — `AgentEvent`, `StopReason`, `QueueMode`

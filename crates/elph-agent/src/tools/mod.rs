@@ -79,7 +79,7 @@ pub use shell_exec::{create_shell_exec_tool, normalize_shell_exec_args, strip_re
 #[cfg(feature = "tools-web")]
 pub use web::{Engine as WebSearchEngine, SearchResult as WebSearchResult};
 #[cfg(feature = "tools-web")]
-pub use web::{create_web_fetch_tool, create_web_search_tool, create_web_tools};
+pub use web::{create_web_extract_tool, create_web_fetch_tool, create_web_search_tool, create_web_tools};
 #[cfg(feature = "tools-write-file")]
 pub use write_file::create_write_file_tool;
 

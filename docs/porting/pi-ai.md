@@ -1,8 +1,8 @@
 # Porting status: pi-ai → elph-ai
 
-**Last audited:** 2026-07-29T20:00:00Z
-**Upstream:** `@earendil-works/pi-ai` · `packages/ai` · **v0.82.1** + Unreleased
-**Upstream commit:** `cee5ff75`
+**Last audited:** 2026-08-07T14:00:00Z
+**Upstream:** `@earendil-works/pi-ai` · `packages/ai` · **v0.84.1** + Unreleased
+**Upstream commit:** `7aca0d7b3`
 **Elph crate:** `crates/elph-ai`
 
 ---
@@ -32,11 +32,24 @@ Most of the pi-ai surface through v0.82.1 + Unreleased is at **[Parity]** after 
 - `pending_stop_reason` mid-stream exposure — **[Parity]**
 - Per-request `fetch` injection — **[Parity]**
 - GitHub Copilot Opus 5 with `minimal` thinking — **[Parity]**
+- `samplingParams` passthrough (`StreamOptions` + `OpenAICompletionsCompat`) — **[Parity]** (opt-in via JSON model `compat`)
+- `thinking_token_budget` compat flag (vLLM-style reasoning cap) — **[Parity]** (opt-in via JSON model `compat`)
+- `supportsFinishReason` stream stop-reason inference — **[Parity]** (default true; opt-out via JSON model `compat`)
 - Hyper provider — **[Elph delta]** (missing in pi)
 
 ---
 
 ## Timeline
+
+### 2026-08-07 @ `7aca0d7b3` (v0.84.1 + Unreleased)
+
+**Sprint 8: P2 gap port — 3 feature areas (opt-in additive).**
+
+Doctrine: each gap is additive and latent until opted in via hand-maintained JSON model `compat`; no existing architecture changed. The generator only copies `compat` from existing JSON and never generates these fields from models.dev, so behavior is unchanged until a model opts in.
+
+- **`samplingParams` passthrough (P2)** — pi v0.84.0 #7568. `crates/elph-ai/src/types/mod.rs`: `sampling_params: Option<HashMap<String, Value>>` on `StreamOptions` and `OpenAICompletionsCompat`. `crates/elph-ai/src/api/openai_completions.rs` `apply_sampling_params` / `apply_sampling_map`: merges model-level defaults with per-request overrides into the OpenAI-completions body without clobbering explicit options (`temperature`, `max_tokens`). Wired through `crates/elph-ai/src/api/simple_options.rs` `build_base_options`.
+- **`thinking_token_budget` (P2)** — pi v0.84.0 #7638. `crates/elph-ai/src/types/mod.rs` + `crates/elph-ai/src/api/openai_compat.rs`: `supports_thinking_token_budget` on `OpenAICompletionsCompat` and `ResolvedOpenAICompletionsCompat` (default `false` in `detect_compat`, mapped through `merge_compat`). `crates/elph-ai/src/api/openai_completions.rs` `apply_thinking_token_budget`: emits `thinking_token_budget` to reserve output tokens for vLLM-style providers where reasoning and answer share `max_tokens`.
+- **`supportsFinishReason` inference (P2)** — pi v0.84.0. `crates/elph-ai/src/types/mod.rs` + `crates/elph-ai/src/api/openai_compat.rs`: `supports_finish_reason` (default `true`). `crates/elph-ai/src/api/openai_completions.rs` `infer_stop_reason`: when a provider omits streamed `finish_reason` and compat declares it unsupported, infers `StopReason::ToolUse` (any tool call streamed) or `StopReason::Stop` instead of erroring.
 
 ### 2026-07-29 @ `cced6a21` (v0.82.1 + Unreleased)
 
@@ -131,6 +144,11 @@ Initial gap audit.
 - **[P2]** OAuth providers already implemented for Kimi / OpenRouter / Radius — watch for upstream protocol drift, not re-port from scratch.
 - **[P2]** `uuidv7` utility — elph uses `ulid`; pi moved to `uuidv7`. Align if cross-compat needed.
 - **[P2]** `toolChoice` for OpenAI/Codex Responses (required + named tool selection) — types exist, provider adapters need wiring.
+- **[P2]** Opt-in compat flags are now live but latent (`sampling_params`, `supports_thinking_token_budget`, `supports_finish_reason`). They take effect only when a hand-maintained JSON model opts in via its `compat` block; no generator change needed.
+- **[P2]** `rawStopReason` field on stream output — pi v0.84.0 captures the raw `finish_reason` string alongside the mapped `StopReason`. Watch if callers need the raw value.
+- **[P2]** Deferred provider request contracts (#7339) — pi v0.84.0 adds `DeferredHandle`, `Provider.fetchDeferred`/`cancelDeferred`, durable response handles, and faux-provider async-response support. Distinct from the deferred-tools feature already at **[Parity]**. Not ported; only needed if a provider requires async/deferred response fetching.
+- **[P2]** v4 dynamic provider refresh context — pi v0.84.0 replaces `RefreshModelsContext.store` with read-only `context.stored` + generation-checked `context.publish()` transaction, and guarantees a concrete `signal`. Elph's catalog is mostly models.dev-static, so impact is low; watch if dynamic provider refresh grows.
+- **[Partial]** Structured Bedrock failure diagnostics (error code + AWS request id, #7286) — Elph uses `aws_sdk_bedrockruntime`; errors surface through the SDK but modeled error codes / request ids aren't explicitly extracted.
 
 ## Elph-only
 

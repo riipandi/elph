@@ -9,6 +9,8 @@ tags: [skills, skill-file, frontmatter, MiniJinja, templates]
 
 The skill system lives in `crates/elph-agent/src/skills/`. It discovers `SKILL.md` files in the repository and loads them as structured skill definitions for the agent. Skills are invoked during the [Agent Loop](../workflows/agent-loop.md) turn cycle, either programmatically via `AgentHarness::skill()` or through the TUI slash command system (see [Operations](../operations.md)).
 
+[Prompt templates](../quickstart.md#backlog) (MiniJinja-based) live in `crates/elph-agent/src/prompt/` and `crates/coding-agent/templates/agent/`, separate from the skill system.
+
 ## Module Structure
 
 ```
@@ -116,3 +118,4 @@ Skills are invoked via:
 - `crates/elph-agent/src/skills/load/parse.rs` — `parse_frontmatter()`, `validate_name()`, `validate_compatibility()`
 - `crates/elph-agent/src/skills/format.rs` — `format_skill_invocation()`
 - `crates/elph-agent/src/skills/args.rs` — argument validation utilities
+- `crates/elph-agent/src/goals/steering.rs` — `CONTINUATION_PROMPT_PREFIX`, `BUDGET_LIMIT_PROMPT_PREFIX` (public exports, commit `457464e`)

@@ -433,7 +433,7 @@ impl MutableModels {
         let mut report = OverlayApplyReport::default();
         for (provider_id, overlay) in overlays {
             if let Some(provider) = self.inner.providers.get_mut(provider_id) {
-                let merged = crate::models::disk_catalog::merge_model_lists(provider.get_models(), overlay);
+                let merged = crate::models::catalog::merge_model_lists(provider.get_models(), overlay);
                 provider.set_models(merged);
                 report.updated += 1;
             } else if let Some(provider) = create_disk_provider(provider_id, overlay.clone()) {

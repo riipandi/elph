@@ -27,12 +27,12 @@ mod tests {
 
 Each crate has its own `tests/` directory:
 
-| Crate        | Test Files                           | Focus                                                               |
-| ------------ | ------------------------------------ | ------------------------------------------------------------------- |
-| `elph-agent` | 30 test files                        | Agent loop, compaction, harness, goals, MCP, skills, sessions, etc. |
-| `elph-ai`    | ~15 test files                       | Provider adapters, auth, message transformation, tool schemas       |
-| `elph-tui`   | ~5 test files                        | UI component tests                                                  |
-| `elph`       | `tests/bootstrap.rs`, `tests/cli.rs` | Bootstrap, CLI subcommands                                          |
+| Crate        | Test Files                           | Focus                                                                                                                   |
+| ------------ | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `elph-agent` | 30+ test files                       | Agent loop, compaction, harness, goals, MCP, skills, sessions, subagent, etc.                                           |
+| `elph-ai`    | ~15 test files                       | Provider adapters, auth, message transformation, tool schemas, OpenAI compat gaps (`openai_completions_compat_gaps.rs`) |
+| `elph-tui`   | ~5 test files                        | UI component tests                                                                                                      |
+| `elph`       | `tests/bootstrap.rs`, `tests/cli.rs` | Bootstrap, CLI subcommands                                                                                              |
 
 ## Test Patterns
 
@@ -68,6 +68,23 @@ From `crates/elph-agent/tests/agent_loop.rs` (50,377 bytes):
 - Tests event lifecycle: `AgentStart → TurnStart → MessageEnd → ToolExecution* → TurnEnd`
 - Tests tool execution modes (background, visible, error handling)
 - Tests `QueueMode` (normal, replace, background)
+
+### Subagent Tests
+
+From `crates/elph-agent/tests/subagent.rs` (updated commit `4baf7aa`):
+
+- Tests subagent spawn, followup, wait-for-output
+- Tests `SubagentOutput` and output collection
+- Tests `TurnGuard` race protection
+- Tests shared database handle bootstrap
+
+### OpenAI Compat Gaps Tests
+
+From `crates/elph-ai/tests/openai_completions_compat_gaps.rs` (commit `f398e03`):
+
+- Tests `sampling_params` merge: model defaults, per-request overrides, explicit option non-clobber
+- Tests `thinking_token_budget` emission when opted in
+- Tests `supports_finish_reason` default behavior
 
 ### Compaction Tests
 
@@ -127,7 +144,7 @@ make coverage                  # With cargo-llvm-cov
 
 - `crates/elph-agent/tests/` — 30 integration test files
 - `crates/elph-ai/tests/` — provider adapter tests + live tests
-- `elph/tests/bootstrap.rs` — home bootstrapping tests
-- `elph/tests/cli.rs` — CLI subcommand tests
+- `crates/coding-agent/tests/bootstrap.rs` — home bootstrapping tests
+- `crates/coding-agent/tests/cli.rs` — CLI subcommand tests
 - `crates/elph-agent/src/tools/types.rs` — `AgentTool`, `AgentToolResult`
 - `crates/elph-ai/src/providers/faux/` — `FauxProviderHandle`, `FauxResponseStep`

@@ -7,7 +7,7 @@ on:
     branches: ["**"]
     tags-ignore: ["*"]
     paths:
-      - "elph/**"
+      - "crates/coding-agent/**"
       - "crates/elph-agent/**"
       - "crates/elph-ai/**"
       - "crates/elph-tui/**"
@@ -18,7 +18,7 @@ on:
       - ".github/**"
   pull_request:
     paths:
-      - "elph/**"
+      - "crates/coding-agent/**"
       - "crates/elph-agent/**"
       - "crates/elph-ai/**"
       - "crates/elph-tui/**"

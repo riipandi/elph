@@ -293,7 +293,7 @@ pub struct SessionDirMetadata {
     #[serde(rename = "updatedAt")]
     pub updated_at: String,
     pub cwd: String,
-    /// Absolute path to the session directory (`~/.elph/sessions/<key>/<id>/`).
+    /// Absolute path to the session directory (`~/.local/share/elph/sessions/<SESSION_ID>/`).
     pub dir: String,
     #[serde(rename = "parentSessionId", skip_serializing_if = "Option::is_none")]
     pub parent_session_id: Option<String>,

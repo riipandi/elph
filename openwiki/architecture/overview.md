@@ -11,8 +11,9 @@ tags: [architecture, agent-loop, session, persistence]
 
 ```
                 ┌─────────────────────────────────────────────────┐
-                │                   elph (product)                │
-                │  CLI · TUI (iocraft) · Agent wiring · Memory   │
+                │              elph (crates/coding-agent/)         │
+                │  CLI · TUI (iocraft) · Agent wiring · Memory    │
+                │  Codegraph · Platform · Extensions              │
                 └──────┬──────────┬────────────┬─────────────────┘
                        │          │            │
           ┌────────────┘          │            └──────────────┐
@@ -27,13 +28,16 @@ tags: [architecture, agent-loop, session, persistence]
           │
           ▼
    ┌──────────────┐
-   │  elph-exec   │
-   │ Shell, PTY   │
+   │    floppy     │
+   │ AI memory,    │
+   │ vector search,│
+   │ codegraph idx │
    └──────────────┘
 ```
 
 - `elph-agent` depends on `elph-ai` for all LLM communication.
-- `elph-agent` depends on `elph-exec` for shell execution and PTY.
+- `elph-agent` used to depend on `elph-db` for shared Turso SQLite helpers; the `elph-db` crate was removed in commit `eba87a7` and its open/connect/retry/lock-error helpers were absorbed into `crates/elph-agent/src/datastore/conn.rs`.
+- `elph-exec` was merged into `elph-agent` as `crate::exec` (commit `c8f65ab`).
 - `elph` (product) depends on `elph-agent` (with `full` features), `elph-ai`, `elph-tui`, and `floppy`.
 
 ## Agent Loop Phases
@@ -88,13 +92,16 @@ loop {
 
 ## Session Persistence
 
-`AgentHarness` is generic over `S: SessionStorage + Clone + Send + Sync + 'static`. The product uses `SessionDirStorage` (Turso-based flat-file session store).
+`AgentHarness` is generic over `S: SessionStorage + Clone + Send + Sync + 'static`. The product uses `TursoSessionStorage` (Turso-backed session store with pi-aligned schema, commit `e225323`).
 
 Session entries are stored as a tree (`SessionTreeEntry` enum):
 
 - `Message { message, metadata }` — LLM messages
 - `ToolResult { tool_name, result, metadata }` — tool execution results
 - `Summary { summary, metadata }` — compaction summaries
+- `CustomMessage { custom_type, content, display, details, timestamp }` — custom entry types
+- `BranchSummary { summary, from_id, timestamp }` — branch-level summaries
+- `Compaction { summary, tokens_before, timestamp }` — compaction summaries
 
 The `SessionStorage` trait (from `crates/elph-agent/src/session/types.rs`) defines:
 
@@ -105,14 +112,15 @@ The `SessionStorage` trait (from `crates/elph-agent/src/session/types.rs`) defin
 
 ## Key Traits
 
-| Trait             | Location                                       | Purpose                                                               |
-| ----------------- | ---------------------------------------------- | --------------------------------------------------------------------- |
-| `AgentHarness`    | `crates/elph-agent/src/agent/harness/`         | Hook-rich agent orchestration                                         |
-| `SessionStorage`  | `crates/elph-agent/src/session/types.rs`       | Session persistence backend                                           |
-| `CredentialStore` | `crates/elph-ai/src/auth/`                     | API key + OAuth credential storage — see [Auth](../workflows/auth.md) |
-| `ModelsStore`     | `crates/elph-ai/src/auth/models_store.rs`      | Dynamic provider catalog storage — see [Auth](../workflows/auth.md)   |
-| `ProviderStreams` | `crates/elph-ai/src/providers/adapter.rs`      | Provider API adapter trait — see [Providers](../domains/providers.md) |
-| `ExecutionEnv`    | `crates/elph-agent/src/agent/harness/types.rs` | Filesystem and shell execution — see [Tools](../domains/tools.md)     |
+| Trait             | Location                                       | Purpose                                                                                                             |
+| ----------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `AgentHarness`    | `crates/elph-agent/src/agent/harness/`         | Hook-rich agent orchestration                                                                                       |
+| `SessionStorage`  | `crates/elph-agent/src/session/types.rs`       | Session persistence backend                                                                                         |
+| `CredentialStore` | `crates/elph-ai/src/auth/`                     | API key + OAuth credential storage — see [Auth](../workflows/auth.md)                                               |
+| `ModelsStore`     | `crates/elph-ai/src/auth/models_store.rs`      | Dynamic provider catalog storage — see [Auth](../workflows/auth.md)                                                 |
+| `ProviderStreams` | `crates/elph-ai/src/providers/adapter.rs`      | Provider API adapter trait — see [Providers](../domains/providers.md)                                               |
+| `ExecutionEnv`    | `crates/elph-agent/src/agent/harness/types.rs` | Filesystem and shell execution — see [Tools](../domains/tools.md)                                                   |
+| `datastore/conn`  | `crates/elph-agent/src/datastore/conn.rs`      | Absorbed from removed `elph-db` crate (commit `eba87a7`). Turso open/connect/retry/lock-error/WAL recovery helpers. |
 
 ## Session Persistence Lifecycle
 
@@ -142,6 +150,9 @@ sequenceDiagram
 
 - `crates/elph-agent/src/agent/harness/mod.rs` — harness module structure
 - `crates/elph-agent/src/agent/harness/prompt_ops.rs` — `prompt()` and `skill()` entry points
+- `crates/elph-agent/src/agent/harness/run_loop/` — run loop sub-modules (loop_config, queue_drain, session_writes, turn_execution)
 - `crates/elph-agent/src/runtime/run_loop.rs` — core turn iteration
 - `crates/elph-agent/src/session/types.rs` — `SessionStorage` trait
-- `crates/elph-agent/src/agent/harness/types.rs` — `AgentHarnessPhase`, `AgentHarnessError`, `CompactionSettings`
+- `crates/elph-agent/src/agent/harness/types/` — `AgentHarnessPhase`, `AgentHarnessError`, `CompactionSettings`, `AgentHarnessResources`
+- `crates/elph-agent/src/agent/harness/compaction_ops.rs` — `compact_with_retry()`
+- `crates/elph-agent/src/datastore/conn.rs` — Turso open/connect/retry/lock-error/WAL recovery helpers (absorbed from removed `elph-db` crate, commit `eba87a7`)

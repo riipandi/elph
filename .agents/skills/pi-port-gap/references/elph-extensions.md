@@ -20,7 +20,7 @@ architecture** (see SKILL.md **Porting doctrine** + **Architecture invariants**)
     - `models_dev.rs` — fetch/cache `https://models.dev/api.json`
     - `provider_sources.rs` — Elph provider id ↔ models.dev keys, defaults, gateway flags
     - `normalize.rs` / `thinking_map.rs` / `pricing.rs` / `chat.rs`
-- Output: `models/*.json`, `models/index.json`, `src/models/catalog.rs` (`define_catalog!`)
+- Output: `models/*.json`, `models/index.json` (no generated Rust catalog — `build.rs` compresses the JSON into the binary and `src/models/catalog.rs` loads it lazily, merged over `CONFIG_DIR/providers/*.json`)
 - Skill: **`update-models`** (`.agents/skills/update-models/SKILL.md`)
 - **Every model** has full `thinkingLevelMap` (keys: `off|minimal|low|medium|high|xhigh|max`)
 - Registration gate: catalog provider ids ⊆ `builtin_providers()` (generator fails if missing)
@@ -50,7 +50,7 @@ copy pi JSON or reintroduce `--catalog-dir` / pi npm chat generation.
     - config merge (home + project), schema validate
     - transports: stdio, streamable HTTP, SSE
     - auth: env/token vs OAuth store, conflict policy
-    - crypto: AES-256-GCM `enc:`, `auth.json` + `auth.key`
+    - crypto: AES-256-GCM per-field `enc:`, `auth.json` + wrapped key at `auth.lock` (machine-bound)
     - registry, session pool, policy, truncate, events/progress
     - tool names: `mcp_{server}__{tool}`
 - **Goals** — `src/goals/`

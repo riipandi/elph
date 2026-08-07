@@ -131,7 +131,7 @@
         "id": "claude-3.5-haiku",
         "input": ["text", "image"],
         "maxTokens": 8192,
-        "name": "Anthropic: Claude 3.5 Haiku",
+        "name": "Claude 3.5 Haiku",
         "provider": "cloudflare-ai-gateway",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -182,10 +182,10 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 1.1,
-            "cacheWrite": 13.75,
-            "input": 11.0,
-            "output": 55.0
+            "cacheRead": 1.2,
+            "cacheWrite": 15.0,
+            "input": 12.0,
+            "output": 60.0
         },
         "id": "claude-fable-5",
         "input": ["text", "image"],
@@ -218,7 +218,7 @@
         },
         "id": "claude-haiku-4-5",
         "input": ["text", "image", "pdf"],
-        "maxTokens": 64000,
+        "maxTokens": 16384,
         "name": "Claude Haiku 4.5 (latest)",
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
@@ -296,17 +296,17 @@
         "compat": {
             "sendSessionAffinityHeaders": true
         },
-        "contextWindow": 200000,
+        "contextWindow": 198000,
         "cost": {
-            "cacheRead": 0.5,
-            "cacheWrite": 6.25,
-            "input": 5.0,
-            "output": 25.0
+            "cacheRead": 0.6,
+            "cacheWrite": 7.5,
+            "input": 6.0,
+            "output": 30.0
         },
         "id": "claude-opus-4-5",
-        "input": ["text", "image", "pdf"],
-        "maxTokens": 64000,
-        "name": "Claude Opus 4.5 (latest)",
+        "input": ["text", "image"],
+        "maxTokens": 32768,
+        "name": "Claude Opus 4.5",
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -328,13 +328,13 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.5,
-            "cacheWrite": 6.25,
-            "input": 5.0,
-            "output": 25.0
+            "cacheRead": 0.6,
+            "cacheWrite": 7.5,
+            "input": 6.0,
+            "output": 30.0
         },
         "id": "claude-opus-4-6",
-        "input": ["text", "image", "pdf"],
+        "input": ["text", "image"],
         "maxTokens": 128000,
         "name": "Claude Opus 4.6",
         "provider": "cloudflare-ai-gateway",
@@ -359,13 +359,13 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.5,
-            "cacheWrite": 6.25,
-            "input": 5.0,
-            "output": 25.0
+            "cacheRead": 0.6,
+            "cacheWrite": 7.5,
+            "input": 6.0,
+            "output": 30.0
         },
         "id": "claude-opus-4-7",
-        "input": ["text", "image", "pdf"],
+        "input": ["text", "image"],
         "maxTokens": 128000,
         "name": "Claude Opus 4.7",
         "provider": "cloudflare-ai-gateway",
@@ -388,16 +388,16 @@
             "sendSessionAffinityHeaders": true,
             "supportsTemperature": false
         },
-        "contextWindow": 200000,
+        "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.5,
-            "cacheWrite": 6.25,
-            "input": 5.0,
-            "output": 25.0
+            "cacheRead": 0.6,
+            "cacheWrite": 7.5,
+            "input": 6.0,
+            "output": 30.0
         },
         "id": "claude-opus-4-8",
         "input": ["text", "image"],
-        "maxTokens": 32000,
+        "maxTokens": 128000,
         "name": "Claude Opus 4.8",
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
@@ -421,13 +421,13 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.5,
-            "cacheWrite": 6.25,
-            "input": 5.0,
-            "output": 25.0
+            "cacheRead": 0.6,
+            "cacheWrite": 7.5,
+            "input": 6.0,
+            "output": 30.0
         },
         "id": "claude-opus-5",
-        "input": ["text", "image", "pdf"],
+        "input": ["text", "image"],
         "maxTokens": 128000,
         "name": "Claude Opus 5",
         "provider": "cloudflare-ai-gateway",
@@ -448,17 +448,17 @@
         "compat": {
             "sendSessionAffinityHeaders": true
         },
-        "contextWindow": 200000,
+        "contextWindow": 216000,
         "cost": {
-            "cacheRead": 0.30000000000000004,
+            "cacheRead": 0.3,
             "cacheWrite": 3.75,
             "input": 3.0,
             "output": 15.0
         },
         "id": "claude-sonnet-4",
-        "input": ["text", "image"],
-        "maxTokens": 64000,
-        "name": "Anthropic: Claude Sonnet 4",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 16000,
+        "name": "Claude Sonnet 4 (latest)",
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -477,17 +477,17 @@
         "compat": {
             "sendSessionAffinityHeaders": true
         },
-        "contextWindow": 1000000,
+        "contextWindow": 198000,
         "cost": {
-            "cacheRead": 0.3,
-            "cacheWrite": 3.75,
-            "input": 3.0,
-            "output": 15.0
+            "cacheRead": 0.375,
+            "cacheWrite": 4.69,
+            "input": 3.75,
+            "output": 18.75
         },
         "id": "claude-sonnet-4-5",
-        "input": ["text", "image", "pdf"],
+        "input": ["text", "image"],
         "maxTokens": 64000,
-        "name": "Claude Sonnet 4.5 (latest)",
+        "name": "Claude Sonnet 4.5",
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -509,13 +509,13 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.3,
-            "cacheWrite": 3.75,
-            "input": 3.0,
-            "output": 15.0
+            "cacheRead": 0.36,
+            "cacheWrite": 4.5,
+            "input": 3.6,
+            "output": 18.0
         },
         "id": "claude-sonnet-4-6",
-        "input": ["text", "image", "pdf"],
+        "input": ["text", "image"],
         "maxTokens": 64000,
         "name": "Claude Sonnet 4.6",
         "provider": "cloudflare-ai-gateway",
@@ -539,14 +539,14 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.2,
-            "cacheWrite": 2.5,
-            "input": 2.0,
-            "output": 10.0
+            "cacheRead": 0.3,
+            "cacheWrite": 3.75,
+            "input": 3.0,
+            "output": 15.0
         },
         "id": "claude-sonnet-5",
         "input": ["text", "image"],
-        "maxTokens": 128000,
+        "maxTokens": 64000,
         "name": "Claude Sonnet 5",
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
@@ -618,7 +618,7 @@
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 1.25,
-            "cacheWrite": 0.0,
+            "cacheWrite": 2.5,
             "input": 2.5,
             "output": 10.0
         },
@@ -644,7 +644,7 @@
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.075,
-            "cacheWrite": 0.0,
+            "cacheWrite": 0.15,
             "input": 0.15,
             "output": 0.6
         },
@@ -672,7 +672,7 @@
         },
         "contextWindow": 400000,
         "cost": {
-            "cacheRead": 0.125,
+            "cacheRead": 0.13,
             "cacheWrite": 0.0,
             "input": 1.25,
             "output": 10.0
@@ -703,13 +703,13 @@
         "cost": {
             "cacheRead": 0.125,
             "cacheWrite": 0.0,
-            "input": 1.125,
-            "output": 9.0
+            "input": 1.25,
+            "output": 10.0
         },
         "id": "gpt-5.1-codex",
         "input": ["text", "image"],
         "maxTokens": 128000,
-        "name": "gpt-5.1-codex",
+        "name": "GPT-5.1 Codex",
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -765,9 +765,9 @@
             "output": 14.0
         },
         "id": "gpt-5.2-codex",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
-        "name": "gpt-5.2-codex",
+        "name": "GPT-5.2 Codex",
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -789,7 +789,7 @@
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.175,
-            "cacheWrite": 0.0,
+            "cacheWrite": 1.75,
             "input": 1.75,
             "output": 14.0
         },
@@ -818,7 +818,7 @@
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.25,
-            "cacheWrite": 0.0,
+            "cacheWrite": 2.5,
             "input": 2.5,
             "output": 15.0
         },
@@ -847,7 +847,7 @@
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.5,
-            "cacheWrite": 0.0,
+            "cacheWrite": 5.0,
             "input": 5.0,
             "output": 30.0
         },
@@ -875,13 +875,13 @@
         },
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.02,
-            "cacheWrite": 0.25,
-            "input": 0.2,
-            "output": 1.2
+            "cacheRead": 0.1,
+            "cacheWrite": 1.25,
+            "input": 1.0,
+            "output": 6.0
         },
         "id": "gpt-5.6-luna",
-        "input": ["text", "image", "pdf"],
+        "input": ["text", "image"],
         "maxTokens": 128000,
         "name": "GPT-5.6 Luna",
         "provider": "cloudflare-ai-gateway",
@@ -910,7 +910,7 @@
             "output": 30.0
         },
         "id": "gpt-5.6-sol",
-        "input": ["text", "image", "pdf"],
+        "input": ["text", "image"],
         "maxTokens": 128000,
         "name": "GPT-5.6 Sol",
         "provider": "cloudflare-ai-gateway",
@@ -933,13 +933,13 @@
         },
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.2,
-            "cacheWrite": 2.5,
-            "input": 2.0,
-            "output": 12.0
+            "cacheRead": 0.25,
+            "cacheWrite": 3.125,
+            "input": 2.5,
+            "output": 15.0
         },
         "id": "gpt-5.6-terra",
-        "input": ["text", "image", "pdf"],
+        "input": ["text", "image"],
         "maxTokens": 128000,
         "name": "GPT-5.6 Terra",
         "provider": "cloudflare-ai-gateway",
