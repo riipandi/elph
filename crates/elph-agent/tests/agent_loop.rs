@@ -391,6 +391,7 @@ async fn run_agent_loop_executes_mutated_before_tool_call_args_without_revalidat
                 block: false,
                 reason: None,
                 args: Some(args),
+                terminate: None,
             })
         })
     }));

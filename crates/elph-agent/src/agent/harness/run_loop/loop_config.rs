@@ -110,6 +110,7 @@ where
                             block: true,
                             reason: Some(plan_mode_block_reason(&tool_name)),
                             args: None,
+                            terminate: None,
                         });
                     }
                     let result = hooks.emit_tool_call(&event).await.ok()??;
@@ -117,6 +118,7 @@ where
                         block: result.block,
                         reason: result.reason,
                         args: None,
+                        terminate: None,
                     })
                 })
             }));

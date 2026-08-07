@@ -67,12 +67,16 @@ pub(super) async fn prepare_tool_call(
         }
         if let Some(result) = before_result {
             if result.block {
+                let mut tool_result = AgentToolResult::error(
+                    result
+                        .reason
+                        .unwrap_or_else(|| "Tool execution was blocked".to_string()),
+                );
+                // A blocked call may hint that the batch should terminate; the batch
+                // terminates only when every finalized result sets this (see `should_terminate_tool_batch`).
+                tool_result.terminate = result.terminate;
                 return Preparation::Immediate {
-                    result: AgentToolResult::error(
-                        result
-                            .reason
-                            .unwrap_or_else(|| "Tool execution was blocked".to_string()),
-                    ),
+                    result: tool_result,
                     is_error: true,
                 };
             }

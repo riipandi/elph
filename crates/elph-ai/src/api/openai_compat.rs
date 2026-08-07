@@ -17,6 +17,8 @@ pub struct ResolvedOpenAICompletionsCompat {
     pub cache_control_format: Option<String>,
     pub send_session_affinity_headers: bool,
     pub supports_long_cache_retention: bool,
+    pub supports_finish_reason: bool,
+    pub supports_thinking_token_budget: bool,
 }
 
 pub fn detect_compat(model: &Model) -> ResolvedOpenAICompletionsCompat {
@@ -143,6 +145,10 @@ pub fn detect_compat(model: &Model) -> ResolvedOpenAICompletionsCompat {
             || is_nvidia
             || is_ant_ling
             || is_gateway),
+        // Most providers stream `finish_reason`; a few OpenAI-compat servers omit it.
+        supports_finish_reason: true,
+        // vLLM-style reasoning caps are opt-in via model compat overrides.
+        supports_thinking_token_budget: false,
     }
 }
 
@@ -201,6 +207,12 @@ fn merge_compat(
         supports_long_cache_retention: overrides
             .supports_long_cache_retention
             .unwrap_or(detected.supports_long_cache_retention),
+        supports_finish_reason: overrides
+            .supports_finish_reason
+            .unwrap_or(detected.supports_finish_reason),
+        supports_thinking_token_budget: overrides
+            .supports_thinking_token_budget
+            .unwrap_or(detected.supports_thinking_token_budget),
     }
 }
 

@@ -99,6 +99,7 @@ async fn before_tool_hook(ctx: BeforeToolCallContext) -> Option<BeforeToolCallRe
                 block: true,
                 reason: Some(format!("Access to '{path}' blocked by security policy")),
                 args: None,
+                terminate: None,
             });
         }
         println!("  [before_hook] ALLOWED: {path}");
