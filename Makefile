@@ -4,6 +4,17 @@ ELPH_BIN   := elph
 CARGO      := $$(which cargo)
 CROSS      := $$(which cross)
 UNAME_S    := $(shell uname -s)
+UNAME_M    := $(shell uname -m)
+
+# On Apple Silicon macOS, default to Metal GPU acceleration for local embeddings
+# (codegraph + memory). The `metal` feature only compiles there; other platforms
+# stay on the CPU backend. Override with `make build ELPH_METAL=`.
+ifeq ($(UNAME_S),Darwin)
+  ifeq ($(UNAME_M),arm64)
+    ELPH_METAL_FEATURE ?= --features metal
+  endif
+endif
+ELPH_METAL_FEATURE ?=
 
 _ELPH_PKGS   := elph elph-agent elph-ai
 ELPH_VERSION  := $(shell grep '^version' crates/coding-agent/Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')
@@ -77,7 +88,7 @@ build: build-elph ## Build elph binary (debug default; RELEASE=1 or -- --release
 build-elph: ## Build elph binary (debug default; RELEASE=1 or -- --release)
 	@echo "Building $(ELPH_BIN) v$(ELPH_VERSION) ($(BUILD_HASH)) [$(BUILD_PROFILE)] ($$RUSTC_WRAPPER)"
 	@_start=$$(python3 -c "import time; print(int(time.time()*1000))"); \
-	$(CARGO) build $(CARGO_BUILD_FLAGS) --bin $(ELPH_BIN) 2>&1; \
+	$(CARGO) build $(CARGO_BUILD_FLAGS) $(ELPH_METAL_FEATURE) --bin $(ELPH_BIN) 2>&1; \
 	_end=$$(python3 -c "import time; print(int(time.time()*1000))"); \
 	_elapsed=$$(( _end - _start )); \
 	echo ""; \
