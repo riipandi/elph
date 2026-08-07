@@ -221,7 +221,7 @@ impl Indexer<'_> {
             // Improved estimation: account for chunk count and actual GPU/CPU speed
             // Base: GPU ~0.08s per chunk, CPU ~0.25s per chunk (measured from typical runs)
             let chunks_estimate = files_to_index_count as f64 * 2.5; // ~2.5 chunks per file average
-            
+
             let seconds_per_chunk = if self
                 .gpu_acceleration
                 .as_ref()
@@ -231,10 +231,10 @@ impl Indexer<'_> {
             } else {
                 0.25 // CPU: slower, ~0.25s per chunk
             };
-            
+
             // Add walk time overhead (usually small but non-zero)
             let walk_overhead = stats.walk_ms as f64 / 1000.0 * 0.1; // 10% of walk time as overhead
-            
+
             let total_estimate = (chunks_estimate * seconds_per_chunk) + walk_overhead;
             Some(total_estimate.ceil() as u64)
         } else {
@@ -431,10 +431,16 @@ impl Indexer<'_> {
         // Delete existing data for this path first (for updates)
         let path = processed.rel.as_str();
         let file_node = file_node_id(path);
-        
-        conn.execute("DELETE FROM cg_chunks WHERE path = ?", params![path]).await?;
-        conn.execute("DELETE FROM cg_nodes WHERE path = ?", params![path]).await?;
-        conn.execute("DELETE FROM cg_edges WHERE src = ? OR dst = ?", params![file_node.as_str(), file_node.as_str()]).await?;
+
+        conn.execute("DELETE FROM cg_chunks WHERE path = ?", params![path])
+            .await?;
+        conn.execute("DELETE FROM cg_nodes WHERE path = ?", params![path])
+            .await?;
+        conn.execute(
+            "DELETE FROM cg_edges WHERE src = ? OR dst = ?",
+            params![file_node.as_str(), file_node.as_str()],
+        )
+        .await?;
 
         // Insert file record (use INSERT OR REPLACE to handle updates)
         let now = now_secs();

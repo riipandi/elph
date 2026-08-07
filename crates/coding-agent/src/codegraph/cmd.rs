@@ -9,6 +9,8 @@ use crate::cli::CodegraphCommands;
 use crate::cli::style::{self, CliStyle, S_ACCENT, S_BODY, S_HEADER, S_MUTED};
 use crate::platform::Paths;
 
+use std::fmt::Write;
+
 pub fn run(paths: Paths, cmd: &CodegraphCommands) -> Result<()> {
     let sty = CliStyle::auto();
 
@@ -25,32 +27,92 @@ pub fn run(paths: Paths, cmd: &CodegraphCommands) -> Result<()> {
             let store = open_store(&paths, false)?;
             let st = try_block_on(store.status())??;
             let mut out = String::new();
-            style::section(&mut out, sty, "Codegraph index");
-            style::kv(&mut out, sty, "Files", st.file_count);
-            style::kv(&mut out, sty, "Chunks", st.chunk_count);
-            style::kv(&mut out, sty, "Nodes", st.node_count);
-            style::kv(&mut out, sty, "Edges", st.edge_count);
-            if let Some(r) = st.merkle_root {
-                style::kv(&mut out, sty, "Merkle root", &r[..16.min(r.len())]);
-            }
-            if let Some(t) = st.last_indexed_at {
-                style::kv(&mut out, sty, "Last indexed", t);
-            }
-            if let Some(d) = st.root_dir {
-                style::kv(&mut out, sty, "Root", d);
-            }
-            if st.file_count == 0 {
-                use std::fmt::Write;
+
+            // Header
+            style::section(&mut out, sty, "Codegraph status");
+
+            let _ = writeln!(out);
+
+            // Key metrics in compact format
+            let _ = writeln!(
+                out,
+                "  {} {}  ({} chunks, {} nodes, {} edges)",
+                sty.paint(S_ACCENT, format!("{}", st.file_count)),
+                if st.file_count == 1 { "file" } else { "files" },
+                st.chunk_count,
+                st.node_count,
+                st.edge_count
+            );
+
+            // Only show additional info if index is not empty
+            if st.file_count > 0 {
+                // Last indexed time
+                if let Some(t) = st.last_indexed_at {
+                    let time_str = if t > 0 {
+                        // Format as relative time if recent
+                        let now = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs() as i64;
+                        let diff = now - t;
+                        if diff < 60 {
+                            format!("{}s ago", diff)
+                        } else if diff < 3600 {
+                            format!("{}m ago", diff / 60)
+                        } else if diff < 86400 {
+                            format!("{}h ago", diff / 3600)
+                        } else {
+                            format!("{}d ago", diff / 86400)
+                        }
+                    } else {
+                        "never".to_string()
+                    };
+                    let _ = writeln!(out, "  Last indexed: {}", sty.paint(S_BODY, time_str));
+                }
+
+                // Root directory
+                if let Some(d) = st.root_dir {
+                    // Show abbreviated path for brevity
+                    let display_path = if d.len() > 35 {
+                        format!("…{}", &d[d.len() - 33..])
+                    } else {
+                        d.clone()
+                    };
+                    let _ = writeln!(out, "  Root: {}", sty.paint(S_MUTED, display_path));
+                }
+            } else {
+                // Empty state hint
                 let _ = writeln!(out);
                 style::tip(&mut out, sty, "Index empty — run: elph codegraph build");
             }
+
             print!("{out}");
         }
-        CodegraphCommands::Purge => {
+        CodegraphCommands::Purge { force } => {
+            if !force {
+                // Ask for confirmation
+                use std::io::{self, Write};
+                print!("This will delete the entire codegraph index. Continue? [y/N] ");
+                io::stdout().flush().unwrap();
+
+                let mut input = String::new();
+                io::stdin().read_line(&mut input).unwrap();
+
+                let response = input.trim().to_lowercase();
+                if response != "y" && response != "yes" {
+                    let mut out = String::new();
+                    style::info(&mut out, sty, "Purge cancelled.");
+                    print!("{out}");
+                    return Ok(());
+                }
+            }
+
             let store = open_store(&paths, false)?;
             try_block_on(store.purge())??;
             let mut out = String::new();
             style::success(&mut out, sty, "Codegraph index purged.");
+            let _ = writeln!(out);
+            style::tip(&mut out, sty, "Run: elph codegraph build to recreate the index");
             print!("{out}");
         }
         CodegraphCommands::Search { query, limit } => {
@@ -65,44 +127,44 @@ pub fn run(paths: Paths, cmd: &CodegraphCommands) -> Result<()> {
             };
             let hits = try_block_on(store.search(opts))??;
             let mut out = String::new();
+
             if hits.is_empty() {
                 style::info(&mut out, sty, sty.paint(S_MUTED, "No matches."));
             } else {
-                style::section(
-                    &mut out,
-                    sty,
-                    &format!("Search · {} result(s) for \"{}\"", hits.len(), query.join(" ")),
-                );
-                use std::fmt::Write;
+                style::section(&mut out, sty, &format!("{} result(s) for \"{}\"", hits.len(), query.join(" ")));
+
                 let _ = writeln!(out);
+
                 for (i, h) in hits.iter().enumerate() {
                     let name = h.name.as_deref().unwrap_or("-");
+                    let score_pct = h.score * 100.0;
+                    let source_label = match h.source.as_str() {
+                        "both" => "both",
+                        "fts" => "keyword",
+                        _ => "vector",
+                    };
+
+                    // Compact result line
                     let _ = writeln!(
                         out,
-                        "{}  {}  {}:{}-{}  {}",
+                        "{}  {}  {}:{}-{}  {}  {}",
                         sty.paint(S_ACCENT, format!("{}.", i + 1)),
                         sty.paint(S_BODY, &h.path),
                         sty.paint(S_MUTED, name),
                         sty.paint(S_MUTED, h.start_line),
                         sty.paint(S_MUTED, h.end_line),
                         sty.paint(S_HEADER, &h.kind),
+                        sty.paint(S_MUTED, format!("{:.0}% ({})", score_pct, source_label)),
                     );
-                    let score_pct = h.score * 100.0;
-                    let source_label = match h.source.as_str() {
-                        "both" => "keyword + vector",
-                        "fts" => "keyword",
-                        _ => "vector",
-                    };
-                    let _ = writeln!(
-                        out,
-                        "   {}  match {:.0}%  ({})",
-                        sty.paint(S_MUTED, "·"),
-                        score_pct,
-                        sty.paint(S_MUTED, source_label),
-                    );
-                    for line in h.snippet.lines().take(4) {
-                        let _ = writeln!(out, "   {}", sty.paint(S_MUTED, line));
+
+                    // Snippet (truncated)
+                    for line in h.snippet.lines().take(2) {
+                        let line = line.trim();
+                        if !line.is_empty() {
+                            let _ = writeln!(out, "   {}", sty.paint(S_MUTED, line));
+                        }
                     }
+
                     if i + 1 < hits.len() {
                         let _ = writeln!(out);
                     }
@@ -114,12 +176,14 @@ pub fn run(paths: Paths, cmd: &CodegraphCommands) -> Result<()> {
             let store = open_store(&paths, false)?;
             let nodes = try_block_on(store.impact(target, *depth, *limit))??;
             let mut out = String::new();
+
             if nodes.is_empty() {
                 style::info(&mut out, sty, sty.paint(S_MUTED, format!("No impact nodes for \"{target}\".")));
             } else {
                 style::section(&mut out, sty, &format!("Impact · {} node(s) for \"{target}\"", nodes.len()));
-                use std::fmt::Write;
+
                 let _ = writeln!(out);
+
                 for n in &nodes {
                     let name = n.name.as_deref().unwrap_or("-");
                     let _ = writeln!(
@@ -172,14 +236,14 @@ fn run_scan_with_spinner(paths: &Paths, full_build: bool) -> Result<ScanStats> {
                 } else {
                     format!("Indexing…  ({} of {} files)", ev.files_indexed, ev.files_walked)
                 };
-                
+
                 if let (Some(total), Some(estimate)) = (ev.files_to_index, ev.estimated_seconds) {
                     let progress_pct = if total > 0 {
                         ((ev.files_indexed as f64 / total as f64) * 100.0) as u32
                     } else {
                         0
                     };
-                    
+
                     let time_str = if estimate < 60 {
                         format!("{}s", estimate)
                     } else if estimate < 3600 {
@@ -187,7 +251,7 @@ fn run_scan_with_spinner(paths: &Paths, full_build: bool) -> Result<ScanStats> {
                     } else {
                         format!("{}h {}m", estimate / 3600, (estimate % 3600) / 60)
                     };
-                    
+
                     format!("{} · {}% · ~{} remaining", base, progress_pct, time_str)
                 } else {
                     base
@@ -211,14 +275,14 @@ fn run_scan_with_spinner(paths: &Paths, full_build: bool) -> Result<ScanStats> {
 
 fn print_scan(sty: &CliStyle, label: &str, stats: &ScanStats) {
     let mut out = String::new();
-    
+
     // Success header with context
     let action = if label == "build" { "built" } else { "updated" };
     style::success(&mut out, *sty, &format!("Codegraph {action} successfully"));
-    
+
     use std::fmt::Write;
     let _ = writeln!(out);
-    
+
     // Key metrics in a compact format
     let files = stats.files_indexed;
     let chunks = stats.chunks_indexed;
@@ -229,7 +293,7 @@ fn print_scan(sty: &CliStyle, label: &str, stats: &ScanStats) {
         if files == 1 { "file" } else { "files" },
         chunks
     );
-    
+
     // GPU status - prominent and clear
     let gpu_status = match stats.gpu_acceleration.as_deref() {
         Some(s) if s.contains("metal") => format!("{} Metal active", sty.paint(S_ACCENT, "✓")),
@@ -239,7 +303,7 @@ fn print_scan(sty: &CliStyle, label: &str, stats: &ScanStats) {
         None => format!("{} CPU only", sty.paint(S_MUTED, "○")),
     };
     let _ = writeln!(out, "  GPU: {}", gpu_status);
-    
+
     // Total time
     let total_ms = stats.walk_ms + stats.reindex_ms + stats.finalize_ms;
     let time_str = if total_ms < 1000 {
@@ -248,12 +312,12 @@ fn print_scan(sty: &CliStyle, label: &str, stats: &ScanStats) {
         format!("{:.1}s", total_ms as f64 / 1000.0)
     };
     let _ = writeln!(out, "  Time: {}", sty.paint(S_BODY, time_str));
-    
+
     // Additional context for no-op updates
     if stats.files_indexed == 0 && stats.files_unchanged > 0 {
         let _ = writeln!(out);
         style::info(&mut out, *sty, sty.paint(S_MUTED, "No changes detected"));
     }
-    
+
     print!("{out}");
 }

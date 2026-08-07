@@ -46,7 +46,11 @@ pub enum CodegraphCommands {
         limit: u32,
     },
     /// Clear the codegraph index tables
-    Purge,
+    Purge {
+        /// Skip confirmation prompt
+        #[arg(long)]
+        force: bool,
+    },
 }
 
 pub fn handle(args: &CodegraphArgs) -> ExitCode {
