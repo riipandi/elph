@@ -74,6 +74,9 @@ No multi-repo, watch, serve, eval, postprocess, or visualize subcommands in v1.
 | ------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `codegraph.enabled`       | `false`         | Register agent tools for the coding session                                                                                                                        |
 | `codegraph.toolTimeoutMs` | `15000`         | Per-call timeout (ms) for agent `code_*` tools; `0` disables. On timeout the tool returns an error and the agent falls back to `grep` / `read_file` / `shell_exec` |
+| `codegraph.maxDbConnections` | `4`         | Max concurrent DB connections for the index run. A value of `0` is treated as the default (`4`) — `0` would otherwise create an empty connection-pool semaphore and deadlock `build`/`update` at "Building codegraph index…". |
+| `codegraph.maxChunkLines` | `120`           | Max source lines per chunk before splitting. `0` falls back to the default (`120`).                                                                                |
+| `codegraph.maxFileBytes`  | `524288` (512KB) | Skip files larger than this. `0` falls back to the default (`512KB`); a literal `0` would skip every file and produce an empty index.                               |
 | `models.embed.model`      | `AllMiniLML6V2` | Local embedder (same as floppy memory)                                                                                                                             |
 | `models.embed.quantized`  | `true`          | Prefer quantized ONNX weights                                                                                                                                      |
 
