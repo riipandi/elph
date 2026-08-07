@@ -79,6 +79,21 @@ impl AgentControl {
         self.registry.list(path_prefix).await
     }
 
+    /// Reconcile registry output state from the harness after a completed turn.
+    async fn refresh_record_output(&self, agent_id: &str) {
+        let Some(record) = self.registry.get(agent_id).await else {
+            return;
+        };
+        let output = record.harness.output().await;
+        let mut agents = self.registry.agents_mut().await;
+        if let Some(record) = agents.get_mut(agent_id) {
+            let mut info = record.info.clone();
+            info.output = output;
+            info.status = record.info.status;
+            record.info = info;
+        }
+    }
+
     pub async fn spawn_agent(&self, task_name: impl Into<String>, message: Option<String>) -> Result<String, String> {
         if self.depth >= self.limits.max_depth {
             return Err(format!("Subagent depth limit ({}) reached", self.limits.max_depth));
@@ -176,6 +191,11 @@ impl AgentControl {
             .map_err(|e| e.to_string())
     }
 
+    /// Run a turn on the subagent and return the final assistant text (or a
+    /// readable status when the agent produced no final message).
+    ///
+    /// The turn runs in a background task; callers that need the result should
+    /// use [`Self::wait_agent_for_output`] to block on completion.
     pub async fn followup_task(&self, agent_id: &str, message: String) -> Result<(), String> {
         let record = self
             .registry
@@ -201,6 +221,9 @@ impl AgentControl {
                 .await;
         }
 
+        // Track the dispatched turn synchronously so `wait_agent` callers always
+        // observe at least one in-flight turn (no start-of-turn race).
+        harness.turn_started();
         tokio::spawn(async move {
             let result = harness.followup(message).await;
             let status = if result.is_ok() {
@@ -212,9 +235,17 @@ impl AgentControl {
             if let Some(graph) = harness.harness().agent_graph() {
                 let _ = graph.close_edge(&info.parent_session_id, &info.session_id).await;
             }
+            harness.turn_finished();
         });
 
         Ok(())
+    }
+
+    /// Block until the subagent's current turn completes and return its final
+    /// assistant text. Falls back to a readable placeholder when the agent
+    /// produced no output (so tool results always carry observable content).
+    pub async fn wait_agent_for_output(&self, agent_id: &str) -> Result<String, String> {
+        self.wait_agent_cancellable_for_output(agent_id, None).await
     }
 
     pub async fn wait_agent(&self, agent_id: &str) -> Result<(), String> {
@@ -226,31 +257,62 @@ impl AgentControl {
         agent_id: &str,
         signal: Option<&CancellationToken>,
     ) -> Result<(), String> {
+        let _ = self.wait_agent_cancellable_for_output(agent_id, signal).await?;
+        Ok(())
+    }
+
+    pub async fn wait_agent_cancellable_for_output(
+        &self,
+        agent_id: &str,
+        signal: Option<&CancellationToken>,
+    ) -> Result<String, String> {
         let record = self
             .registry
             .get(agent_id)
             .await
             .ok_or_else(|| format!("Unknown agent: {agent_id}"))?;
 
+        // Wait for any dispatched-but-not-yet-started turn to begin and finish.
         let result = if let Some(token) = signal {
             tokio::select! {
-                result = record.harness.wait_idle() => result,
+                () = record.harness.wait_for_turn() => { record.harness.wait_idle().await }
                 () = token.cancelled() => {
                     let _ = record.harness.harness().cancel_active_run().await;
                     Err("Operation aborted".to_string())
                 }
             }
         } else {
+            record.harness.wait_for_turn().await;
             record.harness.wait_idle().await
         };
 
-        let status = if result.is_ok() {
-            SubagentStatus::Idle
-        } else {
-            SubagentStatus::Error
+        let upstream_result = match result {
+            Ok(()) => {
+                self.registry.set_status(agent_id, SubagentStatus::Idle).await;
+                Ok(())
+            }
+            Err(error) => {
+                self.registry.set_status(agent_id, SubagentStatus::Error).await;
+                Err(error)
+            }
         };
-        self.registry.set_status(agent_id, status).await;
-        result
+        let output_text = record.harness.last_output().await;
+        self.refresh_record_output(agent_id).await;
+
+        upstream_result?;
+        // Prefer the exact final assistant text; fall back to the registry summary
+        // (never empty — it carries the persistent log path when no text exists).
+        let output = self
+            .registry
+            .get(agent_id)
+            .await
+            .map(|record| record.info.output.summary())
+            .unwrap_or_default();
+        if output_text.trim().is_empty() {
+            Ok(output)
+        } else {
+            Ok(output_text)
+        }
     }
 
     /// Abort every subagent that is still pending or running.

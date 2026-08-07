@@ -93,6 +93,12 @@ impl CodingAgentSession {
 
                 let mut buf = output_buf.lock().unwrap();
                 let entry = buf.entry(info.id.clone()).or_insert_with(|| (String::new(), 0));
+                // Persistent per-subagent events log (best-effort; failures are ignored).
+                let persist_event_dir = info
+                    .output
+                    .output_path
+                    .as_deref()
+                    .and_then(|path| std::path::Path::new(path).parent().map(std::path::Path::to_path_buf));
 
                 match event {
                     AgentEvent::AgentStart => {
@@ -159,6 +165,9 @@ impl CodingAgentSession {
                             _ => return,
                         };
                         entry.0.push_str(delta);
+                        if let Some(dir) = &persist_event_dir {
+                            elph_agent::subagent_persist_event(dir, "text_delta", delta);
+                        }
                         entry.1 += 1;
                         if entry.1 >= BATCH_INTERVAL {
                             let _ = ui_tx.send(AgentUiEvent::SubagentOutput {

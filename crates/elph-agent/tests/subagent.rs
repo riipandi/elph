@@ -65,6 +65,7 @@ async fn spawn_and_list_subagents_with_turso_sessions() {
         prompt_encoding: None,
         database: None,
         agent_graph: Some(Arc::new(AgentGraphStore::new(&graph_db))),
+        outputs_root: Some(temp.path().join("outputs")),
     };
 
     let registry = Arc::new(elph_agent::AgentRegistry::new());
@@ -109,6 +110,17 @@ async fn spawn_and_list_subagents_with_turso_sessions() {
         agents[0].status,
         SubagentStatus::Done | SubagentStatus::Idle | SubagentStatus::Running
     ));
+
+    // Output summary is populated with the final assistant text (not "no output").
+    assert_eq!(agents[0].output.text, "Review complete.");
+    assert!(agents[0].output.turns >= 1);
+
+    // Persistent artifacts are written under outputs_root/subagents/<agent_id>/.
+    let agent_dir = temp.path().join("outputs").join("subagents").join(&agents[0].id);
+    assert!(agent_dir.join("output.md").exists(), "output.md missing");
+    let output_md = std::fs::read_to_string(agent_dir.join("output.md")).expect("read output.md");
+    assert_eq!(output_md.trim(), "Review complete.");
+    assert!(agent_dir.join("meta.json").exists(), "meta.json missing");
 
     // Child session is durable in the shared Turso DB (not SessionDir).
     let child_session_id = agents[0].session_id.clone();

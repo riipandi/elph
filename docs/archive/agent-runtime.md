@@ -166,7 +166,10 @@ Child agents managed by `AgentControl` on the harness (Codex thread style). Desi
 - `max_depth = 3`, `max_concurrent = 4`; children may spawn further children when depth allows.
 - Multi-agent tools: `spawn_agent`, `send_message`, `followup_task`, `wait_agent`, `list_agents`.
 - Graph edges persisted in `metadata.db` (`agent_spawn_edges`).
-- Tool results return status only (`Spawned subagent <id>`, `<id> is idle`): the child's final answer text is streamed to the host UI and stored in the child session, never returned in the parent's tool results. The parent verifies child work through repository state (re-read changed files, `git diff`, tests).
+- `list_agents` returns `SubagentInfo` including the last completed output summary (`output: {text, output_path, turns, ...}`) instead of status-only rows.
+- `wait_agent` now returns the subagent's final assistant text (or a readable no-output placeholder) as its tool result, so the parent model always sees observable output after a wait.
+- Every subagent writes a persistent, traceable artifact set under the session data root — `~/.local/share/elph/sessions/<SESSION_ID>/subagents/<agent_id>/` (or `$ELPH_DATA_DIR`): `output.md` (final text), `events.jsonl` (streamed deltas), `meta.json` (spawn metadata). Best-effort writes never block the agent loop.
+- The parent still verifies child work through repository state (re-read changed files, `git diff`, tests) — the returned text is a summary, not proof of effect.
 
 TUI shows `agent_id` + `agent_path` in subagent status lines.
 

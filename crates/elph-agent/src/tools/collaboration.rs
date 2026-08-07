@@ -94,7 +94,7 @@ fn wait_agent_tool(control: Arc<AgentControl>) -> AgentTool {
             name: "wait_agent".into(),
             constrained_sampling: None,
 
-            description: "Wait until a subagent finishes its current turn.".into(),
+            description: "Wait until a subagent finishes its current turn and return its final output text (or a status line when none was produced).".into(),
             parameters: json!({
                 "type": "object",
                 "properties": {
@@ -183,9 +183,9 @@ fn wait_agent_exec(
     Box::pin(async move {
         let agent_id = required_str(&args, "agent_id")?;
         control
-            .wait_agent_cancellable(&agent_id, signal.as_ref())
+            .wait_agent_cancellable_for_output(&agent_id, signal.as_ref())
             .await
-            .map(|()| AgentToolResult::text(format!("{agent_id} is idle")))
+            .map(AgentToolResult::text)
             .map_err(|e| anyhow::anyhow!(e))
     })
 }
@@ -195,6 +195,8 @@ fn list_agents_exec(
 ) -> Pin<Box<dyn Future<Output = anyhow::Result<AgentToolResult>> + Send>> {
     Box::pin(async move {
         let agents = control.list_agents(None).await;
+        // Include a readable output summary per agent so the result carries
+        // traceable content even before follow-ups.
         let body = serde_json::to_string_pretty(&agents).unwrap_or_else(|_| "[]".into());
         Ok(AgentToolResult::text(body))
     })

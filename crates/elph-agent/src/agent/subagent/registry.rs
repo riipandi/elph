@@ -91,6 +91,11 @@ impl AgentRegistry {
         }
     }
 
+    /// Access the raw agent map for coherent multi-field updates.
+    pub(crate) async fn agents_mut(&self) -> tokio::sync::MutexGuard<'_, HashMap<String, SubagentRecord>> {
+        self.agents.lock().await
+    }
+
     pub async fn count_active(&self) -> usize {
         self.running_records().await.len()
     }

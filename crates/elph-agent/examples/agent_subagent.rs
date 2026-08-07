@@ -39,6 +39,7 @@ fn main() {
         depth: 1,
         status: SubagentStatus::Running,
         parent_session_id: "session-root".into(),
+        output: Default::default(),
     };
     println!("  id:                {}", info.id);
     println!("  session_id:        {}", info.session_id);
@@ -47,6 +48,7 @@ fn main() {
     println!("  depth:             {}", info.depth);
     println!("  status:            {:?}", info.status);
     println!("  parent_session_id: {}", info.parent_session_id);
+    println!("  output_text:       {:?}", info.output.text);
 
     // ── 4. SubagentLimits ──
     println!("\n=== SubagentLimits ===");

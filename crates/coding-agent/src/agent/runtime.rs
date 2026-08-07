@@ -153,6 +153,8 @@ pub async fn create_coding_session_with_events(
         prompt_encoding: options.settings.prompt_encoding.clone(),
         agent_graph: Some(agent_graph),
         database: Some(database.clone()),
+        // Persistent per-subagent artifacts: APP_DATA/sessions/<SESSION_ID>/subagents/<agent_id>/
+        outputs_root: Some(session_manager.artifact_dir_for(&session_id)),
     };
 
     // Agent mode is per-session; default build unless the host overrides (e.g. --brave).
