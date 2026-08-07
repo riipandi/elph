@@ -130,3 +130,81 @@ async fn spawn_and_list_subagents_with_turso_sessions() {
         .expect("open child session from metadata.db");
     assert_eq!(opened.metadata().await.id, child_session_id);
 }
+
+/// Rapid `followup_task` + `wait_agent` interleaving must never hang or return
+/// before the dispatched turn starts (the historical "no output" flake).
+#[tokio::test(flavor = "multi_thread")]
+async fn wait_immediately_after_followup_never_races_turn_start() {
+    let temp = tempfile::TempDir::new().expect("tempdir");
+    let env = Arc::new(LocalExecutionEnv::new(temp.path()));
+    let (faux, models) = common::new_faux();
+    // One response per dispatched turn (8 followups + margin). The faux queue is
+    // consumed per stream call, so enqueue a batch of identical Static steps.
+    let queued = std::iter::repeat_n(
+        faux_assistant_message(vec![faux_text("Turn complete.")], Some(StopReason::Stop)),
+        12,
+    )
+    .map(FauxResponseStep::Static)
+    .collect::<Vec<_>>();
+    faux.append_responses(queued);
+    let stream_fn = common::faux_stream_fn(&faux);
+    let tools = create_search_tools(env.clone());
+
+    let graph_db = temp.path().join("metadata.db");
+    ensure_database(&graph_db, PLATFORM_LIKE)
+        .await
+        .expect("platform migrate");
+
+    let bootstrap = SubagentBootstrap {
+        cwd: temp.path().to_string_lossy().to_string(),
+        store_db_path: graph_db.to_string_lossy().to_string(),
+        resources: AgentHarnessResources::default(),
+        stream_options: AgentHarnessStreamOptions::default(),
+        thinking_level: Default::default(),
+        prompt_encoding: None,
+        database: None,
+        agent_graph: Some(Arc::new(AgentGraphStore::new(&graph_db))),
+        outputs_root: Some(temp.path().join("outputs")),
+    };
+
+    let registry = Arc::new(elph_agent::AgentRegistry::new());
+    let parent_path = elph_agent::generate_agent_name();
+    let control = AgentControl::new(
+        SubagentSpawnConfig {
+            env,
+            model: faux.provider.get_models()[0].clone(),
+            system_prompt: "subagent".into(),
+            base_tools: tools,
+            stream_fn,
+            models,
+            root_session_id: "parent_sess".into(),
+            bootstrap: Some(bootstrap),
+        },
+        SubagentLimits::default(),
+        0,
+        registry,
+        parent_path.clone(),
+    );
+
+    let id = control.spawn_agent("race", None).await.expect("spawn");
+
+    // Interleave a bare wait right after a followup dispatch — the followup
+    // must be observed as in-flight even though its task may not have started.
+    let mut summaries = Vec::new();
+    for _ in 0..8 {
+        control
+            .followup_task(&id, "Do work".into())
+            .await
+            .expect("followup dispatch");
+        let summary = control.wait_agent_for_output(&id).await.expect("wait");
+        summaries.push(summary);
+    }
+
+    // Every wait must have returned non-empty output (never a hang, never a
+    // "no output captured" placeholder from a missed run).
+    let agents = control.list_agents(None).await;
+    assert_eq!(agents.len(), 1);
+    assert_eq!(agents[0].output.text, "Turn complete.");
+    assert!(agents[0].output.turns >= 8);
+    assert!(!summaries.iter().any(|s| s.contains("no output")));
+}

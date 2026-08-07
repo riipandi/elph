@@ -161,11 +161,18 @@ impl AgentControl {
         };
 
         let id = harness.info().id.clone();
+        let harness_for_forwarding = harness.clone();
         let record = SubagentRecord {
             info: harness.info().clone(),
             harness,
         };
         self.registry.insert(record).await;
+
+        // Subscribe the event forwarder exactly once at spawn time — doing this
+        // per-followup would accumulate duplicate subscribers over a long session.
+        if let Some(forwarder) = self.event_forwarder.lock().await.clone() {
+            harness_for_forwarding.forward_events(forwarder).await;
+        }
 
         if let Some(text) = message {
             self.followup_task(&id, text).await?;
@@ -208,23 +215,14 @@ impl AgentControl {
         let harness = record.harness.clone();
         let id = agent_id.to_string();
         let registry = self.registry.clone();
-        let forwarder = self.event_forwarder.lock().await.clone();
         let info = record.info.clone();
 
-        if let Some(forwarder) = forwarder {
-            let info = info.clone();
-            harness
-                .harness()
-                .subscribe_agent_events(Arc::new(move |event| {
-                    forwarder(event, &info);
-                }))
-                .await;
-        }
-
         // Track the dispatched turn synchronously so `wait_agent` callers always
-        // observe at least one in-flight turn (no start-of-turn race).
-        harness.turn_started();
+        // observe at least one in-flight turn (no start-of-turn race). The guard
+        // releases the slot even if the task panics or is cancelled.
+        let guard = harness.turn_guard();
         tokio::spawn(async move {
+            let _guard = guard;
             let result = harness.followup(message).await;
             let status = if result.is_ok() {
                 SubagentStatus::Done
@@ -235,7 +233,6 @@ impl AgentControl {
             if let Some(graph) = harness.harness().agent_graph() {
                 let _ = graph.close_edge(&info.parent_session_id, &info.session_id).await;
             }
-            harness.turn_finished();
         });
 
         Ok(())

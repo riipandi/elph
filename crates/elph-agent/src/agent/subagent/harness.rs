@@ -65,8 +65,16 @@ impl SubagentHarness {
 
     /// Mark the currently dispatched turn as finished and wake waiters.
     pub fn turn_finished(&self) {
-        if self.inflight.fetch_sub(1, std::sync::atomic::Ordering::SeqCst) > 0 {
-            self.turn_notify.notify_waiters();
+        self.inflight.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+        self.turn_notify.notify_waiters();
+    }
+
+    /// RAII guard that releases the in-flight slot on drop. Guarantees waiters
+    /// are never stuck even if the background turn task panics or is dropped.
+    pub fn turn_guard(self: &Arc<Self>) -> TurnGuard {
+        self.turn_started();
+        TurnGuard {
+            harness: Arc::clone(self),
         }
     }
 
@@ -79,6 +87,17 @@ impl SubagentHarness {
             }
             self.turn_notify.notified().await;
         }
+    }
+
+    /// Subscribe a forwarder to this subagent's harness events. Must be called
+    /// once after spawn — repeated calls accumulate duplicate subscribers.
+    pub async fn forward_events(&self, forwarder: crate::agent::subagent::SubagentEventForwarder) {
+        let info = self.info().clone();
+        self.harness
+            .subscribe_agent_events(Arc::new(move |event| {
+                forwarder(event, &info);
+            }))
+            .await;
     }
 
     pub async fn followup(&self, message: String) -> Result<(), String> {
@@ -225,6 +244,20 @@ pub async fn spawn_subagent_harness(
         inflight: std::sync::atomic::AtomicUsize::new(0),
         turn_notify: tokio::sync::Notify::new(),
     }))
+}
+
+/// Releases an in-flight subagent turn slot when dropped.
+///
+/// The background turn task holds a guard for its whole lifetime, so waiters
+/// are released even when the task panics, is cancelled, or is dropped early.
+pub struct TurnGuard {
+    harness: Arc<SubagentHarness>,
+}
+
+impl Drop for TurnGuard {
+    fn drop(&mut self) {
+        self.harness.turn_finished();
+    }
 }
 
 fn now_ms() -> i64 {
