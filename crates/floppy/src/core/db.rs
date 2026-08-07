@@ -263,6 +263,10 @@ pub struct ConnectionPool {
 impl ConnectionPool {
     /// Create a new connection pool around an open [`Database`].
     pub fn new(db: Database, max_connections: usize) -> Self {
+        // Guard against a 0-permit semaphore: `Semaphore::new(0)` makes every
+        // `acquire()` block forever (a silent deadlock). At least one permit is
+        // required for the pool to make progress.
+        let max_connections = max_connections.max(1);
         Self {
             db: Arc::new(db),
             semaphore: Arc::new(Semaphore::new(max_connections)),
@@ -293,6 +297,26 @@ impl ConnectionPool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn connection_pool_never_creates_zero_permit_semaphore() {
+        // Regression: a 0 max-connection count previously produced
+        // `Semaphore::new(0)`, which makes every `acquire()` block forever
+        // (the "stuck at Building codegraph index" deadlock when a user sets
+        // `codegraph.maxDbConnections: 0`). The pool must raise it to at least
+        // one permit so it can make progress.
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let db_path = tmp.path().join("pool.db").to_string_lossy().to_string();
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        let db = rt.block_on(open_local_db(&db_path)).expect("open");
+
+        let pool = ConnectionPool::new(db, 0);
+        assert_eq!(pool.max_connections(), 1);
+
+        // acquire() must return promptly rather than deadlocking.
+        let conn = rt.block_on(pool.acquire());
+        assert!(conn.is_ok(), "acquire() blocked forever on a 0-count pool");
+    }
 
     #[test]
     fn database_in_use_reflects_recent_wal() {

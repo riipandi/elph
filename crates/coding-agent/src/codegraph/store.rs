@@ -87,7 +87,7 @@ pub fn open_store_with_db(paths: &Paths, needs_embed: bool, database: Option<Arc
 
     // Clamp user-tunable batch settings so a hand-edited 0 can't hang the index
     // run or cause a divide-by-zero. Defaults match floppy's CodegraphConfig::new.
-    let clamp = |v: usize, default: usize, name: &str| -> usize {
+    let clamp_usize = |v: usize, default: usize, name: &str| -> usize {
         if v == 0 {
             log::warn!("codegraph.{name} is 0; falling back to default {default}");
             default
@@ -95,18 +95,43 @@ pub fn open_store_with_db(paths: &Paths, needs_embed: bool, database: Option<Arc
             v
         }
     };
-    let embed_batch_size = clamp(settings.codegraph.embed_batch_size, 64, "embedBatchSize");
-    let db_commit_batch_files = clamp(settings.codegraph.db_commit_batch_files, 200, "dbCommitBatchFiles");
-    let embed_concurrency = clamp(settings.codegraph.embed_concurrency, 1, "embedConcurrency");
+    let clamp_u32 = |v: u32, default: u32, name: &str| -> u32 {
+        if v == 0 {
+            log::warn!("codegraph.{name} is 0; falling back to default {default}");
+            default
+        } else {
+            v
+        }
+    };
+    let clamp_u64 = |v: u64, default: u64, name: &str| -> u64 {
+        if v == 0 {
+            log::warn!("codegraph.{name} is 0; falling back to default {default}");
+            default
+        } else {
+            v
+        }
+    };
+    // `maxDbConnections: 0` is the dangerous one: it flows into
+    // `ConnectionPool::new(db, 0)` → `Semaphore::new(0)`, and `acquire()` then
+    // blocks forever (the "stuck at Building codegraph index" report). The other
+    // two zeros silently yield an empty/broken index (0-byte cap skips every
+    // file; 0 chunk lines splits nothing). Clamp all of them to floppy's
+    // `CodegraphConfig::new` defaults so a hand-edited 0 can't hang or no-op.
+    let max_db_connections = clamp_usize(settings.codegraph.max_db_connections, 4, "maxDbConnections");
+    let max_chunk_lines = clamp_u32(settings.codegraph.max_chunk_lines, 120, "maxChunkLines");
+    let max_file_bytes = clamp_u64(settings.codegraph.max_file_bytes, 512 * 1024, "maxFileBytes");
+    let embed_batch_size = clamp_usize(settings.codegraph.embed_batch_size, 64, "embedBatchSize");
+    let db_commit_batch_files = clamp_usize(settings.codegraph.db_commit_batch_files, 200, "dbCommitBatchFiles");
+    let embed_concurrency = clamp_usize(settings.codegraph.embed_concurrency, 1, "embedConcurrency");
 
     let cg_config = CodegraphConfig {
         db_path,
         root_dir: root,
         embed,
         apply_migrations: true,
-        max_chunk_lines: settings.codegraph.max_chunk_lines,
-        max_file_bytes: settings.codegraph.max_file_bytes,
-        max_db_connections: Some(settings.codegraph.max_db_connections),
+        max_chunk_lines,
+        max_file_bytes,
+        max_db_connections: Some(max_db_connections),
         embed_batch_size,
         db_commit_batch_files,
         embed_concurrency,
