@@ -723,6 +723,23 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     transcript_changed = true;
                     continue;
                 }
+                // Goal steering prompts (continuation / budget limit) queued internally by the
+                // harness — render as a slim meta label instead of a user bubble card.
+                if text.starts_with(CONTINUATION_PROMPT_PREFIX) || text.starts_with(BUDGET_LIMIT_PROMPT_PREFIX) {
+                    let label = if text.starts_with(CONTINUATION_PROMPT_PREFIX) {
+                        "Continuing tasks…"
+                    } else {
+                        "Goal budget limit reached"
+                    };
+                    let mut notice = TranscriptMessage::text(label, TranscriptStyle::Meta);
+                    notice.sticky_meta = true;
+                    {
+                        let mut msgs = messages_arc_inner.write().unwrap();
+                        msgs.push(notice);
+                    }
+                    transcript_changed = true;
+                    continue;
+                }
                 let mut submitted = TranscriptMessage::text(text, TranscriptStyle::User);
                 submitted.submitted_at = Some(chrono::Utc::now());
                 // Write to arc directly (no State dirty mark);

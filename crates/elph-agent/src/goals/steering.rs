@@ -2,6 +2,14 @@
 
 use crate::goals::types::Goal;
 
+/// Prefix of [`continuation_prompt`] — used by the TUI to detect and hide these
+/// internal steering prompts from the transcript (render as a meta label instead).
+pub const CONTINUATION_PROMPT_PREFIX: &str = "Continue working on the active goal.";
+
+/// Prefix of [`budget_limit_prompt`] — used by the TUI to detect and hide these
+/// internal steering prompts from the transcript.
+pub const BUDGET_LIMIT_PROMPT_PREFIX: &str = "The session goal has reached its budget limit.";
+
 pub fn continuation_prompt(goal: &Goal) -> String {
     format!(
         "Continue working on the active goal.\n\n\

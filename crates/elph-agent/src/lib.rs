@@ -195,6 +195,7 @@ pub use datastore::Migration;
 pub use datastore::{ensure_database, ensure_databases, ensure_databases_once};
 pub use elph_ai::{OnPayloadCallback, OnResponseCallback};
 pub use fs::{ensure_dirs, write_file_if_missing, write_json_file, write_private_file};
+pub use goals::{BUDGET_LIMIT_PROMPT_PREFIX, CONTINUATION_PROMPT_PREFIX};
 pub use goals::{Goal, GoalRuntime, GoalStatus, GoalStore};
 pub use goals::{GoalStatusHook, create_goal_tools, create_goal_tools_with_hook};
 pub use logger::{LogRotation, LoggingOptions};
