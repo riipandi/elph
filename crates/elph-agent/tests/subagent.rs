@@ -70,10 +70,11 @@ async fn spawn_and_list_subagents_with_turso_sessions() {
 
     let registry = Arc::new(elph_agent::AgentRegistry::new());
     let parent_path = elph_agent::generate_agent_name();
+    let model_a = faux.provider.get_models()[0].clone();
     let control = AgentControl::new(
         SubagentSpawnConfig {
             env,
-            model: faux.provider.get_models()[0].clone(),
+            model: model_a.clone(),
             system_prompt: "subagent".into(),
             base_tools: tools,
             stream_fn,
@@ -121,6 +122,15 @@ async fn spawn_and_list_subagents_with_turso_sessions() {
     let output_md = std::fs::read_to_string(agent_dir.join("output.md")).expect("read output.md");
     assert_eq!(output_md.trim(), "Review complete.");
     assert!(agent_dir.join("meta.json").exists(), "meta.json missing");
+    let meta_json = std::fs::read_to_string(agent_dir.join("meta.json")).expect("read meta.json");
+    let meta: serde_json::Value = serde_json::from_str(&meta_json).expect("meta.json is valid JSON");
+    let expected_model = format!("{}/{}", model_a.provider, model_a.id);
+    assert_eq!(
+        meta["model"].as_str(),
+        Some(expected_model.as_str()),
+        "meta.json must record provider_id/model_id",
+    );
+    assert_eq!(agents[0].model, expected_model, "list_agents must report provider_id/model_id");
 
     // Child session is durable in the shared Turso DB (not SessionDir).
     let child_session_id = agents[0].session_id.clone();

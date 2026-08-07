@@ -195,6 +195,9 @@ pub async fn spawn_subagent_harness(
         tools.extend(crate::tools::create_collaboration_tools(agent_control.clone()));
     }
 
+    // `provider_id/model_id` recorded in `SubagentInfo` → `meta.json` / tool results.
+    let model_ref = format!("{}/{}", model.provider, model.id);
+
     let harness = AgentHarness::new(AgentHarnessOptions {
         env,
         session,
@@ -227,6 +230,7 @@ pub async fn spawn_subagent_harness(
         depth,
         status: SubagentStatus::Pending,
         parent_session_id: root_session_id.to_string(),
+        model: model_ref,
         output: SubagentOutput {
             text: String::new(),
             output_path: output_dir

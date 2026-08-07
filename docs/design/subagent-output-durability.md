@@ -21,7 +21,7 @@ the model's own description of an empty tool result.
 | `spawn_agent`   | `Spawned subagent <id>` (unchanged; background turn)     |
 | `wait_agent`    | Final assistant text of the completed turn, or a readable placeholder (`<agent_id> is idle (no output captured)` / full-log path) |
 | `followup_task` | `Turn started on <agent_id>` (unchanged; turn runs in background) |
-| `list_agents`   | `SubagentInfo[]` including `output: {text, output_path, turns, finished_at_ms}` |
+| `list_agents`   | `SubagentInfo[]` including `model` (`provider/model_id`), `output: {text, output_path, turns, finished_at_ms}` |
 | `send_message`  | `Message queued` (unchanged)                             |
 
 `SubagentInfo.output` always has a non-empty `summary()`: the final text when
@@ -37,7 +37,7 @@ passes `APP_DATA/sessions/<SESSION_ID>`), each spawned agent writes to
 ~/.local/share/elph/sessions/<SESSION_ID>/subagents/<agent_id>/
 ├── output.md      # final assistant text (rewritten each completed turn)
 ├── events.jsonl   # streamed text deltas (append-only, replayable)
-└── meta.json      # spawn metadata (id, task_name, agent_path, depth, session ids)
+└── meta.json      # spawn metadata (id, task_name, agent_path, depth, model `provider/model_id`, session ids)
 ```
 
 Leading path components follow `ELPH_DATA_DIR` / `ELPH_HOME` when set. All

@@ -77,8 +77,10 @@ impl CodingAgentSession {
             })
             .await;
 
-        // Resolve active model id for subagent status display (e.g. `claude-sonnet-4-20250514`).
-        let active_model_id = self.selection.read().model.id.clone();
+        // Resolve active model for subagent status display (`provider/model_id`, e.g.
+        // `anthropic/claude-sonnet-4-20250514`). Read live inside the forwarder so the
+        // tag follows model switches instead of freezing at wire time.
+        let selection = self.selection.clone();
 
         // Accumulator per agent for output text deltas.
         // Batching: flush after every N deltas to avoid flooding the UI channel.
@@ -86,11 +88,14 @@ impl CodingAgentSession {
 
         let forwarder: SubagentEventForwarder = Arc::new({
             let ui_tx = ui_tx.clone();
-            let model_id = active_model_id.clone();
             let output_buf: Arc<Mutex<HashMap<String, (String, usize)>>> = Arc::new(Mutex::new(HashMap::new()));
             move |event, info: &SubagentInfo| {
                 use crate::agent::SubagentUiPhase;
 
+                let model_ref = {
+                    let sel = selection.read();
+                    format!("{}/{}", sel.provider, sel.model_id)
+                };
                 let mut buf = output_buf.lock().unwrap();
                 let entry = buf.entry(info.id.clone()).or_insert_with(|| (String::new(), 0));
                 // Persistent per-subagent events log (best-effort; failures are ignored).
@@ -108,7 +113,7 @@ impl CodingAgentSession {
                             task_name: info.task_name.clone(),
                             phase: SubagentUiPhase::Running,
                             message: String::new(),
-                            model: model_id.clone(),
+                            model: model_ref.clone(),
                         });
                     }
                     AgentEvent::AgentEnd { .. } => {
@@ -126,7 +131,7 @@ impl CodingAgentSession {
                             task_name: info.task_name.clone(),
                             phase: SubagentUiPhase::Done,
                             message: String::new(),
-                            model: model_id.clone(),
+                            model: model_ref.clone(),
                         });
                     }
                     // Tool activity: upsert running row with human verb.
@@ -137,7 +142,7 @@ impl CodingAgentSession {
                             task_name: info.task_name.clone(),
                             phase: SubagentUiPhase::Running,
                             message: format!("tool:{tool_name}"),
-                            model: model_id.clone(),
+                            model: model_ref.clone(),
                         });
                     }
                     AgentEvent::ToolExecutionEnd {
@@ -151,7 +156,7 @@ impl CodingAgentSession {
                             task_name: info.task_name.clone(),
                             phase: SubagentUiPhase::Error,
                             message: format!("tool:{tool_name}"),
-                            model: model_id.clone(),
+                            model: model_ref.clone(),
                         });
                     }
                     // — Output deltas: accumulate into the buffer —

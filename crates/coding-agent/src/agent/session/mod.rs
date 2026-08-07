@@ -66,7 +66,8 @@ pub struct CodingAgentSession {
     session_manager: SessionManager,
     session_id: String,
     /// Live model selection (updated by [`Self::set_model_from_value`] for Ctrl+P / picker).
-    pub(crate) selection: RwLock<ModelSelection>,
+    /// `Arc` so subagent event forwarders can read the current model live (provider/model_id).
+    pub(crate) selection: Arc<RwLock<ModelSelection>>,
     policy: Arc<Mutex<AgentModePolicy>>,
     mode_state: Arc<Mutex<AgentMode>>,
     ui_tx: mpsc::UnboundedSender<AgentUiEvent>,
@@ -122,7 +123,7 @@ impl CodingAgentSession {
             harness: harness.clone(),
             session_manager,
             session_id,
-            selection: RwLock::new(selection),
+            selection: Arc::new(RwLock::new(selection)),
             policy: Arc::new(Mutex::new(policy)),
             mode_state,
             ui_tx: ui_tx.clone(),

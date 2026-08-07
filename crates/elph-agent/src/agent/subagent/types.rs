@@ -61,6 +61,8 @@ pub struct SubagentInfo {
     pub depth: u32,
     pub status: SubagentStatus,
     pub parent_session_id: String,
+    /// Model the subagent runs with, formatted `provider_id/model_id`.
+    pub model: String,
     /// Output of the last completed turn (persisted + traced).
     pub output: SubagentOutput,
 }
