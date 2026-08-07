@@ -118,3 +118,4 @@ Skills are invoked via:
 - `crates/elph-agent/src/skills/load/parse.rs` — `parse_frontmatter()`, `validate_name()`, `validate_compatibility()`
 - `crates/elph-agent/src/skills/format.rs` — `format_skill_invocation()`
 - `crates/elph-agent/src/skills/args.rs` — argument validation utilities
+- `crates/elph-agent/src/goals/steering.rs` — `CONTINUATION_PROMPT_PREFIX`, `BUDGET_LIMIT_PROMPT_PREFIX` (public exports, commit `457464e`)

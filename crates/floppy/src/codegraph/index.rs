@@ -25,159 +25,73 @@ fn matches_patterns(path: &str, include_patterns: &[String]) -> bool {
         return true;
     }
 
-    // Process patterns in order
+    // Exclude (`!`) patterns always apply regardless of order: a path that
+    // matches any exclude is rejected even if an earlier include matched.
+    // Include matches are tracked; a path must match at least one include
+    // when include patterns are configured (include-list semantics).
+    let mut matched_include = false;
     for pattern in include_patterns {
         let is_exclude = pattern.starts_with('!');
         let pattern_str = if is_exclude { &pattern[1..] } else { pattern };
 
         if glob_match(pattern_str, path) {
-            return !is_exclude;
-        }
-    }
-
-    // If no pattern matches, include by default
-    true
-}
-
-/// Simple glob matching supporting **, *, and ? wildcards.
-fn glob_match(pattern: &str, text: &str) -> bool {
-    let pattern = pattern.trim_start_matches('!');
-    let regex_pattern = glob_to_regex(pattern);
-    regex_match(&regex_pattern, text)
-}
-
-/// Convert glob pattern to regex pattern.
-fn glob_to_regex(glob: &str) -> String {
-    let mut regex = String::new();
-    let mut chars = glob.chars().peekable();
-
-    while let Some(c) = chars.next() {
-        match c {
-            '*' => {
-                if chars.peek() == Some(&'*') {
-                    chars.next(); // consume second *
-                    regex.push_str(".*"); // ** matches any sequence
-                } else {
-                    regex.push_str("[^/]*"); // * matches any sequence except /
-                }
-            }
-            '?' => {
-                regex.push_str("[^/]"); // ? matches any single character except /
-            }
-            '.' | '+' | '(' | ')' | '[' | ']' | '{' | '}' | '^' | '$' | '|' => {
-                regex.push('\\');
-                regex.push(c);
-            }
-            _ => {
-                regex.push(c);
-            }
-        }
-    }
-
-    format!("^{}$", regex)
-}
-
-/// Simple regex matching.
-fn regex_match(pattern: &str, text: &str) -> bool {
-    // Very basic regex matching - only supporting what we generate
-    let p_chars = pattern.chars().peekable();
-    let t_chars = text.chars().peekable();
-
-    let p_vec: Vec<char> = p_chars.collect();
-    let t_vec: Vec<char> = t_chars.collect();
-
-    if p_vec.is_empty() {
-        return t_vec.is_empty();
-    }
-
-    if p_vec[0] != '^' || p_vec.last() != Some(&'$') {
-        return false;
-    }
-
-    let p = &p_vec[1..p_vec.len() - 1];
-    let t = &t_vec;
-
-    match_regex(p, t, 0, 0)
-}
-
-fn match_regex(pattern: &[char], text: &[char], p_idx: usize, t_idx: usize) -> bool {
-    if p_idx == pattern.len() && t_idx == text.len() {
-        return true;
-    }
-
-    if p_idx == pattern.len() {
-        return false;
-    }
-
-    if t_idx == text.len() {
-        // Check if remaining pattern can match empty
-        for i in p_idx..pattern.len() {
-            if pattern[i] != '*' {
+            if is_exclude {
                 return false;
             }
+            matched_include = true;
         }
-        return true;
     }
 
-    match pattern[p_idx] {
-        '\\' => {
-            // Escaped character
-            if p_idx + 1 < pattern.len() {
-                if pattern[p_idx + 1] == text[t_idx] {
-                    match_regex(pattern, text, p_idx + 2, t_idx + 1)
-                } else {
-                    false
-                }
-            } else {
-                false
+    // An exclude that matched already returned false above. Otherwise:
+    // include only when the path matched an include, or when there are no
+    // include patterns at all (allow-list minus excludes).
+    matched_include || !include_patterns.iter().any(|p| !p.starts_with('!'))
+}
+
+/// Simple glob matching supporting `**`, `*`, and `?` wildcards.
+///
+/// Matching is done segment-by-segment on `/`-separated paths:
+/// - `**` matches zero or more whole segments (directories),
+/// - `*` matches any characters within a segment (never `/`),
+/// - `?` matches a single character within a segment (never `/`).
+fn glob_match(pattern: &str, text: &str) -> bool {
+    let pattern = pattern.trim_start_matches('!');
+    let p: Vec<&str> = pattern.split('/').collect();
+    let t: Vec<&str> = text.split('/').collect();
+
+    fn rec(p: &[&str], t: &[&str]) -> bool {
+        match p.first() {
+            None => t.is_empty(),
+            Some(&"**") => {
+                // ** matches zero or more segments.
+                rec(&p[1..], t) || (!t.is_empty() && rec(p, &t[1..]))
             }
-        }
-        '.' => match_regex(pattern, text, p_idx + 1, t_idx + 1),
-        '*' => {
-            // .* matches any sequence
-            match_regex(pattern, text, p_idx + 1, t_idx) || match_regex(pattern, text, p_idx, t_idx + 1)
-        }
-        '[' => {
-            // Character class - simplified
-            if p_idx + 1 < pattern.len() && pattern[p_idx + 1] == '^' {
-                // Negated class [^...]
-                // Find closing ]
-                let end = pattern[p_idx + 2..].iter().position(|&c| c == ']');
-                if let Some(pos) = end {
-                    let class_end = p_idx + 2 + pos + 1;
-                    let negated = !pattern[p_idx + 2..class_end - 1].contains(&text[t_idx]);
-                    if negated {
-                        match_regex(pattern, text, class_end, t_idx + 1)
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                }
-            } else {
-                // Find closing ]
-                let end = pattern[p_idx + 1..].iter().position(|&c| c == ']');
-                if let Some(pos) = end {
-                    let class_end = p_idx + 1 + pos + 1;
-                    let matches = pattern[p_idx + 1..class_end - 1].contains(&text[t_idx]);
-                    if matches {
-                        match_regex(pattern, text, class_end, t_idx + 1)
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                }
-            }
-        }
-        c => {
-            if c == text[t_idx] {
-                match_regex(pattern, text, p_idx + 1, t_idx + 1)
-            } else {
-                false
+            Some(&seg) => {
+                let Some(&tseg) = t.first() else {
+                    return false;
+                };
+                seg_match(seg, tseg) && rec(&p[1..], &t[1..])
             }
         }
     }
+
+    fn seg_match(seg: &str, text_seg: &str) -> bool {
+        let p: Vec<char> = seg.chars().collect();
+        let t: Vec<char> = text_seg.chars().collect();
+
+        fn rec(p: &[char], t: &[char]) -> bool {
+            match p.first() {
+                None => t.is_empty(),
+                Some('*') => rec(&p[1..], t) || (!t.is_empty() && rec(p, &t[1..])),
+                Some('?') => !t.is_empty() && rec(&p[1..], &t[1..]),
+                Some(&c) => !t.is_empty() && c == t[0] && rec(&p[1..], &t[1..]),
+            }
+        }
+
+        rec(&p, &t)
+    }
+
+    rec(&p, &t)
 }
 
 const META_ROOT: &str = "merkle_root";

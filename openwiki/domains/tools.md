@@ -55,25 +55,25 @@ pub type ToolExecuteFn = Arc<
 
 All gated by feature flags (from `crates/elph-agent/src/tools/mod.rs`):
 
-| Tool                   | Module                    | Feature Flag          | Description                                       |
-| ---------------------- | ------------------------- | --------------------- | ------------------------------------------------- |
-| `edit_file`            | `edit_file.rs`            | `tools-edit-file`     | Apply search/replace edits                        |
-| `write_file`           | `write_file.rs`           | `tools-write-file`    | Write new file content                            |
-| `shell_exec`           | `shell_exec.rs`           | `tools-shell-exec`    | Execute shell commands                            |
-| `read_file`            | `read_file.rs`            | `tools-read-file`     | Read file contents                                |
-| `grep`                 | `grep.rs`                 | `tools-grep`          | Search file contents                              |
-| `find_path`            | `find_path.rs`            | `tools-find-path`     | Find files by path                                |
-| `list_dir`             | `list_dir.rs`             | `tools-list-dir`      | List directory contents                           |
-| `copy_path`            | `copy_path.rs`            | `tools-copy-path`     | Copy files/directories                            |
-| `create_dir`           | `create_dir.rs`           | `tools-create-dir`    | Create directories                                |
-| `delete_path`          | `delete_path.rs`          | `tools-delete-path`   | Delete files/directories                          |
-| `move_path`            | `move_path.rs`            | `tools-move-path`     | Move/rename files                                 |
-| `web_fetch`            | `web/web_fetch.rs`        | `tools-web`           | Fetch web content                                 |
-| `web_search`           | `web/web_search.rs`       | `tools-web`           | Search the web                                    |
-| `web_extract`          | `web/web_extract.rs`      | `tools-web`           | Structured DOM data extraction (commit `1677e2e`) |
-| `collaboration`        | `collaboration.rs`        | `tools-collaboration` | Multi-agent collaboration                         |
-| `list_available_tools` | `list_available_tools.rs` | always-on             | List available tools                              |
-| MCP tools              | `mcp/registry.rs`         | `mcp`                 | Dynamic MCP tool bridge                           |
+| Tool                   | Module                    | Feature Flag          | Description                                                                                           |
+| ---------------------- | ------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------- |
+| `edit_file`            | `edit_file.rs`            | `tools-edit-file`     | Apply search/replace edits                                                                            |
+| `write_file`           | `write_file.rs`           | `tools-write-file`    | Write new file content                                                                                |
+| `shell_exec`           | `shell_exec.rs`           | `tools-shell-exec`    | Execute shell commands                                                                                |
+| `read_file`            | `read_file.rs`            | `tools-read-file`     | Read file contents                                                                                    |
+| `grep`                 | `grep.rs`                 | `tools-grep`          | Search file contents                                                                                  |
+| `find_path`            | `find_path.rs`            | `tools-find-path`     | Find files by path                                                                                    |
+| `list_dir`             | `list_dir.rs`             | `tools-list-dir`      | List directory contents                                                                               |
+| `copy_path`            | `copy_path.rs`            | `tools-copy-path`     | Copy files/directories                                                                                |
+| `create_dir`           | `create_dir.rs`           | `tools-create-dir`    | Create directories                                                                                    |
+| `delete_path`          | `delete_path.rs`          | `tools-delete-path`   | Delete files/directories                                                                              |
+| `move_path`            | `move_path.rs`            | `tools-move-path`     | Move/rename files                                                                                     |
+| `web_fetch`            | `web/web_fetch.rs`        | `tools-web`           | Fetch web content                                                                                     |
+| `web_search`           | `web/web_search.rs`       | `tools-web`           | Search the web                                                                                        |
+| `web_extract`          | `web/web_extract.rs`      | `tools-web`           | Structured DOM data extraction (commit `1677e2e`)                                                     |
+| `collaboration`        | `collaboration.rs`        | `tools-collaboration` | Multi-agent collaboration                                                                             |
+| `list_available_tools` | `list_available_tools.rs` | always-on             | List available tools                                                                                  |
+| MCP tools              | `mcp/registry/`           | `mcp`                 | Dynamic MCP tool bridge (registry split into `mod.rs`, `discovery.rs`, `bridge.rs`, commit `45c8e6e`) |
 
 ## Feature Flag Groups
 

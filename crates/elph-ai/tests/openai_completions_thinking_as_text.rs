@@ -20,6 +20,8 @@ fn thinking_as_text_compat() -> ResolvedOpenAICompletionsCompat {
         cache_control_format: None,
         send_session_affinity_headers: false,
         supports_long_cache_retention: true,
+        supports_finish_reason: true,
+        supports_thinking_token_budget: false,
     }
 }
 

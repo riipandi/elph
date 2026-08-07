@@ -12,15 +12,14 @@ tags: [elph, workspace, quickstart, rust]
 ## Workspace Layout
 
 ```
-Cargo.toml          # workspace root — resolver = "2", members = ["crates/coding-agent", "crates/elph-agent", "crates/elph-ai", "crates/elph-db", "crates/floppy"]
+Cargo.toml          # workspace root — resolver = "2", members = ["crates/coding-agent", "crates/elph-agent", "crates/elph-ai", "crates/floppy"]
 Makefile            # build, test, lint, release, cross-compilation targets
 crates/
 ├── coding-agent/   # product binary + library (CLI, TUI, agent session orchestration) — was elph/
 ├── elph-agent/     # app-agnostic agent runtime (port of @earendil-works/pi-agent)
 ├── elph-ai/        # unified LLM API with provider collections, auth, streaming (port of @earendil-works/pi-ai)
-├── elph-db/        # shared Turso (local SQLite) open/connect/retry/lock-error helpers
 ├── elph-tui/       # reusable iocraft-based TUI components
-├── floppy/         # AI memory with vector search (Turso); port of memelord
+├── floppy/         # AI memory with vector search (Turso); port of memelord; metal feature for Apple Silicon
 ├── control-plane/  # excluded from workspace
 ├── elph-cron/      # skeleton — excluded from workspace
 ├── elph-sandbox/   # skeleton — excluded from workspace
@@ -34,32 +33,36 @@ extensions/         # WASM extension plugins (say-hello)
 templates/agent/    # MiniJinja system prompt templates (coding_base.md, mode_*.md, session_title_*.md)
 ```
 
+> **Note:** `elph-db` was removed in commit `eba87a7`. Its open/connect/retry/lock-error helpers were absorbed into `crates/elph-agent/src/datastore/conn.rs`.
+
 ## Make Targets
 
-| Target                 | Description                                                              |
-| ---------------------- | ------------------------------------------------------------------------ |
-| `make build`           | Build `elph` binary (debug; `RELEASE=1` or `-- --release` for release)   |
-| `make run`             | Run elph coding agent                                                    |
-| `make watch`           | Run with hot reload (requires watchexec)                                 |
-| `make test`            | Run all workspace tests via `cargo nextest`                              |
-| `make test-elph`       | Test `elph-ai` + `elph` + `elph-agent` (with `--features full`)          |
-| `make test-elph-tui`   | Test `elph-tui`                                                          |
-| `make check`           | Check compilation (no codegen)                                           |
-| `make check-elph`      | Check `elph-ai` + `elph` + `elph-agent` compile (with `--features full`) |
-| `make check-elph-tui`  | Check `elph-tui` compiles (lib, tests, examples)                         |
-| `make lint`            | Run clippy with `-D warnings` (`elph`, `elph-agent`, `elph-ai`)          |
-| `make fmt`             | Format all Rust code + models + wiki                                     |
-| `make coverage`        | Test coverage via `cargo-llvm-cov`                                       |
-| `make generate-models` | Regenerate `elph-ai` model catalogs from pi upstream                     |
-| `make cross`           | Cross-compile one platform (`CROSS_TARGET=<triple>`)                     |
-| `make cross-pull`      | Pull cross-compilation Docker images                                     |
-| `make release`         | Host-aware release build                                                 |
-| `make install`         | Install to `~/.local/bin/` (debug → `elph-dev`, release → `elph-next`)   |
-| `make prepare`         | Prepare workspace for development                                        |
-| `make clean`           | Clean build artifacts                                                    |
-| `make stats`           | Show sccache stats and line counts                                       |
-| `make publish`         | Publish crates                                                           |
-| `make version`         | Show version info                                                        |
+| Target                 | Description                                                                                                    |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `make build`           | Build `elph` binary (debug; `RELEASE=1` or `-- --release` for release; `PROFILE=dist` or `-- --dist` for dist) |
+| `make run`             | Run elph coding agent                                                                                          |
+| `make watch`           | Run with hot reload (requires watchexec)                                                                       |
+| `make test`            | Run all workspace tests via `cargo nextest`                                                                    |
+| `make test-elph`       | Test `elph-ai` + `elph` + `elph-agent` (with `--features full`)                                                |
+| `make test-elph-tui`   | Test `elph-tui`                                                                                                |
+| `make check`           | Check compilation (no codegen)                                                                                 |
+| `make check-elph`      | Check `elph-ai` + `elph` + `elph-agent` compile (with `--features full`)                                       |
+| `make check-elph-tui`  | Check `elph-tui` compiles (lib, tests, examples)                                                               |
+| `make lint`            | Run clippy with `-D warnings` (`elph`, `elph-agent`, `elph-ai`)                                                |
+| `make fmt`             | Format all Rust code + models + wiki                                                                           |
+| `make coverage`        | Test coverage via `cargo-llvm-cov`                                                                             |
+| `make generate-models` | Regenerate `elph-ai` model catalogs from pi upstream                                                           |
+| `make cross`           | Cross-compile one platform (`CROSS_TARGET=<triple>`)                                                           |
+| `make cross-pull`      | Pull cross-compilation Docker images                                                                           |
+| `make release`         | Host-aware release build                                                                                       |
+| `make install`         | Install to `~/.local/bin/` (debug → `elph-dev`, release → `elph-next`, dist → `elph`)                          |
+| `make prepare`         | Prepare workspace for development                                                                              |
+| `make clean`           | Clean build artifacts                                                                                          |
+| `make stats`           | Show sccache stats and line counts                                                                             |
+| `make publish`         | Publish crates                                                                                                 |
+| `make version`         | Show version info                                                                                              |
+
+**Feature flags:** `make build -- --features metal` enables macOS GPU acceleration for local embeddings (auto-detected on Apple Silicon). The `metal` feature is forwarded to `floppy/metal` via `crates/coding-agent/Cargo.toml` (commit `3f15161`).
 
 ## Crate Dependency Graph
 
@@ -67,14 +70,14 @@ templates/agent/    # MiniJinja system prompt templates (coding_base.md, mode_*.
 elph (binary + lib)
 ├── elph-agent (--features "tracing, builtin-tools, mcp, prompt-templates, extensions")
 │   ├── elph-ai (--features "tracing")
-│   ├── elph-db (Turso SQLite helpers)
 │   └── floppy (memory, --features "full")
 ├── elph-ai
 ├── elph-tui (iocraft-based TUI components)
-├── elph-db
 ├── floppy
 └── git2, iocraft, tokio, clap, turso, etc.
 ```
+
+> **Note:** `elph-db` was removed in commit `eba87a7`. Its helpers were absorbed into `elph-agent/src/datastore/conn.rs`.
 
 The `elph` crate (in `crates/coding-agent/`) is the product binary. Its `lib.rs` exports modules for:
 
@@ -122,6 +125,7 @@ Start here, then explore:
 - [Operations](operations.md) — CLI subcommands, ELPH_ env vars, observability
 - [Testing](testing.md) — unit/integration test patterns, live provider tests
 - [Pi Port Status](integrations/pi-port.md) — upstream commit cee5ff75, crate mapping, parity gaps
+- [Subagents](domains/subagents.md) — subagent output durability, TurnGuard, wait-for-output
 
 ## Backlog
 

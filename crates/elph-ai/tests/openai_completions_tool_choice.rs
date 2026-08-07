@@ -67,7 +67,9 @@ fn omits_strict_when_compat_disables_strict_mode() {
 
 #[test]
 fn maps_groq_qwen3_reasoning_levels_to_default_reasoning_effort() {
-    let model = get_builtin_model("groq", "qwen/qwen3-32b").expect("model");
+    // qwen3.6-27b ships a full thinkingLevelMap, so a requested Medium maps to
+    // the model's "medium" reasoning_effort value.
+    let model = get_builtin_model("groq", "qwen/qwen3.6-27b").expect("model");
     let context = Context {
         system_prompt: None,
         messages: vec![Message::User {
@@ -83,7 +85,7 @@ fn maps_groq_qwen3_reasoning_levels_to_default_reasoning_effort() {
 
     let params = build_openai_completions_params(&model, &context, &options).expect("params");
 
-    assert_eq!(params["reasoning_effort"], json!("default"));
+    assert_eq!(params["reasoning_effort"], json!("medium"));
 }
 
 #[test]

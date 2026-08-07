@@ -114,6 +114,24 @@ Defined in `crates/elph-agent/src/runtime/exec/`:
 3. `fail_tool_calls_from_truncated_message()` — handles truncation edge cases.
 4. Results are patched back into the context via `ToolResultPatch`.
 
+### BeforeToolCallResult.terminate (commit `f398e03`)
+
+`BeforeToolCallResult` in `crates/elph-agent/src/runtime/loop_config.rs` added:
+
+```rust
+pub struct BeforeToolCallResult {
+    pub block: bool,
+    pub reason: Option<String>,
+    pub args: Option<Value>,
+    /// Hint that the agent should stop after the current tool batch when this
+    /// call is blocked. Early termination only happens when every finalized tool
+    /// result in the batch sets this to true.
+    pub terminate: Option<bool>,
+}
+```
+
+When `terminate: Some(true)` is set on every blocked tool call in a batch, the agent loop stops after the current batch instead of continuing. Used by plan mode tool blocking in `crates/elph-agent/src/agent/harness/run_loop/loop_config.rs`.
+
 Tools are registered as `AgentTool` instances. See [Tools](../domains/tools.md) for built-in tools and feature flags, and [MCP](../domains/mcp.md) for MCP-bridged tools.
 
 ## Steering and Follow-up Messages

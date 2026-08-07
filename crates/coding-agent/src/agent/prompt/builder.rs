@@ -369,7 +369,10 @@ mod tests {
         )
         .expect("prompt");
 
-        assert!(prompt.len() < 7_500, "static prompt is {} bytes", prompt.len());
+        // Budget was raised from 7_500 to 9_000 when the <mode_context> /
+        // <memory_and_context> headers and the expanded tool-calling rules
+        // were added to the static prompt (measured ~7.9 KB at tool count 16).
+        assert!(prompt.len() < 9_000, "static prompt is {} bytes", prompt.len());
     }
 
     #[test]

@@ -139,6 +139,27 @@ pub const DEFAULT_COMPACTION_SETTINGS: CompactionSettings = CompactionSettings {
 };
 ```
 
+### /compact Slash Command Options (commit `e5144fa`)
+
+The TUI `/compact` slash command now accepts optional arguments, parsed by `parse_compact_args()` in `crates/coding-agent/src/agent/slash_commands.rs`:
+
+| Flag              | Type   | Description                                            |
+| ----------------- | ------ | ------------------------------------------------------ |
+| `--threshold PCT` | `u8`   | Override compaction threshold (1-100, clamped)         |
+| `--keep-recent N` | `u64`  | Override tokens to keep after compaction               |
+| `--model MODEL`   | String | Override model for summarization (e.g. `openai/gpt-4`) |
+| `--memory-flush`  | bool   | Enable memory flush before compaction                  |
+
+Examples:
+
+```
+/compact --threshold 85 --keep-recent 15000
+/compact --model openai/gpt-4 --memory-flush
+/compact --threshold 90
+```
+
+`CompactOptions` (from `slash_commands.rs`) is dispatched to `CodingAgentSession::compact_with_options()`. The `model_override` parameter on `run_compact_with_notices()` allows the `/compact --model` value to override the default compaction model.
+
 ## Compaction Retry
 
 The harness wraps compaction in `compact_with_retry()` (from `compaction_ops.rs`) with exponential backoff:
@@ -167,3 +188,5 @@ The harness wraps compaction in `compact_with_retry()` (from `compaction_ops.rs`
 - `crates/elph-agent/src/compaction/utils.rs` — `serialize_conversation()`, `compute_file_lists()`, `create_file_ops()`
 - `crates/elph-agent/src/agent/harness/compaction_ops.rs` — `compact_with_retry()`, harness integration
 - `crates/elph-agent/src/agent/harness/types/options.rs` — `CompactionSettings`, `DEFAULT_COMPACTION_SETTINGS`
+- `crates/coding-agent/src/agent/session/compaction.rs` — `CodingAgentSession::compact()`, `compact_with_options()`, `run_compact_with_notices()` (accepts `model_override`)
+- `crates/coding-agent/src/agent/slash_commands.rs` — `CompactOptions`, `parse_compact_args()`, `/compact` slash dispatch

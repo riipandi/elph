@@ -440,17 +440,17 @@ fn parse_compact_args(args: &str) -> CompactOptions {
     while let Some(token) = tokens.next() {
         match token {
             "--threshold" => {
-                if let Some(value) = tokens.next() {
-                    if let Ok(pct) = value.parse::<u8>() {
-                        options.threshold_pct = Some(pct.clamp(1, 100));
-                    }
+                if let Some(value) = tokens.next()
+                    && let Ok(pct) = value.parse::<u8>()
+                {
+                    options.threshold_pct = Some(pct.clamp(1, 100));
                 }
             }
             "--keep-recent" => {
-                if let Some(value) = tokens.next() {
-                    if let Ok(tokens) = value.parse::<u64>() {
-                        options.keep_recent_tokens = Some(tokens);
-                    }
+                if let Some(value) = tokens.next()
+                    && let Ok(tokens) = value.parse::<u64>()
+                {
+                    options.keep_recent_tokens = Some(tokens);
                 }
             }
             "--model" => {

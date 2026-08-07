@@ -14,7 +14,10 @@ Model Context Protocol (MCP) integration lives in `crates/elph-agent/src/tools/m
 ```
 crates/elph-agent/src/tools/mcp/
 ├── mod.rs             — module docs + re-exports
-├── registry.rs        — McpToolRegistry — discover, load, bridge tools
+├── registry/          — McpToolRegistry (split into sub-modules, commit `45c8e6e`)
+│   ├── mod.rs         — McpToolRegistry, McpToolDescriptor, McpLoadReport
+│   ├── discovery.rs   — server discovery and probing
+│   └── bridge.rs      — tool bridge to AgentTool
 ├── client.rs          — MCP client operations (call_tool, probe_server, validate)
 ├── config.rs          — McpConfig, McpServerConfig, McpLoadOptions
 ├── auth.rs            — AuthStoreFile, FileCredentialStore, McpOAuthFlow
@@ -29,6 +32,8 @@ crates/elph-agent/src/tools/mcp/
 ├── truncate.rs        — Tool result truncation limits
 └── validate.rs        — Config validation (JSON Schema + semantic)
 ```
+
+The monolithic `registry.rs` was split into `registry/mod.rs` + `discovery.rs` + `bridge.rs` (commit `45c8e6e`).
 
 ## Transports
 
@@ -136,7 +141,9 @@ pub struct McpPolicyConfig {
 ## Source References
 
 - `crates/elph-agent/src/tools/mcp/mod.rs` — module documentation
-- `crates/elph-agent/src/tools/mcp/registry.rs` — `McpToolRegistry`, `McpToolDescriptor`, `McpLoadReport`
+- `crates/elph-agent/src/tools/mcp/registry/mod.rs` — `McpToolRegistry`, `McpToolDescriptor`, `McpLoadReport`
+- `crates/elph-agent/src/tools/mcp/registry/discovery.rs` — server discovery
+- `crates/elph-agent/src/tools/mcp/registry/bridge.rs` — tool bridge
 - `crates/elph-agent/src/tools/mcp/client.rs` — `call_tool_for_server()`, `probe_server_with_auth()`
 - `crates/elph-agent/src/tools/mcp/config.rs` — `McpConfig`, `McpServerConfig`
 - `crates/elph-agent/src/tools/mcp/auth.rs` — `AuthStoreFile`, `FileCredentialStore`

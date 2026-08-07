@@ -501,10 +501,10 @@ fn apply_sampling_params(
     model: &Model,
     compat: &ResolvedOpenAICompletionsCompat,
     base: &crate::types::StreamOptions,
-    mut params: &mut Value,
+    params: &mut Value,
 ) {
-    apply_sampling_map(model, base, &mut params);
-    apply_thinking_token_budget(compat, base, &mut params);
+    apply_sampling_map(model, base, params);
+    apply_thinking_token_budget(compat, base, params);
 }
 
 /// Merge arbitrary sampling parameters into the request body. Model-level defaults come from
@@ -541,10 +541,10 @@ fn apply_thinking_token_budget(
         return;
     };
     let budget = (max_tokens / 4).max(1024).min(max_tokens.saturating_sub(1024));
-    if let Some(obj) = params.as_object_mut() {
-        if !obj.contains_key("thinking_token_budget") {
-            obj.insert("thinking_token_budget".to_string(), json!(budget));
-        }
+    if let Some(obj) = params.as_object_mut()
+        && !obj.contains_key("thinking_token_budget")
+    {
+        obj.insert("thinking_token_budget".to_string(), json!(budget));
     }
 }
 

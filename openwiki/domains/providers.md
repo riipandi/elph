@@ -107,6 +107,89 @@ pub struct CompatFlags {
 }
 ```
 
+### OpenAICompletionsCompat Additions (commit `f398e03`)
+
+New fields on `OpenAICompletionsCompat` in `crates/elph-ai/src/types/mod.rs`:
+
+```rust
+pub struct OpenAICompletionsCompat {
+    // ...existing fields...
+    /// Whether streamed responses include `finish_reason`. When false, the
+    /// adapter infers `stop` or `toolUse` when the stream ends instead of
+    /// erroring. Defaults to true (opt-out).
+    pub supports_finish_reason: Option<bool>,
+
+    /// Whether the provider supports top-level `thinking_token_budget` to cap
+    /// reasoning tokens (e.g. vLLM). Reasoning and the answer share
+    /// `max_tokens`, so without a budget a reasoning-heavy turn can emit no
+    /// answer. When enabled, the budget is computed as
+    /// `max(1024, max_tokens / 4)` but capped at
+    /// `max_tokens - 1024`.
+    pub supports_thinking_token_budget: Option<bool>,
+
+    /// Arbitrary sampling parameters (top_p, top_k, min_p, repetition_penalty,
+    /// ...) merged into OpenAI-compatible request bodies. Per-request
+    /// `StreamOptions.sampling_params` values override these.
+    pub sampling_params: Option<HashMap<String, Value>>,
+}
+```
+
+`StreamOptions` also gained `sampling_params: Option<HashMap<String, Value>>` for per-request overrides.
+
+The merge logic in `crates/elph-ai/src/api/openai_completions.rs`:
+
+1. Model-level defaults are applied first (from `OpenAICompletionsCompat.sampling_params`).
+2. Per-request values override model defaults.
+3. Explicit options (`temperature`, `max_tokens`, etc.) are never clobbered by `sampling_params`.
+
+Tests in `crates/elph-ai/tests/openai_completions_compat_gaps.rs` cover:
+
+- `merges_model_default_sampling_params_into_payload`
+- `per_request_sampling_params_override_model_defaults`
+- `sampling_params_never_clobber_explicit_options_like_temperature`
+- `thinking_token_budget_emitted_when_compat_opted_in`
+- `thinking_token_budget_omitted_by_default`
+- `supports_finish_reason_defaults_to_true`
+
+### OpenAI-Completions-Specific Compat (commit `f398e03`)
+
+`OpenAICompletionsCompat` in `crates/elph-ai/src/types/mod.rs` added:
+
+```rust
+pub struct OpenAICompletionsCompat {
+    // ... existing fields ...
+    /// Whether streamed responses include `finish_reason`. When false, the adapter
+    /// infers `stop` or `toolUse` when the stream ends instead of erroring.
+    pub supports_finish_reason: Option<bool>,
+    /// Whether the provider supports top-level `thinking_token_budget` to cap
+    /// reasoning tokens (e.g. vLLM). Reasoning and answer share `max_tokens`,
+    /// so without a budget a reasoning-heavy turn can emit no answer.
+    pub supports_thinking_token_budget: Option<bool>,
+    /// Arbitrary sampling parameters (top_p, top_k, min_p, repetition_penalty)
+    /// merged into OpenAI-compatible request bodies. Per-request
+    /// `StreamOptions` values override these.
+    pub sampling_params: Option<HashMap<String, Value>>,
+}
+```
+
+And `StreamOptions` in `crates/elph-ai/src/types/mod.rs` added:
+
+```rust
+pub struct StreamOptions {
+    // ... existing fields ...
+    /// Arbitrary sampling parameters merged into OpenAI-compatible request bodies.
+    /// Overrides any model-level defaults.
+    pub sampling_params: Option<HashMap<String, Value>>,
+}
+```
+
+The implementation in `crates/elph-ai/src/api/openai_completions.rs`:
+
+- `apply_sampling_map()` — merges model-level default sampling params with per-request overrides. Explicit options (`temperature`, `max_tokens`) are never clobbered.
+- `apply_thinking_token_budget()` — reserves `max_tokens / 4` (min 1024) for the final answer on vLLM-style providers.
+- `infer_stop_reason()` — when `supports_finish_reason` is false, infers `StopReason::ToolUse` or `StopReason::Stop` from the streamed content instead of erroring.
+- Tests: `crates/elph-ai/tests/openai_completions_compat_gaps.rs` (5 unit tests, commit `f398e03`).
+
 ## ThinkingLevel
 
 ```rust

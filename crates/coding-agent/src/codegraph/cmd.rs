@@ -278,7 +278,7 @@ fn print_scan(sty: &CliStyle, label: &str, stats: &ScanStats) {
 
     // Success header with context
     let action = if label == "build" { "built" } else { "updated" };
-    style::success(&mut out, *sty, &format!("Codegraph {action} successfully"));
+    style::success(&mut out, *sty, format!("Codegraph {action} successfully"));
 
     use std::fmt::Write;
     let _ = writeln!(out);
