@@ -16,29 +16,22 @@ use super::walk::{looks_binary, should_skip_path};
 use crate::core::embed::EmbedFn;
 use crate::core::util::{drain_rows, is_zero, vec_buf};
 
-/// Check if a file path matches any of the include/exclude patterns.
+/// Check if a file path matches any of the include/exclude patterns for codegraph indexing.
 /// Patterns are applied in order; first matching pattern wins.
 /// Patterns starting with ! are exclude patterns.
-fn matches_patterns(path: &str, include_patterns: &[String], exclude_patterns: &[String]) -> bool {
+fn matches_patterns(path: &str, include_patterns: &[String]) -> bool {
     // If no patterns are set, include everything
-    if include_patterns.is_empty() && exclude_patterns.is_empty() {
+    if include_patterns.is_empty() {
         return true;
     }
 
-    // Process include_patterns in order
+    // Process patterns in order
     for pattern in include_patterns {
         let is_exclude = pattern.starts_with('!');
         let pattern_str = if is_exclude { &pattern[1..] } else { pattern };
 
         if glob_match(pattern_str, path) {
             return !is_exclude;
-        }
-    }
-
-    // Process legacy exclude_patterns
-    for pattern in exclude_patterns {
-        if glob_match(pattern, path) {
-            return false;
         }
     }
 
@@ -221,10 +214,8 @@ pub struct Indexer<'a> {
     pub embed_concurrency: usize,
     pub progress: Option<&'a ProgressFn>,
     pub gpu_acceleration: Option<String>,
-    /// File inclusion/exclusion patterns. Applied in order; first matching pattern wins.
+    /// File inclusion/exclusion patterns for codegraph indexing. Applied in order; first matching pattern wins.
     pub include_patterns: &'a [String],
-    /// Deprecated: use include_patterns with !negation instead.
-    pub exclude_patterns: &'a [String],
 }
 
 impl Indexer<'_> {
@@ -363,7 +354,7 @@ impl Indexer<'_> {
             };
 
             // Apply include/exclusion patterns
-            if !matches_patterns(&rel, self.include_patterns, self.exclude_patterns) {
+            if !matches_patterns(&rel, self.include_patterns) {
                 stats.files_skipped += 1;
                 continue;
             }
@@ -991,30 +982,24 @@ mod tests {
     #[test]
     fn test_matches_patterns() {
         // Include only .rs files
-        assert!(matches_patterns("src/main.rs", &["**/*.rs".to_string()], &[]));
-        assert!(!matches_patterns("src/main.js", &["**/*.rs".to_string()], &[]));
+        assert!(matches_patterns("src/main.rs", &["**/*.rs".to_string()]));
+        assert!(!matches_patterns("src/main.js", &["**/*.rs".to_string()]));
 
         // Include .rs but exclude test
         assert!(matches_patterns(
             "src/main.rs",
-            &["**/*.rs".to_string(), "!**/test/**/*.rs".to_string()],
-            &[]
+            &["**/*.rs".to_string(), "!**/test/**/*.rs".to_string()]
         ));
         assert!(!matches_patterns(
             "test/test.rs",
-            &["**/*.rs".to_string(), "!**/test/**/*.rs".to_string()],
-            &[]
+            &["**/*.rs".to_string(), "!**/test/**/*.rs".to_string()]
         ));
 
         // Empty patterns include everything
-        assert!(matches_patterns("any/file.txt", &[], &[]));
+        assert!(matches_patterns("any/file.txt", &[]));
 
         // Test negation with ! prefix
-        assert!(!matches_patterns("test/main.rs", &["!test/*.rs".to_string()], &[]));
-        assert!(matches_patterns("src/main.rs", &["!test/*.rs".to_string()], &[]));
-
-        // Test legacy exclude_patterns
-        assert!(!matches_patterns("test/main.rs", &[], &["test/*.rs".to_string()]));
-        assert!(matches_patterns("src/main.rs", &[], &["test/*.rs".to_string()]));
+        assert!(!matches_patterns("test/main.rs", &["!test/*.rs".to_string()]));
+        assert!(matches_patterns("src/main.rs", &["!test/*.rs".to_string()]));
     }
 }

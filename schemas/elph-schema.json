@@ -447,19 +447,9 @@
                     "items": {
                         "type": "string",
                         "minLength": 1,
-                        "description": "Glob patterns for files to include (e.g., \"**/*.rs\", \"src/**/*\"). Supports **, *, and ? wildcards. Patterns starting with ! are treated as exclude patterns."
+                        "description": "Glob patterns for files to include or exclude. Supports **, *, and ? wildcards. Patterns starting with ! are exclude patterns. Examples: \"**/*.rs\" (include all .rs files), \"!**/test/**\" (exclude test directories)."
                     },
-                    "description": "File inclusion/exclusion patterns. Applied in order; first matching pattern wins. Supports globs with **, *, ? and !negation. Examples: [\"**/*.rs\", \"!**/test/**/*.rs\", \"!**/vendor/**\"]"
-                },
-                "excludePatterns": {
-                    "type": "array",
-                    "default": [],
-                    "items": {
-                        "type": "string",
-                        "minLength": 1,
-                        "description": "Glob patterns for files to exclude (e.g., \"**/*.min.js\", \"**/*.map\"). Supports **, *, and ? wildcards."
-                    },
-                    "description": "Deprecated: use includePatterns with !negation instead. Array of glob patterns to exclude. Applied after includePatterns."
+                    "description": "File inclusion/exclusion patterns for codegraph indexing. Applied in order; first matching pattern wins. Examples: [\"**/*.rs\", \"!**/test/**/*.rs\", \"!**/vendor/**\"] to index only Rust files outside test and vendor directories."
                 }
             }
         },

@@ -30,10 +30,8 @@ pub struct CodegraphStore {
     /// Shared database handle injected by the host. When present, connects
     /// from this handle instead of opening `db_path`.
     database: Option<Arc<Database>>,
-    /// File inclusion/exclusion patterns.
+    /// File inclusion/exclusion patterns for codegraph indexing.
     include_patterns: Vec<String>,
-    /// Deprecated: use include_patterns with !negation instead.
-    exclude_patterns: Vec<String>,
 }
 
 impl CodegraphStore {
@@ -54,7 +52,6 @@ impl CodegraphStore {
             gpu_acceleration: config.gpu_acceleration,
             database: config.database,
             include_patterns: config.include_patterns,
-            exclude_patterns: config.exclude_patterns,
         }
     }
 
@@ -127,7 +124,6 @@ impl CodegraphStore {
             progress,
             gpu_acceleration: self.gpu_acceleration.clone(),
             include_patterns: &self.include_patterns,
-            exclude_patterns: &self.exclude_patterns,
         }
     }
 

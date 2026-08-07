@@ -138,7 +138,6 @@ pub fn open_store_with_db(paths: &Paths, needs_embed: bool, database: Option<Arc
         gpu_acceleration,
         database,
         include_patterns: settings.codegraph.include_patterns.clone(),
-        exclude_patterns: settings.codegraph.exclude_patterns.clone(),
     };
     Ok(CodegraphStore::new(cg_config))
 }

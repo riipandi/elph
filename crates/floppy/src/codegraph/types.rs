@@ -25,11 +25,9 @@ pub struct CodegraphConfig {
     /// Shared, already-open database handle. When set, the store connects from
     /// this handle instead of opening [`db_path`].
     pub database: Option<std::sync::Arc<turso::Database>>,
-    /// File inclusion/exclusion patterns. Applied in order; first matching pattern wins.
-    /// Supports globs with **, *, ? and !negation.
+    /// File inclusion/exclusion patterns for codegraph indexing.
+    /// Supports globs with **, *, ? and !negation. Applied in order; first matching pattern wins.
     pub include_patterns: Vec<String>,
-    /// Deprecated: use include_patterns with !negation instead.
-    pub exclude_patterns: Vec<String>,
 }
 
 impl CodegraphConfig {
@@ -49,7 +47,6 @@ impl CodegraphConfig {
             gpu_acceleration: None,
             database: None,
             include_patterns: Vec::new(),
-            exclude_patterns: Vec::new(),
         }
     }
 }
