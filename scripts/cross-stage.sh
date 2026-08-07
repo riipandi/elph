@@ -101,8 +101,9 @@ refresh_checksums() {
 }
 
 base_name="${bin}-${platform}-${arch}"
-src="${root}/target/${target}/release/${bin}"
-binary_name="$base_name"
+src="${root}/target/${target}/dist/${bin}"
+# For dist builds, use the base binary name without suffix
+binary_name="${bin}"
 artifact_name="${base_name}.${pack}"
 binary_path="${binaries_dir}/${binary_name}"
 artifact_path="${archives_dir}/${artifact_name}"
@@ -111,7 +112,7 @@ trap 'rm -rf "$tmp"' EXIT
 
 if [[ "$is_windows" == 1 ]]; then
     src="${src}.exe"
-    binary_name="${base_name}.exe"
+    binary_name="${bin}.exe"
     binary_path="${binaries_dir}/${binary_name}"
 fi
 
@@ -124,15 +125,15 @@ cp "$src" "$binary_path"
 chmod +x "$binary_path"
 
 if [[ "$pack" == "zip" ]]; then
-    cp "$src" "${tmp}/${bin}.exe"
-    (cd "$tmp" && zip -q -j "$artifact_path" "${bin}.exe")
+    cp "$src" "${tmp}/${binary_name}"
+    (cd "$tmp" && zip -q -j "$artifact_path" "${binary_name}")
 else
-    cp "$src" "${tmp}/${bin}"
-    chmod +x "${tmp}/${bin}"
-    tar -C "$tmp" -czf "$artifact_path" "$bin"
+    cp "$src" "${tmp}/${binary_name}"
+    chmod +x "${tmp}/${binary_name}"
+    tar -C "$tmp" -czf "$artifact_path" "${binary_name}"
 fi
 
-refresh_checksums "$binaries_dir" "${bin}-*"
+refresh_checksums "$binaries_dir" "${bin}" "${bin}-*"
 refresh_checksums "$archives_dir" "${bin}-*".tar.gz "${bin}-*".zip
 
 file_bytes() {

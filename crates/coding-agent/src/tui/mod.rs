@@ -193,8 +193,23 @@ pub(crate) async fn resolve_boot_model(
     let resolved_default =
         resolve_provider_and_model(None, None, default_provider.as_deref(), default_model_id.as_deref())?;
 
-    if resume_id.is_some() || std::env::var("ELPH_PROVIDER").is_ok() || std::env::var("ELPH_MODEL").is_ok() {
+    // When resuming, the harness restores its own model from the session tree —
+    // short-circuit to settings default so we don't override it.
+    if resume_id.is_some() {
         return Ok(resolved_default);
+    }
+
+    // Explicit env vars always win. Resolve with overrides so the env values are
+    // actually honored (not just used as a signal to return settings default).
+    let env_provider = std::env::var("ELPH_PROVIDER").ok();
+    let env_model = std::env::var("ELPH_MODEL").ok();
+    if env_provider.is_some() || env_model.is_some() {
+        return resolve_provider_and_model(
+            env_provider.as_deref(),
+            env_model.as_deref(),
+            default_provider.as_deref(),
+            default_model_id.as_deref(),
+        );
     }
 
     let manager = crate::agent::SessionManager::new(paths, cwd)?;
@@ -206,5 +221,167 @@ pub(crate) async fn resolve_boot_model(
             Ok(resolved_default)
         }
         Ok(None) | Err(_) => Ok(resolved_default),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::agent::{DEFAULT_MODEL_ID, DEFAULT_PROVIDER};
+    use crate::platform::Paths;
+
+    fn test_paths(label: &str) -> Paths {
+        let root = std::env::temp_dir().join(format!(
+            "elph-resolve-boot-model-test-{label}-{}-{:?}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let config = root.join("config");
+        let data = root.join("data");
+        let project = root.join("project");
+        std::fs::create_dir_all(&project).expect("create project dir");
+        std::fs::create_dir_all(&data).expect("create data dir");
+        Paths::from_dirs(config, data, project)
+    }
+
+    fn settings_with_default_model(model: &str) -> Settings {
+        let mut settings = Settings::defaults();
+        settings.models.default_model = Some(model.to_string());
+        settings
+    }
+
+    /// Clears env vars that could interfere with `resolve_boot_model` tests.
+    fn clear_model_env_vars() {
+        unsafe {
+            std::env::remove_var("ELPH_PROVIDER");
+            std::env::remove_var("ELPH_MODEL");
+        }
+    }
+
+    #[tokio::test]
+    async fn resolve_boot_model_resume_id_uses_settings_default() {
+        clear_model_env_vars();
+        let paths = test_paths("resume");
+        let cwd = paths.project_dir().clone();
+        let settings = settings_with_default_model("anthropic/claude-sonnet-4");
+
+        let (provider, model) = resolve_boot_model(&settings, &paths, &cwd, Some("some-session-id"))
+            .await
+            .expect("resolve");
+
+        assert_eq!(provider, "anthropic");
+        assert_eq!(model, "claude-sonnet-4");
+    }
+
+    #[tokio::test]
+    async fn resolve_boot_model_env_provider_wins_over_last_used() {
+        clear_model_env_vars();
+        let paths = test_paths("env-provider");
+        let cwd = paths.project_dir().clone();
+        let settings = settings_with_default_model("anthropic/claude-sonnet-4");
+
+        // Create a session with a different model so last_used_model returns Some.
+        let manager = crate::agent::SessionManager::new(&paths, &cwd).expect("manager");
+        let mut session = manager.create(None).await.expect("create session");
+        session
+            .append_model_change("openai", "gpt-5.6-luna")
+            .await
+            .expect("model change");
+
+        // ELPH_MODEL should override the last-used model from session.
+        unsafe {
+            std::env::set_var("ELPH_MODEL", "xai/grok-4.5");
+        }
+
+        let (provider, model) = resolve_boot_model(&settings, &paths, &cwd, None)
+            .await
+            .expect("resolve");
+
+        clear_model_env_vars();
+        assert_eq!(provider, "xai");
+        assert_eq!(model, "grok-4.5");
+    }
+
+    #[tokio::test]
+    async fn resolve_boot_model_uses_last_used_when_in_catalog() {
+        clear_model_env_vars();
+        let paths = test_paths("last-used");
+        let cwd = paths.project_dir().clone();
+        let settings = settings_with_default_model("anthropic/claude-sonnet-4");
+
+        let manager = crate::agent::SessionManager::new(&paths, &cwd).expect("manager");
+        let mut session = manager.create(None).await.expect("create session");
+        session
+            .append_model_change("openai", "gpt-5.6-luna")
+            .await
+            .expect("model change");
+
+        let (provider, model) = resolve_boot_model(&settings, &paths, &cwd, None)
+            .await
+            .expect("resolve");
+
+        // Should prefer the last-used model over settings default.
+        assert_eq!(provider, "openai");
+        assert_eq!(model, "gpt-5.6-luna");
+    }
+
+    #[tokio::test]
+    async fn resolve_boot_model_falls_back_when_last_used_not_in_catalog() {
+        clear_model_env_vars();
+        let paths = test_paths("removed-model");
+        let cwd = paths.project_dir().clone();
+        let settings = settings_with_default_model("anthropic/claude-sonnet-4");
+
+        let manager = crate::agent::SessionManager::new(&paths, &cwd).expect("manager");
+        let mut session = manager.create(None).await.expect("create session");
+        // Use a model id that does not exist in the builtin catalog.
+        session
+            .append_model_change("openai", "this-model-does-not-exist-xyz")
+            .await
+            .expect("model change");
+
+        let (provider, model) = resolve_boot_model(&settings, &paths, &cwd, None)
+            .await
+            .expect("resolve");
+
+        // Last-used model is gone from the catalog → fall back to settings default.
+        assert_eq!(provider, "anthropic");
+        assert_eq!(model, "claude-sonnet-4");
+    }
+
+    #[tokio::test]
+    async fn resolve_boot_model_no_sessions_uses_settings_default() {
+        clear_model_env_vars();
+        let paths = test_paths("no-sessions");
+        let cwd = paths.project_dir().clone();
+        let settings = settings_with_default_model("anthropic/claude-sonnet-4");
+
+        // Do not create any sessions — last_used_model returns None.
+        let (provider, model) = resolve_boot_model(&settings, &paths, &cwd, None)
+            .await
+            .expect("resolve");
+
+        assert_eq!(provider, "anthropic");
+        assert_eq!(model, "claude-sonnet-4");
+    }
+
+    #[tokio::test]
+    async fn resolve_boot_model_no_sessions_no_default_uses_hardcoded_default() {
+        clear_model_env_vars();
+        let paths = test_paths("hardcoded-default");
+        let cwd = paths.project_dir().clone();
+        // Settings with no default model configured.
+        let settings = Settings::defaults();
+
+        let (provider, model) = resolve_boot_model(&settings, &paths, &cwd, None)
+            .await
+            .expect("resolve");
+
+        // Falls back to the hardcoded DEFAULT_PROVIDER / DEFAULT_MODEL_ID.
+        assert_eq!(provider, DEFAULT_PROVIDER);
+        assert_eq!(model, DEFAULT_MODEL_ID);
     }
 }

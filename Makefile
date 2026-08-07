@@ -50,20 +50,29 @@ $(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
 #   make install RELEASE=1
 #   make install -- --release
 #   make build -- --release
+# Dist (for production builds):
+#   make install PROFILE=dist
 # Note: `make install --release` is rejected by GNU make (unknown option). Use `-- --release`.
 # Do not use residual goal `release` — it collides with the cross `release` target.
 _RELEASE_REQUESTED :=
+_DIST_REQUESTED :=
 ifneq ($(filter 1 true yes,$(RELEASE)),)
   _RELEASE_REQUESTED := 1
 endif
 ifneq ($(filter release,$(PROFILE)),)
   _RELEASE_REQUESTED := 1
 endif
+ifneq ($(filter dist,$(PROFILE)),)
+  _DIST_REQUESTED := 1
+endif
 ifneq ($(filter --release,$(MAKECMDGOALS) $(_RESIDUAL_)),)
   _RELEASE_REQUESTED := 1
 endif
 
-ifeq ($(_RELEASE_REQUESTED),1)
+ifeq ($(_DIST_REQUESTED),1)
+  CARGO_BUILD_FLAGS := --profile dist
+  BUILD_PROFILE     := dist
+else ifeq ($(_RELEASE_REQUESTED),1)
   CARGO_BUILD_FLAGS := --release
   BUILD_PROFILE     := release
 else
@@ -108,14 +117,16 @@ build-elph: ## Build elph binary (debug default; RELEASE=1 or -- --release)
 	done; \
 	printf "Build time:  %d.%03ds\n" $$(( _elapsed / 1000 )) $$(( _elapsed % 1000 ))
 
-install: build ## Install elph (debug -> elph-dev; release -> elph-next)
+install: build ## Install elph (debug -> elph-dev; release -> elph-next; dist -> elph)
 	@mkdir -p $(INSTALL_DIR) && echo
 	@for bin in $(APP_BINS); do \
-	  if [ "$(BUILD_PROFILE)" = "release" ]; then \
+	  if [ "$(BUILD_PROFILE)" = "dist" ]; then \
+	    _suffix=""; \
+	  else if [ "$(BUILD_PROFILE)" = "release" ]; then \
 	    _suffix="-next"; \
 	  else \
 	    _suffix="-dev"; \
-	  fi; \
+	  fi; fi; \
       rm -f "$(INSTALL_DIR)/$$bin$${_suffix}"; \
 	  cp "$(BUILD_DIR)/$$bin" "$(INSTALL_DIR)/$$bin$${_suffix}"; \
 	  echo "$$bin$${_suffix} installed at: $(INSTALL_DIR)/$$bin$${_suffix} [$(BUILD_PROFILE)]"; \
@@ -335,6 +346,7 @@ help: ## Show this help
 	@printf ' \n\033[33mBuild profile (build / install):\033[0m\n'
 	@printf ' \033[36mmake install\033[0m                  debug -> elph-dev\n'
 	@printf ' \033[36mmake install RELEASE=1\033[0m        release -> elph-next\n'
+	@printf ' \033[36mmake install PROFILE=dist\033[0m      dist -> elph\n'
 	@printf ' \033[36mmake install -- --release\033[0m     release (GNU make end-of-options)\n'
 	@printf ' \033[36mmake build PROFILE=release\033[0m    same as RELEASE=1\n'
 	@printf ' note: \033[36mmake install --release\033[0m  is invalid (make option parse)\n'

@@ -47,7 +47,7 @@ fi
 
 cross_log_target "$target" "$tool"
 
-build_args=(build --release -p)
+build_args=(build --profile dist -p)
 if [[ "${CROSS_QUIET:-}" == "1" ]]; then
     build_args+=(-q)
 elif [[ "${CROSS_VERBOSE:-}" == "1" ]]; then
