@@ -38,7 +38,7 @@ impl CodegraphConfig {
             // Cap per-file read size to keep consumer machines responsive.
             max_file_bytes: 512 * 1024,
             max_db_connections: None,
-            embed_batch_size: 64,
+            embed_batch_size: 128,
             db_commit_batch_files: 200,
             embed_concurrency: 1,
             gpu_acceleration: None,

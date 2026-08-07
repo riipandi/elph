@@ -113,7 +113,7 @@ for (file_idx, (_, _, _, _, chunks)) in chunked_files.iter().enumerate() {
     }
 }
 
-const EMBED_BATCH_SIZE: usize = 64;
+const EMBED_BATCH_SIZE: usize = 128;
 let mut flat_embeddings: Vec<Vec<f32>> = Vec::with_capacity(flat_texts.len());
 for batch in flat_texts.chunks(EMBED_BATCH_SIZE) {
     let batch_vec: Vec<String> = batch.to_vec();
@@ -322,7 +322,7 @@ existing structs, do not create a new top-level settings section.**
 
 | JSON key             | Rust field              | Type    | Recommended default | What it controls                                                                                                                                                                                                                                                                | Why user-tunable                                                                                                                                                                                                                                                                                                                                                                                    |
 | -------------------- | ----------------------- | ------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `embedBatchSize`     | `embed_batch_size`      | `usize` | `64`                | Number of chunk texts sent to the embedder in a single batched call (Phase 1.2, `EMBED_BATCH_SIZE`).                                                                                                                                                                            | Optimal batch size depends on model size, CPU core count / GPU VRAM. Users on constrained machines (e.g. 4GB RAM laptop) may need to lower this to avoid memory spikes; users with a strong GPU (Phase 2) may want it higher (e.g. 128-256) for better throughput.                                                                                                                                  |
+| `embedBatchSize`     | `embed_batch_size`      | `usize` | `128`               | Number of chunk texts sent to the embedder in a single batched call (Phase 1.2, `EMBED_BATCH_SIZE`).                                                                                                                                                                            | Optimal batch size depends on model size, CPU core count / GPU VRAM. Users on constrained machines (e.g. 4GB RAM laptop) may need to lower this to avoid memory spikes; users with a strong GPU (Phase 2) may want it higher (e.g. 256-512) for better throughput.                                                                                                                                  |
 | `dbCommitBatchFiles` | `db_commit_batch_files` | `usize` | `200`               | Number of files' worth of chunks/nodes/edges committed per DB transaction (Phase 3.2, `DB_TXN_BATCH_FILES`).                                                                                                                                                                    | Smaller = more frequent durability checkpoints (safer against crash loss, slightly slower); larger = fewer fsyncs (faster, but a crash loses more uncommitted work and must redo it on next run). Expose so users indexing on unreliable machines (CI runners with tight timeouts, laptops that sleep) can tune toward safety, and users on stable machines can tune toward raw speed.              |
 | `embedConcurrency`   | `embed_concurrency`     | `usize` | `1`                 | Number of embedding batches dispatched concurrently (advanced/experimental — only meaningful if the underlying embedder is safely callable from multiple tasks at once; verify thread-safety of the specific `embed_anything` backend in use before defaulting this above `1`). | Default `1` (fully sequential batches, safest, matches Phase 1 as specified). Advanced users who've confirmed their backend handles concurrent calls well (e.g. ONNX Runtime with multiple intra-op threads) can raise this for extra throughput. Document clearly in the JSON schema/comments that raising this without backend concurrency support gives no benefit and may cause CPU contention. |
 
@@ -375,7 +375,7 @@ existing structs, do not create a new top-level settings section.**
         "maxFileBytes": 524288,
         "maxDbConnections": 4,
         "toolTimeoutMs": 15000,
-        "embedBatchSize": 64,
+        "embedBatchSize": 128,
         "dbCommitBatchFiles": 200,
         "embedConcurrency": 1
     },

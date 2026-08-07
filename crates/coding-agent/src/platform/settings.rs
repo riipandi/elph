@@ -472,7 +472,7 @@ pub struct CodegraphSettings {
     /// agent falls back to `grep` / `read_file` / `shell_exec`.
     #[serde(default = "default_codegraph_tool_timeout_ms")]
     pub tool_timeout_ms: u64,
-    /// Number of chunk texts sent to the embedder in a single batched call (default: 64).
+    /// Number of chunk texts sent to the embedder in a single batched call (default: 128).
     /// Lower on memory-constrained machines; raise with a strong GPU for throughput.
     #[serde(default = "default_codegraph_embed_batch_size")]
     pub embed_batch_size: usize,
@@ -504,7 +504,7 @@ fn default_codegraph_tool_timeout_ms() -> u64 {
 }
 
 fn default_codegraph_embed_batch_size() -> usize {
-    64
+    128
 }
 
 fn default_codegraph_db_commit_batch_files() -> usize {
