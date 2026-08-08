@@ -37,6 +37,7 @@ mod move_path;
 mod file_mutation_queue;
 mod image;
 mod list_available_tools;
+mod list_skills;
 
 #[cfg(feature = "mcp")]
 pub mod mcp;
@@ -70,6 +71,7 @@ pub use image::create_image_tool;
 pub use list_available_tools::create_list_available_tools;
 #[cfg(feature = "tools-list-dir")]
 pub use list_dir::create_list_dir_tool;
+pub use list_skills::{create_list_skills_tool, format_skill_catalog};
 #[cfg(feature = "tools-move-path")]
 pub use move_path::create_move_path_tool;
 #[cfg(feature = "tools-read-file")]

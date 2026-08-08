@@ -1,7 +1,7 @@
 //! Coding-agent system prompt assembly.
 //!
 //! Layering (generic runtime → product domain):
-//! 1. [`elph_agent::render_base_template`] — persona, session env, [`format_skills_for_system_prompt`] (`<available_skills>`)
+//! 1. [`elph_agent::render_base_template`] — persona, session env, [`format_skills_for_context`] (`<available_skills>`)
 //! 2. [`super::template::coding_agent_engine`] — Grok-style `coding_base.md` (MiniJinja) with tool names
 //! 3. `mode_section` — per-mode appendix (`<mode_context>`)
 //! 4. [`elph_agent::format_project_context`] — Pi-style `<project_context>` for AGENTS.md
@@ -10,7 +10,7 @@ use std::path::Path;
 
 use crate::types::AgentMode;
 use elph_agent::{AgentHarnessResources, PromptAssemblyMode, SystemPromptBuilder, SystemPromptTemplateContext};
-use elph_agent::{format_skills_for_system_prompt, now_iso_timestamp};
+use elph_agent::{format_skills_for_context, now_iso_timestamp};
 
 use super::context::{ElphCodingPromptContext, has_codegraph_tools};
 use super::modes::{build_mode_section, mode_footer_slug};
@@ -41,11 +41,7 @@ pub fn build_coding_system_prompt(
     let skills_section = if resources.skills.is_empty() {
         String::new()
     } else {
-        let relevant: Vec<elph_agent::Skill> = elph_agent::filter_skills_for_context(&resources.skills, cwd)
-            .into_iter()
-            .cloned()
-            .collect();
-        format_skills_for_system_prompt(&relevant)
+        format_skills_for_context(&resources.skills, cwd)
     };
 
     let preferred_chat_language: String = preferred_chat_language.into();

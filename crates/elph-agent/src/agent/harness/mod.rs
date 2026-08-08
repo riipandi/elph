@@ -20,6 +20,7 @@ pub use helpers::NavigateTreeOptions;
 pub use hooks::SUBSCRIBER_EVENT_TYPE;
 pub use hooks::{AgentHarnessEvent, HookRegistry};
 pub use system_prompt::filter_skills_for_context;
+pub use system_prompt::format_skills_for_context;
 pub use system_prompt::format_skills_for_system_prompt;
 pub use types::AbortEvent;
 pub use types::AbortResult;

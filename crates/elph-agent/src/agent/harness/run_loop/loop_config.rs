@@ -123,9 +123,13 @@ where
                 })
             }));
         let hooks = Arc::new(self.shared.hooks.clone_shallow());
+        let after_shared = shared.clone();
         let after_tool_call: Option<crate::types::AfterToolCallFn> =
             Some(Arc::new(move |ctx: crate::types::AfterToolCallContext, _| {
                 let hooks = hooks.clone();
+                let harness = AgentHarness {
+                    shared: after_shared.clone(),
+                };
                 let event = ToolResultEvent {
                     tool_call_id: ctx.tool_call.id.clone(),
                     tool_name: ctx.tool_call.name.clone(),
@@ -135,7 +139,16 @@ where
                     is_error: ctx.is_error,
                 };
                 Box::pin(async move {
+                    // Lazy tool activation: a tool result may advertise newly
+                    // available tools via `added_tool_names` (e.g. an MCP server's
+                    // tools becoming reachable after the model listed them). The
+                    // harness keeps the full registry, so activating only changes
+                    // which names are exposed to the model from the next turn.
+                    let advertised: Vec<String> = ctx.result.added_tool_names.clone().unwrap_or_default();
                     let result = hooks.emit_tool_result(&event).await.ok()??;
+                    if !advertised.is_empty() {
+                        let _ = harness.activate_lazy_tools(&advertised).await;
+                    }
                     Some(AfterToolCallResult {
                         content: result.content,
                         details: result.details,

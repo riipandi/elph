@@ -19,12 +19,25 @@ pub async fn refresh_tools_catalog(harness: &AgentHarness<TursoSessionStorage>, 
         .iter()
         .filter(|tool| {
             let name = tool.name();
-            name != "list_available_tools" && (active_names.is_empty() || active_set.contains(name))
+            name != "list_available_tools"
+                && name != "list_skills"
+                && (active_names.is_empty() || active_set.contains(name))
         })
         .cloned()
         .collect();
 
+    // Keep `list_skills` available (always-active catalog tool); it is excluded
+    // from the `list_available_tools` snapshot so the two catalogs don't nest.
     tools.retain(|tool| tool.name() != "list_available_tools");
+    if !tools.iter().any(|tool| tool.name() == "list_skills")
+        && let Some(skills_tool) = harness
+            .get_tools()
+            .await
+            .into_iter()
+            .find(|tool| tool.name() == "list_skills")
+    {
+        tools.push(skills_tool);
+    }
     tools.push(create_list_available_tools(&snapshot));
 
     let active_opt = if active_names.is_empty() {
@@ -33,6 +46,9 @@ pub async fn refresh_tools_catalog(harness: &AgentHarness<TursoSessionStorage>, 
         let mut names = active_names.to_vec();
         if !names.iter().any(|n| n == "list_available_tools") {
             names.push("list_available_tools".into());
+        }
+        if !names.iter().any(|n| n == "list_skills") {
+            names.push("list_skills".into());
         }
         Some(names)
     };

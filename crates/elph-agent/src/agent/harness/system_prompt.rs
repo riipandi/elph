@@ -75,8 +75,14 @@ pub fn filter_skills_for_context<'a>(skills: &'a [Skill], cwd: &Path) -> Vec<&'a
 
 /// Format model-visible skills for the system prompt with XML escaping.
 pub fn format_skills_for_system_prompt(skills: &[Skill]) -> String {
-    let visible_skills: Vec<_> = skills.iter().filter(|skill| !skill.disable_model_invocation).collect();
-    if visible_skills.is_empty() {
+    format_skills_ref(skills.iter().filter(|skill| !skill.disable_model_invocation))
+}
+
+/// Internal formatter that accepts an iterator of skill references
+/// (owning `&Skill` or `Skill` values alike).
+fn format_skills_ref<'a>(skills: impl Iterator<Item = &'a Skill>) -> String {
+    let collected: Vec<&Skill> = skills.collect();
+    if collected.is_empty() {
         return String::new();
     }
 
@@ -87,7 +93,7 @@ pub fn format_skills_for_system_prompt(skills: &[Skill]) -> String {
         "<available_skills>".to_string(),
     ];
 
-    for skill in visible_skills {
+    for skill in collected {
         lines.push("  <skill>".to_string());
         lines.push(format!("    <name>{}</name>", escape_xml(&skill.name)));
         lines.push(format!("    <description>{}</description>", escape_xml(&skill.description)));
@@ -97,6 +103,15 @@ pub fn format_skills_for_system_prompt(skills: &[Skill]) -> String {
 
     lines.push("</available_skills>".to_string());
     lines.join("\n")
+}
+
+/// Filter skills for the current working directory, then format the
+/// `<available_skills>` block — the single entry point callers (both
+/// `PromptAssemblyMode::Extend` and `Full` hosts) should use so relevance
+/// gating can never be accidentally skipped.
+pub fn format_skills_for_context(skills: &[Skill], cwd: &Path) -> String {
+    let relevant: Vec<&Skill> = filter_skills_for_context(skills, cwd);
+    format_skills_ref(relevant.iter().copied().filter(|skill| !skill.disable_model_invocation))
 }
 
 fn escape_xml(value: &str) -> String {

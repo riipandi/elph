@@ -87,7 +87,11 @@ pub async fn create_coding_session_with_events(
         Some(loaded) => loaded.resources,
         None => load_resources(options.paths, options.cwd, env.as_ref()).await.resources,
     };
-    let mut tools = BuiltinToolsBuilder::all(env.clone()).build();
+    // Provide the loaded skill set so `list_skills` (on-demand catalog) can be
+    // registered alongside the built-in tools.
+    let mut tools = BuiltinToolsBuilder::all(env.clone())
+        .with_skills(resources.skills.clone())
+        .build();
 
     // Shared memory runtime (tools + hooks + bootstrap use one store / task id).
     let memory_opts = crate::memory::runtime::MemoryRuntimeOptions::from_settings(&options.settings.memory);

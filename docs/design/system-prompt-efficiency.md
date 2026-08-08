@@ -48,18 +48,48 @@ Measured (tokenx estimator, same module used by compaction) on the dev machine's
 
 See `docs/archive/prompt-baseline-2026-08-08.md` for the full measurement.
 
-## `list_available_tools` filter
+## `list_available_tools` filter + lazy activation
 
 `create_list_available_tools` (`crates/elph-agent/src/tools/list_available_tools.rs`)
 accepts an optional `name_prefix` argument. Passing it (e.g. `mcp_github__`)
 returns only tools whose exposed name starts with that prefix; omitting it keeps
-the old all-catalog behavior. This is the primitive a future lazy MCP
-registration or `/tools` slash command can build on.
+the old all-catalog behavior.
 
-## MCP tool exposure note
+When `name_prefix` is provided, the tool result also sets `added_tool_names` to
+the matched tool names. The harness run-loop consumes `added_tool_names` in its
+`after_tool_call` hook (`crates/elph-agent/src/agent/harness/run_loop/loop_config.rs`):
+names that exist in the registry but are not yet active are added to
+`active_tool_names` (persisted durably, same path as `set_active_tools`) — this is
+the **lazy tool activation** primitive. A model flow that wants a specific MCP
+server's tools can request `list_available_tools(name_prefix: "mcp_github__")`,
+and those tool schemas become active from the next turn.
 
-Today every connected MCP server's tools are emitted into the model's active
-tool set for every turn (`crates/coding-agent/src/agent/runtime.rs`, and
-`crates/elph-agent/src/agent/harness/setters.rs` `set_tools`). A dedicated
-follow-up plan is required to make MCP tool schemas lazy (see
-`docs/planned/system-prompt-revamp.md`, Phase 4).
+Today every connected MCP server's tools are still registered eagerly
+(`runtime.rs` / `set_tools`) and exposed in the active set by default, so the
+token win is only realized once a session opts tools in via the lazy path. Making
+MCP tools *default-inactive* is a potential follow-up (requires confirming that
+`list_available_tools` is always available so the model can activate what it
+needs); it is not yet the default.
+
+## On-demand skill discovery (`list_skills`)
+
+`create_list_skills_tool` (`crates/elph-agent/src/tools/list_skills.rs`) exposes the
+complete skill catalog to the model as a regular (non-lazy) tool. It accepts an
+optional `relevance` argument (`all` | `project` | `global`) so the model can ask
+for only project-scoped skills, global skills, or the full set — including skills
+that were filtered out of `<available_skills>` by relevance gating.
+
+The tool is wired in `BuiltinToolsBuilder::with_skills` when a skill set is
+loaded, is kept available across mode reconciliations (`tools_catalog.rs`), and
+is whitelisted in Ask/Plan mode policies (`tool_policy.rs`). Skills therefore
+remain fully reachable by the model even when relevance filtering hides their
+advertisement from the static prompt.
+
+## Caller-side consistency (`format_skills_for_context`)
+
+The single combined entry point `format_skills_for_context(skills, cwd)` (filter
++ XML render) is exported (`elph_agent`) and used by the coding-agent prompt
+builder. Other hosts using `PromptAssemblyMode::Full` append `skills_section`
+verbatim, so they should call `format_skills_for_context` (or pre-filter with
+`filter_skills_for_context`) before setting `skills_section` — the builder itself
+keeps rendering exactly what it receives.

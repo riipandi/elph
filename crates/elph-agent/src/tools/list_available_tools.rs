@@ -70,7 +70,23 @@ pub fn create_list_available_tools(tools: &[AgentTool]) -> AgentTool {
                     })
                     .collect();
                 let data = serde_json::to_string_pretty(&entries).unwrap_or_else(|_| "[]".into());
-                Ok(AgentToolResult::text(data))
+                // When a `name_prefix` was used, advertise the matched tool names so
+                // the harness can lazily activate them (their schemas become usable
+                // from the next turn — see `AgentHarness::activate_lazy_tools`).
+                let added = prefix.as_deref().map(|_| {
+                    snapshot
+                        .iter()
+                        .filter(|t| t.tool.name.starts_with(prefix.as_deref().unwrap_or("")))
+                        .map(|t| t.tool.name.clone())
+                        .collect::<Vec<_>>()
+                });
+                Ok(AgentToolResult {
+                    content: vec![crate::types::ToolResultContent::Text(elph_ai::TextContent::new(data))],
+                    details: json!({}),
+                    added_tool_names: added,
+                    terminate: None,
+                    usage: None,
+                })
             })
         },
     )
@@ -105,11 +121,15 @@ mod tests {
         ]
     }
 
-    fn output_text(meta: &AgentTool, args: serde_json::Value) -> String {
+    fn output_result(meta: &AgentTool, args: serde_json::Value) -> AgentToolResult {
         let env = std::sync::Arc::new(crate::runtime::local_env::LocalExecutionEnv::new("/tmp"));
         let ctx = crate::tools::types::ToolContext::new(env);
         let fut = (meta.execute)(String::new(), args, None, None, ctx);
-        let result = futures::executor::block_on(fut).expect("runs");
+        futures::executor::block_on(fut).expect("runs")
+    }
+
+    fn output_text(meta: &AgentTool, args: serde_json::Value) -> String {
+        let result = output_result(meta, args);
         match result.content.first().expect("content") {
             crate::tools::types::ToolResultContent::Text(t) => t.text.clone(),
             _ => panic!("expected text"),
@@ -129,12 +149,32 @@ mod tests {
     #[test]
     fn name_prefix_filters_mcp_server() {
         let meta = create_list_available_tools(&snapshot_tools());
-        let text = output_text(&meta, json!({"name_prefix": "mcp_github__"}));
+        let result = output_result(&meta, json!({"name_prefix": "mcp_github__"}));
+        let text = match result.content.first().expect("content") {
+            crate::tools::types::ToolResultContent::Text(t) => t.text.clone(),
+            _ => panic!("expected text"),
+        };
         assert!(text.contains("mcp_github__list_issues"));
         assert!(text.contains("mcp_github__get_issue"));
         assert!(!text.contains("read_file"));
         assert!(!text.contains("mcp_browser__navigate"));
         assert!(!text.contains("spawn_agent"));
+        // With a prefix, the matched tool names are advertised so the harness
+        // can lazily activate them for the next turn.
+        let added = result.added_tool_names.expect("advertised");
+        assert!(added.contains(&"mcp_github__list_issues".to_string()));
+        assert!(added.contains(&"mcp_github__get_issue".to_string()));
+        assert!(!added.contains(&"mcp_browser__navigate".to_string()));
+        assert!(!added.contains(&"read_file".to_string()));
+    }
+
+    #[test]
+    fn no_prefix_does_not_advertise() {
+        let meta = create_list_available_tools(&snapshot_tools());
+        let result = output_result(&meta, json!({"name_prefix": ""}));
+        assert!(result.added_tool_names.is_none());
+        let no_arg = output_result(&meta, json!({}));
+        assert!(no_arg.added_tool_names.is_none());
     }
 
     #[test]

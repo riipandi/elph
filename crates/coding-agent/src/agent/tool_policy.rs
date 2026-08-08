@@ -29,6 +29,8 @@ pub fn coding_tool_exposure_policy() -> &'static ToolExposurePolicy {
             "ask_user_question".into(),
             "request_mode_change".into(),
             "list_available_tools".into(),
+            // On-demand skill catalog (read-only listing; never drops a skill).
+            "list_skills".into(),
             // Codegraph tools are read-only (search / impact / status / dirty reindex)
             // and only registered when `codegraph.enabled` is true — safe in Plan/Ask.
             "code_search".into(),
@@ -120,6 +122,9 @@ impl AgentModePolicy {
     fn ensure_list_available_tool(mut names: Vec<String>) -> Vec<String> {
         if !names.iter().any(|n| n == "list_available_tools") {
             names.push("list_available_tools".into());
+        }
+        if !names.iter().any(|n| n == "list_skills") {
+            names.push("list_skills".into());
         }
         names.sort();
         names.dedup();
@@ -233,9 +238,11 @@ mod tests {
     fn build_mode_exposes_all_registered_tools() {
         let all = vec!["read_file".into(), "write_file".into(), "shell_exec".into()];
         let active = AgentModePolicy::active_tool_names_for_mode(AgentMode::Build, &all, None);
-        assert_eq!(active.len(), 4);
+        // All registered + `list_available_tools` + `list_skills` (always-on meta).
+        assert_eq!(active.len(), 5);
         assert!(active.contains(&"write_file".to_string()));
         assert!(active.contains(&"list_available_tools".to_string()));
+        assert!(active.contains(&"list_skills".to_string()));
     }
 
     #[test]

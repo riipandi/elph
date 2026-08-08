@@ -119,6 +119,7 @@ pub use agent::harness::execute_shell_with_capture;
 pub use agent::harness::filter_skills_for_context;
 pub use agent::harness::finalize_shell_capture;
 pub use agent::harness::format_size;
+pub use agent::harness::format_skills_for_context;
 pub use agent::harness::format_skills_for_system_prompt;
 pub use agent::harness::get_or_throw;
 pub use agent::harness::get_or_undefined;
