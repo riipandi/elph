@@ -408,7 +408,12 @@ fn maybe_heal_stale_leaves(index: SessionIndex) -> Result<SessionIndex, SessionE
         })
         .cloned()
         .collect();
-    build_index(entries, None)
+    // Preserve in-memory side state (checkpoints, name) across the rebuild —
+    // dropping phantom leaves must not silently lose live compaction checkpoints.
+    let mut healed = build_index(entries, None)?;
+    healed.checkpoints = index.checkpoints;
+    healed.name = index.name;
+    Ok(healed)
 }
 
 fn map_storage_error(error: impl std::fmt::Display) -> SessionError {

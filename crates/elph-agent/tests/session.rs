@@ -337,3 +337,72 @@ async fn turso_reopen_with_phantom_leaf_pointer_stays_openable_and_repairable() 
     assert!(reloaded.leaf_id().await.expect("leaf").is_some());
     assert!(reloaded.entries().await.len() >= 2);
 }
+
+// End-to-end resume + continue: a turn that crashed mid-branch leaves tool calls
+// unanswered and possibly a dangling custom entry. Reopen → reconcile → append a
+// new user message (the "continue" step) must all succeed, and the fresh message
+// must chain onto a real entry.
+#[tokio::test]
+async fn turso_resume_after_crash_then_continue_appends_chain() {
+    use elph_agent::reconcile_session;
+
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let db = tmp.path().join("crash.db");
+
+    // Session 1 (the crashed run): user → assistant-with-toolcall (no result).
+    {
+        let mut storage = TursoSessionStorage::create(&db, Some("crash_sess".into()))
+            .await
+            .expect("create");
+        storage
+            .append_entry(session_tree_message_entry("u1", None, user_message("fix the bug")))
+            .await
+            .expect("append u1");
+        let assistant = elph_ai::faux_assistant_message(
+            vec![elph_ai::AssistantContentBlock::ToolCall(elph_ai::ToolCall::new(
+                "call_1",
+                "edit_file",
+                serde_json::json!({"path": "src/main.rs"}),
+            ))],
+            Some(elph_ai::StopReason::ToolUse),
+        );
+        storage
+            .append_entry(session_tree_message_entry(
+                "a1",
+                Some("u1"),
+                AgentMessage::Llm(Box::new(elph_ai::Message::Assistant(assistant))),
+            ))
+            .await
+            .expect("append a1");
+    }
+
+    // Resume: open + reconcile (repair unanswered tool call, re-establish leaf).
+    let mut session = Session::new(
+        TursoSessionStorage::open(&db, "crash_sess", None)
+            .await
+            .expect("resume open"),
+    );
+    let report = reconcile_session(&mut session).await.expect("reconcile");
+    assert!(report.repaired_tool_results >= 1, "must repair the unanswered tool call");
+
+    // The synthetic tool result is chained onto the real leaf, and context still builds.
+    let context = session.build_context().await.expect("context");
+    assert!(!context.messages.is_empty());
+
+    // Continue: user sends the next prompt.
+    session
+        .append_message(user_message("ok done"))
+        .await
+        .expect("continue append");
+
+    // Verify the chain is intact end-to-end after a fresh reopen.
+    let final_session = Session::new(
+        TursoSessionStorage::open(&db, "crash_sess", None)
+            .await
+            .expect("final reopen"),
+    );
+    final_session.build_context().await.expect("final context");
+    let entries = final_session.entries().await;
+    // u1, a1, synthetic tool result, u2 → at least 4 entries, all chained.
+    assert!(entries.len() >= 4, "expected >=4 entries, got {}", entries.len());
+}
