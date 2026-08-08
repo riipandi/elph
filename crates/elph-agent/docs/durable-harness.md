@@ -193,6 +193,35 @@ The current implementation already queues pending writes and flushes at save poi
 - Crash after generated summary but before compaction entry: rerun unless summary was journaled.
 - Crash after compaction entry: operation is complete; append finish marker if missing.
 
+### Stale leaf / phantom entry healing (open & recovery)
+
+A persisted `active_leaf_id` can point at an entry that no longer exists in the tree:
+
+- crash landing between the `leaf` write and its new child write,
+- session-tree rows pruned (e.g. legacy transcript-snapshot cleanup deleting
+  `custom` entries that other rows referenced as parents),
+- a partial recovery write before the crash.
+
+Elph never bricks a session over a stale pointer:
+
+- `build_index` / `resolve_leaf_id` resolve the leaf in priority order: persisted
+  pointer if it names a real entry → last explicit `Leaf { target }` whose target
+  exists → newest non-`Leaf` entry → `None` (empty session). Failing open with
+  `InvalidSession` was the original "Entry 019… not found" resume bug.
+- Parent-chain walks (`get_path_to_root`, `get_path_to_root_or_compaction`) stop at
+  the first entry whose parent is missing instead of erroring, so a pruned middle
+  of the tree leaves the readable tail intact.
+- `repair_unanswered_tool_calls` re-establishes the leaf to the newest real entry
+  before scanning, so tool-result repair never starts from a phantom id.
+- `flush_pending_session_writes` skips a pending `Leaf` whose target is missing
+  instead of failing the whole flush.
+- Turso backends additionally auto-heal when the tree accumulates ≥
+  `MAX_STALE_LEAVES_BEFORE_HEAL` (16) phantom leaves on open: stale `Leaf` entries
+  are dropped and the leaf is re-resolved.
+
+The `set_leaf_id` contract is unchanged — pointing at a missing entry is still an
+error for callers; recovery/guarded callers resolve first.
+
 ### Branch summary / tree navigation
 
 - Crash before summary: rerun or mark interrupted.

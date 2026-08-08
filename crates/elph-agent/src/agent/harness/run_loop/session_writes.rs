@@ -104,14 +104,24 @@ where
                         .map_err(session_error)?;
                 }
                 PendingSessionWrite::Leaf { target_id } => {
-                    self.shared
-                        .session
-                        .lock()
-                        .await
-                        .storage_mut()
-                        .set_leaf_id(target_id)
-                        .await
-                        .map_err(session_error)?;
+                    // The pending-leaf may reference an entry that was pruned or
+                    // never written (partial recovery). Skip silently instead of
+                    // failing the whole flush — the tree already has a coherent
+                    // leaf, and re-pointing at a phantom would brick every branch.
+                    if let Some(target) = target_id.as_deref()
+                        && self.shared.session.lock().await.entry(target).await.is_none()
+                    {
+                        // fallthrough: skip
+                    } else {
+                        self.shared
+                            .session
+                            .lock()
+                            .await
+                            .storage_mut()
+                            .set_leaf_id(target_id)
+                            .await
+                            .map_err(session_error)?;
+                    }
                 }
                 PendingSessionWrite::Compaction { .. } | PendingSessionWrite::BranchSummary { .. } => {}
             }

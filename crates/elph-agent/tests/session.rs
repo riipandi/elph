@@ -28,6 +28,18 @@ fn assistant_message(text: &str) -> AgentMessage {
     ))))
 }
 
+fn session_tree_message_entry(id: &str, parent_id: Option<&str>, message: AgentMessage) -> SessionTreeEntry {
+    use elph_agent::session::types::SessionTreeEntry;
+    SessionTreeEntry::Message {
+        id: id.to_string(),
+        parent_id: parent_id.map(str::to_string),
+        timestamp: "t".into(),
+        message,
+        prompt_title: String::new(),
+        prompt_kind: String::new(),
+    }
+}
+
 async fn run_session_suite<S, F, Fut>(mut create_storage: F)
 where
     S: SessionStorage,
@@ -270,4 +282,58 @@ async fn session_with_turso_storage() {
             .expect("create")
     })
     .await;
+}
+
+// Regression coverage for the "Entry 019… not found" resume bug:
+// a persisted leaf pointer that names an entry which no longer exists (crash
+// between leaf-write and child-write, rows pruned, partial recovery) must not
+// brick the session — open resolves to the newest real entry and reconcile
+// repairs the tree.
+#[tokio::test]
+async fn turso_reopen_with_phantom_leaf_pointer_stays_openable_and_repairable() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let db = tmp.path().join("reopen.db");
+
+    let mut storage = TursoSessionStorage::create(&db, Some("reopen_phantom".into()))
+        .await
+        .expect("create");
+    storage
+        .append_entry(session_tree_message_entry("u1", None, user_message("one")))
+        .await
+        .expect("append");
+    // Simulate the broken state directly in the DB: sessions.active_leaf_id
+    // points at an entry that was never written (or was pruned).
+    {
+        let handle = elph_agent::datastore::open_local(&db).await.expect("open db");
+        let conn = elph_agent::datastore::connect(&handle).await.expect("connect");
+        conn.execute("UPDATE sessions SET active_leaf_id = 'ghost' WHERE id = 'reopen_phantom'", ())
+            .await
+            .expect("corrupt active_leaf_id");
+    }
+    drop(storage);
+
+    // Open must NOT fail — build_index resolves the phantom to the newest entry.
+    let mut session = Session::new(
+        TursoSessionStorage::open(&db, "reopen_phantom", None)
+            .await
+            .expect("open with phantom leaf pointer"),
+    );
+    assert_eq!(session.leaf_id().await.expect("leaf"), Some("u1".to_string()));
+
+    // Context still builds and appends still work.
+    let context = session.build_context().await.expect("context");
+    assert_eq!(context.messages.len(), 1);
+    session
+        .append_message(assistant_message("two"))
+        .await
+        .expect("append after repair");
+
+    // Reopen again: recovered leaf is the newest entry (an appended message id).
+    let mut reloaded = Session::new(
+        TursoSessionStorage::open(&db, "reopen_phantom", None)
+            .await
+            .expect("reopen"),
+    );
+    assert!(reloaded.leaf_id().await.expect("leaf").is_some());
+    assert!(reloaded.entries().await.len() >= 2);
 }

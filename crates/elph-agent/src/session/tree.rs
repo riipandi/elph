@@ -292,6 +292,9 @@ impl<S: SessionStorage> Session<S> {
     }
 
     pub async fn append_label(&mut self, target_id: &str, label: Option<&str>) -> Result<String, SessionError> {
+        // The label target must exist — labels from user actions always point at
+        // an entry currently in the tree, so a stop here is a genuine user error
+        // (not a recovery path). Keep the hard error for clear feedback.
         if self.storage.get_entry(target_id).await.is_none() {
             return Err(SessionError::new(
                 SessionErrorCode::NotFound,
@@ -329,24 +332,25 @@ impl<S: SessionStorage> Session<S> {
         entry_id: Option<&str>,
         summary: Option<BranchSummaryOptions>,
     ) -> Result<Option<String>, SessionError> {
-        if let Some(entry_id) = entry_id
-            && self.storage.get_entry(entry_id).await.is_none()
+        // Phantom target (rows pruned / partial recovery): fall back to root
+        // instead of failing — recovery re-establishes a real leaf on the next
+        // append.
+        let mut effective_entry_id = entry_id;
+        if let Some(id) = entry_id
+            && self.storage.get_entry(id).await.is_none()
         {
-            return Err(SessionError::new(
-                SessionErrorCode::NotFound,
-                format!("Entry {entry_id} not found"),
-            ));
+            effective_entry_id = None;
         }
-        self.storage.set_leaf_id(entry_id.map(str::to_string)).await?;
+        self.storage.set_leaf_id(effective_entry_id.map(str::to_string)).await?;
         let Some(summary) = summary else {
             return Ok(None);
         };
         let summary_id = self
             .append_typed_entry(SessionTreeEntry::BranchSummary {
                 id: self.storage.create_entry_id().await,
-                parent_id: entry_id.map(str::to_string),
+                parent_id: effective_entry_id.map(str::to_string),
                 timestamp: now_iso_timestamp(),
-                from_id: entry_id.unwrap_or("root").to_string(),
+                from_id: effective_entry_id.unwrap_or("root").to_string(),
                 summary: summary.summary,
                 details: summary.details,
                 from_hook: summary.from_hook,

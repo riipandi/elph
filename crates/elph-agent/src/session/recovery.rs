@@ -16,7 +16,7 @@ use crate::session::durability::{
 };
 use crate::session::id::generate_entry_id;
 use crate::session::tree::Session;
-use crate::session::types::{SessionError, SessionStorage, SessionTreeEntry};
+use crate::session::types::{SessionError, SessionErrorCode, SessionStorage, SessionTreeEntry};
 use crate::types::AgentMessage;
 
 /// Outcome of reconciling a session after open/resume.
@@ -27,10 +27,16 @@ pub struct RecoveryReport {
 }
 
 /// Full reconcile: tool-result repair + close open operations as interrupted.
+///
+/// `repair_unanswered_tool_calls` already re-establishes a coherent leaf when the
+/// tree is left pointing at a phantom (crash between leaf-write and child-write,
+/// rows pruned). Append here always links onto a real entry after that.
 pub async fn reconcile_session<S: SessionStorage>(session: &mut Session<S>) -> Result<RecoveryReport, SessionError> {
+    let tool_report = repair_unanswered_tool_calls(session).await?;
+    let closed = close_open_operations(session).await?;
     Ok(RecoveryReport {
-        repaired_tool_results: repair_unanswered_tool_calls(session).await?.repaired_tool_results,
-        closed_operations: close_open_operations(session).await?,
+        repaired_tool_results: tool_report.repaired_tool_results,
+        closed_operations: closed,
     })
 }
 
@@ -45,7 +51,22 @@ pub async fn load_durable_state<S: SessionStorage>(session: &Session<S>) -> Dura
 pub async fn repair_unanswered_tool_calls<S: SessionStorage>(
     session: &mut Session<S>,
 ) -> Result<RecoveryReport, SessionError> {
-    let path = session.branch_or_compaction(None).await?;
+    // Guard against a phantom leaf (rows pruned / crash after leaf-write):
+    // resolve to the newest real entry so the walk below never starts from a
+    // missing id.
+    let entries = session.storage().get_entries().await;
+    let leaf = session.storage().get_leaf_id().await?;
+    let resolved_leaf = crate::session::storage_utils::resolve_leaf_id(&entries, leaf.as_deref())?;
+    if resolved_leaf != leaf {
+        session.storage_mut().set_leaf_id(resolved_leaf.clone()).await?;
+    }
+
+    let path = session.branch_or_compaction(None).await.map_err(|_| {
+        // Even with a resolved leaf the parent chain may be broken (rows pruned).
+        // Repair can only walk what exists; return a clean report instead of
+        // making recovery itself fail the session.
+        return SessionError::new(SessionErrorCode::InvalidEntry, "unresolvable branch during recovery");
+    })?;
     let mut pending: Vec<(String, String)> = Vec::new();
     let mut answered = std::collections::HashSet::new();
 

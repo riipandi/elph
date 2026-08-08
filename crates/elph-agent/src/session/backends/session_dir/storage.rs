@@ -42,11 +42,11 @@ impl SessionDirStorage {
         let summary = read_summary(&session_dir).await?;
         let metadata = summary_to_metadata(&summary, &session_dir);
         let entries = load_events(&session_dir).await?;
-        let leaf_id = entries
+        let fallback_leaf = entries
             .iter()
             .rev()
             .find_map(crate::session::storage_utils::leaf_id_after_entry);
-        let index = build_index(entries, leaf_id)?;
+        let index = build_index(entries, fallback_leaf)?;
         Ok(Self {
             session_dir,
             metadata,
@@ -281,10 +281,8 @@ impl SessionStorage for SessionDirStorage {
         if let Some(leaf_id) = &self.index.leaf_id
             && !self.index.by_id.contains_key(leaf_id)
         {
-            return Err(SessionError::new(
-                SessionErrorCode::InvalidSession,
-                format!("Entry {leaf_id} not found"),
-            ));
+            // Phantom leaf (crash between leaf-write and child write, rows pruned).
+            return Ok(None);
         }
         Ok(self.index.leaf_id.clone())
     }
