@@ -47,7 +47,7 @@ pub fn build_coding_system_prompt(
     let preferred_chat_language: String = preferred_chat_language.into();
 
     let base_context = SystemPromptTemplateContext {
-        persona: "You are Elph, an expert, intelligent, and interactive AI agent. Complete the user's request end-to-end using the available context and tools."
+        persona: "You are an expert, intelligent, and interactive AI agent. Complete the user's request end-to-end using the available context and tools."
             .to_string(),
         working_directory: Some(cwd.display().to_string()),
         current_date: Some(date),
@@ -97,7 +97,7 @@ mod tests {
         )
         .expect("prompt");
 
-        assert!(prompt.contains("You are Elph, an expert, intelligent, and interactive AI agent"));
+        assert!(prompt.contains("You are an expert, intelligent, and interactive AI agent"));
         assert!(prompt.contains("Working directory: /tmp/project"));
         assert!(prompt.contains("<action_safety>"));
         assert!(prompt.contains("<tool_calling>"));

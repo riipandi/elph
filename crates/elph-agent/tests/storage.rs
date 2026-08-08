@@ -171,7 +171,7 @@ async fn session_dir_storage_creates_session_layout_on_create() {
             cwd,
             session_id: "session-1".to_string(),
             parent_session_id: None,
-            system_prompt: Some("You are Elph.".into()),
+            system_prompt: Some("You are an expert, intelligent, and interactive AI agent.".into()),
         },
     )
     .await
