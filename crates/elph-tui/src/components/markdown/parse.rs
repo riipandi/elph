@@ -801,6 +801,42 @@ mod tests {
     }
 
     #[test]
+    fn table_with_text_prefix_without_blank_line_parses_as_table() {
+        // Ground truth: a table glued onto the END of a paragraph (no blank line before the
+        // header) IS parsed by pulldown as `Paragraph` + `Table`. The stable-boundary logic
+        // relies on this — a model reply ending `"…as seen below:\n| A | B |\n| --- | --- |"`
+        // must freeze the whole table into the stable prefix.
+        let src = "Here's how it works:\n| Feature | Status |\n| --- | --- |\n| x | y | z |";
+        let doc = parse_markdown_document(src);
+        assert!(
+            doc.lines.iter().any(|line| line.table.is_some()),
+            "glued table must parse as table, got: {:?}",
+            line_texts(&doc)
+        );
+        assert_eq!(doc.lines[0].kind, MarkdownLineKind::Paragraph, "prefix stays a paragraph");
+    }
+
+    #[test]
+    fn table_with_bare_cell_extra_pipe_truncates_to_header_columns() {
+        // Ground truth: a data row with MORE cells than the header is parsed by pulldown
+        // as a 2-column row (extra `| z |` is dropped) — a wide 3-cell layout. The pipeline
+        // must not rely on raw text matching (that would mis-diagnose real tables as broken).
+        let src = "| Feature | Status |\n| --- | --- |\n| x | y | z |";
+        let doc = parse_markdown_document(src);
+        let table = doc
+            .lines
+            .iter()
+            .find_map(|line| line.table.as_ref())
+            .expect("table line");
+        assert_eq!(table.rows[0], vec!["Feature", "Status"], "header keeps source columns");
+        assert_eq!(
+            table.rows[1],
+            vec!["x", "y"],
+            "extra cell is dropped by pulldown (source `| x | y | z |` → 2 cols)"
+        );
+    }
+
+    #[test]
     fn ordered_list_second_item_does_not_inherit_hanging_indent() {
         let doc = parse_markdown_document(
             "1. Deployn - PostgreSQL vs. MariaDB vs. SQLite: A Performance Test (2025)\nhttps://deployn.de/en/blog/db-performance/\n\n2. OpenSourceForU - Choosing Between PostgreSQL, MariaDB, and SQlite (2023)\nhttps://www.opensourceforu.com/2023/08/choosing-between-postgresql-mariadb-and-sqlite/",

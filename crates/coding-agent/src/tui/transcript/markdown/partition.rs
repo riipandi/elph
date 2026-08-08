@@ -39,7 +39,7 @@ pub fn find_stable_boundary(raw: &str, force_flush: bool) -> usize {
     boundary
 }
 
-/// Advance through complete GFM tables that start at or after `boundary`.
+/// Advance through complete GFM tables that live at or after `boundary`.
 ///
 /// GFM tables are terminated only by a blank line, a block boundary, or end-of-input — there
 /// is no closing fence. Without this, a table at the end of a message (no trailing blank line)
@@ -48,12 +48,33 @@ pub fn find_stable_boundary(raw: &str, force_flush: bool) -> usize {
 ///
 /// A table is "complete" when it has a header separator row (`| --- | --- |`), so we never
 /// freeze a half-typed table.
+///
+/// The scanner first skips prose lines at the START of the current paragraph segment: GFM
+/// tables are often glued straight onto a preceding sentence (`"as seen below:\n| A | B |\n| --- | --- |"`),
+/// which pulldown parses as `Paragraph` + `Table`. Freezing only tables that begin exactly at
+/// `boundary` left those glued tables in the streaming tail forever → raw `|` rows on screen.
 fn extend_past_closed_tables(raw: &str, boundary: usize, search_end: usize) -> usize {
     let mut end = boundary;
-
-    // Scan consecutive lines that participate in a table (start with `|` or `:` separators).
-    // Only freeze past the end of the table when the header separator row has been seen.
     let mut scan = boundary;
+
+    // Skip non-table prose at the head of the segment (same paragraph as the table).
+    while scan < search_end {
+        let line_end = raw[scan..search_end]
+            .find('\n')
+            .map(|nl| scan + nl + 1)
+            .unwrap_or(search_end);
+        let trimmed = raw[scan..line_end].trim();
+        if trimmed.is_empty() {
+            // Blank line ends the segment before any table — nothing glued here.
+            return end;
+        }
+        if is_table_line(trimmed) {
+            break;
+        }
+        scan = line_end;
+    }
+
+    // Scan the table run: header → separator → data rows until a blank / non-table line.
     let mut seen_separator = false;
     let mut table_end = 0usize;
 
@@ -265,6 +286,27 @@ mod tests {
     }
 
     #[test]
+    fn table_glued_to_previous_paragraph_stays_in_stable_prefix() {
+        // Models often emit a closing sentence and IMMEDIATELY a table without a blank
+        // line in between (`"as seen below:\n| A | B |\n| --- | --- |\n| 1 | 2 |"`).
+        // pulldown parses that as paragraph + table, so the stable boundary must extend
+        // through the whole complete table — otherwise it lingers in the streaming tail
+        // where the 4K cap can shred it into raw-markdown-looking fragments.
+        for raw in [
+            "As seen below:\n| Feature | Status |\n| --- | --- |\n| a | ✅ |",
+            "Sizes:\n| Name | Size |\n| :--- | ---: |\n| x | 1 |\n| y | 2 |\n",
+        ] {
+            let boundary = find_stable_boundary(raw, false);
+            assert_eq!(
+                boundary,
+                raw.len(),
+                "complete table glued to previous prose must be stable, got boundary {boundary} < {}",
+                raw.len()
+            );
+        }
+    }
+
+    #[test]
     fn incomplete_table_stays_in_tail() {
         // While the table is still missing its header separator row (only the header line is
         // present), the boundary stops before it so no half-table is frozen.
@@ -277,6 +319,18 @@ mod tests {
         // The boundary should stop right after the heading paragraph (before the table).
         let heading_block = raw.find("\n\n").map(|i| i + 2).unwrap_or(0);
         assert_eq!(boundary, heading_block, "boundary stops after heading, before table");
+    }
+
+    #[test]
+    fn half_typed_table_glued_to_prose_stays_in_tail() {
+        // Even when glued to prose, a table WITHOUT the separator row (still being typed)
+        // must NOT be frozen — freezing a half table would render a broken grid.
+        let raw = "Summary:\n| Tool | Status |\n";
+        let boundary = find_stable_boundary(raw, false);
+        assert_eq!(
+            boundary, 0,
+            "header-only glued table must not freeze (no separator row), got {boundary}"
+        );
     }
 
     #[test]
