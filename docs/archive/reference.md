@@ -8,3 +8,4 @@
 - https://github.com/phiresky/sqlite-zstd
 - https://github.com/Canop/termimad
 - https://crates.io/crates/memmap2
+- https://github.com/jacobaraujo7/remote_pi
