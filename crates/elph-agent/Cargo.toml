@@ -45,6 +45,7 @@ memchr.workspace = true
 memorable-ids.workspace = true
 parking_lot.workspace = true
 rand.workspace = true
+quick-xml.workspace = true
 regex.workspace = true
 reqwest.workspace = true
 rmcp = { workspace = true, optional = true }

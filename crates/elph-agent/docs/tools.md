@@ -415,19 +415,10 @@ List active subagents in this session. Takes no parameters.
 
 #### `list_available_tools`
 
-Lists all available tools that the agent can use, including their descriptions and usage instructions. Returns an XML catalog of tool descriptors — token-cheaper than JSON and easier for models to consume (same shape as the `<available_skills>` system-prompt block). Parameter schemas are flattened into compact `<property>` elements with `type`, `required`, and `enum` attributes; object-typed properties (or arrays of objects) recurse into nested `<property>` elements.
+Lists all available tools that the agent can use, including their descriptions and usage instructions. Returns a compact XML catalog of tool descriptors — token-cheaper than JSON and easy for models to consume (same shape family as the `<available_skills>` system-prompt block). Parameter schemas are flattened into `<property>` elements with `type`, `required`, and `enum` attributes; object-typed properties (or arrays of objects) recurse into nested `<property>` elements. The output is serialized with `quick-xml` (serde `serialize` feature), so it is one line with only required characters escaped.
 
 ```xml
-<available_tools>
-  <tool>
-    <name>read_file</name>
-    <description>Read a text or image file...</description>
-    <parameters>
-      <property name="path" type="string" required="true">File path (relative or absolute)</property>
-      <property name="limit" type="number">Maximum lines to return</property>
-    </parameters>
-  </tool>
-</available_tools>
+<available_tools><tool><name>read_file</name><description>Read a text or image file...</description><parameters><property name="path" type="string" required="true">File path (relative or absolute)</property><property name="limit" type="number">Maximum lines to return</property><property name="ranges" type="array of object"><description>Multiple specific file ranges to read.</description><property name="path" type="string" required="true"/><property name="offset" type="number"/></property></parameters></tool></available_tools>
 ```
 
 Optional argument `name_prefix` narrows the result to tools whose name starts with that substring (e.g. `mcp_github__`), letting the model fetch one MCP server's schemas on demand.

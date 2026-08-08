@@ -1,21 +1,64 @@
 //! List available tools — meta tool that describes all tools the agent can use.
+//!
+//! The catalog is serialized to compact XML with `quick-xml` (serde `serialize`
+//! feature): attributes carry the schema type / required / enum, element text
+//! carries the description. XML is deliberately used over JSON — it is
+//! token-cheaper and models parse it as easily as the `<available_skills>`
+//! system-prompt block.
 
 use elph_ai::Tool;
 
-use serde_json::Value;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
+use serde_json::{Map, Value};
 
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
 
-/// Escape a string for XML text content and attribute values.
-fn escape_xml(value: &str) -> String {
-    value
-        .replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
-        .replace('"', "&quot;")
-        .replace('\'', "&apos;")
+/// Serde model of `<available_tools>`; serialized via `quick_xml::se`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+struct ToolCatalog {
+    #[serde(rename = "tool")]
+    tools: Vec<ToolEntry>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+struct ToolEntry {
+    name: String,
+    description: String,
+    #[serde(rename = "parameters", skip_serializing_if = "Option::is_none")]
+    parameters: Option<Parameters>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+struct Parameters {
+    #[serde(rename = "property")]
+    properties: Vec<Property>,
+}
+
+/// One `<property>` element. Schema metadata lives in attributes; the description
+/// is element text on leaf properties or a `<description>` child when the property
+/// recurses into nested `<property>` elements (object-shaped schemas).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+struct Property {
+    #[serde(rename = "@name")]
+    name: String,
+    #[serde(rename = "@type")]
+    type_name: String,
+    #[serde(rename = "@enum", skip_serializing_if = "Option::is_none")]
+    enum_values: Option<String>,
+    #[serde(rename = "@required", skip_serializing_if = "is_false", default)]
+    required: bool,
+    #[serde(rename = "$text", skip_serializing_if = "Option::is_none")]
+    text: Option<String>,
+    #[serde(rename = "description", skip_serializing_if = "Option::is_none")]
+    description: Option<String>,
+    #[serde(rename = "property", skip_serializing_if = "Option::is_none")]
+    children: Option<Vec<Property>>,
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 /// Compact JSON-Schema type description, e.g. `string`, `array of string`, `string|number`.
@@ -59,7 +102,7 @@ fn schema_enum(schema: &Value) -> Option<String> {
             None
         }
     });
-    let values: Vec<&str> = enum_values?.iter().filter_map(Value::as_str).collect();
+    let values: Vec<String> = enum_values?.iter().filter_map(enum_scalar).collect();
     if values.is_empty() {
         None
     } else {
@@ -67,102 +110,129 @@ fn schema_enum(schema: &Value) -> Option<String> {
     }
 }
 
-/// Whether `name` appears in the `required` list of an object schema.
-fn is_required(schema: &Value, name: &str) -> bool {
-    is_required_in_list(schema.get("required").and_then(Value::as_array), name)
+/// Scalar enum members that fit inline in an XML attribute value. Objects, arrays,
+/// and `null` members are skipped — they cannot be represented legibly as one token.
+fn enum_scalar(value: &Value) -> Option<String> {
+    match value {
+        Value::String(s) => Some(xml_clean(s)),
+        Value::Number(n) => Some(n.to_string()),
+        Value::Bool(b) => Some(b.to_string()),
+        _ => None,
+    }
 }
 
-/// Whether `name` appears in an already-extracted `required` array.
-fn is_required_in_list(required: Option<&Vec<Value>>, name: &str) -> bool {
-    required.is_some_and(|list| list.iter().any(|v| v.as_str() == Some(name)))
+/// Strip characters XML 1.0 forbids (e.g. NUL) from text that flows into element
+/// values or attribute values; tab, newline, and CR are kept. `quick-xml` escapes
+/// `&`, `<`, `>` but passes control characters through raw, so without this the
+/// emitted document could be malformed for strict parsers.
+fn xml_clean(value: &str) -> String {
+    value
+        .chars()
+        .filter(|c| {
+            matches!(
+                c,
+                '\u{9}' | '\u{A}' | '\u{D}'
+                    | '\u{20}'..='\u{D7FF}'
+                    | '\u{E000}'..='\u{FFFD}'
+                    | '\u{10000}'..='\u{10FFFF}'
+            )
+        })
+        .collect()
 }
 
-/// Render one `<property>` element. Object-shaped schemas (direct `properties`, or an
-/// array whose `items` is an object) recurse into their nested properties.
-fn format_property(name: &str, schema: &Value, required: bool, indent: &str) -> String {
-    let mut attrs = format!("name=\"{}\"", escape_xml(name));
-    attrs.push_str(&format!(" type=\"{}\"", escape_xml(&schema_type(schema))));
-    if let Some(enum_values) = schema_enum(schema) {
-        attrs.push_str(&format!(" enum=\"{}\"", escape_xml(&enum_values)));
-    }
-    if required {
-        attrs.push_str(" required=\"true\"");
-    }
+/// Names listed in the `required` array of an object schema.
+fn required_names(schema: &Value) -> Vec<String> {
+    schema
+        .as_object()
+        .and_then(|obj| obj.get("required"))
+        .and_then(Value::as_array)
+        .map(|arr| arr.iter().filter_map(Value::as_str).map(String::from).collect())
+        .unwrap_or_default()
+}
 
-    let description = schema.get("description").and_then(Value::as_str);
+/// Render a single `<property>` from one JSON-Schema entry, recursing for
+/// object-shaped schemas (direct `properties`, or arrays whose `items` is an object).
+fn property_from_schema(name: &str, schema: &Value, required: bool) -> Property {
+    let type_name = schema_type(schema);
+    let enum_values = schema_enum(schema);
+    let description = schema
+        .get("description")
+        .and_then(Value::as_str)
+        .filter(|d| !d.is_empty())
+        .map(xml_clean)
+        .filter(|d| !d.is_empty());
 
-    let mut nested = None;
+    let mut children = None;
     if let Some(properties) = schema.get("properties").and_then(Value::as_object) {
-        nested = Some((schema, properties));
+        children = Some(render_properties(schema, properties));
     } else if schema.get("type").and_then(Value::as_str) == Some("array")
         && let Some(items) = schema.get("items")
         && let Some(properties) = items.get("properties").and_then(Value::as_object)
     {
-        nested = Some((items, properties));
+        children = Some(render_properties(items, properties));
     }
 
-    if let Some((object_schema, properties)) = nested {
-        let mut out = format!("{indent}<property {attrs}>\n");
-        let child_indent = format!("{indent}  ");
-        if let Some(desc) = description {
-            out.push_str(&format!("{child_indent}<description>{}</description>\n", escape_xml(desc)));
-        }
-        for (prop_name, prop_schema) in properties {
-            out.push_str(&format_property(
-                prop_name,
-                prop_schema,
-                is_required(object_schema, prop_name),
-                &child_indent,
-            ));
-        }
-        out.push_str(&format!("{indent}</property>\n"));
-        return out;
-    }
+    // Leaf properties carry the description as element text; object-shaped
+    // properties carry it as a `<description>` child next to nested `<property>`s.
+    let (text, child_description) = if children.is_some() {
+        (None, description)
+    } else {
+        (description, None)
+    };
 
-    match description {
-        Some(desc) => format!("{indent}<property {attrs}>{}</property>\n", escape_xml(desc)),
-        None => format!("{indent}<property {attrs}/>\n"),
+    Property {
+        name: xml_clean(name),
+        type_name,
+        enum_values,
+        required,
+        text,
+        description: child_description,
+        children,
     }
 }
 
+/// Render the `properties` of one object schema into `<property>` entries.
+fn render_properties(object_schema: &Value, properties: &Map<String, Value>) -> Vec<Property> {
+    let required = required_names(object_schema);
+    properties
+        .iter()
+        .map(|(name, schema)| property_from_schema(name, schema, required.iter().any(|r| r == name)))
+        .collect()
+}
+
 /// Build the `<available_tools>` XML catalog for a tool snapshot.
-///
-/// XML is deliberately used over JSON: it is token-cheaper (short tags, attributes
-/// carry the schema type/required/enum instead of a full JSON-Schema object) and
-/// models parse it as easily as the `<available_skills>` system-prompt block.
 fn format_tool_catalog(tools: &[AgentTool]) -> String {
-    let mut out = String::from("<available_tools>\n");
-    for tool in tools {
-        out.push_str("  <tool>\n");
-        out.push_str(&format!("    <name>{}</name>\n", escape_xml(&tool.tool.name)));
-        out.push_str(&format!(
-            "    <description>{}</description>\n",
-            escape_xml(&tool.tool.description)
-        ));
-        if let Some(params) = tool.tool.parameters.as_object()
-            && let Some(properties) = params.get("properties").and_then(Value::as_object)
-            && !properties.is_empty()
-        {
-            let required = params.get("required").and_then(Value::as_array);
-            out.push_str("    <parameters>\n");
-            for (name, schema) in properties {
-                out.push_str(&format_property(name, schema, is_required_in_list(required, name), "      "));
-            }
-            out.push_str("    </parameters>\n");
-        }
-        out.push_str("  </tool>\n");
+    let catalog = ToolCatalog {
+        tools: tools
+            .iter()
+            .map(|tool| {
+                let mut parameters = None;
+                if let Some(params) = tool.tool.parameters.as_object()
+                    && let Some(properties) = params.get("properties").and_then(Value::as_object)
+                    && !properties.is_empty()
+                {
+                    parameters = Some(Parameters {
+                        properties: render_properties(&tool.tool.parameters, properties),
+                    });
+                }
+                ToolEntry {
+                    name: xml_clean(&tool.tool.name),
+                    description: xml_clean(&tool.tool.description),
+                    parameters,
+                }
+            })
+            .collect(),
+    };
+    match quick_xml::se::to_string_with_root("available_tools", &catalog) {
+        Ok(xml) => xml,
+        Err(_) => "<available_tools></available_tools>".to_string(),
     }
-    out.push_str("</available_tools>");
-    out
 }
 
 /// Create the `list_available_tools` tool from a snapshot of the current tool list.
 ///
 /// The snapshot is captured at creation time. When MCP hot-reload changes the tool
 /// set, the harness recreates tools via `set_tools`, which refreshes this snapshot.
-///
-/// The result is an XML catalog (one `<tool>` per entry) describing each tool's
-/// name, description, and parameter schema as compact `<property>` elements.
 ///
 /// The model may pass an optional `name_prefix` argument to narrow the result to
 /// tools whose name starts with that substring (e.g. `mcp_github__` to fetch just
@@ -284,7 +354,7 @@ mod tests {
     fn no_arg_returns_everything_as_xml() {
         let meta = create_list_available_tools(&snapshot_tools());
         let text = output_text(&meta, json!({}));
-        assert!(text.starts_with("<available_tools>\n"), "{text}");
+        assert!(text.starts_with("<available_tools>"), "{text}");
         assert!(text.ends_with("</available_tools>"), "{text}");
         assert!(text.contains("<name>read_file</name>"));
         assert!(text.contains("<name>mcp_github__list_issues</name>"));
@@ -389,7 +459,9 @@ mod tests {
         });
         let meta = create_list_available_tools(&[tool_with_params("weird", params)]);
         let text = output_text(&meta, json!({}));
-        assert!(text.contains("Use one of: &quot;a&quot;, &lt;b&gt;, c &amp; d"));
+        // quick-xml's default `QuoteLevel::Minimal` escapes only what is required
+        // in text content (`&`, `<`, `>`); quotes remain raw inside text nodes.
+        assert!(text.contains("Use one of: \"a\", &lt;b&gt;, c &amp; d"));
     }
 
     #[test]
@@ -398,5 +470,127 @@ mod tests {
         let text = output_text(&meta, json!({}));
         assert!(text.contains("<name>bare</name>"));
         assert!(!text.contains("<parameters>"));
+    }
+
+    /// The XML catalog round-trips through quick-xml's Deserialize support.
+    #[test]
+    fn catalog_roundtrips_through_quick_xml_de() {
+        let params = json!({
+            "type": "object",
+            "properties": {
+                "path": { "type": "string", "description": "File path" },
+                "limit": { "type": "number" },
+                "ranges": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "path": { "type": "string" },
+                            "offset": { "type": "number" }
+                        },
+                        "required": ["path"]
+                    },
+                    "description": "Per-range settings"
+                }
+            },
+            "required": ["path"]
+        });
+        let tools = vec![
+            tool("bare"),
+            tool_with_params("sample_tool", params),
+            tool("mcp_github__list_issues"),
+        ];
+        let meta = create_list_available_tools(&tools);
+        let text = output_text(&meta, json!({}));
+        let decoded: ToolCatalog = quick_xml::de::from_str(&text).expect("deserialize catalog");
+        assert_eq!(decoded.tools.len(), 3);
+        assert_eq!(decoded.tools[0].name, "bare");
+        assert!(decoded.tools[0].parameters.is_none());
+        let sample = decoded.tools[1].parameters.as_ref().expect("parameters");
+        assert_eq!(sample.properties.len(), 3);
+        assert_eq!(sample.properties[0].name, "path");
+        assert_eq!(sample.properties[0].type_name, "string");
+        assert!(sample.properties[0].required);
+        assert_eq!(sample.properties[0].text.as_deref().unwrap(), "File path");
+        assert_eq!(sample.properties[2].name, "ranges");
+        let nested = sample.properties[2].children.as_ref().expect("nested children");
+        assert_eq!(nested[0].name, "path");
+        assert!(nested[0].required);
+        assert_eq!(nested[0].type_name, "string");
+    }
+
+    /// Odd-but-legal schemas must never panic, must stay well-formed XML that
+    /// round-trips through quick-xml's Deserialize, and must degrade gracefully.
+    #[test]
+    fn tolerates_exotic_schemas() {
+        let params = json!({
+            "type": "object",
+            "properties": {
+                // Numeric and boolean enum members are rendered inline.
+                "level": { "type": "number", "enum": [1, 2, 3] },
+                "flag": { "type": "boolean", "enum": [true, false] },
+                // $ref-only schemas degrade to `any` instead of resolving.
+                "user": { "$ref": "#/definitions/User" },
+                // XML-special characters in attribute values are escaped.
+                "we\"ird&name": { "type": "string", "description": "d" },
+                // Tuple-form items become an untyped array.
+                "t": { "type": "array", "items": [ { "type": "string" }, { "type": "number" } ] },
+                // Control characters in descriptions are sanitized, not fatal.
+                "x": { "type": "string", "description": "bad\u{0}desc" },
+                // Deep nesting recurses without limitation.
+                "a": {
+                    "type": "object",
+                    "properties": {
+                        "b": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "c": {
+                                        "type": "object",
+                                        "properties": { "d": { "type": "string" } }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        let meta = create_list_available_tools(&[tool_with_params("exotic", params)]);
+        let text = output_text(&meta, json!({}));
+
+        assert!(text.contains("<property name=\"level\" type=\"number\" enum=\"1|2|3\"/>"));
+        assert!(text.contains("<property name=\"flag\" type=\"boolean\" enum=\"true|false\"/>"));
+        assert!(text.contains("<property name=\"user\" type=\"any\"/>"));
+        assert!(text.contains("<property name=\"we&quot;ird&amp;name\" type=\"string\">d</property>"));
+        assert!(text.contains("<property name=\"t\" type=\"array\"/>"));
+        // The NUL character must not make it into output (xml_clean strips it):
+        // quick-xml passes control characters through raw, so we sanitize first.
+        assert!(text.contains("<property name=\"x\" type=\"string\">baddesc</property>"));
+        assert!(text.contains("type=\"object\"><property name=\"b\" type=\"array of object\">"));
+        assert!(text.contains("<property name=\"c\" type=\"object\"><property name=\"d\" type=\"string\"/>"));
+
+        // The whole catalog stays well-formed and structurally parseable.
+        let decoded: ToolCatalog = quick_xml::de::from_str(&text).expect("deserialize catalog");
+        let exotic = decoded.tools[0].parameters.as_ref().expect("parameters");
+        let named = |name: &str| {
+            exotic
+                .properties
+                .iter()
+                .find(|p| p.name == name)
+                .expect("property present")
+        };
+        assert_eq!(named("level").enum_values.as_deref(), Some("1|2|3"));
+        assert_eq!(named("user").type_name, "any");
+        assert_eq!(named("a").type_name, "object");
+        let b = named("a").children.as_ref().expect("nested");
+        assert_eq!(b[0].name, "b");
+        assert_eq!(b[0].type_name, "array of object");
+        let c = b[0].children.as_ref().expect("nested");
+        assert_eq!(c[0].name, "c");
+        assert_eq!(c[0].type_name, "object");
+        let d = c[0].children.as_ref().expect("nested");
+        assert_eq!(d[0].name, "d");
     }
 }

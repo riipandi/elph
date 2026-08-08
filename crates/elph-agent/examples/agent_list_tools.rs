@@ -83,15 +83,11 @@ async fn main() -> anyhow::Result<()> {
                                     _ => None,
                                 })
                                 .collect();
-                            // Every `<tool>` block carries exactly one `<name>` on its own line.
+                            // Each `<tool>` block carries exactly one `<name>` element.
                             let names: Vec<&str> = text
-                                .lines()
-                                .filter_map(|line| {
-                                    let trimmed = line.trim();
-                                    trimmed
-                                        .strip_prefix("<name>")
-                                        .and_then(|rest| rest.strip_suffix("</name>"))
-                                })
+                                .split("<name>")
+                                .skip(1)
+                                .filter_map(|rest| rest.split("</name>").next())
                                 .collect();
                             println!("  [OK] {tool_name}: {} tools listed", names.len());
                             for name in &names {
