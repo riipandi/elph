@@ -74,10 +74,11 @@ use crate::tui::prompt_history::{
 use crate::tui::provider_connect_dialog::{
     OpenProviderApiKeyDialogArgs, OpenProviderConnectDialogArgs, PendingProviderApiKeyDialog,
     PendingProviderConnectDialog, PendingProviderDisconnectDialog, ProviderConnectFocus, ProviderConnectStep,
-    close_provider_api_key_dialog, close_provider_connect_dialog, close_provider_disconnect_dialog,
-    focus_provider_list, focus_provider_search, format_provider_name, get_provider_options_for_auth_method,
-    open_provider_api_key_dialog, open_provider_connect_dialog, open_provider_disconnect_dialog,
-    provider_auth_method_from_index, provider_confirm_on_enter, provider_list_nav_delta, provider_supports_oauth,
+    apply_provider_filter_seed, close_provider_api_key_dialog, close_provider_connect_dialog,
+    close_provider_disconnect_dialog, focus_provider_list, focus_provider_search, format_provider_name,
+    get_provider_options_for_auth_method, open_provider_api_key_dialog, open_provider_connect_dialog,
+    open_provider_disconnect_dialog, provider_auth_method_from_index, provider_confirm_on_enter, provider_filter_seed,
+    provider_list_backspace, provider_list_nav_delta, provider_supports_oauth,
 };
 use crate::tui::rename_dialog::{
     OpenRenameDialogArgs, PendingRenameDialog, RenameDialogBar, close_rename_dialog, open_rename_dialog,
