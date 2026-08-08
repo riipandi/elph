@@ -18,7 +18,7 @@
 //!   "preferredChatLanguage": "english",
 //!   "maxRetries": 2,
 //!   "defaultTimeout": "120s",
-//!   "ui": { ... },
+//!   "ui": { "theme": "auto", "showThinking": true, "narrowLogLines": true, ... },
 //!   "models": {
 //!     "defaultModel": null,
 //!     "sessionTitleModel": "inherit",
@@ -149,6 +149,12 @@ pub struct UiSettings {
     /// When true, footer status uses mode/thinking/git accent colors; otherwise dimmed grey.
     #[serde(default = "default_true")]
     pub colored_status_footer: bool,
+    /// Compact the transcript log: collapsed tool call items are packed tighter together
+    /// (narrow log line mode). When false, process-log rows keep the roomier spacing.
+    /// Expanded (accessed) tool call items always keep line breaks above and below.
+    /// `Thinking` and AI chat response/assistant items always keep line breaks above and below.
+    #[serde(default = "default_true")]
+    pub narrow_log_lines: bool,
     #[serde(default)]
     pub file_picker: FilePickerSettings,
     /// When true, allow mode changes (keyboard shortcut and agent request)
@@ -167,6 +173,7 @@ impl Default for UiSettings {
             sticky_scroll: true,
             footer_token_display: default_footer_token_display(),
             colored_status_footer: true,
+            narrow_log_lines: true,
             file_picker: FilePickerSettings::default(),
             allow_mode_change_while_busy: true,
         }
@@ -743,6 +750,7 @@ fn migrate_settings_value(value: &mut Value) {
             "stickyScroll",
             "footerTokenDisplay",
             "coloredStatusFooter",
+            "narrowLogLines",
             "filePicker",
         ],
     );

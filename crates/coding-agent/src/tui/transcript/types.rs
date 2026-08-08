@@ -1,5 +1,7 @@
 //! Transcript message types and per-style layout tokens.
 
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use chrono::{DateTime, Utc};
 use iocraft::prelude::Color;
 
@@ -33,6 +35,27 @@ pub const QUIT_BUSY_NOTICE_PAD: u16 = 1;
 /// Context lines around each change hunk in transcript tool-card diffs.
 /// Must match the `context_lines` passed to [`elph_tui::components::DiffView`] in the tool card.
 pub const TOOL_CARD_DIFF_CONTEXT_LINES: usize = 3;
+
+/// Process-wide transcript log spacing preference (default: narrow log lines on).
+///
+/// Mirrors `settings.ui.narrowLogLines` so layout/measurement and the view layer share one
+/// value without threading a prop through every card renderer. The host installs it during
+/// TUI bootstrap ([`set_narrow_log_lines`]); tests toggle it directly.
+static NARROW_LOG_LINES: AtomicBool = AtomicBool::new(true);
+
+/// Install the transcript's narrow-log-lines preference for this process.
+pub fn set_narrow_log_lines(narrow: bool) {
+    NARROW_LOG_LINES.store(narrow, Ordering::Relaxed);
+}
+
+/// Read the process-wide narrow-log-lines preference.
+pub fn narrow_log_lines_enabled() -> bool {
+    NARROW_LOG_LINES.load(Ordering::Relaxed)
+}
+
+/// Inter-item gap after a compact (collapsed / header-only) tool-log row when
+/// narrow log lines are enabled — a single packed row with no blank line.
+const NARROW_COMPACT_TOOL_GAP: u16 = 0;
 
 /// Structured payload for tool invocation cards in the transcript.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -564,6 +587,8 @@ impl TranscriptMessage {
 /// Gap between two process-log neighbors.
 ///
 /// - Status ↔ status (startup / MCP / subagent): packed [`FLUSH_CARD_GAP`] so the block is dense
+/// - Collapsed tool ↔ collapsed tool in narrow-log-line mode: packed [`NARROW_COMPACT_TOOL_GAP`]
+///   (collapsed tool items group together; expanding either neighbor restores [`LOG_ROW_GAP`])
 /// - Other process rows: fixed [`LOG_ROW_GAP`] (collapse state does not change spacing)
 fn process_log_neighbor_gap(prev: &TranscriptMessage, next: &TranscriptMessage) -> Option<u16> {
     let prev_is_process = prev.is_compact_process_row() || prev.is_expanded_process_row();
@@ -574,6 +599,22 @@ fn process_log_neighbor_gap(prev: &TranscriptMessage, next: &TranscriptMessage) 
     // Startup / MCP / subagent status block: no blank row between consecutive status lines.
     if prev.style.is_status_line() && next.style.is_status_line() {
         return Some(FLUSH_CARD_GAP);
+    }
+    // Narrow log lines: a finished+collapsed tool packs flush against the following finished
+    // tool when that one is also collapsed, so collapsed tool items group like a log.
+    // Expanding (accessing) either neighbor restores LOG_ROW_GAP. Ask-user and user-shell
+    // tools stay expanded by design and are never squeezed. Thinking / assistant rows always
+    // keep LOG_ROW_GAP (line break) above and below them.
+    if narrow_log_lines_enabled()
+        && prev.is_tool_style()
+        && prev.is_tool_collapsed()
+        && !prev.user_shell
+        && !prev.is_ask_user_tool()
+        && next.is_tool_style()
+        && next.is_tool_collapsed()
+        && !next.user_shell
+    {
+        return Some(NARROW_COMPACT_TOOL_GAP);
     }
     // Special case: ask-user tool → assistant reply keeps extra breathing room when either shows body.
     if prev.is_ask_user_tool()
@@ -1225,15 +1266,69 @@ mod tests {
         assert_eq!(a.transcript_padding_top(), FLUSH_CARD_PAD);
         assert_eq!(a.transcript_padding_bottom(), FLUSH_CARD_PAD);
 
-        // Both collapsed, expand only second, both expanded — same margin (no density shrink).
-        assert_eq!(a.transcript_margin_bottom(Some(&b)), LOG_ROW_GAP);
+        // Narrow log lines (default on): two collapsed tool rows group flush together.
+        set_narrow_log_lines(true);
+        assert_eq!(a.transcript_margin_bottom(Some(&b)), NARROW_COMPACT_TOOL_GAP);
+        // Expanding the following tool restores the normal breathing room.
         b.detail_expanded = true;
         assert!(b.is_expanded_process_row());
         assert_eq!(b.transcript_padding_top(), COLORED_CARD_PAD);
         assert_eq!(a.transcript_margin_bottom(Some(&b)), LOG_ROW_GAP);
+        // Expanding the previous tool also restores it.
         a.detail_expanded = true;
         assert_eq!(a.transcript_padding_bottom(), COLORED_CARD_PAD);
         assert_eq!(a.transcript_margin_bottom(Some(&b)), LOG_ROW_GAP);
+
+        // Narrow-log disabled: collapsed rows keep the classic LOG_ROW_GAP rhythm.
+        set_narrow_log_lines(false);
+        a.detail_expanded = false;
+        b.detail_expanded = false;
+        assert_eq!(a.transcript_margin_bottom(Some(&b)), LOG_ROW_GAP);
+        set_narrow_log_lines(true);
+    }
+
+    #[test]
+    fn narrow_log_lines_pack_collapsed_tools_only() {
+        let make_tool = |name: &str, style: TranscriptStyle, expanded: bool| {
+            let mut tool = TranscriptMessage::tool_call(name, r#"{"path":"a.rs"}"#, style);
+            tool.detail_expanded = expanded;
+            tool
+        };
+        let collapsed_success = make_tool("read_file", TranscriptStyle::ToolSuccess, false);
+        let collapsed_failed = make_tool("edit_file", TranscriptStyle::ToolFailed, false);
+        let expanded = make_tool("read_file", TranscriptStyle::ToolSuccess, true);
+        let running = make_tool("read_file", TranscriptStyle::ToolRunning, true);
+        let thinking_done = {
+            let mut thinking = TranscriptMessage::text("reasoning", TranscriptStyle::Thinking);
+            thinking.duration_secs = Some(1.0);
+            thinking.detail_expanded = false;
+            thinking
+        };
+        let assistant = {
+            let mut reply = TranscriptMessage::text("Answer from…", TranscriptStyle::Assistant);
+            reply.duration_secs = Some(1.0);
+            reply
+        };
+
+        set_narrow_log_lines(true);
+        // Collapsed tool → collapsed tool packs flush (grouped log).
+        assert_eq!(
+            collapsed_success.transcript_margin_bottom(Some(&collapsed_failed)),
+            NARROW_COMPACT_TOOL_GAP
+        );
+        // Transitional: collapsed → running keeps the regular gap (running is live work).
+        assert_eq!(collapsed_success.transcript_margin_bottom(Some(&running)), LOG_ROW_GAP);
+        // Collapsed → expanded (accessed) tool restores breathing room.
+        assert_eq!(collapsed_success.transcript_margin_bottom(Some(&expanded)), LOG_ROW_GAP);
+        // Tools always keep a line break above/below Thinking and assistant responses.
+        assert_eq!(collapsed_success.transcript_margin_bottom(Some(&thinking_done)), LOG_ROW_GAP);
+        assert_eq!(collapsed_success.transcript_margin_bottom(Some(&assistant)), LOG_ROW_GAP);
+
+        // Narrow disabled → everything keeps the classic rhythm.
+        set_narrow_log_lines(false);
+        assert_eq!(collapsed_success.transcript_margin_bottom(Some(&collapsed_failed)), LOG_ROW_GAP);
+        assert_eq!(collapsed_success.transcript_margin_bottom(Some(&expanded)), LOG_ROW_GAP);
+        set_narrow_log_lines(true);
     }
 
     #[test]

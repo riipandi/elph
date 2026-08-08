@@ -146,6 +146,7 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
         sticky_scroll: settings.ui.sticky_scroll,
         show_thinking: settings.ui.show_thinking,
         auto_expand_thinking: settings.ui.auto_expand_thinking,
+        narrow_log_lines: settings.ui.narrow_log_lines,
         agent_session: None,
         ui_events: None,
         extension_host: extension_host,

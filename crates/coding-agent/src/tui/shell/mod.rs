@@ -330,6 +330,8 @@ pub struct MainShellProps {
     pub sticky_scroll: bool,
     pub show_thinking: bool,
     pub auto_expand_thinking: bool,
+    /// Compact spacing for collapsed tool-call log items (see `settings.ui.narrowLogLines`).
+    pub narrow_log_lines: bool,
     pub agent_session: Option<Arc<CodingAgentSession>>,
     pub ui_events: Option<Arc<Mutex<UnboundedReceiver<AgentUiEvent>>>>,
     pub extension_host: ExtensionHost,
@@ -360,6 +362,7 @@ impl Default for MainShellProps {
             sticky_scroll: false,
             show_thinking: false,
             auto_expand_thinking: false,
+            narrow_log_lines: true,
             agent_session: None,
             ui_events: None,
             extension_host: ExtensionHost::new(),
@@ -427,6 +430,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let session_wall_started_at = hooks.use_ref(Instant::now);
     let show_thinking = props.show_thinking;
     let auto_expand_thinking = props.auto_expand_thinking;
+    // Install the transcript log-density preference process-wide (layout/measure + paint read
+    // one shared switch). Default true; tests toggle it directly.
+    crate::tui::transcript::set_narrow_log_lines(props.narrow_log_lines);
+    let narrow_log_lines = props.narrow_log_lines;
     let busy_started_at = hooks.use_ref(|| None::<Instant>);
     let activity_started_at = hooks.use_ref(|| None::<Instant>);
     let last_activity_label = hooks.use_ref(String::new);
@@ -693,6 +700,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         model_input_focus,
         model_provider_index,
         model_selected_index,
+        narrow_log_lines,
         new_session_requested,
         on_queue_action_click,
         palette_refresh_pending,
