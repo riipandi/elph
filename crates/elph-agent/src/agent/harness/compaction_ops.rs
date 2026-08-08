@@ -33,6 +33,7 @@ where
         model: &elph_ai::Model,
         effective_custom_instructions: Option<&str>,
         from_hook: Option<CompactResult>,
+        signal: Option<CancellationToken>,
     ) -> HarnessOpResult<CompactResult> {
         if let Some(result) = from_hook {
             return Ok(result);
@@ -57,15 +58,21 @@ where
                     .ok();
             }
 
-            let module_result = compact(
-                preparation.clone(),
-                &self.shared.models,
-                model,
-                effective_custom_instructions,
-                None,
-                thinking,
-            )
-            .await;
+            let module_result = match signal.as_ref() {
+                Some(token) if token.is_cancelled() => {
+                    Err(AgentHarnessError::new(AgentHarnessErrorCode::Compaction, "compaction aborted"))
+                }
+                _ => compact(
+                    preparation.clone(),
+                    &self.shared.models,
+                    model,
+                    effective_custom_instructions,
+                    signal.clone(),
+                    thinking,
+                )
+                .await
+                .map_err(compaction_error),
+            };
 
             match module_result {
                 Ok(result) => {
@@ -209,8 +216,29 @@ where
             .and_then(|r| r.custom_instructions.clone())
             .or_else(|| custom_instructions.map(str::to_string));
 
+        // Tie the summarization LLM call to the current run's abort token when a
+        // turn is active (auto-compact mid/after turn): Ctrl+C should also stop a
+        // hung summarization, not just the shell. When idle (manual /compact) this
+        // is `None` and compaction keeps its own lifecycle.
+        let signal = if self.phase_async().await == crate::agent::harness::types::AgentHarnessPhase::Compaction {
+            self.shared
+                .active_run
+                .lock()
+                .await
+                .as_ref()
+                .map(|run| run.abort_token.clone())
+        } else {
+            None
+        };
+
         let compact_result = self
-            .compact_with_retry(preparation, &model, effective_custom_instructions.as_deref(), from_hook.clone())
+            .compact_with_retry(
+                preparation,
+                &model,
+                effective_custom_instructions.as_deref(),
+                from_hook.clone(),
+                signal,
+            )
             .await?;
 
         // No-op result (nothing worth compacting) — skip appending a Compaction entry

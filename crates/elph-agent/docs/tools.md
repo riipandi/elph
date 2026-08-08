@@ -239,6 +239,8 @@ Run a shell command in the environment working directory. Output is truncated to
 
 Each `shell_exec` run (foreground and background) persists its raw output to the session terminal directory `~/.local/share/elph/sessions/<SESSION_ID>/terminals/*.txt` (`shell-<toolCallId>.txt` for foreground, `shell-<taskId>.txt` for background). The file path is returned in `details.outputPath` and is also referenced from `tool_outputs.jsonl` (the session transcript) so output survives session resume. In stateless contexts (e.g. tests) output falls back to a temp file and `outputPath` is omitted.
 
+**Abort / timeout semantics** — `shell_exec` runs each command as a new process group leader (`sh -c`). When the turn is aborted (Ctrl+C in the TUI) or the command times out, the **entire process group** is terminated — not just the direct shell — so grandchildren (`npm test`, `cargo build`, `sleep`, …) that hold the stdout/stderr pipes cannot keep the turn hanging. Termination is graceful (`SIGTERM`), escalated to `SIGKILL` after a short grace; the child is reaped with a bounded wait. A command whose output streams into a partial result returns the partial output with a `cancelled` flag (abort) or a timeout error.
+
 #### `create_dir`
 
 Create a new directory, including parent directories (like `mkdir -p`).
@@ -438,6 +440,10 @@ Loads instructions from an available Skill so the agent can follow project-speci
 ## Cancellation
 
 Tool execution accepts an optional `CancellationToken`. `grep` and `find_path` bridge cancellation into `fff-search` via an abort signal polled during the blocking search. `list_dir` bridges cancellation into `walkdir` the same way.
+
+`shell_exec` cancels by terminating its whole process group (`SIGTERM` → `SIGKILL` escalation), so multi-process commands cannot stall an abort. Exactly one `CancellationToken` is honored per run; background tasks use their own token and are never cancelled by the turn.
+
+Compaction summarization also honors the turn's abort token when compaction runs during a busy turn — Ctrl+C stops a hung summarization call as well, instead of freezing the UI while the provider stream hangs.
 
 ## Custom tools
 
