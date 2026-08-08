@@ -15,7 +15,7 @@ use super::layout::{IncrementalLayoutCache, layout_transcript_rows_cached};
 use super::markdown::{
     apply_markdown_parse_result, collect_markdown_parse_jobs, parse_markdown_on_worker, partition_assistant_markdown,
 };
-use super::types::TranscriptMessage;
+use super::types::{LogDensity, TranscriptMessage};
 use crate::tui::focus::transcript_nav_key;
 use crate::tui::theme::{BORDER_MUTED, SCROLLBAR_THUMB, SCROLLBAR_TRACK, TRANSCRIPT_BORDER_FOCUSED};
 
@@ -45,10 +45,10 @@ pub struct TranscriptPanelProps {
     /// Set by shell when a streaming response is active — slows markdown parse ticks.
     /// None/Some(false) = idle debounce (120ms), Some(true) = streaming debounce (400ms).
     pub streaming_active: Option<bool>,
-    /// Compact spacing for collapsed tool-call log items (`settings.ui.narrowLogLines`).
+    /// Transcript log density for collapsed tool-call items (`settings.ui.density`).
     /// Only meaningful from the running app; panel reads the process-wide pref
-    /// (`set_narrow_log_lines`) which the shell installs from this prop at construction.
-    pub narrow_log_lines: bool,
+    /// (`set_log_density`) which the shell installs from this prop at construction.
+    pub density: LogDensity,
     /// Arc<RwLock> messages — decouples panel from shell's State dirt chain.
     /// Panel reads/writes this directly instead of the `messages` State.
     pub messages_arc: Option<Arc<RwLock<Vec<TranscriptMessage>>>>,
@@ -68,7 +68,7 @@ impl Default for TranscriptPanelProps {
             mouse_scroll: None,
             text_select_mode: false,
             streaming_active: None,
-            narrow_log_lines: true,
+            density: LogDensity::Compact,
             messages_arc: None,
             on_subagent_click: None,
         }
@@ -95,9 +95,9 @@ struct StickyHeaderCache {
 
 #[component]
 pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
-    // Install the process-wide spacing pref on every render so panel-only tests /
+    // Install the process-wide density pref on every render so panel-only tests /
     // construction-time props still drive layout without a shell bootstrap.
-    crate::tui::transcript::set_narrow_log_lines(props.narrow_log_lines);
+    crate::tui::transcript::set_log_density(props.density);
     let mut scroll_handle = hooks.use_ref_default::<ScrollViewHandle>();
     let mut render_cache = hooks.use_ref(|| None::<TranscriptRenderCache>);
     let mut cached_sticky_rows = hooks.use_ref(|| (None::<usize>, 0u16, 0u16)); // (idx, width, rows)

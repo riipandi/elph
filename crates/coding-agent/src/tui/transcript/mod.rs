@@ -23,5 +23,6 @@ pub use ephemeral::{
 };
 pub use panel::TranscriptPanel;
 pub use types::{
-    QUIT_BUSY_NOTICE_KEY, TranscriptMessage, TranscriptStyle, set_narrow_log_lines, toggle_latest_collapsible_detail,
+    LogDensity, QUIT_BUSY_NOTICE_KEY, TranscriptMessage, TranscriptStyle, set_log_density,
+    toggle_latest_collapsible_detail,
 };

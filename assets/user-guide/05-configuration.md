@@ -30,12 +30,12 @@ live model, thinking level, and agent mode are per-session (not shared settings)
 
 ### Transcript log density
 
-`ui.narrowLogLines` (default `true`) controls how tool-call items are spaced in the transcript:
+`ui.density` controls how tool-call items are spaced in the transcript:
 
-- **`true`** (default): collapsed tool call items pack together into a grouped log.
+- **`compact`** (default): collapsed tool call items pack together into a grouped log.
   Expanded (accessed) tool call items, `Thinking`, and AI chat response/assistant items always
   keep a line break above and below.
-- **`false`**: every process-log row keeps a blank line above and below.
+- **`loose`**: every process-log row keeps a blank line above and below.
 
 ## Environment
 

@@ -130,9 +130,9 @@ use crate::tui::tool_approval::{
 use crate::tui::tool_params::tool_display_verb;
 use crate::tui::transcript::{
     AGENT_MODE_NOTICE_TTL, EphemeralBanner, EphemeralBannerGeneration, EphemeralBannerKind,
-    FILE_PICKER_HIDDEN_NOTICE_KEY, MODEL_SET_NOTICE_KEY, QUIT_BUSY_NOTICE_KEY, TranscriptMessage, TranscriptPanel,
-    TranscriptStyle, agent_mode_banner, agent_mode_busy_banner, api_error_banner, clear_ephemeral_banner,
-    clear_ephemeral_banner_if_generation, clipboard_notice_banner, expire_ephemeral_banner,
+    FILE_PICKER_HIDDEN_NOTICE_KEY, LogDensity, MODEL_SET_NOTICE_KEY, QUIT_BUSY_NOTICE_KEY, TranscriptMessage,
+    TranscriptPanel, TranscriptStyle, agent_mode_banner, agent_mode_busy_banner, api_error_banner,
+    clear_ephemeral_banner, clear_ephemeral_banner_if_generation, clipboard_notice_banner, expire_ephemeral_banner,
     file_picker_hidden_notice_text, model_set_notice_from_value, model_set_notice_text, prompt_copy_banner,
     prompt_copy_failed_banner, publish_ephemeral_banner, quit_busy_banner, select_mode_off_banner,
     select_mode_on_banner, theme_mode_banner, toggle_latest_collapsible_detail,
@@ -330,8 +330,8 @@ pub struct MainShellProps {
     pub sticky_scroll: bool,
     pub show_thinking: bool,
     pub auto_expand_thinking: bool,
-    /// Compact spacing for collapsed tool-call log items (see `settings.ui.narrowLogLines`).
-    pub narrow_log_lines: bool,
+    /// Transcript log density for collapsed tool-call items (see `settings.ui.density`).
+    pub density: LogDensity,
     pub agent_session: Option<Arc<CodingAgentSession>>,
     pub ui_events: Option<Arc<Mutex<UnboundedReceiver<AgentUiEvent>>>>,
     pub extension_host: ExtensionHost,
@@ -362,7 +362,7 @@ impl Default for MainShellProps {
             sticky_scroll: false,
             show_thinking: false,
             auto_expand_thinking: false,
-            narrow_log_lines: true,
+            density: LogDensity::Compact,
             agent_session: None,
             ui_events: None,
             extension_host: ExtensionHost::new(),
@@ -430,10 +430,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let session_wall_started_at = hooks.use_ref(Instant::now);
     let show_thinking = props.show_thinking;
     let auto_expand_thinking = props.auto_expand_thinking;
-    // Install the transcript log-density preference process-wide (layout/measure + paint read
-    // one shared switch). Default true; tests toggle it directly.
-    crate::tui::transcript::set_narrow_log_lines(props.narrow_log_lines);
-    let narrow_log_lines = props.narrow_log_lines;
+    // Install the transcript log-density preference process-wide (layout/measure + paint
+    // read one shared value). Compact by default; tests toggle it directly.
+    crate::tui::transcript::set_log_density(props.density);
+    let density = props.density;
     let busy_started_at = hooks.use_ref(|| None::<Instant>);
     let activity_started_at = hooks.use_ref(|| None::<Instant>);
     let last_activity_label = hooks.use_ref(String::new);
@@ -700,7 +700,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         model_input_focus,
         model_provider_index,
         model_selected_index,
-        narrow_log_lines,
+        density,
         new_session_requested,
         on_queue_action_click,
         palette_refresh_pending,

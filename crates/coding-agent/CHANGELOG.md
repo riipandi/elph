@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `ui.narrowLogLines` setting (default `true`): collapsed tool-call items pack together in the
+- `ui.density` setting (default `compact`): collapsed tool-call items pack together in the
   transcript log (grouped/narrow log lines). Expanded (accessed) tool-call items, `Thinking`,
-  and AI chat response/assistant items always keep line breaks above and below. Set to `false`
-  for the classic blank-line spacing between every process-log row.
+  and AI chat response/assistant items always keep line breaks above and below. Set to `loose`
+  for the classic blank-line spacing between every process-log row. The former boolean
+  `ui.narrowLogLines` is migrated automatically (`true` → `compact`, `false` → `loose`).

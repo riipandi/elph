@@ -1,6 +1,6 @@
 //! Transcript message types and per-style layout tokens.
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicU8, Ordering};
 
 use chrono::{DateTime, Utc};
 use iocraft::prelude::Color;
@@ -36,26 +36,51 @@ pub const QUIT_BUSY_NOTICE_PAD: u16 = 1;
 /// Must match the `context_lines` passed to [`elph_tui::components::DiffView`] in the tool card.
 pub const TOOL_CARD_DIFF_CONTEXT_LINES: usize = 3;
 
-/// Process-wide transcript log spacing preference (default: narrow log lines on).
-///
-/// Mirrors `settings.ui.narrowLogLines` so layout/measurement and the view layer share one
-/// value without threading a prop through every card renderer. The host installs it during
-/// TUI bootstrap ([`set_narrow_log_lines`]); tests toggle it directly.
-static NARROW_LOG_LINES: AtomicBool = AtomicBool::new(true);
-
-/// Install the transcript's narrow-log-lines preference for this process.
-pub fn set_narrow_log_lines(narrow: bool) {
-    NARROW_LOG_LINES.store(narrow, Ordering::Relaxed);
+/// Transcript log density. [`Compact`] packs collapsed tool-call rows flush together;
+/// [`Loose`] keeps a blank row between every process-log row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum LogDensity {
+    /// Collapsed tool-call rows group like a log with no blank line between them.
+    #[default]
+    Compact,
+    /// Every process-log row keeps a blank line above and below.
+    Loose,
 }
 
-/// Read the process-wide narrow-log-lines preference.
-pub fn narrow_log_lines_enabled() -> bool {
-    NARROW_LOG_LINES.load(Ordering::Relaxed)
+impl LogDensity {
+    /// Map the `settings.ui.density` string (`compact` / `loose`) onto the enum.
+    /// Unknown / empty values fall back to [`LogDensity::Compact`] (the default).
+    pub fn from_setting(raw: &str) -> Self {
+        match raw.trim().to_ascii_lowercase().as_str() {
+            "loose" => LogDensity::Loose,
+            _ => LogDensity::Compact,
+        }
+    }
+}
+
+/// Process-wide transcript log density (default: [`LogDensity::Compact`]).
+///
+/// Mirrors `settings.ui.density` so layout/measurement and the view layer share one
+/// value without threading a prop through every card renderer. The host installs it during
+/// TUI bootstrap ([`set_log_density`]); tests toggle it directly.
+static LOG_DENSITY: AtomicU8 = AtomicU8::new(LogDensity::Compact as u8);
+
+/// Install the transcript's log density for this process.
+pub fn set_log_density(density: LogDensity) {
+    LOG_DENSITY.store(density as u8, Ordering::Relaxed);
+}
+
+/// Read the process-wide transcript log density.
+pub fn log_density() -> LogDensity {
+    match LOG_DENSITY.load(Ordering::Relaxed) {
+        1 => LogDensity::Loose,
+        _ => LogDensity::Compact,
+    }
 }
 
 /// Inter-item gap after a compact (collapsed / header-only) tool-log row when
-/// narrow log lines are enabled — a single packed row with no blank line.
-const NARROW_COMPACT_TOOL_GAP: u16 = 0;
+/// log density is [`LogDensity::Compact`] — a single packed row with no blank line.
+const COMPACT_TOOL_GAP: u16 = 0;
 
 /// Structured payload for tool invocation cards in the transcript.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -605,7 +630,7 @@ impl TranscriptMessage {
 /// Gap between two process-log neighbors.
 ///
 /// - Status ↔ status (startup / MCP / subagent): packed [`FLUSH_CARD_GAP`] so the block is dense
-/// - Collapsed tool ↔ collapsed tool in narrow-log-line mode: packed [`NARROW_COMPACT_TOOL_GAP`]
+/// - Collapsed tool ↔ collapsed tool in [`LogDensity::Compact`]: packed [`COMPACT_TOOL_GAP`]
 ///   (collapsed tool items group together; expanding either neighbor restores [`LOG_ROW_GAP`])
 /// - Other process rows: fixed [`LOG_ROW_GAP`] (collapse state does not change spacing)
 fn process_log_neighbor_gap(prev: &TranscriptMessage, next: &TranscriptMessage) -> Option<u16> {
@@ -618,12 +643,12 @@ fn process_log_neighbor_gap(prev: &TranscriptMessage, next: &TranscriptMessage) 
     if prev.style.is_status_line() && next.style.is_status_line() {
         return Some(FLUSH_CARD_GAP);
     }
-    // Narrow log lines: a finished+collapsed tool packs flush against the following finished
+    // Compact density: a finished+collapsed tool packs flush against the following finished
     // tool when that one is also collapsed, so collapsed tool items group like a log.
     // Expanding (accessing) either neighbor restores LOG_ROW_GAP. Ask-user and user-shell
     // tools stay expanded by design and are never squeezed. Thinking / assistant rows always
     // keep LOG_ROW_GAP (line break) above and below them.
-    if narrow_log_lines_enabled()
+    if log_density() == LogDensity::Compact
         && prev.is_tool_style()
         && prev.is_tool_collapsed()
         && !prev.user_shell
@@ -632,7 +657,7 @@ fn process_log_neighbor_gap(prev: &TranscriptMessage, next: &TranscriptMessage) 
         && next.is_tool_collapsed()
         && !next.user_shell
     {
-        return Some(NARROW_COMPACT_TOOL_GAP);
+        return Some(COMPACT_TOOL_GAP);
     }
     // Special case: ask-user tool → assistant reply keeps extra breathing room when either shows body.
     if prev.is_ask_user_tool()
@@ -1313,9 +1338,9 @@ mod tests {
         assert_eq!(a.transcript_padding_top(), FLUSH_CARD_PAD);
         assert_eq!(a.transcript_padding_bottom(), FLUSH_CARD_PAD);
 
-        // Narrow log lines (default on): two collapsed tool rows group flush together.
-        set_narrow_log_lines(true);
-        assert_eq!(a.transcript_margin_bottom(Some(&b)), NARROW_COMPACT_TOOL_GAP);
+        // Compact density (default on): two collapsed tool rows group flush together.
+        set_log_density(LogDensity::Compact);
+        assert_eq!(a.transcript_margin_bottom(Some(&b)), COMPACT_TOOL_GAP);
         // Expanding the following tool restores the normal breathing room.
         b.detail_expanded = true;
         assert!(b.is_expanded_process_row());
@@ -1326,16 +1351,16 @@ mod tests {
         assert_eq!(a.transcript_padding_bottom(), COLORED_CARD_PAD);
         assert_eq!(a.transcript_margin_bottom(Some(&b)), LOG_ROW_GAP);
 
-        // Narrow-log disabled: collapsed rows keep the classic LOG_ROW_GAP rhythm.
-        set_narrow_log_lines(false);
+        // Loose density: collapsed rows keep the classic LOG_ROW_GAP rhythm.
+        set_log_density(LogDensity::Loose);
         a.detail_expanded = false;
         b.detail_expanded = false;
         assert_eq!(a.transcript_margin_bottom(Some(&b)), LOG_ROW_GAP);
-        set_narrow_log_lines(true);
+        set_log_density(LogDensity::Compact);
     }
 
     #[test]
-    fn narrow_log_lines_pack_collapsed_tools_only() {
+    fn compact_density_packs_collapsed_tools_only() {
         let make_tool = |name: &str, style: TranscriptStyle, expanded: bool| {
             let mut tool = TranscriptMessage::tool_call(name, r#"{"path":"a.rs"}"#, style);
             tool.detail_expanded = expanded;
@@ -1357,11 +1382,11 @@ mod tests {
             reply
         };
 
-        set_narrow_log_lines(true);
+        set_log_density(LogDensity::Compact);
         // Collapsed tool → collapsed tool packs flush (grouped log).
         assert_eq!(
             collapsed_success.transcript_margin_bottom(Some(&collapsed_failed)),
-            NARROW_COMPACT_TOOL_GAP
+            COMPACT_TOOL_GAP
         );
         // Transitional: collapsed → running keeps the regular gap (running is live work).
         assert_eq!(collapsed_success.transcript_margin_bottom(Some(&running)), LOG_ROW_GAP);
@@ -1371,11 +1396,11 @@ mod tests {
         assert_eq!(collapsed_success.transcript_margin_bottom(Some(&thinking_done)), LOG_ROW_GAP);
         assert_eq!(collapsed_success.transcript_margin_bottom(Some(&assistant)), LOG_ROW_GAP);
 
-        // Narrow disabled → everything keeps the classic rhythm.
-        set_narrow_log_lines(false);
+        // Loose density → everything keeps the classic rhythm.
+        set_log_density(LogDensity::Loose);
         assert_eq!(collapsed_success.transcript_margin_bottom(Some(&collapsed_failed)), LOG_ROW_GAP);
         assert_eq!(collapsed_success.transcript_margin_bottom(Some(&expanded)), LOG_ROW_GAP);
-        set_narrow_log_lines(true);
+        set_log_density(LogDensity::Compact);
     }
 
     #[test]

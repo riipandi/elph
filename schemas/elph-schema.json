@@ -93,10 +93,11 @@
                     "default": true,
                     "description": "When true, footer status uses mode/thinking/git accent colors; otherwise dimmed grey."
                 },
-                "narrowLogLines": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Compact the transcript log: collapsed tool call items are packed together (narrow log line mode). Expanded (accessed) tool call items, Thinking, and AI chat response/assistant items always keep line breaks above and below."
+                "density": {
+                    "type": "string",
+                    "default": "compact",
+                    "enum": ["compact", "loose"],
+                    "description": "Transcript log density: compact (default) packs collapsed tool call items into a grouped log (no blank line between them). Expanded (accessed) tool call items, Thinking, and AI chat response/assistant items always keep line breaks above and below. Loose keeps a blank line between every process-log row."
                 },
                 "filePicker": {
                     "$ref": "#/definitions/filePicker"

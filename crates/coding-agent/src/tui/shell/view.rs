@@ -60,7 +60,7 @@ pub(crate) fn build_shell_view(
         mut model_input_focus,
         mut model_provider_index,
         mut model_selected_index,
-        narrow_log_lines,
+        density,
         mut new_session_requested,
         on_queue_action_click,
         paths,
@@ -792,7 +792,7 @@ pub(crate) fn build_shell_view(
                 text_select_mode: select_mode.get() || shift_held.get(),
                 streaming_active: Some(busy.get()),
                 messages_arc: Some(messages_arc.read().clone()),
-                narrow_log_lines: narrow_log_lines,
+                density: density,
                 on_subagent_click: {
                     let mut pending_subagent_output = pending_subagent_output;
                     let subagent_output_buffers = subagent_output_buffers_state.read().clone();
