@@ -353,10 +353,7 @@ fn machine_fingerprint() -> Result<Vec<u8>> {
             )
         });
     }
-    let to_store = match machine_fingerprint_uncached() {
-        Ok(bytes) => Some(bytes),
-        Err(_) => None,
-    };
+    let to_store = machine_fingerprint_uncached().ok();
     let stored = MACHINE_FINGERPRINT.get_or_init(|| to_store);
     match stored {
         Some(bytes) => Ok(bytes.clone()),

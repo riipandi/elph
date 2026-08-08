@@ -8,6 +8,8 @@ description: >-
     Use when user asks to clean up Cargo.toml(s), dedupe dependency versions, find unused
     crates, unify workspace deps, or audit workspace dependency structure. Does not cover
     security advisories or license compliance — see rust-dep-audit for that.
+metadata:
+    scope: project
 ---
 
 # Cargo Workspace Hygiene

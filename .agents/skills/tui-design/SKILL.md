@@ -6,6 +6,8 @@ description: >-
     Use when building or refactoring a TUI, CLI subcommands, slash commands, colored terminal output,
     fixing scroll/focus/layout bugs, improving keyboard/contrast ergonomics, or the user mentions iocraft,
     terminal UI, CLI colors, anstyle, command UX, accessibility, a11y, or runs /tui-design.
+metadata:
+    scope: project
 ---
 
 # TUI & Terminal UX Design

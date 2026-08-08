@@ -116,6 +116,7 @@ pub use agent::harness::TruncatedBy;
 pub use agent::harness::TruncationOptions;
 pub use agent::harness::err;
 pub use agent::harness::execute_shell_with_capture;
+pub use agent::harness::filter_skills_for_context;
 pub use agent::harness::finalize_shell_capture;
 pub use agent::harness::format_size;
 pub use agent::harness::format_skills_for_system_prompt;

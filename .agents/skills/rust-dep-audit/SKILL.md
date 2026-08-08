@@ -8,6 +8,8 @@ description: >-
     to audit dependencies for vulnerabilities/CVEs, check license compliance, find outdated
     crates, or run a supply-chain/security pass on Cargo dependencies. Does not cover
     duplicate-version or unused-dependency hygiene — see cargo-workspace-hygiene for that.
+metadata:
+    scope: project
 ---
 
 # Rust Dependency Audit

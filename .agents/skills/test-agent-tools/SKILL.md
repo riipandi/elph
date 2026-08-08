@@ -5,6 +5,8 @@ description: >-
     to (native tools, subagents, connected MCP servers). Use when the
     user wants to test, audit, or inventory the harness's tool/capability
     set, or asks "what tools do you have".
+metadata:
+    scope: global
 ---
 
 # Test Agent Tools

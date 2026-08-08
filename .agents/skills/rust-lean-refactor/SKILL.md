@@ -8,6 +8,8 @@ description: >-
     to clean up, declutter, slim down, de-bloat, restructure, or split up Rust code, or
     complains a file/module/function is "gemuk"/too big/doing too much. Pair with
     rust-verify-harden for the hardening pass after structure is settled.
+metadata:
+    scope: project
 ---
 
 # Rust Lean Refactor

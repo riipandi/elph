@@ -7,6 +7,7 @@ metadata:
     author: Aris Ripandi
     version: "1.0"
     category: education
+    scope: project
 allowed-tools: none
 ---
 

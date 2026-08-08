@@ -11,6 +11,8 @@ description: >-
     reports follow the user's current language. Use for port gap audit, upstream
     drift, parity check, Elph extension diff, implementation delta, changelog
     walk, selisih implementasi, or /pi-port-gap.
+metadata:
+    scope: project
 ---
 
 # Pi Port Gap Analysis

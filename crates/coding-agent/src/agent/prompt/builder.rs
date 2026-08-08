@@ -41,7 +41,11 @@ pub fn build_coding_system_prompt(
     let skills_section = if resources.skills.is_empty() {
         String::new()
     } else {
-        format_skills_for_system_prompt(&resources.skills)
+        let relevant: Vec<elph_agent::Skill> = elph_agent::filter_skills_for_context(&resources.skills, cwd)
+            .into_iter()
+            .cloned()
+            .collect();
+        format_skills_for_system_prompt(&relevant)
     };
 
     let preferred_chat_language: String = preferred_chat_language.into();
@@ -140,7 +144,13 @@ mod tests {
         let prompt = build_coding_system_prompt(
             Path::new("/tmp/project"),
             &AgentHarnessResources::default(),
-            &["read_file".into()],
+            &[
+                "read_file".into(),
+                "grep".into(),
+                // No codegraph tools — the literal string must not appear
+                // anywhere (step 3 of <execution> must inline-condition on
+                // codegraph.code_search, same as the <codegraph> block).
+            ],
             None,
             AgentMode::Build,
             "",
@@ -149,6 +159,8 @@ mod tests {
         .expect("prompt");
 
         assert!(!prompt.contains("<codegraph>"));
+        assert!(!prompt.contains("code_search"));
+        assert!(prompt.contains("Locate code with the narrowest tool (`grep` / targeted `read_file`)"));
     }
 
     #[test]
@@ -414,6 +426,18 @@ mod tests {
         assert!(with_subagents.contains("`send_message` only queues context without starting a turn"));
         assert!(with_subagents.contains("`wait_agent` blocks until a subagent is idle"));
         assert!(with_subagents.contains("tool results carry status only"));
-        assert!(with_subagents.contains("4 concurrent max, depth 3"));
+        // Backfill: subagent names used by the subagent guidance block must
+        // resolve to literals even when only `spawn_agent` is registered.
+        let only_spawn = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["spawn_agent".to_string()],
+            None,
+            AgentMode::Build,
+            "",
+            true,
+        )
+        .expect("prompt");
+        assert!(only_spawn.contains("`spawn_agent`"));
     }
 }
