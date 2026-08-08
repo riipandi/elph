@@ -163,19 +163,28 @@ pub(crate) fn build_assistant_markdown_document(
     document
 }
 
-/// Render assistant markdown (stable prefix + streaming tail) as one iocraft block.
+/// Render assistant markdown (stable prefix + streaming tail) as one iocraft block element.
+///
+/// Returns `None` when nothing is paintably visible (blank / tag-only payload before the
+/// worker parses anything). The caller decides whether to paint a placeholder (live-stream
+/// replies) or nothing (settled empty replies).
 pub fn render_markdown_buffer(
     buffer: &AssistantMarkdownBuffer,
     raw: &str,
     tail_foreground: Color,
     width: u16,
-) -> AnyElement<'static> {
+) -> Option<AnyElement<'static>> {
     let width = width.max(1);
     let document = build_cached_document(buffer, raw, tail_foreground, width);
     if document.is_empty() {
-        return render_linkified_plain_text(raw, tail_foreground, width);
+        if raw.trim().is_empty() {
+            // Nothing paintable — only blank / tag-only payload. `None` lets the caller
+            // choose between a live placeholder and true absence.
+            return None;
+        }
+        return Some(render_linkified_plain_text(raw, tail_foreground, width));
     }
-    render_markdown_block(&document, width)
+    Some(render_markdown_block(&document, width))
 }
 
 /// Get the built (merged) document, using a cache for completed messages.

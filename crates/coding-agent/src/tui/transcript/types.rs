@@ -338,6 +338,24 @@ impl TranscriptMessage {
         self.style == TranscriptStyle::Thinking && self.duration_secs.is_none()
     }
 
+    /// True while this assistant reply is a live stream (deltas keep arriving and the
+    /// run-completed event has not landed yet).
+    pub fn is_assistant_streaming(&self) -> bool {
+        self.style == TranscriptStyle::Assistant
+            && self.duration_secs.is_none()
+            && !self.markdown.as_ref().is_some_and(|md| md.stream_complete)
+    }
+
+    /// Display text for the empty-live-reply placeholder: a soft ellipsis row painted so a
+    /// just-opened streaming response (which may start with blank / tag-only payload) shows a
+    /// visible card instead of a phantom blank box. `None` when the message renders real content.
+    pub(crate) fn assistant_placeholder(&self) -> Option<&'static str> {
+        if self.style != TranscriptStyle::Assistant || !self.content.trim().is_empty() {
+            return None;
+        }
+        self.is_assistant_streaming().then_some("…")
+    }
+
     /// Finished tool call with args/output folded into a single status header.
     ///
     /// `wait_agent` is always header-first (status-style); body only when expanded + has output.
@@ -995,6 +1013,35 @@ mod tests {
     #[test]
     fn assistant_inserts_gap_before_next_user_prompt() {
         assert_eq!(TranscriptStyle::Assistant.entry_gap_after(Some(TranscriptStyle::User)), 1);
+    }
+
+    #[test]
+    fn live_empty_helper_reply_gets_streaming_placeholder() {
+        // A streaming reply whose payload has only been blank/tag-only so far must still
+        // be measurable and visible (ellipsis placeholder) — never a phantom zero-row box.
+        let mut live = TranscriptMessage::assistant_markdown("\n\n");
+        assert!(live.is_assistant_streaming(), "empty streaming reply is still live");
+        assert_eq!(live.assistant_placeholder(), Some("…"));
+        assert!(live.assistant_placeholder().is_some());
+
+        // Non-empty text → real content, no placeholder.
+        live.content = "  Some actual reply text  ".to_string();
+        assert!(!live.content.trim().is_empty());
+        assert!(live.assistant_placeholder().is_none());
+
+        // Settled (duration recorded) empty reply → nothing to show.
+        let mut settled = TranscriptMessage::assistant_markdown(String::new());
+        settled.duration_secs = Some(1.0);
+        assert!(!settled.is_assistant_streaming());
+        assert!(settled.assistant_placeholder().is_none());
+
+        // Settled via stream_complete → nothing to show (rehydrated messages).
+        let mut complete = TranscriptMessage::assistant_markdown(String::new());
+        if let Some(md) = complete.markdown.as_mut() {
+            std::sync::Arc::make_mut(md).mark_stream_complete();
+        }
+        assert!(!complete.is_assistant_streaming());
+        assert!(complete.assistant_placeholder().is_none());
     }
 
     #[test]

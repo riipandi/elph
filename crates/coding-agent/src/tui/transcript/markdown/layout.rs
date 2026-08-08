@@ -51,7 +51,8 @@ mod tests {
 
     /// Paint the assistant markdown buffer and count the iocraft rows it occupies.
     fn painted_rows(buffer: &AssistantMarkdownBuffer, content: &str, width: u16) -> usize {
-        let el = render_markdown_buffer(buffer, content, Color::Reset, width);
+        let el = render_markdown_buffer(buffer, content, Color::Reset, width)
+            .expect("paintable content must produce a block");
         element! { View(width: width) { #(vec![el]) } }
             .to_string()
             .lines()

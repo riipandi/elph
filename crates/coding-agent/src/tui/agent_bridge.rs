@@ -1275,6 +1275,53 @@ mod tests {
     }
 
     #[test]
+    fn blank_or_tag_only_assistant_reply_is_rendered_and_measurable() {
+        // Regression: responses that stream only blank lines / stripped protocol tags must
+        // never collapse into a phantom blank card. The live reply exposes a placeholder that
+        // the render and measure paths agree on (see transcript::card and transcript::layout
+        // tests); once it settles with empty content it is simply absent.
+        use crate::tui::transcript::markdown::assistant_row_count;
+
+        let mut messages = Vec::new();
+        let mut applier = TranscriptEventApplier::new(false, false);
+
+        // A reply that first sends only tags (stripped to nothing) then blank lines.
+        assert!(!applier.apply(&mut messages, AgentUiEvent::TextDelta("<proposed_plan></proposed_plan>".into())));
+        assert!(messages.is_empty(), "tag-only content is swallowed before the card opens");
+
+        assert!(applier.apply(&mut messages, AgentUiEvent::TextDelta("\n\n".into())));
+        assert!(applier.apply(&mut messages, AgentUiEvent::TextDelta("   ".into())));
+        assert_eq!(messages.len(), 1, "one assistant reply card");
+        let reply = &messages[0];
+        assert!(reply.markdown.is_some());
+        assert!(reply.content.trim().is_empty(), "content is only whitespace so far");
+        assert!(
+            reply.is_assistant_streaming(),
+            "a blank-payload reply is still streaming until run completes"
+        );
+        assert_eq!(
+            reply.assistant_placeholder(),
+            Some("…"),
+            "live blank reply must advertise a placeholder (render + measure) "
+        );
+        // The measure path must not zero the row for a placeholder.
+        assert!(
+            assistant_row_count(&reply.content, reply.markdown.as_ref(), 80) >= 1
+                || reply.assistant_placeholder().is_some(),
+            "placeholder reply must occupy at least one scroll row"
+        );
+
+        // Settle with no real content → nothing left to display (not a phantom blank box).
+        applier.apply(&mut messages, AgentUiEvent::RunCompleted { elapsed_secs: 0.4 });
+        assert!(messages[0].duration_secs.is_some());
+        assert!(messages[0].content.trim().is_empty());
+        assert!(
+            messages[0].assistant_placeholder().is_none(),
+            "settled empty reply must be hidden, not a blank box"
+        );
+    }
+
+    #[test]
     fn assistant_start_trims_trailing_whitespace_from_thinking() {
         let mut messages = vec![TranscriptMessage::text("thinking line\n\n", TranscriptStyle::Thinking)];
         let mut applier = TranscriptEventApplier::new(true, false);
