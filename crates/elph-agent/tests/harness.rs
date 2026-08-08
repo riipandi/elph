@@ -1672,3 +1672,79 @@ async fn harness_restore_rehydrates_next_turn_queue() {
     assert_eq!(state_after.next_turn.len(), 1);
     assert_eq!(state_after.next_turn[0].0, "q_restore_1");
 }
+
+/// Race test: several harnesses running blocking turns, all aborted
+/// concurrently. Guards against deadlocks in abort / wait_for_idle / phase
+/// reset (each harness has its own session, so this is process-level concurrency).
+#[tokio::test(flavor = "multi_thread")]
+async fn concurrent_aborts_do_not_deadlock() {
+    const HARNESSES: usize = 4;
+
+    let (_temp, env) = test_env();
+    let (release, release2) = (Arc::new(AtomicBool::new(false)), Arc::new(AtomicBool::new(false)));
+
+    // Each harness gets a faux provider whose first response blocks until its
+    // per-harness release flag flips (after abort).
+    let mut harnesses = Vec::with_capacity(HARNESSES);
+    for i in 0..HARNESSES {
+        let (faux, models) = common::new_faux();
+        let release = if i == 0 { release.clone() } else { release2.clone() };
+        faux.set_responses(vec![FauxResponseStep::Factory({
+            let release = release.clone();
+            Arc::new(move |_context, options, _, _| {
+                let signal = options.and_then(|o| o.signal.clone());
+                loop {
+                    if signal.as_ref().is_some_and(|t| t.is_cancelled()) {
+                        return faux_assistant_message(vec![faux_text("aborted-by-turn-cancel")], None);
+                    }
+                    if release.load(Ordering::SeqCst) {
+                        return faux_assistant_message(vec![faux_text("done")], None);
+                    }
+                    std::thread::sleep(Duration::from_millis(1));
+                }
+            })
+        })]);
+        harnesses.push(Arc::new(make_harness(&faux, models, env.clone(), HarnessOptions::default())));
+    }
+
+    // Spawn a turn on every harness in parallel.
+    let mut prompts = Vec::with_capacity(HARNESSES);
+    for h in &harnesses {
+        let h = h.clone();
+        prompts.push(tokio::spawn(async move { h.prompt("blocking turn", None).await }));
+    }
+
+    // Give the turns time to enter the blocking provider factory.
+    tokio::time::sleep(Duration::from_millis(100)).await;
+
+    // Abort ALL harnesses simultaneously — simulating rapid Ctrl+C across turns.
+    let mut aborts = Vec::with_capacity(HARNESSES);
+    for h in &harnesses {
+        let h = h.clone();
+        aborts.push(tokio::spawn(async move { h.abort().await }));
+    }
+
+    // All aborts must complete promptly (no deadlock on shared locks / idle channels).
+    for (i, a) in aborts.into_iter().enumerate() {
+        tokio::time::timeout(Duration::from_secs(5), a)
+            .await
+            .unwrap_or_else(|_| panic!("abort #{i} deadlocked"))
+            .expect("abort task panicked")
+            .expect("abort returned Err");
+    }
+
+    // Release the blocking factories so prompt futures finish.
+    release.store(true, Ordering::SeqCst);
+    release2.store(true, Ordering::SeqCst);
+    for (i, p) in prompts.into_iter().enumerate() {
+        tokio::time::timeout(Duration::from_secs(5), p)
+            .await
+            .unwrap_or_else(|_| panic!("prompt #{i} deadlocked"))
+            .expect("prompt task panicked");
+    }
+
+    // All harnesses back to Idle.
+    for (i, h) in harnesses.iter().enumerate() {
+        assert_eq!(h.phase().await, elph_agent::AgentHarnessPhase::Idle, "harness #{i} not idle");
+    }
+}

@@ -217,7 +217,9 @@ Elph never bricks a session over a stale pointer:
   instead of failing the whole flush.
 - Turso backends additionally auto-heal when the tree accumulates ≥
   `MAX_STALE_LEAVES_BEFORE_HEAL` (16) phantom leaves on open: stale `Leaf` entries
-  are dropped and the leaf is re-resolved.
+  are dropped and the leaf is re-resolved. The heal is **persisted** — the stale
+  rows are deleted from `session_entries` inside a transaction, so the database is
+  self-consistent and later opens do not re-heal.
 
 The `set_leaf_id` contract is unchanged — pointing at a missing entry is still an
 error for callers; recovery/guarded callers resolve first.

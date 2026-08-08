@@ -77,7 +77,10 @@ pub use move_path::create_move_path_tool;
 #[cfg(feature = "tools-read-file")]
 pub use read_file::create_read_file_tool;
 #[cfg(feature = "tools-shell-exec")]
-pub use shell_exec::{create_shell_exec_tool, normalize_shell_exec_args, strip_redundant_cd_prefix};
+pub use shell_exec::{
+    cancel_background_task, create_shell_exec_tool, list_background_tasks, normalize_shell_exec_args,
+    strip_redundant_cd_prefix,
+};
 #[cfg(feature = "tools-web")]
 pub use web::{Engine as WebSearchEngine, SearchResult as WebSearchResult};
 #[cfg(feature = "tools-web")]

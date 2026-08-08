@@ -241,6 +241,8 @@ Each `shell_exec` run (foreground and background) persists its raw output to the
 
 **Abort / timeout semantics** — `shell_exec` runs each command as a new process group leader (`sh -c`). When the turn is aborted (Ctrl+C in the TUI) or the command times out, the **entire process group** is terminated — not just the direct shell — so grandchildren (`npm test`, `cargo build`, `sleep`, …) that hold the stdout/stderr pipes cannot keep the turn hanging. Termination is graceful (`SIGTERM`), escalated to `SIGKILL` after a short grace; the child is reaped with a bounded wait. A command whose output streams into a partial result returns the partial output with a `cancelled` flag (abort) or a timeout error.
 
+**Background task cancellation** — background tasks are registered in a live registry keyed by `taskId` (`bg-<n>`). They can be cancelled explicitly via `elph_agent::tools::cancel_background_task(&task_id)` (terminates the process group) and enumerated via `elph_agent::tools::list_background_tasks()`. Cancellation does not happen automatically on turn abort — the task uses its own token and keeps running independently until it finishes, times out, or is cancelled explicitly. When it exits, the footer (`[exit code: …]` or an error) is appended to its output file and it is removed from the registry.
+
 #### `create_dir`
 
 Create a new directory, including parent directories (like `mkdir -p`).

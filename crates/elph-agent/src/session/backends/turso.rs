@@ -79,8 +79,14 @@ impl TursoSessionStorage {
         let mut index = build_index(entries, persisted)?;
         // Best-effort auto-heal: if the tree is riddled with phantom leaves
         // (>= 16), drop stale `Leaf` entries and re-resolve so a single corrupt
-        // row can't keep poisoning the leaf forever.
-        index = maybe_heal_stale_leaves(index)?;
+        // row can't keep poisoning the leaf forever. When we heal, ALSO persist
+        // the cleanup (delete the stale rows) so the DB is self-consistent and
+        // we don't re-heal on every open.
+        let (mut index, stale_ids) = maybe_heal_stale_leaves(index)?;
+        if !stale_ids.is_empty() {
+            persist_heal_stale_leaves(&conn, &session_id, &stale_ids).await?;
+            log::info!("session {session_id}: healed {} stale leaf entries", stale_ids.len());
+        }
         Ok(Self {
             db_path,
             session_id,
@@ -385,27 +391,35 @@ async fn load_entries(conn: &turso::Connection, session_id: &str) -> Result<Vec<
 ///
 /// Safe: `Leaf` entries are only ever rewritten on `move_to` / `set_leaf_id`, and
 /// dropping phantom ones is idempotent — the next `move_to` writes a fresh one.
-fn maybe_heal_stale_leaves(index: SessionIndex) -> Result<SessionIndex, SessionError> {
-    if crate::session::storage_utils::stale_leaf_count(&index) < MAX_STALE_LEAVES_BEFORE_HEAL {
-        return Ok(index);
+///
+/// Returns the repaired index plus the list of dropped (stale) leaf entry ids so
+/// the caller can persist the cleanup (delete those rows) and avoid re-healing
+/// on every open.
+fn maybe_heal_stale_leaves(index: SessionIndex) -> Result<(SessionIndex, Vec<String>), SessionError> {
+    let stale_count = crate::session::storage_utils::stale_leaf_count(&index);
+    if stale_count < MAX_STALE_LEAVES_BEFORE_HEAL {
+        return Ok((index, Vec::new()));
     }
-    log::warn!(
-        "session tree has {} stale leaf entries — dropping them so the leaf can resolve",
-        crate::session::storage_utils::stale_leaf_count(&index)
-    );
-    let entries: Vec<SessionTreeEntry> = index
+    log::warn!("session tree has {stale_count} stale leaf entries — dropping them so the leaf can resolve",);
+    let stale_ids: Vec<String> = index
         .entries
         .iter()
         .filter(|entry| {
-            let is_stale = match entry {
+            matches!(
+                entry,
                 SessionTreeEntry::Leaf {
                     target_id: Some(target),
                     ..
-                } => !index.by_id.contains_key(target),
-                _ => false,
-            };
-            !is_stale
+                } if !index.by_id.contains_key(target)
+            )
         })
+        .map(|entry| entry.id().to_string())
+        .collect();
+    let keep: std::collections::HashSet<String> = stale_ids.iter().cloned().collect();
+    let entries: Vec<SessionTreeEntry> = index
+        .entries
+        .iter()
+        .filter(|entry| !keep.contains(entry.id()))
         .cloned()
         .collect();
     // Preserve in-memory side state (checkpoints, name) across the rebuild —
@@ -413,7 +427,49 @@ fn maybe_heal_stale_leaves(index: SessionIndex) -> Result<SessionIndex, SessionE
     let mut healed = build_index(entries, None)?;
     healed.checkpoints = index.checkpoints;
     healed.name = index.name;
-    Ok(healed)
+    Ok((healed, stale_ids))
+}
+
+/// Delete the given stale `Leaf` rows from `session_entries` in one transaction.
+///
+/// Called only after `maybe_heal_stale_leaves` decided to heal (>= threshold).
+/// Best-effort but transactional: if the delete fails the open still succeeds
+/// (the in-memory heal already made the session usable); we re-heal next open.
+async fn persist_heal_stale_leaves(
+    conn: &turso::Connection,
+    session_id: &str,
+    stale_ids: &[String],
+) -> Result<(), SessionError> {
+    if stale_ids.is_empty() {
+        return Ok(());
+    }
+    conn.execute("BEGIN IMMEDIATE", ())
+        .await
+        .map_err(|e| SessionError::new(SessionErrorCode::Storage, format!("heal begin: {e}")))?;
+    let outcome = async {
+        for id in stale_ids {
+            conn.execute(
+                "DELETE FROM session_entries WHERE session_id = ? AND id = ?",
+                turso::params![session_id, id.as_str()],
+            )
+            .await
+            .map_err(|e| SessionError::new(SessionErrorCode::Storage, format!("heal delete {id}: {e}")))?;
+        }
+        Ok::<(), SessionError>(())
+    }
+    .await;
+    match outcome {
+        Ok(()) => {
+            conn.execute("COMMIT", ())
+                .await
+                .map_err(|e| SessionError::new(SessionErrorCode::Storage, format!("heal commit: {e}")))?;
+            Ok(())
+        }
+        Err(error) => {
+            let _ = conn.execute("ROLLBACK", ()).await;
+            Err(error)
+        }
+    }
 }
 
 fn map_storage_error(error: impl std::fmt::Display) -> SessionError {

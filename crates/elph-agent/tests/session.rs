@@ -406,3 +406,68 @@ async fn turso_resume_after_crash_then_continue_appends_chain() {
     // u1, a1, synthetic tool result, u2 → at least 4 entries, all chained.
     assert!(entries.len() >= 4, "expected >=4 entries, got {}", entries.len());
 }
+
+// Persist heal at open: a tree polluted with many phantom leaf rows is healed in
+// memory AND the stale rows are deleted from the DB, so a second open does not
+// re-heal and the tree stays self-consistent.
+#[tokio::test]
+async fn turso_open_persists_leaf_heal() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let db = tmp.path().join("heal.db");
+
+    let mut storage = TursoSessionStorage::create(&db, Some("heal_sess".into()))
+        .await
+        .expect("create");
+    // One real entry + MANY stale leaf rows (>= MAX_STALE_LEAVES_BEFORE_HEAL = 16).
+    storage
+        .append_entry(session_tree_message_entry("real1", None, user_message("root")))
+        .await
+        .expect("append real");
+    {
+        let handle = elph_agent::datastore::open_local(&db).await.expect("open db");
+        let conn = elph_agent::datastore::connect(&handle).await.expect("connect");
+        for i in 0..24 {
+            conn.execute(
+                "INSERT INTO session_entries (session_id, id, entry_seq, parent_id, type, timestamp, payload)
+                 VALUES ('heal_sess', ?, ?, 'real1', 'leaf', 't', ?)",
+                turso::params![
+                    format!("ghost_leaf_{i}"),
+                    (i + 100) as i64,
+                    serde_json::json!({
+                        "type": "leaf",
+                        "id": format!("ghost_leaf_{i}"),
+                        "parentId": "real1",
+                        "timestamp": "t",
+                        "targetId": format!("ghost_{i}")
+                    })
+                    .to_string()
+                ],
+            )
+            .await
+            .expect("insert ghost leaf");
+        }
+        conn.execute("UPDATE sessions SET active_leaf_id = 'ghost_0' WHERE id = 'heal_sess'", ())
+            .await
+            .expect("corrupt leaf");
+    }
+    drop(storage);
+
+    // First open heals (in memory) and persists the cleanup.
+    let opened = Session::new(
+        TursoSessionStorage::open(&db, "heal_sess", None)
+            .await
+            .expect("open after heal"),
+    );
+    assert!(opened.leaf_id().await.expect("leaf").is_some());
+
+    // Second open: rows are gone, leaf resolves to the real entry, no heal needed.
+    let reopened = Session::new(
+        TursoSessionStorage::open(&db, "heal_sess", None)
+            .await
+            .expect("reopen after persisted heal"),
+    );
+    assert_eq!(reopened.leaf_id().await.expect("leaf"), Some("real1".to_string()));
+    let entries = reopened.entries().await;
+    assert!(!entries.iter().any(|e| e.id().starts_with("ghost_")), "ghost rows must be gone");
+    assert_eq!(entries.len(), 1, "only the real entry survives");
+}
