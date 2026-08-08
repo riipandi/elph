@@ -47,14 +47,9 @@ impl Paths {
         self.project_elph_dir().join("plans")
     }
 
-    /// Project-local floppy store (Turso DB).
+    /// Project-local unified store (Turso DB).
     pub fn memory_db_path(&self) -> PathBuf {
         self.project_elph_dir().join("store.db")
-    }
-
-    /// Project-local transcript cache (Turso DB).
-    pub fn transcript_db_path(&self) -> PathBuf {
-        self.project_elph_dir().join("metadata.db")
     }
 
     pub fn project_gitignore_path(&self) -> PathBuf {
@@ -190,7 +185,6 @@ mod tests {
         let paths = Paths::from_dirs(config.clone(), data.clone(), project.clone());
 
         assert_eq!(paths.memory_db_path(), project.join(".elph/store.db"));
-        assert_eq!(paths.transcript_db_path(), project.join(".elph/metadata.db"));
         assert_eq!(paths.project_gitignore_path(), project.join(".elph/.gitignore"));
         assert_eq!(paths.project_settings_path(), project.join(".elph/settings.json"));
         assert_eq!(paths.project_mcp_config_path(), project.join(".elph/mcp.json"));

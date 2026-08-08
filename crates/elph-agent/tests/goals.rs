@@ -44,7 +44,7 @@ fn tool_text(result: AgentToolResult) -> String {
 #[tokio::test]
 async fn goal_store_lifecycle() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let db_path = tmp.path().join("metadata.db");
+    let db_path = tmp.path().join("store.db");
     ensure_database(&db_path, GOALS_MIGRATIONS).await.expect("migrate");
 
     let store = GoalStore::new(&db_path);
@@ -85,7 +85,7 @@ async fn goal_store_lifecycle() {
 #[tokio::test]
 async fn goal_accounting_sets_budget_limited() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let db_path = tmp.path().join("metadata.db");
+    let db_path = tmp.path().join("store.db");
     ensure_database(&db_path, GOALS_MIGRATIONS).await.expect("migrate");
 
     let store = GoalStore::new(&db_path);
@@ -107,7 +107,7 @@ async fn goal_accounting_sets_budget_limited() {
 #[tokio::test]
 async fn goal_tools_round_trip() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let db_path = tmp.path().join("metadata.db");
+    let db_path = tmp.path().join("store.db");
     ensure_database(&db_path, GOALS_MIGRATIONS).await.expect("migrate");
 
     let store = Arc::new(GoalStore::new(&db_path));

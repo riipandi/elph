@@ -61,7 +61,6 @@ Override with `ELPH_HOME` (config) and `ELPH_DATA_DIR` (data).
 │       └── event_log.jsonl  # Optional diagnostic mirror
 ├── vendor/
 ├── worktrees/
-├── metadata.db              # Turso — sessions tree, goals, spawn graph, …
 ├── version.json
 ├── CHANGELOG.md
 └── CHANGELOG.json
@@ -74,8 +73,7 @@ Override with `ELPH_HOME` (config) and `ELPH_DATA_DIR` (data).
 ├── .gitignore
 ├── settings.json            # Optional project overrides
 ├── mcp.json
-├── store.db                 # Floppy memory (Turso)
-├── metadata.db              # TUI transcript archive only
+├── store.db                 # Unified store (Turso) — sessions, goals, memory, codegraph, transcript
 ├── plans/plan-*.md
 ├── prompts/*.md
 ├── extensions/              # Project-local WASM bundles (after trust)
@@ -86,9 +84,7 @@ Override with `ELPH_HOME` (config) and `ELPH_DATA_DIR` (data).
 
 | Store                     | Path                                      | Contents                                                                                               |
 | ------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Platform DB               | `APP_DATA/metadata.db`                    | Goals, agent spawn graph, skill cache, session index + tree                                            |
-| Floppy memory + codegraph | `PROJECT/.elph/store.db`                  | Agent long-term memory, embeddings, codebase chunk index — all in one ledger                           |
-| Transcript archive        | `PROJECT/.elph/metadata.db`               | TUI card overflow only (not the LLM session tree)                                                      |
+| Unified store             | `PROJECT/.elph/store.db`                  | Sessions, goals, agent spawn graph, skill cache, memory, embeddings, codegraph, transcript cache |                           |
 | Session artifacts         | `APP_DATA/sessions/<SESSION_ID>/`         | `mcp_cache/` (JSONL tool result cache), `terminals/`, `tool_outputs.jsonl`, optional `event_log.jsonl` |
 | Host MCP cache            | `APP_DATA/mcp_cache/`                     | CLI MCP ops when no session is active (JSONL tool result cache)                                        |
 | App / crash / MCP logs    | `APP_DATA/logs/`                          | Rolling JSONL, dated crash logs, MCP stderr                                                            |
@@ -97,7 +93,6 @@ Override with `ELPH_HOME` (config) and `ELPH_DATA_DIR` (data).
 | Provider catalogs         | `CONFIG_DIR/providers/*.json`             | Disk model overlays (see below)                                                                        |
 | Bundled assets            | `CONFIG_DIR/bundled/{user-guide,skills}/` | Embedded in the binary; extracted on bootstrap if missing                                              |
 
-Goals remain on `APP_DATA/metadata.db` (`goals` table). Path and table contract must stay stable across layout refactors.
 
 ### Bundled user guide and skills
 

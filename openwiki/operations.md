@@ -69,8 +69,7 @@ From `crates/coding-agent/src/platform/paths.rs`:
 | `<project>/.elph/settings.json` | `Paths::project_settings_path()`   | Project settings                     |
 | `~/.elph/settings.json`         | `Paths::home_settings_path()`      | Home settings (override)             |
 | `<project>/.elph/mcp.json`      | `Paths::project_mcp_config_path()` | MCP server config                    |
-| `<project>/.elph/store.db`      | `Paths::memory_db_path()`          | Floppy memory DB                     |
-| `<project>/.elph/metadata.db`   | `Paths::transcript_db_path()`      | Transcript cache (Turso)             |
+| `<project>/.elph/store.db`      | `Paths::memory_db_path()`          | Unified store (sessions, goals, memory, codegraph, transcript)|
 | `<project>/.elph/plans/`        | `Paths::plans_dir()`               | Plan files                           |
 | `<data>/sessions/`              | `AppPaths::sessions_dir()`         | Session artifacts (commit `a37c38f`) |
 | `<data>/models/`                | `AppPaths::models_dir()`           | Embedding model cache                |

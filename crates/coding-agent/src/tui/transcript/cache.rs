@@ -1,7 +1,7 @@
 //! Disk-backed transcript archive using Turso (local SQLite).
 //!
 //! When the in-memory transcript grows past `MAX_MESSAGES_BEFORE_ARCHIVE`, the
-//! shell archives the oldest messages here — one database file per project,
+//! shell archives the oldest messages here — uses the shared project database,
 //! partitioned by `session_id`. The live TUI keeps working from the in-memory
 //! `Vec<TranscriptMessage>`; this store is append-only for now.
 
@@ -15,16 +15,17 @@ use super::types::{TranscriptMessage, TranscriptStyle};
 
 /// Low-level SQLite transcript store.
 ///
-/// One database file per project, partitioned by `session_id`.
+/// Uses the shared project database, partitioned by `session_id`.
 pub struct TranscriptCache {
     conn: Connection,
     session_id: String,
 }
 
 impl TranscriptCache {
-    /// Open (or create) the transcript database and run migrations.
+    /// Open the transcript cache using the shared database path.
     ///
-    /// On first open after upgrade, prunes legacy transcript snapshots from the session
+    /// The transcript tables are created by platform migration v107.
+    /// On first open after upgrade, prunes legacy session-tree snapshots from the session
     /// tree (which accumulated to 600+ MB in some projects) and checkpoints the WAL.
     pub async fn open(db_path: &Path, session_id: &str) -> Result<Self> {
         let db = open_local_with(db_path, |b| b.experimental_multiprocess_wal(true), false).await?;
@@ -33,7 +34,6 @@ impl TranscriptCache {
             conn,
             session_id: session_id.to_string(),
         };
-        Self::run_migrations(&cache.conn).await?;
 
         // One-time cleanup: prune legacy session-tree snapshots and checkpoint WAL.
         // Idempotent — after the first run there's nothing left to prune.
@@ -45,45 +45,6 @@ impl TranscriptCache {
         }
 
         Ok(cache)
-    }
-
-    /// Run schema migrations (idempotent).
-    async fn run_migrations(conn: &Connection) -> Result<()> {
-        conn.execute_batch(
-            "CREATE TABLE IF NOT EXISTS transcript_messages (
-                session_id  TEXT NOT NULL,
-                seq         INTEGER NOT NULL,
-                style       TEXT NOT NULL,
-                content     TEXT NOT NULL,
-                tool_name   TEXT,
-                tool_args   TEXT,
-                tool_output TEXT,
-                tool_old    TEXT,
-                tool_new    TEXT,
-                tool_path   TEXT,
-                duration    REAL,
-                expanded    INTEGER NOT NULL DEFAULT 1,
-                pinned      INTEGER NOT NULL DEFAULT 0,
-                status      TEXT,
-                indent      INTEGER NOT NULL DEFAULT 0,
-                tree        TEXT,
-                model       TEXT,
-                agent       TEXT,
-                user_shell  INTEGER NOT NULL DEFAULT 0,
-                slash_resp  INTEGER NOT NULL DEFAULT 0,
-                created_at  TEXT NOT NULL DEFAULT (datetime('now')),
-                UNIQUE(session_id, seq)
-            );
-            CREATE INDEX IF NOT EXISTS idx_transcript_msg_session_seq
-                ON transcript_messages(session_id, seq);
-            CREATE TABLE IF NOT EXISTS transcript_snapshot (
-                session_id  TEXT PRIMARY KEY,
-                data        TEXT NOT NULL,
-                saved_at    TEXT NOT NULL DEFAULT (datetime('now'))
-            );",
-        )
-        .await?;
-        Ok(())
     }
 
     /// Store the latest transcript snapshot for this session, OVERWRITING any prior one.
@@ -230,11 +191,29 @@ fn style_to_str(style: TranscriptStyle) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use elph_agent::datastore::{connect, open_local_with};
+    use turso::Database;
 
     #[tokio::test]
     async fn save_snapshot_overwrites_prior() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let db_path = tmp.path().join("test.db");
+
+        // Create tables for test (normally done by platform migration v107)
+        let db: Database = open_local_with(&db_path, |b| b.experimental_multiprocess_wal(true), false)
+            .await
+            .expect("open db");
+        let conn = connect(&db).await.expect("connect");
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS transcript_snapshot (
+                session_id  TEXT PRIMARY KEY,
+                data        TEXT NOT NULL,
+                saved_at    TEXT NOT NULL DEFAULT (datetime('now'))
+            );",
+        )
+        .await
+        .expect("create table");
+
         let cache = TranscriptCache::open(&db_path, "sess-1").await.expect("open");
 
         let first = r#"{"version":1,"messages":[{"content":"first","style":"user"}]}"#;
@@ -266,6 +245,22 @@ mod tests {
     async fn load_snapshot_returns_none_when_empty() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let db_path = tmp.path().join("test.db");
+
+        // Create tables for test (normally done by platform migration v107)
+        let db: Database = open_local_with(&db_path, |b| b.experimental_multiprocess_wal(true), false)
+            .await
+            .expect("open db");
+        let conn = connect(&db).await.expect("connect");
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS transcript_snapshot (
+                session_id  TEXT PRIMARY KEY,
+                data        TEXT NOT NULL,
+                saved_at    TEXT NOT NULL DEFAULT (datetime('now'))
+            );",
+        )
+        .await
+        .expect("create table");
+
         let cache = TranscriptCache::open(&db_path, "sess-empty").await.expect("open");
         assert!(cache.load_snapshot().await.expect("load").is_none());
     }

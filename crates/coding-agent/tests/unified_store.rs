@@ -14,7 +14,7 @@ use floppy::memory::migrations as memory_migrations;
 use turso::Builder;
 
 /// Expected ledger contents across all bands, in version order.
-const EXPECTED_VERSIONS: &[i64] = &[1, 2, 3, 4, 100, 101, 102, 103, 104, 105, 106, 500, 501];
+const EXPECTED_VERSIONS: &[i64] = &[1, 2, 3, 4, 100, 101, 102, 103, 104, 105, 106, 107, 500, 501];
 
 #[tokio::test]
 async fn all_bands_share_one_store_db_and_one_ledger() {
@@ -101,6 +101,9 @@ async fn all_bands_share_one_store_db_and_one_ledger() {
         "goals",
         "skill_cache",
         "agent_spawn_edges",
+        // transcript cache (v107)
+        "transcript_messages",
+        "transcript_snapshot",
     ] {
         assert!(tables.contains(&table.to_string()), "missing table {table}: {tables:?}");
     }

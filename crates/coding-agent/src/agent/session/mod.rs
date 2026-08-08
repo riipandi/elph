@@ -802,7 +802,7 @@ impl CodingAgentSession {
     ///
     /// This keeps only the latest snapshot per session, eliminating the unbounded
     /// growth from appending to the session tree. The `db_path` and `session_id`
-    /// identify the per-project metadata DB.
+    /// identify the per-project store DB (unified store.db).
     pub async fn save_transcript_snapshot_to_cache(
         &self,
         messages: &[crate::tui::transcript::TranscriptMessage],

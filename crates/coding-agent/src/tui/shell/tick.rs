@@ -919,7 +919,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 let snapshot_arc = Arc::new(messages_arc_inner.read().unwrap().clone());
                 let snapshot_for_archive = Arc::clone(&snapshot_arc);
                 tokio::spawn(async move {
-                    if let Ok(cache) = TranscriptCache::open(&paths_for_archive.transcript_db_path(), &sid).await {
+                    if let Ok(cache) = TranscriptCache::open(&paths_for_archive.memory_db_path(), &sid).await {
                         let snapshot = snapshot_for_archive;
                         let archive_count = snapshot.len().saturating_sub(KEEP_MESSAGES);
                         let archived: Vec<(usize, &TranscriptMessage)> =
@@ -974,7 +974,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                         if let Err(err) = session
                             .save_transcript_snapshot_to_cache(
                                 &snapshot_for_cache,
-                                &paths_for_snapshot.transcript_db_path(),
+                                &paths_for_snapshot.memory_db_path(),
                                 &sid_for_snapshot,
                             )
                             .await
@@ -994,7 +994,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                         if let Err(err) = session
                             .save_transcript_snapshot_to_cache(
                                 &snapshot,
-                                &paths_for_snapshot.transcript_db_path(),
+                                &paths_for_snapshot.memory_db_path(),
                                 &sid_for_snapshot,
                             )
                             .await

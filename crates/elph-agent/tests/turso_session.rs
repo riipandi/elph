@@ -187,7 +187,7 @@ async fn turso_repo_fork_copies_entries() {
 #[tokio::test]
 async fn goals_still_work_alongside_session_tree() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let db = tmp.path().join("metadata.db");
+    let db = tmp.path().join("store.db");
     ensure_database(&db, PLATFORM_LIKE).await.expect("migrate");
 
     let repo = TursoSessionRepo::new(&db);

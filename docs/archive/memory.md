@@ -39,7 +39,6 @@ Inspired by [memelord](https://github.com/glommer/memelord) (MIT License, Copyri
 PROJECT_DIR/
 └── .elph/
     ├── store.db          # gitignored; memory + codegraph
-    ├── metadata.db       # transcript archive (TUI card overflow)
     └── .gitignore
 ```
 
@@ -249,7 +248,6 @@ Embeddings are fixed-size blobs for `vector32` queries. Changing to a model with
 Migrations run through the shared `app_migrations` ledger (`apply_set` in
 `floppy::core::migration`) — per-version membership, applied once, no `PRAGMA user_version`.
 Memory uses band 1–99, codegraph 500–599 (see [`codegraph.md`](./codegraph.md#schema-v1)). The
-transcript archive lives in a separate per-project file (`metadata.db`) with idempotent DDL
 and no version band.
 
 ## Related

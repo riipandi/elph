@@ -51,7 +51,7 @@ async fn spawn_and_list_subagents_with_turso_sessions() {
     let stream_fn = common::faux_stream_fn(&faux);
     let tools = create_search_tools(env.clone());
 
-    let graph_db = temp.path().join("metadata.db");
+    let graph_db = temp.path().join("store.db");
     ensure_database(&graph_db, PLATFORM_LIKE)
         .await
         .expect("platform migrate");
@@ -137,7 +137,7 @@ async fn spawn_and_list_subagents_with_turso_sessions() {
     let opened = elph_agent::TursoSessionRepo::new(&graph_db)
         .open(&child_session_id)
         .await
-        .expect("open child session from metadata.db");
+        .expect("open child session from store.db");
     assert_eq!(opened.metadata().await.id, child_session_id);
 }
 
@@ -156,7 +156,7 @@ async fn subagent_inherits_current_model_after_switch() {
     let stream_fn = common::faux_stream_fn(&faux);
     let tools = create_search_tools(env.clone());
 
-    let graph_db = temp.path().join("metadata.db");
+    let graph_db = temp.path().join("store.db");
     ensure_database(&graph_db, PLATFORM_LIKE)
         .await
         .expect("platform migrate");
@@ -239,7 +239,7 @@ async fn wait_immediately_after_followup_never_races_turn_start() {
     let stream_fn = common::faux_stream_fn(&faux);
     let tools = create_search_tools(env.clone());
 
-    let graph_db = temp.path().join("metadata.db");
+    let graph_db = temp.path().join("store.db");
     ensure_database(&graph_db, PLATFORM_LIKE)
         .await
         .expect("platform migrate");
