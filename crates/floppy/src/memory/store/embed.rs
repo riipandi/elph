@@ -8,7 +8,7 @@ use crate::core::util::{drain_rows, vec_buf};
 use crate::memory::types::MemoryCategory;
 use crate::memory::util::category_str;
 
-fn is_zero_embedding(v: &[f32]) -> bool {
+pub fn is_zero_embedding(v: &[f32]) -> bool {
     v.is_empty() || v.iter().all(|x| *x == 0.0)
 }
 
@@ -151,12 +151,22 @@ impl MemoryStore {
 
         let mut correction_id = None;
         if let (Some(correction), true) = (correction, deleted) {
-            let embedding = (self.embed)(&[correction.to_string()])
-                .await?
-                .into_iter()
-                .next()
-                .unwrap_or_default();
-            let emb_buf = vec_buf(&embedding);
+            let embedding = match (self.embed)(&[correction.to_string()]).await {
+                Ok(vecs) => vecs.into_iter().next(),
+                Err(e) => {
+                    log::warn!("Failed to embed correction: {e:#}, storing without embedding");
+                    None
+                }
+            };
+
+            let (emb_buf, _has_embedding) = match embedding {
+                Some(vec) if !is_zero_embedding(&vec) => (Some(vec_buf(&vec)), true),
+                _ => {
+                    log::warn!("Empty or zero embedding for correction, storing without embedding");
+                    (None, false)
+                }
+            };
+
             let id = new_id();
             let now = now_secs();
             let correction = correction.to_string();
@@ -164,11 +174,19 @@ impl MemoryStore {
             let id_clone = id.clone();
 
             self.with_db(move |conn| async move {
-                conn.execute(
-                    "INSERT INTO memories (id, content, embedding, category, weight, created_at, source_task) VALUES (?, ?, ?, 'correction', 2.0, ?, ?)",
-                    params![id_clone, correction, emb_buf, now, current_task],
-                )
-                .await?;
+                if let Some(buf) = emb_buf {
+                    conn.execute(
+                        "INSERT INTO memories (id, content, embedding, category, weight, created_at, source_task) VALUES (?, ?, ?, 'correction', 2.0, ?, ?)",
+                        params![id_clone, correction, buf, now, current_task],
+                    )
+                    .await?;
+                } else {
+                    conn.execute(
+                        "INSERT INTO memories (id, content, embedding, category, weight, created_at, source_task) VALUES (?, ?, NULL, 'correction', 2.0, ?, ?)",
+                        params![id_clone, correction, now, current_task],
+                    )
+                    .await?;
+                }
                 Ok(())
             })
             .await?;

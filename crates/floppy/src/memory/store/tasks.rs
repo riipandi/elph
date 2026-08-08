@@ -6,7 +6,9 @@ use super::{MemoryStore, SelfReportRow, WeightUpdate};
 use super::{batch_set_weights, fetch_weights, new_id, now_secs, touch_retrieved_memories};
 use crate::core::util::{drain_rows, vec_buf};
 use crate::memory::scoring::{compute_credit, compute_task_score, initial_weight, update_baseline, update_weight};
-use crate::memory::types::{MemoryCategory, ReportCorrectionInput, ReportUserInput, StartTaskResult, TaskEndInput};
+use crate::memory::types::{
+    Memory, MemoryCategory, ReportCorrectionInput, ReportUserInput, StartTaskResult, TaskEndInput,
+};
 
 impl MemoryStore {
     pub async fn start_task(&self, description: &str) -> Result<StartTaskResult> {
@@ -15,42 +17,86 @@ impl MemoryStore {
         let now = now_secs();
 
         // Embed outside with_db — no lock held during model inference
-        let task_embedding = (self.embed)(&[description.to_string()])
-            .await?
-            .into_iter()
-            .next()
-            .unwrap_or_default();
+        let task_embedding = match (self.embed)(&[description.to_string()]).await {
+            Ok(vecs) => vecs.into_iter().next(),
+            Err(e) => {
+                log::warn!("Failed to embed task description: {e:#}, using keyword-only search");
+                None
+            }
+        };
+
+        let (task_embedding, _has_embedding) = match task_embedding {
+            Some(vec) if !super::embed::is_zero_embedding(&vec) => (Some(vec), true),
+            _ => {
+                log::warn!("Empty or zero task embedding, will use keyword-only search");
+                (None, false)
+            }
+        };
+
         self.embed_pending().await?;
 
         let decay_rate = self.decay_rate;
-        let emb_buf = vec_buf(&task_embedding);
         let task_id_clone = task_id.clone();
         let description = description.to_string();
 
         let memories = self
             .with_db(move |conn| async move {
-                conn.execute(
-                    "INSERT INTO tasks (id, description, embedding, started_at) VALUES (?, ?, ?, ?)",
-                    params![task_id_clone.as_str(), description.as_str(), emb_buf.as_slice(), now],
-                )
-                .await?;
-
-                let mems = self
-                    .hybrid_retrieve(&conn, &description, emb_buf.as_slice(), decay_rate, now)
-                    .await?;
-
-                for mem in &mems {
+                if let Some(emb) = task_embedding {
+                    let emb_buf = vec_buf(&emb);
                     conn.execute(
-                        "INSERT OR IGNORE INTO memory_retrievals (memory_id, task_id, similarity) VALUES (?, ?, ?)",
-                        params![mem.id.as_str(), task_id_clone.as_str(), mem.score],
+                        "INSERT INTO tasks (id, description, embedding, started_at) VALUES (?, ?, ?, ?)",
+                        params![task_id_clone.as_str(), description.as_str(), emb_buf.as_slice(), now],
                     )
                     .await?;
+
+                    let mems = self
+                        .hybrid_retrieve(&conn, &description, emb_buf.as_slice(), decay_rate, now)
+                        .await?;
+                    
+                    for mem in &mems {
+                        conn.execute(
+                            "INSERT OR IGNORE INTO memory_retrievals (memory_id, task_id, similarity) VALUES (?, ?, ?)",
+                            params![mem.id.as_str(), task_id_clone.as_str(), mem.score],
+                        )
+                        .await?;
+                    }
+
+                    let memory_ids: Vec<String> = mems.iter().map(|m| m.id.clone()).collect();
+                    touch_retrieved_memories(&conn, &memory_ids, now).await?;
+                    
+                    Ok(mems)
+                } else {
+                    // Fallback: insert task without embedding, use keyword-only search
+                    conn.execute(
+                        "INSERT INTO tasks (id, description, embedding, started_at) VALUES (?, ?, NULL, ?)",
+                        params![task_id_clone.as_str(), description.as_str(), now],
+                    )
+                    .await?;
+                    
+                    // Simple keyword-only retrieval when embedding fails
+                    let mut rows = conn
+                        .query(
+                            "SELECT id, content, category, weight, created_at, retrieval_count FROM memories ORDER BY weight DESC LIMIT ?",
+                            params![self.top_k()],
+                        )
+                        .await?;
+                    
+                    let mut mems = Vec::new();
+                    while let Some(row) = rows.next().await? {
+                        mems.push(Memory {
+                            id: row.get(0)?,
+                            content: row.get(1)?,
+                            category: crate::memory::util::category_from_str(&row.get::<String>(2)?),
+                            weight: row.get(3)?,
+                            score: row.get(3)?, // Use weight as score for keyword-only
+                            created_at: row.get(4)?,
+                            retrieval_count: row.get(5)?,
+                        });
+                    }
+                    drain_rows(&mut rows).await?;
+                    
+                    Ok(mems)
                 }
-
-                let memory_ids: Vec<String> = mems.iter().map(|m| m.id.clone()).collect();
-                touch_retrieved_memories(&conn, &memory_ids, now).await?;
-
-                Ok(mems)
             })
             .await?;
 
@@ -69,12 +115,23 @@ impl MemoryStore {
             "{}\n\nFailed approach: {}\nWorking approach: {}",
             input.lesson, input.what_failed, input.what_worked
         );
-        let embedding = (self.embed)(std::slice::from_ref(&content))
-            .await?
-            .into_iter()
-            .next()
-            .unwrap_or_default();
-        let emb_buf = vec_buf(&embedding);
+
+        let embedding = match (self.embed)(std::slice::from_ref(&content)).await {
+            Ok(vecs) => vecs.into_iter().next(),
+            Err(e) => {
+                log::warn!("Failed to embed correction: {e:#}, storing without embedding");
+                None
+            }
+        };
+
+        let (emb_buf, _has_embedding) = match embedding {
+            Some(vec) if !super::embed::is_zero_embedding(&vec) => (Some(vec_buf(&vec)), true),
+            _ => {
+                log::warn!("Empty or zero embedding for correction, storing without embedding");
+                (None, false)
+            }
+        };
+
         let current_task = self.current_task_id.lock().unwrap().clone();
 
         // AVG query in its own connection — mixing read query + write in one Turso
@@ -100,12 +157,19 @@ impl MemoryStore {
             Some(avg_tokens),
         );
         self.with_db(move |conn| async move {
-            let changes = conn
-                .execute(
+            let changes = if let Some(buf) = emb_buf {
+                conn.execute(
                     "INSERT INTO memories (id, content, embedding, category, weight, initial_cost, created_at, source_task) VALUES (?, ?, ?, 'correction', ?, ?, ?, ?)",
-                    params![id.clone(), content, emb_buf, weight, tokens_wasted.unwrap_or(0), now, current_task],
+                    params![id.clone(), content, buf, weight, tokens_wasted.unwrap_or(0), now, current_task],
                 )
-                .await?;
+                .await?
+            } else {
+                conn.execute(
+                    "INSERT INTO memories (id, content, embedding, category, weight, initial_cost, created_at, source_task) VALUES (?, ?, NULL, 'correction', ?, ?, ?, ?)",
+                    params![id.clone(), content, weight, tokens_wasted.unwrap_or(0), now, current_task],
+                )
+                .await?
+            };
             if changes == 0 {
                 bail!("report_correction: INSERT affected 0 rows");
             }
@@ -119,21 +183,39 @@ impl MemoryStore {
         let id = new_id();
         let now = now_secs();
 
-        let embedding = (self.embed)(std::slice::from_ref(&input.lesson))
-            .await?
-            .into_iter()
-            .next()
-            .unwrap_or_default();
-        let emb_buf = vec_buf(&embedding);
+        let embedding = match (self.embed)(std::slice::from_ref(&input.lesson)).await {
+            Ok(vecs) => vecs.into_iter().next(),
+            Err(e) => {
+                log::warn!("Failed to embed user input: {e:#}, storing without embedding");
+                None
+            }
+        };
+
+        let (emb_buf, _has_embedding) = match embedding {
+            Some(vec) if !super::embed::is_zero_embedding(&vec) => (Some(vec_buf(&vec)), true),
+            _ => {
+                log::warn!("Empty or zero embedding for user input, storing without embedding");
+                (None, false)
+            }
+        };
+
         let weight = initial_weight(MemoryCategory::User, Some(input.source), None, None);
         let current_task = self.current_task_id.lock().unwrap().clone();
 
         self.with_db(move |conn| async move {
-            conn.execute(
-                "INSERT INTO memories (id, content, embedding, category, weight, created_at, source_task) VALUES (?, ?, ?, 'user', ?, ?, ?)",
-                params![id.clone(), input.lesson, emb_buf, weight, now, current_task],
-            )
-            .await?;
+            if let Some(buf) = emb_buf {
+                conn.execute(
+                    "INSERT INTO memories (id, content, embedding, category, weight, created_at, source_task) VALUES (?, ?, ?, 'user', ?, ?, ?)",
+                    params![id.clone(), input.lesson, buf, weight, now, current_task],
+                )
+                .await?;
+            } else {
+                conn.execute(
+                    "INSERT INTO memories (id, content, embedding, category, weight, created_at, source_task) VALUES (?, ?, NULL, 'user', ?, ?, ?)",
+                    params![id.clone(), input.lesson, weight, now, current_task],
+                )
+                .await?;
+            }
             Ok(id)
         })
         .await

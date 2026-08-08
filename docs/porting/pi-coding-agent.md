@@ -3,7 +3,7 @@
 **Last audited:** 2026-07-11T12:14:13Z
 **Upstream:** `@earendil-works/pi-coding-agent` · `packages/coding-agent` · **v0.80.6** + Unreleased
 **Upstream commit:** `4c18610` (2026-07-11)
-**Local clone:** `/Users/ariss/Developer/github.com/earendil-works/pi`
+**Local clone:** `~/.local/share/elph/tmp//pi`
 **Elph crate:** `crates/coding-agent/` (binary + library; product shell)
 **Depends on:** `elph-agent`, `elph-ai`, `elph-tui` — see [pi-ai.md](./pi-ai.md), [pi-agent.md](./pi-agent.md)
 
