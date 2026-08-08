@@ -137,7 +137,7 @@ impl MemoryStore {
                         turso::params![self.top_k()],
                     )
                     .await?;
-                
+
                 let mut out = Vec::new();
                 while let Some(row) = rows.next().await? {
                     out.push(Memory {

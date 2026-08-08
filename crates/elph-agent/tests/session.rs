@@ -329,7 +329,7 @@ async fn turso_reopen_with_phantom_leaf_pointer_stays_openable_and_repairable() 
         .expect("append after repair");
 
     // Reopen again: recovered leaf is the newest entry (an appended message id).
-    let mut reloaded = Session::new(
+    let reloaded = Session::new(
         TursoSessionStorage::open(&db, "reopen_phantom", None)
             .await
             .expect("reopen"),

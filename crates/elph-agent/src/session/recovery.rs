@@ -65,7 +65,7 @@ pub async fn repair_unanswered_tool_calls<S: SessionStorage>(
         // Even with a resolved leaf the parent chain may be broken (rows pruned).
         // Repair can only walk what exists; return a clean report instead of
         // making recovery itself fail the session.
-        return SessionError::new(SessionErrorCode::InvalidEntry, "unresolvable branch during recovery");
+        SessionError::new(SessionErrorCode::InvalidEntry, "unresolvable branch during recovery")
     })?;
     let mut pending: Vec<(String, String)> = Vec::new();
     let mut answered = std::collections::HashSet::new();

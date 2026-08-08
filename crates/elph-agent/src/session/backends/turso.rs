@@ -76,16 +76,25 @@ impl TursoSessionStorage {
         // rows pruned by snapshot cleanup, partial recovery writes). Failing
         // open here would make every `--continue`/`--resume` unrecoverable.
         let persisted = load_leaf_id(&conn, &session_id).await?;
-        let mut index = build_index(entries, persisted)?;
+        let index = build_index(entries, persisted)?;
         // Best-effort auto-heal: if the tree is riddled with phantom leaves
         // (>= 16), drop stale `Leaf` entries and re-resolve so a single corrupt
         // row can't keep poisoning the leaf forever. When we heal, ALSO persist
         // the cleanup (delete the stale rows) so the DB is self-consistent and
         // we don't re-heal on every open.
-        let (mut index, stale_ids) = maybe_heal_stale_leaves(index)?;
+        let (index, stale_ids) = maybe_heal_stale_leaves(index)?;
         if !stale_ids.is_empty() {
-            persist_heal_stale_leaves(&conn, &session_id, &stale_ids).await?;
-            log::info!("session {session_id}: healed {} stale leaf entries", stale_ids.len());
+            // Best-effort persistence: the in-memory heal already made the session
+            // usable; a DB-level delete failure (e.g. another process holds the
+            // write lock) must not fail the whole open — we simply re-heal next time.
+            if let Err(error) = persist_heal_stale_leaves(&conn, &session_id, &stale_ids).await {
+                log::warn!(
+                    "session {session_id}: healed {} stale leaf entries in memory but could not persist cleanup: {error}",
+                    stale_ids.len()
+                );
+            } else {
+                log::info!("session {session_id}: healed {} stale leaf entries", stale_ids.len());
+            }
         }
         Ok(Self {
             db_path,

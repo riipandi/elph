@@ -14,8 +14,6 @@ use super::types::{ShellConfig, ShellExecOptions, ShellExecResult, ShellOutputCa
 
 /// Max time we wait to reap a child after terminating its process group.
 const REAP_GRACE: Duration = Duration::from_secs(2);
-/// Max time we wait for a streaming/stdout wait to settle after a kill.
-const SETTLE_GRACE: Duration = Duration::from_secs(1);
 
 const MAX_TIMEOUT_MS: u64 = 2_147_483_647;
 const MAX_TIMEOUT_SECONDS: u64 = MAX_TIMEOUT_MS / 1000;
@@ -517,7 +515,7 @@ mod tests {
         let run = {
             let token = token.clone();
             tokio::spawn(async move {
-                let result = exec_shell_command(
+                exec_shell_command(
                     &config,
                     "sleep 30",
                     Path::new("/tmp"),
@@ -526,8 +524,7 @@ mod tests {
                         ..Default::default()
                     },
                 )
-                .await;
-                result
+                .await
             })
         };
 

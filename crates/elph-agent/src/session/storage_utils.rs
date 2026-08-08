@@ -233,7 +233,7 @@ pub fn append_to_index(index: &mut SessionIndex, entry: SessionTreeEntry) {
         _ => Some(entry.id().to_string()),
     };
     match &next_leaf {
-        Some(target) if index.by_id.contains_key(target) || target == &entry.id() => {
+        Some(target) if index.by_id.contains_key(target) || *target == *entry.id() => {
             index.leaf_id = Some(target.clone());
         }
         None => {

@@ -427,6 +427,9 @@ fn background_tasks() -> &'static StdMutex<std::collections::HashMap<String, Can
 
 /// Register a background task token; returns the token bound to `task_id`.
 fn register_background_task(task_id: String, token: CancellationToken) {
+    // INVARIANT: the worker panic-safe because the task only panics if another
+    // thread panicked while holding this mutex — which would crash the process
+    // anyway (no cross-thread poison recovery makes sense here).
     background_tasks().lock().expect("bg tasks lock").insert(task_id, token);
 }
 
@@ -436,6 +439,7 @@ fn register_background_task(task_id: String, token: CancellationToken) {
 /// token the task's shell execution is listening on. Returns `true` when the
 /// task existed and was cancelled.
 pub fn cancel_background_task(task_id: &str) -> bool {
+    // INVARIANT: see `register_background_task` — poison is unrecoverable.
     let token = background_tasks().lock().expect("bg tasks lock").remove(task_id);
     match token {
         Some(token) => {
@@ -448,6 +452,7 @@ pub fn cancel_background_task(task_id: &str) -> bool {
 
 /// List ids of currently registered background tasks.
 pub fn list_background_tasks() -> Vec<String> {
+    // INVARIANT: see `register_background_task` — poison is unrecoverable.
     background_tasks()
         .lock()
         .expect("bg tasks lock")
@@ -458,6 +463,7 @@ pub fn list_background_tasks() -> Vec<String> {
 
 /// Remove a completed background task from the registry (best-effort cleanup).
 fn unregister_background_task(task_id: &str) {
+    // INVARIANT: see `register_background_task` — poison is unrecoverable.
     background_tasks().lock().expect("bg tasks lock").remove(task_id);
 }
 

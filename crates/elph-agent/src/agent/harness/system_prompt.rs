@@ -176,15 +176,15 @@ mod tests {
         std::fs::create_dir_all(dir.join("repo2/.agents/skills/a")).unwrap();
         std::fs::create_dir_all(dir.join("repo/.r2/skills/p2")).unwrap();
 
-        let mut make = |name: &str, path: &Path, scope: &str| {
-            let mut s = skill(name, &path.to_string_lossy(), Some(scope));
+        let make = |name: &str, path: &Path| {
+            let mut s = skill(name, &path.to_string_lossy(), Some("project"));
             s.file_path = path.to_string_lossy().into_owned();
             s
         };
         let skills = vec![
-            make("rust-lean", &dir.join("repo/.agents/skills/rust-lean/SKILL.md"), "project"),
-            make("a", &dir.join("repo2/.agents/skills/a/SKILL.md"), "project"),
-            make("p2", &dir.join("repo/.r2/skills/p2/SKILL.md"), "project"),
+            make("rust-lean", &dir.join("repo/.agents/skills/rust-lean/SKILL.md")),
+            make("a", &dir.join("repo2/.agents/skills/a/SKILL.md")),
+            make("p2", &dir.join("repo/.r2/skills/p2/SKILL.md")),
         ];
         // NOTE: dir.join("repo") path root = <temp>/elph_skill_scope_test/repo.
         // Skill project root (three up from SKILL.md) for rust-lean is <dir>/repo.
@@ -218,12 +218,7 @@ mod tests {
     fn project_scoping_filters_but_keeps_unscoped() {
         let dir = std::env::temp_dir().join("elph_skill_scope_filters");
         let _ = std::fs::remove_dir_all(&dir);
-        for (name, scope) in [
-            ("rust-local2", Some("project")),
-            ("global-skill", Some("global")),
-            ("legacy", None),
-            ("other-repo", Some("project")),
-        ] {
+        for name in ["rust-local2", "global-skill", "legacy", "other-repo"] {
             let p = dir
                 .join(if name == "other-repo" { "elsewhere" } else { "repo8" })
                 .join(".agents/skills")
@@ -263,12 +258,12 @@ mod tests {
         let skills = vec![
             skill(
                 "a",
-                &format!("{}/repo2/.agents/skills/a/SKILL.md", dir.display()).as_str(),
+                format!("{}/repo2/.agents/skills/a/SKILL.md", dir.display()).as_str(),
                 Some("project"),
             ),
             skill(
                 "nested",
-                &format!("{}/repo/.agents/skills/nested/SKILL.md", dir.display()),
+                format!("{}/repo/.agents/skills/nested/SKILL.md", dir.display()).as_str(),
                 Some("project"),
             ),
         ];

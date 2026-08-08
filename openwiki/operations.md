@@ -62,20 +62,20 @@ CLI flags: `--continue/-c` (resume last session), `--resume/-r <SESSION_ID>` (re
 
 From `crates/coding-agent/src/platform/paths.rs`:
 
-| Path                            | Method                             | Description                          |
-| ------------------------------- | ---------------------------------- | ------------------------------------ |
-| `~/.elph/`                      | `Paths::home_dir()`                | Home config directory                |
-| `<project>/.elph/`              | `Paths::project_elph_dir()`        | Project-level config                 |
-| `<project>/.elph/settings.json` | `Paths::project_settings_path()`   | Project settings                     |
-| `~/.elph/settings.json`         | `Paths::home_settings_path()`      | Home settings (override)             |
-| `<project>/.elph/mcp.json`      | `Paths::project_mcp_config_path()` | MCP server config                    |
-| `<project>/.elph/store.db`      | `Paths::memory_db_path()`          | Unified store (sessions, goals, memory, codegraph, transcript)|
-| `<project>/.elph/plans/`        | `Paths::plans_dir()`               | Plan files                           |
-| `<data>/sessions/`              | `AppPaths::sessions_dir()`         | Session artifacts (commit `a37c38f`) |
-| `<data>/models/`                | `AppPaths::models_dir()`           | Embedding model cache                |
-| `<data>/logs/`                  | `AppPaths::logs_dir()`             | Log output                           |
-| `~/.elph/extensions/`           | `Paths::global_extensions_dir()`   | Global extensions                    |
-| `<project>/.elph/extensions/`   | `Paths::project_extensions_dir()`  | Project extensions                   |
+| Path                            | Method                             | Description                                                    |
+| ------------------------------- | ---------------------------------- | -------------------------------------------------------------- |
+| `~/.elph/`                      | `Paths::home_dir()`                | Home config directory                                          |
+| `<project>/.elph/`              | `Paths::project_elph_dir()`        | Project-level config                                           |
+| `<project>/.elph/settings.json` | `Paths::project_settings_path()`   | Project settings                                               |
+| `~/.elph/settings.json`         | `Paths::home_settings_path()`      | Home settings (override)                                       |
+| `<project>/.elph/mcp.json`      | `Paths::project_mcp_config_path()` | MCP server config                                              |
+| `<project>/.elph/store.db`      | `Paths::memory_db_path()`          | Unified store (sessions, goals, memory, codegraph, transcript) |
+| `<project>/.elph/plans/`        | `Paths::plans_dir()`               | Plan files                                                     |
+| `<data>/sessions/`              | `AppPaths::sessions_dir()`         | Session artifacts (commit `a37c38f`)                           |
+| `<data>/models/`                | `AppPaths::models_dir()`           | Embedding model cache                                          |
+| `<data>/logs/`                  | `AppPaths::logs_dir()`             | Log output                                                     |
+| `~/.elph/extensions/`           | `Paths::global_extensions_dir()`   | Global extensions                                              |
+| `<project>/.elph/extensions/`   | `Paths::project_extensions_dir()`  | Project extensions                                             |
 
 ## Makefile Targets
 

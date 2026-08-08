@@ -52,7 +52,7 @@ impl MemoryStore {
                     let mems = self
                         .hybrid_retrieve(&conn, &description, emb_buf.as_slice(), decay_rate, now)
                         .await?;
-                    
+
                     for mem in &mems {
                         conn.execute(
                             "INSERT OR IGNORE INTO memory_retrievals (memory_id, task_id, similarity) VALUES (?, ?, ?)",
@@ -63,7 +63,7 @@ impl MemoryStore {
 
                     let memory_ids: Vec<String> = mems.iter().map(|m| m.id.clone()).collect();
                     touch_retrieved_memories(&conn, &memory_ids, now).await?;
-                    
+
                     Ok(mems)
                 } else {
                     // Fallback: insert task without embedding, use keyword-only search
@@ -72,7 +72,7 @@ impl MemoryStore {
                         params![task_id_clone.as_str(), description.as_str(), now],
                     )
                     .await?;
-                    
+
                     // Simple keyword-only retrieval when embedding fails
                     let mut rows = conn
                         .query(
@@ -80,7 +80,7 @@ impl MemoryStore {
                             params![self.top_k()],
                         )
                         .await?;
-                    
+
                     let mut mems = Vec::new();
                     while let Some(row) = rows.next().await? {
                         mems.push(Memory {
@@ -94,7 +94,7 @@ impl MemoryStore {
                         });
                     }
                     drain_rows(&mut rows).await?;
-                    
+
                     Ok(mems)
                 }
             })

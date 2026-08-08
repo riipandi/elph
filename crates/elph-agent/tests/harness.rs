@@ -1725,19 +1725,22 @@ async fn concurrent_aborts_do_not_deadlock() {
     }
 
     // All aborts must complete promptly (no deadlock on shared locks / idle channels).
+    // The returned `AbortResult` is deliberately discarded — the point of the test
+    // is prompt completion, not abort bookkeeping.
     for (i, a) in aborts.into_iter().enumerate() {
-        tokio::time::timeout(Duration::from_secs(5), a)
+        let _ = tokio::time::timeout(Duration::from_secs(5), a)
             .await
             .unwrap_or_else(|_| panic!("abort #{i} deadlocked"))
             .expect("abort task panicked")
             .expect("abort returned Err");
     }
 
-    // Release the blocking factories so prompt futures finish.
+    // Release the blocking factories so prompt futures finish. The turn result is
+    // discarded too — a deadlock is the failure mode this test guards against.
     release.store(true, Ordering::SeqCst);
     release2.store(true, Ordering::SeqCst);
     for (i, p) in prompts.into_iter().enumerate() {
-        tokio::time::timeout(Duration::from_secs(5), p)
+        let _ = tokio::time::timeout(Duration::from_secs(5), p)
             .await
             .unwrap_or_else(|_| panic!("prompt #{i} deadlocked"))
             .expect("prompt task panicked");
