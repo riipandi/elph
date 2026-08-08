@@ -213,6 +213,11 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
             api_key_env_key: "VERCEL_AI_GATEWAY_API_KEY",
             default_model: "alibaba/qwen-3-14b",
         }),
+        "wafer" => Some(ProviderConfig {
+            label: "Wafer",
+            api_key_env_key: "WAFER_API_KEY",
+            default_model: "GLM-5.1",
+        }),
         "xai" => Some(ProviderConfig {
             label: "xAI",
             api_key_env_key: "XAI_API_KEY",
@@ -380,6 +385,22 @@ mod tests {
         let (provider, model) = parse_model_override("kilo/anthropic/claude-sonnet-4.6").expect("parse");
         assert_eq!(provider, "kilo");
         assert_eq!(model, "anthropic/claude-sonnet-4.6");
+    }
+
+    #[test]
+    fn wafer_is_a_known_provider() {
+        let cfg = provider_config("wafer").expect("wafer config");
+        assert_eq!(cfg.label, "Wafer");
+        assert_eq!(cfg.api_key_env_key, "WAFER_API_KEY");
+        assert!(elph_ai::get_builtin_model("wafer", cfg.default_model).is_some());
+    }
+
+    #[test]
+    fn resolve_wafer_from_settings() {
+        let (provider, model) =
+            resolve_provider_and_model(None, None, Some("wafer"), Some("GLM-5.2")).expect("resolve wafer");
+        assert_eq!(provider, "wafer");
+        assert_eq!(model, "GLM-5.2");
     }
 
     #[test]

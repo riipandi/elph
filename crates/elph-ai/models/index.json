@@ -82,7 +82,7 @@
     {
         "providerId": "infron",
         "rustMod": "infron",
-        "count": 290
+        "count": 287
     },
     {
         "providerId": "kilo",
@@ -193,6 +193,11 @@
         "providerId": "vercel-ai-gateway",
         "rustMod": "vercel_ai_gateway",
         "count": 192
+    },
+    {
+        "providerId": "wafer",
+        "rustMod": "wafer",
+        "count": 9
     },
     {
         "providerId": "xai",

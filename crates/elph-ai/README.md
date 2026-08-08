@@ -74,6 +74,7 @@ Rust port of [@earendil-works/pi-ai](https://github.com/earendil-works/pi/tree/m
 - **Fireworks** (OpenAI- and Anthropic-compatible APIs)
 - **Kimi For Coding** (Moonshot AI subscription endpoint, Anthropic-compatible API)
 - **Xiaomi MiMo** (API billing endpoint, with separate Token Plan providers for `cn`/`ams`/`sgp`)
+- **Wafer** (Wafer Pass, OpenAI-compatible gateway)
 - **Any OpenAI-compatible API**: Ollama, vLLM, LM Studio, etc. (via custom providers)
 
 Image generation is currently available through **OpenRouter** (`openrouter-images` API).
@@ -404,6 +405,7 @@ Built-in providers resolve these environment variables:
 | Kimi For Coding                        | `KIMI_API_KEY`                                                                                                                                                         |
 | Xiaomi MiMo (API billing)              | `XIAOMI_API_KEY`                                                                                                                                                       |
 | Xiaomi MiMo Token Plan (China/AMS/SGP) | `XIAOMI_API_KEY`                                                                                                                                                       |
+| Wafer                                  | `WAFER_API_KEY`                                                                                                                                                        |
 | GitHub Copilot                         | `COPILOT_GITHUB_TOKEN`                                                                                                                                                 |
 | Amazon Bedrock                         | `AWS_REGION` or `AWS_DEFAULT_REGION`, `AWS_PROFILE`, `AWS_BEARER_TOKEN_BEDROCK` (bearer auth path). Optional: `AWS_BEDROCK_FORCE_CACHE=1`, `ELPH_CACHE_RETENTION=long` |
 

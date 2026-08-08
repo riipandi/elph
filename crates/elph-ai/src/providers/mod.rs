@@ -8,6 +8,6 @@ pub use builtin::{amazon_bedrock_provider, anthropic_provider, builtin_models, b
 pub use builtin::{cloudflare_ai_gateway_provider, cloudflare_workers_ai_provider, google_vertex_provider};
 pub use builtin::{
     hyper_provider, mistral_provider, neuralwatt_provider, nvidia_provider, openai_provider, sumopod_provider,
-    xai_provider,
+    wafer_provider, xai_provider,
 };
 pub use faux::faux_provider;

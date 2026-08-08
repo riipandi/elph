@@ -1052,7 +1052,7 @@
         "id": "anthropic/claude-opus-5-fast",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
-        "name": "Claude Opus 5 (Fast)",
+        "name": "Claude Opus 5",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {

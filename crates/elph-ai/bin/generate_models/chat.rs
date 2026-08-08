@@ -207,6 +207,7 @@ fn named_factory_provider_id(fn_name: &str) -> Option<&'static str> {
         "opencode_provider" => "opencode",
         "opencode_go_provider" => "opencode-go",
         "sumopod_provider" => "sumopod",
+        "wafer_provider" => "wafer",
         "xai_provider" => "xai",
         _ => return None,
     })

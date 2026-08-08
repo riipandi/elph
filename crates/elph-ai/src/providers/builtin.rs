@@ -473,6 +473,24 @@ pub fn sumopod_provider() -> Provider {
     })
 }
 
+/// Wafer Pass — OpenAI-compatible gateway (<https://docs.wafer.ai/wafer-pass>).
+/// Model list and pricing come from `https://pass.wafer.ai/v1/models` (Bearer `WAFER_API_KEY`).
+pub fn wafer_provider() -> Provider {
+    create_provider(CreateProviderOptions {
+        id: "wafer".to_string(),
+        name: Some("Wafer".to_string()),
+        base_url: Some("https://pass.wafer.ai/v1".to_string()),
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("Wafer API key", vec!["WAFER_API_KEY"])),
+            oauth: None,
+        },
+        models: builtin_catalog("wafer").as_ref().clone(),
+        refresh_models: None,
+        api: ProviderApi::Single(openai_completions_api()),
+    })
+}
+
 pub fn builtin_providers() -> Vec<Provider> {
     vec![
         amazon_bedrock_provider(),
@@ -616,6 +634,7 @@ pub fn builtin_providers() -> Vec<Provider> {
             openai_completions_api,
             (vec!["VERCEL_AI_GATEWAY_API_KEY"], "Vercel AI Gateway API key")
         ),
+        wafer_provider(),
         xai_provider(),
         simple_provider!(
             "xiaomi",

@@ -1,6 +1,6 @@
 //! Fetch and index [models.dev](https://models.dev) catalog data.
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -15,7 +15,10 @@ const MODELS_DEV_API_URL: &str = "https://models.dev/api.json";
 pub const MODELS_DEV_CACHE_TTL: std::time::Duration = std::time::Duration::from_secs(24 * 60 * 60);
 
 /// Cached models.dev root: provider_key → provider object (with `models` map).
-pub type ModelsDevRoot = HashMap<String, Value>;
+///
+/// Ordered so cross-provider fuzzy lookups (`find_model_fuzzy`) always pick the
+/// same donor entry, keeping generated catalogs byte-stable across runs.
+pub type ModelsDevRoot = BTreeMap<String, Value>;
 
 /// Fetch models.dev api.json (or load offline cache).
 ///
@@ -173,6 +176,17 @@ fn find_model_any(root: &ModelsDevRoot, model_id: &str) -> Option<(String, Value
             && let Some(m) = models.get(model_id)
         {
             return Some((pkey.clone(), m.clone()));
+        }
+    }
+    // Providers disagree on model id casing (`Kimi-K3` vs `kimi-k3`); fall back
+    // to a case-insensitive sweep so gateways still inherit limits/modalities.
+    for (pkey, prov) in root {
+        if let Some(models) = prov.get("models").and_then(|m| m.as_object()) {
+            for (mid, m) in models {
+                if mid.eq_ignore_ascii_case(model_id) {
+                    return Some((pkey.clone(), m.clone()));
+                }
+            }
         }
     }
     None

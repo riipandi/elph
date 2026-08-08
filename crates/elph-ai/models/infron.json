@@ -12,7 +12,7 @@
         "id": "aion-labs/aion-2.0",
         "input": ["text"],
         "maxTokens": 32768,
-        "name": "Aion-2.0",
+        "name": "AionLabs: Aion-2.0",
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -38,7 +38,7 @@
         "id": "aion-labs/aion-3.0",
         "input": ["text"],
         "maxTokens": 32768,
-        "name": "Aion-3.0",
+        "name": "AionLabs: Aion-3.0",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -64,7 +64,7 @@
         "id": "aion-labs/aion-3.0-mini",
         "input": ["text"],
         "maxTokens": 32768,
-        "name": "Aion-3.0-Mini",
+        "name": "AionLabs: Aion-3.0-Mini",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -90,7 +90,7 @@
         "id": "amazon/nova-2-lite-v1",
         "input": ["text", "image", "video", "pdf"],
         "maxTokens": 65535,
-        "name": "Nova 2 Lite",
+        "name": "Amazon: Nova 2 Lite",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -116,7 +116,7 @@
         "id": "amazon/nova-lite-v1",
         "input": ["text", "image"],
         "maxTokens": 5120,
-        "name": "Nova Lite 1.0",
+        "name": "Amazon: Nova Lite 1.0",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -142,7 +142,7 @@
         "id": "amazon/nova-micro-v1",
         "input": ["text"],
         "maxTokens": 5120,
-        "name": "Nova Micro 1.0",
+        "name": "Amazon: Nova Micro 1.0",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -168,7 +168,7 @@
         "id": "amazon/nova-pro-v1",
         "input": ["text", "image"],
         "maxTokens": 5120,
-        "name": "Nova Pro 1.0",
+        "name": "Amazon: Nova Pro 1.0",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -192,7 +192,7 @@
             "output": 50.0
         },
         "id": "anthropic/claude-fable-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Fable 5",
         "provider": "infron",
@@ -244,9 +244,9 @@
             "output": 75.0
         },
         "id": "anthropic/claude-opus-4",
-        "input": ["image", "text", "pdf"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 32000,
-        "name": "Claude Opus 4",
+        "name": "Claude Opus 4 (latest)",
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -337,32 +337,6 @@
             "xhigh": null
         }
     },
-    "anthropic/claude-opus-4.6-fast": {
-        "api": "openai-completions",
-        "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 1000000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 30.0,
-            "output": 150.0
-        },
-        "id": "anthropic/claude-opus-4.6-fast",
-        "input": ["text", "image", "pdf"],
-        "maxTokens": 128000,
-        "name": "Claude Opus 4.6 (Fast)",
-        "provider": "infron",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "anthropic/claude-opus-4.7": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
@@ -377,32 +351,6 @@
         "input": ["text"],
         "maxTokens": 128000,
         "name": "Claude Opus 4.7",
-        "provider": "infron",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "anthropic/claude-opus-4.7-fast": {
-        "api": "openai-completions",
-        "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 1000000,
-        "cost": {
-            "cacheRead": 3.0,
-            "cacheWrite": 37.5,
-            "input": 30.0,
-            "output": 150.0
-        },
-        "id": "anthropic/claude-opus-4.7-fast",
-        "input": ["text", "image", "pdf"],
-        "maxTokens": 128000,
-        "name": "Claude Opus 4.7 (Fast)",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -454,7 +402,7 @@
         "id": "anthropic/claude-opus-4.8-fast",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
-        "name": "Claude Opus 4.8 (Fast)",
+        "name": "Claude Opus 4.8",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -478,7 +426,7 @@
             "output": 25.0
         },
         "id": "anthropic/claude-opus-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 5",
         "provider": "infron",
@@ -506,7 +454,7 @@
         "id": "anthropic/claude-opus-5-fast",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
-        "name": "Claude Opus 5 (Fast)",
+        "name": "Claude Opus 5",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -548,7 +496,7 @@
     "anthropic/claude-sonnet-4.6": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 409600,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.3,
             "cacheWrite": 3.75,
@@ -556,7 +504,7 @@
             "output": 15.0
         },
         "id": "anthropic/claude-sonnet-4.6",
-        "input": ["text"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Sonnet 4.6",
         "provider": "infron",
@@ -582,7 +530,7 @@
             "output": 10.0
         },
         "id": "anthropic/claude-sonnet-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Sonnet 5",
         "provider": "infron",
@@ -610,7 +558,7 @@
         "id": "arcee-ai/trinity-large-thinking",
         "input": ["text"],
         "maxTokens": 262144,
-        "name": "Trinity Large Thinking",
+        "name": "Arcee AI: Trinity Large Thinking",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -912,7 +860,7 @@
     "deepseek/deepseek-chat": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 163840,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.028,
             "cacheWrite": 0.0,
@@ -921,7 +869,7 @@
         },
         "id": "deepseek/deepseek-chat",
         "input": ["text"],
-        "maxTokens": 16000,
+        "maxTokens": 384000,
         "name": "DeepSeek Chat",
         "provider": "infron",
         "reasoning": true,
@@ -948,7 +896,7 @@
         "id": "deepseek/deepseek-chat-v3-0324",
         "input": ["text"],
         "maxTokens": 65536,
-        "name": "DeepSeek V3 0324",
+        "name": "DeepSeek: DeepSeek V3 0324",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -966,7 +914,7 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 163840,
         "cost": {
-            "cacheRead": 0.13,
+            "cacheRead": 0.135,
             "cacheWrite": 0.25,
             "input": 0.21,
             "output": 0.79
@@ -974,7 +922,7 @@
         "id": "deepseek/deepseek-chat-v3.1",
         "input": ["text"],
         "maxTokens": 32768,
-        "name": "DeepSeek V3.1",
+        "name": "DeepSeek: DeepSeek V3.1",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1016,7 +964,7 @@
     "deepseek/deepseek-r1": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 163840,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -1025,8 +973,8 @@
         },
         "id": "deepseek/deepseek-r1",
         "input": ["text"],
-        "maxTokens": 16000,
-        "name": "DeepSeek-R1",
+        "maxTokens": 384000,
+        "name": "DeepSeek Reasoner",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1052,7 +1000,7 @@
         "id": "deepseek/deepseek-r1-0528",
         "input": ["text"],
         "maxTokens": 32768,
-        "name": "R1 0528",
+        "name": "DeepSeek R1 0528",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1078,7 +1026,7 @@
         "id": "deepseek/deepseek-r1-distill-llama-70b",
         "input": ["text"],
         "maxTokens": 8192,
-        "name": "R1 Distill Llama 70B",
+        "name": "DeepSeek: R1 Distill Llama 70B",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1094,7 +1042,7 @@
     "deepseek/deepseek-v3.1": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 131072,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.135,
             "cacheWrite": 0.0,
@@ -1103,7 +1051,7 @@
         },
         "id": "deepseek/deepseek-v3.1",
         "input": ["text"],
-        "maxTokens": 32768,
+        "maxTokens": 8192,
         "name": "DeepSeek V3.1",
         "provider": "infron",
         "reasoning": true,
@@ -1120,7 +1068,7 @@
     "deepseek/deepseek-v3.1-terminus": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 163840,
+        "contextWindow": 131072,
         "cost": {
             "cacheRead": 0.135,
             "cacheWrite": 0.0,
@@ -1130,7 +1078,7 @@
         "id": "deepseek/deepseek-v3.1-terminus",
         "input": ["text"],
         "maxTokens": 32768,
-        "name": "DeepSeek V3.1 Terminus",
+        "name": "DeepSeek: DeepSeek V3.1 Terminus",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1182,7 +1130,7 @@
         "id": "deepseek/deepseek-v3.2-exp",
         "input": ["text"],
         "maxTokens": 65536,
-        "name": "DeepSeek V3.2 Exp",
+        "name": "DeepSeek: DeepSeek V3.2 Exp",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1198,16 +1146,16 @@
     "deepseek/deepseek-v4-flash": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.004,
+            "cacheRead": 0.028,
             "cacheWrite": 0.16,
             "input": 0.065,
             "output": 0.1375
         },
         "id": "deepseek/deepseek-v4-flash",
         "input": ["text"],
-        "maxTokens": 65000,
+        "maxTokens": 1048576,
         "name": "DeepSeek V4 Flash",
         "provider": "infron",
         "reasoning": true,
@@ -1226,14 +1174,14 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.018,
+            "cacheRead": 0.028,
             "cacheWrite": 0.0,
             "input": 0.069,
             "output": 0.1375
         },
         "id": "deepseek/deepseek-v4-flash-0731",
         "input": ["text"],
-        "maxTokens": 65536,
+        "maxTokens": 1048576,
         "name": "DeepSeek V4 Flash 0731",
         "provider": "infron",
         "reasoning": true,
@@ -1252,14 +1200,14 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.005,
+            "cacheRead": 0.135,
             "cacheWrite": 0.47,
             "input": 0.435,
             "output": 0.87
         },
         "id": "deepseek/deepseek-v4-pro",
         "input": ["text"],
-        "maxTokens": 65000,
+        "maxTokens": 384000,
         "name": "DeepSeek V4 Pro",
         "provider": "infron",
         "reasoning": true,
@@ -1330,13 +1278,13 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.0375,
+            "cacheRead": 0.03,
             "cacheWrite": 0.083333,
             "input": 0.3,
             "output": 2.5
         },
         "id": "google/gemini-2.5-flash",
-        "input": ["text", "image", "pdf"],
+        "input": ["text", "image", "audio", "video", "pdf"],
         "maxTokens": 65536,
         "name": "Gemini 2.5 Flash",
         "provider": "infron",
@@ -1362,7 +1310,7 @@
             "output": 30.0
         },
         "id": "google/gemini-2.5-flash-image",
-        "input": ["text", "image"],
+        "input": ["image", "text", "pdf"],
         "maxTokens": 8192,
         "name": "Nano Banana",
         "provider": "infron",
@@ -1415,7 +1363,7 @@
         },
         "id": "google/gemini-2.5-flash-lite",
         "input": ["text", "image", "audio", "video", "pdf"],
-        "maxTokens": 65535,
+        "maxTokens": 65536,
         "name": "Gemini 2.5 Flash-Lite",
         "provider": "infron",
         "reasoning": true,
@@ -1432,7 +1380,7 @@
     "google/gemini-2.5-flash-lite-preview-06-17": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 1048756,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.015,
             "cacheWrite": 0.0,
@@ -1440,9 +1388,9 @@
             "output": 0.4
         },
         "id": "google/gemini-2.5-flash-lite-preview-06-17",
-        "input": ["text", "image", "audio"],
-        "maxTokens": 65536,
-        "name": "Gemini 2.5 Flash Lite Preview",
+        "input": ["text", "video", "image", "audio"],
+        "maxTokens": 65535,
+        "name": "gemini-2.5-flash-lite-preview-06-17",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1458,7 +1406,7 @@
     "google/gemini-2.5-flash-lite-preview-09-2025": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 1048756,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.01,
             "cacheWrite": 0.0,
@@ -1466,9 +1414,9 @@
             "output": 0.4
         },
         "id": "google/gemini-2.5-flash-lite-preview-09-2025",
-        "input": ["text", "image", "audio", "pdf"],
+        "input": ["text", "image"],
         "maxTokens": 65536,
-        "name": "Gemini 2.5 Flash Lite Preview (09/2025)",
+        "name": "gemini-2.5-flash-lite-preview-09-2025",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1510,7 +1458,7 @@
     "google/gemini-2.5-flash-preview-05-20": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 1048000,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.015,
             "cacheWrite": 0.0,
@@ -1518,9 +1466,9 @@
             "output": 2.5
         },
         "id": "google/gemini-2.5-flash-preview-05-20",
-        "input": ["text", "image"],
-        "maxTokens": 65536,
-        "name": "Gemini 2.5 Flash 0520",
+        "input": ["text", "image", "video", "audio"],
+        "maxTokens": 200000,
+        "name": "gemini-2.5-flash-preview-05-20",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1538,13 +1486,13 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.31,
+            "cacheRead": 0.125,
             "cacheWrite": 0.375,
             "input": 1.25,
             "output": 10.0
         },
         "id": "google/gemini-2.5-pro",
-        "input": ["text", "image", "pdf"],
+        "input": ["text", "image", "audio", "video", "pdf"],
         "maxTokens": 65536,
         "name": "Gemini 2.5 Pro",
         "provider": "infron",
@@ -1598,7 +1546,7 @@
         "id": "google/gemini-2.5-pro-preview-05-06",
         "input": ["text", "image", "pdf", "audio", "video"],
         "maxTokens": 65535,
-        "name": "Gemini 2.5 Pro Preview 05-06",
+        "name": "Google: Gemini 2.5 Pro Preview 05-06",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1614,7 +1562,7 @@
     "google/gemini-2.5-pro-preview-06-05": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 1048756,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.25,
             "cacheWrite": 0.0,
@@ -1622,9 +1570,9 @@
             "output": 10.0
         },
         "id": "google/gemini-2.5-pro-preview-06-05",
-        "input": ["text", "image", "audio"],
-        "maxTokens": 65536,
-        "name": "Gemini 2.5 Pro Preview 0605",
+        "input": ["text", "image", "video", "audio"],
+        "maxTokens": 200000,
+        "name": "gemini-2.5-pro-preview-06-05",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1832,7 +1780,7 @@
         "id": "google/gemma-3-12b-it",
         "input": ["text", "image"],
         "maxTokens": 16384,
-        "name": "Gemma 3 12B",
+        "name": "Google: Gemma 3 12B",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1848,17 +1796,17 @@
     "google/gemma-3-27b-it": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 110000,
+        "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0.01,
+            "cacheRead": 0.04,
             "cacheWrite": 0.125,
             "input": 0.08,
             "output": 0.16
         },
         "id": "google/gemma-3-27b-it",
         "input": ["text", "image"],
-        "maxTokens": 8192,
-        "name": "Gemma-3-27b-it",
+        "maxTokens": 131072,
+        "name": "Google: Gemma 3 27B",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1884,7 +1832,7 @@
         "id": "google/gemma-3-4b-it",
         "input": ["text", "image"],
         "maxTokens": 16384,
-        "name": "Gemma 3 4B",
+        "name": "Google: Gemma 3 4B",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1935,7 +1883,7 @@
         },
         "id": "google/gemma-4-31b-it",
         "input": ["text", "image"],
-        "maxTokens": 32768,
+        "maxTokens": 131072,
         "name": "Gemma 4 31B IT",
         "provider": "infron",
         "reasoning": true,
@@ -1952,7 +1900,7 @@
     "gryphe/mythomax-l2-13b": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 8192,
+        "contextWindow": 4096,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -2014,7 +1962,7 @@
         "id": "ibm-granite/granite-4.1-8b",
         "input": ["text"],
         "maxTokens": 131072,
-        "name": "Granite 4.1 8B",
+        "name": "IBM: Granite 4.1 8B",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -2040,7 +1988,7 @@
         "id": "inception/mercury-2",
         "input": ["text"],
         "maxTokens": 50000,
-        "name": "Mercury 2",
+        "name": "Inception: Mercury 2",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -2058,7 +2006,7 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.015,
+            "cacheRead": 0.06,
             "cacheWrite": 0.0,
             "input": 0.3,
             "output": 2.5
@@ -2066,7 +2014,7 @@
         "id": "inclusionai/ling-2.6-1t",
         "input": ["text"],
         "maxTokens": 32768,
-        "name": "Ling-2.6-1T",
+        "name": "inclusionAI: Ling-2.6-1T",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -2084,7 +2032,7 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.002,
+            "cacheRead": 0.02,
             "cacheWrite": 0.0,
             "input": 0.1,
             "output": 0.3
@@ -2092,7 +2040,7 @@
         "id": "inclusionai/ling-2.6-flash",
         "input": ["text"],
         "maxTokens": 32768,
-        "name": "Ling-2.6-flash",
+        "name": "inclusionAI: Ling-2.6-flash",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -2110,7 +2058,7 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0042,
+            "cacheRead": 0.012,
             "cacheWrite": 0.0,
             "input": 0.06,
             "output": 0.18
@@ -2126,6 +2074,32 @@
             "low": "low",
             "max": null,
             "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "inclusionai/ling-3.0-tiny:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://llm.onerouter.pro/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "inclusionai/ling-3.0-tiny:free",
+        "input": ["text"],
+        "maxTokens": 32768,
+        "name": "inclusionAI: Ling 3.0 Tiny (free)",
+        "provider": "infron",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -2196,7 +2170,7 @@
         "id": "kwaipilot/kat-coder-air-v2.5",
         "input": ["text"],
         "maxTokens": 80000,
-        "name": "KAT-Coder-Air V2.5",
+        "name": "Kwaipilot: KAT-Coder-Air V2.5",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -2238,7 +2212,7 @@
     "kwaipilot/kat-coder-pro-v2": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 262144,
+        "contextWindow": 256000,
         "cost": {
             "cacheRead": 0.06,
             "cacheWrite": 0.0,
@@ -2248,7 +2222,7 @@
         "id": "kwaipilot/kat-coder-pro-v2",
         "input": ["text"],
         "maxTokens": 80000,
-        "name": "KAT-Coder-Pro V2",
+        "name": "Kwaipilot: KAT-Coder-Pro V2",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -2274,7 +2248,7 @@
         "id": "kwaipilot/kat-coder-pro-v2.5",
         "input": ["text"],
         "maxTokens": 80000,
-        "name": "KAT-Coder-Pro V2.5",
+        "name": "Kwaipilot: KAT-Coder-Pro V2.5",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -2292,7 +2266,7 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 1048756,
         "cost": {
-            "cacheRead": 0.006,
+            "cacheRead": 0.015,
             "cacheWrite": 0.0,
             "input": 0.75,
             "output": 2.95
@@ -2300,7 +2274,7 @@
         "id": "meituan/longcat-2.0",
         "input": ["text"],
         "maxTokens": 262144,
-        "name": "LongCat 2.0",
+        "name": "Meituan: LongCat 2.0",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -2342,7 +2316,7 @@
     "meta-ai/muse-spark-1.1": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.15,
             "cacheWrite": 0.0,
@@ -2350,7 +2324,7 @@
             "output": 4.25
         },
         "id": "meta-ai/muse-spark-1.1",
-        "input": ["text", "image", "pdf", "video"],
+        "input": ["text", "image", "video"],
         "maxTokens": 32000,
         "name": "Muse Spark 1.1",
         "provider": "infron",
@@ -2404,7 +2378,7 @@
         "id": "meta-llama/llama-3.1-70b-instruct",
         "input": ["text"],
         "maxTokens": 16384,
-        "name": "Llama 3.1 70B Instruct",
+        "name": "Meta: Llama 3.1 70B Instruct",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -2448,7 +2422,7 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.025,
             "cacheWrite": 0.0,
             "input": 0.135,
             "output": 0.4
@@ -2482,7 +2456,7 @@
         "id": "meta-llama/llama-4-maverick",
         "input": ["text", "image"],
         "maxTokens": 16384,
-        "name": "Llama 4 Maverick",
+        "name": "Meta: Llama 4 Maverick",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -2534,7 +2508,7 @@
         "id": "minimax/minimax-m2-her",
         "input": ["text"],
         "maxTokens": 2048,
-        "name": "MiniMax M2-her",
+        "name": "MiniMax: MiniMax M2-her",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -2560,7 +2534,7 @@
         "id": "minimax/minimax-m2.1",
         "input": ["text"],
         "maxTokens": 131072,
-        "name": "MiniMax-M2.1",
+        "name": "Minimax M2.1",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -2576,16 +2550,16 @@
     "minimax/minimax-m2.5": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 204800,
+        "contextWindow": 196000,
         "cost": {
-            "cacheRead": 0.05,
+            "cacheRead": 0.03,
             "cacheWrite": 0.375,
             "input": 0.15,
             "output": 0.6065
         },
         "id": "minimax/minimax-m2.5",
         "input": ["text"],
-        "maxTokens": 196608,
+        "maxTokens": 195000,
         "name": "MiniMax-M2.5",
         "provider": "infron",
         "reasoning": true,
@@ -2862,16 +2836,16 @@
     "mistral/mistral-small-2603": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 256000,
+        "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.014,
             "cacheWrite": 0.0,
             "input": 0.15,
             "output": 0.6
         },
         "id": "mistral/mistral-small-2603",
         "input": ["text", "image"],
-        "maxTokens": 65536,
+        "maxTokens": 262144,
         "name": "Mistral Small 4",
         "provider": "infron",
         "reasoning": true,
@@ -2923,7 +2897,7 @@
         },
         "id": "moonshotai/kimi-k2-0905",
         "input": ["text"],
-        "maxTokens": 100352,
+        "maxTokens": 262144,
         "name": "Kimi K2 0905",
         "provider": "infron",
         "reasoning": true,
@@ -2940,7 +2914,7 @@
     "moonshotai/kimi-k2-instruct": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 256000,
+        "contextWindow": 131072,
         "cost": {
             "cacheRead": 0.2,
             "cacheWrite": 0.0,
@@ -2949,7 +2923,7 @@
         },
         "id": "moonshotai/kimi-k2-instruct",
         "input": ["text"],
-        "maxTokens": 8192,
+        "maxTokens": 131072,
         "name": "Kimi K2 Instruct",
         "provider": "infron",
         "reasoning": false,
@@ -2992,16 +2966,16 @@
     "moonshotai/kimi-k2.5": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 262144,
+        "contextWindow": 256000,
         "cost": {
-            "cacheRead": 0.095,
+            "cacheRead": 0.1,
             "cacheWrite": 0.625,
             "input": 0.287,
             "output": 1.5055
         },
         "id": "moonshotai/kimi-k2.5",
         "input": ["text", "image"],
-        "maxTokens": 262144,
+        "maxTokens": 256000,
         "name": "Kimi K2.5",
         "provider": "infron",
         "reasoning": true,
@@ -3020,13 +2994,13 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.16,
+            "cacheRead": 0.2,
             "cacheWrite": 1.25,
             "input": 0.44695,
             "output": 1.85655
         },
         "id": "moonshotai/kimi-k2.6",
-        "input": ["text", "image", "video"],
+        "input": ["text", "image"],
         "maxTokens": 262144,
         "name": "Kimi K2.6",
         "provider": "infron",
@@ -3072,13 +3046,13 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.15,
+            "cacheRead": 0.19,
             "cacheWrite": 0.0,
             "input": 0.44695,
             "output": 1.85655
         },
         "id": "moonshotai/kimi-k2.7-code",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 262144,
         "name": "Kimi K2.7 Code",
         "provider": "infron",
@@ -3124,14 +3098,14 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.3,
+            "cacheRead": 0.5,
             "cacheWrite": 0.0,
             "input": 2.4,
             "output": 12.0
         },
         "id": "moonshotai/kimi-k3",
-        "input": ["text", "image"],
-        "maxTokens": 1048576,
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 131072,
         "name": "Kimi K3",
         "provider": "infron",
         "reasoning": true,
@@ -3210,7 +3184,7 @@
         "id": "morph/morph-v3-fast",
         "input": ["text"],
         "maxTokens": 38000,
-        "name": "Morph V3 Fast",
+        "name": "Morph: Morph V3 Fast",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -3236,7 +3210,7 @@
         "id": "morph/morph-v3-large",
         "input": ["text"],
         "maxTokens": 131072,
-        "name": "Morph V3 Large",
+        "name": "Morph: Morph V3 Large",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -3262,7 +3236,7 @@
         "id": "nousresearch/hermes-3-llama-3.1-405b",
         "input": ["text"],
         "maxTokens": 16384,
-        "name": "Hermes 3 405B Instruct",
+        "name": "Nous: Hermes 3 405B Instruct",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -3288,7 +3262,7 @@
         "id": "nousresearch/hermes-3-llama-3.1-70b",
         "input": ["text"],
         "maxTokens": 16384,
-        "name": "Hermes 3 70B Instruct",
+        "name": "Nous: Hermes 3 70B Instruct",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -3339,8 +3313,8 @@
         },
         "id": "nousresearch/hermes-4-405b",
         "input": ["text"],
-        "maxTokens": 131072,
-        "name": "Hermes 4 405B",
+        "maxTokens": 26215,
+        "name": "Nous: Hermes 4 405B",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -3366,7 +3340,7 @@
         "id": "nousresearch/hermes-4-70b",
         "input": ["text"],
         "maxTokens": 131072,
-        "name": "Hermes 4 70B",
+        "name": "Nous: Hermes 4 70B",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -3486,17 +3460,17 @@
     "nvidia/nemotron-3-super-120b-a12b": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 256000,
+        "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.025,
+            "cacheRead": 0.075,
             "cacheWrite": 0.375,
             "input": 0.1,
             "output": 0.5
         },
         "id": "nvidia/nemotron-3-super-120b-a12b",
         "input": ["text"],
-        "maxTokens": 32768,
-        "name": "Nemotron-3-Super-120B-A12B",
+        "maxTokens": 16384,
+        "name": "Nemotron 3 Super 120B A12B",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -3514,14 +3488,14 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 512288,
         "cost": {
-            "cacheRead": 0.2,
+            "cacheRead": 0.1,
             "cacheWrite": 0.0,
             "input": 0.5,
             "output": 2.5
         },
         "id": "nvidia/nemotron-3-ultra-550b-a55b",
         "input": ["text"],
-        "maxTokens": 16384,
+        "maxTokens": 512288,
         "name": "Nemotron 3 Ultra 550B A55B",
         "provider": "infron",
         "reasoning": true,
@@ -3564,7 +3538,7 @@
     "nvidia/nemotron-nano-9b-v2": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 131072,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -3573,8 +3547,8 @@
         },
         "id": "nvidia/nemotron-nano-9b-v2",
         "input": ["text"],
-        "maxTokens": 131072,
-        "name": "Nvidia Nemotron Nano 9B V2",
+        "maxTokens": 8192,
+        "name": "Nemotron Nano 9B",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -3616,7 +3590,7 @@
     "openai/gpt-4": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 8191,
+        "contextWindow": 8192,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -3625,7 +3599,7 @@
         },
         "id": "openai/gpt-4",
         "input": ["text"],
-        "maxTokens": 4096,
+        "maxTokens": 8192,
         "name": "GPT-4",
         "provider": "infron",
         "reasoning": true,
@@ -3650,7 +3624,7 @@
             "output": 8.0
         },
         "id": "openai/gpt-4.1",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 32768,
         "name": "GPT-4.1",
         "provider": "infron",
@@ -3702,7 +3676,7 @@
             "output": 0.4
         },
         "id": "openai/gpt-4.1-nano",
-        "input": ["image", "text", "pdf"],
+        "input": ["text", "image"],
         "maxTokens": 32768,
         "name": "GPT-4.1 nano",
         "provider": "infron",
@@ -3728,7 +3702,7 @@
             "output": 10.0
         },
         "id": "openai/gpt-4o",
-        "input": ["text", "image", "pdf"],
+        "input": ["text", "image"],
         "maxTokens": 16384,
         "name": "GPT-4o",
         "provider": "infron",
@@ -3748,7 +3722,7 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0.075,
+            "cacheRead": 0.08,
             "cacheWrite": 0.15,
             "input": 0.15,
             "output": 0.6
@@ -3824,7 +3798,7 @@
     "openai/gpt-5-codex": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 256000,
+        "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.125,
             "cacheWrite": 0.0,
@@ -3832,9 +3806,9 @@
             "output": 10.0
         },
         "id": "openai/gpt-5-codex",
-        "input": ["text"],
-        "maxTokens": 32768,
-        "name": "GPT-5 Codex",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5-Codex",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -3904,14 +3878,14 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 400000,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 1.5,
             "cacheWrite": 0.0,
             "input": 15.0,
             "output": 120.0
         },
         "id": "openai/gpt-5-pro",
-        "input": ["image", "text", "pdf"],
-        "maxTokens": 128000,
+        "input": ["text", "image"],
+        "maxTokens": 272000,
         "name": "GPT-5 Pro",
         "provider": "infron",
         "reasoning": true,
@@ -3936,7 +3910,7 @@
             "output": 10.0
         },
         "id": "openai/gpt-5.1",
-        "input": ["image", "text", "pdf"],
+        "input": ["text", "image"],
         "maxTokens": 128000,
         "name": "GPT-5.1",
         "provider": "infron",
@@ -3982,7 +3956,7 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 400000,
         "cost": {
-            "cacheRead": 0.13,
+            "cacheRead": 0.125,
             "cacheWrite": 0.0,
             "input": 1.25,
             "output": 10.0
@@ -4008,7 +3982,7 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 400000,
         "cost": {
-            "cacheRead": 0.03,
+            "cacheRead": 0.025,
             "cacheWrite": 0.0,
             "input": 0.25,
             "output": 2.0
@@ -4040,7 +4014,7 @@
             "output": 14.0
         },
         "id": "openai/gpt-5.2",
-        "input": ["pdf", "image", "text"],
+        "input": ["text", "image"],
         "maxTokens": 128000,
         "name": "GPT-5.2",
         "provider": "infron",
@@ -4068,7 +4042,7 @@
         "id": "openai/gpt-5.2-chat",
         "input": ["pdf", "image", "text"],
         "maxTokens": 16384,
-        "name": "GPT-5.2 Chat",
+        "name": "OpenAI: GPT-5.2 Chat (retires Aug 10)",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -4094,7 +4068,7 @@
         "id": "openai/gpt-5.3-chat",
         "input": ["text", "image", "pdf"],
         "maxTokens": 16384,
-        "name": "GPT-5.3 Chat",
+        "name": "OpenAI: GPT-5.3 Chat (retires Aug 10)",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -4144,7 +4118,7 @@
             "output": 7.5
         },
         "id": "openai/gpt-5.4",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "GPT-5.4",
         "provider": "infron",
@@ -4222,7 +4196,7 @@
             "output": 180.0
         },
         "id": "openai/gpt-5.4-pro",
-        "input": ["text", "image", "pdf"],
+        "input": ["text", "image"],
         "maxTokens": 128000,
         "name": "GPT-5.4 Pro",
         "provider": "infron",
@@ -4243,7 +4217,7 @@
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.5,
-            "cacheWrite": 0.0,
+            "cacheWrite": 5.0,
             "input": 2.5,
             "output": 15.0
         },
@@ -4294,13 +4268,13 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.02,
+            "cacheRead": 0.1,
             "cacheWrite": 0.25,
             "input": 0.1,
             "output": 0.6
         },
         "id": "openai/gpt-5.6-luna",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "GPT-5.6 Luna",
         "provider": "infron",
@@ -4326,7 +4300,7 @@
             "output": 15.0
         },
         "id": "openai/gpt-5.6-sol",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "GPT-5.6 Sol",
         "provider": "infron",
@@ -4346,13 +4320,13 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.2,
+            "cacheRead": 0.25,
             "cacheWrite": 2.5,
             "input": 1.0,
             "output": 6.0
         },
         "id": "openai/gpt-5.6-terra",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "GPT-5.6 Terra",
         "provider": "infron",
@@ -4372,15 +4346,15 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0.015,
-            "cacheWrite": 0.18,
+            "cacheRead": 0.01,
+            "cacheWrite": 0.05,
             "input": 0.037,
             "output": 0.17
         },
         "id": "openai/gpt-oss-120b",
         "input": ["text"],
-        "maxTokens": 8192,
-        "name": "gpt-oss-120b",
+        "maxTokens": 16384,
+        "name": "GPT OSS 120B",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -4398,14 +4372,14 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0.035,
+            "cacheRead": 0.02,
             "cacheWrite": 0.07,
             "input": 0.03,
             "output": 0.14
         },
         "id": "openai/gpt-oss-20b",
         "input": ["text"],
-        "maxTokens": 8192,
+        "maxTokens": 16384,
         "name": "GPT OSS 20B",
         "provider": "infron",
         "reasoning": true,
@@ -4432,7 +4406,7 @@
         "id": "openai/gpt-oss-safeguard-20b",
         "input": ["text"],
         "maxTokens": 65536,
-        "name": "gpt-oss-safeguard-20b",
+        "name": "Safety GPT OSS 20B",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -4456,7 +4430,7 @@
             "output": 60.0
         },
         "id": "openai/o1",
-        "input": ["text", "image", "pdf"],
+        "input": ["text", "image"],
         "maxTokens": 100000,
         "name": "o1",
         "provider": "infron",
@@ -4508,7 +4482,7 @@
             "output": 4.84
         },
         "id": "openai/o3-mini",
-        "input": ["text", "pdf"],
+        "input": ["text"],
         "maxTokens": 100000,
         "name": "o3-mini",
         "provider": "infron",
@@ -4534,7 +4508,7 @@
             "output": 4.84
         },
         "id": "openai/o4-mini",
-        "input": ["image", "text", "pdf"],
+        "input": ["text", "image"],
         "maxTokens": 100000,
         "name": "o4-mini",
         "provider": "infron",
@@ -4562,7 +4536,7 @@
         "id": "perceptron/perceptron-mk1",
         "input": ["text", "image", "video"],
         "maxTokens": 8192,
-        "name": "Perceptron Mk1",
+        "name": "Perceptron: Perceptron Mk1",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -4588,7 +4562,7 @@
         "id": "poolside/laguna-s-2.1:free",
         "input": ["text"],
         "maxTokens": 32768,
-        "name": "Laguna S 2.1 (free)",
+        "name": "Poolside: Laguna S 2.1 (free)",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -4822,7 +4796,7 @@
         "id": "qwen/qwen3-14b",
         "input": ["text"],
         "maxTokens": 8192,
-        "name": "Qwen3 14B",
+        "name": "Qwen: Qwen3 14B",
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -4840,7 +4814,7 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0.15,
+            "cacheRead": 0.0574,
             "cacheWrite": 0.0,
             "input": 0.7,
             "output": 2.8
@@ -4890,7 +4864,7 @@
     "qwen/qwen3-235b-a22b-thinking-2507": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 262144,
+        "contextWindow": 131072,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -4899,8 +4873,8 @@
         },
         "id": "qwen/qwen3-235b-a22b-thinking-2507",
         "input": ["text"],
-        "maxTokens": 32768,
-        "name": "Qwen3 235B A22B Thinking 2507",
+        "maxTokens": 131072,
+        "name": "Qwen3 235B A22b Thinking 2507",
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -4916,7 +4890,7 @@
     "qwen/qwen3-30b-a3b": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 131072,
+        "contextWindow": 40960,
         "cost": {
             "cacheRead": 0.05,
             "cacheWrite": 0.0,
@@ -4926,7 +4900,7 @@
         "id": "qwen/qwen3-30b-a3b",
         "input": ["text"],
         "maxTokens": 16384,
-        "name": "Qwen3 30B A3B",
+        "name": "Qwen: Qwen3 30B A3B",
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -4942,7 +4916,7 @@
     "qwen/qwen3-30b-a3b-instruct-2507": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 262144,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -4952,7 +4926,7 @@
         "id": "qwen/qwen3-30b-a3b-instruct-2507",
         "input": ["text"],
         "maxTokens": 32000,
-        "name": "Qwen3 30B A3B Instruct 2507",
+        "name": "Qwen: Qwen3 30B A3B Instruct 2507",
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -4978,7 +4952,7 @@
         "id": "qwen/qwen3-30b-a3b-thinking-2507",
         "input": ["text"],
         "maxTokens": 32768,
-        "name": "Qwen3 30B A3B Thinking 2507",
+        "name": "Qwen: Qwen3 30B A3B Thinking 2507",
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -4994,7 +4968,7 @@
     "qwen/qwen3-32b": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 131072,
+        "contextWindow": 40960,
         "cost": {
             "cacheRead": 0.05,
             "cacheWrite": 0.0,
@@ -5030,7 +5004,7 @@
         "id": "qwen/qwen3-8b",
         "input": ["text"],
         "maxTokens": 8192,
-        "name": "Qwen3 8B",
+        "name": "Qwen: Qwen3 8B",
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -5072,7 +5046,7 @@
     "qwen/qwen3-coder-30b-a3b-instruct": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 262144,
+        "contextWindow": 160000,
         "cost": {
             "cacheRead": 0.015,
             "cacheWrite": 0.075,
@@ -5159,8 +5133,8 @@
         },
         "id": "qwen/qwen3-coder-next",
         "input": ["text"],
-        "maxTokens": 262144,
-        "name": "Qwen3 Coder Next",
+        "maxTokens": 65536,
+        "name": "qwen/qwen3-coder-next",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -5228,7 +5202,7 @@
     "qwen/qwen3-next-80b-a3b-instruct": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 262144,
+        "contextWindow": 65536,
         "cost": {
             "cacheRead": 0.0288,
             "cacheWrite": 0.0,
@@ -5237,8 +5211,8 @@
         },
         "id": "qwen/qwen3-next-80b-a3b-instruct",
         "input": ["text"],
-        "maxTokens": 16384,
-        "name": "Qwen3-Next 80B-A3B Instruct",
+        "maxTokens": 65536,
+        "name": "Qwen3 Next 80B A3B Instruct",
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -5254,7 +5228,7 @@
     "qwen/qwen3-next-80b-a3b-thinking": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 262144,
+        "contextWindow": 65536,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -5263,8 +5237,8 @@
         },
         "id": "qwen/qwen3-next-80b-a3b-thinking",
         "input": ["text"],
-        "maxTokens": 262144,
-        "name": "Qwen3-Next 80B-A3B (Thinking)",
+        "maxTokens": 65536,
+        "name": "Qwen3 Next 80B A3B Thinking",
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -5332,7 +5306,7 @@
     "qwen/qwen3-vl-235b-a22b-instruct": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 262144,
+        "contextWindow": 131072,
         "cost": {
             "cacheRead": 0.1,
             "cacheWrite": 0.2625,
@@ -5342,7 +5316,7 @@
         "id": "qwen/qwen3-vl-235b-a22b-instruct",
         "input": ["text", "image"],
         "maxTokens": 32768,
-        "name": "Qwen3 VL 235B A22B Instruct",
+        "name": "Qwen: Qwen3 VL 235B A22B Instruct",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -5368,7 +5342,7 @@
         "id": "qwen/qwen3-vl-235b-a22b-thinking",
         "input": ["text", "image"],
         "maxTokens": 32768,
-        "name": "Qwen3 VL 235B A22B Thinking",
+        "name": "Qwen: Qwen3 VL 235B A22B Thinking",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -5488,16 +5462,16 @@
     "qwen/qwen3.5-27b-anko": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 262100,
+        "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.153,
             "cacheWrite": 0.0,
             "input": 0.31,
             "output": 0.31
         },
         "id": "qwen/qwen3.5-27b-anko",
-        "input": ["text"],
-        "maxTokens": 262100,
+        "input": ["text", "image"],
+        "maxTokens": 16384,
         "name": "Qwen3.5 27B Anko",
         "provider": "infron",
         "reasoning": true,
@@ -5514,16 +5488,16 @@
     "qwen/qwen3.5-27b-bluestar-v3-derestricted": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 262100,
+        "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.153,
             "cacheWrite": 0.0,
             "input": 0.31,
             "output": 0.31
         },
         "id": "qwen/qwen3.5-27b-bluestar-v3-derestricted",
-        "input": ["text"],
-        "maxTokens": 262100,
+        "input": ["text", "image"],
+        "maxTokens": 16384,
         "name": "Qwen3.5 27B BlueStar v3 Derestricted",
         "provider": "infron",
         "reasoning": true,
@@ -5540,16 +5514,16 @@
     "qwen/qwen3.5-27b-bluestar-v3-derestricted-lite": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 262100,
+        "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.153,
             "cacheWrite": 0.0,
             "input": 0.31,
             "output": 0.31
         },
         "id": "qwen/qwen3.5-27b-bluestar-v3-derestricted-lite",
-        "input": ["text"],
-        "maxTokens": 262100,
+        "input": ["text", "image"],
+        "maxTokens": 16384,
         "name": "Qwen3.5 27B BlueStar v3 Derestricted Lite",
         "provider": "infron",
         "reasoning": true,
@@ -5566,16 +5540,16 @@
     "qwen/qwen3.5-27b-earica-derestricted": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 262100,
+        "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.153,
             "cacheWrite": 0.0,
             "input": 0.31,
             "output": 0.31
         },
         "id": "qwen/qwen3.5-27b-earica-derestricted",
-        "input": ["text"],
-        "maxTokens": 262100,
+        "input": ["text", "image"],
+        "maxTokens": 16384,
         "name": "Qwen3.5 27B earica Derestricted",
         "provider": "infron",
         "reasoning": true,
@@ -5592,16 +5566,16 @@
     "qwen/qwen3.5-27b-earica-derestricted-lite": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 262100,
+        "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.153,
             "cacheWrite": 0.0,
             "input": 0.31,
             "output": 0.31
         },
         "id": "qwen/qwen3.5-27b-earica-derestricted-lite",
-        "input": ["text"],
-        "maxTokens": 262100,
+        "input": ["text", "image"],
+        "maxTokens": 16384,
         "name": "Qwen3.5 27B earica Derestricted Lite",
         "provider": "infron",
         "reasoning": true,
@@ -5618,16 +5592,16 @@
     "qwen/qwen3.5-27b-infracelestial": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 262100,
+        "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.153,
             "cacheWrite": 0.0,
             "input": 0.31,
             "output": 0.31
         },
         "id": "qwen/qwen3.5-27b-infracelestial",
-        "input": ["text"],
-        "maxTokens": 262100,
+        "input": ["text", "image"],
+        "maxTokens": 16384,
         "name": "Qwen3.5 27B Infracelestial",
         "provider": "infron",
         "reasoning": true,
@@ -5644,16 +5618,16 @@
     "qwen/qwen3.5-27b-marvin-dpo-v2-derestricted": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 262100,
+        "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.153,
             "cacheWrite": 0.0,
             "input": 0.31,
             "output": 0.31
         },
         "id": "qwen/qwen3.5-27b-marvin-dpo-v2-derestricted",
-        "input": ["text"],
-        "maxTokens": 262100,
+        "input": ["text", "image"],
+        "maxTokens": 16384,
         "name": "Qwen3.5 27B Marvin DPO V2 Derestricted",
         "provider": "infron",
         "reasoning": true,
@@ -5670,16 +5644,16 @@
     "qwen/qwen3.5-27b-marvin-dpo-v2-derestricted-lite": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 262100,
+        "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.153,
             "cacheWrite": 0.0,
             "input": 0.31,
             "output": 0.31
         },
         "id": "qwen/qwen3.5-27b-marvin-dpo-v2-derestricted-lite",
-        "input": ["text"],
-        "maxTokens": 262100,
+        "input": ["text", "image"],
+        "maxTokens": 16384,
         "name": "Qwen3.5 27B Marvin DPO V2 Derestricted Lite",
         "provider": "infron",
         "reasoning": true,
@@ -5696,16 +5670,16 @@
     "qwen/qwen3.5-27b-marvin-v2-derestricted": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 262100,
+        "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.153,
             "cacheWrite": 0.0,
             "input": 0.31,
             "output": 0.31
         },
         "id": "qwen/qwen3.5-27b-marvin-v2-derestricted",
-        "input": ["text"],
-        "maxTokens": 262100,
+        "input": ["text", "image"],
+        "maxTokens": 16384,
         "name": "Qwen3.5 27B Marvin V2 Derestricted",
         "provider": "infron",
         "reasoning": true,
@@ -5722,16 +5696,16 @@
     "qwen/qwen3.5-27b-marvin-v2-derestricted-lite": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 262100,
+        "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.153,
             "cacheWrite": 0.0,
             "input": 0.31,
             "output": 0.31
         },
         "id": "qwen/qwen3.5-27b-marvin-v2-derestricted-lite",
-        "input": ["text"],
-        "maxTokens": 262100,
+        "input": ["text", "image"],
+        "maxTokens": 16384,
         "name": "Qwen3.5 27B Marvin V2 Derestricted Lite",
         "provider": "infron",
         "reasoning": true,
@@ -5800,16 +5774,16 @@
     "qwen/qwen3.5-27b-queen-derestricted": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 262100,
+        "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.153,
             "cacheWrite": 0.0,
             "input": 0.31,
             "output": 0.31
         },
         "id": "qwen/qwen3.5-27b-queen-derestricted",
-        "input": ["text"],
-        "maxTokens": 262100,
+        "input": ["text", "image"],
+        "maxTokens": 16384,
         "name": "Qwen3.5 27B Queen Derestricted",
         "provider": "infron",
         "reasoning": true,
@@ -5826,16 +5800,16 @@
     "qwen/qwen3.5-27b-queen-derestricted-lite": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 262100,
+        "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.153,
             "cacheWrite": 0.0,
             "input": 0.31,
             "output": 0.31
         },
         "id": "qwen/qwen3.5-27b-queen-derestricted-lite",
-        "input": ["text"],
-        "maxTokens": 262100,
+        "input": ["text", "image"],
+        "maxTokens": 16384,
         "name": "Qwen3.5 27B Queen Derestricted Lite",
         "provider": "infron",
         "reasoning": true,
@@ -5852,17 +5826,17 @@
     "qwen/qwen3.5-27b-rprmax-v1": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 262100,
+        "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.153,
             "cacheWrite": 0.0,
             "input": 0.31,
             "output": 0.31
         },
         "id": "qwen/qwen3.5-27b-rprmax-v1",
-        "input": ["text"],
-        "maxTokens": 262100,
-        "name": "Qwen3.5 27B RpRMax V1",
+        "input": ["text", "image"],
+        "maxTokens": 16384,
+        "name": "Qwen3.5 27B RpRMax v1",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -5982,16 +5956,16 @@
     "qwen/qwen3.5-plus": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 983616,
+        "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.04,
+            "cacheRead": 0.023,
             "cacheWrite": 0.0,
             "input": 0.115,
             "output": 0.688
         },
         "id": "qwen/qwen3.5-plus",
-        "input": ["text", "image", "video"],
-        "maxTokens": 65536,
+        "input": ["text"],
+        "maxTokens": 250000,
         "name": "Qwen3.5 Plus",
         "provider": "infron",
         "reasoning": true,
@@ -6016,8 +5990,8 @@
             "output": 2.0
         },
         "id": "qwen/qwen3.6-27b",
-        "input": ["text", "image", "video"],
-        "maxTokens": 262144,
+        "input": ["text"],
+        "maxTokens": 65536,
         "name": "Qwen3.6 27B",
         "provider": "infron",
         "reasoning": true,
@@ -6329,7 +6303,7 @@
         },
         "id": "sakana/fugu-ultra",
         "input": ["text", "image"],
-        "maxTokens": 131072,
+        "maxTokens": 128000,
         "name": "Fugu Ultra",
         "provider": "infron",
         "reasoning": true,
@@ -6382,7 +6356,7 @@
         "id": "sao10k/l3-lunaris-8b",
         "input": ["text"],
         "maxTokens": 16384,
-        "name": "Llama 3 8B Lunaris",
+        "name": "Sao10K: Llama 3 8B Lunaris",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -6398,17 +6372,17 @@
     "sao10k/l3.1-70b-euryale-v2.2": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 131072,
+        "contextWindow": 20480,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.153,
             "cacheWrite": 0.0,
             "input": 0.85,
             "output": 0.85
         },
         "id": "sao10k/l3.1-70b-euryale-v2.2",
         "input": ["text"],
-        "maxTokens": 16400,
-        "name": "Llama 3.1 Euryale 70B v2.2",
+        "maxTokens": 16384,
+        "name": "Llama 3.1 70B Euryale",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -6424,17 +6398,17 @@
     "sao10k/l3.1-70b-hanami-x1": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 10000,
+        "contextWindow": 16384,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.2465,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.493,
+            "output": 0.493
         },
         "id": "sao10k/l3.1-70b-hanami-x1",
         "input": ["text"],
-        "maxTokens": 10000,
-        "name": "l3.1-70b-hanami-x1",
+        "maxTokens": 16384,
+        "name": "Llama 3.1 70B Hanami",
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -6450,17 +6424,17 @@
     "sao10k/l3.3-70b-euryale-v2.3": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 131072,
+        "contextWindow": 20480,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.2465,
             "cacheWrite": 0.0,
             "input": 0.85,
             "output": 0.85
         },
         "id": "sao10k/l3.3-70b-euryale-v2.3",
         "input": ["text"],
-        "maxTokens": 16400,
-        "name": "Llama 3.3 Euryale 70B v2.3",
+        "maxTokens": 16384,
+        "name": "Llama 3.3 70B Euryale",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -6530,14 +6504,14 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.04,
+            "cacheRead": 0.03,
             "cacheWrite": 0.0,
             "input": 0.2,
             "output": 1.15
         },
         "id": "stepfun/step-3.7-flash",
         "input": ["text", "image", "video"],
-        "maxTokens": 256000,
+        "maxTokens": 262144,
         "name": "Step 3.7 Flash",
         "provider": "infron",
         "reasoning": true,
@@ -6580,17 +6554,17 @@
     "thedrummer/anubis-70b-v1.1": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 32000,
+        "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.155,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.31,
+            "output": 0.31
         },
         "id": "thedrummer/anubis-70b-v1.1",
         "input": ["text"],
-        "maxTokens": 32000,
-        "name": "Anubis 70B v1.1 (free)",
+        "maxTokens": 16384,
+        "name": "Anubis 70B v1.1",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -6608,41 +6582,15 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.17,
+            "cacheRead": 0.16,
             "cacheWrite": 0.0,
             "input": 1.0,
             "output": 4.05
         },
         "id": "thinkingmachines/inkling",
-        "input": ["text", "image", "audio"],
-        "maxTokens": 1048576,
+        "input": ["text", "image"],
+        "maxTokens": 32768,
         "name": "Inkling",
-        "provider": "infron",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "tngtech/deepseek-r1t2-chimera": {
-        "api": "openai-completions",
-        "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 163840,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.3,
-            "output": 1.1
-        },
-        "id": "tngtech/deepseek-r1t2-chimera",
-        "input": ["text"],
-        "maxTokens": 163840,
-        "name": "DeepSeek R1T2 Chimera",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -6773,32 +6721,6 @@
         "input": ["text", "image", "video"],
         "maxTokens": 64000,
         "name": "Doubao-Seed-2.0-pro",
-        "provider": "infron",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "x-ai/grok-4.2-multi-agent": {
-        "api": "openai-completions",
-        "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 2000000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 1.25,
-            "output": 2.5
-        },
-        "id": "x-ai/grok-4.2-multi-agent",
-        "input": ["text"],
-        "maxTokens": 2000000,
-        "name": "Grok 4.2 Multi-Agent",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -6944,16 +6866,16 @@
     "xiaomi/mimo-v2.5": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.004,
+            "cacheRead": 0.08,
             "cacheWrite": 0.16,
             "input": 0.105,
             "output": 0.28
         },
         "id": "xiaomi/mimo-v2.5",
-        "input": ["text", "image"],
-        "maxTokens": 128000,
+        "input": ["text", "image", "audio", "video"],
+        "maxTokens": 131072,
         "name": "MiMo-V2.5",
         "provider": "infron",
         "reasoning": true,
@@ -7204,9 +7126,9 @@
     "z-ai/glm-4.6": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 204800,
+        "contextWindow": 202752,
         "cost": {
-            "cacheRead": 0.1,
+            "cacheRead": 0.11,
             "cacheWrite": 0.0,
             "input": 0.431,
             "output": 1.74
@@ -7362,15 +7284,15 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 200000,
         "cost": {
-            "cacheRead": 0.01,
+            "cacheRead": 0.015,
             "cacheWrite": 0.0,
             "input": 0.07,
             "output": 0.4
         },
         "id": "z-ai/glm-4.7-flashx",
         "input": ["text"],
-        "maxTokens": 64000,
-        "name": "GLM 4.7 FlashX",
+        "maxTokens": 128000,
+        "name": "GLM-4.7-FlashX",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -7464,16 +7386,16 @@
     "z-ai/glm-5.2": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 202752,
         "cost": {
-            "cacheRead": 0.3,
+            "cacheRead": 0.2,
             "cacheWrite": 1.2,
             "input": 0.55,
             "output": 1.9255
         },
         "id": "z-ai/glm-5.2",
         "input": ["text"],
-        "maxTokens": 128000,
+        "maxTokens": 202752,
         "name": "GLM-5.2",
         "provider": "infron",
         "reasoning": true,
