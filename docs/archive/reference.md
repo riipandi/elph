@@ -9,3 +9,5 @@
 - https://github.com/Canop/termimad
 - https://crates.io/crates/memmap2
 - https://github.com/jacobaraujo7/remote_pi
+- https://github.com/nativesoil/handover
+- https://docs.turso.tech/agentfs/sdk/rust
