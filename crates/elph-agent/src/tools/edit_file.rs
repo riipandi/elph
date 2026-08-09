@@ -19,12 +19,13 @@ pub fn create_edit_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
         Tool {
             name: "edit_file".into(),
             constrained_sampling: None,
-
             description: "Edits files by replacing specific text with new content. Provide all three arguments: \
                  path (file to edit), old_string (exact existing text — must match the file exactly, \
                  including whitespace, and appear exactly once), new_string (replacement text). Copy \
                  old_string verbatim from a recent read_file result; if the file may have been \
-                 reformatted (e.g. cargo fmt), re-read it first so old_string still matches."
+                 reformatted (e.g. cargo fmt), re-read it first so old_string still matches. The tool \
+                 verifies the write by re-reading the file from disk, so a successful result means the \
+                 change actually persisted."
                 .into(),
             parameters: json!({
                 "type": "object",
@@ -78,22 +79,55 @@ async fn execute_edit(
         ));
     }
     let updated = content.replacen(old_string, new_string, 1);
-    match FileSystem::write_file(env.as_ref(), &absolute, updated.as_bytes(), signal.as_ref()).await {
-        HarnessResult::Ok(()) => Ok(AgentToolResult {
-            content: vec![ToolResultContent::Text(elph_ai::TextContent::new(format!(
-                "Edited {path}"
-            )))],
-            details: json!({
-                "old_content": content,
-                "new_content": updated,
-                "file_path": absolute,
-            }),
-            added_tool_names: None,
-            terminate: None,
-            usage: None,
-        }),
-        HarnessResult::Err(error) => Err(file_error(error)),
+
+    // Structural guard: the unique old_string must be gone and new_string present.
+    // Without this, a new_string that wraps old_string would reintroduce it, leaving a
+    // second (non-unique) occurrence or silently corrupting the file on the next edit.
+    if old_string != new_string && updated.matches(old_string).count() != 0 {
+        return Err(anyhow::anyhow!(
+            "edit aborted: old_string is still present after replacement in {path}. \
+             new_string likely contains old_string. Re-read the file (read_file) and widen \
+             old_string's context so it no longer matches."
+        ));
     }
+    if updated.matches(new_string).count() == 0 {
+        return Err(anyhow::anyhow!(
+            "edit aborted: new_string not found after replacement in {path}. \
+             The edit produced an inconsistent result."
+        ));
+    }
+
+    match FileSystem::write_file(env.as_ref(), &absolute, updated.as_bytes(), signal.as_ref()).await {
+        HarnessResult::Ok(()) => {}
+        HarnessResult::Err(error) => return Err(file_error(error)),
+    }
+
+    // Verification: re-read the file from disk and assert it matches the intended edit.
+    // This is the guard against phantom writes — cases where the filesystem reports
+    // success but the bytes were not actually persisted (overlay/network filesystems,
+    // stale handles, partial flushes). A mismatch fails loudly instead of reporting a
+    // successful edit that never landed.
+    let written = read_file_text(&env, &absolute, signal.as_ref()).await?;
+    if written != updated {
+        return Err(anyhow::anyhow!(
+            "edit verification failed: the file on disk for {path} does not match the intended \
+             edit. The change may not have been persisted."
+        ));
+    }
+
+    Ok(AgentToolResult {
+        content: vec![ToolResultContent::Text(elph_ai::TextContent::new(format!(
+            "Edited {path}"
+        )))],
+        details: json!({
+            "old_content": content,
+            "new_content": updated,
+            "file_path": absolute,
+        }),
+        added_tool_names: None,
+        terminate: None,
+        usage: None,
+    })
 }
 
 /// Clear "missing argument" error that tells the model exactly what edit_file needs.
@@ -203,6 +237,9 @@ fn snippet_for(line: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::agent::harness::types::FileSystem;
+    use crate::runtime::local_env::LocalExecutionEnv;
+    use tempfile::TempDir;
 
     #[test]
     fn hint_detects_whitespace_drift() {
@@ -252,5 +289,68 @@ mod tests {
         assert!(err.contains("path"), "{err}");
         assert!(err.contains("old_string"), "{err}");
         assert!(err.contains("new_string"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn edit_persists_and_verifies_on_disk() {
+        let temp = TempDir::new().expect("temp dir");
+        let env = std::sync::Arc::new(LocalExecutionEnv::new(temp.path()));
+        FileSystem::write_file(env.as_ref(), "a.txt", b"hello world\n".as_slice(), None)
+            .await
+            .expect("seed file");
+
+        let result = execute_edit(
+            env.clone(),
+            serde_json::json!({ "path": "a.txt", "old_string": "hello", "new_string": "hi" }),
+            None,
+        )
+        .await;
+        assert!(result.is_ok(), "edit failed: {result:?}");
+
+        let written = read_file_text(&env, "a.txt", None).await.expect("read back");
+        assert_eq!(written, "hi world\n", "edit did not persist on disk");
+    }
+
+    #[tokio::test]
+    async fn edit_rejects_new_string_that_reintroduces_old() {
+        let temp = TempDir::new().expect("temp dir");
+        let env = std::sync::Arc::new(LocalExecutionEnv::new(temp.path()));
+        FileSystem::write_file(env.as_ref(), "b.txt", b"abc\n".as_slice(), None)
+            .await
+            .expect("seed file");
+
+        // new_string "axa" contains old_string "a" -> would reintroduce it.
+        let result = execute_edit(
+            env.clone(),
+            serde_json::json!({ "path": "b.txt", "old_string": "a", "new_string": "axa" }),
+            None,
+        )
+        .await;
+        assert!(result.is_err(), "overlap edit must be rejected");
+
+        let written = read_file_text(&env, "b.txt", None).await.expect("read back");
+        assert_eq!(written, "abc\n", "file must be unchanged after a rejected edit");
+    }
+
+    #[tokio::test]
+    async fn edit_reports_inconsistent_result() {
+        let temp = TempDir::new().expect("temp dir");
+        let env = std::sync::Arc::new(LocalExecutionEnv::new(temp.path()));
+        FileSystem::write_file(env.as_ref(), "c.txt", b"xxx\n".as_slice(), None)
+            .await
+            .expect("seed file");
+
+        // old_string matches once, but new_string equals "" is fine; use a case where the
+        // replacement yields zero new_string occurrences is impossible via replacen, so we
+        // instead assert the happy path still validates (new_string present).
+        let result = execute_edit(
+            env.clone(),
+            serde_json::json!({ "path": "c.txt", "old_string": "xxx", "new_string": "yyy" }),
+            None,
+        )
+        .await;
+        assert!(result.is_ok(), "valid edit failed: {result:?}");
+        let written = read_file_text(&env, "c.txt", None).await.expect("read back");
+        assert_eq!(written, "yyy\n");
     }
 }

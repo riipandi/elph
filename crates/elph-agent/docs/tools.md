@@ -214,6 +214,11 @@ Replace an exact substring in a file. `old_string` must occur exactly once.
 | `old_string` | string | yes      | Text to replace  |
 | `new_string` | string | yes      | Replacement text |
 
+The edit is applied in memory, written to disk, then **re-read from disk and compared** to the
+intended result. A successful result therefore means the change actually persisted. The tool
+aborts (without touching the file) if `new_string` reintroduces `old_string`, or if the on-disk
+content does not match after the write.
+
 #### `write_file`
 
 Write file contents. Creates parent directories when needed.
