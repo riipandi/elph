@@ -224,9 +224,11 @@ Replace an exact substring in a file. `old_string` must occur exactly once.
 
 The edit is applied in memory, written to disk, then **re-read from disk and compared** to the
 intended result. A successful result therefore means the change actually persisted. The tool
-aborts (without touching the file) if `new_string` reintroduces `old_string`, if the file
-changed between the initial read and the write (TOCTOU — another tool or external editor
-modified it), or if the on-disk content does not match after the write.
+aborts (without touching the file) if `new_string` equals `old_string` (a no-op), if the edit
+would leave a standalone `old_string` **outside** the replaced region (the only allowed overlap
+is an `old_string` that stays inside `new_string`, e.g. appending a tag right after its own
+closing tag), if the file changed between the initial read and the write (TOCTOU — another tool
+or external editor modified it), or if the on-disk content does not match after the write.
 
 #### `write_file`
 
@@ -263,31 +265,31 @@ Drive, inspect, assert on, and record real terminal sessions via a **PTY + in-pr
 
 One `shell_use` call maps to one `action`. Sessions are process-global and persist across calls until closed (or the process exits). The tool is classified as a mutating tool (approval + Plan-mode block like `shell_exec`).
 
-| Parameter        | Type             | Required | Description                                                                                 |
-| ---------------- | ---------------- | -------- | ------------------------------------------------------------------------------------------- |
-| `action`         | string           | yes      | `open`, `run`, `submit`, `type`, `press`, `keys`, `mouse`, `resize`, `signal`, `kill`, `write`, `text`, `state`, `cells`, `get`, `screenshot`, `wait`, `expect`, `sessions`, `close` |
-| `session`        | string           | no       | Session name (default `"default"`); independent sessions are keyed by name                  |
-| `shell`          | string           | no       | Shell for `open` (bash/zsh/fish/pwsh/cmd/nushell/...; default: platform)                     |
-| `cols`/`rows`    | number           | no       | PTY size (default 80x30)                                                                    |
-| `cwd`            | string           | no       | Working directory for `open`/`run` (default: agent cwd)                                      |
-| `env`            | array of strings | no       | Extra `KEY=VALUE` env vars for `open`/`run`                                                  |
-| `program`/`args` | string/array     | no       | Program + args for `run`                                                                     |
-| `data`           | string           | no       | Text to `type` / `submit` / `write`                                                          |
-| `keys`/`key`     | array/string     | no       | Named keys for `press`/`keys` (`["Ctrl+C"]`, `["Escape",":","w","q","Enter"]`)               |
-| `mouse_action`   | string           | no       | `click`/`move`/`down`/`up`/`drag`/`scroll` for `mouse` (default `click`)                       |
-| `on_text`        | string           | no       | Click a visible label (`mouse click`)                                                       |
-| `x`,`y`,`w`,`h`,`x1`,`y1`,`x2`,`y2`,`button`,`clicks`,`direction`,`amount` | number | no | Mouse / `cells` geometry and options |
-| `signal`         | string           | no       | `INT`/`TERM`/`KILL`/`QUIT` for `signal` (default `TERM`)                                      |
-| `field`          | string           | no       | `get` field: `command`/`output`/`exit-code`/`cwd`/`cursor`/`size`/`title`                   |
-| `kind`           | string           | no       | `wait`/`expect` kind (see below)                                                            |
-| `text`           | string           | no       | Expected text/pattern for `wait`/`expect`                                                    |
-| `regex`/`not`/`strict`/`full` | boolean | no       | Match modifiers                                                                             |
-| `timeout_ms`     | number           | no       | Wait/expect timeout (default per-class: text/idle 5s, command/exit/ready 30s)                |
-| `fg`/`bg`        | string           | no       | Expected color for `expect text` (`ansi-256`, `#hex`, or `default`)                           |
-| `code`           | number           | no       | Expected exit code for `expect exit-code`                                                    |
-| `name`/`update`/`include_colors` | string/boolean | no | `expect snapshot` options |
-| `path`           | string           | no       | File path for `screenshot` (writes an SVG file)                                              |
-| `all`            | boolean          | no       | `close` all sessions                                                                        |
+| Parameter                                                                  | Type             | Required | Description                                                                                                                                                                          |
+| -------------------------------------------------------------------------- | ---------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `action`                                                                   | string           | yes      | `open`, `run`, `submit`, `type`, `press`, `keys`, `mouse`, `resize`, `signal`, `kill`, `write`, `text`, `state`, `cells`, `get`, `screenshot`, `wait`, `expect`, `sessions`, `close` |
+| `session`                                                                  | string           | no       | Session name (default `"default"`); independent sessions are keyed by name                                                                                                           |
+| `shell`                                                                    | string           | no       | Shell for `open` (bash/zsh/fish/pwsh/cmd/nushell/...; default: platform)                                                                                                             |
+| `cols`/`rows`                                                              | number           | no       | PTY size (default 80x30)                                                                                                                                                             |
+| `cwd`                                                                      | string           | no       | Working directory for `open`/`run` (default: agent cwd)                                                                                                                              |
+| `env`                                                                      | array of strings | no       | Extra `KEY=VALUE` env vars for `open`/`run`                                                                                                                                          |
+| `program`/`args`                                                           | string/array     | no       | Program + args for `run`                                                                                                                                                             |
+| `data`                                                                     | string           | no       | Text to `type` / `submit` / `write`                                                                                                                                                  |
+| `keys`/`key`                                                               | array/string     | no       | Named keys for `press`/`keys` (`["Ctrl+C"]`, `["Escape",":","w","q","Enter"]`)                                                                                                       |
+| `mouse_action`                                                             | string           | no       | `click`/`move`/`down`/`up`/`drag`/`scroll` for `mouse` (default `click`)                                                                                                             |
+| `on_text`                                                                  | string           | no       | Click a visible label (`mouse click`)                                                                                                                                                |
+| `x`,`y`,`w`,`h`,`x1`,`y1`,`x2`,`y2`,`button`,`clicks`,`direction`,`amount` | number           | no       | Mouse / `cells` geometry and options                                                                                                                                                 |
+| `signal`                                                                   | string           | no       | `INT`/`TERM`/`KILL`/`QUIT` for `signal` (default `TERM`)                                                                                                                             |
+| `field`                                                                    | string           | no       | `get` field: `command`/`output`/`exit-code`/`cwd`/`cursor`/`size`/`title`                                                                                                            |
+| `kind`                                                                     | string           | no       | `wait`/`expect` kind (see below)                                                                                                                                                     |
+| `text`                                                                     | string           | no       | Expected text/pattern for `wait`/`expect`                                                                                                                                            |
+| `regex`/`not`/`strict`/`full`                                              | boolean          | no       | Match modifiers                                                                                                                                                                      |
+| `timeout_ms`                                                               | number           | no       | Wait/expect timeout (default per-class: text/idle 5s, command/exit/ready 30s)                                                                                                        |
+| `fg`/`bg`                                                                  | string           | no       | Expected color for `expect text` (`ansi-256`, `#hex`, or `default`)                                                                                                                  |
+| `code`                                                                     | number           | no       | Expected exit code for `expect exit-code`                                                                                                                                            |
+| `name`/`update`/`include_colors`                                           | string/boolean   | no       | `expect snapshot` options                                                                                                                                                            |
+| `path`                                                                     | string           | no       | File path for `screenshot` (writes an SVG file)                                                                                                                                      |
+| `all`                                                                      | boolean          | no       | `close` all sessions                                                                                                                                                                 |
 
 **Typical workflow**
 
@@ -340,11 +342,11 @@ Move or rename a file or directory.
 
 Search the web using multiple providers with automatic ranking and fallback.
 
-| Parameter | Type   | Required | Default | Description                          |
-| --------- | ------ | -------- | ------- | ------------------------------------ |
-| `query`   | string | yes      | —       | Search query string                  |
-| `engine`  | string | no       | `auto`  | Engine selector (see below)          |
-| `limit`   | number | no       | `5`     | Maximum results (max: 20)            |
+| Parameter | Type   | Required | Default | Description                 |
+| --------- | ------ | -------- | ------- | --------------------------- |
+| `query`   | string | yes      | —       | Search query string         |
+| `engine`  | string | no       | `auto`  | Engine selector (see below) |
+| `limit`   | number | no       | `5`     | Maximum results (max: 20)   |
 
 **Engine aliases:** `auto`, `duckduckgo` / `ddg`, `brave` / `brave-search`, `exa`, `firecrawl`, `jina` / `jina-search`, `perplexity`, `tavily`, `serpapi` / `serapi`.
 
@@ -352,10 +354,10 @@ Unknown `engine` values are **rejected** (they do not silently become `auto`).
 
 #### Ranking and availability
 
-| Mode | Behavior |
-| ---- | -------- |
+| Mode                 | Behavior                                                                                                                                |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | **`auto`** (default) | Try configured/keyed engines by rank; DuckDuckGo HTML is last. On CAPTCHA/bot walls the error is recorded and the next engine is tried. |
-| **Explicit engine** | Use **only** that provider. No silent switch to Exa/etc. Failure returns an error naming the requested engine. |
+| **Explicit engine**  | Use **only** that provider. No silent switch to Exa/etc. Failure returns an error naming the requested engine.                          |
 
 DuckDuckGo uses public HTML endpoints (POST → GET → Lite). Datacenter IPs are often CAPTCHA-walled; bot walls surface as explicit errors (not “no results”). Prefer API engines (`brave`, `tavily`, `exa`, `serpapi`, `jina`) when keys are available.
 
@@ -544,5 +546,9 @@ cargo test -p elph-agent --features builtin-tools --test tools_fff
 cargo test -p elph-agent --features tools-web --test web_tools
 cargo test -p elph-agent --features builtin-tools --test plan_mode
 ```
+
 an_mode
+
+```
+
 ```

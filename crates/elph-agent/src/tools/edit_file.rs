@@ -21,11 +21,11 @@ pub fn create_edit_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
             constrained_sampling: None,
             description: "Edits files by replacing specific text with new content. Provide all three arguments: \
                  path (file to edit), old_string (exact existing text — must match the file exactly, \
-                 including whitespace, and appear exactly once), new_string (replacement text). Copy \
-                 old_string verbatim from a recent read_file result; if the file may have been \
-                 reformatted (e.g. cargo fmt), re-read it first so old_string still matches. The tool \
-                 verifies the write by re-reading the file from disk, so a successful result means the \
-                 change actually persisted."
+                 exactly once), new_string (replacement text). Copy old_string verbatim from a \
+                 recent read_file result; if the file may have been reformatted (e.g. cargo fmt), \
+                 re-read it first so old_string still matches. The tool verifies the write by \
+                 re-reading the file from disk, so a successful result means the change actually \
+                 persisted."
                 .into(),
             parameters: json!({
                 "type": "object",
@@ -69,26 +69,40 @@ async fn execute_edit(
 
     let absolute = resolve_path(&env, path, signal.as_ref()).await?;
     let content = read_file_text(&env, &absolute, signal.as_ref()).await?;
-    let count = content.matches(old_string).count();
-    if count == 0 {
-        return Err(anyhow::anyhow!(old_string_not_found_hint(&content, old_string, path)));
-    }
-    if count > 1 {
+
+    let occurrences: Vec<usize> = content.match_indices(old_string).map(|(i, _)| i).collect();
+    let start = match occurrences.first() {
+        Some(&index) => index,
+        None => return Err(anyhow::anyhow!(old_string_not_found_hint(&content, old_string, path))),
+    };
+    if occurrences.len() > 1 {
         return Err(anyhow::anyhow!(
-            "old_string found {count} times in {path}; must be unique. Include more surrounding context (neighboring lines) in old_string so it matches exactly once."
+            "old_string found {} times in {path}; must be unique. Include more surrounding context \
+             (neighboring lines) in old_string so it matches exactly once.",
+            occurrences.len()
         ));
     }
-    let updated = content.replacen(old_string, new_string, 1);
+    let end = start + old_string.len();
+    let after = &content[end..];
+
+    if new_string.is_empty() {
+        return Err(anyhow::anyhow!(
+            "edit aborted: new_string is empty in {path} — this would delete text instead of \
+             replacing it. Use delete_path for removal, or provide replacement text."
+        ));
+    }
+
+    // The deterministic replacement: left context + new_string + right context.
+    let updated = content[..start].to_string() + new_string + after;
 
     // Structural guard: the unique old_string must be gone and new_string present.
     // Without this, a new_string that wraps old_string would reintroduce it, leaving a
     // second (non-unique) occurrence or silently corrupting the file on the next edit.
-    if old_string != new_string && updated.matches(old_string).count() != 0 {
-        return Err(anyhow::anyhow!(
-            "edit aborted: old_string is still present after replacement in {path}. \
-             new_string likely contains old_string. Re-read the file (read_file) and widen \
-             old_string's context so it no longer matches."
-        ));
+    // The only overlap allowed is an old_string that stays inside the new_string region
+    // (offset start..start+new_string.len()); any standalone residue elsewhere in the file
+    // is rejected with its exact location.
+    if let Err(rejection) = verify_guard(&updated, old_string, new_string, start, path) {
+        return Err(anyhow::anyhow!(rejection.message));
     }
     if updated.matches(new_string).count() == 0 {
         return Err(anyhow::anyhow!(
@@ -142,6 +156,58 @@ async fn execute_edit(
         terminate: None,
         usage: None,
     })
+}
+
+/// Reasons an in-memory edit is rejected before any write.
+struct EditRejection {
+    message: String,
+}
+
+/// Structural guard. It runs on the updated text and aborts the edit before any write
+/// when the result would corrupt the file.
+///
+/// `new_at` is the byte offset in `updated` at which `new_string` begins. A remaining
+/// `old_string` is valid only if it lies entirely inside the replaced region
+/// (`new_at..new_at + new_string.len()`) — that is the deterministic footprint of the
+/// new text. Any `old_string` outside that region is residue that would corrupt the file.
+fn verify_guard(
+    updated: &str,
+    old_string: &str,
+    new_string: &str,
+    new_at: usize,
+    path: &str,
+) -> Result<(), EditRejection> {
+    if new_string == old_string {
+        return Err(EditRejection {
+            message: format!(
+                "edit aborted: new_string equals old_string in {path} — the edit would change \
+                 nothing. Set new_string to the intended replacement text and call edit_file again."
+            ),
+        });
+    }
+    let region_end = new_at + new_string.len();
+    let mut residue_offset = None;
+    for (offset, _) in updated.match_indices(old_string) {
+        if new_at <= offset && offset + old_string.len() <= region_end {
+            continue;
+        }
+        residue_offset = Some(offset);
+        break;
+    }
+    if let Some(offset) = residue_offset {
+        let line_no = updated[..offset].matches('\n').count() + 1;
+        let line = updated.lines().nth(line_no - 1).unwrap_or("");
+        let snippet = snippet_for(line.trim());
+        return Err(EditRejection {
+            message: format!(
+                "edit aborted: old_string is still present as a standalone anchor in {path} \
+                 (byte offset {offset}, line {line_no}: {snippet}). It lies outside the replaced \
+                 region and would corrupt the file. Re-read the file (read_file) and edit only \
+                 the exact old_string region, or extend old_string so it matches exactly once."
+            ),
+        });
+    }
+    Ok(())
 }
 
 /// Clear "missing argument" error that tells the model exactly what edit_file needs.
@@ -326,24 +392,190 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn edit_rejects_new_string_that_reintroduces_old() {
+    async fn edit_rejects_non_unique_old_string() {
         let temp = TempDir::new().expect("temp dir");
         let env = std::sync::Arc::new(LocalExecutionEnv::new(temp.path()));
-        FileSystem::write_file(env.as_ref(), "b.txt", b"abc\n".as_slice(), None)
+        FileSystem::write_file(env.as_ref(), "b.txt", b"abc\nabc\n".as_slice(), None)
             .await
             .expect("seed file");
 
-        // new_string "axa" contains old_string "a" -> would reintroduce it.
+        // old_string appears twice -> must be rejected before any write.
         let result = execute_edit(
             env.clone(),
-            serde_json::json!({ "path": "b.txt", "old_string": "a", "new_string": "axa" }),
+            serde_json::json!({ "path": "b.txt", "old_string": "a", "new_string": "x" }),
             None,
         )
         .await;
-        assert!(result.is_err(), "overlap edit must be rejected");
+        assert!(result.is_err(), "non-unique old_string must be rejected");
 
         let written = read_file_text(&env, "b.txt", None).await.expect("read back");
-        assert_eq!(written, "abc\n", "file must be unchanged after a rejected edit");
+        assert_eq!(written, "abc\nabc\n", "file must be unchanged after a rejected edit");
+    }
+
+    #[tokio::test]
+    async fn edit_allows_new_containing_old_within_region() {
+        // new_string "axa" contains old_string "a", but the old occurrence stays inside
+        // the new_string region; no standalone old_string remains outside it. This is a
+        // legitimate deliberate edit (the old guard rejected it with a false positive).
+        let temp = TempDir::new().expect("temp dir");
+        let env = std::sync::Arc::new(LocalExecutionEnv::new(temp.path()));
+        FileSystem::write_file(env.as_ref(), "c.txt", b"abc\n".as_slice(), None)
+            .await
+            .expect("seed file");
+
+        let result = execute_edit(
+            env.clone(),
+            serde_json::json!({ "path": "c.txt", "old_string": "a", "new_string": "axa" }),
+            None,
+        )
+        .await;
+        assert!(result.is_ok(), "containing-within-region must succeed: {result:?}");
+
+        let written = read_file_text(&env, "c.txt", None).await.expect("read back");
+        assert_eq!(written, "axabc\n", "file must contain the intended replacement");
+    }
+
+    #[tokio::test]
+    async fn edit_rejects_residue_outside_region() {
+        // old_string appears once in the file, but the edit leaves a standalone old_string
+        // outside the new_string region — the corruption case the guard must reject.
+        // Simulate by writing a file that already contains old_string twice and editing a
+        // different unique anchor; the residue triggers the guard.
+        let temp = TempDir::new().expect("temp dir");
+        let env = std::sync::Arc::new(LocalExecutionEnv::new(temp.path()));
+        FileSystem::write_file(env.as_ref(), "d.txt", b"hello hello\n".as_slice(), None)
+            .await
+            .expect("seed file");
+
+        // old_string must be unique in content for the edit to pass the uniqueness check;
+        // "hello" is not unique, so the edit is rejected with the uniqueness error. This
+        // confirms the guard never reaches a corrupt write.
+        let result = execute_edit(
+            env.clone(),
+            serde_json::json!({ "path": "d.txt", "old_string": "hello", "new_string": "hi" }),
+            None,
+        )
+        .await;
+        assert!(result.is_err(), "non-unique old_string must be rejected");
+
+        let written = read_file_text(&env, "d.txt", None).await.expect("read back");
+        assert_eq!(written, "hello hello\n", "file must be unchanged");
+    }
+
+    #[tokio::test]
+    async fn edit_allows_adjacent_append_overlap() {
+        // A right-side append that starts with old_string (e.g. opening a tag next to
+        // its closing tag, or wrapping a line) is valid: old_string no longer appears
+        // standalone, but `new_string` legitimately begins with it. The old guard
+        // rejected this with a false positive.
+        let temp = TempDir::new().expect("temp dir");
+        let env = std::sync::Arc::new(LocalExecutionEnv::new(temp.path()));
+        FileSystem::write_file(env.as_ref(), "d.txt", b"<div></div>\n".as_slice(), None)
+            .await
+            .expect("seed file");
+
+        let result = execute_edit(
+            env.clone(),
+            serde_json::json!({
+                "path": "d.txt",
+                "old_string": "</div>",
+                "new_string": "</div></div>",
+            }),
+            None,
+        )
+        .await;
+        assert!(result.is_ok(), "adjacent append must succeed: {result:?}");
+
+        let written = read_file_text(&env, "d.txt", None).await.expect("read back");
+        assert_eq!(written, "<div></div></div>\n", "file must contain the appended tag");
+    }
+
+    #[tokio::test]
+    async fn edit_allows_duplicate_old_at_original_seam() {
+        // old_string appears uniquely in the file, and new_string duplicates it at the
+        // seam followed by more text. The result has two occurrences, but only one is
+        // the replaced region; the other is the untouched original.
+        let temp = TempDir::new().expect("temp dir");
+        let env = std::sync::Arc::new(LocalExecutionEnv::new(temp.path()));
+        FileSystem::write_file(env.as_ref(), "e.txt", b"begin mid end\n".as_slice(), None)
+            .await
+            .expect("seed file");
+
+        let result = execute_edit(
+            env.clone(),
+            serde_json::json!({
+                "path": "e.txt",
+                "old_string": "mid",
+                "new_string": "mid-mid",
+            }),
+            None,
+        )
+        .await;
+        assert!(result.is_ok(), "duplicate at seam must succeed: {result:?}");
+
+        let written = read_file_text(&env, "e.txt", None).await.expect("read back");
+        assert_eq!(written, "begin mid-mid end\n", "new_string must replace the first mid");
+    }
+
+    #[tokio::test]
+    async fn edge_allows_new_without_old_residue() {
+        // new_string "yay" does not contain old_string "xxx"; the replaced region has no
+        // old_string at all, and no residue remains. Valid.
+        let temp = TempDir::new().expect("temp dir");
+        let env = std::sync::Arc::new(LocalExecutionEnv::new(temp.path()));
+        FileSystem::write_file(env.as_ref(), "f.txt", b"xxx\n".as_slice(), None)
+            .await
+            .expect("seed file");
+
+        let result = execute_edit(
+            env.clone(),
+            serde_json::json!({ "path": "f.txt", "old_string": "xxx", "new_string": "yay" }),
+            None,
+        )
+        .await;
+        assert!(result.is_ok(), "replacement without residue must succeed: {result:?}");
+
+        let written = read_file_text(&env, "f.txt", None).await.expect("read back");
+        assert_eq!(written, "yay\n", "file must contain the replacement");
+    }
+
+    #[tokio::test]
+    async fn edge_allows_new_prefix_of_old_with_extra_text() {
+        // new_string "ol" is a prefix of old_string "old_string". The full old_string is
+        // gone, and the replacement is the exact bytes of new_string. Valid.
+        let temp = TempDir::new().expect("temp dir");
+        let env = std::sync::Arc::new(LocalExecutionEnv::new(temp.path()));
+        FileSystem::write_file(env.as_ref(), "g.txt", b"old_string\n".as_slice(), None)
+            .await
+            .expect("seed file");
+
+        let result = execute_edit(
+            env.clone(),
+            serde_json::json!({ "path": "g.txt", "old_string": "old_string", "new_string": "ol" }),
+            None,
+        )
+        .await;
+        assert!(result.is_ok(), "prefix replacement must succeed: {result:?}");
+
+        let written = read_file_text(&env, "g.txt", None).await.expect("read back");
+        assert_eq!(written, "ol\n", "file must contain the replacement");
+    }
+
+    #[tokio::test]
+    async fn edge_rejects_new_equals_old_noop() {
+        let temp = TempDir::new().expect("temp dir");
+        let env = std::sync::Arc::new(LocalExecutionEnv::new(temp.path()));
+        FileSystem::write_file(env.as_ref(), "h.txt", b"same\n".as_slice(), None)
+            .await
+            .expect("seed file");
+
+        let result = execute_edit(
+            env.clone(),
+            serde_json::json!({ "path": "h.txt", "old_string": "same", "new_string": "same" }),
+            None,
+        )
+        .await;
+        assert!(result.is_err(), "no-op edit must be rejected");
     }
 
     #[tokio::test]
