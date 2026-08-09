@@ -334,7 +334,7 @@ fn truncate_rendered(text: &str) -> String {
         text.to_string()
     } else {
         let kept: String = text.chars().take(MAX_RENDERED_CHARS).collect();
-        format!("{kept}\n… [truncated at {MAX_RENDERED_CHARS} chars; re-run with `full: true` for viewport scrollback]")
+        format!("{kept}\n… [truncated at {MAX_RENDERED_CHARS} chars; re-run with `full: true` for full scrollback]")
     }
 }
 
@@ -578,9 +578,28 @@ async fn run_operation(
         return Err(anyhow::anyhow!("Tool cancelled"));
     }
 
-    let result = session
-        .execute(operation)
-        .map_err(|e| anyhow::anyhow!(error_text(&e)))?;
+    // `session.execute()` is a blocking call that can run for a long time
+    // (notably `wait` / `expect` until a condition matches). Run it on a
+    // blocking thread and race it against the abort signal so Ctrl+C during a
+    // long wait cancels the turn instead of hanging until the PTY's internal
+    // timeout fires.
+    let handle = tokio::task::spawn_blocking(move || session.execute(operation));
+    let result = if let Some(token) = signal {
+        tokio::select! {
+            result = handle => result,
+            _ = token.cancelled() => {
+                // The blocking task is dropped here; it may keep running on its
+                // thread until the PTY's own timeout fires, but the turn is no
+                // longer waiting on it. The session is left in an unknown state
+                // — the next call to it will likely surface the interruption.
+                return Err(anyhow::anyhow!("Tool cancelled"));
+            }
+        }
+    } else {
+        handle.await
+    };
+    let result = result.map_err(|error| anyhow::anyhow!("shell_use task join error: {error}"))?;
+    let result = result.map_err(|e| anyhow::anyhow!(error_text(&e)))?;
     Ok(format_result(&result))
 }
 
@@ -654,6 +673,8 @@ fn format_result(result: &OperationResult) -> AgentToolResult {
         },
         OperationResult::Screenshot(result) => match result {
             shell_use::ScreenshotResult::Path(path) => format!("screenshot written to: {path}"),
+            // Only fall back to rendering as text when no `path` was supplied —
+            // returning a full SVG inline would be token-wasteful.
             shell_use::ScreenshotResult::Text(text) => truncate_rendered(text),
         },
     };

@@ -296,6 +296,9 @@ async fn execute_shell_exec(
 
         // Persist the raw output to the session terminals dir when wired; otherwise
         // fall back to a temp file (stateless contexts such as tests/examples).
+        // The filename embeds the unique `task_id` so concurrent runs on different
+        // threads can't collide on the same temp path (kalid alone is only unique
+        // per-thread).
         let task_id = next_background_task_id();
         let output_path = match &context.terminals_dir {
             Some(dir) => {
@@ -304,7 +307,7 @@ async fn execute_shell_exec(
             }
             None => match env
                 .create_temp_file(Some(CreateTempFileOptions {
-                    prefix: "shell-exec-bg-".to_string(),
+                    prefix: format!("shell-{task_id}-"),
                     suffix: ".log".to_string(),
                     abort_token: signal.clone(),
                 }))
@@ -461,10 +464,33 @@ pub fn list_background_tasks() -> Vec<String> {
         .collect()
 }
 
+/// Test-only: clear the background-task registry. Used to isolate tests that
+/// spawn fire-and-forget background tasks, since the registry is process-global
+/// and otherwise leaks across tests (spawned tasks may still be running when
+/// the next test starts).
+#[cfg(test)]
+pub(crate) fn clear_background_tasks() {
+    // INVARIANT: see `register_background_task` — poison is unrecoverable.
+    background_tasks().lock().expect("bg tasks lock").clear();
+}
+
 /// Remove a completed background task from the registry (best-effort cleanup).
 fn unregister_background_task(task_id: &str) {
     // INVARIANT: see `register_background_task` — poison is unrecoverable.
     background_tasks().lock().expect("bg tasks lock").remove(task_id);
+}
+
+/// Drop guard that unregisters a background task when it completes — including
+/// on panic. Without this, a task that panics before calling
+/// `unregister_background_task` would leak its id in the registry forever.
+struct BackgroundTaskGuard {
+    task_id: String,
+}
+
+impl Drop for BackgroundTaskGuard {
+    fn drop(&mut self) {
+        unregister_background_task(&self.task_id);
+    }
 }
 
 /// Write the full foreground `shell_exec` output to the session terminals dir.
@@ -535,6 +561,12 @@ fn spawn_background_shell(
     let footer_file = file.clone();
     tokio::spawn(async move {
         register_background_task(registry_task_id.clone(), cancel_token.clone());
+        // Ensure the task is unregistered even if we panic mid-flight (e.g. a
+        // callback or lock poisoning). The guard runs before footer write, so
+        // a panic during exec still cleans up the registry.
+        let _guard = BackgroundTaskGuard {
+            task_id: registry_task_id.clone(),
+        };
         let result = env
             .exec(
                 &command,
@@ -549,7 +581,6 @@ fn spawn_background_shell(
             )
             .await;
 
-        unregister_background_task(&registry_task_id);
         let footer = match &result {
             HarnessResult::Ok(output) => format!("\n\n[exit code: {}]", output.exit_code),
             HarnessResult::Err(error) => format!("\n\n[shell_exec error: {}]", error.message),
@@ -558,6 +589,7 @@ fn spawn_background_shell(
             let _ = handle.write_all(footer.as_bytes());
             let _ = handle.flush();
         }
+        // `_guard` drops here and unregisters the task.
     });
 }
 
@@ -756,6 +788,10 @@ mod tests {
 
     #[tokio::test]
     async fn background_task_can_be_cancelled() {
+        // The background-task registry is process-global; clear it so a task
+        // leaked by a previous test (still running its footer write) can't
+        // pollute this test's assertions.
+        clear_background_tasks();
         let temp = TempDir::new().expect("temp dir");
         let env = Arc::new(LocalExecutionEnv::new(temp.path().to_path_buf()));
         let ctx = crate::tools::types::ToolContext::new(env.clone());
