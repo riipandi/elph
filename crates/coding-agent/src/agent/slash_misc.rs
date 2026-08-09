@@ -23,6 +23,7 @@ Keyboard shortcuts
   PageUp / PageDown  Scroll transcript (faster)
   Ctrl+C / Ctrl+D    Interrupt / quit (context-dependent)
   /help              List slash commands
+  /aside <question>  Side question (does not interrupt the main turn)
   /hotkeys           This list
   /workers           Live multi-worker peers
   /resume [id]       Interactive session picker (or switch by id)

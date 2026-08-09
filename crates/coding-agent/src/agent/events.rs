@@ -132,6 +132,22 @@ pub enum AgentUiEvent {
     UserQuestionRequired(UserQuestionRequest),
     /// Agent requests a mode change (Ask/Plan → Build/Brave).
     ModeChangeRequired(ModeChangeRequest),
+    /// `/aside` side question started (panel / status).
+    AsideStarted {
+        request_id: u64,
+        question: String,
+    },
+    /// `/aside` answer ready — shell opens a scroll dialog (not session history).
+    AsideFinished {
+        request_id: u64,
+        question: String,
+        answer: String,
+    },
+    /// `/aside` failed.
+    AsideFailed {
+        request_id: u64,
+        error: String,
+    },
 }
 
 #[derive(Debug)]

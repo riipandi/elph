@@ -478,6 +478,9 @@ impl TranscriptEventApplier {
             | AgentUiEvent::ModeChangeRequired(_)
             | AgentUiEvent::QueueUpdate { .. }
             | AgentUiEvent::MemoryResult(_)
+            | AgentUiEvent::AsideStarted { .. }
+            | AgentUiEvent::AsideFinished { .. }
+            | AgentUiEvent::AsideFailed { .. }
             | AgentUiEvent::UserPromptCommitted { .. }
             | AgentUiEvent::RetryablePrompt(_)
             | AgentUiEvent::Retrying { .. } => false,

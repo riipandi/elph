@@ -558,6 +558,47 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 continue;
             }
 
+            if let AgentUiEvent::AsideStarted { question, .. } = &event {
+                activity_label.set(format!("Aside: {question}"));
+                continue;
+            }
+            if let AgentUiEvent::AsideFinished { question, answer, .. } = &event {
+                let body = format!("Q: {question}\n\n{answer}");
+                let body_height = (body.lines().count() as u16).saturating_add(3).clamp(8, 40);
+                open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                    pending: &mut pending_system_prompt,
+                    shell_focus: &mut shell_focus,
+                    title: "/aside".to_string(),
+                    text: body,
+                    width_pct: 80,
+                    body_height: Some(body_height),
+                    show_copy: true,
+                });
+                // Sticky meta card (not a main-turn user/assistant pair).
+                let preview: String = question.chars().take(60).collect();
+                let mut msgs = messages_arc_inner.write().unwrap();
+                if event_applier.write().apply(
+                    &mut msgs,
+                    AgentUiEvent::TranscriptNotice(format!("/aside — answered ({preview})")),
+                ) {
+                    transcript_changed = true;
+                }
+                continue;
+            }
+            if let AgentUiEvent::AsideFailed { error, .. } = &event {
+                let body_height = (error.lines().count() as u16).saturating_add(3).clamp(6, 24);
+                open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                    pending: &mut pending_system_prompt,
+                    shell_focus: &mut shell_focus,
+                    title: "/aside error".to_string(),
+                    text: error.clone(),
+                    width_pct: 80,
+                    body_height: Some(body_height),
+                    show_copy: true,
+                });
+                continue;
+            }
+
             if let AgentUiEvent::ToolApprovalRequired(req) = event {
                 let tool_name = req.tool_name.clone();
                 let tool_call_id = req.tool_call_id.clone();

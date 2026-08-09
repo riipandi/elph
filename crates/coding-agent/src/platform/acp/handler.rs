@@ -277,6 +277,32 @@ async fn handle_acp_slash_command(
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
             send_text_chunks(connection, session_id, &message).await
         }
+        Some(SlashDispatch::Aside { question }) => {
+            let question = question.trim().to_string();
+            if question.is_empty() {
+                return send_text_chunks(connection, session_id, "Usage: /aside <question>").await;
+            }
+            let (session, ui_rx, _) = lookup_session(state, &key)?;
+            let _ = crate::agent::spawn_aside(session, question);
+            // Wait for AsideFinished / AsideFailed (not a full turn RunCompleted).
+            let mut rx = ui_rx.lock().await;
+            loop {
+                let Some(event) = rx.recv().await else {
+                    break;
+                };
+                match event {
+                    crate::agent::AgentUiEvent::AsideFinished { answer, question, .. } => {
+                        let body = format!("/aside {question}\n\n{answer}");
+                        return send_text_chunks(connection, session_id, &body).await;
+                    }
+                    crate::agent::AgentUiEvent::AsideFailed { error, .. } => {
+                        return send_text_chunks(connection, session_id, &format!("/aside error: {error}")).await;
+                    }
+                    _ => {}
+                }
+            }
+            Ok(())
+        }
         Some(SlashDispatch::Unimplemented(cmd)) => {
             Err(anyhow::anyhow!("Slash command '{cmd}' is not available via ACP."))
         }

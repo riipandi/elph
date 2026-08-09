@@ -113,6 +113,9 @@ pub fn activity_label_for_event(event: &AgentUiEvent, show_thinking: bool) -> Op
         | AgentUiEvent::ThinkingDelta(_)
         | AgentUiEvent::QueueUpdate { .. }
         | AgentUiEvent::MemoryResult(_)
+        | AgentUiEvent::AsideStarted { .. }
+        | AgentUiEvent::AsideFinished { .. }
+        | AgentUiEvent::AsideFailed { .. }
         | AgentUiEvent::UserPromptCommitted { .. }
         | AgentUiEvent::TranscriptNotice(_)
         | AgentUiEvent::SubagentOutput { .. }

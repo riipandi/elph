@@ -76,6 +76,7 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin_with_args("memory", "Agent memory store (floppy)"),
         builtin("feedback", "Report a bug or join community"),
         builtin("help", "List commands"),
+        builtin_with_args("aside", "Ask a side question without interrupting"),
         builtin("tools", "Show active tools"),
         builtin("system-prompt", "Show compiled system prompt"),
         builtin("exit", "Quit Elph"),
@@ -279,6 +280,10 @@ pub enum SlashDispatch {
     /// List sessions or switch (`/resume [id]`).
     Resume {
         args: String,
+    },
+    /// Side question that does not interrupt the main turn (`/aside <question>`).
+    Aside {
+        question: String,
     },
     Unimplemented(String),
 }
@@ -615,6 +620,7 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
         "continue" | "cont" => Some(SlashDispatch::Continue),
         "goal" | "goals" => Some(SlashDispatch::Goal { args }),
         "help" | "h" | "?" => Some(SlashDispatch::Help),
+        "aside" => Some(SlashDispatch::Aside { question: args }),
         "tools" => Some(SlashDispatch::Tools { args }),
         "system-prompt" | "systemprompt" | "prompt" => Some(SlashDispatch::SystemPrompt),
         "session" => Some(SlashDispatch::SessionInfo),
@@ -862,6 +868,18 @@ mod tests {
             Some(SlashDispatch::Goal { args: "pause".into() })
         );
         assert_eq!(dispatch_slash_command("/help", None, None, None), Some(SlashDispatch::Help));
+        assert_eq!(
+            dispatch_slash_command("/aside is this safe?", None, None, None),
+            Some(SlashDispatch::Aside {
+                question: "is this safe?".into()
+            })
+        );
+        assert_eq!(
+            dispatch_slash_command("/aside", None, None, None),
+            Some(SlashDispatch::Aside {
+                question: String::new()
+            })
+        );
         assert_eq!(
             dispatch_slash_command("/tools", None, None, None),
             Some(SlashDispatch::Tools { args: String::new() })

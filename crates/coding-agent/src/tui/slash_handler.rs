@@ -12,7 +12,7 @@ use crate::agent::{
     session_info_slash_message, session_title_for_rename, settings_slash_message, slash_unimplemented_message,
     system_prompt_slash_message, tools_slash_message, tree_slash_message, trust_slash_message, workers_slash_message,
 };
-use crate::agent::{HandoverError, HandoverSession, OverlayCommand, SlashDispatch};
+use crate::agent::{HandoverError, HandoverSession, OverlayCommand, SlashDispatch, spawn_aside};
 use crate::extensions::ExtensionHost;
 use crate::platform::Paths;
 use crate::tui::confetti::confetti_mode_from_slash_args;
@@ -362,6 +362,18 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
     match dispatch {
         SlashDispatch::Quit => SlashOutcome::Quit,
         SlashDispatch::NewSession => SlashOutcome::NewSession,
+        SlashDispatch::Aside { question } => {
+            let question = question.trim().to_string();
+            if question.is_empty() {
+                return SlashOutcome::Status("Usage: /aside <question>".into());
+            }
+            let Some(session) = ctx.agent_session.clone() else {
+                return SlashOutcome::Status("No active session for /aside".into());
+            };
+            let _request_id = spawn_aside(session, question);
+            // Quiet: do not echo `/aside …` as a user prompt card.
+            SlashOutcome::BackgroundTaskQuiet
+        }
         SlashDispatch::Help => {
             SlashOutcome::Status(format_help_message(ctx.extensions, ctx.prompt_templates, ctx.skills))
         }
