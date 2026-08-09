@@ -39,6 +39,11 @@ Edit Tools
 Terminal Tools
   - shell_use    : Drives a real PTY terminal session (bash/zsh/fish/pwsh/cmd/nushell/...). Use for interactive programs, TUIs, REPLs, keystroke-driven prompts, and verifying on-screen state.
 
+Session structure (host-registered; not part of BuiltinToolsBuilder)
+  - todo_write   : Create/update session todos (`merge` by id, statuses pending|in_progress|completed|cancelled).
+  - todo_read    : Read the current session todo list.
+  - create_goal / get_goal / update_goal / set_goal_budget : Session objective + budgets (see goals module).
+
 Web Tools
   - web_fetch    : Fetches a URL and optionally returns the content as Markdown. Useful for providing docs as context.
   - web_search   : Searches the web for information, providing results with snippets and links from relevant web pages, useful for accessing real-time information.

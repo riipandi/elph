@@ -929,34 +929,13 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         }
 
         if run_completed {
-            // ── Archive old messages to SQLite when memory grows large ──
-            // Single shared snapshot avoids cloning the transcript twice (archive + snapshot
-            // save both need the data) — peak memory is cut roughly in half on archive turns.
-            let should_archive = {
+            // Bound in-memory transcript for live TUI. Full history is reconstructed from
+            // session_entries on resume — no separate SQLite transcript archive.
+            let should_trim = {
                 let msgs = messages_arc_inner.read().unwrap();
                 msgs.len() > MAX_MESSAGES_BEFORE_ARCHIVE
             };
-            if should_archive {
-                let paths_for_archive = paths.read().clone();
-                let sid = live_session_id.read().clone();
-                // One shared Arc snapshot for both archive and session save.
-                let snapshot_arc = Arc::new(messages_arc_inner.read().unwrap().clone());
-                let snapshot_for_archive = Arc::clone(&snapshot_arc);
-                tokio::spawn(async move {
-                    if let Ok(cache) = TranscriptCache::open(&paths_for_archive.memory_db_path(), &sid).await {
-                        let snapshot = snapshot_for_archive;
-                        let archive_count = snapshot.len().saturating_sub(KEEP_MESSAGES);
-                        let archived: Vec<(usize, &TranscriptMessage)> =
-                            snapshot[..archive_count].iter().enumerate().collect();
-                        if let Err(err) = cache.push_batch(archived).await {
-                            log::warn!("transcript archive failed: {err:#}");
-                        }
-                    }
-                });
-                // Truncate messages_arc_inner. The panel reads the arc directly, so the
-                // State copy can stay as-is until the next event tick re-syncs it.
-                // Also drop parsed markdown caches from old retained messages — the source
-                // text is still archived to SQLite and can be re-parsed on resume.
+            if should_trim {
                 let keep = KEEP_MESSAGES;
                 {
                     let mut msgs = messages_arc_inner.write().unwrap();
@@ -986,47 +965,6 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 }
                 // Re-sync the State copy so it also drops the markdown caches.
                 *messages.write() = messages_arc_inner.read().unwrap().clone();
-                // Session snapshot: write to TranscriptCache (overwrite semantics) instead
-                // of appending to the session tree. This keeps only the latest snapshot and
-                // prevents 600+ MB accumulation from 7-8 MB snapshots appended every turn.
-                if let Some(session) = agent_session_for_loop.as_ref() {
-                    let session = Arc::clone(session);
-                    let snapshot_for_cache = Arc::clone(&snapshot_arc);
-                    let paths_for_snapshot = paths.read().clone();
-                    let sid_for_snapshot = live_session_id.read().clone();
-                    tokio::spawn(async move {
-                        if let Err(err) = session
-                            .save_transcript_snapshot_to_cache(
-                                &snapshot_for_cache,
-                                &paths_for_snapshot.memory_db_path(),
-                                &sid_for_snapshot,
-                            )
-                            .await
-                        {
-                            log::warn!("transcript snapshot cache save failed: {err:#}");
-                        }
-                    });
-                }
-            } else {
-                // No archive this turn — persist session snapshot to cache (overwrite).
-                if let Some(session) = agent_session_for_loop.as_ref() {
-                    let snapshot = messages.read().clone();
-                    let session = Arc::clone(session);
-                    let paths_for_snapshot = paths.read().clone();
-                    let sid_for_snapshot = live_session_id.read().clone();
-                    tokio::spawn(async move {
-                        if let Err(err) = session
-                            .save_transcript_snapshot_to_cache(
-                                &snapshot,
-                                &paths_for_snapshot.memory_db_path(),
-                                &sid_for_snapshot,
-                            )
-                            .await
-                        {
-                            log::warn!("transcript snapshot cache save failed: {err:#}");
-                        }
-                    });
-                }
             }
 
             pending_quit_confirm.set(false);
@@ -1060,18 +998,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 chrome_refresh_pending.set(true);
             }
             // Follow-up prompts are drained inside the harness agent loop; no TUI re-spawn.
-
-            // Persist full transcript (thinking / tools / durations / expand / diffs)
-            // so --resume matches the live session. Non-fatal on failure.
-            if let Some(session) = agent_session_for_loop.as_ref() {
-                let snapshot = messages.read().clone();
-                let session = Arc::clone(session);
-                tokio::spawn(async move {
-                    if let Err(err) = session.save_transcript_snapshot(&snapshot).await {
-                        log::warn!("transcript snapshot save failed: {err:#}");
-                    }
-                });
-            }
+            // History is durable via session_entries (MessageEnd); no separate UI snapshot.
 
             if turn_cancel_requested.get() {
                 turn_cancel_requested.set(false);

@@ -157,6 +157,7 @@ async fn harness_prompt_persists_session_messages() {
         steering_mode: Default::default(),
         follow_up_mode: Default::default(),
         goal_runtime: None,
+        turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
         shared_registry: None,

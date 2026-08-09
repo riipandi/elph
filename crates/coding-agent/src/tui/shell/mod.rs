@@ -30,6 +30,8 @@ use crate::types::{is_force_quit_command, is_quit_command};
 use crate::utils::path::AppPaths;
 use elph_agent::{BUDGET_LIMIT_PROMPT_PREFIX, CONTINUATION_PROMPT_PREFIX};
 
+use crate::agent::rename_session_title;
+use crate::agent::session_info_slash_message;
 use crate::tui::activity::TurnTokenTracker;
 use crate::tui::activity::{
     accumulate_session_elapsed, activity_label_for_event, format_quit_canceled_notice, format_shell_canceled_notice,
@@ -38,13 +40,6 @@ use crate::tui::activity::{
 use crate::tui::agent_bridge::{PromptQueue, TranscriptEventApplier, TurnDispatcher};
 use crate::tui::chrome::{ChromeStats, Header};
 use crate::tui::chrome::{chrome_stats_from_session, format_elapsed_secs, read_git_footer_info, refresh_chrome_stats};
-use crate::tui::focus::ShellFocus;
-use crate::tui::focus::{is_ctrl_enter_interject, is_text_select_toggle_key, prompt_focus_char, shell_global_shortcut};
-use crate::tui::labels::GitFooterInfo;
-use crate::tui::transcript::TranscriptCache;
-
-use crate::agent::rename_session_title;
-use crate::agent::session_info_slash_message;
 use crate::tui::confetti::{
     ConfettiMode, ConfettiOverlay, ConfettiRuntime, OpenConfettiArgs, PendingConfetti, close_confetti, open_confetti,
 };
@@ -54,6 +49,9 @@ use crate::tui::file_picker::{
     build_snapshot as build_file_picker_snapshot, file_picker_open, mention_highlight_ansi, mention_picker_visible,
     resolve_key_action as resolve_file_picker_key_action, sync_selection as sync_file_picker_selection,
 };
+use crate::tui::focus::ShellFocus;
+use crate::tui::focus::{is_ctrl_enter_interject, is_text_select_toggle_key, prompt_focus_char, shell_global_shortcut};
+use crate::tui::labels::GitFooterInfo;
 use crate::tui::mcp_auth_dialog::{
     OpenMcpAuthDialogArgs, PendingMcpAuthDialog, open_mcp_auth_dialog, start_mcp_oauth_for_server,
 };

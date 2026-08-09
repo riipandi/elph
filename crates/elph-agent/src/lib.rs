@@ -20,6 +20,8 @@ pub mod runtime;
 
 pub mod session;
 pub mod skills;
+pub mod todos;
+pub mod turns;
 
 pub mod tools;
 pub mod trace;
@@ -302,6 +304,9 @@ pub use session::repair_unanswered_tool_calls;
 pub use session::to_session;
 pub use session::{DurableHarnessState, OperationKind, OperationOutcome, QueueKind, RecoveryReport};
 pub use session::{EVENTS_FILE, SESSION_TREE_MIGRATIONS, SUMMARY_FILE};
+pub use session::{
+    RetentionPolicy, SessionGcReport, list_session_gc_rows, run_full_session_gc, run_session_gc, set_session_pinned,
+};
 pub use skills::LoadSkillsResult;
 pub use skills::LoadSourcedSkillsResult;
 pub use skills::SkillDiagnostic;
@@ -316,6 +321,7 @@ pub use skills::load_sourced_skills;
 pub use skills::load_sourced_skills_with_options;
 pub use skills::skill_args_validation_notice;
 pub use skills::skill_requires_arguments;
+pub use todos::{TodoItem, TodoStatus, TodoStore, TodoUpdate, create_todo_tools};
 #[cfg(any(feature = "tools-edit", feature = "tools-search"))]
 pub use tools::create_all_tools;
 #[cfg(any(feature = "tools-edit", feature = "tools-search", feature = "tools-web"))]
@@ -551,4 +557,5 @@ pub use tools::{close_shell_use_sessions, create_shell_use_tool, shell_use_open_
 #[cfg(feature = "tools-web")]
 pub use tools::{create_web_extract_tool, create_web_fetch_tool, create_web_search_tool, create_web_tools};
 pub use tools::{echo_tool, simple_tool};
+pub use turns::{TurnRecord, TurnStatus, TurnStore, TurnUsage};
 pub use types::*;

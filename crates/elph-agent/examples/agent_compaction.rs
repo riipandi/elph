@@ -89,6 +89,7 @@ async fn main() -> anyhow::Result<()> {
         reserve_tokens: 16384,
         threshold_pct: None,
         keep_recent_tokens: 20000,
+        physical_prune: true,
     };
 
     let should = should_compact(estimate.tokens, context_window, settings);

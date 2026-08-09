@@ -372,6 +372,7 @@ mod tests {
             reserve_tokens: 16_384,
             threshold_pct: Some(80),
             keep_recent_tokens: 20_000,
+            physical_prune: true,
         };
         // History over threshold → normal message.
         let msg = auto_compact_will_message(180_000, 200_000, 0, settings);
@@ -386,6 +387,7 @@ mod tests {
             reserve_tokens: 16_384,
             threshold_pct: Some(80),
             keep_recent_tokens: 20_000,
+            physical_prune: true,
         };
         // History under threshold, but history + prompt over → mention prompt.
         let msg = auto_compact_will_message(150_000, 200_000, 20_000, settings);

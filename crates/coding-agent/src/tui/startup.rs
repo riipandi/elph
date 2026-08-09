@@ -377,61 +377,16 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
     })
 }
 
-/// Load persisted chat history from the session's branch entries and convert them
-/// to transcript messages for display on resume.
+/// Load persisted chat history by reconstructing TUI cards from the session tree.
 ///
-/// Prefer the TranscriptCache snapshot (overwrite semantics, latest only). Fall back to
-/// the session-tree `elph.transcript.snapshot` custom entry, then to reconstructing cards
-/// from LLM messages + tool results when no snapshot exists (e.g. interrupted turn).
-async fn load_chat_history(session: &CodingAgentSession, paths: &crate::platform::Paths) -> Vec<TranscriptMessage> {
-    // 1. Try the TranscriptCache first (new overwrite-based storage).
-    let session_id = session.session_id().to_string();
-    if let Ok(cache) = crate::tui::transcript::TranscriptCache::open(&paths.memory_db_path(), &session_id).await
-        && let Ok(Some(json)) = cache.load_snapshot().await
-    {
-        match serde_json::from_str::<serde_json::Value>(&json) {
-            Ok(value) => {
-                let messages = crate::tui::transcript::messages_from_snapshot_data(&value);
-                if let Some(msgs) = messages
-                    && !msgs.is_empty()
-                {
-                    return msgs;
-                }
-            }
-            Err(err) => {
-                log::warn!("transcript snapshot cache parse failed: {err:#}");
-            }
-        }
-    }
-
-    // 2. Fall back to session-tree entries (legacy path).
+/// The tree is the single source of truth (same data the model uses via
+/// `build_session_context`). UI snapshot tables are not used.
+async fn load_chat_history(session: &CodingAgentSession, _paths: &crate::platform::Paths) -> Vec<TranscriptMessage> {
     let Ok(entries) = session.branch_entries().await else {
         return Vec::new();
     };
-
-    if let Some(messages) = load_transcript_snapshot_from_entries(&entries) {
-        return messages;
-    }
-
-    // 3. Last resort: reconstruct from LLM entries.
     let cwd = session.harness().env().cwd().to_string();
     reconstruct_transcript_from_llm_entries(&entries, &cwd)
-}
-
-/// Latest full transcript snapshot written after each completed turn.
-fn load_transcript_snapshot_from_entries(entries: &[elph_agent::SessionTreeEntry]) -> Option<Vec<TranscriptMessage>> {
-    use crate::tui::transcript::{TRANSCRIPT_SNAPSHOT_CUSTOM_TYPE, messages_from_snapshot_data};
-
-    let mut latest: Option<&serde_json::Value> = None;
-    for entry in entries {
-        if let elph_agent::SessionTreeEntry::Custom { custom_type, data, .. } = entry
-            && custom_type == TRANSCRIPT_SNAPSHOT_CUSTOM_TYPE
-            && let Some(data) = data
-        {
-            latest = Some(data);
-        }
-    }
-    latest.and_then(messages_from_snapshot_data)
 }
 
 /// Reconstruct transcript cards from the LLM session tree (fallback path).

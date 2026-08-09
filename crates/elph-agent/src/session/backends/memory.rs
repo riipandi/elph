@@ -146,6 +146,24 @@ impl SessionStorage for InMemorySessionStorage {
         index.checkpoints.keys().cloned().collect()
     }
 
+    async fn physical_prune_except(&mut self, keep_ids: &[String]) -> Result<usize, SessionError> {
+        let keep: std::collections::HashSet<&str> = keep_ids.iter().map(String::as_str).collect();
+        let index = self.index.lock().await;
+        let before = index.entries.len();
+        let remaining: Vec<SessionTreeEntry> = index
+            .entries
+            .iter()
+            .filter(|e| keep.contains(e.id()))
+            .cloned()
+            .collect();
+        let leaf = index.leaf_id.clone().filter(|id| keep.contains(id.as_str()));
+        drop(index);
+        let new_index = build_index(remaining, leaf)?;
+        let deleted = before.saturating_sub(new_index.entries.len());
+        *self.index.lock().await = new_index;
+        Ok(deleted)
+    }
+
     async fn get_name(&self) -> Option<String> {
         let index = self.index.lock().await;
         index.name.clone()

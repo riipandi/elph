@@ -21,6 +21,7 @@ thread_local! {
 const GOAL_PREFIX: &str = "goal";
 const MESSAGE_PREFIX: &str = "msg";
 const TODO_PREFIX: &str = "todo";
+const TURN_PREFIX: &str = "turn";
 const SKILL_CACHE_PREFIX: &str = "skc";
 
 /// K-sortable ID string (16-char Kalid, no prefix).
@@ -65,6 +66,11 @@ pub fn create_todo_id() -> String {
     create_prefixed_kalid(TODO_PREFIX)
 }
 
+/// Create a turn ID (`turn_<16>`).
+pub fn create_turn_id() -> String {
+    create_prefixed_kalid(TURN_PREFIX)
+}
+
 /// Create a skill cache ID (`skc_<16>`).
 pub fn create_skill_cache_id() -> String {
     create_prefixed_kalid(SKILL_CACHE_PREFIX)
@@ -89,7 +95,7 @@ fn strip_prefix(id: &str) -> Option<&str> {
     let prefix = &id[..underscore];
     // Only strip known prefixes to avoid false positives
     match prefix {
-        GOAL_PREFIX | MESSAGE_PREFIX | TODO_PREFIX | SKILL_CACHE_PREFIX => {
+        GOAL_PREFIX | MESSAGE_PREFIX | TODO_PREFIX | TURN_PREFIX | SKILL_CACHE_PREFIX => {
             let body = &id[underscore + 1..];
             Some(body)
         }

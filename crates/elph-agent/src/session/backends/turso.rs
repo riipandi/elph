@@ -251,11 +251,13 @@ impl TursoSessionStorage {
     async fn persist_entry(&self, conn: &turso::Connection, entry: &SessionTreeEntry) -> Result<(), SessionError> {
         let seq = self.allocate_seq(conn).await?;
         let payload = serde_json::to_string(entry).map_err(map_storage_error)?;
+        let payload_bytes = payload.len() as i64;
         let updated_at = crate::messages::now_iso_timestamp();
         conn.execute(
             "INSERT INTO session_entries (
-                session_id, id, entry_seq, parent_id, type, timestamp, payload
-             ) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                session_id, id, entry_seq, parent_id, type, timestamp,
+                turn_id, role, payload_bytes, payload
+             ) VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)",
             turso::params![
                 self.session_id.as_str(),
                 entry.id(),
@@ -263,16 +265,22 @@ impl TursoSessionStorage {
                 entry.parent_id(),
                 entry.entry_type(),
                 entry.timestamp(),
+                entry.message_role(),
+                payload_bytes,
                 payload.as_str(),
             ],
         )
         .await
         .map_err(map_storage_error)?;
 
-        // Touch updated_at so list ordering advances even when the leaf is unchanged.
+        // Touch updated_at + size rollups so list ordering and retention budgets stay current.
         conn.execute(
-            "UPDATE sessions SET updated_at = ? WHERE id = ?",
-            turso::params![updated_at.as_str(), self.session_id.as_str()],
+            "UPDATE sessions SET
+                updated_at = ?,
+                entry_count = entry_count + 1,
+                approx_bytes = approx_bytes + ?
+             WHERE id = ?",
+            turso::params![updated_at.as_str(), payload_bytes, self.session_id.as_str()],
         )
         .await
         .map_err(map_storage_error)?;
@@ -586,6 +594,98 @@ impl SessionStorage for TursoSessionStorage {
 
     async fn get_name(&self) -> Option<String> {
         self.index.name.clone().or_else(|| self.metadata.name.clone())
+    }
+
+    async fn physical_prune_except(&mut self, keep_ids: &[String]) -> Result<usize, SessionError> {
+        if keep_ids.is_empty() {
+            return Ok(0);
+        }
+        let keep: std::collections::HashSet<&str> = keep_ids.iter().map(String::as_str).collect();
+        let to_delete: Vec<String> = self
+            .index
+            .entries
+            .iter()
+            .map(|e| e.id().to_string())
+            .filter(|id| !keep.contains(id.as_str()))
+            .collect();
+        if to_delete.is_empty() {
+            return Ok(0);
+        }
+
+        let conn = self.connection().await?;
+        conn.execute("BEGIN IMMEDIATE", ()).await.map_err(map_storage_error)?;
+        let outcome = async {
+            let mut deleted = 0usize;
+            let mut freed_bytes: i64 = 0;
+            for id in &to_delete {
+                // Sum payload_bytes for rollup before delete.
+                let mut rows = conn
+                    .query(
+                        "SELECT payload_bytes FROM session_entries WHERE session_id = ? AND id = ?",
+                        turso::params![self.session_id.as_str(), id.as_str()],
+                    )
+                    .await
+                    .map_err(map_storage_error)?;
+                if let Some(row) = rows.next().await.map_err(map_storage_error)? {
+                    let bytes: i64 = row.get(0).unwrap_or(0);
+                    freed_bytes += bytes;
+                }
+                while rows.next().await.map_err(map_storage_error)?.is_some() {}
+
+                conn.execute(
+                    "DELETE FROM session_entries WHERE session_id = ? AND id = ?",
+                    turso::params![self.session_id.as_str(), id.as_str()],
+                )
+                .await
+                .map_err(map_storage_error)?;
+                deleted += 1;
+            }
+            let updated_at = crate::messages::now_iso_timestamp();
+            conn.execute(
+                "UPDATE sessions SET
+                    entry_count = MAX(0, entry_count - ?),
+                    approx_bytes = MAX(0, approx_bytes - ?),
+                    updated_at = ?
+                 WHERE id = ?",
+                turso::params![
+                    deleted as i64,
+                    freed_bytes,
+                    updated_at.as_str(),
+                    self.session_id.as_str()
+                ],
+            )
+            .await
+            .map_err(map_storage_error)?;
+            Ok::<usize, SessionError>(deleted)
+        }
+        .await;
+        match outcome {
+            Ok(n) => {
+                conn.execute("COMMIT", ()).await.map_err(map_storage_error)?;
+                // Rebuild in-memory index from survivors.
+                let remaining: Vec<SessionTreeEntry> = self
+                    .index
+                    .entries
+                    .iter()
+                    .filter(|e| keep.contains(e.id()))
+                    .cloned()
+                    .collect();
+                let leaf = self.index.leaf_id.clone().filter(|id| keep.contains(id.as_str()));
+                self.index = build_index(remaining, leaf)?;
+                let conn = self.connection().await?;
+                self.persist_leaf_id(&conn, self.index.leaf_id.as_deref()).await?;
+                log::info!(
+                    "session {}: physical_prune deleted {n} entries (kept {})",
+                    self.session_id,
+                    keep_ids.len()
+                );
+                Ok(n)
+            }
+            Err(err) => {
+                let _ = conn.execute("ROLLBACK", ()).await;
+                Err(err)
+            }
+        }
     }
 }
 

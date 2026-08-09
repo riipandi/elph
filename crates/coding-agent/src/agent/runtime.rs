@@ -5,7 +5,8 @@ use anyhow::Result;
 use elph_agent::create_goal_tools_with_hook;
 use elph_agent::{
     AgentGraphStore, AgentHarness, AgentHarnessOptions, AgentHarnessStreamOptions, BuiltinToolsBuilder, GoalRuntime,
-    GoalStore, LocalExecutionEnv, QueueMode, RestoreOptions, SubagentBootstrap, SystemPrompt, is_mcp_tool,
+    GoalStore, LocalExecutionEnv, QueueMode, RestoreOptions, SubagentBootstrap, SystemPrompt, TodoStore, TurnStore,
+    create_todo_tools, is_mcp_tool,
 };
 use std::path::Path;
 use std::sync::Arc;
@@ -48,6 +49,38 @@ pub async fn create_coding_session_with_events(
     // Open the shared store DB once and share the handle with every store so
     // they all connect from one open database instead of each opening the file.
     let database = Arc::new(crate::platform::datastore::ensure_database(options.paths).await?);
+
+    // Best-effort session retention GC (settings-driven). Never mid-turn; skip if disabled.
+    if options.settings.session.retention.enabled && options.settings.session.retention.gc_on_open {
+        let r = &options.settings.session.retention;
+        let policy = elph_agent::RetentionPolicy {
+            enabled: true,
+            max_sessions_per_cwd: r.max_sessions_per_cwd,
+            max_session_age_days: r.max_session_age_days,
+            max_store_db_bytes: r.max_store_db_bytes,
+            protect_latest_per_cwd: r.protect_latest_per_cwd,
+            protect_session_id: options.resume_id.map(|s| s.to_string()),
+        };
+        match elph_agent::run_full_session_gc(
+            Arc::clone(&database),
+            options.paths.memory_db_path(),
+            Some(options.paths.data_dir().join("sessions")),
+            policy,
+            false,
+        )
+        .await
+        {
+            Ok(report) if !report.deleted_ids.is_empty() => {
+                log::info!(
+                    "session GC removed {} session(s) (examined {})",
+                    report.deleted_ids.len(),
+                    report.examined
+                );
+            }
+            Ok(_) => {}
+            Err(err) => log::warn!("session GC failed: {err:#}"),
+        }
+    }
 
     let env = Arc::new(LocalExecutionEnv::new(options.cwd));
     let session_manager = SessionManager::new_with_database(options.paths, options.cwd, database.clone())?;
@@ -134,6 +167,9 @@ pub async fn create_coding_session_with_events(
         })
     }));
     tools.extend(create_goal_tools_with_hook(goal_store, session_id.clone(), goal_hook));
+
+    let todo_store = Arc::new(TodoStore::new(options.paths.memory_db_path()).with_database(database.clone()));
+    tools.extend(create_todo_tools(todo_store, session_id.clone()));
 
     // Clamp default thinking (new-session seed) to the resolved model catalog.
     let thinking = {
@@ -237,6 +273,9 @@ pub async fn create_coding_session_with_events(
             follow_up_mode: QueueMode::OneAtATime,
             compaction_settings,
             goal_runtime: Some(goal_runtime.clone()),
+            turn_store: Some(Arc::new(
+                TurnStore::new(options.paths.memory_db_path()).with_database(database.clone()),
+            )),
             subagent_bootstrap: Some(subagent_bootstrap),
             shared_registry: None,
             agent_control: None,

@@ -9,6 +9,7 @@ pub mod migrations;
 pub mod recovery;
 pub mod repo;
 pub mod repo_utils;
+pub mod retention;
 pub mod storage_utils;
 pub mod tree;
 pub mod turso_repo;
@@ -39,6 +40,9 @@ pub use repo::SessionDirRepo;
 pub use repo::SessionDirRepoCreateOptions;
 pub use repo_utils::{ForkEntriesOptions, ForkPosition};
 pub use repo_utils::{create_session_id, create_timestamp, get_entries_to_fork, to_session};
+pub use retention::{
+    RetentionPolicy, SessionGcReport, list_session_gc_rows, run_full_session_gc, run_session_gc, set_session_pinned,
+};
 pub use tree::{BranchSummaryOptions, Session};
 pub use turso_repo::TursoSessionListOptions;
 pub use turso_repo::TursoSessionRepo;

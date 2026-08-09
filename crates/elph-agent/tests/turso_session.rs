@@ -11,35 +11,8 @@ use elph_agent::TursoSessionStorage;
 use elph_agent::goals::{GoalStatus, GoalStore};
 use elph_agent::{Migration, ensure_database};
 
-/// Platform-shaped migrations including goals (subset matching host v1–v8 intent).
-const PLATFORM_LIKE: &[Migration] = &[
-    Migration {
-        version: 4,
-        name: "create_goals_table",
-        up: "CREATE TABLE IF NOT EXISTS goals (
-                id TEXT PRIMARY KEY,
-                session_id TEXT NOT NULL,
-                objective TEXT NOT NULL,
-                completion_criterion TEXT,
-                status TEXT NOT NULL DEFAULT 'active',
-                turns_used INTEGER NOT NULL DEFAULT 0,
-                tokens_used INTEGER NOT NULL DEFAULT 0,
-                wall_clock_ms INTEGER NOT NULL DEFAULT 0,
-                wall_clock_budget_ms INTEGER NOT NULL DEFAULT 0,
-                turn_budget INTEGER NOT NULL DEFAULT 0,
-                token_budget INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                completed_at TEXT
-            ) STRICT;
-            CREATE INDEX IF NOT EXISTS idx_goals_session_id ON goals(session_id);
-            CREATE INDEX IF NOT EXISTS idx_goals_status ON goals(status);",
-    },
-    Migration {
-        version: 100,
-        name: "session_tree_pi_schema",
-        up: elph_agent::SESSION_TREE_MIGRATIONS[0].up,
-    },
-];
+/// Full session schema v2 (includes goals, turns, todos).
+const PLATFORM_LIKE: &[Migration] = &elph_agent::SESSION_TREE_MIGRATIONS;
 
 #[tokio::test]
 async fn turso_storage_create_append_open_roundtrip() {

@@ -6,6 +6,7 @@ use super::help;
 use super::style::{self, CliStyle, S_ACCENT, S_BODY, S_MUTED};
 use crate::agent::SessionManager;
 use crate::platform::{EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths};
+use crate::utils::path::AppPaths;
 
 #[derive(Parser, Default)]
 #[command(
@@ -31,6 +32,25 @@ pub enum SessionCommands {
     Delete {
         /// Session ID to delete
         id: String,
+    },
+    /// Pin a session so automatic retention GC will not delete it
+    Pin {
+        /// Session ID to pin
+        id: String,
+    },
+    /// Remove pin from a session
+    Unpin {
+        /// Session ID to unpin
+        id: String,
+    },
+    /// Run session retention GC using settings (`session.retention`)
+    Prune {
+        /// Report candidates only; do not delete
+        #[arg(long)]
+        dry_run: bool,
+        /// Apply to all projects in the store (default: current cwd only for listing; GC is global with cwd protect)
+        #[arg(long)]
+        all: bool,
     },
 }
 
@@ -82,6 +102,81 @@ pub fn handle(args: &SessionArgs) -> ExitCode {
                     EXIT_ERROR
                 }
             }
+        }
+        SessionCommands::Pin { id } => pin_session(&paths, id, true),
+        SessionCommands::Unpin { id } => pin_session(&paths, id, false),
+        SessionCommands::Prune { dry_run, all: _all } => prune_sessions(&paths, *dry_run),
+    }
+}
+
+fn pin_session(paths: &Paths, id: &str, pinned: bool) -> ExitCode {
+    match elph_agent::block_on(async {
+        let db = crate::platform::datastore::ensure_database(paths).await?;
+        elph_agent::set_session_pinned(&db, id, pinned).await
+    }) {
+        Ok(()) => {
+            let mut out = String::new();
+            let verb = if pinned { "Pinned" } else { "Unpinned" };
+            style::success(&mut out, CliStyle::auto(), format!("{verb} session {id}"));
+            print!("{out}");
+            EXIT_SUCCESS
+        }
+        Err(err) => {
+            help::cli_error(format!("pin session: {err}"));
+            EXIT_ERROR
+        }
+    }
+}
+
+fn prune_sessions(paths: &Paths, dry_run: bool) -> ExitCode {
+    match elph_agent::block_on(async {
+        let settings = crate::platform::Settings::load(paths)?;
+        let r = &settings.session.retention;
+        if !r.enabled && !dry_run {
+            anyhow::bail!("session.retention.enabled is false (enable in settings.json or use --dry-run)");
+        }
+        let db = std::sync::Arc::new(crate::platform::datastore::ensure_database(paths).await?);
+        let policy = elph_agent::RetentionPolicy {
+            enabled: true, // CLI prune always plans; dry_run controls delete
+            max_sessions_per_cwd: r.max_sessions_per_cwd,
+            max_session_age_days: r.max_session_age_days,
+            max_store_db_bytes: r.max_store_db_bytes,
+            protect_latest_per_cwd: r.protect_latest_per_cwd,
+            protect_session_id: None,
+        };
+        elph_agent::run_full_session_gc(
+            db,
+            paths.memory_db_path(),
+            Some(paths.data_dir().join("sessions")),
+            policy,
+            dry_run,
+        )
+        .await
+    }) {
+        Ok(report) => {
+            let sty = CliStyle::auto();
+            let mut out = String::new();
+            style::section(
+                &mut out,
+                sty,
+                if dry_run {
+                    "Session prune (dry-run)"
+                } else {
+                    "Session prune"
+                },
+            );
+            style::kv(&mut out, sty, "Examined", report.examined.to_string());
+            style::kv(&mut out, sty, "Deleted", report.deleted_ids.len().to_string());
+            style::kv(&mut out, sty, "Skipped pinned", report.skipped_pinned.to_string());
+            for id in &report.deleted_ids {
+                style::info(&mut out, sty, format!("  - {id}"));
+            }
+            print!("{out}");
+            EXIT_SUCCESS
+        }
+        Err(err) => {
+            help::cli_error(format!("prune sessions: {err}"));
+            EXIT_ERROR
         }
     }
 }
