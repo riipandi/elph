@@ -71,17 +71,23 @@ pub const USER_INPUT_ACCENT: Color = Color::Rgb {
     b: 0xff,
 };
 
-/// Process-row **task** title (tool verb / "Thinking") — mid-grey, dimmer than
-/// assistant chat text so the eye settles on the reply. Brighter than
-/// [`THINKING_FG`] / tool-output body so headers stay readable but not loud.
+/// Process-row **task** title (tool verb / "Thinking") — soft grey, dimmer than
+/// assistant chat so replies stay the focus. Slightly brighter than
+/// [`THINKING_FG`] / tool-output body; rendered **bold** in the process header.
 pub const TOOL_TASK_LABEL_FG: Color = Color::Rgb {
-    r: 0xa0,
-    g: 0xa4,
-    b: 0xaa,
+    r: 0x8c,
+    g: 0x90,
+    b: 0x96,
 };
 
-/// Process-row **parameter / target** — soft blue accent.
-pub const TOOL_PARAM_HIGHLIGHT_FG: Color = USER_INPUT_ACCENT;
+/// Process-row **parameter / target** (paths, args) — muted cool grey, **normal**
+/// weight. Quieter than the bold task label; not a bright accent so collapsed
+/// tool cards do not compete with assistant chat.
+pub const TOOL_PARAM_HIGHLIGHT_FG: Color = Color::Rgb {
+    r: 0x72,
+    g: 0x7a,
+    b: 0x84,
+};
 
 /// Skills / custom labels — palette 5 `#d4aaff`.
 pub const SKILL_FG: Color = Color::Rgb {

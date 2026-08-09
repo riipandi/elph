@@ -16,9 +16,9 @@ use iocraft::prelude::*;
 use crate::tui::activity::format_duration_secs;
 use crate::tui::ask_user_tool_card::{AskUserToolCardView, parse_ask_user_tool_rows};
 use crate::tui::theme::{
-    STATUS_FAILED_FG, STATUS_QUEUED_FG, STATUS_RUNNING_FG, STATUS_SUCCESS_FG, TEXT_FG, THINKING_FG, TOOL_ARGS_FG,
-    TOOL_FAILED_FG, TOOL_OUTPUT_FG, TOOL_PARAM_HIGHLIGHT_FG, TOOL_RUNNING_FG, TOOL_SUCCESS_FG, TOOL_TASK_LABEL_FG,
-    USER_INPUT_ACCENT,
+    META_FG, STATUS_FAILED_FG, STATUS_QUEUED_FG, STATUS_RUNNING_FG, STATUS_SUCCESS_FG, TEXT_FG, THINKING_FG,
+    TOOL_ARGS_FG, TOOL_FAILED_FG, TOOL_OUTPUT_FG, TOOL_PARAM_HIGHLIGHT_FG, TOOL_RUNNING_FG, TOOL_SUCCESS_FG,
+    TOOL_TASK_LABEL_FG, USER_INPUT_ACCENT,
 };
 use crate::tui::tool_params::{
     ToolParamsView, format_collapsed_tool_parts_linked_w, parse_tool_params, tool_display_verb,
@@ -101,9 +101,9 @@ pub fn skill_prompt_card(screen_width: u16, message: &TranscriptMessage, margin_
 #[derive(Props)]
 struct ProcessHeaderToggleProps {
     inner_width: u16,
-    /// Task title only (dim mid-grey; regular weight — less loud than assistant text).
+    /// Task title only (dim grey, **bold**) — tool verb / "Thinking".
     label: String,
-    /// Optional params / target path — highlight color, normal weight.
+    /// Optional params / target path — dimmer muted grey, normal weight.
     detail: String,
     /// When set, detail is rendered as an OSC 8 hyperlink (e.g. `file://` original path).
     detail_href: Option<String>,
@@ -132,8 +132,11 @@ impl Default for ProcessHeaderToggleProps {
 
 /// Shared process-phase header: `[glyph] Task [detail] · duration` (left-clustered).
 ///
-/// Colors: task = dim mid-grey · params = accent highlight · timestamp/meta = dimmer grey.
-/// Labels stay regular weight so assistant replies remain the visual focus.
+/// Visual balance (assistant chat stays brightest):
+/// - **task label** — dim grey, bold (scannable without shouting)
+/// - **params/args** — dimmer muted grey, normal weight
+/// - **meta/duration** — quietest grey, normal weight
+///
 /// When `clickable`, wraps in iocraft [`Button`] so `use_local_terminal_events` hit-tests the header
 /// row (see vendor `button.rs` / `use_terminal_events.rs`).
 #[component]
@@ -141,8 +144,8 @@ fn ProcessHeaderToggle(props: &mut ProcessHeaderToggleProps) -> impl Into<AnyEle
     let inner_width = props.inner_width.max(1);
     let status = props.status;
     let indicator_color = status_indicator_color(status);
-    // Process labels stay regular weight — bold + bright competed with assistant replies.
-    let task_weight = Weight::Normal;
+    // Bold only the task name — args stay normal so the row hierarchy is clear.
+    let task_weight = Weight::Bold;
     let meta_chip = process_meta_chip(status, props.duration_secs);
     let label = props.label.clone();
     let detail = props.detail.trim().to_string();
@@ -175,7 +178,7 @@ fn ProcessHeaderToggle(props: &mut ProcessHeaderToggleProps) -> impl Into<AnyEle
         }
     });
 
-    // Pack glyph + dim task label + highlighted params + dimmer meta.
+    // Pack glyph + bold dim label + normal dim args + quieter meta.
     let row = element! {
         View(
             width: inner_width,
@@ -204,7 +207,7 @@ fn ProcessHeaderToggle(props: &mut ProcessHeaderToggleProps) -> impl Into<AnyEle
                 element! {
                     Text(
                         content: text,
-                        color: TOOL_ARGS_FG,
+                        color: META_FG,
                         weight: Weight::Normal,
                         wrap: TextWrap::NoWrap,
                     )
