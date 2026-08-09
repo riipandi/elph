@@ -13,7 +13,7 @@ use tokio::sync::Mutex;
 
 use super::mcp_bootstrap::{discover_mcp_registry, start_mcp_notifications};
 use super::model_registry::{resolve_model, selection_from_model};
-use super::prompt::{agents_md_for_cwd, build_coding_system_prompt};
+use super::prompt::{CodingPromptOptions, agents_md_for_cwd, build_coding_system_prompt};
 use super::resource_loader::{LoadResourcesResult, load_resources};
 use super::session::{CodingAgentSession, CodingAgentSessionParams};
 use super::session_manager::SessionManager;
@@ -174,35 +174,29 @@ pub async fn create_coding_session_with_events(
         .await
         .unwrap_or_default();
     let injected_memory = if ctx.is_empty() { None } else { Some(ctx) };
-    let preferred_chat_language = options.settings.preferred_chat_language.clone();
-    let codegraph_enabled = options.settings.codegraph.enabled;
-    let ste_enabled = options.settings.simplified_technical_english;
+    // Static (per-run) prompt knobs; `mode` is filled in per turn from `mode_state`.
+    let prompt_options = CodingPromptOptions {
+        mode: agent_mode,
+        preferred_chat_language: options.settings.preferred_chat_language.clone(),
+        codegraph_enabled: options.settings.codegraph.enabled,
+        ste_enabled: options.settings.simplified_technical_english,
+    };
 
     let system_prompt = SystemPrompt::Dynamic(Arc::new(move |ctx| {
         let cwd = cwd.clone();
         let agents_md = agents_md.clone();
         let mode_state = Arc::clone(&mode_for_prompt);
         let memory_section = injected_memory.clone();
-        let preferred_chat_language = preferred_chat_language.clone();
-        let codegraph_enabled = codegraph_enabled;
-        let ste_enabled = ste_enabled;
+        let mut prompt_options = prompt_options.clone();
         Box::pin(async move {
-            let mode = *mode_state.lock().await;
+            prompt_options.mode = *mode_state.lock().await;
             let tool_names: Vec<String> = ctx.active_tools.iter().map(|t| t.name().to_string()).collect();
-            let mut prompt = build_coding_system_prompt(
-                &cwd,
-                &ctx.resources,
-                &tool_names,
-                agents_md.as_deref(),
-                mode,
-                preferred_chat_language,
-                codegraph_enabled,
-                ste_enabled,
-            )
-            .unwrap_or_else(|error| {
-                log::warn!("coding system prompt render failed: {error}");
-                elph_agent::DEFAULT_SYSTEM_PROMPT.to_string()
-            });
+            let mut prompt =
+                build_coding_system_prompt(&cwd, &ctx.resources, &tool_names, agents_md.as_deref(), &prompt_options)
+                    .unwrap_or_else(|error| {
+                        log::warn!("coding system prompt render failed: {error}");
+                        elph_agent::DEFAULT_SYSTEM_PROMPT.to_string()
+                    });
 
             // Append memory context section at the end of the system prompt.
             if let Some(ref mem) = memory_section {

@@ -12,7 +12,7 @@ use std::path::Path;
 
 use elph_agent::{AgentHarnessResources, Skill};
 
-use elph::agent::prompt::build_coding_system_prompt;
+use elph::agent::prompt::{CodingPromptOptions, build_coding_system_prompt};
 use elph::types::AgentMode;
 
 fn skill(name: &str, description: &str, scope: Option<&str>) -> Skill {
@@ -176,10 +176,7 @@ fn prompt_tokens(mode: AgentMode) -> usize {
         &resources,
         &NATIVE_TOOL_NAMES.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
         None,
-        mode,
-        "",
-        true,
-        true,
+        &CodingPromptOptions::new(mode),
     )
     .expect("prompt renders");
 

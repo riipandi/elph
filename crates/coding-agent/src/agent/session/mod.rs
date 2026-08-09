@@ -22,7 +22,7 @@ use super::model_registry::ModelSelection;
 use super::resource_loader::LoadResourcesResult;
 use super::resource_loader::load_resources;
 
-use super::prompt::{agents_md_for_cwd, build_coding_system_prompt};
+use super::prompt::{CodingPromptOptions, agents_md_for_cwd, build_coding_system_prompt};
 use super::session_manager::SessionManager;
 use super::tool_policy::AgentModePolicy;
 use super::tool_policy::{from_agent_thinking, to_agent_thinking};
@@ -294,10 +294,12 @@ impl CodingAgentSession {
             &resources,
             &tool_names,
             agents_md.as_deref(),
-            mode,
-            &self.preferred_chat_language,
-            self.codegraph_enabled,
-            self.ste_enabled,
+            &CodingPromptOptions {
+                mode,
+                preferred_chat_language: self.preferred_chat_language.clone(),
+                codegraph_enabled: self.codegraph_enabled,
+                ste_enabled: self.ste_enabled,
+            },
         )?;
         *self.system_prompt_cache.write() = Some(text.clone());
         Ok(text)

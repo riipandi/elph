@@ -18,23 +18,37 @@ pub async fn hybrid_search(conn: &Connection, embed: &EmbedFn, opts: &SearchOpti
 
     let mut ranks: HashMap<i64, (f64, ChunkHit)> = HashMap::new();
 
-    // FTS path (Turso Tantivy). `SELECT * ... WHERE fts_match(cols, ?1)` is
-    // routed through Tantivy and returns rows in BM25-descending order, which
-    // is exactly the ranking RRF needs — no score column required.
+    // FTS path (Turso Tantivy). RRF ranks by result position, so the rows must
+    // arrive in BM25-descending order.
+    //
+    // `SELECT * ... WHERE fts_match(...)` does NOT do that: turso_core routes a
+    // bare match to its unordered streaming path (`FTS_PATTERN_MATCH`, scoring
+    // disabled), which walks per-segment Tantivy scorers and yields rows in
+    // segment/doc order. The row order then varies with segment layout, so the
+    // top hit was effectively arbitrary.
+    //
+    // Selecting `fts_score(...)` with an explicit `ORDER BY score DESC LIMIT`
+    // selects the scored pattern instead, which ranks globally by BM25.
+    // Column 0 is the score; the chunk columns follow (see `row_to_hit`).
     if fts_available(conn).await.unwrap_or(false) {
         let fts_q = sanitize_query(&opts.query);
         if !fts_q.is_empty() {
-            let sql = "SELECT * FROM cg_chunks WHERE fts_match(content, path, name, kind, ?1)".to_string();
+            let sql = format!(
+                "SELECT fts_score(content, path, name, kind, ?1) AS score,
+                        id, path, kind, name, start_line, end_line, content
+                 FROM cg_chunks
+                 WHERE fts_match(content, path, name, kind, ?1)
+                 ORDER BY score DESC
+                 LIMIT {cand}"
+            );
             if let Ok(mut rows) = conn.query(&sql, params![fts_q.as_str()]).await {
                 let mut i = 0usize;
                 while let Some(row) = rows.next().await? {
                     i += 1;
-                    if i > cand {
-                        break;
-                    }
-                    let id: i64 = row.get(0)?;
+                    // The query already caps at `cand` rows via LIMIT.
+                    let id: i64 = row.get(1)?;
                     let rrf = 1.0 / (RRF_K + i as f64);
-                    let hit = row_to_hit(&row, rrf, "fts")?;
+                    let hit = row_to_hit(&row, 1, rrf, "fts")?;
                     ranks
                         .entry(id)
                         .and_modify(|(s, h)| {
@@ -73,7 +87,7 @@ pub async fn hybrid_search(conn: &Connection, embed: &EmbedFn, opts: &SearchOpti
                 i += 1;
                 let id: i64 = row.get(0)?;
                 let rrf = 1.0 / (RRF_K + i as f64);
-                let hit = row_to_hit(&row, rrf, "vector")?;
+                let hit = row_to_hit(&row, 0, rrf, "vector")?;
                 ranks
                     .entry(id)
                     .and_modify(|(s, h)| {
@@ -101,16 +115,22 @@ pub async fn hybrid_search(conn: &Connection, embed: &EmbedFn, opts: &SearchOpti
     Ok(hits)
 }
 
-fn row_to_hit(row: &turso::Row, score: f64, source: &str) -> Result<ChunkHit> {
-    let content: String = row.get(6)?;
+/// Map a result row to a [`ChunkHit`].
+///
+/// `base` is the column index of `id`; the remaining chunk columns follow in
+/// `id, path, kind, name, start_line, end_line, content` order. The vector
+/// query selects them first (`base = 0`), the FTS query puts the BM25 score in
+/// column 0 and shifts them by one (`base = 1`).
+fn row_to_hit(row: &turso::Row, base: usize, score: f64, source: &str) -> Result<ChunkHit> {
+    let content: String = row.get(base + 6)?;
     let snippet = snippet_of(&content, 240);
     Ok(ChunkHit {
-        id: row.get(0)?,
-        path: row.get(1)?,
-        kind: row.get(2)?,
-        name: row.get::<Option<String>>(3)?,
-        start_line: row.get(4)?,
-        end_line: row.get(5)?,
+        id: row.get(base)?,
+        path: row.get(base + 1)?,
+        kind: row.get(base + 2)?,
+        name: row.get::<Option<String>>(base + 3)?,
+        start_line: row.get(base + 4)?,
+        end_line: row.get(base + 5)?,
         score,
         snippet,
         source: source.to_string(),
