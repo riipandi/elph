@@ -27,11 +27,18 @@ pub struct CreateSessionOptions<'a> {
     pub settings: &'a Settings,
     pub cwd: &'a Path,
     pub resume_id: Option<&'a str>,
+    /// When true with `resume_id`, create a new session with that id if missing.
+    pub create_if_missing: bool,
+    /// Optional display name applied on new session create.
+    pub session_name: Option<&'a str>,
     pub provider_override: Option<&'a str>,
     pub model_override: Option<&'a str>,
-    /// Host override for agent mode (e.g. `elph run --brave`). Default: `build`.
+    /// Host override for agent mode (e.g. `elph run --mode`). Default: `build` (TUI)
+    /// or headless caller default (brave for `elph run`).
     /// Not read from settings — mode is per-session.
     pub agent_mode: Option<crate::types::AgentMode>,
+    /// Full system prompt override (replaces compiled coding prompt for this run).
+    pub system_prompt_override: Option<&'a str>,
     /// When set, skips a second [`load_resources`] pass during session bootstrap.
     pub preloaded_resources: Option<LoadResourcesResult>,
     /// When true, MCP discovery is skipped; use [`super::mcp_bootstrap`] to load later.
@@ -92,7 +99,9 @@ pub async fn create_coding_session_with_events(
     if workers_cfg.enabled {
         session_manager = session_manager.with_session_lease(worker_id.clone(), lease_stale_secs);
     }
-    let session = session_manager.create(options.resume_id).await?;
+    let session = session_manager
+        .create_with_options(options.resume_id, options.create_if_missing, options.session_name)
+        .await?;
     let session_id = {
         use elph_agent::session::types::HasSessionId;
         session.metadata().await.session_id().to_string()
@@ -294,47 +303,56 @@ pub async fn create_coding_session_with_events(
     let peers_worker_id = worker_runtime.as_ref().map(|w| w.worker_id.clone());
     let peers_stale = worker_runtime.as_ref().map(|w| w.stale_secs()).unwrap_or(30);
 
-    let system_prompt = SystemPrompt::Dynamic(Arc::new(move |ctx| {
-        let cwd = cwd.clone();
-        let agents_md = agents_md.clone();
-        let mode_state = Arc::clone(&mode_for_prompt);
-        let memory_section = injected_memory.clone();
-        let mut prompt_options = prompt_options.clone();
-        let peers_registry = peers_registry.clone();
-        let peers_project_key = peers_project_key.clone();
-        let peers_worker_id = peers_worker_id.clone();
-        Box::pin(async move {
-            prompt_options.mode = *mode_state.lock().await;
-            if let (Some(reg), Some(pk), Some(wid)) =
-                (peers_registry.as_ref(), peers_project_key.as_ref(), peers_worker_id.as_ref())
-            {
-                if let Ok(peers) = reg.list_live_peers(pk, wid, peers_stale).await {
-                    let summary = peers
-                        .into_iter()
-                        .filter(|p| !p.is_self)
-                        .map(|p| p.name)
-                        .collect::<Vec<_>>()
-                        .join(", ");
-                    prompt_options.worker_peers = if summary.is_empty() { None } else { Some(summary) };
+    let system_prompt = if let Some(override_text) = options.system_prompt_override {
+        SystemPrompt::Static(override_text.to_string())
+    } else {
+        SystemPrompt::Dynamic(Arc::new(move |ctx| {
+            let cwd = cwd.clone();
+            let agents_md = agents_md.clone();
+            let mode_state = Arc::clone(&mode_for_prompt);
+            let memory_section = injected_memory.clone();
+            let mut prompt_options = prompt_options.clone();
+            let peers_registry = peers_registry.clone();
+            let peers_project_key = peers_project_key.clone();
+            let peers_worker_id = peers_worker_id.clone();
+            Box::pin(async move {
+                prompt_options.mode = *mode_state.lock().await;
+                if let (Some(reg), Some(pk), Some(wid)) =
+                    (peers_registry.as_ref(), peers_project_key.as_ref(), peers_worker_id.as_ref())
+                {
+                    if let Ok(peers) = reg.list_live_peers(pk, wid, peers_stale).await {
+                        let summary = peers
+                            .into_iter()
+                            .filter(|p| !p.is_self)
+                            .map(|p| p.name)
+                            .collect::<Vec<_>>()
+                            .join(", ");
+                        prompt_options.worker_peers = if summary.is_empty() { None } else { Some(summary) };
+                    }
                 }
-            }
-            let tool_names: Vec<String> = ctx.active_tools.iter().map(|t| t.name().to_string()).collect();
-            let mut prompt =
-                build_coding_system_prompt(&cwd, &ctx.resources, &tool_names, agents_md.as_deref(), &prompt_options)
-                    .unwrap_or_else(|error| {
-                        log::warn!("coding system prompt render failed: {error}");
-                        elph_agent::DEFAULT_SYSTEM_PROMPT.to_string()
-                    });
+                let tool_names: Vec<String> = ctx.active_tools.iter().map(|t| t.name().to_string()).collect();
+                let mut prompt = build_coding_system_prompt(
+                    &cwd,
+                    &ctx.resources,
+                    &tool_names,
+                    agents_md.as_deref(),
+                    &prompt_options,
+                )
+                .unwrap_or_else(|error| {
+                    log::warn!("coding system prompt render failed: {error}");
+                    elph_agent::DEFAULT_SYSTEM_PROMPT.to_string()
+                });
 
-            // Append memory context section at the end of the system prompt.
-            if let Some(ref mem) = memory_section {
-                prompt.push_str("\n\n");
-                prompt.push_str(mem);
-            }
+                // Append memory context section at the end of the system prompt.
+                if let Some(ref mem) = memory_section {
+                    prompt.push_str("\n\n");
+                    prompt.push_str(mem);
+                }
 
-            prompt
-        })
-    }));
+                prompt
+            })
+        }))
+    };
 
     let model = selection.model.clone();
     let models = Arc::clone(&selection.models);

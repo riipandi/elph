@@ -138,20 +138,46 @@ impl SessionManager {
     }
 
     pub async fn create(&self, resume_id: Option<&str>) -> Result<Session<TursoSessionStorage>> {
+        self.create_with_options(resume_id, false, None).await
+    }
+
+    /// Open or create a session.
+    ///
+    /// - `resume_id` + `create_if_missing=false` → open only (error if missing).
+    /// - `resume_id` + `create_if_missing=true` → open if present, else create with that id.
+    /// - `resume_id=None` → mint a new session id.
+    /// - `name` is stored on create when provided.
+    pub async fn create_with_options(
+        &self,
+        resume_id: Option<&str>,
+        create_if_missing: bool,
+        name: Option<&str>,
+    ) -> Result<Session<TursoSessionStorage>> {
         if let Some(id) = resume_id {
             if let Some(meta) = self.find_metadata(id).await? {
                 return self.open(&meta).await;
             }
-            anyhow::bail!(
-                "session not found: {id} (use `elph session list` or `elph --continue` for the latest in this project)"
-            );
+            if !create_if_missing {
+                anyhow::bail!(
+                    "session not found: {id} (use `elph session list` or `elph --continue` for the latest in this project)"
+                );
+            }
+            return self
+                .create_new_session(Some(id), name)
+                .await
+                .with_context(|| format!("create session with id {id}"));
         }
+        self.create_new_session(None, name).await
+    }
+
+    async fn create_new_session(&self, id: Option<&str>, name: Option<&str>) -> Result<Session<TursoSessionStorage>> {
         let mut session = self
             .repo
             .create(TursoSessionRepoCreateOptions {
                 cwd: self.cwd.clone(),
-                id: None,
+                id: id.map(|s| s.to_string()),
                 parent_session_id: None,
+                name: name.map(|s| s.to_string()),
                 system_prompt: None,
                 ..Default::default()
             })
