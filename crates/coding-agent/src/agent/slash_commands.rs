@@ -30,19 +30,6 @@ fn builtin_with_args(name: &'static str, description: &'static str) -> BuiltinSl
     }
 }
 
-fn builtin_with_args_hint(
-    name: &'static str,
-    description: &'static str,
-    args_hint: &'static str,
-) -> BuiltinSlashCommand {
-    BuiltinSlashCommand {
-        name,
-        description,
-        args_hint: Some(args_hint),
-        hidden: false,
-    }
-}
-
 fn hidden_builtin_with_args(name: &'static str, description: &'static str) -> BuiltinSlashCommand {
     BuiltinSlashCommand {
         name,
@@ -76,23 +63,11 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("clone", "Clone current session"),
         builtin("tree", "Navigate session tree"),
         builtin("trust", "Save project trust decision"),
-        builtin_with_args_hint(
-            "provider",
-            "Manage providers (connect, disconnect, list, update)",
-            "[connect|disconnect|list|update]",
-        ),
-        builtin_with_args_hint(
-            "handover",
-            "Resume a foreign coding-agent session (claude, codex)",
-            "[claude|codex]",
-        ),
-        builtin_with_args_hint("mcp", "MCP servers (auth, logout, list)", "[auth|logout|list]"),
+        builtin_with_args("provider", "Manage providers"),
+        builtin_with_args("handover", "Resume a foreign coding-agent session"),
+        builtin_with_args("mcp", "MCP servers"),
         builtin("new", "Start a new session"),
-        builtin_with_args_hint(
-            "compact",
-            "Compact conversation history",
-            "[--threshold PCT] [--keep-recent TOKENS] [--model MODEL] [--memory-flush]",
-        ),
+        builtin_with_args("compact", "Compact conversation history"),
         builtin("continue", "Resume the interrupted task"),
         builtin("resume", "Resume a different session"),
         builtin("reload", "Reload providers, settings, skills, templates, extensions"),
@@ -812,7 +787,7 @@ mod tests {
         // Palette lists the command with the args hint.
         let commands = slash_commands_for_palette(None, None, None);
         let handover = commands.iter().find(|cmd| cmd.name == "handover").expect("handover");
-        assert_eq!(handover.args_hint.as_deref(), Some("[claude|codex]"));
+        assert_eq!(handover.args_hint.as_deref(), Some("[args]"));
         assert!(!handover.hidden);
     }
 
@@ -990,8 +965,8 @@ mod tests {
     fn mcp_palette_args_hint() {
         let commands = slash_commands_for_palette(None, None, None);
         let mcp = commands.iter().find(|cmd| cmd.name == "mcp").expect("mcp");
-        assert_eq!(mcp.args_hint.as_deref(), Some("[auth|logout|list]"));
-        assert_eq!(mcp.palette_command_label(), "/mcp [auth|logout|list]");
+        assert_eq!(mcp.args_hint.as_deref(), Some("[args]"));
+        assert_eq!(mcp.palette_command_label(), "/mcp [args]");
     }
 
     #[test]

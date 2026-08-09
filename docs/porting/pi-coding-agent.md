@@ -120,8 +120,8 @@ skills) as an **Elph delta**.
   prompt into the current Elph session. New module
   `crates/coding-agent/src/agent/handover/` + design doc
   [handover.md](../design/handover.md).
-- **`/handover codex …`** — accepted arg (`[claude|codex]` palette
-  completions), prints `Codex handover not yet implemented`.
+- **`/handover codex …`** — accepted arg (palette completions),
+  prints `Codex handover not yet implemented`.
 - `SlashDispatch::Handover`, ACP guard (`handler.rs`), TUI slim
   `Handover from Claude Code…` meta line (`tick.rs`).
 

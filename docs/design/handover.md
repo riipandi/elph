@@ -115,7 +115,7 @@ prompt instructs the model to:
   (fixtures are written to a tempdir; never touch the real `~/.claude` /
   `~/.codex`).
 - `crates/coding-agent/src/agent/slash_commands.rs` — `/handover` registration
-  + `SlashDispatch::Handover`, arg completions `[claude|codex]`.
+  + `SlashDispatch::Handover`, arg completions (`claude`, `codex`).
 - `crates/coding-agent/src/tui/slash_handler.rs` — slash execution (resolves +
   reads + injects the turn, or returns a status for missing/ambiguous sessions
   and for unknown tools).
