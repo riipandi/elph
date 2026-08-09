@@ -89,20 +89,25 @@ impl CodingAgentSession {
             self.notice(msg);
         }
 
-        let running = match source {
-            CompactSource::Manual => "Compacting history…",
-            CompactSource::Automatic => "Auto-compacting history…",
-            CompactSource::ModelSwitch => "Compacting history for the new model’s context limit…",
-        };
-        self.notice(running);
-        // Surface the running label on the status row (busy indicator) so the user sees the
-        // agent is actively compacting history — not frozen — while the turn is still busy.
-        let _ = self.ui_tx.send(AgentUiEvent::Status(running.to_string()));
-
-        let before = self.estimate_context_usage().await.ok().map(|(t, _)| t);
+        // Resolve the summarization model up front so it can be shown while compaction runs.
         let model = model_override
             .cloned()
             .unwrap_or_else(|| self.resolve_compaction_model());
+        let model_ref = format!("{}/{}", model.provider.as_str(), model.id);
+
+        let running = match source {
+            CompactSource::Manual => format!("Compacting history with {model_ref}…"),
+            CompactSource::Automatic => format!("Auto-compacting history with {model_ref}…"),
+            CompactSource::ModelSwitch => {
+                format!("Compacting history for the new model’s context limit with {model_ref}…")
+            }
+        };
+        self.notice(running.clone());
+        // Surface the running label on the status row (busy indicator) so the user sees the
+        // agent is actively compacting history — not frozen — while the turn is still busy.
+        let _ = self.ui_tx.send(AgentUiEvent::Status(running.clone()));
+
+        let before = self.estimate_context_usage().await.ok().map(|(t, _)| t);
         let result = self
             .harness
             .compact(custom_instructions, Some(&model))
@@ -124,7 +129,7 @@ impl CodingAgentSession {
             .map(|t| format!("~{t}"))
             .unwrap_or_else(|| "?".into());
         let after_s = after.map(|t| format!("~{t}")).unwrap_or_else(|| "?".into());
-        self.notice(format!("Compaction complete: {before_s} → {after_s} tokens."));
+        self.notice(format!("Compaction complete: {before_s} → {after_s} tokens using {model_ref}."));
         Ok(result)
     }
 
