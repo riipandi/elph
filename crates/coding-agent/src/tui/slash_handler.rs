@@ -473,7 +473,10 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             let cwd = ctx.cwd.map(|path| path.to_path_buf());
             let extension_host = ctx.extension_host.cloned();
             SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
-            SlashOutcome::BackgroundTask
+            // Quiet background work: no slash input echo, no prompt-history entry.
+            // The task reports via AgentUiEvent (Status / notices), and the agent
+            // loop derives busy state — a failure never strands a stale busy UI.
+            SlashOutcome::BackgroundTaskQuiet
         }
         SlashDispatch::Skill { ref name, ref args } => {
             if let Some(skills) = ctx.skills

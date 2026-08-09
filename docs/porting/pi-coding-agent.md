@@ -63,6 +63,12 @@ Now:
   meta notice is shown ("Command /x queued — runs after the current task.");
   when idle, the normal echo/busy flow applies. Normal text prompts are
   unaffected (they still queue/steer as user input).
+- **Quiet background commands** — `/reload`, `/goal`, `/extension` (and
+  `/handover`) return `SlashOutcome::BackgroundTaskQuiet`: the slash input is
+  never echoed as a user card and never enters prompt history; the task reports
+  via `AgentUiEvent` (Status / notices) and busy state derives from the agent
+  loop, so a failure cannot strand a stale busy UI. (`/memory` keeps the plain
+  `BackgroundTask` echo.)
 - Consequence: `.jsonl.zst` still unsupported, but the busy-path semantic gap
   (raw text vs. real action) is closed for every turn-spawning command.
 
