@@ -44,7 +44,7 @@ Other slash commands (`/compact`, `/help`, …) are **not** supported in headles
 | `--no-session` | Delete session after the run (not resumable) |
 | `--cwd <path>` | Working directory / project root |
 | `--max-turns <N>` | Abort after N tool starts |
-| `--output-format <…>` | `plain` (default), `json`, `stream-json`, `stream-message-json` |
+| `--output-format` / `--output` | `plain` (default, raw tokens), **`pretty`** (streaming CommonMark via streamdown), `json`, `stream-json`, `stream-message-json` |
 | `--effort` / `--reasoning-effort` | `off\|low\|medium\|high\|xhigh\|max` |
 | `--session-id <id>` | Open or create that session id |
 | `-r, --resume <id>` | Resume existing session (error if missing) |
@@ -84,7 +84,20 @@ Unless `--no-session`, stderr prints a **dimmed** turn block with blank lines ab
 
 ### Plain streaming (stdout)
 
-Transcript-style **token streaming**: as soon as the first `TextDelta` arrives, the wait line is cleared and tokens print to stdout as they land. Mid-turn tools emit a dim one-liner on stderr (`  · tool \`name\``) without decorations. No borders, cards, or mouse capture.
+**No wait indicator.** Tokens stream to stdout **as-is** (no markdown styling, no tool chrome, no spinner). Only the dim turn footer (session/model/context) is printed on stderr after the turn when a session is kept.
+
+### Pretty markdown (`--output=pretty` / `--output-format=pretty`)
+
+Streaming **CommonMark/markdown** render via [`streamdown-parser` + `streamdown-render`](https://github.com/fed-stew/streamdown-rs) (uses **crossterm** for terminal width — same family as iocraft). Line-oriented: tokens buffer until `\n`, then parse + ANSI render; open fences/lists closed on turn end.
+
+```sh
+elph run --output=pretty "explain this crate in markdown"
+elph run --output-format=pretty "/skill:code-review"
+```
+
+- **TTY only** for styled output; non-TTY / `NO_COLOR` falls back to raw text (like plain).
+- Aliases: `markdown`, `md`.
+- Not used for `json` / machine stream formats.
 
 ### Runtime
 

@@ -9,6 +9,7 @@ use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 use super::events::AgentUiEvent;
 use super::headless_status::HeadlessStatus;
+use super::pretty_markdown::PrettyMarkdownSink;
 use super::runtime::CreateSessionOptions;
 use super::runtime::create_coding_session_with_events;
 use super::slash_commands::{SlashDispatch, dispatch_slash_command};
@@ -17,10 +18,13 @@ use crate::platform::{Paths, Settings};
 use crate::tui::labels::format_token_count;
 use crate::types::{AgentMode, ThinkingLevel};
 
-/// Headless stdout shape (Grok/Pi-inspired).
+/// Headless stdout shape (Grok/Pi-inspired + pretty markdown).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OutputFormat {
+    /// Raw model text as-is (token stream).
     Plain,
+    /// Streaming CommonMark/markdown rendered to the terminal (streamdown + crossterm width).
+    Pretty,
     Json,
     StreamJson,
     StreamMessageJson,
@@ -30,10 +34,13 @@ impl OutputFormat {
     pub fn parse(raw: &str) -> Result<Self> {
         match raw.trim().to_ascii_lowercase().as_str() {
             "plain" | "text" => Ok(Self::Plain),
+            "pretty" | "markdown" | "md" => Ok(Self::Pretty),
             "json" => Ok(Self::Json),
             "stream-json" | "streaming-json" => Ok(Self::StreamJson),
             "stream-message-json" | "streaming-messages-json" | "streaming-message-json" => Ok(Self::StreamMessageJson),
-            other => bail!("unknown --output-format `{other}` (expected plain|json|stream-json|stream-message-json)"),
+            other => bail!(
+                "unknown --output-format `{other}` (expected plain|pretty|json|stream-json|stream-message-json)"
+            ),
         }
     }
 }
@@ -63,10 +70,16 @@ pub struct RunModeResult {
 }
 
 pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeResult> {
-    // Lightweight ANSI wait line on stderr (no iocraft). Guaranteed teardown via Drop.
-    let status = HeadlessStatus::start(bootstrap_message(&options));
+    // Wait line only for non-plain formats (pretty/json/streams). Plain = raw model
+    // text only — no spinner / status chrome.
+    let status = if matches!(options.output_format, OutputFormat::Plain) {
+        HeadlessStatus::silent()
+    } else {
+        let s = HeadlessStatus::start(bootstrap_message(&options));
+        s.set("Loading providers, tools, and session…");
+        s
+    };
 
-    status.set("Loading providers, tools, and session…");
     let session_result = create_coding_session_with_events(CreateSessionOptions {
         paths: options.paths,
         settings: options.settings,
@@ -139,35 +152,43 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
         }
     }
 
-    // Event task: live status + streaming plain text (transcript-style, no chrome).
+    // Event task: live status + streaming plain / pretty markdown.
     let status_handle = status.handle();
     let mode_label = options.mode.footer_label().to_string();
     let model_for_events = model_label.clone();
     let stream_task = tokio::spawn(async move {
         let mut msg_started = false;
-        let mut streaming_plain = false;
+        let mut streaming_out = false;
+        let mut pretty = PrettyMarkdownSink::new();
         while let Some(event) = ui_rx.recv().await {
             match format {
                 OutputFormat::Plain => match &event {
                     AgentUiEvent::TextDelta(text) => {
-                        if !streaming_plain {
-                            status_handle.finish();
-                            streaming_plain = true;
-                        }
+                        streaming_out = true;
                         print!("{text}");
                         let _ = std::io::stdout().flush();
                         plain_streamed_w.store(true, Ordering::Relaxed);
                     }
-                    AgentUiEvent::ToolStart { name, args_summary, .. } if streaming_plain => {
-                        let detail = args_summary.trim();
-                        let line = if detail.is_empty() {
-                            format!("  · tool `{name}`")
-                        } else {
-                            format!("  · tool `{name}` · {}", truncate_chars(detail, 48))
-                        };
-                        eprintln!("{}", CliStyle::auto_stderr().paint(S_MUTED, line));
+                    // No tool chrome / status in plain — raw response only.
+                    _ => {}
+                },
+                OutputFormat::Pretty => match &event {
+                    AgentUiEvent::TextDelta(text) => {
+                        if !streaming_out {
+                            status_handle.finish();
+                            streaming_out = true;
+                        }
+                        if let Err(err) = pretty.push_delta(text) {
+                            log::warn!("pretty markdown render: {err}");
+                        }
+                        if pretty.wrote_output() {
+                            plain_streamed_w.store(true, Ordering::Relaxed);
+                        }
                     }
-                    _ if !streaming_plain => {
+                    AgentUiEvent::ToolStart { name, args_summary, .. } if streaming_out => {
+                        emit_tool_stderr(name, args_summary);
+                    }
+                    _ if !streaming_out => {
                         update_status_for_event(&status_handle, &event, &model_for_events, &mode_label);
                     }
                     _ => {}
@@ -215,6 +236,14 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
             }
             if matches!(event, AgentUiEvent::RunCompleted { .. }) {
                 break;
+            }
+        }
+        if matches!(format, OutputFormat::Pretty) {
+            if let Err(err) = pretty.finish() {
+                log::warn!("pretty markdown finalize: {err}");
+            }
+            if pretty.wrote_output() {
+                plain_streamed_w.store(true, Ordering::Relaxed);
             }
         }
     });
@@ -270,6 +299,17 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
                     println!("{assistant_text}");
                 }
             } else {
+                println!();
+            }
+        }
+        OutputFormat::Pretty => {
+            // Primary path streams via PrettyMarkdownSink. Fallback: full answer once.
+            if !plain_streamed.load(Ordering::Relaxed) && !assistant_text.is_empty() {
+                let mut pretty = PrettyMarkdownSink::new();
+                pretty.push_delta(&assistant_text)?;
+                pretty.finish()?;
+                println!();
+            } else if plain_streamed.load(Ordering::Relaxed) {
                 println!();
             }
         }
@@ -514,6 +554,16 @@ fn update_status_for_event(status: &HeadlessStatus, event: &AgentUiEvent, model:
     }
 }
 
+fn emit_tool_stderr(name: &str, args_summary: &str) {
+    let detail = args_summary.trim();
+    let line = if detail.is_empty() {
+        format!("  · tool `{name}`")
+    } else {
+        format!("  · tool `{name}` · {}", truncate_chars(detail, 48))
+    };
+    eprintln!("{}", CliStyle::auto_stderr().paint(S_MUTED, line));
+}
+
 fn shorten_status(msg: &str) -> String {
     let one_line = msg.lines().next().unwrap_or(msg).trim();
     truncate_chars(one_line, 72).to_string()
@@ -745,6 +795,8 @@ mod tests {
     fn output_format_aliases() {
         assert_eq!(OutputFormat::parse("text").unwrap(), OutputFormat::Plain);
         assert_eq!(OutputFormat::parse("plain").unwrap(), OutputFormat::Plain);
+        assert_eq!(OutputFormat::parse("pretty").unwrap(), OutputFormat::Pretty);
+        assert_eq!(OutputFormat::parse("markdown").unwrap(), OutputFormat::Pretty);
         assert_eq!(OutputFormat::parse("streaming-json").unwrap(), OutputFormat::StreamJson);
         assert_eq!(
             OutputFormat::parse("streaming-messages-json").unwrap(),

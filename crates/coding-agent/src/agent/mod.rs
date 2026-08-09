@@ -15,6 +15,7 @@ pub mod prompt;
 pub(crate) mod provider;
 mod provider_catalog;
 mod headless_status;
+mod pretty_markdown;
 mod resource_loader;
 mod run_mode;
 mod runtime;

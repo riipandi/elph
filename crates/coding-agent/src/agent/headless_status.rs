@@ -31,11 +31,26 @@ struct Inner {
 }
 
 impl HeadlessStatus {
+    /// No wait line at all (used for `--output=plain`: raw model stream only).
+    pub fn silent() -> Self {
+        Self {
+            inner: Arc::new(Inner {
+                message: Mutex::new(String::new()),
+                finished: AtomicBool::new(true),
+                enabled: false,
+                started: Instant::now(),
+                tick: Mutex::new(None),
+                frame: Mutex::new(0),
+            }),
+            owner: true,
+        }
+    }
+
     pub fn start(message: impl Into<String>) -> Self {
         let message = message.into();
         let enabled = status_enabled();
         if !enabled {
-            // One quiet line so non-TTY still shows something once.
+            // Non-TTY: one quiet line so scripts still see progress once.
             let _ = writeln!(stderr(), "{message}");
             return Self {
                 inner: Arc::new(Inner {

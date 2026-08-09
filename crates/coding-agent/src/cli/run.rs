@@ -49,8 +49,16 @@ pub struct RunArgs {
     #[arg(long = "max-turns", value_name = "N")]
     pub max_turns: Option<u32>,
 
-    /// Output format: plain | json | stream-json | stream-message-json
-    #[arg(long = "output-format", value_name = "FORMAT", default_value = "plain")]
+    /// Output format: plain | pretty | json | stream-json | stream-message-json
+    ///
+    /// `pretty` renders CommonMark/markdown to the terminal (streamdown; crossterm width).
+    /// Aliases: `--output` (same values). `markdown` / `md` map to `pretty`.
+    #[arg(
+        long = "output-format",
+        visible_alias = "output",
+        value_name = "FORMAT",
+        default_value = "plain"
+    )]
     pub output_format: String,
 
     /// Reasoning / thinking effort: off | low | medium | high | xhigh | max
