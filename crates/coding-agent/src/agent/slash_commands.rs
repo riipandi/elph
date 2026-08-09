@@ -262,7 +262,7 @@ pub enum SlashDispatch {
     Export {
         args: String,
     },
-    /// Import guidance (`/import [path]`).
+    /// Import session JSONL (`/import [path]`).
     Import {
         args: String,
     },
@@ -272,8 +272,10 @@ pub enum SlashDispatch {
     Fork,
     /// Clone current session (`/clone`).
     CloneSession,
-    /// List session tree entries (`/tree`).
-    Tree,
+    /// Session tree inspect / navigate (`/tree [entry_id] [--summary]`).
+    Tree {
+        args: String,
+    },
     /// List sessions or switch (`/resume [id]`).
     Resume {
         args: String,
@@ -623,7 +625,7 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
         "scoped-models" | "scoped_models" | "scopedmodels" => {
             Some(SlashDispatch::OverlayNeeded(OverlayCommand::ScopedModels))
         }
-        "tree" => Some(SlashDispatch::Tree),
+        "tree" => Some(SlashDispatch::Tree { args }),
         "resume" => Some(SlashDispatch::Resume { args }),
         "new" => Some(SlashDispatch::NewSession),
         "feedback" => Some(SlashDispatch::Feedback),
@@ -901,7 +903,16 @@ mod tests {
             dispatch_slash_command("/model opus", None, None, None),
             Some(SlashDispatch::OverlayNeeded(OverlayCommand::Model { filter: "opus".into() }))
         );
-        assert_eq!(dispatch_slash_command("/tree", None, None, None), Some(SlashDispatch::Tree));
+        assert_eq!(
+            dispatch_slash_command("/tree", None, None, None),
+            Some(SlashDispatch::Tree { args: String::new() })
+        );
+        assert_eq!(
+            dispatch_slash_command("/tree abc --summary", None, None, None),
+            Some(SlashDispatch::Tree {
+                args: "abc --summary".into()
+            })
+        );
         assert_eq!(
             dispatch_slash_command("/resume", None, None, None),
             Some(SlashDispatch::Resume { args: String::new() })

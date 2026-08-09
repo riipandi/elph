@@ -231,7 +231,8 @@ elph built-in **names** largely mirror pi, plus `/provider`, `/help`, `/exit`. D
 
 - Registry list — **[Partial]** (names present)
 - Dispatch / handlers — **[Gap]** in behavior (mostly `slash_stub_message`)
-- `/model`, `/tree`, selectors — **[Partial]** (overlays partially stubbed)
+- `/model`, selectors — **[Partial]** (overlays partially stubbed)
+- `/tree` — **[Partial]** (list + jump + optional summary; no interactive TreeSelector yet)
 - `/login` / `/logout` — **[Partial]** (CLI `provider` + oauth infra)
 - `/scoped-models` — **[Partial]** (editor + Ctrl+P cycle; no keybinding remaps / null=all semantics)
 - `/share` — **[Gap]**
@@ -275,7 +276,7 @@ Typical flags: `--model`, `--provider`, `--thinking`, `--continue`/`-c`, `--resu
 - `run` — **[Partial]** (print mode)
 - `session`, `models`, `completions` — present
 - `provider` — **[Partial]** (many stubs; login/auth storage)
-- `export` / `import` — **stub** vs pi export/import/HTML
+- `export` / `import` — **[Partial]** JSONL full-tree export + import-to-new-session (Pi intent); HTML export / gist share still gap
 - `mcp` — **[Partial]** stubs (pi MCP packaging differs)
 - `plugin` / extensions — **[Partial]** vs pi extensions + package manager
 - `doctor`, `stats`, `update` — **stubs**

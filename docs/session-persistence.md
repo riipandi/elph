@@ -59,6 +59,19 @@ Canonical SQL: `elph-agent` `CANONICAL_SESSION_SCHEMA_SQL` / platform migration 
 
 Messages are flushed on each `MessageEnd` into `session_entries` (transactional with leaf). Do not rely on UI snapshot blobs.
 
+## Export / import / tree (product surface)
+
+| Command | Behavior |
+| --- | --- |
+| `/export [path]` | Writes the **full** session DAG as JSONL (`SessionTreeEntry` per line). Default path: `./elph-session-<shortid>.jsonl`. |
+| `/import <path.jsonl>` | Creates a **new** Turso session for the current project, appends all lines, then switches the TUI to that session (`/resume` equivalent). CLI: `elph import <file>`. |
+| `/tree` | Inspect the full entry tree (ASCII); leaf marked with `●`. |
+| `/tree <entry_id> [--summary]` | Pi-style navigate: move active leaf to that entry; optional abandoned-branch summary via harness `navigate_tree`. Reloads the transcript so the UI matches the new leaf. |
+| `/tree --branch` | List only the active branch path (message previews). |
+| `/trust` | Records the workspace under `CONFIG_DIR/trust.json` (`directories` map). Not project `.elph/trusted`. |
+
+**Design note — tree UX:** Elph adopts **Pi’s conversation-tree model** (entry DAG + leaf jump + branch summary). Grok Build’s strengths (`/resume` picker polish, `/rewind` file snapshots, multi-session dashboard) are complementary session-management UX, not a substitute for entry-level branching. Codex is closer to linear resume/fork and does not map to Elph’s `session_entries` tree.
+
 ## Turns, modes, and foundation model
 
 One **session** is a durable conversation container (cwd, name, leaf, rollups). Inside it:

@@ -149,35 +149,228 @@ pub async fn resume_list_message(session: &CodingAgentSession) -> Result<String,
     Ok(lines.join("\n"))
 }
 
+/// List the full session DAG (Pi `/tree` inspect view) and how to jump.
 pub async fn tree_list_message(session: &CodingAgentSession) -> Result<String, String> {
+    let entries = session
+        .session_tree_entries()
+        .await
+        .map_err(|e| format!("session entries: {e:#}"))?;
+    let leaf = session.leaf_id().await.map_err(|e| format!("leaf: {e:#}"))?;
+    let mut lines = vec![
+        "Session tree".into(),
+        "────────────".into(),
+        format!("  Leaf     {}", leaf.as_deref().unwrap_or("(root)")),
+        format!("  Entries  {}", entries.len()),
+        String::new(),
+    ];
+    if entries.is_empty() {
+        lines.push("  (empty session)".into());
+    } else {
+        let rendered = render_session_tree_lines(&entries, leaf.as_deref(), 80);
+        lines.extend(rendered);
+    }
+    lines.push(String::new());
+    lines.push("Navigate (Pi-style):".into());
+    lines.push("  /tree <entry_id>           jump leaf to that entry".into());
+    lines.push("  /tree <entry_id> --summary jump and summarize abandoned branch".into());
+    lines.push("  /tree --branch             list only the active branch path".into());
+    Ok(lines.join("\n"))
+}
+
+/// `/tree` with optional args: list, jump, jump+summary, or branch-only list.
+pub async fn tree_slash_message(session: &CodingAgentSession, args: &str) -> Result<String, String> {
+    let args = args.trim();
+    if args.is_empty() {
+        return tree_list_message(session).await;
+    }
+    if args == "--branch" || args == "branch" {
+        return tree_branch_only_message(session).await;
+    }
+
+    let mut summarize = false;
+    let mut target = None::<String>;
+    for tok in args.split_whitespace() {
+        match tok {
+            "--summary" | "-s" | "summary" => summarize = true,
+            t if t.starts_with('-') => {
+                return Err(format!("unknown /tree flag: {t}"));
+            }
+            t => {
+                if target.is_some() {
+                    return Err("usage: /tree [entry_id] [--summary] | /tree --branch".into());
+                }
+                target = Some(t.to_string());
+            }
+        }
+    }
+    let Some(entry_id) = target else {
+        return tree_list_message(session).await;
+    };
+
+    session
+        .navigate_tree_to_with_options(&entry_id, summarize)
+        .await
+        .map_err(|e| format!("navigate failed: {e:#}"))?;
+
+    Ok(format!(
+        "Navigated to entry\n\
+         ─────────────────\n\
+         Target   {entry_id}\n\
+         Summary  {}\n\
+         \n\
+         Context now follows this leaf. Continue chatting, or /tree to inspect.",
+        if summarize { "requested" } else { "skipped" }
+    ))
+}
+
+async fn tree_branch_only_message(session: &CodingAgentSession) -> Result<String, String> {
     let entries = session
         .branch_entries()
         .await
         .map_err(|e| format!("branch entries: {e:#}"))?;
     let items = list_tree_select_items(&entries);
     let mut lines = vec![
-        "Session tree (current branch)".into(),
-        "─────────────────────────────".into(),
+        "Active branch path".into(),
+        "──────────────────".into(),
         format!("  Entries  {}", items.len()),
         String::new(),
     ];
     if items.is_empty() {
         lines.push("  (empty branch)".into());
     } else {
-        for (i, item) in items.iter().take(60).enumerate() {
+        for (i, item) in items.iter().take(80).enumerate() {
             let desc = item.description.as_deref().unwrap_or("");
-            lines.push(format!("{:3}. {}", i + 1, item.label));
+            lines.push(format!("{:3}. {}  ({})", i + 1, item.label, item.value));
             if !desc.is_empty() {
                 lines.push(format!("      {desc}"));
             }
         }
-        if items.len() > 60 {
-            lines.push(format!("  … and {} more", items.len() - 60));
+        if items.len() > 80 {
+            lines.push(format!("  … and {} more", items.len() - 80));
         }
     }
     lines.push(String::new());
-    lines.push("Tip: the TUI follows the active leaf; use /resume to open another session.".into());
+    lines.push("Jump: /tree <entry_id>   Full tree: /tree".into());
     Ok(lines.join("\n"))
+}
+
+fn render_session_tree_lines(
+    entries: &[elph_agent::SessionTreeEntry],
+    leaf_id: Option<&str>,
+    max_rows: usize,
+) -> Vec<String> {
+    use std::collections::HashMap;
+    let mut children: HashMap<Option<String>, Vec<usize>> = HashMap::new();
+    for (i, e) in entries.iter().enumerate() {
+        children.entry(e.parent_id().map(str::to_string)).or_default().push(i);
+    }
+    let mut out = Vec::new();
+    fn walk(
+        entries: &[elph_agent::SessionTreeEntry],
+        children: &HashMap<Option<String>, Vec<usize>>,
+        parent: Option<&str>,
+        prefix: &str,
+        leaf_id: Option<&str>,
+        out: &mut Vec<String>,
+        max_rows: usize,
+    ) {
+        if out.len() >= max_rows {
+            return;
+        }
+        let key = parent.map(str::to_string);
+        let Some(idxs) = children.get(&key) else {
+            return;
+        };
+        for (pos, &i) in idxs.iter().enumerate() {
+            if out.len() >= max_rows {
+                out.push(format!("  … truncated ({max_rows} rows)"));
+                return;
+            }
+            let e = &entries[i];
+            let is_last = pos + 1 == idxs.len();
+            let branch = if is_last { "└─ " } else { "├─ " };
+            let mark = if leaf_id == Some(e.id()) { "●" } else { " " };
+            let label = tree_entry_label(e);
+            let short_id: String = e.id().chars().take(8).collect();
+            out.push(format!("{prefix}{branch}{mark} {short_id}  {label}"));
+            let child_prefix = format!("{prefix}{}", if is_last { "   " } else { "│  " });
+            walk(entries, children, Some(e.id()), &child_prefix, leaf_id, out, max_rows);
+        }
+    }
+    walk(entries, &children, None, "", leaf_id, &mut out, max_rows);
+    if out.is_empty() {
+        // Orphan-only / missing roots — fall back to flat list.
+        for e in entries.iter().take(max_rows) {
+            let mark = if leaf_id == Some(e.id()) { "●" } else { " " };
+            let short_id: String = e.id().chars().take(8).collect();
+            out.push(format!("  {mark} {short_id}  {}", tree_entry_label(e)));
+        }
+    }
+    out
+}
+
+fn tree_entry_label(entry: &elph_agent::SessionTreeEntry) -> String {
+    use elph_agent::SessionTreeEntry;
+    match entry {
+        SessionTreeEntry::Message { message, .. } => {
+            let role = message.role();
+            let preview = match message {
+                elph_agent::AgentMessage::Llm(msg) => match msg.as_ref() {
+                    elph_ai::Message::User { content, .. } => match content {
+                        elph_ai::UserContent::Text(t) => t.chars().take(48).collect::<String>(),
+                        elph_ai::UserContent::Blocks(blocks) => blocks
+                            .iter()
+                            .filter_map(|b| match b {
+                                elph_ai::ContentBlock::Text { text } => Some(text.as_str()),
+                                _ => None,
+                            })
+                            .collect::<Vec<_>>()
+                            .join(" ")
+                            .chars()
+                            .take(48)
+                            .collect(),
+                    },
+                    elph_ai::Message::Assistant(a) => a
+                        .content
+                        .iter()
+                        .filter_map(|b| match b {
+                            elph_ai::AssistantContentBlock::Text(t) => Some(t.text.as_str()),
+                            _ => None,
+                        })
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                        .chars()
+                        .take(48)
+                        .collect(),
+                    elph_ai::Message::ToolResult { tool_name, .. } => tool_name.clone(),
+                },
+                other => format!("{other:?}").chars().take(48).collect(),
+            };
+            let preview = preview.replace('\n', " ");
+            format!("{role}: {preview}")
+        }
+        SessionTreeEntry::BranchSummary { summary, .. } => {
+            format!("branch: {}", summary.chars().take(48).collect::<String>())
+        }
+        SessionTreeEntry::Compaction { .. } => "compaction".into(),
+        SessionTreeEntry::ModelChange { provider, model_id, .. } => {
+            format!("model: {provider}/{model_id}")
+        }
+        SessionTreeEntry::ThinkingLevelChange { thinking_level, .. } => {
+            format!("thinking: {thinking_level}")
+        }
+        SessionTreeEntry::Label { label, .. } => {
+            format!("label: {}", label.as_deref().unwrap_or("(cleared)"))
+        }
+        SessionTreeEntry::SessionInfo { name, .. } => {
+            format!("session: {}", name.as_deref().unwrap_or("(unnamed)"))
+        }
+        SessionTreeEntry::Leaf { .. } => "leaf".into(),
+        SessionTreeEntry::Custom { custom_type, .. } => format!("custom:{custom_type}"),
+        SessionTreeEntry::CustomMessage { custom_type, .. } => format!("msg:{custom_type}"),
+        SessionTreeEntry::ActiveToolsChange { .. } => "tools".into(),
+        SessionTreeEntry::CollaborationModeChange { mode, .. } => format!("mode: {mode:?}"),
+    }
 }
 
 pub async fn export_session_message(session: &CodingAgentSession, cwd: &Path, args: &str) -> Result<String, String> {
@@ -190,10 +383,11 @@ pub async fn export_session_message(session: &CodingAgentSession, cwd: &Path, ar
         let p = Path::new(out);
         if p.is_absolute() { p.to_path_buf() } else { cwd.join(p) }
     };
+    // Full session DAG (not only the active branch) so /import restores forks.
     let entries = session
-        .branch_entries()
+        .session_tree_entries()
         .await
-        .map_err(|e| format!("read branch: {e:#}"))?;
+        .map_err(|e| format!("read entries: {e:#}"))?;
     let mut body = String::new();
     for entry in &entries {
         let line = serde_json::to_string(entry).map_err(|e| format!("serialize: {e}"))?;
@@ -205,41 +399,101 @@ pub async fn export_session_message(session: &CodingAgentSession, cwd: &Path, ar
     }
     std::fs::write(&path, body).map_err(|e| format!("write {}: {e}", path.display()))?;
     Ok(format!(
-        "Exported {} entries → {}\nTip: restore via store tools or /resume after import.",
+        "Exported {} entries → {}\nRestore: /import {}  (or: elph import {})",
         entries.len(),
+        path.display(),
+        path.display(),
         path.display()
     ))
 }
 
+/// Parse `/import` / `/export` path args like Pi (`"quoted paths"`, unquoted first token).
+pub fn path_command_argument(args: &str) -> Option<String> {
+    let args = args.trim_start();
+    if args.is_empty() {
+        return None;
+    }
+    let first = args.chars().next()?;
+    if first == '"' || first == '\'' {
+        let rest = &args[first.len_utf8()..];
+        let end = rest.find(first)?;
+        return Some(rest[..end].to_string());
+    }
+    let end = args.find(char::is_whitespace).unwrap_or(args.len());
+    Some(args[..end].to_string())
+}
+
+fn resolve_import_path(cwd: &Path, input: &str) -> std::path::PathBuf {
+    let p = Path::new(input);
+    if p.is_absolute() { p.to_path_buf() } else { cwd.join(p) }
+}
+
+/// Import JSONL into a new Turso session (Pi `/import` intent).
+///
+/// Returns `(status_message, new_session_id)` so the TUI can switch via resume.
+pub async fn import_session_from_jsonl(
+    session: &CodingAgentSession,
+    cwd: &Path,
+    args: &str,
+) -> Result<(String, String), String> {
+    let Some(input) = path_command_argument(args) else {
+        return Err("Usage: /import <path.jsonl>\n\
+             Imports exported session entries into a new session, then switch with /resume."
+            .into());
+    };
+    let path = resolve_import_path(cwd, &input);
+    if !path.is_file() {
+        return Err(format!("Import file not found: {}", path.display()));
+    }
+    let sm = session.session_manager();
+    let (new_id, n) = sm
+        .import_from_jsonl(&path)
+        .await
+        .map_err(|e| format!("import failed: {e:#}"))?;
+    Ok((
+        format!(
+            "Session imported\n\
+             ───────────────\n\
+             File     {}\n\
+             Entries  {n}\n\
+             New id   {new_id}\n\
+             \n\
+             Switching to the imported session…",
+            path.display()
+        ),
+        new_id,
+    ))
+}
+
+/// Usage / help when `/import` has no path (and non-async call sites).
 pub fn import_slash_message(args: &str) -> String {
-    let path = args.trim();
-    if path.is_empty() {
+    if path_command_argument(args).is_none() {
         "Import session JSONL\n\
          ───────────────────\n\
          Usage: /import <path.jsonl>\n\
          \n\
-         Mid-TUI import would replace the live session. Prefer exporting with\n\
-         /export, then starting a forked session (/clone) or CLI resume after restore."
+         Loads an `/export` (or compatible) JSONL file into a **new** session for this\n\
+         project, then switches the TUI to it (Pi-style import + resume).\n\
+         Paths may be quoted when they contain spaces."
             .into()
     } else {
-        format!(
-            "Import from `{path}` is not applied mid-TUI (would replace the live session).\n\
-             Current session is unchanged. Use /export, /clone, or elph --resume <id>."
-        )
+        // Handlers should call `import_session_from_jsonl`; keep a clear fallback.
+        format!("Use /import with a live agent session to import `{}`.", args.trim())
     }
 }
 
-pub fn trust_slash_message(cwd: &Path) -> Result<String, String> {
-    let trust_dir = cwd.join(".elph");
-    let trust_file = trust_dir.join("trusted");
-    std::fs::create_dir_all(&trust_dir).map_err(|e| format!("mkdir .elph: {e}"))?;
-    std::fs::write(&trust_file, b"1\n").map_err(|e| format!("write trust: {e}"))?;
+/// Trust the project cwd in `CONFIG_DIR/trust.json` (see docs/archive/configuration.md).
+pub fn trust_slash_message(paths: &Paths, cwd: &Path) -> Result<String, String> {
+    use crate::platform::scaffold::TrustStore;
+    let key = TrustStore::trust_directory(paths, cwd).map_err(|e| format!("trust failed: {e:#}"))?;
     Ok(format!(
         "Project trusted\n\
          ───────────────\n\
-         Wrote {}\n\
-         Elph will treat this workspace as trusted for local automation defaults.",
-        trust_file.display()
+         Directory  {key}\n\
+         Store      {}\n\
+         \n\
+         Project-local extensions under .elph/extensions/ may load in trusted workspaces.",
+        paths.trust_path().display()
     ))
 }
 

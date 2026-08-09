@@ -930,8 +930,20 @@ impl CodingAgentSession {
     }
 
     pub async fn navigate_tree_to(&self, entry_id: &str) -> Result<()> {
+        self.navigate_tree_to_with_options(entry_id, false).await
+    }
+
+    /// Move the session leaf to `entry_id` (Pi `/tree` jump). Optional branch summary.
+    pub async fn navigate_tree_to_with_options(&self, entry_id: &str, summarize: bool) -> Result<()> {
+        use elph_agent::NavigateTreeOptions;
         self.harness
-            .navigate_tree(entry_id, None)
+            .navigate_tree(
+                entry_id,
+                Some(NavigateTreeOptions {
+                    summarize,
+                    ..Default::default()
+                }),
+            )
             .await
             .map(|_| ())
             .map_err(|e| anyhow::anyhow!("{e}"))
@@ -942,6 +954,15 @@ impl CodingAgentSession {
             .session_branch_entries()
             .await
             .map_err(|e| anyhow::anyhow!("{e}"))
+    }
+
+    /// All session tree entries (full DAG), not just the active branch path.
+    pub async fn session_tree_entries(&self) -> Result<Vec<elph_agent::SessionTreeEntry>> {
+        Ok(self.harness.session_entries().await)
+    }
+
+    pub async fn leaf_id(&self) -> Result<Option<String>> {
+        self.harness.session_leaf_id().await.map_err(|e| anyhow::anyhow!("{e}"))
     }
 
     /// Persist a full TUI transcript snapshot so `--resume` restores live card state

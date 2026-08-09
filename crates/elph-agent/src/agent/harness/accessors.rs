@@ -44,6 +44,10 @@ where
             .map_err(session_error)
     }
 
+    pub async fn session_leaf_id(&self) -> HarnessOpResult<Option<String>> {
+        self.shared.session.lock().await.leaf_id().await.map_err(session_error)
+    }
+
     pub async fn phase(&self) -> AgentHarnessPhase {
         *self.shared.phase.lock().await
     }

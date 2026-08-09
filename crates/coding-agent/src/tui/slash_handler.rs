@@ -8,9 +8,10 @@ use elph_agent::{ExtensionRegistry, PromptTemplate, Skill};
 use crate::agent::RETRY_CONTINUE_PROMPT;
 use crate::agent::{
     HOTKEYS_TEXT, changelog_text, clone_session_message, confetti_mode_from_args, dispatch_slash_command,
-    export_session_message, fork_session_message, format_help_message, import_slash_message, resume_list_message,
-    session_info_slash_message, session_title_for_rename, settings_slash_message, slash_unimplemented_message,
-    system_prompt_slash_message, tools_slash_message, tree_list_message, trust_slash_message, workers_slash_message,
+    export_session_message, fork_session_message, format_help_message, import_session_from_jsonl, import_slash_message,
+    resume_list_message, session_info_slash_message, session_title_for_rename, settings_slash_message,
+    slash_unimplemented_message, system_prompt_slash_message, tools_slash_message, tree_slash_message,
+    trust_slash_message, workers_slash_message,
 };
 use crate::agent::{HandoverError, HandoverSession, OverlayCommand, SlashDispatch};
 use crate::extensions::ExtensionHost;
@@ -441,14 +442,34 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
                 text: settings_slash_message(paths),
             }
         }
-        SlashDispatch::Import { args } => SlashOutcome::OpenSessionInfoDialog {
-            text: import_slash_message(&args),
-        },
+        SlashDispatch::Import { args } => {
+            if args.trim().is_empty() {
+                return SlashOutcome::OpenSessionInfoDialog {
+                    text: import_slash_message(&args),
+                };
+            }
+            let Some(session) = ctx.agent_session.as_ref() else {
+                return SlashOutcome::Status("Agent session required for /import.".into());
+            };
+            let Some(cwd) = ctx.cwd else {
+                return SlashOutcome::Status("Working directory required for /import.".into());
+            };
+            let session = Arc::clone(session);
+            let cwd = cwd.to_path_buf();
+            match elph_agent::try_block_on(import_session_from_jsonl(&session, &cwd, &args)) {
+                Ok(Ok((_msg, new_id))) => SlashOutcome::ResumeSession { session_id: new_id },
+                Ok(Err(message)) => SlashOutcome::Status(message),
+                Err(e) => SlashOutcome::Status(format!("/import failed: {e}")),
+            }
+        }
         SlashDispatch::Trust => {
+            let Some(paths) = ctx.paths else {
+                return SlashOutcome::Status("Paths required for /trust.".into());
+            };
             let Some(cwd) = ctx.cwd else {
                 return SlashOutcome::Status("Working directory required for /trust.".into());
             };
-            match trust_slash_message(cwd) {
+            match trust_slash_message(paths, cwd) {
                 Ok(text) => SlashOutcome::Status(text),
                 Err(message) => SlashOutcome::Status(message),
             }
@@ -464,13 +485,24 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
                 Err(e) => SlashOutcome::Status(format!("/workers failed: {e}")),
             }
         }
-        SlashDispatch::Tree => {
+        SlashDispatch::Tree { args } => {
             let Some(session) = ctx.agent_session.as_ref() else {
                 return SlashOutcome::Status("Agent session required for /tree.".into());
             };
             let session = Arc::clone(session);
-            match elph_agent::try_block_on(tree_list_message(&session)) {
-                Ok(Ok(text)) => SlashOutcome::OpenSessionInfoDialog { text },
+            let args = args.clone();
+            match elph_agent::try_block_on(tree_slash_message(&session, &args)) {
+                Ok(Ok(text)) => {
+                    // Jump returns a short status; list views open the dialog.
+                    if args.trim().is_empty() || args.trim() == "--branch" || args.trim() == "branch" {
+                        SlashOutcome::OpenSessionInfoDialog { text }
+                    } else {
+                        // Reload transcript so the TUI matches the new leaf (Pi chat re-render).
+                        SlashOutcome::ResumeSession {
+                            session_id: session.session_id().to_string(),
+                        }
+                    }
+                }
                 Ok(Err(message)) => SlashOutcome::Status(message),
                 Err(e) => SlashOutcome::Status(format!("/tree failed: {e}")),
             }
@@ -540,7 +572,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
                     return SlashOutcome::Status("Agent session required for /tree.".into());
                 };
                 let session = Arc::clone(session);
-                match elph_agent::try_block_on(tree_list_message(&session)) {
+                match elph_agent::try_block_on(tree_slash_message(&session, "")) {
                     Ok(Ok(text)) => SlashOutcome::OpenSessionInfoDialog { text },
                     Ok(Err(message)) => SlashOutcome::Status(message),
                     Err(e) => SlashOutcome::Status(format!("/tree failed: {e}")),

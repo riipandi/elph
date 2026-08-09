@@ -10,9 +10,10 @@ use super::util::{extract_prompt_text, send_text_chunks, stream_ui_events};
 use super::{AcpAgentState, lookup_session};
 use crate::agent::{
     SlashDispatch, clone_session_message, dispatch_slash_command, export_session_message, fork_session_message,
-    format_help_message, import_slash_message, resume_list_message, system_prompt_slash_message, tools_slash_message,
-    tree_list_message, trust_slash_message, workers_slash_message,
+    format_help_message, import_session_from_jsonl, import_slash_message, resume_list_message,
+    system_prompt_slash_message, tools_slash_message, tree_slash_message, trust_slash_message, workers_slash_message,
 };
+use crate::platform::Paths;
 
 /// Handle an incoming `session/prompt` request.
 ///
@@ -207,9 +208,11 @@ async fn handle_acp_slash_command(
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
             send_text_chunks(connection, session_id, &message).await
         }
-        Some(SlashDispatch::Tree) => {
+        Some(SlashDispatch::Tree { args }) => {
             let (session, _, _) = lookup_session(state, &key)?;
-            let message = tree_list_message(&session).await.map_err(|e| anyhow::anyhow!("{e}"))?;
+            let message = tree_slash_message(&session, &args)
+                .await
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
             send_text_chunks(connection, session_id, &message).await
         }
         Some(SlashDispatch::Resume { args }) => {
@@ -238,11 +241,26 @@ async fn handle_acp_slash_command(
             send_text_chunks(connection, session_id, &message).await
         }
         Some(SlashDispatch::Import { args }) => {
-            send_text_chunks(connection, session_id, &import_slash_message(&args)).await
+            if args.trim().is_empty() {
+                return send_text_chunks(connection, session_id, &import_slash_message(&args)).await;
+            }
+            let (session, _, cwd) = lookup_session(state, &key)?;
+            match import_session_from_jsonl(&session, &cwd, &args).await {
+                Ok((message, new_id)) => {
+                    send_text_chunks(
+                        connection,
+                        session_id,
+                        &format!("{message}\n\nACP note: reconnect with session id `{new_id}` to use the import."),
+                    )
+                    .await
+                }
+                Err(e) => send_text_chunks(connection, session_id, &e).await,
+            }
         }
         Some(SlashDispatch::Trust) => {
             let (_, _, cwd) = lookup_session(state, &key)?;
-            let message = trust_slash_message(&cwd).map_err(|e| anyhow::anyhow!("{e}"))?;
+            let paths = Paths::resolve().map_err(|e| anyhow::anyhow!("{e}"))?;
+            let message = trust_slash_message(&paths, &cwd).map_err(|e| anyhow::anyhow!("{e}"))?;
             send_text_chunks(connection, session_id, &message).await
         }
         Some(SlashDispatch::Fork) => {

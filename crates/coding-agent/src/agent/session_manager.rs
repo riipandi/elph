@@ -292,6 +292,57 @@ impl SessionManager {
             .await
             .context("fork session")
     }
+
+    /// Import a JSONL session export (one `SessionTreeEntry` per line) into a **new** session.
+    ///
+    /// Mirrors Pi `/import`: load exported entries, create a session in the current project,
+    /// append entries in order. Caller switches the live UI via `/resume <new_id>`.
+    pub async fn import_from_jsonl(&self, path: &Path) -> Result<(String, usize), anyhow::Error> {
+        let entries = load_session_tree_jsonl(path)?;
+        if entries.is_empty() {
+            anyhow::bail!("import file has no session entries: {}", path.display());
+        }
+        let mut session = self
+            .repo
+            .create(TursoSessionRepoCreateOptions {
+                cwd: self.cwd.clone(),
+                id: None,
+                parent_session_id: None,
+                system_prompt: None,
+                ..Default::default()
+            })
+            .await
+            .context("create session for import")?;
+        let id = session.metadata().await.id;
+        self.ensure_artifact_dirs(&id)?;
+        let n = entries.len();
+        for entry in entries {
+            elph_agent::SessionStorage::append_entry(session.storage_mut(), entry)
+                .await
+                .with_context(|| format!("append imported entry into session {id}"))?;
+        }
+        if let Err(err) = reconcile_session(&mut session).await {
+            log::warn!("session recovery after import: {err}");
+        }
+        self.acquire_lease_if_configured(&id).await?;
+        Ok((id, n))
+    }
+}
+
+/// Parse newline-delimited [`SessionTreeEntry`] JSON (Elph `/export` format).
+pub fn load_session_tree_jsonl(path: &Path) -> Result<Vec<elph_agent::SessionTreeEntry>> {
+    let raw = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
+    let mut entries = Vec::new();
+    for (line_no, line) in raw.lines().enumerate() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        let entry: elph_agent::SessionTreeEntry = serde_json::from_str(line)
+            .with_context(|| format!("parse JSONL line {} in {}", line_no + 1, path.display()))?;
+        entries.push(entry);
+    }
+    Ok(entries)
 }
 
 /// Stable string for DB `cwd` matching (canonicalize when possible).

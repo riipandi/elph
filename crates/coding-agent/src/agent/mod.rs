@@ -61,7 +61,7 @@ pub use runtime::CreateSessionOptions;
 pub use runtime::create_coding_session_with_events;
 pub use session::CodingAgentSession;
 pub use session_info_slash::{rename_session_title, session_info_slash_message, session_title_for_rename};
-pub use session_manager::SessionManager;
+pub use session_manager::{SessionManager, load_session_tree_jsonl};
 pub use skills_load::SkillConflict;
 pub use skills_load::{format_skill_conflict_notice, truncate_palette_description};
 pub use skills_load::{parse_skill_slash, skill_slash_name};
@@ -73,8 +73,8 @@ pub use slash_commands::{
 pub use slash_commands::{confetti_mode_from_args, dispatch_slash_command, format_help_message};
 pub use slash_misc::{
     HOTKEYS_TEXT, changelog_text, clone_session_message, export_session_message, fork_session_message,
-    import_slash_message, resume_list_message, settings_slash_message, tree_list_message, trust_slash_message,
-    workers_slash_message,
+    import_session_from_jsonl, import_slash_message, path_command_argument, resume_list_message,
+    settings_slash_message, tree_list_message, tree_slash_message, trust_slash_message, workers_slash_message,
 };
 pub use system_prompt_slash::system_prompt_slash_message;
 pub use tool_policy::agent_mode_from_setting;
