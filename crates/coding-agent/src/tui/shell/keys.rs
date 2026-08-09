@@ -110,6 +110,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         mut turn_cancel_requested,
         mut turn_token_tracker,
         user_shell_abort,
+        mut resume_session_requested,
         ..
     } = ctx;
     let paths = paths.read().clone();
@@ -2972,6 +2973,26 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             &mut prompt_history,
                             TranscriptMessage::text(overlay_deferred_message(&overlay), TranscriptStyle::Meta),
                         );
+                    }
+                    SlashOutcome::ResumeSession { session_id } => {
+                        if let Some(session) = agent_session.as_ref() {
+                            let session = Arc::clone(session);
+                            tokio::spawn(async move {
+                                session.shutdown_workers().await;
+                            });
+                        }
+                        draft.set(String::new());
+                        live_draft.set(String::new());
+                        force_editor_clear.set(true);
+                        suppress_enter_newline.set(true);
+                        push_transcript_message_synced(
+                            &mut messages,
+                            messages_arc,
+                            &mut messages_revision,
+                            &mut prompt_history,
+                            TranscriptMessage::text(format!("Resuming session {session_id}…"), TranscriptStyle::Meta),
+                        );
+                        resume_session_requested.set(Some(session_id));
                     }
                     SlashOutcome::Status(message) => {
                         push_transcript_message_synced(

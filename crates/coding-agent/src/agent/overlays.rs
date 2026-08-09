@@ -31,8 +31,15 @@ pub async fn list_session_select_items(session_manager: &SessionManager) -> Resu
     let items: Vec<SelectItem> = sessions
         .into_iter()
         .map(|meta| {
-            let short_id = meta.id.chars().take(8).collect::<String>();
-            SelectItem::new(meta.id, short_id).with_description(meta.updated_at)
+            let short_id: String = meta.id.chars().take(8).collect();
+            let label = meta
+                .name
+                .as_deref()
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(|n| format!("{n} ({short_id})"))
+                .unwrap_or(short_id);
+            SelectItem::new(meta.id, label).with_description(meta.updated_at)
         })
         .collect();
     Ok(items)

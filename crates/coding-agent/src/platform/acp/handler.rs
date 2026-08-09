@@ -9,7 +9,9 @@ use parking_lot::Mutex;
 use super::util::{extract_prompt_text, send_text_chunks, stream_ui_events};
 use super::{AcpAgentState, lookup_session};
 use crate::agent::{
-    SlashDispatch, dispatch_slash_command, format_help_message, system_prompt_slash_message, tools_slash_message,
+    SlashDispatch, clone_session_message, dispatch_slash_command, export_session_message, fork_session_message,
+    format_help_message, import_slash_message, resume_list_message, system_prompt_slash_message, tools_slash_message,
+    tree_list_message, trust_slash_message, workers_slash_message,
 };
 
 /// Handle an incoming `session/prompt` request.
@@ -185,6 +187,76 @@ async fn handle_acp_slash_command(
                 guard.paths.clone()
             };
             let message = crate::tui::mcp_auth_dialog::mcp_list_slash_message(&paths);
+            send_text_chunks(connection, session_id, &message).await
+        }
+        Some(SlashDispatch::Hotkeys) => send_text_chunks(connection, session_id, crate::agent::HOTKEYS_TEXT).await,
+        Some(SlashDispatch::Changelog) => {
+            send_text_chunks(connection, session_id, &crate::agent::changelog_text()).await
+        }
+        Some(SlashDispatch::Settings) => {
+            let paths = {
+                let guard = state.lock();
+                guard.paths.clone()
+            };
+            send_text_chunks(connection, session_id, &crate::agent::settings_slash_message(&paths)).await
+        }
+        Some(SlashDispatch::Workers) => {
+            let (session, _, _) = lookup_session(state, &key)?;
+            let message = workers_slash_message(Some(&session))
+                .await
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            send_text_chunks(connection, session_id, &message).await
+        }
+        Some(SlashDispatch::Tree) => {
+            let (session, _, _) = lookup_session(state, &key)?;
+            let message = tree_list_message(&session).await.map_err(|e| anyhow::anyhow!("{e}"))?;
+            send_text_chunks(connection, session_id, &message).await
+        }
+        Some(SlashDispatch::Resume { args }) => {
+            let (session, _, _) = lookup_session(state, &key)?;
+            if !args.trim().is_empty() {
+                return send_text_chunks(
+                    connection,
+                    session_id,
+                    &format!(
+                        "Switching sessions mid-ACP is not supported. Reconnect with session id `{}`.",
+                        args.trim()
+                    ),
+                )
+                .await;
+            }
+            let message = resume_list_message(&session)
+                .await
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            send_text_chunks(connection, session_id, &message).await
+        }
+        Some(SlashDispatch::Export { args }) => {
+            let (session, _, cwd) = lookup_session(state, &key)?;
+            let message = export_session_message(&session, &cwd, &args)
+                .await
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            send_text_chunks(connection, session_id, &message).await
+        }
+        Some(SlashDispatch::Import { args }) => {
+            send_text_chunks(connection, session_id, &import_slash_message(&args)).await
+        }
+        Some(SlashDispatch::Trust) => {
+            let (_, _, cwd) = lookup_session(state, &key)?;
+            let message = trust_slash_message(&cwd).map_err(|e| anyhow::anyhow!("{e}"))?;
+            send_text_chunks(connection, session_id, &message).await
+        }
+        Some(SlashDispatch::Fork) => {
+            let (session, _, _) = lookup_session(state, &key)?;
+            let message = fork_session_message(&session)
+                .await
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            send_text_chunks(connection, session_id, &message).await
+        }
+        Some(SlashDispatch::CloneSession) => {
+            let (session, _, _) = lookup_session(state, &key)?;
+            let message = clone_session_message(&session)
+                .await
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
             send_text_chunks(connection, session_id, &message).await
         }
         Some(SlashDispatch::Unimplemented(cmd)) => {

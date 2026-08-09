@@ -171,27 +171,8 @@ impl SlashDispatcher {
                         log::error!("skill dispatch failed ({name}): {err}");
                     }
                 }
-                SlashDispatch::NewSession
-                | SlashDispatch::Continue
-                | SlashDispatch::Quit
-                | SlashDispatch::Help
-                | SlashDispatch::Tools { .. }
-                | SlashDispatch::SystemPrompt
-                | SlashDispatch::SessionInfo
-                | SlashDispatch::Rename { .. }
-                | SlashDispatch::Confetti { .. }
-                | SlashDispatch::Feedback
-                | SlashDispatch::ProviderConnect { .. }
-                | SlashDispatch::ProviderDisconnect { .. }
-                | SlashDispatch::ProviderList
-                | SlashDispatch::ProviderUpdate { .. }
-                | SlashDispatch::McpAuth { .. }
-                | SlashDispatch::McpLogout { .. }
-                | SlashDispatch::McpList
-                | SlashDispatch::Handover { .. }
-                | SlashDispatch::Unimplemented(_)
-                | SlashDispatch::OverlayNeeded(_)
-                | SlashDispatch::Memory { .. } => {}
+                // TUI-only / informational dispatch — never sent through this bridge.
+                _ => {}
             }
         });
     }

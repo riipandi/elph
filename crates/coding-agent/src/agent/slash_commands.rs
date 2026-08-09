@@ -70,6 +70,7 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin_with_args("compact", "Compact conversation history"),
         builtin("continue", "Resume the interrupted task"),
         builtin("resume", "Resume a different session"),
+        builtin("workers", "List live multi-worker peers"),
         builtin("reload", "Reload providers, settings, skills, templates, extensions"),
         builtin("quit", "Quit Elph"),
         builtin_with_args("memory", "Agent memory store (floppy)"),
@@ -247,6 +248,34 @@ pub enum SlashDispatch {
     /// the source tool (`claude` or `codex`), the rest is a session reference
     /// (empty / `latest` / session UUID / free-text title).
     Handover {
+        args: String,
+    },
+    /// Live multi-worker peers (`/workers`).
+    Workers,
+    /// Keyboard shortcut reference (`/hotkeys`).
+    Hotkeys,
+    /// Changelog text (`/changelog`).
+    Changelog,
+    /// Settings paths and tips (`/settings`).
+    Settings,
+    /// Export session branch as JSONL (`/export [path]`).
+    Export {
+        args: String,
+    },
+    /// Import guidance (`/import [path]`).
+    Import {
+        args: String,
+    },
+    /// Mark project trusted (`/trust`).
+    Trust,
+    /// Fork current session (`/fork`).
+    Fork,
+    /// Clone current session (`/clone`).
+    CloneSession,
+    /// List session tree entries (`/tree`).
+    Tree,
+    /// List sessions or switch (`/resume [id]`).
+    Resume {
         args: String,
     },
     Unimplemented(String),
@@ -557,7 +586,21 @@ mod compact_args_tests {
 pub fn slash_palette_submit_on_enter(command_name: &str) -> bool {
     matches!(
         command_name,
-        "model" | "scoped-models" | "tree" | "resume" | "session" | "rename" | "system-prompt" | "feedback"
+        "model"
+            | "scoped-models"
+            | "tree"
+            | "resume"
+            | "session"
+            | "rename"
+            | "system-prompt"
+            | "feedback"
+            | "workers"
+            | "hotkeys"
+            | "changelog"
+            | "settings"
+            | "trust"
+            | "fork"
+            | "clone"
     )
 }
 
@@ -580,16 +623,23 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
         "scoped-models" | "scoped_models" | "scopedmodels" => {
             Some(SlashDispatch::OverlayNeeded(OverlayCommand::ScopedModels))
         }
-        "tree" => Some(SlashDispatch::OverlayNeeded(OverlayCommand::Tree)),
-        "resume" => Some(SlashDispatch::OverlayNeeded(OverlayCommand::Resume)),
+        "tree" => Some(SlashDispatch::Tree),
+        "resume" => Some(SlashDispatch::Resume { args }),
         "new" => Some(SlashDispatch::NewSession),
         "feedback" => Some(SlashDispatch::Feedback),
         "memory" | "mem" => Some(SlashDispatch::Memory { args }),
         "login" => Some(SlashDispatch::ProviderConnect { provider_id: None }),
         "logout" => Some(SlashDispatch::ProviderDisconnect { provider_id: None }),
-        "settings" | "export" | "import" | "copy" | "changelog" | "hotkeys" | "fork" | "clone" | "trust" => {
-            Some(SlashDispatch::Unimplemented(format!("/{name}")))
-        }
+        "workers" | "worker" => Some(SlashDispatch::Workers),
+        "hotkeys" | "keys" | "shortcuts" => Some(SlashDispatch::Hotkeys),
+        "changelog" | "changes" => Some(SlashDispatch::Changelog),
+        "settings" | "config" => Some(SlashDispatch::Settings),
+        "export" => Some(SlashDispatch::Export { args }),
+        "import" => Some(SlashDispatch::Import { args }),
+        "trust" => Some(SlashDispatch::Trust),
+        "fork" => Some(SlashDispatch::Fork),
+        "clone" => Some(SlashDispatch::CloneSession),
+        "copy" => Some(SlashDispatch::CloneSession),
         "provider" => {
             if args.trim().is_empty() {
                 Some(SlashDispatch::ProviderConnect { provider_id: None })
@@ -851,9 +901,18 @@ mod tests {
             dispatch_slash_command("/model opus", None, None, None),
             Some(SlashDispatch::OverlayNeeded(OverlayCommand::Model { filter: "opus".into() }))
         );
+        assert_eq!(dispatch_slash_command("/tree", None, None, None), Some(SlashDispatch::Tree));
         assert_eq!(
-            dispatch_slash_command("/tree", None, None, None),
-            Some(SlashDispatch::OverlayNeeded(OverlayCommand::Tree))
+            dispatch_slash_command("/resume", None, None, None),
+            Some(SlashDispatch::Resume { args: String::new() })
+        );
+        assert_eq!(
+            dispatch_slash_command("/resume abc123", None, None, None),
+            Some(SlashDispatch::Resume { args: "abc123".into() })
+        );
+        assert_eq!(
+            dispatch_slash_command("/workers", None, None, None),
+            Some(SlashDispatch::Workers)
         );
     }
 

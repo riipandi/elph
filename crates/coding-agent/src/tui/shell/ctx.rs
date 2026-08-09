@@ -82,6 +82,8 @@ pub(crate) struct ShellCtx {
     pub(crate) model_provider_index: State<usize>,
     pub(crate) model_selected_index: State<usize>,
     pub(crate) new_session_requested: Ref<bool>,
+    /// When set, next tick reloads bootstrap with this session id (`/resume <id>`).
+    pub(crate) resume_session_requested: Ref<Option<String>>,
     pub(crate) on_queue_action_click: Handler<(usize, PromptQueueAction)>,
     pub(crate) palette_refresh_pending: State<bool>,
     pub(crate) paths: State<Paths>,

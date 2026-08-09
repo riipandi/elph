@@ -605,6 +605,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     // Set true by `/new` handler; the tick loop picks this up to reload resources + restart
     // bootstrap with a fresh session (in-process, no exit + re-launch).
     let new_session_requested = hooks.use_ref(|| false);
+    // `/resume <id>` — next tick reloads bootstrap with this session id.
+    let resume_session_requested = hooks.use_ref(|| None::<String>);
 
     let cwd_for_mention_index = cwd.clone();
     let cwd_for_loop = cwd.clone();
@@ -702,6 +704,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         model_selected_index,
         density,
         new_session_requested,
+        resume_session_requested,
         on_queue_action_click,
         palette_refresh_pending,
         paths,

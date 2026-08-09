@@ -55,6 +55,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         mut messages_revision,
         mut messages_revision_for_tick,
         mut new_session_requested,
+        mut resume_session_requested,
         mut palette_refresh_pending,
         paths,
         mut pending_confetti,
@@ -196,10 +197,12 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         // (which runs on the next agent event) does not overwrite them.
         *messages_arc_inner.write().unwrap() = messages.read().clone();
 
-        // Handle `/new` command: reload resources, create fresh bootstrap config (resume_id: None),
-        // and restart the bootstrap worker — all without exiting the TUI.
-        if *new_session_requested.read() {
+        // Handle `/new` and `/resume <id>`: reload resources + restart bootstrap without exiting TUI.
+        let resume_id_req = resume_session_requested.read().clone();
+        let want_new = *new_session_requested.read();
+        if want_new || resume_id_req.is_some() {
             *new_session_requested.write() = false;
+            *resume_session_requested.write() = None;
 
             let paths_for_load = paths.read().clone();
             let cwd_for_load = cwd_for_loop.clone();
@@ -208,7 +211,6 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 let env = Arc::new(LocalExecutionEnv::new(&cwd_for_load));
                 let loaded = load_resources(&paths_for_load, &cwd_for_load, &env).await;
 
-                // Update palette data from fresh resources
                 let new_templates = loaded.resources.prompt_templates.clone();
                 let new_skills = loaded.resources.skills.clone();
                 prompt_templates.set(new_templates);
@@ -223,24 +225,27 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     ));
                 }
 
-                // Create a fresh bootstrap config with no resume_id (forces a new session).
-                // Boot on the model last used in this project, same as a fresh startup.
-                let boot = crate::tui::resolve_boot_model(&settings, &paths_for_load, &cwd_for_load, None).await;
+                let boot =
+                    crate::tui::resolve_boot_model(&settings, &paths_for_load, &cwd_for_load, resume_id_req.as_deref())
+                        .await;
                 let new_config = TuiBootstrapConfig {
                     paths: paths_for_load,
                     settings,
-                    resume_id: None,
+                    resume_id: resume_id_req,
                     model_override: boot.ok().map(|(provider, model_id)| format!("{provider}/{model_id}")),
                     preloaded_resources: loaded,
                 };
                 bootstrap_config.set(Some(new_config));
             }
 
-            // Reset bootstrap phase so the next tick re-spawns the worker
             bootstrap_phase.set(BootstrapPhase::Pending);
             bootstrap_worker_started.set(false);
             bootstrap_rx.set(None);
             chrome_refresh_pending.set(true);
+            // Clear the old live session slot so UI does not keep talking to a dead worker.
+            agent_session_slot.set(None);
+            messages.set(Vec::new());
+            *messages_arc_inner.write().unwrap() = Vec::new();
         }
 
         let agent_session_for_loop = agent_session_slot.read().clone();

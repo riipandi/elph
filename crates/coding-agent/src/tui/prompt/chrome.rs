@@ -59,6 +59,8 @@ pub struct PromptChromeProps {
     pub text_select_mode: bool,
     /// Live multi-worker count for footer badge (≥2 shows `⬡ N`).
     pub worker_live_count: usize,
+    /// This process worker memorable name (footer when multi-worker).
+    pub worker_name: String,
 }
 
 #[component]
@@ -176,6 +178,7 @@ pub fn PromptChrome(props: &mut PromptChromeProps) -> impl Into<AnyElement<'stat
                 colored_status_footer: props.colored_status_footer,
                 select_mode: props.text_select_mode,
                 worker_live_count: props.worker_live_count,
+                worker_name: props.worker_name.clone(),
                 chrome_revision: props.chrome_revision,
             )
         }

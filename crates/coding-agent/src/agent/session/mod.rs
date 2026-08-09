@@ -99,7 +99,7 @@ pub struct CodingAgentSession {
     /// (caps at [`SESSION_TITLE_MAX_ATTEMPTS`] per session instance).
     title_generation_attempts: Arc<AtomicU32>,
     /// Multi-worker coordination (session lease heartbeat + presence registry).
-    worker_runtime: Option<super::worker_runtime::WorkerRuntime>,
+    pub(crate) worker_runtime: Option<super::worker_runtime::WorkerRuntime>,
 }
 
 impl CodingAgentSession {

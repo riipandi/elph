@@ -98,12 +98,21 @@ pub const FOOTER_IMG_INDICATOR: &str = "◐";
 /// Multi-worker footer badge when live workers ≥ 2 (`⬡ N`).
 pub const FOOTER_WORKERS_BADGE_PREFIX: &str = "⬡";
 
-/// Format the workers badge (`⬡ N`) or empty when count &lt; 2.
+/// Format the workers badge (`⬡ N` or `⬡ N · name`) or empty when count &lt; 2.
 pub fn footer_workers_badge(live_count: usize) -> Option<String> {
-    if live_count >= 2 {
+    footer_workers_badge_with_name(live_count, "")
+}
+
+/// Like [`footer_workers_badge`], optionally appending this worker's memorable name.
+pub fn footer_workers_badge_with_name(live_count: usize, worker_name: &str) -> Option<String> {
+    if live_count < 2 {
+        return None;
+    }
+    let name = worker_name.trim();
+    if name.is_empty() {
         Some(format!("{FOOTER_WORKERS_BADGE_PREFIX} {live_count}"))
     } else {
-        None
+        Some(format!("{FOOTER_WORKERS_BADGE_PREFIX} {live_count}{FOOTER_SEP}{name}"))
     }
 }
 
@@ -123,12 +132,23 @@ pub fn footer_status_right_label_with_select(
     select_mode: bool,
     worker_live_count: usize,
 ) -> String {
+    footer_status_right_label_with_workers(turn, git, select_mode, worker_live_count, "")
+}
+
+/// Right footer with optional multi-worker badge and self name.
+pub fn footer_status_right_label_with_workers(
+    turn: u32,
+    git: Option<&GitFooterInfo>,
+    select_mode: bool,
+    worker_live_count: usize,
+    worker_name: &str,
+) -> String {
     let turn_s = format!("turn: {turn}");
     let mut base = match footer_git_stats_label(git) {
         Some(stats) => format!("{}{}{}", turn_s, FOOTER_SEP, stats),
         None => turn_s,
     };
-    if let Some(workers) = footer_workers_badge(worker_live_count) {
+    if let Some(workers) = footer_workers_badge_with_name(worker_live_count, worker_name) {
         base = format!("{}{}{}", workers, FOOTER_SEP, base);
     }
     if select_mode {

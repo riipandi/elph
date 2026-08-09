@@ -22,6 +22,7 @@ mod session_info_slash;
 mod session_manager;
 mod skills_load;
 mod slash_commands;
+mod slash_misc;
 mod system_prompt_slash;
 mod tool_policy;
 mod tools_catalog;
@@ -70,6 +71,11 @@ pub use slash_commands::{
     slash_unimplemented_message,
 };
 pub use slash_commands::{confetti_mode_from_args, dispatch_slash_command, format_help_message};
+pub use slash_misc::{
+    HOTKEYS_TEXT, changelog_text, clone_session_message, export_session_message, fork_session_message,
+    import_slash_message, resume_list_message, settings_slash_message, tree_list_message, trust_slash_message,
+    workers_slash_message,
+};
 pub use system_prompt_slash::system_prompt_slash_message;
 pub use tool_policy::agent_mode_from_setting;
 pub use tool_policy::from_agent_thinking;

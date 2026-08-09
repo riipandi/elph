@@ -272,6 +272,26 @@ impl SessionManager {
         self.remove_artifact_dirs(session_id);
         Ok(())
     }
+
+    /// Fork the given session into a new session (full branch copy by default).
+    pub async fn fork_session(
+        &self,
+        source_id: &str,
+        fork_options: elph_agent::ForkEntriesOptions,
+    ) -> Result<elph_agent::Session<elph_agent::TursoSessionStorage>> {
+        self.repo
+            .fork(
+                source_id,
+                elph_agent::TursoSessionRepoCreateOptions {
+                    cwd: self.cwd.clone(),
+                    parent_session_id: Some(source_id.to_string()),
+                    ..Default::default()
+                },
+                fork_options,
+            )
+            .await
+            .context("fork session")
+    }
 }
 
 /// Stable string for DB `cwd` matching (canonicalize when possible).

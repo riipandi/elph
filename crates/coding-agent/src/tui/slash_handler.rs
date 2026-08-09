@@ -6,11 +6,13 @@ use std::sync::Arc;
 use elph_agent::{ExtensionRegistry, PromptTemplate, Skill};
 
 use crate::agent::RETRY_CONTINUE_PROMPT;
-use crate::agent::{HandoverError, HandoverSession, OverlayCommand, SlashDispatch};
 use crate::agent::{
-    confetti_mode_from_args, dispatch_slash_command, format_help_message, session_info_slash_message,
-    session_title_for_rename, slash_unimplemented_message, system_prompt_slash_message, tools_slash_message,
+    HOTKEYS_TEXT, changelog_text, clone_session_message, confetti_mode_from_args, dispatch_slash_command,
+    export_session_message, fork_session_message, format_help_message, import_slash_message, resume_list_message,
+    session_info_slash_message, session_title_for_rename, settings_slash_message, slash_unimplemented_message,
+    system_prompt_slash_message, tools_slash_message, tree_list_message, trust_slash_message, workers_slash_message,
 };
+use crate::agent::{HandoverError, HandoverSession, OverlayCommand, SlashDispatch};
 use crate::extensions::ExtensionHost;
 use crate::platform::Paths;
 use crate::tui::confetti::confetti_mode_from_slash_args;
@@ -139,6 +141,10 @@ pub enum SlashOutcome {
     /// a no-op; the task drives busy UI through normal stream events, so a read
     /// failure never leaves the host stuck "busy".
     BackgroundTaskQuiet,
+    /// Reload TUI bootstrap against another session id (`/resume <id>`).
+    ResumeSession {
+        session_id: String,
+    },
 }
 
 pub struct SlashContext<'a> {
@@ -423,12 +429,134 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
         // Handled by early return above — unreachable here.
         SlashDispatch::Memory { .. } => unreachable!(),
         SlashDispatch::Handover { .. } => unreachable!(),
+        SlashDispatch::Hotkeys => SlashOutcome::OpenSessionInfoDialog {
+            text: HOTKEYS_TEXT.to_string(),
+        },
+        SlashDispatch::Changelog => SlashOutcome::OpenSessionInfoDialog { text: changelog_text() },
+        SlashDispatch::Settings => {
+            let Some(paths) = ctx.paths else {
+                return SlashOutcome::Status("Paths required for /settings.".into());
+            };
+            SlashOutcome::OpenSessionInfoDialog {
+                text: settings_slash_message(paths),
+            }
+        }
+        SlashDispatch::Import { args } => SlashOutcome::OpenSessionInfoDialog {
+            text: import_slash_message(&args),
+        },
+        SlashDispatch::Trust => {
+            let Some(cwd) = ctx.cwd else {
+                return SlashOutcome::Status("Working directory required for /trust.".into());
+            };
+            match trust_slash_message(cwd) {
+                Ok(text) => SlashOutcome::Status(text),
+                Err(message) => SlashOutcome::Status(message),
+            }
+        }
+        SlashDispatch::Workers => {
+            let Some(session) = ctx.agent_session.as_ref() else {
+                return SlashOutcome::Status("Agent session required for /workers.".into());
+            };
+            let session = Arc::clone(session);
+            match elph_agent::try_block_on(workers_slash_message(Some(&session))) {
+                Ok(Ok(text)) => SlashOutcome::OpenSessionInfoDialog { text },
+                Ok(Err(message)) => SlashOutcome::Status(message),
+                Err(e) => SlashOutcome::Status(format!("/workers failed: {e}")),
+            }
+        }
+        SlashDispatch::Tree => {
+            let Some(session) = ctx.agent_session.as_ref() else {
+                return SlashOutcome::Status("Agent session required for /tree.".into());
+            };
+            let session = Arc::clone(session);
+            match elph_agent::try_block_on(tree_list_message(&session)) {
+                Ok(Ok(text)) => SlashOutcome::OpenSessionInfoDialog { text },
+                Ok(Err(message)) => SlashOutcome::Status(message),
+                Err(e) => SlashOutcome::Status(format!("/tree failed: {e}")),
+            }
+        }
+        SlashDispatch::Resume { args } => {
+            let Some(session) = ctx.agent_session.as_ref() else {
+                return SlashOutcome::Status("Agent session required for /resume.".into());
+            };
+            let id = args.trim();
+            if !id.is_empty() {
+                return SlashOutcome::ResumeSession {
+                    session_id: id.to_string(),
+                };
+            }
+            let session = Arc::clone(session);
+            match elph_agent::try_block_on(resume_list_message(&session)) {
+                Ok(Ok(text)) => SlashOutcome::OpenSessionInfoDialog { text },
+                Ok(Err(message)) => SlashOutcome::Status(message),
+                Err(e) => SlashOutcome::Status(format!("/resume failed: {e}")),
+            }
+        }
+        SlashDispatch::Export { args } => {
+            let Some(session) = ctx.agent_session.as_ref() else {
+                return SlashOutcome::Status("Agent session required for /export.".into());
+            };
+            let Some(cwd) = ctx.cwd else {
+                return SlashOutcome::Status("Working directory required for /export.".into());
+            };
+            let session = Arc::clone(session);
+            let cwd = cwd.to_path_buf();
+            match elph_agent::try_block_on(export_session_message(&session, &cwd, &args)) {
+                Ok(Ok(text)) => SlashOutcome::Status(text),
+                Ok(Err(message)) => SlashOutcome::Status(message),
+                Err(e) => SlashOutcome::Status(format!("/export failed: {e}")),
+            }
+        }
+        SlashDispatch::Fork => {
+            let Some(session) = ctx.agent_session.as_ref() else {
+                return SlashOutcome::Status("Agent session required for /fork.".into());
+            };
+            let session = Arc::clone(session);
+            match elph_agent::try_block_on(fork_session_message(&session)) {
+                Ok(Ok(text)) => SlashOutcome::Status(text),
+                Ok(Err(message)) => SlashOutcome::Status(message),
+                Err(e) => SlashOutcome::Status(format!("/fork failed: {e}")),
+            }
+        }
+        SlashDispatch::CloneSession => {
+            let Some(session) = ctx.agent_session.as_ref() else {
+                return SlashOutcome::Status("Agent session required for /clone.".into());
+            };
+            let session = Arc::clone(session);
+            match elph_agent::try_block_on(clone_session_message(&session)) {
+                Ok(Ok(text)) => SlashOutcome::Status(text),
+                Ok(Err(message)) => SlashOutcome::Status(message),
+                Err(e) => SlashOutcome::Status(format!("/clone failed: {e}")),
+            }
+        }
         SlashDispatch::Unimplemented(command) => SlashOutcome::Unimplemented(slash_unimplemented_message(&command)),
         SlashDispatch::OverlayNeeded(overlay) => match overlay {
             OverlayCommand::ProviderConnect { .. } => SlashOutcome::OverlayDeferred(overlay),
             OverlayCommand::Model { filter } => SlashOutcome::OpenModelSelector { filter },
             OverlayCommand::ScopedModels => SlashOutcome::OpenScopedModels,
-            other => SlashOutcome::OverlayDeferred(other),
+            // Tree/Resume now have first-class dispatch; keep OverlayCommand for API compat.
+            OverlayCommand::Tree => {
+                let Some(session) = ctx.agent_session.as_ref() else {
+                    return SlashOutcome::Status("Agent session required for /tree.".into());
+                };
+                let session = Arc::clone(session);
+                match elph_agent::try_block_on(tree_list_message(&session)) {
+                    Ok(Ok(text)) => SlashOutcome::OpenSessionInfoDialog { text },
+                    Ok(Err(message)) => SlashOutcome::Status(message),
+                    Err(e) => SlashOutcome::Status(format!("/tree failed: {e}")),
+                }
+            }
+            OverlayCommand::Resume => {
+                let Some(session) = ctx.agent_session.as_ref() else {
+                    return SlashOutcome::Status("Agent session required for /resume.".into());
+                };
+                let session = Arc::clone(session);
+                match elph_agent::try_block_on(resume_list_message(&session)) {
+                    Ok(Ok(text)) => SlashOutcome::OpenSessionInfoDialog { text },
+                    Ok(Err(message)) => SlashOutcome::Status(message),
+                    Err(e) => SlashOutcome::Status(format!("/resume failed: {e}")),
+                }
+            }
         },
         SlashDispatch::Continue => {
             if ctx.agent_session.is_none() {
@@ -526,6 +654,7 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
             | SlashOutcome::OpenProviderUpdateDialog { .. }
             | SlashOutcome::OpenMcpAuthDialog { .. }
             | SlashOutcome::OpenMemoryResultDialog { .. }
+            | SlashOutcome::ResumeSession { .. }
     )
 }
 
@@ -538,8 +667,8 @@ pub fn overlay_deferred_message(overlay: &OverlayCommand) -> String {
     match overlay {
         OverlayCommand::Model { .. } => "/model overlay not yet implemented".into(),
         OverlayCommand::ScopedModels => "/scoped-models overlay not yet implemented".into(),
-        OverlayCommand::Tree => "/tree overlay not yet implemented".into(),
-        OverlayCommand::Resume => "/resume overlay not yet implemented".into(),
+        OverlayCommand::Tree => "Use /tree (session branch list).".into(),
+        OverlayCommand::Resume => "Use /resume [session_id] to list or switch sessions.".into(),
         OverlayCommand::ProviderConnect { .. } => "/provider connect overlay not yet implemented".into(),
     }
 }

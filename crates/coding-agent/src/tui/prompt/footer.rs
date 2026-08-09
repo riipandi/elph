@@ -3,7 +3,7 @@
 use iocraft::prelude::*;
 
 use crate::tui::chrome::{
-    chrome_footer_widths, fit_footer_status_left, fit_footer_status_right_with_select, footer_mode_model_width,
+    chrome_footer_widths, fit_footer_status_left, fit_footer_status_right_with_workers, footer_mode_model_width,
 };
 use crate::tui::labels::GitFooterInfo;
 use crate::tui::labels::{FOOTER_IMG_INDICATOR, FOOTER_SELECT_MODE_BADGE, FOOTER_SEP, footer_mode_label};
@@ -27,6 +27,8 @@ pub struct FooterProps {
     pub select_mode: bool,
     /// Live multi-worker count for peer badge (`⬡ N` when ≥ 2; 0 hides).
     pub worker_live_count: usize,
+    /// This process worker memorable name (shown with badge when multi-worker).
+    pub worker_name: String,
     /// Bumped when chrome stats/git refresh so footer repaints eagerly.
     pub chrome_revision: u64,
 }
@@ -234,12 +236,13 @@ pub fn Footer(props: &FooterProps) -> impl Into<AnyElement<'static>> {
         props.supports_images,
         left_w.max(1),
     );
-    let right = fit_footer_status_right_with_select(
+    let right = fit_footer_status_right_with_workers(
         props.turn,
         props.git.as_ref(),
         right_w,
         props.select_mode,
         props.worker_live_count,
+        &props.worker_name,
     );
     let parts = split_footer_status_left(props.agent_mode, &left);
     let right_parts = split_footer_status_right(&right);
@@ -463,6 +466,7 @@ mod tests {
                 colored_status_footer: true,
                 select_mode: false,
                 worker_live_count: 0usize,
+                worker_name: String::new(),
                 chrome_revision: 1u64,
             )
         }
@@ -496,6 +500,7 @@ mod tests {
                 colored_status_footer: true,
                 select_mode: false,
                 worker_live_count: 0usize,
+                worker_name: String::new(),
                 chrome_revision: 2u64,
             )
         }
@@ -525,6 +530,7 @@ mod tests {
                 colored_status_footer: true,
                 select_mode: true,
                 worker_live_count: 0usize,
+                worker_name: String::new(),
                 chrome_revision: 1u64,
             )
         }
@@ -547,6 +553,7 @@ mod tests {
                 colored_status_footer: false,
                 select_mode: false,
                 worker_live_count: 0usize,
+                worker_name: String::new(),
                 chrome_revision: 1u64,
             )
         }

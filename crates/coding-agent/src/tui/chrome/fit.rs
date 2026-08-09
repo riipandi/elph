@@ -208,24 +208,53 @@ pub fn fit_footer_status_right_with_select(
     select_mode: bool,
     worker_live_count: usize,
 ) -> String {
+    fit_footer_status_right_with_workers(turn, git, max_width, select_mode, worker_live_count, "")
+}
+
+/// Fit right footer including optional multi-worker name.
+pub fn fit_footer_status_right_with_workers(
+    turn: u32,
+    git: Option<&GitFooterInfo>,
+    max_width: usize,
+    select_mode: bool,
+    worker_live_count: usize,
+    worker_name: &str,
+) -> String {
     if max_width == 0 {
         return String::new();
     }
-    let full = footer_status_right_label_with_select(turn, git, select_mode, worker_live_count);
+    use crate::tui::labels::footer_status_right_label_with_workers;
+    let full = footer_status_right_label_with_workers(turn, git, select_mode, worker_live_count, worker_name);
     let mut candidates = vec![full];
-    // Without git
+    // Drop name first, then git, then workers count.
+    if !worker_name.trim().is_empty() && worker_live_count >= 2 {
+        candidates.push(footer_status_right_label_with_workers(
+            turn,
+            git,
+            select_mode,
+            worker_live_count,
+            "",
+        ));
+    }
     if git.is_some() {
-        candidates.push(footer_status_right_label_with_select(
+        candidates.push(footer_status_right_label_with_workers(
             turn,
             None,
             select_mode,
             worker_live_count,
+            worker_name,
+        ));
+        candidates.push(footer_status_right_label_with_workers(
+            turn,
+            None,
+            select_mode,
+            worker_live_count,
+            "",
         ));
     }
-    // Without workers badge
     if worker_live_count >= 2 {
-        candidates.push(footer_status_right_label_with_select(turn, git, select_mode, 0));
-        candidates.push(footer_status_right_label_with_select(turn, None, select_mode, 0));
+        candidates.push(footer_status_right_label_with_workers(turn, git, select_mode, 0, ""));
+        candidates.push(footer_status_right_label_with_workers(turn, None, select_mode, 0, ""));
     }
     if select_mode {
         candidates.push(format!("{}{}turn: {}", FOOTER_SELECT_MODE_BADGE, FOOTER_SEP, turn));

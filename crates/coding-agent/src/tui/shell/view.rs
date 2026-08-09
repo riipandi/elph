@@ -62,6 +62,7 @@ pub(crate) fn build_shell_view(
         mut model_selected_index,
         density,
         mut new_session_requested,
+        mut resume_session_requested,
         on_queue_action_click,
         paths,
         mut pending_confetti,
@@ -1051,6 +1052,11 @@ pub(crate) fn build_shell_view(
                     .as_ref()
                     .map(|s| s.worker_tui_badge_count())
                     .unwrap_or(0),
+                worker_name: agent_session
+                    .as_ref()
+                    .and_then(|s| s.worker_name())
+                    .unwrap_or("")
+                    .to_string(),
                 chrome_revision: chrome_ui_revision.get(),
                 draft: Some(draft),
                 live_draft: Some(live_draft),
@@ -1389,6 +1395,30 @@ pub(crate) fn build_shell_view(
 
                                 // Signal the tick loop to reload resources and restart bootstrap
                                 new_session_requested.set(true);
+                            }
+                            SlashOutcome::ResumeSession { session_id } => {
+                                // Graceful multi-worker release before rebinding the session.
+                                if let Some(session) = agent_session.as_ref() {
+                                    let session = Arc::clone(session);
+                                    tokio::spawn(async move {
+                                        session.shutdown_workers().await;
+                                    });
+                                }
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                push_transcript_message_synced(
+                                    &mut messages,
+                                    messages_arc,
+                                    &mut messages_revision,
+                                    &mut prompt_history,
+                                    TranscriptMessage::text(
+                                        format!("Resuming session {session_id}…"),
+                                        TranscriptStyle::Meta,
+                                    ),
+                                );
+                                resume_session_requested.set(Some(session_id));
                             }
                             SlashOutcome::Status(message) => {
                                 push_transcript_message_synced(
