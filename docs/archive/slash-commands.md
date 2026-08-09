@@ -15,7 +15,7 @@ Built-in commands always win over extension and template names.
 | Command                     | Aliases       | Description                                                                                                                           |
 | --------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `/help`                     | —             | List all commands                                                                                                                     |
-| `/aside`                    | —             | Side question without interrupting the main turn (tool-free one-shot; dismissible dialog)                                           |
+| `/aside`                    | —             | Side question without interrupting the main turn (tool-free one-shot; inline panel above prompt, Esc dismisses)                    |
 | `/model`                    | —             | Open model selector (optional filter args)                                                                                            |
 | `/goal`                     | `/goals`      | Manage session goals                                                                                                                  |
 | `/exit`                     | `/quit`, `/q` | Quit                                                                                                                                  |

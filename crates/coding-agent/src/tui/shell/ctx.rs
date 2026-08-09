@@ -109,6 +109,10 @@ pub(crate) struct ShellCtx {
     pub(crate) pending_scoped_models: Ref<Option<PendingScopedModels>>,
     pub(crate) pending_subagent_output: Ref<Option<PendingSubagentOutputDialog>>,
     pub(crate) pending_system_prompt: Ref<Option<PendingSystemPromptDialog>>,
+    /// Inline `/aside` panel above the status row (Grok `/btw` parity).
+    pub(crate) pending_aside: Ref<Option<crate::tui::aside_panel::AsidePanelState>>,
+    /// Bumped while aside is Loading so the spinner re-renders.
+    pub(crate) aside_tick: State<u64>,
     pub(crate) pending_tool_approval: Ref<Option<PendingToolApproval>>,
     pub(crate) pending_transcript_notice_expires: Ref<HashMap<&'static str, Instant>>,
     pub(crate) pending_user_question: Ref<Option<PendingUserQuestion>>,

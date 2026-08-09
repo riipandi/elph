@@ -67,6 +67,8 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         mut pending_provider_disconnect_for_tick,
         mut pending_quit_confirm,
         mut pending_system_prompt,
+        mut pending_aside,
+        mut aside_tick,
         mut pending_tool_approval,
         mut pending_transcript_notice_expires,
         mut pending_user_question,
@@ -558,44 +560,48 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 continue;
             }
 
-            if let AgentUiEvent::AsideStarted { question, .. } = &event {
+            if let AgentUiEvent::AsideStarted { request_id, question } = &event {
+                *pending_aside.write() =
+                    Some(crate::tui::aside_panel::AsidePanelState::loading(*request_id, question.clone()));
                 activity_label.set(format!("Aside: {question}"));
                 continue;
             }
-            if let AgentUiEvent::AsideFinished { question, answer, .. } = &event {
-                let body = format!("Q: {question}\n\n{answer}");
-                let body_height = (body.lines().count() as u16).saturating_add(3).clamp(8, 40);
-                open_scroll_text_dialog(OpenScrollTextDialogArgs {
-                    pending: &mut pending_system_prompt,
-                    shell_focus: &mut shell_focus,
-                    title: "/aside".to_string(),
-                    text: body,
-                    width_pct: 80,
-                    body_height: Some(body_height),
-                    show_copy: true,
-                });
-                // Sticky meta card (not a main-turn user/assistant pair).
-                let preview: String = question.chars().take(60).collect();
-                let mut msgs = messages_arc_inner.write().unwrap();
-                if event_applier.write().apply(
-                    &mut msgs,
-                    AgentUiEvent::TranscriptNotice(format!("/aside — answered ({preview})")),
-                ) {
-                    transcript_changed = true;
+            if let AgentUiEvent::AsideFinished {
+                request_id,
+                question,
+                answer,
+            } = &event
+            {
+                let accept = pending_aside
+                    .read()
+                    .as_ref()
+                    .is_none_or(|s| s.request_id() == *request_id);
+                if accept {
+                    *pending_aside.write() = Some(crate::tui::aside_panel::AsidePanelState::done(
+                        *request_id,
+                        question.clone(),
+                        answer.clone(),
+                    ));
                 }
                 continue;
             }
-            if let AgentUiEvent::AsideFailed { error, .. } = &event {
-                let body_height = (error.lines().count() as u16).saturating_add(3).clamp(6, 24);
-                open_scroll_text_dialog(OpenScrollTextDialogArgs {
-                    pending: &mut pending_system_prompt,
-                    shell_focus: &mut shell_focus,
-                    title: "/aside error".to_string(),
-                    text: error.clone(),
-                    width_pct: 80,
-                    body_height: Some(body_height),
-                    show_copy: true,
-                });
+            if let AgentUiEvent::AsideFailed { request_id, error, .. } = &event {
+                let question = pending_aside
+                    .read()
+                    .as_ref()
+                    .map(|s| s.question().to_string())
+                    .unwrap_or_default();
+                let accept = pending_aside
+                    .read()
+                    .as_ref()
+                    .is_none_or(|s| s.request_id() == *request_id);
+                if accept {
+                    *pending_aside.write() = Some(crate::tui::aside_panel::AsidePanelState::error(
+                        *request_id,
+                        question,
+                        error.clone(),
+                    ));
+                }
                 continue;
             }
 
@@ -967,6 +973,14 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     }
                 }
             }
+        }
+
+        // Drive spinner while /aside is loading (shell re-render, independent of busy turn).
+        if matches!(
+            pending_aside.read().as_ref(),
+            Some(crate::tui::aside_panel::AsidePanelState::Loading { .. })
+        ) {
+            aside_tick.set(aside_tick.get().wrapping_add(1));
         }
 
         if transcript_changed {

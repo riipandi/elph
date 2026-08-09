@@ -83,6 +83,8 @@ pub(crate) fn build_shell_view(
         mut pending_scoped_models,
         pending_subagent_output,
         mut pending_system_prompt,
+        pending_aside,
+        aside_tick,
         mut pending_tool_approval,
         mut pending_user_question,
         mut pre_echoed_user_prompts,
@@ -859,6 +861,23 @@ pub(crate) fn build_shell_view(
                     }))
                 },
             )
+            #(pending_aside.read().as_ref().map(|state| -> AnyElement<'static> {
+                let has_focus = matches!(
+                    state,
+                    crate::tui::aside_panel::AsidePanelState::Done { .. }
+                ) && state.max_scroll_offset(
+                    crate::tui::inline_dialog::inline_body_width(screen_width) as usize,
+                ) > 0;
+                element! {
+                    crate::tui::aside_panel::AsidePanel(
+                        screen_width: screen_width,
+                        state: state.clone(),
+                        has_focus: has_focus,
+                        tick: aside_tick.get(),
+                    )
+                }
+                .into()
+            }))
             #(user_question_view.map(|view| -> AnyElement<'static> {
                 element! {
                     UserQuestionBar(

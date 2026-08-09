@@ -506,6 +506,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             .unwrap_or_default()
     });
     let pending_system_prompt = hooks.use_ref(|| None::<PendingSystemPromptDialog>);
+    let pending_aside = hooks.use_ref(|| None::<crate::tui::aside_panel::AsidePanelState>);
+    let aside_tick = hooks.use_state(|| 0u64);
     let system_prompt_scroll = hooks.use_ref_default::<ScrollViewHandle>();
     let system_prompt_scroll_tick = hooks.use_ref(|| 0u32);
     let pending_rename = hooks.use_ref(|| None::<crate::tui::rename_dialog::PendingRenameDialog>);
@@ -738,6 +740,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         pending_scoped_models,
         pending_subagent_output,
         pending_system_prompt,
+        pending_aside,
+        aside_tick,
         pending_tool_approval,
         pending_transcript_notice_expires,
         pending_user_question,

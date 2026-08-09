@@ -64,6 +64,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         mut item_selector_selected,
         mut pending_scoped_models,
         mut pending_system_prompt,
+        mut pending_aside,
         pending_tool_approval,
         mut pending_transcript_notice_expires,
         pending_user_question,
@@ -113,6 +114,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         mut turn_token_tracker,
         user_shell_abort,
         mut resume_session_requested,
+        screen_width,
         ..
     } = ctx;
     let paths = paths.read().clone();
@@ -478,6 +480,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
     let system_prompt_open = pending_system_prompt.read().is_some();
     let rename_open = pending_rename.read().is_some();
     let confetti_open = pending_confetti.read().is_some();
+    let aside_open = pending_aside.read().is_some();
 
     // Escape closes confetti/fireworks overlay.
     if confetti_open && modifiers.is_empty() && code == KeyCode::Esc {
@@ -489,6 +492,47 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             &mut shell_focus,
         );
         return;
+    }
+
+    // `/aside` panel: Esc dismisses; ↑↓ scroll Done answers (when scrollable).
+    if aside_open && kind == KeyEventKind::Press && modifiers.is_empty() {
+        use crate::tui::aside_panel::dismiss_aside_panel;
+        use crate::tui::inline_dialog::inline_body_width;
+        let content_w = inline_body_width(screen_width) as usize;
+        if code == KeyCode::Esc {
+            if let Some(state) = pending_aside.write().take() {
+                let (_id, notice) = dismiss_aside_panel(state);
+                if let Some(notice) = notice {
+                    push_transcript_message_synced(
+                        &mut messages,
+                        messages_arc.clone(),
+                        &mut messages_revision,
+                        &mut prompt_history,
+                        crate::tui::transcript::TranscriptMessage::text(
+                            notice,
+                            crate::tui::transcript::TranscriptStyle::Meta,
+                        ),
+                    );
+                }
+            }
+            return;
+        }
+        if matches!(code, KeyCode::Up | KeyCode::Down | KeyCode::PageUp | KeyCode::PageDown)
+            && let Some(state) = pending_aside.write().as_mut()
+        {
+            let max_off = state.max_scroll_offset(content_w);
+            if max_off > 0 {
+                let page = crate::tui::aside_panel::ASIDE_MAX_BODY_LINES.saturating_sub(1).max(1);
+                match code {
+                    KeyCode::Up => state.scroll_up(1),
+                    KeyCode::Down => state.scroll_down(1, max_off),
+                    KeyCode::PageUp => state.scroll_up(page),
+                    KeyCode::PageDown => state.scroll_down(page, max_off),
+                    _ => {}
+                }
+                return;
+            }
+        }
     }
 
     let model_selector_open = pending_model_selector.read().is_some();
