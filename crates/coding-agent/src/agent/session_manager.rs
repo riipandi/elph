@@ -3,8 +3,8 @@
 use crate::utils::path::AppPaths;
 use anyhow::{Context, Result};
 use elph_agent::{
-    Session, TursoSessionListOptions, TursoSessionMetadata, TursoSessionRepo, TursoSessionRepoCreateOptions,
-    TursoSessionStorage, derive_session_context_state, reconcile_session,
+    Session, SessionLeaseStore, TursoSessionListOptions, TursoSessionMetadata, TursoSessionRepo,
+    TursoSessionRepoCreateOptions, TursoSessionStorage, derive_session_context_state, reconcile_session,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -18,6 +18,11 @@ pub struct SessionManager {
     cwd: String,
     /// `APP_DATA` root — used for `sessions/<SESSION_ID>/` artifacts.
     data_dir: PathBuf,
+    db_path: PathBuf,
+    database: Option<Arc<Database>>,
+    /// When set, acquire exclusive session lease after open/create.
+    lease_worker_id: Option<String>,
+    lease_stale_secs: u64,
 }
 
 impl SessionManager {
@@ -26,6 +31,10 @@ impl SessionManager {
             repo: TursoSessionRepo::new(paths.memory_db_path()),
             cwd: normalize_cwd(cwd),
             data_dir: paths.data_dir().clone(),
+            db_path: paths.memory_db_path(),
+            database: None,
+            lease_worker_id: None,
+            lease_stale_secs: 30,
         })
     }
 
@@ -33,10 +42,46 @@ impl SessionManager {
     /// database handle instead of opening the store file on every operation.
     pub fn new_with_database(paths: &Paths, cwd: &Path, database: Arc<Database>) -> Result<Self> {
         Ok(Self {
-            repo: TursoSessionRepo::new(paths.memory_db_path()).with_database(database),
+            repo: TursoSessionRepo::new(paths.memory_db_path()).with_database(database.clone()),
             cwd: normalize_cwd(cwd),
             data_dir: paths.data_dir().clone(),
+            db_path: paths.memory_db_path(),
+            database: Some(database),
+            lease_worker_id: None,
+            lease_stale_secs: 30,
         })
+    }
+
+    /// Enable exclusive session leases for multi-worker safety.
+    pub fn with_session_lease(mut self, worker_id: impl Into<String>, stale_secs: u64) -> Self {
+        self.lease_worker_id = Some(worker_id.into());
+        self.lease_stale_secs = stale_secs.max(1);
+        self
+    }
+
+    fn lease_store(&self) -> SessionLeaseStore {
+        let store = SessionLeaseStore::new(&self.db_path);
+        match &self.database {
+            Some(db) => store.with_database(db.clone()),
+            None => store,
+        }
+    }
+
+    async fn acquire_lease_if_configured(&self, session_id: &str) -> Result<()> {
+        let Some(worker_id) = self.lease_worker_id.as_deref() else {
+            return Ok(());
+        };
+        match self
+            .lease_store()
+            .try_acquire(session_id, worker_id, self.lease_stale_secs)
+            .await
+        {
+            Ok(_) => Ok(()),
+            Err(elph_agent::LeaseError::Conflict(c)) => {
+                anyhow::bail!("{}", c.message);
+            }
+            Err(elph_agent::LeaseError::Other(e)) => Err(e),
+        }
     }
 
     pub fn data_dir(&self) -> &Path {
@@ -93,6 +138,7 @@ impl SessionManager {
         if let Err(err) = reconcile_session(&mut session).await {
             log::warn!("session recovery: {err}");
         }
+        self.acquire_lease_if_configured(&id).await?;
         Ok(session)
     }
 
@@ -186,6 +232,7 @@ impl SessionManager {
             Err(err) => log::warn!("session recovery: {err}"),
             _ => {}
         }
+        self.acquire_lease_if_configured(&metadata.id).await?;
         Ok(session)
     }
 

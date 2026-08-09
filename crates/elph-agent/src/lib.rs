@@ -22,6 +22,7 @@ pub mod session;
 pub mod skills;
 pub mod todos;
 pub mod turns;
+pub mod workers;
 
 pub mod tools;
 pub mod trace;
@@ -303,7 +304,9 @@ pub use session::reduce_durable_state;
 pub use session::repair_unanswered_tool_calls;
 pub use session::to_session;
 pub use session::{DurableHarnessState, OperationKind, OperationOutcome, QueueKind, RecoveryReport};
-pub use session::{EVENTS_FILE, SESSION_TREE_MIGRATIONS, SUMMARY_FILE};
+pub use session::{
+    CANONICAL_SESSION_SCHEMA_SQL, EVENTS_FILE, SESSION_TREE_MIGRATIONS, SUMMARY_FILE, WORKERS_SCHEMA_SQL,
+};
 pub use session::{
     RetentionPolicy, SessionGcReport, list_session_gc_rows, run_full_session_gc, run_session_gc, set_session_pinned,
 };
@@ -322,6 +325,10 @@ pub use skills::load_sourced_skills_with_options;
 pub use skills::skill_args_validation_notice;
 pub use skills::skill_requires_arguments;
 pub use todos::{TodoItem, TodoStatus, TodoStore, TodoUpdate, create_todo_tools};
+pub use workers::{
+    FileLeaseStore, LeaseConflict, LeaseError, LiveWorker, MailboxStore, SessionLease, SessionLeaseStore,
+    WorkerMessage, WorkerRecord, WorkerRegistry, WorkerStatus, WorkerToolContext, create_worker_tools,
+};
 #[cfg(any(feature = "tools-edit", feature = "tools-search"))]
 pub use tools::create_all_tools;
 #[cfg(any(feature = "tools-edit", feature = "tools-search", feature = "tools-web"))]

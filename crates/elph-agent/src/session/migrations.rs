@@ -184,11 +184,98 @@ CREATE INDEX idx_agent_spawn_status ON agent_spawn_edges(status);
 /// Alias kept for existing call sites that referenced the tree-only constant.
 pub const SESSION_TREE_SCHEMA_SQL: &str = CANONICAL_SESSION_SCHEMA_SQL;
 
-/// Standalone / library migration for Turso session backends.
+/// Multi-worker coordination tables (leases, registry, mailbox, file claims).
 ///
-/// Version **201**: hybrid tree + turns/todos/goals with declarative FK + indexes.
-pub const SESSION_TREE_MIGRATIONS: [Migration; 1] = [Migration {
-    version: 201,
-    name: "elph_session_schema_v2_relational",
-    up: CANONICAL_SESSION_SCHEMA_SQL,
-}];
+/// Additive on top of v201; no DROP of session domain tables.
+pub const WORKERS_SCHEMA_SQL: &str = r#"
+CREATE TABLE IF NOT EXISTS session_leases (
+    session_id TEXT PRIMARY KEY NOT NULL,
+    worker_id TEXT NOT NULL,
+    pid INTEGER NOT NULL,
+    hostname TEXT,
+    acquired_at TEXT NOT NULL,
+    heartbeat_at TEXT NOT NULL,
+    exclusive INTEGER NOT NULL DEFAULT 1,
+    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+) STRICT;
+CREATE INDEX IF NOT EXISTS idx_session_leases_heartbeat ON session_leases(heartbeat_at);
+CREATE INDEX IF NOT EXISTS idx_session_leases_worker ON session_leases(worker_id);
+
+CREATE TABLE IF NOT EXISTS workers (
+    worker_id TEXT PRIMARY KEY NOT NULL,
+    session_id TEXT NOT NULL UNIQUE,
+    project_key TEXT NOT NULL,
+    name TEXT NOT NULL,
+    purpose TEXT NOT NULL DEFAULT '',
+    model TEXT,
+    status TEXT NOT NULL DEFAULT 'online',
+    context_pct REAL,
+    pid INTEGER,
+    hostname TEXT,
+    started_at TEXT NOT NULL,
+    heartbeat_at TEXT NOT NULL,
+    metadata TEXT,
+    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+) STRICT;
+CREATE INDEX IF NOT EXISTS idx_workers_project_status ON workers(project_key, status);
+CREATE INDEX IF NOT EXISTS idx_workers_project_name ON workers(project_key, name);
+CREATE INDEX IF NOT EXISTS idx_workers_heartbeat ON workers(heartbeat_at);
+
+CREATE TABLE IF NOT EXISTS worker_messages (
+    id TEXT PRIMARY KEY NOT NULL,
+    project_key TEXT NOT NULL,
+    from_worker_id TEXT NOT NULL,
+    from_session_id TEXT NOT NULL,
+    to_worker_id TEXT,
+    to_session_id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    status TEXT NOT NULL,
+    conversation_id TEXT,
+    parent_msg_id TEXT,
+    hops INTEGER NOT NULL DEFAULT 0,
+    payload TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    delivered_at TEXT,
+    completed_at TEXT,
+    error TEXT
+) STRICT;
+CREATE INDEX IF NOT EXISTS idx_worker_msg_inbox
+    ON worker_messages(to_session_id, status, created_at);
+CREATE INDEX IF NOT EXISTS idx_worker_msg_project
+    ON worker_messages(project_key, created_at);
+CREATE INDEX IF NOT EXISTS idx_worker_msg_parent ON worker_messages(parent_msg_id);
+
+CREATE TABLE IF NOT EXISTS file_leases (
+    project_key TEXT NOT NULL,
+    path_norm TEXT NOT NULL,
+    worker_id TEXT NOT NULL,
+    session_id TEXT NOT NULL,
+    mode TEXT NOT NULL DEFAULT 'write',
+    purpose TEXT,
+    content_hash TEXT,
+    acquired_at TEXT NOT NULL,
+    heartbeat_at TEXT NOT NULL,
+    expires_at TEXT,
+    PRIMARY KEY (project_key, path_norm)
+) STRICT;
+CREATE INDEX IF NOT EXISTS idx_file_leases_worker ON file_leases(worker_id);
+CREATE INDEX IF NOT EXISTS idx_file_leases_heartbeat ON file_leases(heartbeat_at);
+CREATE INDEX IF NOT EXISTS idx_file_leases_session ON file_leases(session_id);
+"#;
+
+/// Standalone / library migrations for Turso session backends.
+///
+/// - **201**: hybrid tree + turns/todos/goals with FK + indexes (rebuild).
+/// - **202**: multi-worker leases, registry, mailbox, file claims.
+pub const SESSION_TREE_MIGRATIONS: [Migration; 2] = [
+    Migration {
+        version: 201,
+        name: "elph_session_schema_v2_relational",
+        up: CANONICAL_SESSION_SCHEMA_SQL,
+    },
+    Migration {
+        version: 202,
+        name: "elph_workers_v1",
+        up: WORKERS_SCHEMA_SQL,
+    },
+];

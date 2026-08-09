@@ -32,6 +32,8 @@ pub use context::derive_session_context_state;
 pub use context::{ContextEntryTransform, CustomEntryContextMessageProjector, SessionContextBuildOptions};
 pub use durability::{DurableHarnessState, OperationKind, OperationOutcome, QueueKind, reduce_durable_state};
 pub use migrations::SESSION_TREE_MIGRATIONS;
+pub use migrations::WORKERS_SCHEMA_SQL;
+pub use migrations::CANONICAL_SESSION_SCHEMA_SQL;
 pub use recovery::{RecoveryReport, load_durable_state, reconcile_session, repair_unanswered_tool_calls};
 pub use repo::InMemorySessionCreateOptions;
 pub use repo::InMemorySessionRepo;

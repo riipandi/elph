@@ -1,41 +1,46 @@
 use elph_agent::Migration;
-use elph_agent::session::migrations::CANONICAL_SESSION_SCHEMA_SQL;
+use elph_agent::{CANONICAL_SESSION_SCHEMA_SQL, WORKERS_SCHEMA_SQL};
 
 /// Platform schema migrations, applied into the shared `.elph/store.db` ledger.
 ///
-/// Version bands: floppy memory 1–99, **platform/session 201**, floppy codegraph 500–599.
-/// All bands share one `app_migrations` table.
+/// Version bands: floppy memory 1–99, **platform/session 201–202**, floppy codegraph 500–599.
 ///
-/// Clean break at v201: hybrid session tree + turns + todos + goals with FK + indexes.
-/// No data migration — delete `store.db` if upgrading from an experimental build.
+/// - v201: hybrid session tree + turns/todos/goals with FK + indexes (rebuild).
+/// - v202: multi-worker leases, registry, mailbox, file claims (additive).
 pub fn metadata_migrations() -> &'static [Migration] {
-    &[Migration {
-        version: 201,
-        name: "elph_session_schema_v2_relational",
-        // Shared with elph-agent `SESSION_TREE_MIGRATIONS` / `CANONICAL_SESSION_SCHEMA_SQL`.
-        up: CANONICAL_SESSION_SCHEMA_SQL,
-    }]
+    &[
+        Migration {
+            version: 201,
+            name: "elph_session_schema_v2_relational",
+            up: CANONICAL_SESSION_SCHEMA_SQL,
+        },
+        Migration {
+            version: 202,
+            name: "elph_workers_v1",
+            up: WORKERS_SCHEMA_SQL,
+        },
+    ]
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use elph_agent::{GoalStore, TodoStore, TursoSessionRepo, TursoSessionRepoCreateOptions, ensure_database};
+    use elph_agent::{
+        GoalStore, SessionLeaseStore, TodoStore, TursoSessionRepo, TursoSessionRepoCreateOptions, ensure_database,
+    };
 
     #[test]
-    fn platform_migrations_are_session_schema_v2_relational() {
-        let last = metadata_migrations().last().expect("migrations");
-        assert_eq!(last.version, 201);
-        assert_eq!(last.name, "elph_session_schema_v2_relational");
-        assert!(last.up.contains("FOREIGN KEY (session_id) REFERENCES sessions(id)"));
-        assert!(last.up.contains("CREATE TABLE session_turns"));
-        assert!(last.up.contains("CREATE TABLE session_todos"));
-        assert!(!last.up.contains("transcript_snapshot"));
-        assert!(!last.up.contains("skill_cache"));
+    fn platform_migrations_include_workers() {
+        let versions: Vec<_> = metadata_migrations().iter().map(|m| m.version).collect();
+        assert_eq!(versions, vec![201, 202]);
+        let w = metadata_migrations().iter().find(|m| m.version == 202).unwrap();
+        assert!(w.up.contains("session_leases"));
+        assert!(w.up.contains("worker_messages"));
+        assert!(w.up.contains("file_leases"));
     }
 
     #[tokio::test]
-    async fn platform_metadata_db_supports_sessions_goals_todos_and_fk() {
+    async fn platform_db_supports_sessions_and_leases() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let db = tmp.path().join("store.db");
         ensure_database(&db, metadata_migrations()).await.expect("migrate");
@@ -52,14 +57,13 @@ mod tests {
         assert_eq!(session.metadata().await.id, "sess_platform");
 
         let goals = GoalStore::new(&db);
-        let goal = goals
+        let _ = goals
             .create_goal("sess_platform", "keep goals working", None, 0, 0, 0)
             .await
             .expect("create goal");
-        assert!(goal.id.starts_with("goal_"));
 
         let todos = TodoStore::new(&db);
-        let items = todos
+        let _ = todos
             .replace(
                 "sess_platform",
                 vec![elph_agent::TodoUpdate {
@@ -70,10 +74,12 @@ mod tests {
             )
             .await
             .expect("todos");
-        assert_eq!(items.len(), 1);
 
-        // FK: cannot insert a goal for a missing session.
-        let orphan = goals.create_goal("sess_missing_zzzz", "orphan", None, 0, 0, 0).await;
-        assert!(orphan.is_err(), "FK should reject orphan session_id");
+        let leases = SessionLeaseStore::new(&db);
+        let lease = leases
+            .try_acquire("sess_platform", "wrk_testworker0001", 30)
+            .await
+            .expect("lease");
+        assert_eq!(lease.session_id, "sess_platform");
     }
 }

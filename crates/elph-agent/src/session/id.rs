@@ -22,6 +22,8 @@ const GOAL_PREFIX: &str = "goal";
 const MESSAGE_PREFIX: &str = "msg";
 const TODO_PREFIX: &str = "todo";
 const TURN_PREFIX: &str = "turn";
+const WORKER_PREFIX: &str = "wrk";
+const WORKER_MSG_PREFIX: &str = "wmsg";
 
 /// K-sortable ID string (16-char Kalid, no prefix).
 pub fn create_kalid() -> String {
@@ -70,6 +72,16 @@ pub fn create_turn_id() -> String {
     create_prefixed_kalid(TURN_PREFIX)
 }
 
+/// Create a worker ID (`wrk_<16>`).
+pub fn create_worker_id() -> String {
+    create_prefixed_kalid(WORKER_PREFIX)
+}
+
+/// Create a worker-message ID (`wmsg_<16>`).
+pub fn create_worker_msg_id() -> String {
+    create_prefixed_kalid(WORKER_MSG_PREFIX)
+}
+
 /// Returns `true` when `id` is a valid Kalid string, with or without prefix.
 ///
 /// Accepts:
@@ -89,7 +101,7 @@ fn strip_prefix(id: &str) -> Option<&str> {
     let prefix = &id[..underscore];
     // Only strip known prefixes to avoid false positives
     match prefix {
-        GOAL_PREFIX | MESSAGE_PREFIX | TODO_PREFIX | TURN_PREFIX => {
+        GOAL_PREFIX | MESSAGE_PREFIX | TODO_PREFIX | TURN_PREFIX | WORKER_PREFIX | WORKER_MSG_PREFIX => {
             let body = &id[underscore + 1..];
             Some(body)
         }

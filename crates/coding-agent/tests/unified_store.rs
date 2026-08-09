@@ -14,8 +14,8 @@ use floppy::memory::migrations as memory_migrations;
 use turso::Builder;
 
 /// Expected ledger contents across all bands, in version order.
-/// Platform and session tree share version 201 (whichever runs first wins).
-const EXPECTED_VERSIONS: &[i64] = &[1, 2, 3, 4, 201, 500, 501];
+/// Platform and session tree share versions 201–202 (whichever applies first wins per version).
+const EXPECTED_VERSIONS: &[i64] = &[1, 2, 3, 4, 201, 202, 500, 501];
 
 #[tokio::test]
 async fn all_bands_share_one_store_db_and_one_ledger() {
@@ -102,6 +102,11 @@ async fn all_bands_share_one_store_db_and_one_ledger() {
         "session_todos",
         "goals",
         "agent_spawn_edges",
+        // workers v202
+        "session_leases",
+        "workers",
+        "worker_messages",
+        "file_leases",
     ] {
         assert!(tables.contains(&table.to_string()), "missing table {table}: {tables:?}");
     }
