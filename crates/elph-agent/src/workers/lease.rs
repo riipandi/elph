@@ -10,6 +10,8 @@ use turso::Connection;
 use crate::datastore::{connect, with_conn};
 use crate::messages::now_iso_timestamp;
 
+use super::pid::pid_alive;
+
 #[derive(Debug, Clone)]
 pub struct SessionLease {
     pub session_id: String,
@@ -278,33 +280,6 @@ fn days_from_civil(y: i64, m: i64, d: i64) -> Option<i64> {
     let doy = (153 * mp + 2) / 5 + d - 1;
     let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
     Some(era * 146097 + doe - 719468)
-}
-
-fn pid_alive(pid: i64) -> bool {
-    if pid <= 0 {
-        return false;
-    }
-    #[cfg(unix)]
-    {
-        // /proc is available on Linux; on macOS use kill -0 via std::process is not exposed.
-        // Try reading /proc first, then fall back to `kill -0` via nix-less approach:
-        if Path::new(&format!("/proc/{pid}")).exists() {
-            return true;
-        }
-        // macOS / BSD: use `kill -0` through Command (no extra crate).
-        std::process::Command::new("kill")
-            .args(["-0", &pid.to_string()])
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false)
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = pid;
-        true
-    }
 }
 
 #[cfg(test)]

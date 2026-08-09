@@ -44,9 +44,23 @@ Schema version **202** (`elph_workers_v1`).
 - Set `"enabled": false` to skip lease, registry, worker tools, and path claims.
 - Prefer **git worktrees** for heavy parallel implementation (separate cwd → separate `project_key` → no file-lease collisions).
 
+## Worker names (memorable-ids)
+
+Default display name is a **memorable-id** (same family as session titles, e.g. `calm-fox`). Override with `workers.name`. Collisions among live peers get a numeric suffix (`calm-fox2`). Target peers in `worker_send` / `worker_ask` by this name or by session id.
+
 ## Session lease
 
 Opening a session acquires an exclusive lease. A second process that opens the **same** session fails with a clear conflict until the holder exits or the lease is reclaimed (heartbeat stale **and** holder pid dead).
+
+## Exit / crash presence
+
+| Event | What peers see |
+| --- | --- |
+| Clean exit / Drop | Worker marked `offline` immediately; file + session leases released |
+| Crash / kill -9 | Next reaper tick (~1–2s) demotes when **pid is dead** or heartbeat exceeds `leaseStaleSecs` |
+| Live list / TUI badge | `list_live` / heartbeat reaper demotes first — departed workers leave the live set |
+
+This is **DB-poll near-realtime**, not a separate intercom socket.
 
 ## File leases (shared cwd)
 
@@ -54,15 +68,19 @@ Mutate tools (`edit_file`, `write_file`, `delete_path`, `move_path`, `copy_path`
 
 Claims last until process exit (heartbeat refreshed). Release on clean shutdown / Drop.
 
-## Agent tools
+## Inter-worker messaging (pi-intercom-like)
+
+Yes — peers communicate through the **durable mailbox** in `.elph/store.db` (not Unix sockets):
 
 | Tool | Role |
 | --- | --- |
-| `worker_list` | Live peers in this project |
-| `worker_send` | Fire-and-forget message (not for replies) |
+| `worker_list` | Live peers (memorable names + status) |
+| `worker_send` | Fire-and-forget to a peer by **name** or session id |
 | `worker_ask` / `worker_get` / `worker_await` | Request + poll status |
 
-Inbound mail is polled from the durable mailbox, injected as a `worker.inbound` custom entry (idempotent by `msg_id`), then steered into the agent as a normal turn. **Reply in assistant text** — do not `worker_send` to answer an inbound ask.
+Inbound mail is polled, injected as `worker.inbound` (idempotent by `msg_id`), then steered into the agent. **Reply in assistant text** — do not `worker_send` to answer an inbound ask.
+
+Compared to classic intercom: delivery is **poll-based durable SoT** (survives restart); latency ≈ `inboxPollMs` / reaper interval, not sub-ms IPC.
 
 ## TUI
 

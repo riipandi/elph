@@ -43,7 +43,10 @@ fn worker_list_tool(ctx: Arc<WorkerToolContext>) -> AgentTool {
         elph_ai::Tool {
             name: "worker_list".into(),
             constrained_sampling: None,
-            description: "List live peer Elph workers in this project (other processes).".into(),
+            description: "List live peer Elph workers in this project (other processes). \
+                 Names are memorable aliases (e.g. calm-fox). Dead/exited workers are demoted \
+                 before listing so peers disappear near-realtime after crash or clean exit."
+                .into(),
             parameters: json!({
                 "type": "object",
                 "properties": {

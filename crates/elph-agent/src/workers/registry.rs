@@ -157,16 +157,7 @@ impl WorkerRegistry {
     }
 
     pub async fn mark_offline(&self, worker_id: &str) -> Result<()> {
-        let now = now_iso_timestamp();
-        self.with_conn(|conn| async move {
-            conn.execute(
-                "UPDATE workers SET status = 'offline', heartbeat_at = ? WHERE worker_id = ?",
-                turso::params![now.as_str(), worker_id],
-            )
-            .await?;
-            Ok(())
-        })
-        .await
+        self.mark_offline_with_reason(worker_id, "clean_exit").await
     }
 
     pub async fn list_live(&self, project_key: &str, stale_secs: u64) -> Result<Vec<WorkerRecord>> {
@@ -254,16 +245,18 @@ impl WorkerRegistry {
         .await
     }
 
+    /// Demote workers that are heartbeat-stale **or** whose process pid is dead.
+    ///
+    /// Peers learn departures on the next `list_live` / heartbeat cycle without waiting
+    /// for a full stale window when the OS reports the pid gone (clean exit is still
+    /// best-effort `mark_offline` from the exiting process).
     pub async fn demote_stale(&self, project_key: &str, stale_secs: u64) -> Result<usize> {
-        if stale_secs == 0 {
-            return Ok(0);
-        }
         let now = now_iso_timestamp();
         let live = self
             .with_conn(|conn| async move {
                 let mut rows = conn
                     .query(
-                        "SELECT worker_id, heartbeat_at FROM workers
+                        "SELECT worker_id, heartbeat_at, pid FROM workers
                          WHERE project_key = ? AND status IN ('online','idle','busy')",
                         turso::params![project_key],
                     )
@@ -272,30 +265,54 @@ impl WorkerRegistry {
                 while let Some(row) = rows.next().await? {
                     let id: String = row.get(0)?;
                     let hb: String = row.get(1)?;
-                    out.push((id, hb));
+                    let pid: Option<i64> = row.get(2)?;
+                    out.push((id, hb, pid));
                 }
                 Ok(out)
             })
             .await?;
         let mut n = 0usize;
-        for (id, hb) in live {
-            if age_secs(&hb, &now) >= stale_secs as i64 {
-                self.with_conn(|conn| {
-                    let id = id.clone();
-                    async move {
-                        conn.execute(
-                            "UPDATE workers SET status = 'offline' WHERE worker_id = ?",
-                            turso::params![id.as_str()],
-                        )
-                        .await?;
-                        Ok(())
-                    }
-                })
-                .await?;
-                n += 1;
+        for (id, hb, pid) in live {
+            let stale = stale_secs > 0 && age_secs(&hb, &now) >= stale_secs as i64;
+            let dead = pid.map(|p| !super::pid::pid_alive(p)).unwrap_or(false);
+            if !stale && !dead {
+                continue;
             }
+            // Dead pid or heartbeat timeout → offline so list_live drops them immediately.
+            let _ = (stale, dead);
+            self.with_conn(|conn| {
+                let id = id.clone();
+                let now = now.clone();
+                async move {
+                    conn.execute(
+                        "UPDATE workers SET status = 'offline', heartbeat_at = ? WHERE worker_id = ?",
+                        turso::params![now.as_str(), id.as_str()],
+                    )
+                    .await?;
+                    Ok(())
+                }
+            })
+            .await?;
+            n += 1;
         }
         Ok(n)
+    }
+
+    /// Force offline for a worker (clean exit / terminate). Idempotent.
+    pub async fn mark_offline_with_reason(&self, worker_id: &str, reason: &str) -> Result<()> {
+        let now = now_iso_timestamp();
+        let meta = serde_json::json!({ "exit_reason": reason, "exited_at": now });
+        let meta_s = meta.to_string();
+        self.with_conn(|conn| async move {
+            conn.execute(
+                "UPDATE workers SET status = 'offline', heartbeat_at = ?, metadata = ?
+                 WHERE worker_id = ?",
+                turso::params![now.as_str(), meta_s.as_str(), worker_id],
+            )
+            .await?;
+            Ok(())
+        })
+        .await
     }
 }
 

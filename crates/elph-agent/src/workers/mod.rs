@@ -4,9 +4,12 @@ mod file_lease;
 mod lease;
 mod mailbox;
 mod path_claim;
+mod pid;
 mod registry;
 mod tools;
 mod types;
+
+pub use pid::pid_alive;
 
 pub use file_lease::FileLeaseStore;
 pub use lease::{LeaseConflict, LeaseError, SessionLease, SessionLeaseStore};

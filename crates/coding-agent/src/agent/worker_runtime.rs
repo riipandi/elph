@@ -100,28 +100,42 @@ impl WorkerRuntime {
 
         let heartbeat_handle = tokio::spawn(async move {
             let interval = Duration::from_secs(heartbeat_secs);
+            // Reap dead peers more often than full heartbeat so TUI badge / list_live feel near-realtime.
+            let reaper = Duration::from_secs(heartbeat_secs.min(2).max(1));
+            let mut since_hb = Duration::ZERO;
             loop {
                 if hb_stop.load(Ordering::Relaxed) {
                     break;
                 }
-                if let Err(err) = hb_lease.heartbeat(&session_id, &worker_id).await {
-                    log::warn!("session lease heartbeat: {err:#}");
-                }
-                if let Err(err) = hb_registry
-                    .heartbeat(&worker_id, WorkerStatus::Online, None, model.as_deref())
-                    .await
-                {
-                    log::warn!("worker registry heartbeat: {err:#}");
-                }
-                if refresh_files && let Err(err) = hb_files.refresh_worker(&worker_id).await {
-                    log::debug!("file lease refresh: {err:#}");
+                // Presence reaper: demote dead-pid / stale peers every `reaper` tick.
+                if let Err(err) = hb_registry.demote_stale(&project_key, stale_secs).await {
+                    log::debug!("worker demote_stale: {err:#}");
                 }
                 match hb_registry.count_live(&project_key, stale_secs).await {
                     Ok(n) => hb_live.store(n, Ordering::Relaxed),
                     Err(err) => log::debug!("worker count: {err:#}"),
                 }
+
+                if since_hb == Duration::ZERO || since_hb >= interval {
+                    if let Err(err) = hb_lease.heartbeat(&session_id, &worker_id).await {
+                        log::warn!("session lease heartbeat: {err:#}");
+                    }
+                    if let Err(err) = hb_registry
+                        .heartbeat(&worker_id, WorkerStatus::Online, None, model.as_deref())
+                        .await
+                    {
+                        log::warn!("worker registry heartbeat: {err:#}");
+                    }
+                    if refresh_files && let Err(err) = hb_files.refresh_worker(&worker_id).await {
+                        log::debug!("file lease refresh: {err:#}");
+                    }
+                    since_hb = Duration::ZERO;
+                }
+
                 tokio::select! {
-                    _ = tokio::time::sleep(interval) => {}
+                    _ = tokio::time::sleep(reaper) => {
+                        since_hb = since_hb.saturating_add(reaper);
+                    }
                     _ = async {
                         while !hb_stop.load(Ordering::Relaxed) {
                             tokio::time::sleep(Duration::from_millis(200)).await;
@@ -235,7 +249,11 @@ impl WorkerRuntime {
         if let Err(err) = self.lease.release(&self.session_id, &self.worker_id).await {
             log::warn!("release session lease on shutdown: {err:#}");
         }
-        if let Err(err) = self.registry.mark_offline(&self.worker_id).await {
+        if let Err(err) = self
+            .registry
+            .mark_offline_with_reason(&self.worker_id, "clean_exit")
+            .await
+        {
             log::warn!("mark worker offline on shutdown: {err:#}");
         }
     }
@@ -259,7 +277,9 @@ impl Drop for WorkerRuntime {
             handle.spawn(async move {
                 let _ = files.release_all_for_worker(&worker_id).await;
                 let _ = lease.release(&session_id, &worker_id).await;
-                let _ = registry.mark_offline(&worker_id).await;
+                let _ = registry
+                    .mark_offline_with_reason(&worker_id, "process_drop")
+                    .await;
             });
         }
     }

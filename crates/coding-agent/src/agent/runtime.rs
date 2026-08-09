@@ -138,7 +138,7 @@ pub async fn create_coding_session_with_events(
             .map(str::trim)
             .filter(|s| !s.is_empty())
             .map(str::to_string)
-            .unwrap_or_else(hostname_worker_name);
+            .unwrap_or_else(default_worker_name);
         match WorkerRuntime::start(WorkerRuntimeStart {
             database: database.clone(),
             db_path: options.paths.memory_db_path(),
@@ -395,7 +395,22 @@ pub async fn create_coding_session_with_events(
     Ok((session, ui_rx))
 }
 
-fn hostname_worker_name() -> String {
+/// Default display name for a worker: memorable-id (e.g. `calm-fox`), with hostname fallback.
+fn default_worker_name() -> String {
+    match memorable_ids::generate(memorable_ids::GenerateOptions::default()) {
+        Ok(name) => {
+            let name = name.trim().to_string();
+            if name.is_empty() {
+                hostname_worker_name_fallback()
+            } else {
+                name
+            }
+        }
+        Err(_) => hostname_worker_name_fallback(),
+    }
+}
+
+fn hostname_worker_name_fallback() -> String {
     std::env::var("HOSTNAME")
         .or_else(|_| std::env::var("COMPUTERNAME"))
         .ok()
