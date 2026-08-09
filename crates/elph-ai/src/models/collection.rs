@@ -513,13 +513,26 @@ pub fn create_disk_provider(id: &str, models: Vec<Model>) -> Option<Provider> {
     // Convention: SOME_PROVIDER_API_KEY from kebab id `some-provider`.
     let env_name = format!("{}_API_KEY", id.replace('-', "_").to_ascii_uppercase());
     let display = title_case_provider_id(id);
+    let local = base_url
+        .as_deref()
+        .is_some_and(crate::auth::is_local_or_loopback_base_url)
+        || {
+            let lower = id.to_ascii_lowercase();
+            lower.contains("local") || lower.contains("ollama") || lower.contains("lmstudio") || lower.contains("vllm")
+        };
+    let api_key_auth = if local {
+        // Local OpenAI-compatible endpoints rarely require a real key.
+        crate::auth::optional_env_api_key_auth(format!("{display} API key (optional)"), vec![env_name])
+    } else {
+        crate::auth::flexible_api_key_auth(format!("{display} API key"), vec![env_name])
+    };
     Some(create_provider(CreateProviderOptions {
         id: id.to_string(),
         name: Some(display.clone()),
         base_url,
         headers,
         auth: crate::auth::ProviderAuth {
-            api_key: Some(crate::auth::flexible_api_key_auth(format!("{display} API key"), vec![env_name])),
+            api_key: Some(api_key_auth),
             oauth: None,
         },
         models,

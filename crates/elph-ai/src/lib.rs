@@ -31,7 +31,10 @@ pub use auth::{ApiKeyAuth, ApiKeyCredential, AuthContext, AuthResolveInput, Auth
 pub use auth::{CredentialInfo, ModelsErrorCode, OAuthCredential, ProviderAuth};
 pub use auth::{CredentialStore, DefaultAuthContext, InMemoryCredentialStore, ModelAuth, ModelsError};
 pub use auth::{InMemoryModelsStore, ModelsStore, ModelsStoreEntry, ProviderStore};
-pub use auth::{default_auth_context, env_api_key_auth, flexible_api_key_auth, resolve_provider_auth};
+pub use auth::{
+    default_auth_context, env_api_key_auth, flexible_api_key_auth, is_local_or_loopback_base_url,
+    optional_env_api_key_auth, resolve_provider_auth,
+};
 pub use images::{CreateImagesModelsOptions, ImagesModels};
 pub use images::{builtin_images_models, generate_images};
 pub use models::{CreateModelsOptions, CreateProviderOptions, Models, MutableModels, Provider, ProviderApi};

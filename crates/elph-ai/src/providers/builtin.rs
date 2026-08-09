@@ -270,7 +270,7 @@ pub fn github_copilot_provider() -> Provider {
         base_url: Some("https://api.individual.githubcopilot.com".to_string()),
         headers: None,
         auth: ProviderAuth {
-            api_key: Some(env_api_key_auth("GitHub Copilot token", vec!["COPILOT_GITHUB_TOKEN"])),
+            api_key: Some(crate::auth::github_copilot_api_key_auth()),
             oauth: Some(github_copilot_oauth()),
         },
         models: builtin_catalog("github-copilot").as_ref().clone(),

@@ -46,17 +46,42 @@ fn github_copilot_oauth_impl() -> OAuthAuth {
         to_auth: Arc::new(|credential| {
             Box::pin(async move {
                 let enterprise_domain = copilot_enterprise_domain(&credential);
+                // OAuth `access` is already the Copilot session token (`tid=…;exp=…;…`).
+                // If a plain GitHub token was stored by mistake, exchange it.
+                let session = ensure_copilot_session_token(&credential.access, enterprise_domain.as_deref()).await?;
                 Ok(ModelAuth {
-                    api_key: Some(credential.access.clone()),
+                    api_key: Some(session.clone()),
                     headers: None,
-                    base_url: Some(get_github_copilot_base_url(
-                        Some(&credential.access),
-                        enterprise_domain.as_deref(),
-                    )),
+                    base_url: Some(get_github_copilot_base_url(Some(&session), enterprise_domain.as_deref())),
                 })
             })
         }),
     }
+}
+
+/// True when the token looks like a GitHub Copilot **session** token (`k=v;k=v;…`),
+/// not a bare GitHub PAT / OAuth access token.
+pub fn is_copilot_session_token(token: &str) -> bool {
+    let t = token.trim();
+    t.contains('=') && t.contains(';')
+}
+
+/// Exchange a GitHub OAuth/PAT-style token for a Copilot session token when needed.
+///
+/// The Copilot chat API expects the session token from
+/// `GET /copilot_internal/v2/token`. Sending a plain GitHub token yields
+/// `invalid token: missing = param` (400).
+pub async fn ensure_copilot_session_token(token: &str, enterprise_domain: Option<&str>) -> anyhow::Result<String> {
+    let token = token.trim();
+    if token.is_empty() {
+        anyhow::bail!("empty GitHub Copilot token");
+    }
+    if is_copilot_session_token(token) {
+        return Ok(token.to_string());
+    }
+    log::info!("exchanging GitHub token for Copilot session token");
+    let creds = refresh_copilot_access_token(token, enterprise_domain).await?;
+    Ok(creds.access)
 }
 
 #[derive(Debug, Clone)]

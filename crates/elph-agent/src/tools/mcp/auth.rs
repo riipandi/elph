@@ -882,6 +882,16 @@ pub async fn authorization_manager_from_store(
         .await
         .map_err(|e| anyhow::anyhow!("init OAuth manager: {e}"))?;
     manager.set_credential_store(store);
+    // Refresh / get_access_token needs AS metadata (token endpoint). Re-resolve
+    // on every load so stale or partial store rows still work after restart.
+    match manager.resolve_metadata().await {
+        Ok(resolution) => {
+            manager.set_metadata(resolution.metadata);
+        }
+        Err(e) => {
+            log::warn!("MCP OAuth metadata resolve for \"{server_name}\" failed (will try store-only): {e}");
+        }
+    }
     let ready = manager
         .initialize_from_store()
         .await
@@ -932,17 +942,39 @@ fn open_browser(url: &str) -> Result<()> {
 }
 
 async fn wait_for_oauth_callback(listener: TcpListener) -> Result<String> {
-    let (mut socket, _) = listener.accept().await.context("accept OAuth callback connection")?;
-    let mut buf = vec![0u8; 8192];
-    let n = socket.read(&mut buf).await.context("read OAuth callback request")?;
-    let request = String::from_utf8_lossy(&buf[..n]);
+    // Bound accept so a cancelled TUI does not hang forever on a half-open flow.
+    let accept = tokio::time::timeout(std::time::Duration::from_secs(10 * 60), listener.accept())
+        .await
+        .map_err(|_| anyhow::anyhow!("timed out waiting for OAuth browser callback (10m)"))?
+        .context("accept OAuth callback connection")?;
+    let (mut socket, _) = accept;
+
+    // Read until the request headers end (or a generous cap). Long auth codes
+    // exceed a single small buffer; truncating drops `code=` and breaks exchange.
+    let mut buf = Vec::with_capacity(16 * 1024);
+    let mut chunk = [0u8; 4096];
+    loop {
+        let n = socket.read(&mut chunk).await.context("read OAuth callback request")?;
+        if n == 0 {
+            break;
+        }
+        buf.extend_from_slice(&chunk[..n]);
+        if buf.windows(4).any(|w| w == b"\r\n\r\n") || buf.len() >= 64 * 1024 {
+            break;
+        }
+    }
+    if buf.is_empty() {
+        anyhow::bail!("empty OAuth callback request");
+    }
+    let request = String::from_utf8_lossy(&buf);
     let path_line = request.lines().next().context("empty OAuth callback request")?;
     let path = path_line
         .split_whitespace()
         .nth(1)
         .context("malformed OAuth callback request line")?;
-    let host = listener.local_addr()?;
-    let callback_url = format!("http://{}{path}", host);
+    // Always rebuild with loopback host — `local_addr()` may be `0.0.0.0:port`.
+    let port = listener.local_addr()?.port();
+    let callback_url = format!("http://127.0.0.1:{port}{path}");
 
     let body = b"HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\n\r\n\
 <!DOCTYPE html><html><body><h1>Authorization complete</h1>\
@@ -950,6 +982,9 @@ async fn wait_for_oauth_callback(listener: TcpListener) -> Result<String> {
     let _ = socket.write_all(body).await;
     let _ = socket.shutdown().await;
 
+    if path.contains("error=") {
+        anyhow::bail!("OAuth provider returned an error in the callback: {path}");
+    }
     if !path.contains("code=") {
         anyhow::bail!("OAuth callback missing authorization code: {path}");
     }

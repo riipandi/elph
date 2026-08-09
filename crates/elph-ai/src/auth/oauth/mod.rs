@@ -15,8 +15,10 @@ mod registry;
 mod xai;
 
 pub use anthropic::{anthropic_oauth, anthropic_oauth_loader, login_anthropic, refresh_anthropic_token};
-pub use github_copilot::{get_github_copilot_base_url, github_copilot_oauth, github_copilot_oauth_loader};
-pub use github_copilot::{login_github_copilot, normalize_domain, refresh_github_copilot_token};
+pub use github_copilot::{
+    ensure_copilot_session_token, get_github_copilot_base_url, github_copilot_oauth, github_copilot_oauth_loader,
+    is_copilot_session_token, login_github_copilot, normalize_domain, refresh_github_copilot_token,
+};
 pub use hyper::refresh_hyper_token;
 pub use hyper::{hyper_api_base_url, hyper_base_url, hyper_oauth, hyper_oauth_loader, hyper_user_agent, login_hyper};
 pub use kimi::{kimi_oauth, kimi_oauth_loader};
