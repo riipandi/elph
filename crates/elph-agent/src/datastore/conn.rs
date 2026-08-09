@@ -207,10 +207,27 @@ async fn set_busy_timeout(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Connect to an open `Database` and set `busy_timeout` (propagating any error).
+/// Enforce declared FOREIGN KEY constraints for this connection.
+///
+/// SQLite/Turso default is off; without this, FK DDL is documentation-only.
+async fn set_foreign_keys(conn: &Connection) -> Result<()> {
+    conn.execute("PRAGMA foreign_keys = ON", ())
+        .await
+        .context("set foreign_keys")?;
+    Ok(())
+}
+
+/// Apply per-connection session pragmas (busy timeout + foreign keys).
+async fn apply_connection_pragmas(conn: &Connection) -> Result<()> {
+    set_busy_timeout(conn).await?;
+    set_foreign_keys(conn).await?;
+    Ok(())
+}
+
+/// Connect to an open `Database` and set connection pragmas (propagating any error).
 async fn connect_internal(db: &Database) -> Result<Connection> {
     let conn = connect_retry(db).await?;
-    set_busy_timeout(&conn).await?;
+    apply_connection_pragmas(&conn).await?;
     Ok(conn)
 }
 
@@ -280,12 +297,12 @@ pub async fn open_local_with(
 
 /// Connect to an open Database, retrying on lock errors.
 ///
-/// Sets `PRAGMA busy_timeout = 5000` on the connection (best-effort: a failure
-/// to set the pragma is logged but does not abort the connection).
+/// Sets `PRAGMA busy_timeout = 5000` and `PRAGMA foreign_keys = ON` (best-effort:
+/// a pragma failure is logged but does not abort the connection).
 pub async fn connect(db: &Database) -> Result<Connection> {
     let conn = connect_retry(db).await?;
-    if let Err(e) = set_busy_timeout(&conn).await {
-        log::warn!("Failed to set busy_timeout: {e}");
+    if let Err(e) = apply_connection_pragmas(&conn).await {
+        log::warn!("Failed to apply connection pragmas: {e}");
     }
     Ok(conn)
 }

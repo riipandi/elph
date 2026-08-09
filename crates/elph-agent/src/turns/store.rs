@@ -13,7 +13,7 @@ use crate::session::id::create_turn_id;
 use super::types::{TurnRecord, TurnStatus, TurnUsage};
 
 const TURN_COLUMNS: &str = "id, session_id, turn_index, status, operation_id,
-    started_at, finished_at, wall_clock_ms, provider_id, model_id, thinking_level,
+    started_at, finished_at, wall_clock_ms, provider_id, model_id, thinking_level, agent_mode,
     input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, total_tokens, cost,
     user_entry_id, assistant_entry_id, error_message";
 
@@ -85,10 +85,10 @@ impl TurnStore {
             conn.execute(
                 "INSERT INTO session_turns (
                     id, session_id, turn_index, status, operation_id,
-                    started_at, finished_at, wall_clock_ms, provider_id, model_id, thinking_level,
+                    started_at, finished_at, wall_clock_ms, provider_id, model_id, thinking_level, agent_mode,
                     input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, total_tokens, cost,
                     user_entry_id, assistant_entry_id, error_message
-                 ) VALUES (?, ?, ?, 'started', ?, ?, NULL, 0, ?, ?, ?, 0, 0, 0, 0, 0, 0, NULL, NULL, NULL)",
+                 ) VALUES (?, ?, ?, 'started', ?, ?, NULL, 0, ?, ?, ?, NULL, 0, 0, 0, 0, 0, 0, NULL, NULL, NULL)",
                 turso::params![
                     id.as_str(),
                     session_id,
@@ -114,6 +114,7 @@ impl TurnStore {
                 provider_id: provider_id.map(str::to_string),
                 model_id: model_id.map(str::to_string),
                 thinking_level: thinking_level.map(str::to_string),
+                agent_mode: None,
                 usage: TurnUsage::default(),
                 user_entry_id: None,
                 assistant_entry_id: None,
@@ -277,17 +278,18 @@ fn row_to_turn(row: &turso::Row) -> Result<TurnRecord> {
         provider_id: row.get(8)?,
         model_id: row.get(9)?,
         thinking_level: row.get(10)?,
+        agent_mode: row.get(11)?,
         usage: TurnUsage {
-            input_tokens: row.get(11)?,
-            output_tokens: row.get(12)?,
-            cache_read_tokens: row.get(13)?,
-            cache_write_tokens: row.get(14)?,
-            total_tokens: row.get(15)?,
-            cost: row.get(16)?,
+            input_tokens: row.get(12)?,
+            output_tokens: row.get(13)?,
+            cache_read_tokens: row.get(14)?,
+            cache_write_tokens: row.get(15)?,
+            total_tokens: row.get(16)?,
+            cost: row.get(17)?,
         },
-        user_entry_id: row.get(17)?,
-        assistant_entry_id: row.get(18)?,
-        error_message: row.get(19)?,
+        user_entry_id: row.get(18)?,
+        assistant_entry_id: row.get(19)?,
+        error_message: row.get(20)?,
     })
 }
 

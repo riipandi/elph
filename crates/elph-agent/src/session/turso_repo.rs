@@ -208,22 +208,8 @@ async fn delete_session(
     database: Option<&Arc<Database>>,
 ) -> Result<(), SessionError> {
     let conn = open_migrated(db_path, database).await?;
-    // Manual cascade: goals FK may not be enforced; wipe tree first then session.
-    conn.execute("DELETE FROM session_entries WHERE session_id = ?", turso::params![session_id])
-        .await
-        .map_err(map_err)?;
-    conn.execute("DELETE FROM session_sequences WHERE session_id = ?", turso::params![session_id])
-        .await
-        .map_err(map_err)?;
-    // Goals: best-effort cascade so session delete does not leave orphan goals.
-    // The table may be absent in library-only DBs (expected there); any other
-    // error (e.g. a lock error) is logged rather than silently swallowed.
-    if let Err(error) = conn
-        .execute("DELETE FROM goals WHERE session_id = ?", turso::params![session_id])
-        .await
-    {
-        log::warn!("failed to cascade-delete goals for {session_id}: {error}");
-    }
+    // FK ON DELETE CASCADE clears entries/sequences/turns/todos/goals.
+    // Spawn edges may reference this id as parent or child — clear explicitly.
     if let Err(error) = conn
         .execute(
             "DELETE FROM agent_spawn_edges WHERE parent_session_id = ? OR child_session_id = ?",

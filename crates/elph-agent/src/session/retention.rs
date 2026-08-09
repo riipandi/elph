@@ -157,7 +157,7 @@ pub fn plan_session_gc(candidates: &[SessionGcCandidate], policy: &RetentionPoli
     doomed_list
 }
 
-/// Delete sessions by id (cascade session_entries/turns/todos/goals best-effort).
+/// Delete sessions by id. Child rows cascade via FK (`ON DELETE CASCADE`).
 pub async fn delete_sessions(database: &Database, session_ids: &[String]) -> Result<usize> {
     if session_ids.is_empty() {
         return Ok(0);
@@ -167,22 +167,15 @@ pub async fn delete_sessions(database: &Database, session_ids: &[String]) -> Res
     let outcome = async {
         let mut n = 0usize;
         for id in session_ids {
-            for sql in [
-                "DELETE FROM session_entries WHERE session_id = ?",
-                "DELETE FROM session_sequences WHERE session_id = ?",
-                "DELETE FROM session_turns WHERE session_id = ?",
-                "DELETE FROM session_todos WHERE session_id = ?",
-                "DELETE FROM goals WHERE session_id = ?",
-                "DELETE FROM sessions WHERE id = ?",
-            ] {
-                conn.execute(sql, turso::params![id.as_str()]).await?;
-            }
+            // Spawn edges reference two sessions; clear either side before/with parent delete.
             let _ = conn
                 .execute(
                     "DELETE FROM agent_spawn_edges WHERE parent_session_id = ? OR child_session_id = ?",
                     turso::params![id.as_str(), id.as_str()],
                 )
                 .await;
+            conn.execute("DELETE FROM sessions WHERE id = ?", turso::params![id.as_str()])
+                .await?;
             n += 1;
         }
         Ok::<usize, anyhow::Error>(n)

@@ -16,18 +16,39 @@ Project store file: `<project>/.elph/store.db` (shared with floppy memory and co
 
 Session artifacts (terminals, MCP cache): `APP_DATA/sessions/<SESSION_ID>/`.
 
-## Schema (v200)
+## Schema (v201)
 
-Clean band **200** (`elph_session_schema_v2`). No upgrade path from experimental pre-v200 DBs — delete `store.db` if needed.
+Clean band **201** (`elph_session_schema_v2_relational`). No upgrade path from experimental pre-v201 DBs — delete `store.db` if needed.
 
-- **`sessions`** — metadata, leaf, pin, token/cost rollups, `entry_count` / `approx_bytes`
-- **`session_entries`** — tree spine (`parent_id`, `type`, `role`, `payload_bytes`, `payload`)
-- **`session_sequences`** — next `entry_seq`
-- **`session_turns`** — per-turn usage and status
-- **`session_todos`** — todo list (`todo_<kalid>` ids)
-- **`goals`**, **`skill_cache`**, **`agent_spawn_edges`**
+### Entity relationship
 
-Canonical SQL: `elph-agent` `CANONICAL_SESSION_SCHEMA_SQL` / platform migration v200.
+```text
+sessions
+  ├── parent_session_id ──► sessions(id)     ON DELETE SET NULL
+  ├── session_sequences     ON DELETE CASCADE
+  ├── session_turns         ON DELETE CASCADE
+  │     └── session_entries.turn_id ──► session_turns(id)  ON DELETE SET NULL
+  ├── session_entries       ON DELETE CASCADE
+  ├── session_todos         ON DELETE CASCADE
+  ├── goals                 ON DELETE CASCADE
+  └── agent_spawn_edges (parent/child) ON DELETE CASCADE
+```
+
+| Table | PK | FK |
+| --- | --- | --- |
+| `sessions` | `id` | `parent_session_id` → `sessions(id)` SET NULL |
+| `session_sequences` | `session_id` | → `sessions(id)` CASCADE |
+| `session_turns` | `id` | `session_id` → `sessions` CASCADE; UNIQUE `(session_id, turn_index)` |
+| `session_entries` | `(session_id, id)` | `session_id` CASCADE; `turn_id` → `session_turns` SET NULL |
+| `session_todos` | `id` | `session_id` CASCADE |
+| `goals` | `id` | `session_id` CASCADE |
+| `agent_spawn_edges` | `(parent, child)` | both → `sessions` CASCADE |
+
+**Not FK-enforced (intentional soft links):** tree `parent_id` (append order / prune), turn `user_entry_id` / `assistant_entry_id` (may be pruned after compaction).
+
+**Runtime:** every connection runs `PRAGMA foreign_keys = ON` (SQLite defaults to off).
+
+Canonical SQL: `elph-agent` `CANONICAL_SESSION_SCHEMA_SQL` / platform migration v201.
 
 ## Resume / continue
 
@@ -37,6 +58,30 @@ Canonical SQL: `elph-agent` `CANONICAL_SESSION_SCHEMA_SQL` / platform migration 
 4. TUI: `reconstruct_transcript_from_llm_entries` on that branch.
 
 Messages are flushed on each `MessageEnd` into `session_entries` (transactional with leaf). Do not rely on UI snapshot blobs.
+
+## Turns, modes, and foundation model
+
+One **session** is a durable conversation container (cwd, name, leaf, rollups). Inside it:
+
+| Concept | Cardinality | Persistence today | Gap |
+| --- | --- | --- | --- |
+| **Turn** | many per session | `session_turns` (+ rollups) | OK; wire `session_entries.turn_id` on write |
+| **Messages / tools** | many per turn | `session_entries` tree (`type=message`) | OK — this **is** the transcript SoT |
+| **Agent mode** (build/plan/ask/brave) | changes over session | mostly **process-local** `mode_state`; `sessions.agent_mode` only set at create | **Gap:** mode not durable per turn or as tree events |
+| **Model / thinking / collab mode** | changes over session | tree entries (`model_change`, `thinking_level_change`, `collaboration_mode_change`) | OK on resume via `derive_session_context_state` |
+
+**Recommended modest schema/code polish (not a full redesign):**
+
+1. Add `agent_mode` (and optionally `collaboration_mode`) on `session_turns` — snapshot at turn start.  
+2. On mode change: update `sessions.agent_mode` denorm **and** append a tree entry (e.g. `agent_mode_change`) so resume restores tools/prompt like model changes.  
+3. Fill `session_entries.turn_id` during an active harness turn (column already exists, currently always `NULL`).  
+4. Keep hybrid model: tree = conversation structure; relational turns = metrics/audit.
+
+No need for a separate `transcript` table: reconstructing TUI cards from the message tree is intentional and keeps a single SoT.
+
+## Removed / unused
+
+- **`skill_cache`** — dropped from v200 schema. No readers/writers ever existed; skills load from the filesystem each run.
 
 ## Retention (`settings.json`)
 

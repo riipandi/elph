@@ -14,20 +14,20 @@ use floppy::memory::migrations as memory_migrations;
 use turso::Builder;
 
 /// Expected ledger contents across all bands, in version order.
-/// Platform and session tree share version 200 (whichever runs first wins).
-const EXPECTED_VERSIONS: &[i64] = &[1, 2, 3, 4, 200, 500, 501];
+/// Platform and session tree share version 201 (whichever runs first wins).
+const EXPECTED_VERSIONS: &[i64] = &[1, 2, 3, 4, 201, 500, 501];
 
 #[tokio::test]
 async fn all_bands_share_one_store_db_and_one_ledger() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let store_db = tmp.path().join("store.db");
 
-    // Platform band (elph host): v200.
+    // Platform band (elph host): v201.
     ensure_database(&store_db, metadata_migrations())
         .await
         .expect("platform band");
 
-    // Session tree (elph-agent): v200 — same file, same ledger (no-op if already applied).
+    // Session tree (elph-agent): v201 — same file, same ledger (no-op if already applied).
     ensure_database(&store_db, &SESSION_TREE_MIGRATIONS)
         .await
         .expect("session band");
@@ -101,13 +101,12 @@ async fn all_bands_share_one_store_db_and_one_ledger() {
         "session_turns",
         "session_todos",
         "goals",
-        "skill_cache",
         "agent_spawn_edges",
     ] {
         assert!(tables.contains(&table.to_string()), "missing table {table}: {tables:?}");
     }
-    // Legacy bloat tables must not exist.
-    for gone in ["todos", "transcript_messages", "transcript_snapshot"] {
+    // Legacy bloat / unused tables must not exist.
+    for gone in ["todos", "transcript_messages", "transcript_snapshot", "skill_cache"] {
         assert!(
             !tables.contains(&gone.to_string()),
             "legacy table {gone} should not exist: {tables:?}"

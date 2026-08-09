@@ -1,8 +1,8 @@
 //! Session and entry ID generation with optional prefixed Kalid support.
 //!
 //! Unprefixed IDs (16-char Kalid) are used for session IDs and entry IDs.
-//! Prefixed IDs (`goal_<16>`, `msg_<16>`, `todo_<16>`, `skc_<16>`) are used
-//! for goals, messages, todos, and skill cache entries respectively.
+//! Prefixed IDs (`goal_<16>`, `msg_<16>`, `todo_<16>`, `turn_<16>`) are used
+//! for goals, messages, todos, and turns respectively.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -22,7 +22,6 @@ const GOAL_PREFIX: &str = "goal";
 const MESSAGE_PREFIX: &str = "msg";
 const TODO_PREFIX: &str = "todo";
 const TURN_PREFIX: &str = "turn";
-const SKILL_CACHE_PREFIX: &str = "skc";
 
 /// K-sortable ID string (16-char Kalid, no prefix).
 pub fn create_kalid() -> String {
@@ -71,11 +70,6 @@ pub fn create_turn_id() -> String {
     create_prefixed_kalid(TURN_PREFIX)
 }
 
-/// Create a skill cache ID (`skc_<16>`).
-pub fn create_skill_cache_id() -> String {
-    create_prefixed_kalid(SKILL_CACHE_PREFIX)
-}
-
 /// Returns `true` when `id` is a valid Kalid string, with or without prefix.
 ///
 /// Accepts:
@@ -95,7 +89,7 @@ fn strip_prefix(id: &str) -> Option<&str> {
     let prefix = &id[..underscore];
     // Only strip known prefixes to avoid false positives
     match prefix {
-        GOAL_PREFIX | MESSAGE_PREFIX | TODO_PREFIX | TURN_PREFIX | SKILL_CACHE_PREFIX => {
+        GOAL_PREFIX | MESSAGE_PREFIX | TODO_PREFIX | TURN_PREFIX => {
             let body = &id[underscore + 1..];
             Some(body)
         }
@@ -171,14 +165,6 @@ mod tests {
     }
 
     #[test]
-    fn create_skill_cache_id_has_prefix() {
-        let id = create_skill_cache_id();
-        assert!(id.starts_with("skc_"), "skc_ prefix");
-        assert_eq!(id.len(), 20); // "skc_" (4) + 16 body
-        assert!(is_valid_kalid(&id));
-    }
-
-    #[test]
     fn is_valid_kalid_accepts_unprefixed() {
         let id = create_kalid();
         assert!(is_valid_kalid(&id));
@@ -189,7 +175,7 @@ mod tests {
         assert!(is_valid_kalid(&create_goal_id()));
         assert!(is_valid_kalid(&create_message_id()));
         assert!(is_valid_kalid(&create_todo_id()));
-        assert!(is_valid_kalid(&create_skill_cache_id()));
+        assert!(is_valid_kalid(&create_turn_id()));
     }
 
     #[test]

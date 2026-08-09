@@ -68,6 +68,8 @@ pub struct TurnRecord {
     pub provider_id: Option<String>,
     pub model_id: Option<String>,
     pub thinking_level: Option<String>,
+    /// Agent mode at turn start (`build` / `plan` / `ask` / `brave`), when known.
+    pub agent_mode: Option<String>,
     pub usage: TurnUsage,
     pub user_entry_id: Option<String>,
     pub assistant_entry_id: Option<String>,
