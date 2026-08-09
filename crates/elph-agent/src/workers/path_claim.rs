@@ -43,8 +43,12 @@ impl PathClaimContext {
     }
 
     /// Claim an absolute or relative path for exclusive write by this worker.
+    ///
+    /// Stores a content fingerprint of the on-disk file (when present) so a later
+    /// edit can detect external changes.
     pub async fn claim(&self, path: &str, purpose: &str) -> Result<()> {
         let path_norm = normalize_claim_path(path, &self.project_key);
+        let content_hash = file_content_fingerprint(path);
         self.store
             .try_claim(
                 &self.project_key,
@@ -52,12 +56,48 @@ impl PathClaimContext {
                 &self.worker_id,
                 &self.session_id,
                 Some(purpose),
-                None,
+                content_hash.as_deref(),
                 self.stale_secs,
             )
             .await?;
         Ok(())
     }
+
+    /// Fail if another process changed the file since this worker claimed it.
+    pub async fn ensure_content_unchanged(&self, path: &str) -> Result<()> {
+        let path_norm = normalize_claim_path(path, &self.project_key);
+        let leases = self.store.list_project(&self.project_key).await?;
+        let Some(lease) = leases.into_iter().find(|l| l.path_norm == path_norm) else {
+            return Ok(());
+        };
+        if lease.worker_id != self.worker_id {
+            return Ok(());
+        }
+        let Some(expected) = lease.content_hash.as_deref() else {
+            return Ok(());
+        };
+        let Some(current) = file_content_fingerprint(path) else {
+            return Ok(());
+        };
+        if current != expected {
+            anyhow::bail!(
+                "path `{path_norm}` changed on disk since claim (hash mismatch). \
+                 Re-read the file and retry — refusing to overwrite concurrent edits."
+            );
+        }
+        Ok(())
+    }
+}
+
+fn file_content_fingerprint(path: &str) -> Option<String> {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    let bytes = std::fs::read(path).ok()?;
+    let mut h = DefaultHasher::new();
+    bytes.hash(&mut h);
+    // Include length to reduce trivial collisions on short files.
+    bytes.len().hash(&mut h);
+    Some(format!("{:016x}", h.finish()))
 }
 
 /// Project-relative path key when under `project_key`, else absolute string.

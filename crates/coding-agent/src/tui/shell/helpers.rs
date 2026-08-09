@@ -397,6 +397,13 @@ pub(crate) fn confirm_pending_quit(
             TurnDispatcher::spawn_abort(Arc::clone(session));
         }
     }
+    // Best-effort: mark worker offline + release leases before process teardown.
+    if let Some(session) = ctx.agent_session.as_ref() {
+        let session = Arc::clone(session);
+        tokio::spawn(async move {
+            session.shutdown_workers().await;
+        });
+    }
     ctx.should_exit.set(true);
 }
 
@@ -422,6 +429,12 @@ pub(crate) fn request_quit(
         }
     } else {
         ctx.pending_quit_confirm.set(false);
+        if let Some(session) = ctx.agent_session.as_ref() {
+            let session = Arc::clone(session);
+            tokio::spawn(async move {
+                session.shutdown_workers().await;
+            });
+        }
         ctx.should_exit.set(true);
         true
     }

@@ -132,6 +132,10 @@ async fn execute_edit(
             "edit aborted: {path} changed since it was read. Re-read the file (read_file) and retry the edit."
         ));
     }
+    if let Some(claim) = claims.as_ref() {
+        // Refresh claim hash to post-read content, then ensure no foreign claim/conflict.
+        claim.claim(&absolute, "edit_file").await?;
+    }
 
     match FileSystem::write_file(env.as_ref(), &absolute, updated.as_bytes(), signal.as_ref()).await {
         HarnessResult::Ok(()) => {}

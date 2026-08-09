@@ -284,6 +284,7 @@ pub async fn create_coding_session_with_events(
         preferred_chat_language: options.settings.preferred_chat_language.clone(),
         codegraph_enabled: options.settings.codegraph.enabled,
         ste_enabled: options.settings.simplified_technical_english,
+        worker_name: worker_runtime.as_ref().map(|w| w.name.clone()),
     };
 
     let system_prompt = SystemPrompt::Dynamic(Arc::new(move |ctx| {

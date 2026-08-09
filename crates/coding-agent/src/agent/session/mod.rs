@@ -195,14 +195,55 @@ impl CodingAgentSession {
     }
 
     /// Graceful multi-worker teardown (release lease, mark offline, stop heartbeat).
-    pub async fn shutdown_workers(&mut self) {
-        if let Some(mut rt) = self.worker_runtime.take() {
+    /// Safe to call with only `&self` (TUI holds `Arc<CodingAgentSession>`).
+    pub async fn shutdown_workers(&self) {
+        if let Some(rt) = self.worker_runtime.as_ref() {
             rt.shutdown().await;
         } else if self.session_manager.lease_worker_id().is_some() {
             if let Err(err) = self.session_manager.release_session_lease(&self.session_id).await {
                 log::warn!("release session lease: {err:#}");
             }
         }
+    }
+
+    /// After a turn, reply to any open inbound worker asks with the last assistant text.
+    async fn complete_open_worker_asks_after_turn(&self) {
+        let Some(rt) = self.worker_runtime.as_ref() else {
+            return;
+        };
+        let Some(text) = self.last_assistant_text_for_worker_reply().await else {
+            return;
+        };
+        match rt.complete_open_asks_with_text(&text).await {
+            Ok(n) if n > 0 => log::info!("completed {n} open worker ask(s) after turn"),
+            Ok(_) => {}
+            Err(err) => log::warn!("complete worker asks: {err:#}"),
+        }
+    }
+
+    async fn last_assistant_text_for_worker_reply(&self) -> Option<String> {
+        let entries = self.harness.session_entries().await;
+        for entry in entries.iter().rev() {
+            if let elph_agent::SessionTreeEntry::Message { message, .. } = entry {
+                if message.role() == "assistant" {
+                    if let Some(elph_ai::Message::Assistant(a)) = message.as_llm() {
+                        let mut parts = Vec::new();
+                        for block in &a.content {
+                            if let elph_ai::AssistantContentBlock::Text(t) = block {
+                                if !t.text.trim().is_empty() {
+                                    parts.push(t.text.clone());
+                                }
+                            }
+                        }
+                        let joined = parts.join("\n").trim().to_string();
+                        if !joined.is_empty() {
+                            return Some(joined);
+                        }
+                    }
+                }
+            }
+        }
+        None
     }
 
     /// Start durable mailbox inbox poller (claim → inject → steer/prompt). Call once after `Arc::new`.
@@ -402,6 +443,7 @@ impl CodingAgentSession {
                 preferred_chat_language: self.preferred_chat_language.clone(),
                 codegraph_enabled: self.codegraph_enabled,
                 ste_enabled: self.ste_enabled,
+                worker_name: self.worker_name().map(str::to_string),
             },
         )?;
         *self.system_prompt_cache.write() = Some(text.clone());
@@ -985,6 +1027,7 @@ impl CodingAgentSession {
 
     async fn finish_ui_turn(&self, started: Instant) {
         let _ = self.harness.wait_for_idle().await;
+        self.complete_open_worker_asks_after_turn().await;
         if let Err(err) = self.refresh_system_prompt_cache().await {
             log::debug!("system prompt cache refresh after turn failed: {err:#}");
         }

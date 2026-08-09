@@ -250,6 +250,100 @@ impl MailboxStore {
         })
         .await
     }
+
+    /// Delivered prompts awaiting a response for this session (open asks from peers).
+    pub async fn list_open_delivered_prompts(&self, to_session_id: &str) -> Result<Vec<WorkerMessage>> {
+        self.with_conn(|conn| async move {
+            let mut rows = conn
+                .query(
+                    "SELECT id FROM worker_messages
+                     WHERE to_session_id = ? AND kind = 'prompt' AND status = 'delivered'
+                     ORDER BY created_at ASC",
+                    turso::params![to_session_id],
+                )
+                .await?;
+            let mut ids = Vec::new();
+            while let Some(row) = rows.next().await? {
+                let id: String = row.get(0)?;
+                ids.push(id);
+            }
+            let mut out = Vec::new();
+            for id in ids {
+                if let Some(msg) = load_message(&conn, &id).await? {
+                    // Still open if no response row yet.
+                    let mut resp = conn
+                        .query(
+                            "SELECT 1 FROM worker_messages
+                             WHERE parent_msg_id = ? AND kind = 'response' LIMIT 1",
+                            turso::params![id.as_str()],
+                        )
+                        .await?;
+                    let has_resp = resp.next().await?.is_some();
+                    while resp.next().await?.is_some() {}
+                    if !has_resp {
+                        out.push(msg);
+                    }
+                }
+            }
+            Ok(out)
+        })
+        .await
+    }
+
+    /// Mark timed-out prompts (queued/delivered older than `timeout_ms`) for a project.
+    pub async fn sweep_timeouts(&self, project_key: &str, timeout_ms: u64) -> Result<usize> {
+        if timeout_ms == 0 {
+            return Ok(0);
+        }
+        let now = now_iso_timestamp();
+        let open = self
+            .with_conn(|conn| async move {
+                let mut rows = conn
+                    .query(
+                        "SELECT id, created_at FROM worker_messages
+                         WHERE project_key = ? AND kind = 'prompt'
+                           AND status IN ('queued','delivered')",
+                        turso::params![project_key],
+                    )
+                    .await?;
+                let mut out = Vec::new();
+                while let Some(row) = rows.next().await? {
+                    let id: String = row.get(0)?;
+                    let created: String = row.get(1)?;
+                    out.push((id, created));
+                }
+                Ok(out)
+            })
+            .await?;
+        let mut n = 0usize;
+        for (id, created) in open {
+            let age_ms = approx_age_ms(&created, &now);
+            if age_ms >= timeout_ms as i64 {
+                self.mark_timeout(&id).await?;
+                n += 1;
+            }
+        }
+        Ok(n)
+    }
+}
+
+fn approx_age_ms(created: &str, now: &str) -> i64 {
+    fn approx_secs(s: &str) -> i64 {
+        let n = s.replace('T', " ");
+        let head = n.get(..19).unwrap_or("");
+        let p: Vec<&str> = head.split([' ', '-', ':']).collect();
+        if p.len() < 6 {
+            return 0;
+        }
+        let y: i64 = p[0].parse().unwrap_or(0);
+        let mo: i64 = p[1].parse().unwrap_or(1);
+        let d: i64 = p[2].parse().unwrap_or(1);
+        let h: i64 = p[3].parse().unwrap_or(0);
+        let mi: i64 = p[4].parse().unwrap_or(0);
+        let se: i64 = p[5].parse().unwrap_or(0);
+        y * 365 * 86400 + mo * 30 * 86400 + d * 86400 + h * 3600 + mi * 60 + se
+    }
+    approx_secs(now).saturating_sub(approx_secs(created)).saturating_mul(1000)
 }
 
 async fn load_message(conn: &Connection, id: &str) -> Result<Option<WorkerMessage>> {

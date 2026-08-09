@@ -25,7 +25,13 @@ v1 = same machine, shared `.elph/store.db`. Multi-host hub out of scope.
 | Settings `workers.*` + agent tools registered | **Done (PR-B)** |
 | TUI badge ≥2 (`⬡ N`) | **Done (PR-B)** |
 | File leases on mutate tools | **Done (PR-C)** |
-| Mailbox inbox inject + steer | **Done (PR-D partial)** — ask auto-complete on turn end still open |
+| Mailbox inbox inject + steer | **Done** |
+| Ask auto-complete on turn end + timeout sweep | **Done** |
+| Memorable-id worker names + pid demote reaper | **Done** |
+| Graceful quit → `shutdown_workers` | **Done** |
+| Multi-worker prompt snippet | **Done** |
+| File claim content fingerprint | **Done** |
+| Integration tests (`workers_multi`) | **Done** |
 | Retention protect leased + `docs/workers.md` | **Done (PR-E)** |
 
 ---

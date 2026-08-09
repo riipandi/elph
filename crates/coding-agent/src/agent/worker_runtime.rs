@@ -7,8 +7,8 @@ use std::time::Duration;
 use anyhow::{Context, Result};
 use elph_agent::types::AgentTool;
 use elph_agent::{
-    FileLeaseStore, MailboxStore, SessionLeaseStore, WorkerRegistry, WorkerStatus, WorkerToolContext, create_worker_id,
-    create_worker_tools,
+    FileLeaseStore, MailboxStore, SessionLeaseStore, WorkerRegistry, WorkerStatus, WorkerToolContext,
+    create_worker_id, create_worker_tools,
 };
 use parking_lot::Mutex;
 use tokio::task::JoinHandle;
@@ -31,7 +31,7 @@ pub struct WorkerRuntime {
     file_leases: FileLeaseStore,
     stop: Arc<AtomicBool>,
     live_count: Arc<AtomicUsize>,
-    heartbeat_handle: Option<JoinHandle<()>>,
+    heartbeat_handle: Arc<Mutex<Option<JoinHandle<()>>>>,
     /// Interior mut so inbox can attach after session is behind `Arc`.
     inbox_handle: Arc<Mutex<Option<JoinHandle<()>>>>,
     inbox_poll_ms: u64,
@@ -65,6 +65,7 @@ impl WorkerRuntime {
     pub async fn start(opts: WorkerRuntimeStart) -> Result<Self> {
         let stale_secs = opts.stale_secs.max(1);
         let heartbeat_secs = opts.heartbeat_secs.max(1);
+        let ask_timeout_ms = opts.ask_timeout_ms.max(1);
 
         let lease = SessionLeaseStore::new(&opts.db_path).with_database(opts.database.clone());
         let registry = Arc::new(WorkerRegistry::new(&opts.db_path).with_database(opts.database.clone()));
@@ -89,6 +90,7 @@ impl WorkerRuntime {
 
         let hb_lease = lease.clone();
         let hb_registry = Arc::clone(&registry);
+        let hb_mailbox = Arc::clone(&mailbox);
         let hb_files = file_leases.clone();
         let hb_stop = Arc::clone(&stop);
         let hb_live = Arc::clone(&live_count);
@@ -100,20 +102,22 @@ impl WorkerRuntime {
 
         let heartbeat_handle = tokio::spawn(async move {
             let interval = Duration::from_secs(heartbeat_secs);
-            // Reap dead peers more often than full heartbeat so TUI badge / list_live feel near-realtime.
             let reaper = Duration::from_secs(heartbeat_secs.min(2).max(1));
             let mut since_hb = Duration::ZERO;
             loop {
                 if hb_stop.load(Ordering::Relaxed) {
                     break;
                 }
-                // Presence reaper: demote dead-pid / stale peers every `reaper` tick.
                 if let Err(err) = hb_registry.demote_stale(&project_key, stale_secs).await {
                     log::debug!("worker demote_stale: {err:#}");
                 }
                 match hb_registry.count_live(&project_key, stale_secs).await {
                     Ok(n) => hb_live.store(n, Ordering::Relaxed),
                     Err(err) => log::debug!("worker count: {err:#}"),
+                }
+                // Sweep timed-out asks project-wide so waiters unblock without relying only on await loops.
+                if let Err(err) = hb_mailbox.sweep_timeouts(&project_key, ask_timeout_ms).await {
+                    log::debug!("mailbox timeout sweep: {err:#}");
                 }
 
                 if since_hb == Duration::ZERO || since_hb >= interval {
@@ -155,7 +159,7 @@ impl WorkerRuntime {
             project_key: opts.project_key,
             name: record.name,
             stale_secs,
-            ask_timeout_ms: opts.ask_timeout_ms.max(1),
+            ask_timeout_ms,
             max_hops: opts.max_hops.max(1) as i64,
             tui_show_peers: opts.tui_show_peers,
             file_leases_enabled: opts.file_leases,
@@ -165,7 +169,7 @@ impl WorkerRuntime {
             file_leases,
             stop,
             live_count,
-            heartbeat_handle: Some(heartbeat_handle),
+            heartbeat_handle: Arc::new(Mutex::new(Some(heartbeat_handle))),
             inbox_handle: Arc::new(Mutex::new(None)),
             inbox_poll_ms: opts.inbox_poll_ms.max(100),
         })
@@ -234,10 +238,42 @@ impl WorkerRuntime {
         }
     }
 
-    /// Stop heartbeat and release coordination rows (best-effort).
-    pub async fn shutdown(&mut self) {
+    /// Complete open delivered inbound prompts with assistant text (ask round-trip).
+    pub async fn complete_open_asks_with_text(&self, text: &str) -> Result<usize> {
+        let open = self.mailbox.list_open_delivered_prompts(&self.session_id).await?;
+        if open.is_empty() {
+            return Ok(0);
+        }
+        let reply = text.trim();
+        if reply.is_empty() {
+            return Ok(0);
+        }
+        let mut n = 0usize;
+        for msg in open {
+            match self
+                .mailbox
+                .send_response(
+                    &self.project_key,
+                    &self.worker_id,
+                    &self.session_id,
+                    &msg.from_session_id,
+                    &msg.id,
+                    reply,
+                    None,
+                )
+                .await
+            {
+                Ok(_) => n += 1,
+                Err(err) => log::warn!("complete worker ask {}: {err:#}", msg.id),
+            }
+        }
+        Ok(n)
+    }
+
+    /// Stop heartbeat and release coordination rows (best-effort). Safe from `Arc` session.
+    pub async fn shutdown(&self) {
         self.stop.store(true, Ordering::Relaxed);
-        if let Some(handle) = self.heartbeat_handle.take() {
+        if let Some(handle) = self.heartbeat_handle.lock().take() {
             handle.abort();
         }
         if let Some(handle) = self.inbox_handle.lock().take() {
@@ -262,7 +298,7 @@ impl WorkerRuntime {
 impl Drop for WorkerRuntime {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Relaxed);
-        if let Some(handle) = self.heartbeat_handle.take() {
+        if let Some(handle) = self.heartbeat_handle.lock().take() {
             handle.abort();
         }
         if let Some(handle) = self.inbox_handle.lock().take() {

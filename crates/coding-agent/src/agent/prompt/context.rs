@@ -27,6 +27,8 @@ pub struct ElphCodingPromptContext<'a> {
     pub codegraph: ElphToolNamesContext,
     /// Simplified Technical English (ASD-STE100) response rules are enabled.
     pub ste_code: bool,
+    /// Multi-worker display name (memorable-id), when registered.
+    pub worker_name: String,
 }
 
 impl<'a> ElphCodingPromptContext<'a> {
@@ -35,7 +37,13 @@ impl<'a> ElphCodingPromptContext<'a> {
             base,
             codegraph: ElphToolNamesContext::default(),
             ste_code: true,
+            worker_name: String::new(),
         }
+    }
+
+    pub fn with_worker_name(mut self, name: Option<&str>) -> Self {
+        self.worker_name = name.unwrap_or("").trim().to_string();
+        self
     }
 
     pub fn with_codegraph_tools(mut self, names: &[String]) -> Self {

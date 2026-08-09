@@ -35,6 +35,8 @@ pub struct CodingPromptOptions {
     pub codegraph_enabled: bool,
     /// Mirrors `simplifiedTechnicalEnglish`: renders the `<response_style>` block.
     pub ste_enabled: bool,
+    /// Memorable multi-worker display name when workers are enabled.
+    pub worker_name: Option<String>,
 }
 
 impl CodingPromptOptions {
@@ -45,7 +47,14 @@ impl CodingPromptOptions {
             preferred_chat_language: String::new(),
             codegraph_enabled: true,
             ste_enabled: true,
+            worker_name: None,
         }
+    }
+
+    pub fn with_worker_name(mut self, name: impl Into<String>) -> Self {
+        let name = name.into();
+        self.worker_name = if name.trim().is_empty() { None } else { Some(name) };
+        self
     }
 
     /// Set the preferred conversational language.
@@ -80,6 +89,7 @@ pub fn build_coding_system_prompt(
         preferred_chat_language,
         codegraph_enabled,
         ste_enabled,
+        worker_name,
     } = options.clone();
     let date = now_iso_timestamp().chars().take(10).collect::<String>();
     let shell_path = std::env::var("SHELL").ok();
@@ -115,6 +125,7 @@ pub fn build_coding_system_prompt(
         elph_context
     };
     let elph_context = elph_context.with_ste_code(ste_enabled);
+    let elph_context = elph_context.with_worker_name(worker_name.as_deref());
 
     let coding_base = coding_agent_engine().render("coding_base", &elph_context)?;
     SystemPromptBuilder::new()
