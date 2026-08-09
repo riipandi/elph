@@ -419,15 +419,18 @@ List active subagents in this session. Takes no parameters.
 
 #### `list_available_tools`
 
-Lists all available tools that the agent can use, including their descriptions and usage instructions. Returns a compact XML catalog of tool descriptors — token-cheaper than JSON and easy for models to consume (same shape family as the `<available_skills>` system-prompt block). Parameter schemas are flattened into `<property>` elements with `type`, `required`, and `enum` attributes; object-typed properties (or arrays of objects) recurse into nested `<property>` elements. The output is serialized with `quick-xml` (serde `serialize` feature), so it is one line with only required characters escaped.
+Lists tools the agent can **discover**, including full parameter schemas. Returns a compact XML catalog — token-cheaper than JSON (same family as `<available_skills>`). Parameter schemas flatten into `<property>` elements with `type` / `required` / `enum`; object-shaped properties recurse. Serialized with `quick-xml`.
+
+MCP tools (`mcp_<server>__…`) are **registered** on the harness but **default-inactive** (not on the model wire / active set until activated). Pass optional `name_prefix` (e.g. `mcp_deepwiki__`) to:
+
+1. Return only matching tool schemas in the XML catalog.
+2. Set `added_tool_names` so the harness **lazily activates** those tools for subsequent turns.
+
+Omit `name_prefix` to browse the full catalog without activating. Automatically appended by `BuiltinToolsBuilder::build()`.
 
 ```xml
 <available_tools><tool><name>read_file</name><description>Read a text or image file...</description><parameters><property name="path" type="string" required="true">File path (relative or absolute)</property><property name="limit" type="number">Maximum lines to return</property><property name="ranges" type="array of object"><description>Multiple specific file ranges to read.</description><property name="path" type="string" required="true"/><property name="offset" type="number"/></property></parameters></tool></available_tools>
 ```
-
-Optional argument `name_prefix` narrows the result to tools whose name starts with that substring (e.g. `mcp_github__`), letting the model fetch one MCP server's schemas on demand.
-
-Automatically appended by `BuiltinToolsBuilder::build()`.
 
 ### Other Tools
 

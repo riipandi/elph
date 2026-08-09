@@ -160,6 +160,26 @@ mod tests {
     }
 
     #[test]
+    fn coding_prompt_documents_lazy_mcp_activation() {
+        let prompt = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["read_file".into(), "list_available_tools".into()],
+            None,
+            AgentMode::Build,
+            "",
+            true,
+        )
+        .expect("prompt");
+
+        assert!(prompt.contains("inactive by default"));
+        assert!(prompt.contains("name_prefix"));
+        assert!(prompt.contains("mcp_deepwiki__") || prompt.contains("mcp_<server>__"));
+        // Inactive MCP names must not appear in the authoritative active list.
+        assert!(!prompt.contains("<tool>mcp_"));
+    }
+
+    #[test]
     fn coding_prompt_omits_codegraph_when_disabled_even_with_tools() {
         // Defense-in-depth: `codegraph.enabled` false must hide the `<codegraph>`
         // guidance section even if `code_*` tool names are present in the active
@@ -377,10 +397,9 @@ mod tests {
         )
         .expect("prompt");
 
-        // Budget was raised from 7_500 to 9_000 when the <mode_context> /
-        // <memory_and_context> headers and the expanded tool-calling rules
-        // were added to the static prompt (measured ~7.9 KB at tool count 16).
-        assert!(prompt.len() < 9_000, "static prompt is {} bytes", prompt.len());
+        // Budget raised for lazy-MCP guidance in <tool_calling> (name_prefix
+        // activation path) plus earlier mode/memory/tool-routing expansions.
+        assert!(prompt.len() < 9_500, "static prompt is {} bytes", prompt.len());
     }
 
     #[test]

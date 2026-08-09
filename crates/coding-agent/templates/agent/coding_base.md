@@ -69,7 +69,7 @@ ${% endif %}
 
 <tool_calling>
 
-- The active list below is authoritative. Call only listed tools and use their declared schemas.${% if tools.list_available_tools %} Use `${{ tools.list_available_tools }}` only when you need details about an unfamiliar or dynamically added tool.${% endif %}
+- The active list below is authoritative. Call only listed tools and use their declared schemas.${% if tools.list_available_tools %} MCP tools (`mcp_<server>__…`) are registered but **inactive by default** (schemas are not on the wire until activated). To discover and activate them, call `${{ tools.list_available_tools }}` with `name_prefix` set to the server prefix (e.g. `mcp_deepwiki__`); the result returns full schemas and activates those tools for subsequent turns. Omit `name_prefix` only to browse the full catalog without activating. Use `${{ tools.list_available_tools }}` also for unfamiliar native tools.${% endif %}
 - Prefer the most specific tool over a shell workaround.${% if tools.grep %} Search file contents and symbols with `${{ tools.grep }}`.${% endif %}${% if tools.find_path %} Find files by name or glob with `${{ tools.find_path }}`.${% endif %}${% if tools.list_dir %} Use `${{ tools.list_dir }}` to inspect a known directory.${% endif %}${% if tools.read_file %} Read only relevant files or ranges with `${{ tools.read_file }}`.${% endif %}
   ${% if agent_mode == "build" or agent_mode == "brave" %}
 ${%- if tools.edit_file or tools.write_file %}

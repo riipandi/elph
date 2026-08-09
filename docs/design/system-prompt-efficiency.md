@@ -64,12 +64,22 @@ the **lazy tool activation** primitive. A model flow that wants a specific MCP
 server's tools can request `list_available_tools(name_prefix: "mcp_github__")`,
 and those tool schemas become active from the next turn.
 
-Today every connected MCP server's tools are still registered eagerly
-(`runtime.rs` / `set_tools`) and exposed in the active set by default, so the
-token win is only realized once a session opts tools in via the lazy path. Making
-MCP tools *default-inactive* is a potential follow-up (requires confirming that
-`list_available_tools` is always available so the model can activate what it
-needs); it is not yet the default.
+MCP tools are still **registered** eagerly (`runtime.rs` / `create_agent_tools`)
+so they remain executable and appear in the `list_available_tools` catalog, but
+they are **default-inactive**:
+
+- `AgentModePolicy::active_tool_names_for_mode` excludes all `mcp_*` names.
+- Coding session bootstrap seeds `active_tool_names` without MCP (`runtime.rs`).
+- `list_available_tools` catalogs the **full registry** (including inactive MCP).
+- Prefix filter sets `added_tool_names`; the harness `after_tool_call` hook calls
+  `activate_lazy_tools`, which also extends the collaboration-mode baseline.
+- `reconcile_harness_tools` re-merges already-activated, mode-allowed MCP tools
+  so hot-reload and mode switches do not wipe a mid-session lazy load.
+
+Prompt guidance (`coding_base.md`) tells the model to pass `name_prefix` (e.g.
+`mcp_deepwiki__`) to activate. Full-harness coverage:
+`harness_lazy_activates_mcp_tools_via_list_available_tools` in
+`crates/elph-agent/tests/harness.rs`.
 
 ## On-demand skill discovery (`list_skills`)
 

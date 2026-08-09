@@ -1751,3 +1751,187 @@ async fn concurrent_aborts_do_not_deadlock() {
         assert_eq!(h.phase().await, elph_agent::AgentHarnessPhase::Idle, "harness #{i} not idle");
     }
 }
+
+/// Full-harness lazy MCP activation: MCP tools stay off the active set until
+/// `list_available_tools(name_prefix)` advertises them via `added_tool_names`.
+/// Uses DeepWiki-style exposed names (`mcp_deepwiki__…`) as the fixture.
+#[tokio::test(flavor = "multi_thread")]
+async fn harness_lazy_activates_mcp_tools_via_list_available_tools() {
+    let (_temp, env) = test_env();
+    let (faux, models) = common::new_faux();
+    let model = faux.provider.get_models()[0].clone();
+
+    let mcp_structure = simple_tool(
+        Tool {
+            name: "mcp_deepwiki__read_wiki_structure".into(),
+            constrained_sampling: None,
+            description: "DeepWiki: read wiki structure".into(),
+            parameters: json!({
+                "type": "object",
+                "properties": {
+                    "repoName": { "type": "string" }
+                },
+                "required": ["repoName"]
+            }),
+        },
+        "MCP:deepwiki",
+        |_, args| {
+            let repo = args.get("repoName").and_then(|v| v.as_str()).unwrap_or("?").to_string();
+            Box::pin(async move { Ok(elph_agent::AgentToolResult::text(format!("structure:{repo}"))) })
+        },
+    );
+    let mcp_ask = simple_tool(
+        Tool {
+            name: "mcp_deepwiki__ask_question".into(),
+            constrained_sampling: None,
+            description: "DeepWiki: ask a question".into(),
+            parameters: json!({
+                "type": "object",
+                "properties": {
+                    "repoName": { "type": "string" },
+                    "question": { "type": "string" }
+                },
+                "required": ["repoName", "question"]
+            }),
+        },
+        "MCP:deepwiki",
+        |_, _| Box::pin(async move { Ok(elph_agent::AgentToolResult::text("answer:ok")) }),
+    );
+    let read_file = simple_tool(
+        Tool {
+            name: "read_file".into(),
+            constrained_sampling: None,
+            description: "Read a file".into(),
+            parameters: json!({
+                "type": "object",
+                "properties": { "path": { "type": "string" } },
+                "required": ["path"]
+            }),
+        },
+        "read_file",
+        |_, _| Box::pin(async move { Ok(elph_agent::AgentToolResult::text("file contents")) }),
+    );
+
+    let registry = vec![read_file.clone(), mcp_structure.clone(), mcp_ask.clone()];
+    let list_tools = elph_agent::create_list_available_tools(&registry);
+    let mut tools = registry;
+    tools.push(list_tools);
+
+    let second_turn_tools: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+    let second_turn_tools_for_factory = second_turn_tools.clone();
+    let active = vec!["read_file".to_string(), "list_available_tools".to_string()];
+
+    faux.set_responses(vec![
+        FauxResponseStep::Static(faux_assistant_message(
+            vec![faux_tool_call(
+                "list_available_tools",
+                json!({ "name_prefix": "mcp_deepwiki__" }),
+                Some("list-1".into()),
+            )],
+            Some(StopReason::ToolUse),
+        )),
+        FauxResponseStep::Factory(Arc::new(move |context, _, _, _| {
+            let names: Vec<String> = context
+                .tools
+                .as_ref()
+                .map(|tools| tools.iter().map(|t| t.name.clone()).collect())
+                .unwrap_or_default();
+            *second_turn_tools_for_factory.lock() = names;
+            faux_assistant_message(
+                vec![faux_tool_call(
+                    "mcp_deepwiki__read_wiki_structure",
+                    json!({ "repoName": "modelcontextprotocol/rust-sdk" }),
+                    Some("mcp-1".into()),
+                )],
+                Some(StopReason::ToolUse),
+            )
+        })),
+        FauxResponseStep::Static(faux_assistant_message(vec![faux_text("DeepWiki structure loaded.")], None)),
+    ]);
+
+    let harness = AgentHarness::new(AgentHarnessOptions {
+        env,
+        session: Session::new(InMemorySessionStorage::new(None).expect("session")),
+        models,
+        tools,
+        resources: AgentHarnessResources::default(),
+        system_prompt: SystemPrompt::Static("You are helpful.".into()),
+        stream_options: Default::default(),
+        model,
+        thinking_level: AgentThinkingLevel::Off,
+        active_tool_names: active,
+        steering_mode: QueueMode::OneAtATime,
+        follow_up_mode: QueueMode::OneAtATime,
+        goal_runtime: None,
+        subagent_bootstrap: None,
+        compaction_settings: CompactionSettings::default(),
+        shared_registry: None,
+        agent_control: None,
+        headless: false,
+        terminals_dir: None,
+    })
+    .expect("harness");
+
+    let before: Vec<_> = harness
+        .get_active_tools()
+        .await
+        .into_iter()
+        .map(|t| t.name().to_string())
+        .collect();
+    assert!(
+        !before.iter().any(|n| n.starts_with("mcp_")),
+        "MCP must start inactive: {before:?}"
+    );
+
+    tokio::time::timeout(Duration::from_secs(15), harness.prompt("Use DeepWiki", None))
+        .await
+        .expect("prompt timed out — likely deadlock in lazy activation path")
+        .expect("prompt");
+
+    let mid_turn = second_turn_tools.lock().clone();
+    assert!(
+        mid_turn.iter().any(|n| n == "mcp_deepwiki__read_wiki_structure"),
+        "second model turn must see activated MCP tools; context tools={mid_turn:?}"
+    );
+    assert!(
+        mid_turn.iter().any(|n| n == "mcp_deepwiki__ask_question"),
+        "prefix activation should include all mcp_deepwiki__ tools; context tools={mid_turn:?}"
+    );
+
+    let after: Vec<_> = harness
+        .get_active_tools()
+        .await
+        .into_iter()
+        .map(|t| t.name().to_string())
+        .collect();
+    assert!(
+        after.iter().any(|n| n == "mcp_deepwiki__read_wiki_structure"),
+        "MCP structure tool should remain active after turn: {after:?}"
+    );
+
+    let tool_results: Vec<_> = harness
+        .session_entries()
+        .await
+        .into_iter()
+        .filter_map(|entry| match entry {
+            SessionTreeEntry::Message { message, .. } if message.role() == "toolResult" => message.as_llm().cloned(),
+            _ => None,
+        })
+        .collect();
+    let mcp_ok = tool_results.iter().any(|msg| match msg {
+        Message::ToolResult {
+            tool_name,
+            content,
+            is_error,
+            ..
+        } if tool_name == "mcp_deepwiki__read_wiki_structure" && !is_error => content.iter().any(|b| match b {
+            ContentBlock::Text { text } => text.contains("structure:modelcontextprotocol/rust-sdk"),
+            _ => false,
+        }),
+        _ => false,
+    });
+    assert!(
+        mcp_ok,
+        "expected successful mcp_deepwiki__read_wiki_structure tool result; entries={tool_results:?}"
+    );
+}

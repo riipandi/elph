@@ -176,16 +176,30 @@ where
     /// write while a turn is active), and emits a `ToolsUpdate` event so guests
     /// (UI, extensions) observe the activation.
     pub(crate) async fn activate_lazy_tools(&self, names: &[String]) -> HarnessOpResult<()> {
-        let tools = self.shared.tools.lock().await;
+        // Snapshot registry then release the tools lock. This method runs from
+        // `after_tool_call` (nested under the agent turn); re-locking `tools` while
+        // building the ToolsUpdate event can deadlock the async Mutex on some paths.
+        let registered = self.shared.tools.lock().await.clone();
+        let registered_names: Vec<String> = registered.keys().cloned().collect();
         let existing: Vec<String> = self.shared.active_tool_names.lock().await.clone();
-        let fresh: Vec<String> = filter_lazy_names(names, &existing, &tools);
+        let fresh: Vec<String> = filter_lazy_names(names, &existing, &registered);
         if fresh.is_empty() {
             return Ok(());
         }
 
         let mut next = existing;
-        next.extend(fresh);
-        drop(tools);
+        next.extend(fresh.clone());
+
+        // Keep baseline in sync so collaboration-mode rewrites (Plan ↔ Default)
+        // still see session-activated tools when re-filtering.
+        {
+            let mut baseline = self.shared.baseline_active_tool_names.lock().await;
+            for name in &fresh {
+                if !baseline.iter().any(|n| n == name) {
+                    baseline.push(name.clone());
+                }
+            }
+        }
 
         if self.phase_async().await == AgentHarnessPhase::Idle {
             self.shared
@@ -206,8 +220,8 @@ where
         *self.shared.active_tool_names.lock().await = next.clone();
         self.emit_own(AgentHarnessOwnEvent::ToolsUpdate(
             crate::agent::harness::types::ToolsUpdateEvent {
-                tool_names: self.shared.tools.lock().await.keys().cloned().collect(),
-                previous_tool_names: self.shared.tools.lock().await.keys().cloned().collect(),
+                tool_names: registered_names.clone(),
+                previous_tool_names: registered_names,
                 active_tool_names: next,
                 previous_active_tool_names: previous,
                 source: ModelUpdateSource::Set,

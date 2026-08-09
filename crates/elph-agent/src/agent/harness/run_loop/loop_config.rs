@@ -144,18 +144,25 @@ where
                     // tools becoming reachable after the model listed them). The
                     // harness keeps the full registry, so activating only changes
                     // which names are exposed to the model from the next turn.
+                    //
+                    // Run activation *before* optional tool-result hooks, and
+                    // even when no hook returns a patch — otherwise sessions
+                    // without `on_tool_result` handlers would never activate MCP.
                     let advertised: Vec<String> = ctx.result.added_tool_names.clone().unwrap_or_default();
-                    let result = hooks.emit_tool_result(&event).await.ok()??;
                     if !advertised.is_empty() {
                         let _ = harness.activate_lazy_tools(&advertised).await;
                     }
-                    Some(AfterToolCallResult {
-                        content: result.content,
-                        details: result.details,
-                        is_error: result.is_error,
-                        added_tool_names: result.added_tool_names,
-                        terminate: result.terminate,
-                    })
+                    match hooks.emit_tool_result(&event).await {
+                        Ok(Some(result)) => Some(AfterToolCallResult {
+                            content: result.content,
+                            details: result.details,
+                            is_error: result.is_error,
+                            // Prefer hook override; keep tool-advertised names otherwise.
+                            added_tool_names: result.added_tool_names.or(ctx.result.added_tool_names.clone()),
+                            terminate: result.terminate,
+                        }),
+                        Ok(None) | Err(_) => None,
+                    }
                 })
             }));
 

@@ -152,3 +152,50 @@ async fn deepwiki_agent_tools_bridge() {
 
     registry.shutdown().await;
 }
+
+/// Live: registry tools appear in `list_available_tools` catalog under the
+/// `mcp_deepwiki__` prefix and advertise `added_tool_names` for lazy activation.
+#[tokio::test]
+async fn deepwiki_list_available_tools_prefix_advertises_activation() {
+    if !live_enabled() {
+        eprintln!("skip: set ELPH_MCP_LIVE=1 to run DeepWiki live tests");
+        return;
+    }
+
+    let registry = std::sync::Arc::new(
+        McpToolRegistry::load_with_options(deepwiki_config(), load_options())
+            .await
+            .expect("load DeepWiki MCP"),
+    );
+    let mcp_tools = registry.create_agent_tools().await;
+    assert!(!mcp_tools.is_empty(), "expected DeepWiki agent tools");
+
+    let list = elph_agent::create_list_available_tools(&mcp_tools);
+    let env = std::sync::Arc::new(elph_agent::LocalExecutionEnv::new("/tmp"));
+    let ctx = elph_agent::ToolContext::new(env);
+    let result = (list.execute)(String::new(), json!({ "name_prefix": "mcp_deepwiki__" }), None, None, ctx)
+        .await
+        .expect("list_available_tools");
+
+    let text = match result.content.first() {
+        Some(elph_agent::ToolResultContent::Text(t)) => t.text.clone(),
+        _ => panic!("expected text catalog"),
+    };
+    assert!(text.contains("mcp_deepwiki__read_wiki_structure"), "{text}");
+    assert!(
+        text.contains("mcp_deepwiki__ask_question") || text.contains("ask_question"),
+        "{text}"
+    );
+
+    let added = result.added_tool_names.expect("prefix should advertise tools");
+    assert!(
+        added.iter().any(|n| n == "mcp_deepwiki__read_wiki_structure"),
+        "added_tool_names missing structure tool: {added:?}"
+    );
+    assert!(
+        added.iter().all(|n| n.starts_with("mcp_deepwiki__")),
+        "non-deepwiki names advertised: {added:?}"
+    );
+
+    registry.shutdown().await;
+}

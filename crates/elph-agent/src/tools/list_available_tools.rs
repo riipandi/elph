@@ -246,15 +246,17 @@ pub fn create_list_available_tools(tools: &[AgentTool]) -> AgentTool {
         Tool {
             name: "list_available_tools".into(),
             constrained_sampling: None,
-            description:
-                "Lists available tools that the agent can use, including their descriptions and usage instructions. "
-                    .into(),
+            description: "Lists tools the agent can discover, including full parameter schemas. \
+MCP tools (names starting with `mcp_`) are inactive until activated: pass `name_prefix` \
+(e.g. `mcp_deepwiki__`) to filter, return schemas, and activate matched tools for later turns. \
+Omit `name_prefix` to browse the full catalog without activating."
+                .into(),
             parameters: json!({
                 "type": "object",
                 "properties": {
                     "name_prefix": {
                         "type": "string",
-                        "description": "Optional prefix to filter tool names (e.g. an MCP server name); omit to list everything."
+                        "description": "Optional name prefix filter (e.g. `mcp_deepwiki__`). When set, matched tools are activated for subsequent turns via added_tool_names. Omit to list everything without activating."
                     }
                 },
                 "additionalProperties": false
