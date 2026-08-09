@@ -207,9 +207,7 @@ fn tree_entry_to_select_item(
                 .with_labeled(is_labeled),
         ),
         SessionTreeEntry::Custom {
-            custom_type,
-            timestamp,
-            ..
+            custom_type, timestamp, ..
         } => Some(
             SelectItem::new(id, format!("{leaf_mark}custom: {custom_type}"))
                 .with_description(format!("{short} · {timestamp}"))

@@ -150,13 +150,8 @@ impl PendingItemSelector {
                 if tokens.is_empty() {
                     return true;
                 }
-                let hay = format!(
-                    "{} {} {}",
-                    it.label,
-                    it.value,
-                    it.description.as_deref().unwrap_or("")
-                )
-                .to_ascii_lowercase();
+                let hay = format!("{} {} {}", it.label, it.value, it.description.as_deref().unwrap_or(""))
+                    .to_ascii_lowercase();
                 tokens.iter().all(|t| hay.contains(t))
             })
             .map(|(i, _)| i)
@@ -307,11 +302,7 @@ pub struct OpenItemSelectorArgs<'a> {
 pub fn open_item_selector(args: OpenItemSelectorArgs<'_>) {
     let stashed = {
         let current = args.live_draft.read().clone();
-        if current.trim().is_empty() {
-            None
-        } else {
-            Some(current)
-        }
+        if current.trim().is_empty() { None } else { Some(current) }
     };
     if stashed.is_some() {
         args.draft.set(String::new());

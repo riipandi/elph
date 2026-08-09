@@ -50,7 +50,11 @@ Default display name is a **memorable-id** (same family as session titles, e.g. 
 
 ## Session lease
 
-Opening a session acquires an exclusive lease. A second process that opens the **same** session fails with a clear conflict until the holder exits or the lease is reclaimed (heartbeat stale **and** holder pid dead).
+Opening a session acquires an exclusive lease. A second process that opens the **same** session fails with a clear conflict while the holder process is still alive.
+
+**Reclaim after crash / force-quit:** if the holder **PID is dead**, the next open reclaims the lease **immediately** (no wait for `leaseStaleSecs`). Previously reclaim required both a stale heartbeat **and** a dead PID, so restarting Elph within ~30s after a crash failed with “session is leased by worker …”.
+
+If the holder PID is still alive, you must close that Elph instance or open a different session.
 
 ## Exit / crash presence
 

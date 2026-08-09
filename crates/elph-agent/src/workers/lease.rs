@@ -90,13 +90,24 @@ impl SessionLeaseStore {
         }
     }
 
-    /// Acquire exclusive lease. Reclaims when stale **and** holder pid is dead.
+    /// Acquire exclusive lease.
+    ///
+    /// Reclaim rules (safe against dual writers):
+    /// 1. Same `worker_id` → refresh heartbeat (re-entrant).
+    /// 2. Holder **PID is dead** → reclaim immediately (crash / force-quit without Drop).
+    ///    Waiting for `stale_secs` after a dead PID only delayed restart for no safety gain.
+    /// 3. Holder PID still alive → conflict (another process owns the session), even if
+    ///    the heartbeat is old (hung process — do not steal until the OS marks it dead).
+    ///
+    /// `stale_secs` remains the heartbeat window used by the worker reaper / docs; it is
+    /// no longer required for PID-dead reclaim.
     pub async fn try_acquire(
         &self,
         session_id: &str,
         worker_id: &str,
         stale_secs: u64,
     ) -> Result<SessionLease, LeaseError> {
+        let _ = stale_secs; // retained for API stability + callers that pass settings
         let pid = std::process::id() as i64;
         let hostname = hostname_best_effort();
         let now = now_iso_timestamp();
@@ -128,16 +139,24 @@ impl SessionLeaseStore {
                         }
                         let age = now_secs.saturating_sub(parse_iso_approx_secs(&existing.heartbeat_at).unwrap_or(0));
                         let pid_dead = !pid_alive(existing.pid);
-                        let stale = age >= stale_secs as i64;
-                        if !stale || !pid_dead {
+                        if !pid_dead {
                             return Ok(Err(LeaseError::Conflict(LeaseConflict {
                                 message: format!(
-                                    "session `{}` is leased by worker `{}` (pid={}, heartbeat age {}s)",
-                                    session_id, existing.worker_id, existing.pid, age
+                                    "session `{session_id}` is leased by worker `{}` \
+                                     (pid={}, heartbeat age {age}s). \
+                                     Close that Elph process, or open a different session \
+                                     (`elph --continue` may pick this one).",
+                                    existing.worker_id, existing.pid
                                 ),
                                 holder: existing,
                             })));
                         }
+                        // Holder process is gone — free the row and take the lease.
+                        log::info!(
+                            "reclaiming session lease for `{session_id}` from dead worker `{}` (pid={}, age={age}s)",
+                            existing.worker_id,
+                            existing.pid
+                        );
                         conn.execute(
                             "DELETE FROM session_leases WHERE session_id = ?",
                             turso::params![session_id.as_str()],
@@ -319,5 +338,24 @@ mod tests {
         store.try_acquire(&sid, "wrk_a", 30).await.expect("a");
         let err = store.try_acquire(&sid, "wrk_b", 30).await.expect_err("b");
         assert!(matches!(err, LeaseError::Conflict(_)));
+    }
+
+    #[tokio::test]
+    async fn reclaim_when_holder_pid_is_dead() {
+        let (_t, store, sid) = setup().await;
+        let db = crate::datastore::open_local(store.db_path()).await.expect("open");
+        let c = crate::datastore::connect(&db).await.expect("connect");
+        // PID that is virtually never a live process; kill -0 / /proc will fail.
+        c.execute(
+            "INSERT INTO session_leases (
+                session_id, worker_id, pid, hostname, acquired_at, heartbeat_at, exclusive
+             ) VALUES (?, 'wrk_dead', 2147483646, null, '2020-01-01T00:00:00.000Z', '2020-01-01T00:00:00.000Z', 1)",
+            turso::params![sid.as_str()],
+        )
+        .await
+        .expect("insert dead lease");
+        // Even with a large stale window, dead PID must reclaim immediately.
+        let lease = store.try_acquire(&sid, "wrk_live", 3600).await.expect("reclaim");
+        assert_eq!(lease.worker_id, "wrk_live");
     }
 }
