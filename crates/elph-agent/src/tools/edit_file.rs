@@ -114,14 +114,12 @@ async fn execute_edit(
     // Resilience (TOCTOU guard): re-read the file immediately before writing. The initial
     // read may be stale if the file changed in the meantime (another tool, an external
     // editor, a concurrent turn). Without this we could silently overwrite an external
-    // change with content derived from stale bytes. If old_string no longer matches exactly
-    // once, abort and let the model re-read and retry rather than guessing.
+    // change with content derived from stale bytes. If the file changed anywhere since the
+    // initial read, abort and let the model re-read and retry rather than guessing.
     let fresh = read_file_text(&env, &absolute, signal.as_ref()).await?;
-    let fresh_count = fresh.matches(old_string).count();
-    if fresh_count != 1 {
+    if fresh != content {
         return Err(anyhow::anyhow!(
-            "edit aborted: {path} changed since it was read (old_string now matches {fresh_count} \
-             time(s)). Re-read the file (read_file) and retry the edit."
+            "edit aborted: {path} changed since it was read. Re-read the file (read_file) and retry the edit."
         ));
     }
 
