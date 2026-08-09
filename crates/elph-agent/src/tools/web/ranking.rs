@@ -121,8 +121,18 @@ pub fn available_engines() -> Vec<Engine> {
     engines
 }
 
-/// Auto mode prefers the highest-ranked configured engine; DuckDuckGo is always tried last.
+/// Build the engine try-order for a search.
+///
+/// - **`Some(pref)` (explicit):** only that engine — never silently switch to Exa/etc.
+///   Caller is responsible for availability checks / missing-key errors.
+/// - **`None` (auto):** keyed engines by descending rank (quality first), DuckDuckGo last
+///   as free HTML fallback (often CAPTCHA-walled from datacenter IPs).
 pub fn ordered_try_list(preferred: Option<Engine>) -> Vec<Engine> {
+    // Explicit engine request: pin to that provider only.
+    if let Some(pref) = preferred {
+        return vec![pref];
+    }
+
     let avail = available_engines();
     if avail.is_empty() {
         return vec![Engine::DuckDuckGo];
@@ -137,26 +147,13 @@ pub fn ordered_try_list(preferred: Option<Engine>) -> Vec<Engine> {
             rest.push(engine);
         }
     }
+    // Higher rank number = try first among keyed engines (Exa/Tavily before weaker free tiers).
     rest.sort_by_key(|e| std::cmp::Reverse(e.rank()));
 
     let mut ordered = Vec::new();
-    if let Some(pref) = preferred {
-        if pref.is_available() {
-            ordered.push(pref);
-        }
-        for engine in rest {
-            if engine != pref {
-                ordered.push(engine);
-            }
-        }
-        if ddg.is_some() && pref != Engine::DuckDuckGo {
-            ordered.push(Engine::DuckDuckGo);
-        }
-    } else {
-        ordered.extend(rest);
-        if ddg.is_some() {
-            ordered.push(Engine::DuckDuckGo);
-        }
+    ordered.extend(rest);
+    if ddg.is_some() {
+        ordered.push(Engine::DuckDuckGo);
     }
     ordered
 }
@@ -202,5 +199,23 @@ mod tests {
         let mut engines = vec![Engine::Exa, Engine::DuckDuckGo, Engine::Brave, Engine::Tavily];
         engines.sort_by_key(|e| e.rank());
         assert_eq!(engines, vec![Engine::DuckDuckGo, Engine::Brave, Engine::Tavily, Engine::Exa]);
+    }
+
+    #[test]
+    fn explicit_engine_is_only_candidate() {
+        assert_eq!(ordered_try_list(Some(Engine::DuckDuckGo)), vec![Engine::DuckDuckGo]);
+        assert_eq!(ordered_try_list(Some(Engine::Exa)), vec![Engine::Exa]);
+        assert_eq!(ordered_try_list(Some(Engine::Brave)), vec![Engine::Brave]);
+    }
+
+    #[test]
+    fn auto_mode_puts_duckduckgo_last() {
+        let list = ordered_try_list(None);
+        assert!(!list.is_empty());
+        assert_eq!(*list.last().unwrap(), Engine::DuckDuckGo);
+        // DDG must not appear first when other engines are available.
+        if list.len() > 1 {
+            assert_ne!(list[0], Engine::DuckDuckGo);
+        }
     }
 }

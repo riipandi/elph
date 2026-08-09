@@ -134,14 +134,21 @@ fn decode_body(bytes: &[u8], content_type: &str) -> String {
 
 /// Fallback DuckDuckGo search via the HTML endpoint (no API key, no browser).
 ///
-/// Parsed with `astral-tl`; returns an error when no results are found so the
-/// caller can surface a clear failure.
+/// Parsed with `astral-tl`; bot/CAPTCHA walls and empty pages surface as errors
+/// so auto mode can try the next engine instead of treating the wall as "no results".
 pub async fn search_duckduckgo(query: &str) -> Result<Vec<SearchResult>> {
+    use super::common::{BROWSER_USER_AGENT, bot_challenge_error, detect_bot_challenge};
+
     let url = format!("https://html.duckduckgo.com/html/?q={}", encode(query));
     let client = http_client();
     let html = client
         .get(&url)
-        .header(reqwest::header::USER_AGENT, USER_AGENT)
+        .header(reqwest::header::USER_AGENT, BROWSER_USER_AGENT)
+        .header(
+            reqwest::header::ACCEPT,
+            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        )
+        .header(reqwest::header::ACCEPT_LANGUAGE, "en-US,en;q=0.9")
         .send()
         .await
         .with_context(|| "duckduckgo request failed".to_string())?
@@ -151,9 +158,15 @@ pub async fn search_duckduckgo(query: &str) -> Result<Vec<SearchResult>> {
         .await
         .context("read duckduckgo response")?;
 
+    if let Some(reason) = detect_bot_challenge(&html) {
+        return Err(bot_challenge_error("DuckDuckGo", reason));
+    }
+
     let results = parse_ddg_results(&html);
     if results.is_empty() {
-        return Err(anyhow::anyhow!("duckduckgo: no results"));
+        return Err(anyhow::anyhow!(
+            "duckduckgo: no results (if this is unexpected, the HTML endpoint may be bot-walled)"
+        ));
     }
     Ok(results)
 }

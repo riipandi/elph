@@ -7,10 +7,17 @@ use elph_agent::tools::web::ranking::ordered_try_list;
 use elph_agent::{create_web_extract_tool, create_web_fetch_tool, create_web_search_tool};
 
 #[test]
-fn ordered_try_list_puts_duckduckgo_last() {
-    let list = ordered_try_list(Some(Engine::Jina));
+fn ordered_try_list_explicit_engine_is_pinned() {
+    // Explicit engine must not fall through to other providers (report 260809_0758).
+    assert_eq!(ordered_try_list(Some(Engine::DuckDuckGo)), vec![Engine::DuckDuckGo]);
+    assert_eq!(ordered_try_list(Some(Engine::Jina)), vec![Engine::Jina]);
+    assert_eq!(ordered_try_list(Some(Engine::Exa)), vec![Engine::Exa]);
+}
+
+#[test]
+fn ordered_try_list_auto_puts_duckduckgo_last() {
+    let list = ordered_try_list(None);
     assert!(!list.is_empty());
-    assert_eq!(list[0], Engine::Jina);
     assert_eq!(*list.last().unwrap(), Engine::DuckDuckGo);
 }
 

@@ -286,14 +286,21 @@ Search the web using multiple providers with automatic ranking and fallback.
 | Parameter | Type   | Required | Default | Description                          |
 | --------- | ------ | -------- | ------- | ------------------------------------ |
 | `query`   | string | yes      | —       | Search query string                  |
-| `engine`  | string | no       | `auto`  | Preferred engine (see aliases below) |
+| `engine`  | string | no       | `auto`  | Engine selector (see below)          |
 | `limit`   | number | no       | `5`     | Maximum results (max: 20)            |
 
 **Engine aliases:** `auto`, `duckduckgo` / `ddg`, `brave` / `brave-search`, `exa`, `firecrawl`, `jina` / `jina-search`, `perplexity`, `tavily`, `serpapi` / `serapi`.
 
+Unknown `engine` values are **rejected** (they do not silently become `auto`).
+
 #### Ranking and availability
 
-Auto mode picks the highest-ranked configured engine. DuckDuckGo is always tried last as a fallback. When every HTTP engine fails, `web_search` falls back to the DuckDuckGo HTML endpoint, which is fetched and parsed with the `astral-tl` selector engine (no API key, no in-process browser).
+| Mode | Behavior |
+| ---- | -------- |
+| **`auto`** (default) | Try configured/keyed engines by rank; DuckDuckGo HTML is last. On CAPTCHA/bot walls the error is recorded and the next engine is tried. |
+| **Explicit engine** | Use **only** that provider. No silent switch to Exa/etc. Failure returns an error naming the requested engine. |
+
+DuckDuckGo uses public HTML endpoints (POST → GET → Lite). Datacenter IPs are often CAPTCHA-walled; bot walls surface as explicit errors (not “no results”). Prefer API engines (`brave`, `tavily`, `exa`, `serpapi`, `jina`) when keys are available.
 
 | Rank | Engine     | Env var                | Key required |
 | ---- | ---------- | ---------------------- | ------------ |

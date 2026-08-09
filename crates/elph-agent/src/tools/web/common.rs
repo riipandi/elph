@@ -11,7 +11,10 @@ use reqwest::Client;
 use url::Url;
 
 pub const FETCH_MAX_BYTES: usize = 256 * 1024;
+/// Product UA for generic fetches (web_fetch / web_extract).
 pub const USER_AGENT: &str = "Elph/1.0 (+https://elph.space)";
+/// Browser-like UA for HTML search endpoints that bot-challenge the product UA.
+pub const BROWSER_USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 
 static HTTP_CLIENT: OnceLock<Client> = OnceLock::new();
 
@@ -20,9 +23,58 @@ pub fn http_client() -> &'static Client {
         Client::builder()
             .timeout(Duration::from_secs(30))
             .user_agent(USER_AGENT)
+            .redirect(reqwest::redirect::Policy::limited(5))
             .build()
             .unwrap_or_else(|_| Client::new())
     })
+}
+
+/// Detect CAPTCHA / bot-challenge pages so callers fail clearly instead of "no results".
+///
+/// Matches common DuckDuckGo anomaly pages, Cloudflare challenges, and generic captcha
+/// interstitials. Returns a short human-readable reason when blocked.
+pub fn detect_bot_challenge(html: &str) -> Option<&'static str> {
+    if html.is_empty() {
+        return None;
+    }
+    let lower = html.to_ascii_lowercase();
+    // DuckDuckGo HTML endpoint often serves an anomaly / captcha wall to datacenter IPs.
+    if lower.contains("anomaly-modal")
+        || lower.contains("anomaly.js")
+        || lower.contains("please complete the following challenge")
+        || lower.contains("unfortunately, bots use duckduckgo too")
+        || lower.contains("name=\"challenge\"")
+        || lower.contains("id=\"challenge-form\"")
+    {
+        return Some("DuckDuckGo bot/CAPTCHA challenge");
+    }
+    if lower.contains("cf-browser-verification")
+        || lower.contains("cf-challenge")
+        || lower.contains("checking your browser before accessing")
+        || lower.contains("just a moment...") && (lower.contains("cloudflare") || lower.contains("cf-ray"))
+    {
+        return Some("Cloudflare bot challenge");
+    }
+    if lower.contains("g-recaptcha")
+        || lower.contains("hcaptcha")
+        || lower.contains("recaptcha/api")
+        || lower.contains("captcha-delivery")
+        || (lower.contains("are you a robot") && lower.contains("captcha"))
+    {
+        return Some("CAPTCHA challenge page");
+    }
+    if lower.contains("access denied") && (lower.contains("bot") || lower.contains("automated")) {
+        return Some("bot access denied");
+    }
+    None
+}
+
+/// Error message when an HTML search endpoint is challenge-walled.
+pub fn bot_challenge_error(provider: &str, reason: &str) -> anyhow::Error {
+    anyhow!(
+        "{provider} blocked by {reason}. Prefer an API-backed engine (brave, tavily, exa, serpapi, jina) \
+         with its API key set, or retry later. Do not treat this as an empty result set."
+    )
 }
 
 pub async fn do_get(client: &Client, url: &str, headers: &[(&str, &str)]) -> Result<String> {

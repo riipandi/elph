@@ -271,7 +271,9 @@ where
             .clone()
             .unwrap_or_else(|| Arc::new(AgentRegistry::new()));
         let limits = SubagentLimits::default();
-        let is_child_harness = options.agent_control.is_some();
+        let _is_child_harness = options.agent_control.is_some();
+        #[cfg(feature = "tools-collaboration")]
+        let is_child_harness = _is_child_harness;
         let agent_control = if let Some(control) = options.agent_control {
             control
         } else {
