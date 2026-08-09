@@ -1935,3 +1935,112 @@ async fn harness_lazy_activates_mcp_tools_via_list_available_tools() {
         "expected successful mcp_deepwiki__read_wiki_structure tool result; entries={tool_results:?}"
     );
 }
+
+/// Inactive MCP tools must still be *executable* via the full execution registry
+/// even before `list_available_tools` activation (fixes "Tool not found" when the
+/// model learned schemas from the catalog and calls immediately).
+#[tokio::test(flavor = "multi_thread")]
+async fn harness_executes_inactive_mcp_tools_from_execution_registry() {
+    let (_temp, env) = test_env();
+    let (faux, models) = common::new_faux();
+    let model = faux.provider.get_models()[0].clone();
+
+    let mcp = simple_tool(
+        Tool {
+            name: "mcp_deepwiki__read_wiki_structure".into(),
+            constrained_sampling: None,
+            description: "DeepWiki structure".into(),
+            parameters: json!({
+                "type": "object",
+                "properties": { "repoName": { "type": "string" } },
+                "required": ["repoName"]
+            }),
+        },
+        "MCP:deepwiki",
+        |_, args| {
+            let repo = args.get("repoName").and_then(|v| v.as_str()).unwrap_or("?").to_string();
+            Box::pin(async move { Ok(elph_agent::AgentToolResult::text(format!("ok:{repo}"))) })
+        },
+    );
+    let list = elph_agent::create_list_available_tools(std::slice::from_ref(&mcp));
+    let tools = vec![mcp, list];
+
+    // MCP registered but NOT active.
+    faux.set_responses(vec![
+        FauxResponseStep::Static(faux_assistant_message(
+            vec![faux_tool_call(
+                "mcp_deepwiki__read_wiki_structure",
+                json!({ "repoName": "facebook/react" }),
+                Some("mcp-direct".into()),
+            )],
+            Some(StopReason::ToolUse),
+        )),
+        FauxResponseStep::Static(faux_assistant_message(vec![faux_text("done")], None)),
+    ]);
+
+    let harness = AgentHarness::new(AgentHarnessOptions {
+        env,
+        session: Session::new(InMemorySessionStorage::new(None).expect("session")),
+        models,
+        tools,
+        resources: AgentHarnessResources::default(),
+        system_prompt: SystemPrompt::Static("You are helpful.".into()),
+        stream_options: Default::default(),
+        model,
+        thinking_level: AgentThinkingLevel::Off,
+        active_tool_names: vec!["list_available_tools".into()],
+        steering_mode: QueueMode::OneAtATime,
+        follow_up_mode: QueueMode::OneAtATime,
+        goal_runtime: None,
+        subagent_bootstrap: None,
+        compaction_settings: CompactionSettings::default(),
+        shared_registry: None,
+        agent_control: None,
+        headless: false,
+        terminals_dir: None,
+    })
+    .expect("harness");
+
+    assert!(
+        !harness
+            .get_active_tools()
+            .await
+            .iter()
+            .any(|t| t.name().starts_with("mcp_")),
+        "precondition: MCP inactive"
+    );
+
+    tokio::time::timeout(Duration::from_secs(15), harness.prompt("call deepwiki", None))
+        .await
+        .expect("timeout")
+        .expect("prompt");
+
+    // Tool executed successfully (not "Tool not found").
+    let ok = harness.session_entries().await.into_iter().any(|entry| match entry {
+        SessionTreeEntry::Message { message, .. } if message.role() == "toolResult" => match message.as_llm() {
+            Some(Message::ToolResult {
+                tool_name,
+                content,
+                is_error,
+                ..
+            }) if tool_name == "mcp_deepwiki__read_wiki_structure" && !is_error => content
+                .iter()
+                .any(|b| matches!(b, ContentBlock::Text { text } if text.contains("ok:facebook/react"))),
+            _ => false,
+        },
+        _ => false,
+    });
+    assert!(ok, "inactive MCP tool must execute via execution_tools registry");
+
+    // Auto-activate on first call should have promoted it into the active set.
+    let after: Vec<_> = harness
+        .get_active_tools()
+        .await
+        .into_iter()
+        .map(|t| t.name().to_string())
+        .collect();
+    assert!(
+        after.iter().any(|n| n == "mcp_deepwiki__read_wiki_structure"),
+        "first MCP call should auto-activate: {after:?}"
+    );
+}

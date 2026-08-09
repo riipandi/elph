@@ -151,6 +151,7 @@ pub async fn spawn_subagent_harness(
     models: Arc<elph_ai::Models>,
     _stream_fn: crate::types::StreamFn,
     base_tools: Vec<AgentTool>,
+    active_tool_names: Vec<String>,
     root_session_id: &str,
     agent_id: &str,
     task_name: &str,
@@ -198,6 +199,25 @@ pub async fn spawn_subagent_harness(
     // `provider_id/model_id` recorded in `SubagentInfo` → `meta.json` / tool results.
     let model_ref = format!("{}/{}", model.provider, model.id);
 
+    // Empty active_tool_names on AgentHarness means "all tools active", which would
+    // force-activate every MCP tool on the child. Prefer the parent's explicit set;
+    // if empty, expose native/meta tools only (MCP stays lazy-inactive).
+    let active_tool_names = if active_tool_names.is_empty() {
+        tools
+            .iter()
+            .map(|t| t.name().to_string())
+            .filter(|n| !crate::collaboration::is_mcp_tool(n))
+            .collect()
+    } else {
+        // Always keep meta tools available for discovery on the child.
+        let mut names = active_tool_names;
+        if !names.iter().any(|n| n == "list_available_tools")
+            && tools.iter().any(|t| t.name() == "list_available_tools")
+        {
+            names.push("list_available_tools".into());
+        }
+        names
+    };
     let harness = AgentHarness::new(AgentHarnessOptions {
         env,
         session,
@@ -208,7 +228,7 @@ pub async fn spawn_subagent_harness(
         stream_options: bootstrap.stream_options.clone(),
         model,
         thinking_level: bootstrap.thinking_level,
-        active_tool_names: vec![],
+        active_tool_names,
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
         compaction_settings: crate::agent::harness::types::DEFAULT_COMPACTION_SETTINGS,

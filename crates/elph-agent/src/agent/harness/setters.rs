@@ -184,6 +184,10 @@ where
         let existing: Vec<String> = self.shared.active_tool_names.lock().await.clone();
         let fresh: Vec<String> = filter_lazy_names(names, &existing, &registered);
         if fresh.is_empty() {
+            let unknown: Vec<&String> = names.iter().filter(|n| !registered.contains_key(*n)).collect();
+            if !unknown.is_empty() {
+                log::warn!("lazy activation skipped: tools not in registry (catalog may be stale): {unknown:?}");
+            }
             return Ok(());
         }
 

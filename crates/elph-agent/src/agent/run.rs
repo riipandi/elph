@@ -173,6 +173,8 @@ impl Agent {
             tool_context: crate::tools::types::ToolContext::new(std::sync::Arc::new(
                 crate::runtime::local_env::LocalExecutionEnv::new("."),
             )),
+            // Agent (non-harness) path: execution tools = model-visible tools.
+            execution_tools: state.as_ref().map(|s| s.tools().to_vec()).unwrap_or_default(),
         }
     }
 

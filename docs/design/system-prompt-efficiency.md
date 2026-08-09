@@ -66,7 +66,7 @@ and those tool schemas become active from the next turn.
 
 MCP tools are still **registered** eagerly (`runtime.rs` / `create_agent_tools`)
 so they remain executable and appear in the `list_available_tools` catalog, but
-they are **default-inactive**:
+they are **default-inactive** on the model-visible wire:
 
 - `AgentModePolicy::active_tool_names_for_mode` excludes all `mcp_*` names.
 - Coding session bootstrap seeds `active_tool_names` without MCP (`runtime.rs`).
@@ -75,11 +75,19 @@ they are **default-inactive**:
   `activate_lazy_tools`, which also extends the collaboration-mode baseline.
 - `reconcile_harness_tools` re-merges already-activated, mode-allowed MCP tools
   so hot-reload and mode switches do not wipe a mid-session lazy load.
+- **Execution registry** (`AgentLoopConfig.execution_tools`) keeps the full tool
+  map for dispatch. `prepare_tool_call` falls back to it when a name is missing
+  from the active context — so a model that learned schemas from the catalog can
+  still invoke the tool (no more `Tool … not found` solely because activation
+  lagged or was skipped). First MCP call also auto-activates the name for later
+  turns. Subagents receive the full parent registry with the parent's active set
+  (MCP stays inactive until listed/called).
 
 Prompt guidance (`coding_base.md`) tells the model to pass `name_prefix` (e.g.
-`mcp_deepwiki__`) to activate. Full-harness coverage:
-`harness_lazy_activates_mcp_tools_via_list_available_tools` in
-`crates/elph-agent/tests/harness.rs`.
+`mcp_deepwiki__`) to activate. Full-harness coverage in
+`crates/elph-agent/tests/harness.rs`:
+`harness_lazy_activates_mcp_tools_via_list_available_tools`,
+`harness_executes_inactive_mcp_tools_from_execution_registry`.
 
 ## On-demand skill discovery (`list_skills`)
 

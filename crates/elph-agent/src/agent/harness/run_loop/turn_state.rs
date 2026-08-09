@@ -22,7 +22,7 @@ where
         drop(session);
 
         let resources = self.shared.resources.lock().await.clone();
-        let tools = self.shared.tools.lock().await.values().cloned().collect();
+        let tools: Vec<AgentTool> = self.shared.tools.lock().await.values().cloned().collect();
         let active_tools: Vec<AgentTool> = {
             let tools = self.shared.tools.lock().await;
             let names = self.shared.active_tool_names.lock().await;
@@ -53,16 +53,20 @@ where
 
         let system_prompt = resolve_system_prompt_text(Some(&system_prompt));
 
-        let base_tools: Vec<AgentTool> = active_tools
+        // Subagents need the full registered tool set (including default-inactive MCP)
+        // so `list_available_tools` + lazy activation / first-call execute work there too.
+        // Model-visible tools on the parent remain `active_tools` only.
+        let base_tools: Vec<AgentTool> = tools
             .iter()
             .filter(|tool| !crate::collaboration::is_collaboration_tool(tool.name(), None))
             .cloned()
             .collect();
+        let active_names: Vec<String> = active_tools.iter().map(|t| t.name().to_string()).collect();
         self.shared
             .agent_control
             .lock()
             .await
-            .refresh_config(system_prompt.clone(), model.clone(), base_tools)
+            .refresh_config(system_prompt.clone(), model.clone(), base_tools, active_names)
             .await;
 
         Ok(AgentHarnessTurnState {

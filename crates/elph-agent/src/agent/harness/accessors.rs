@@ -90,19 +90,20 @@ where
     }
 
     pub async fn refresh_subagent_config(&self, system_prompt: String, model: Model) {
-        let active_tools = self.shared.active_tool_names.lock().await.clone();
+        let active_names = self.shared.active_tool_names.lock().await.clone();
         let tools_map = self.shared.tools.lock().await;
-        let base_tools: Vec<AgentTool> = active_tools
-            .iter()
-            .filter_map(|name| tools_map.get(name).cloned())
+        // Full registry (incl. inactive MCP) so children can list/activate/execute MCP tools.
+        let base_tools: Vec<AgentTool> = tools_map
+            .values()
             .filter(|tool| !crate::collaboration::is_collaboration_tool(tool.name(), None))
+            .cloned()
             .collect();
         drop(tools_map);
         self.shared
             .agent_control
             .lock()
             .await
-            .refresh_config(system_prompt, model, base_tools)
+            .refresh_config(system_prompt, model, base_tools, active_names)
             .await;
     }
 

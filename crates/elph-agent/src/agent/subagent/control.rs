@@ -21,7 +21,11 @@ pub struct SubagentSpawnConfig {
     pub env: Arc<LocalExecutionEnv>,
     pub model: Model,
     pub system_prompt: String,
+    /// Full tool registry (native + MCP), including default-inactive MCP tools.
     pub base_tools: Vec<AgentTool>,
+    /// Active tool names for the child harness (subset of `base_tools`).
+    /// Empty means "all base_tools active" (legacy). Prefer an explicit parent active set.
+    pub active_tool_names: Vec<String>,
     pub stream_fn: StreamFn,
     pub models: Arc<elph_ai::Models>,
     pub root_session_id: String,
@@ -74,11 +78,18 @@ impl AgentControl {
         *self.event_forwarder.lock().await = forwarder;
     }
 
-    pub async fn refresh_config(&self, system_prompt: String, model: Model, base_tools: Vec<AgentTool>) {
+    pub async fn refresh_config(
+        &self,
+        system_prompt: String,
+        model: Model,
+        base_tools: Vec<AgentTool>,
+        active_tool_names: Vec<String>,
+    ) {
         let mut config = self.config.lock().await;
         config.system_prompt = system_prompt;
         config.model = model;
         config.base_tools = base_tools;
+        config.active_tool_names = active_tool_names;
     }
 
     /// Keep the spawned subagent model in sync with the parent harness's current
@@ -155,6 +166,7 @@ impl AgentControl {
             config.models.clone(),
             config.stream_fn.clone(),
             config.base_tools.clone(),
+            config.active_tool_names.clone(),
             &config.root_session_id,
             &agent_id,
             &task_name,

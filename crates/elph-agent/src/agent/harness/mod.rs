@@ -283,6 +283,12 @@ where
                         model: model.clone(),
                         system_prompt: String::new(),
                         base_tools: base_tools.clone(),
+                        // Non-MCP tools active by default; MCP stays lazy-inactive.
+                        active_tool_names: base_tools
+                            .iter()
+                            .map(|t| t.name().to_string())
+                            .filter(|n| !crate::collaboration::is_mcp_tool(n))
+                            .collect(),
                         stream_fn,
                         models: options.models.clone(),
                         root_session_id: root_session_id.clone(),

@@ -421,12 +421,12 @@ List active subagents in this session. Takes no parameters.
 
 Lists tools the agent can **discover**, including full parameter schemas. Returns a compact XML catalog — token-cheaper than JSON (same family as `<available_skills>`). Parameter schemas flatten into `<property>` elements with `type` / `required` / `enum`; object-shaped properties recurse. Serialized with `quick-xml`.
 
-MCP tools (`mcp_<server>__…`) are **registered** on the harness but **default-inactive** (not on the model wire / active set until activated). Pass optional `name_prefix` (e.g. `mcp_deepwiki__`) to:
+MCP tools (`mcp_<server>__…`) are **registered** on the harness but **default-inactive** on the model-visible wire (active set) until activated. Pass optional `name_prefix` (e.g. `mcp_deepwiki__`) to:
 
 1. Return only matching tool schemas in the XML catalog.
 2. Set `added_tool_names` so the harness **lazily activates** those tools for subsequent turns.
 
-Omit `name_prefix` to browse the full catalog without activating. Automatically appended by `BuiltinToolsBuilder::build()`.
+Execution still resolves names against the full registry (`execution_tools`), so a tool that was advertised in the catalog can be invoked even if activation has not yet landed in the active set; the first MCP call also auto-activates that name. Omit `name_prefix` to browse the full catalog without activating. Automatically appended by `BuiltinToolsBuilder::build()`.
 
 ```xml
 <available_tools><tool><name>read_file</name><description>Read a text or image file...</description><parameters><property name="path" type="string" required="true">File path (relative or absolute)</property><property name="limit" type="number">Maximum lines to return</property><property name="ranges" type="array of object"><description>Multiple specific file ranges to read.</description><property name="path" type="string" required="true"/><property name="offset" type="number"/></property></parameters></tool></available_tools>

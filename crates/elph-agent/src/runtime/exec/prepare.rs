@@ -22,6 +22,20 @@ pub(super) fn prepare_tool_call_arguments(tool: &crate::types::AgentTool, tool_c
     }
 }
 
+/// Resolve a tool by name: prefer the model-visible active set, then the full
+/// execution registry (default-inactive MCP tools live only in the latter).
+fn resolve_tool<'a>(
+    current_context: &'a AgentContext,
+    config: &'a AgentLoopConfig,
+    name: &str,
+) -> Option<&'a crate::types::AgentTool> {
+    current_context
+        .tools
+        .iter()
+        .find(|t| t.name() == name)
+        .or_else(|| config.execution_tools.iter().find(|t| t.name() == name))
+}
+
 pub(super) async fn prepare_tool_call(
     current_context: &AgentContext,
     assistant_message: &AssistantMessage,
@@ -29,7 +43,7 @@ pub(super) async fn prepare_tool_call(
     config: &AgentLoopConfig,
     signal: Option<CancellationToken>,
 ) -> Preparation {
-    let Some(tool) = current_context.tools.iter().find(|t| t.name() == tool_call.name) else {
+    let Some(tool) = resolve_tool(current_context, config, &tool_call.name) else {
         return Preparation::Immediate {
             result: AgentToolResult::error(format!("Tool {} not found", tool_call.name)),
             is_error: true,
