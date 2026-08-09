@@ -52,9 +52,9 @@ use crate::tui::file_picker::{
 use crate::tui::focus::ShellFocus;
 use crate::tui::focus::{is_ctrl_enter_interject, is_text_select_toggle_key, prompt_focus_char, shell_global_shortcut};
 use crate::tui::item_selector::{
-    ItemSelectorPurpose, OpenItemSelectorArgs, PendingItemSelector, close_item_selector,
+    ItemSelectorPurpose, OpenItemSelectorArgs, PendingItemSelector, apply_tree_filter_key, close_item_selector,
     item_selector_confirm_on_enter, item_selector_confirm_summary_on_ctrl_enter, item_selector_list_nav_delta,
-    open_item_selector,
+    open_item_selector, tree_filter_key_action,
 };
 use crate::tui::item_selector_bar::ItemSelectorBar;
 use crate::tui::labels::GitFooterInfo;

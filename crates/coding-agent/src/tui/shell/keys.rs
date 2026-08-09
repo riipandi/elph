@@ -843,6 +843,18 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 return;
             }
 
+            // Pi TreeSelector filter modes (Tab / Ctrl+O cycle, Ctrl+D/T/U/L/A).
+            if let Some(action) = tree_filter_key_action(modifiers, code) {
+                if let Some(pending) = pending_item_selector.write().as_mut() {
+                    if pending.purpose == ItemSelectorPurpose::NavigateTree {
+                        apply_tree_filter_key(pending, action);
+                        item_selector_selected.set(pending.filtered_selected());
+                        return;
+                    }
+                }
+                // Resume picker: ignore tree filter chords (fall through for Esc-global etc.).
+            }
+
             if let Some(delta) = item_selector_list_nav_delta(modifiers, code) {
                 if let Some(pending) = pending_item_selector.write().as_mut() {
                     if delta == isize::MIN / 4 {
@@ -3033,15 +3045,13 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             draft: &mut draft,
                             live_draft: &mut live_draft,
                             shell_focus: &mut shell_focus,
+                            selected_index: Some(&mut item_selector_selected),
                             purpose,
                             title,
                             items,
                             preferred_value,
                             footer_hint,
                         });
-                        if let Some(p) = pending_item_selector.read().as_ref() {
-                            item_selector_selected.set(p.filtered_selected());
-                        }
                         draft.set(String::new());
                         live_draft.set(String::new());
                         force_editor_clear.set(true);

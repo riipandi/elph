@@ -1,10 +1,13 @@
 //! Inline bar UI for [`super::item_selector::PendingItemSelector`].
 
-use elph_tui::components::{SELECT_LIST_AUTO_HEIGHT, SelectList, UiTheme};
+use elph_tui::components::{SelectList, UiTheme};
 use iocraft::prelude::*;
 
 use crate::tui::inline_dialog::{InlineDialogShell, OPTIONS_LIST_TOP_GAP, inline_body_width};
 use crate::tui::item_selector::PendingItemSelector;
+
+/// Fixed list viewport rows — never auto-height for unbounded session trees.
+const ITEM_SELECTOR_LIST_ROWS: u16 = 12;
 
 #[derive(Props)]
 pub struct ItemSelectorBarProps {
@@ -12,7 +15,7 @@ pub struct ItemSelectorBarProps {
     pub screen_height: u16,
     pub has_focus: bool,
     pub pending: Option<PendingItemSelector>,
-    /// Absolute selected index state shared with the shell (SelectList expects State).
+    /// SelectList highlight — update only on open / keys, never during render.
     pub selected_index: Option<State<usize>>,
     pub on_cancel: HandlerMut<'static, ()>,
 }
@@ -34,40 +37,52 @@ impl Default for ItemSelectorBarProps {
 pub fn ItemSelectorBar(props: &mut ItemSelectorBarProps, _hooks: Hooks) -> impl Into<AnyElement<'static>> {
     let theme = UiTheme::default();
     let body_width = inline_body_width(props.screen_width);
-    let Some(pending) = props.pending.clone() else {
+
+    if props.pending.is_none() {
         return element! { View() }.into_any();
-    };
+    }
+    let pending = props.pending.as_ref().expect("checked");
 
     let options = pending.filtered_options();
-    let filter_line = if pending.filter.is_empty() {
-        "Filter: (type to search)".to_string()
-    } else {
-        format!("Filter: {}", pending.filter)
-    };
+    let status = pending.status_line();
+    let title = pending.title_with_mode();
     let empty = options.is_empty();
-    let count_label = format!(
-        "{} / {} item{}",
-        options.len(),
-        pending.items.len(),
-        if pending.items.len() == 1 { "" } else { "s" }
-    );
+    let list_height = ITEM_SELECTOR_LIST_ROWS.min((props.screen_height / 3).clamp(6, 16));
+    let footer = pending.footer_hint.clone();
+    let selected = props.selected_index;
+    let has_focus = props.has_focus;
 
-    // Cap list height so the dialog stays in the status zone budget.
-    let max_list = ((props.screen_height / 3).clamp(6, 16)) as u16;
-    let list_height = if empty {
-        2
-    } else if options.len() as u16 > max_list {
-        max_list
+    let list_body: AnyElement<'static> = if empty {
+        element! {
+            Text(
+                content: "No matches for this filter".to_string(),
+                color: theme.text_secondary,
+                wrap: TextWrap::Wrap,
+            )
+        }
+        .into_any()
     } else {
-        SELECT_LIST_AUTO_HEIGHT
+        element! {
+            SelectList(
+                width: body_width,
+                height: list_height,
+                options: options,
+                selected_index: selected,
+                has_focus: has_focus,
+                show_description: true,
+                compact: true,
+                theme: Some(theme),
+            )
+        }
+        .into_any()
     };
 
     element! {
         InlineDialogShell(
             screen_width: props.screen_width,
-            title: pending.title.clone(),
-            has_focus: props.has_focus,
-            footer_hint: Some(pending.footer_hint.clone()),
+            title: title,
+            has_focus: has_focus,
+            footer_hint: Some(footer),
         ) {
             View(
                 width: body_width,
@@ -77,45 +92,19 @@ pub fn ItemSelectorBar(props: &mut ItemSelectorBarProps, _hooks: Hooks) -> impl 
             ) {
                 View(width: body_width, flex_shrink: 0f32) {
                     Text(
-                        content: filter_line,
+                        content: status,
                         color: theme.text_secondary,
-                        wrap: TextWrap::Wrap,
-                    )
-                }
-                View(width: body_width, flex_shrink: 0f32, padding_bottom: 0) {
-                    Text(
-                        content: count_label,
-                        color: theme.text_muted,
                         wrap: TextWrap::Wrap,
                     )
                 }
                 View(
                     width: body_width,
                     padding_top: OPTIONS_LIST_TOP_GAP,
+                    height: list_height,
+                    overflow: Overflow::Hidden,
                     flex_shrink: 0f32,
                 ) {
-                    #(if empty {
-                        element! {
-                            Text(
-                                content: "No matches".to_string(),
-                                color: theme.text_secondary,
-                                wrap: TextWrap::Wrap,
-                            )
-                        }.into_any()
-                    } else {
-                        element! {
-                            SelectList(
-                                width: body_width,
-                                height: list_height,
-                                options: options,
-                                selected_index: props.selected_index,
-                                has_focus: props.has_focus,
-                                show_description: true,
-                                compact: true,
-                                theme: Some(theme),
-                            )
-                        }.into_any()
-                    })
+                    #(list_body)
                 }
             }
         }

@@ -543,10 +543,9 @@ pub(crate) fn build_shell_view(
     } else {
         None
     };
-    // Sync SelectList highlight with filtered selection.
-    if let Some(pending) = pending_item_selector.read().as_ref() {
-        item_selector_selected.set(pending.filtered_selected());
-    }
+    // NOTE: Do **not** call `item_selector_selected.set(...)` here during render —
+    // that re-triggers a frame forever and freezes the TUI. Selection is synced
+    // only in `open_item_selector` and keyboard handlers.
     let item_selector_overlay = if item_selector_open {
         let pending_snap = pending_item_selector.read().clone();
         Some(
@@ -1716,15 +1715,13 @@ pub(crate) fn build_shell_view(
                                     draft: &mut draft,
                                     live_draft: &mut live_draft,
                                     shell_focus: &mut shell_focus,
+                                    selected_index: Some(&mut item_selector_selected),
                                     purpose,
                                     title,
                                     items,
                                     preferred_value,
                                     footer_hint,
                                 });
-                                if let Some(p) = pending_item_selector.read().as_ref() {
-                                    item_selector_selected.set(p.filtered_selected());
-                                }
                                 draft.set(String::new());
                                 live_draft.set(String::new());
                                 force_editor_clear.set(true);

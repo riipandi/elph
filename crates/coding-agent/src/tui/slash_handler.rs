@@ -9,7 +9,7 @@ use crate::agent::RETRY_CONTINUE_PROMPT;
 use crate::agent::{
     HOTKEYS_TEXT, changelog_text, clone_session_message, confetti_mode_from_args, dispatch_slash_command,
     export_session_message, fork_session_message, format_help_message, import_session_from_jsonl, import_slash_message,
-    resume_list_message, session_info_slash_message, session_title_for_rename, settings_slash_message,
+    session_info_slash_message, session_title_for_rename, settings_slash_message,
     slash_unimplemented_message, system_prompt_slash_message, tools_slash_message, tree_slash_message,
     trust_slash_message, workers_slash_message,
 };

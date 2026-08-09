@@ -282,12 +282,33 @@ mod tests {
     }
 }
 
+/// Classification for Pi-style `/tree` filter modes (and generic pickers).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum SelectItemKind {
+    #[default]
+    Generic,
+    UserMessage,
+    AssistantMessage,
+    /// Tool result / tool-role message (hidden by default and `no-tools`).
+    ToolResult,
+    BranchSummary,
+    Compaction,
+    /// Explicit label entry or a message that has a label attached.
+    Label,
+    /// Bookkeeping: model/thinking/session_info/custom settings (hidden by default).
+    Settings,
+}
+
 /// One selectable row (previously in elph-tui diff module).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SelectItem {
     pub value: String,
     pub label: String,
     pub description: Option<String>,
+    /// Tree/filter classification (default [`SelectItemKind::Generic`]).
+    pub kind: SelectItemKind,
+    /// True when a session label points at this entry (Pi `labeled-only`).
+    pub labeled: bool,
 }
 
 impl SelectItem {
@@ -296,11 +317,23 @@ impl SelectItem {
             value: value.into(),
             label: label.into(),
             description: None,
+            kind: SelectItemKind::Generic,
+            labeled: false,
         }
     }
 
     pub fn with_description(mut self, description: impl Into<String>) -> Self {
         self.description = Some(description.into());
+        self
+    }
+
+    pub fn with_kind(mut self, kind: SelectItemKind) -> Self {
+        self.kind = kind;
+        self
+    }
+
+    pub fn with_labeled(mut self, labeled: bool) -> Self {
+        self.labeled = labeled;
         self
     }
 }
