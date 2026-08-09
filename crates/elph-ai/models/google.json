@@ -889,7 +889,7 @@
         "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.063,
+            "cacheWrite": 0.062,
             "input": 0.111,
             "output": 0.557
         },

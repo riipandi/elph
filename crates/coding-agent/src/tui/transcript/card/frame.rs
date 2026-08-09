@@ -109,15 +109,24 @@ pub(crate) fn assistant_message_body(
     let Some(markdown) = &message.markdown else {
         return Vec::new();
     };
-    if message.content.is_empty() && !markdown.has_rendered_body() {
-        return Vec::new();
+    match render_markdown_buffer(markdown, &message.content, foreground, inner_width) {
+        Some(body) => vec![body],
+        None => {
+            // Nothing paintable yet (blank / tag-only payload). If the reply is still a live
+            // stream, return a visible ellipsis placeholder instead of an empty vector so the
+            // card never renders as a phantom blank box; settled empty replies stay absent.
+            message
+                .assistant_placeholder()
+                .map(|placeholder| {
+                    element! {
+                        Text(content: placeholder, color: foreground, wrap: TextWrap::Wrap)
+                    }
+                    .into()
+                })
+                .into_iter()
+                .collect()
+        }
     }
-    vec![render_markdown_buffer(
-        markdown,
-        &message.content,
-        foreground,
-        inner_width,
-    )]
 }
 
 pub(crate) fn assistant_message_elements(

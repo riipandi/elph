@@ -43,14 +43,23 @@ pub fn detect_compat(model: &Model) -> ResolvedOpenAICompletionsCompat {
     // never send OpenAI-only fields (`store`, `max_completion_tokens`, `developer`, `strict`).
     let is_gateway = matches!(
         provider,
-        "tokenrouter" | "opengateway" | "baseten" | "kilo" | "sumopod" | "hyper" | "huggingface" | "vercel-ai-gateway"
+        "tokenrouter"
+            | "opengateway"
+            | "baseten"
+            | "kilo"
+            | "sumopod"
+            | "hyper"
+            | "huggingface"
+            | "vercel-ai-gateway"
+            | "wafer"
     ) || base_url.contains("tokenrouter.com")
         || base_url.contains("api.kilo.ai")
         || base_url.contains("opengateway")
         || base_url.contains("baseten.co")
         || base_url.contains("api.hyper.")
         || base_url.contains("huggingface.co")
-        || base_url.contains("ai-gateway.vercel.sh");
+        || base_url.contains("ai-gateway.vercel.sh")
+        || base_url.contains("pass.wafer.ai");
 
     // Vendor routes on gateways (id like `moonshotai/kimi-k3-free`).
     let gateway_moonshot = is_gateway && model_id.starts_with("moonshotai/");

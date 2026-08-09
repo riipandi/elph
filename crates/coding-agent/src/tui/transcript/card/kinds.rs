@@ -16,9 +16,9 @@ use iocraft::prelude::*;
 use crate::tui::activity::format_duration_secs;
 use crate::tui::ask_user_tool_card::{AskUserToolCardView, parse_ask_user_tool_rows};
 use crate::tui::theme::{
-    STATUS_FAILED_FG, STATUS_QUEUED_FG, STATUS_RUNNING_FG, STATUS_SUCCESS_FG, TEXT_FG, THINKING_FG, TOOL_ARGS_FG,
-    TOOL_FAILED_FG, TOOL_OUTPUT_FG, TOOL_PARAM_HIGHLIGHT_FG, TOOL_RUNNING_FG, TOOL_SUCCESS_FG, TOOL_TASK_LABEL_FG,
-    USER_INPUT_ACCENT,
+    META_FG, STATUS_FAILED_FG, STATUS_QUEUED_FG, STATUS_RUNNING_FG, STATUS_SUCCESS_FG, TEXT_FG, THINKING_FG,
+    TOOL_ARGS_FG, TOOL_FAILED_FG, TOOL_OUTPUT_FG, TOOL_PARAM_HIGHLIGHT_FG, TOOL_RUNNING_FG, TOOL_SUCCESS_FG,
+    TOOL_TASK_LABEL_FG, USER_INPUT_ACCENT,
 };
 use crate::tui::tool_params::{
     ToolParamsView, format_collapsed_tool_parts_linked_w, parse_tool_params, tool_display_verb,
@@ -64,7 +64,7 @@ fn status_indicator_color(status: ProcessStatus) -> Color {
     }
 }
 
-/// Meta chip packed next to the label (`· 0.3s` / `· running`) — always dim grey.
+/// Meta chip packed next to the label (`· 45ms` / `· running`) — always dim grey.
 fn process_meta_chip(status: ProcessStatus, duration_secs: Option<f64>) -> Option<String> {
     use elph_tui::GLYPH_META_SEP;
     if let Some(secs) = duration_secs {
@@ -101,9 +101,9 @@ pub fn skill_prompt_card(screen_width: u16, message: &TranscriptMessage, margin_
 #[derive(Props)]
 struct ProcessHeaderToggleProps {
     inner_width: u16,
-    /// Task title only (white; bold when finished).
+    /// Task title only (dim grey, **bold**) — tool verb / "Thinking".
     label: String,
-    /// Optional params / target path — highlight color, normal weight.
+    /// Optional params / target path — dimmer muted grey, normal weight.
     detail: String,
     /// When set, detail is rendered as an OSC 8 hyperlink (e.g. `file://` original path).
     detail_href: Option<String>,
@@ -132,8 +132,11 @@ impl Default for ProcessHeaderToggleProps {
 
 /// Shared process-phase header: `[glyph] Task [detail] · duration` (left-clustered).
 ///
-/// Colors: task = white · params = accent highlight · timestamp/meta = dim grey.
-/// Only the **task** label is bold when finished.
+/// Visual balance (assistant chat stays brightest):
+/// - **task label** — dim grey, bold (scannable without shouting)
+/// - **params/args** — dimmer muted grey, normal weight
+/// - **meta/duration** — quietest grey, normal weight
+///
 /// When `clickable`, wraps in iocraft [`Button`] so `use_local_terminal_events` hit-tests the header
 /// row (see vendor `button.rs` / `use_terminal_events.rs`).
 #[component]
@@ -141,11 +144,8 @@ fn ProcessHeaderToggle(props: &mut ProcessHeaderToggleProps) -> impl Into<AnyEle
     let inner_width = props.inner_width.max(1);
     let status = props.status;
     let indicator_color = status_indicator_color(status);
-    // Finished process rows: bold **task** only (running stays regular).
-    let task_weight = match status {
-        ProcessStatus::Done | ProcessStatus::Failed => Weight::Bold,
-        ProcessStatus::Running | ProcessStatus::Queued => Weight::Normal,
-    };
+    // Bold only the task name — args stay normal so the row hierarchy is clear.
+    let task_weight = Weight::Bold;
     let meta_chip = process_meta_chip(status, props.duration_secs);
     let label = props.label.clone();
     let detail = props.detail.trim().to_string();
@@ -178,7 +178,7 @@ fn ProcessHeaderToggle(props: &mut ProcessHeaderToggleProps) -> impl Into<AnyEle
         }
     });
 
-    // Pack glyph + white task + highlighted params + dim meta.
+    // Pack glyph + bold dim label + normal dim args + quieter meta.
     let row = element! {
         View(
             width: inner_width,
@@ -207,7 +207,7 @@ fn ProcessHeaderToggle(props: &mut ProcessHeaderToggleProps) -> impl Into<AnyEle
                 element! {
                     Text(
                         content: text,
-                        color: TOOL_ARGS_FG,
+                        color: META_FG,
                         weight: Weight::Normal,
                         wrap: TextWrap::NoWrap,
                     )
@@ -341,6 +341,48 @@ pub fn thinking_card(
     phase_card_shell(&chrome, margin_bottom, if show_body { 1 } else { 0 }, children)
 }
 
+/// Display body for an assistant message inside the transcript card or flush pair.
+///
+/// Guaranteed to return at least one element when the message is a live streaming reply
+/// (so a just-opened response with only whitespace / tag-only payload still shows a
+/// visible card instead of a phantom blank box). Settled replies with no content stay
+/// empty (nothing to display).
+fn chat_response_body(message: &TranscriptMessage, foreground: Color, inner_width: u16) -> Vec<AnyElement<'static>> {
+    if message.markdown.is_some() {
+        // The leaf (`assistant_message_elements`) already returns the ellipsis placeholder
+        // for live-empty replies that would otherwise paint nothing.
+        return assistant_message_elements(message, foreground, inner_width);
+    }
+    if message.assistant_placeholder().is_some() {
+        // Same live-only placeholder for the pre-markdown fallback path.
+        return vec![
+            element! {
+                Text(content: "…", color: TOOL_ARGS_FG, wrap: TextWrap::Wrap)
+            }
+            .into(),
+        ];
+    }
+    let streaming = message.is_assistant_streaming();
+    let stream_plain = streaming.then(|| format_assistant_stream_body_display(&message.content));
+    if let Some(text) = stream_plain.filter(|t| !t.is_empty()) {
+        return vec![
+            element! {
+                Text(color: TEXT_FG, wrap: TextWrap::Wrap, content: text)
+            }
+            .into(),
+        ];
+    }
+    if !message.content.is_empty() {
+        return vec![
+            element! {
+                Text(color: TEXT_FG, wrap: TextWrap::Wrap, content: message.content.as_str())
+            }
+            .into(),
+        ];
+    }
+    Vec::new()
+}
+
 pub fn chat_response_card(
     screen_width: u16,
     message: &TranscriptMessage,
@@ -355,30 +397,12 @@ pub fn chat_response_card(
     } else {
         chrome.padding_h = PROCESS_LOG_PAD_H;
     }
-    let streaming = message.duration_secs.is_none() && !message.markdown.as_ref().is_some_and(|md| md.stream_complete);
+    let streaming = message.is_assistant_streaming();
     let inner_width = chrome_inner_width(&chrome);
     // AI chat responses render as plain log lines — always show the body, never collapsed.
     let show_body = streaming || !message.content.is_empty();
-    // Stream display uses a capped tail so paint stays O(recent content), not O(full reply).
-    let stream_plain = streaming.then(|| format_assistant_stream_body_display(&message.content));
-    let body = if !show_body {
-        Vec::new()
-    } else if message.markdown.is_some() {
-        assistant_message_elements(message, TEXT_FG, inner_width)
-    } else if let Some(text) = stream_plain.filter(|t| !t.is_empty()) {
-        vec![
-            element! {
-                Text(color: TEXT_FG, wrap: TextWrap::Wrap, content: text)
-            }
-            .into(),
-        ]
-    } else if !message.content.is_empty() {
-        vec![
-            element! {
-                Text(color: TEXT_FG, wrap: TextWrap::Wrap, content: message.content.as_str())
-            }
-            .into(),
-        ]
+    let body = if show_body {
+        chat_response_body(message, TEXT_FG, inner_width)
     } else {
         Vec::new()
     };
@@ -877,17 +901,8 @@ pub fn thinking_response_pair_card(
         thinking.is_thinking_streaming() || (!thinking.is_thinking_collapsed() && !thinking.content.is_empty());
     // AI chat responses render as plain log lines — always show the assistant body.
     let response_show_body = assistant.duration_secs.is_none() || !assistant.content.is_empty();
-    let assistant_body = if !response_show_body {
-        Vec::new()
-    } else if assistant.markdown.is_some() {
-        assistant_message_elements(assistant, TEXT_FG, inner_width)
-    } else if !assistant.content.is_empty() {
-        vec![
-            element! {
-                Text(color: TEXT_FG, wrap: TextWrap::Wrap, content: assistant.content.as_str())
-            }
-            .into(),
-        ]
+    let assistant_body = if response_show_body {
+        chat_response_body(assistant, TEXT_FG, inner_width)
     } else {
         Vec::new()
     };

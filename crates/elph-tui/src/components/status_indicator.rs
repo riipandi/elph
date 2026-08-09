@@ -212,41 +212,9 @@ impl Default for ProcessStatusRowProps {
     }
 }
 
-/// Auto-scaled duration suffix (` · 45ms` / ` · 1.2s` / ` · 1m30s` / ` · 1h2m`).
+/// Auto-scaled duration suffix (` · 420ns` / ` · 45ms` / ` · 1.2s` / …).
 fn format_row_duration_secs(secs: f64) -> String {
-    let secs = if secs.is_finite() { secs.max(0.0) } else { 0.0 };
-    let body = if secs < 1.0 {
-        format!("{}ms", (secs * 1000.0).round() as u64)
-    } else if secs < 10.0 {
-        let rounded_tenth = (secs * 10.0).round() / 10.0;
-        let whole = rounded_tenth.floor();
-        if (rounded_tenth - whole).abs() < 0.05 {
-            format!("{}s", whole as u64)
-        } else {
-            format!("{rounded_tenth:.1}s")
-        }
-    } else if secs < 60.0 {
-        format!("{}s", secs.round() as u64)
-    } else {
-        let total = secs.round() as u64;
-        let hours = total / 3600;
-        let minutes = (total % 3600) / 60;
-        let seconds = total % 60;
-        if hours > 0 {
-            if seconds > 0 {
-                format!("{hours}h{minutes}m{seconds}s")
-            } else if minutes > 0 {
-                format!("{hours}h{minutes}m")
-            } else {
-                format!("{hours}h")
-            }
-        } else if seconds > 0 {
-            format!("{minutes}m{seconds}s")
-        } else {
-            format!("{minutes}m")
-        }
-    };
-    format!(" {GLYPH_META_SEP} {body}")
+    format!(" {GLYPH_META_SEP} {}", crate::utils::format_duration_secs(secs))
 }
 
 /// One status line: animated marker + label.

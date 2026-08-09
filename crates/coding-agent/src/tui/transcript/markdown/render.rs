@@ -132,8 +132,9 @@ pub(crate) fn build_assistant_markdown_document(
             // In an unclosed codeblock: render the entire tail as markdown
             // to preserve codeblock structure and syntax highlighting.
             let tail_doc = if streaming_tail && tail.len() > 12_000 {
-                // Safety cap: only last 12K chars for very long streams
-                let start = tail.char_indices().rev().nth(11_999).map(|(i, _)| i).unwrap_or(0);
+                // Safety cap: only last 12K chars for very long streams.
+                // Cut at a line start so a table row or code line is never split mid-way.
+                let start = tail_start_boundary(tail, 11_999);
                 streaming_tail_document(&tail[start..])
             } else {
                 streaming_tail_document(tail)
@@ -144,12 +145,7 @@ pub(crate) fn build_assistant_markdown_document(
             // Completed replies render the full tail — no truncation of finished content.
             let capped_tail = if streaming_tail && tail.len() > 4_000 {
                 const TAIL_PAINT_MAX: usize = 4_000;
-                let start = tail
-                    .char_indices()
-                    .rev()
-                    .nth(TAIL_PAINT_MAX.saturating_sub(1))
-                    .map(|(i, _)| i)
-                    .unwrap_or(0);
+                let start = tail_start_boundary(tail, TAIL_PAINT_MAX.saturating_sub(1));
                 &tail[start..]
             } else {
                 tail
@@ -163,19 +159,51 @@ pub(crate) fn build_assistant_markdown_document(
     document
 }
 
-/// Render assistant markdown (stable prefix + streaming tail) as one iocraft block.
+/// Left-cut boundary for the streaming-tail paint cap: the latest `max_chars`
+/// back, snapped forward to the next line start. Cutting at a line boundary
+/// keeps table rows / code lines whole — a raw `|` fragment no longer appears
+/// when the stable↔tail split lands inside a table.
+fn tail_start_boundary(tail: &str, max_chars: usize) -> usize {
+    let char_count = tail.chars().count();
+    if char_count <= max_chars {
+        return 0;
+    }
+    let byte_start = tail
+        .char_indices()
+        .skip(char_count.saturating_sub(max_chars))
+        .map(|(i, _)| i)
+        .next()
+        .unwrap_or(0);
+    // Snap forward to the start of the next line so the cut never bisects a row.
+    tail[byte_start..]
+        .find('\n')
+        .map(|rel| byte_start + rel + 1)
+        .filter(|next| *next < tail.len())
+        .unwrap_or(byte_start)
+}
+
+/// Render assistant markdown (stable prefix + streaming tail) as one iocraft block element.
+///
+/// Returns `None` when nothing is paintably visible (blank / tag-only payload before the
+/// worker parses anything). The caller decides whether to paint a placeholder (live-stream
+/// replies) or nothing (settled empty replies).
 pub fn render_markdown_buffer(
     buffer: &AssistantMarkdownBuffer,
     raw: &str,
     tail_foreground: Color,
     width: u16,
-) -> AnyElement<'static> {
+) -> Option<AnyElement<'static>> {
     let width = width.max(1);
     let document = build_cached_document(buffer, raw, tail_foreground, width);
     if document.is_empty() {
-        return render_linkified_plain_text(raw, tail_foreground, width);
+        if raw.trim().is_empty() {
+            // Nothing paintable — only blank / tag-only payload. `None` lets the caller
+            // choose between a live placeholder and true absence.
+            return None;
+        }
+        return Some(render_linkified_plain_text(raw, tail_foreground, width));
     }
-    render_markdown_block(&document, width)
+    Some(render_markdown_block(&document, width))
 }
 
 /// Get the built (merged) document, using a cache for completed messages.
@@ -241,6 +269,30 @@ fn build_cached_document(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The streaming tail paint cap (4K / 12K) must never bisect a line: cutting at the
+    /// raw char offset could split a table row into two `|` fragments that pulldown
+    /// parses as raw markdown. `tail_start_boundary` snaps forward to the next line start.
+    #[test]
+    fn tail_cap_cuts_at_line_boundary_never_mid_row() {
+        let row = "| alpha | beta | gamma | delta |\n";
+        let filler = "padding padding padding\n".repeat(80); // ~1.9K chars
+        let tail = format!("{filler}{row}");
+
+        for max_chars in [400usize, 1000, 3000] {
+            let start = tail_start_boundary(&tail, max_chars);
+            assert!(
+                start == 0 || start == tail.len() || !tail[start..].starts_with('|'),
+                "max {max_chars}: cap cut mid-line, kept tail starts with a bar: {:?}",
+                &tail[start..tail.len().min(start + 24)]
+            );
+            let kept_len = tail[start..].chars().count();
+            assert!(kept_len <= max_chars, "max {max_chars}: kept {kept_len} chars");
+        }
+
+        // A tail that is already within the budget is never cut.
+        assert_eq!(tail_start_boundary(&tail, usize::MAX), 0);
+    }
     use crate::tui::transcript::markdown::buffer::AssistantMarkdownBuffer;
 
     /// Simulate the streaming→settled transition: a closed mermaid fence moves from the

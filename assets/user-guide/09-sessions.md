@@ -1,6 +1,6 @@
 # Sessions
 
-Product sessions live in Turso `APP_DATA/metadata.db` (`session_entries` tree). Artifacts
+Product sessions live in the project-local Turso store `PROJECT/.elph/store.db` (`session_entries` tree). Artifacts
 (tool outputs, MCP cache, terminals) live under `APP_DATA/sessions/<SESSION_ID>/`.
 
 ## Resume
@@ -23,4 +23,4 @@ Journal entries use custom types prefixed `harness.*`. See `docs/agent-runtime.m
 
 ## Goals
 
-Session goals use the same platform DB (`goals` table). Slash: `/goal`.
+Session goals use the same project-local store (`goals` table). Slash: `/goal`.

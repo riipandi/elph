@@ -315,7 +315,14 @@ async fn execute_shell_exec(
             },
         };
 
-        spawn_background_shell(env.clone(), command.to_string(), cwd, timeout, output_path.clone());
+        spawn_background_shell(
+            env.clone(),
+            command.to_string(),
+            cwd,
+            timeout,
+            task_id.clone(),
+            output_path.clone(),
+        );
 
         let timeout_label = timeout
             .map(|seconds| format!("{seconds}s"))
@@ -409,6 +416,57 @@ fn next_background_task_id() -> String {
     format!("bg-{}", NEXT_TASK_ID.fetch_add(1, Ordering::SeqCst))
 }
 
+/// Live background shell tasks indexed by task id, so a task can be cancelled
+/// explicitly (`cancel_background_task`) or by a session teardown.
+static BACKGROUND_TASKS: std::sync::OnceLock<StdMutex<std::collections::HashMap<String, CancellationToken>>> =
+    std::sync::OnceLock::new();
+
+fn background_tasks() -> &'static StdMutex<std::collections::HashMap<String, CancellationToken>> {
+    BACKGROUND_TASKS.get_or_init(|| StdMutex::new(std::collections::HashMap::new()))
+}
+
+/// Register a background task token; returns the token bound to `task_id`.
+fn register_background_task(task_id: String, token: CancellationToken) {
+    // INVARIANT: the worker panic-safe because the task only panics if another
+    // thread panicked while holding this mutex — which would crash the process
+    // anyway (no cross-thread poison recovery makes sense here).
+    background_tasks().lock().expect("bg tasks lock").insert(task_id, token);
+}
+
+/// Cancel a running background shell task by `task_id` (e.g. `bg-12`).
+///
+/// Terminates the process group (graceful SIGTERM → SIGKILL) via the abort
+/// token the task's shell execution is listening on. Returns `true` when the
+/// task existed and was cancelled.
+pub fn cancel_background_task(task_id: &str) -> bool {
+    // INVARIANT: see `register_background_task` — poison is unrecoverable.
+    let token = background_tasks().lock().expect("bg tasks lock").remove(task_id);
+    match token {
+        Some(token) => {
+            token.cancel();
+            true
+        }
+        None => false,
+    }
+}
+
+/// List ids of currently registered background tasks.
+pub fn list_background_tasks() -> Vec<String> {
+    // INVARIANT: see `register_background_task` — poison is unrecoverable.
+    background_tasks()
+        .lock()
+        .expect("bg tasks lock")
+        .keys()
+        .cloned()
+        .collect()
+}
+
+/// Remove a completed background task from the registry (best-effort cleanup).
+fn unregister_background_task(task_id: &str) {
+    // INVARIANT: see `register_background_task` — poison is unrecoverable.
+    background_tasks().lock().expect("bg tasks lock").remove(task_id);
+}
+
 /// Write the full foreground `shell_exec` output to the session terminals dir.
 ///
 /// Prefers copying the already-written full-output temp file (when the capture
@@ -439,11 +497,16 @@ async fn persist_foreground_output(
 /// token (not the turn's cancellation token) and streams stdout/stderr to the
 /// given output file. The task is fire-and-forget; its completion status is
 /// appended to the file as a footer.
+///
+/// The task is registered under `task_id` via [`register_background_task`] so it
+/// can be cancelled explicitly with [`cancel_background_task`] — cancellation
+/// terminates the whole process group (SIGTERM → SIGKILL), not just the shell.
 fn spawn_background_shell(
     env: Arc<LocalExecutionEnv>,
     command: String,
     cwd: String,
     timeout: Option<u64>,
+    task_id: String,
     output_path: String,
 ) {
     let file = match std::fs::OpenOptions::new().create(true).append(true).open(&output_path) {
@@ -466,15 +529,19 @@ fn spawn_background_shell(
     let on_stdout = make_writer(file.clone());
     let on_stderr = make_writer(file.clone());
 
+    let cancel_token = CancellationToken::new();
+    let registry_task_id = task_id.clone();
+
     let footer_file = file.clone();
     tokio::spawn(async move {
+        register_background_task(registry_task_id.clone(), cancel_token.clone());
         let result = env
             .exec(
                 &command,
                 Some(ShellExecOptions {
                     cwd: Some(cwd),
                     timeout,
-                    abort_token: Some(CancellationToken::new()),
+                    abort_token: Some(cancel_token),
                     on_stdout: Some(on_stdout),
                     on_stderr: Some(on_stderr),
                     ..Default::default()
@@ -482,6 +549,7 @@ fn spawn_background_shell(
             )
             .await;
 
+        unregister_background_task(&registry_task_id);
         let footer = match &result {
             HarnessResult::Ok(output) => format!("\n\n[exit code: {}]", output.exit_code),
             HarnessResult::Err(error) => format!("\n\n[shell_exec error: {}]", error.message),
@@ -684,6 +752,78 @@ mod tests {
         assert!(output_path.ends_with("shell-t-fg.txt"), "{output_path}");
         let contents = std::fs::read_to_string(output_path).expect("read terminals file");
         assert!(contents.contains("persisted-output"), "terminals file: {contents}");
+    }
+
+    #[tokio::test]
+    async fn background_task_can_be_cancelled() {
+        let temp = TempDir::new().expect("temp dir");
+        let env = Arc::new(LocalExecutionEnv::new(temp.path().to_path_buf()));
+        let ctx = crate::tools::types::ToolContext::new(env.clone());
+        let result = execute_shell_exec(
+            env,
+            "t-cancel".to_string(),
+            json!({ "command": "sleep 60", "run_in_background": true, "description": "cancel me" }),
+            None,
+            None,
+            ctx,
+        )
+        .await
+        .expect("shell_exec execution");
+
+        let task_id = result
+            .details
+            .get("taskId")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string();
+        assert!(task_id.starts_with("bg-"), "{task_id}");
+        let output_path = result
+            .details
+            .get("outputPath")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string();
+
+        // Ensure the task is registered (spawn is async — small grace).
+        let mut registered = false;
+        for _ in 0..50 {
+            if crate::tools::shell_exec::list_background_tasks().contains(&task_id) {
+                registered = true;
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        }
+        assert!(registered, "task {task_id} was never registered");
+
+        // Cancelling must remove it and stop the process group.
+        assert!(
+            crate::tools::shell_exec::cancel_background_task(&task_id),
+            "cancel returned false"
+        );
+        assert!(
+            !crate::tools::shell_exec::cancel_background_task(&task_id),
+            "double cancel should be false"
+        );
+
+        // The footer should reflect an aborted run (process killed), and because it
+        // was terminated not cleanly exited, we expect no "[exit code: 0]" footer.
+        let mut waited = 0;
+        let mut contents = String::new();
+        while waited < 50 {
+            if let Ok(text) = std::fs::read_to_string(&output_path) {
+                contents = text;
+                if !contents.is_empty() {
+                    break;
+                }
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            waited += 1;
+        }
+        // Either the footer shows a non-zero/error, or nothing (still killed in flight).
+        assert!(
+            contents.is_empty() || !contents.contains("[exit code: 0]"),
+            "cancelled task must not report exit code 0: {contents}"
+        );
     }
 
     #[tokio::test]

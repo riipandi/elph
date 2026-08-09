@@ -329,12 +329,44 @@ fn random_salt() -> [u8; 16] {
     salt
 }
 
+/// Memoized machine fingerprint. Identical to [`machine_fingerprint_uncached`]
+/// but computed at most once per process: the machine identity is immutable
+/// while Elph runs, yet the macOS/Linux backends shell out to a subprocess
+/// (`ioreg` / `wmic`) that costs tens of milliseconds per call. Without
+/// memoization the sealed auth store would re-spawn that subprocess on every
+/// read (e.g. once per provider per TUI render), freezing the UI.
+static MACHINE_FINGERPRINT: OnceLock<Option<Vec<u8>>> = OnceLock::new();
+
 /// Stable, machine-unique identifier material for HKDF input keying material.
 ///
 /// Best-effort: returns the first available identifier. On most platforms
 /// this is the hardware UUID which requires root to read on some OSes, but
 /// is stable and unique per machine.
+///
+/// Cached for the process lifetime — see [`MACHINE_FINGERPRINT`].
 fn machine_fingerprint() -> Result<Vec<u8>> {
+    if let Some(cached) = MACHINE_FINGERPRINT.get() {
+        return cached.clone().ok_or_else(|| {
+            anyhow::anyhow!(
+                "could not determine a stable machine identifier on this platform. \
+                 Set ELPH_AUTH_KEY to provide an explicit master key."
+            )
+        });
+    }
+    let to_store = machine_fingerprint_uncached().ok();
+    let stored = MACHINE_FINGERPRINT.get_or_init(|| to_store);
+    match stored {
+        Some(bytes) => Ok(bytes.clone()),
+        None => Err(anyhow::anyhow!(
+            "could not determine a stable machine identifier on this platform. \
+             Set ELPH_AUTH_KEY to provide an explicit master key."
+        )),
+    }
+}
+
+/// Uncached implementation of [`machine_fingerprint`]. Prefer the memoized
+/// wrapper; this only performs the (potentially slow) platform lookup.
+fn machine_fingerprint_uncached() -> Result<Vec<u8>> {
     // macOS: IORegistry platform UUID (stable, unique per hardware).
     #[cfg(target_os = "macos")]
     {

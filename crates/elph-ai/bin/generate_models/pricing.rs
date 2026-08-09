@@ -127,8 +127,9 @@ fn fetch_live_provider_pricing(src: &ProviderSource, base_url: &str) -> HashMap<
             };
             // Try several pricing shapes across providers:
             // 1. models.dev style: metadata.pricing.{input_per_million,...}
-            // 2. Hyper style:      pricing.{input,output,cache_hit,cache_create}
-            // 3. Infron style:     min_prompt_price / min_completion_price (per 1M)
+            // 2. Wafer style:      wafer.pricing.{input_cents_per_million,...} (cents → USD)
+            // 3. Hyper style:      pricing.{input,output,cache_hit,cache_create}
+            // 4. Infron style:     min_prompt_price / min_completion_price (per 1M)
             let (inp, outp, cached) = if let Some(pricing) = entry.get("metadata").and_then(|m| m.get("pricing")) {
                 let i = pricing.get("input_per_million").and_then(|v| v.as_f64()).unwrap_or(0.0);
                 let o = pricing
@@ -141,6 +142,8 @@ fn fetch_live_provider_pricing(src: &ProviderSource, base_url: &str) -> HashMap<
                     .and_then(|v| v.as_f64())
                     .unwrap_or(0.0);
                 (i, o, c)
+            } else if let Some(pricing) = cents_pricing(entry) {
+                pricing
             } else if let Some(pricing) = entry.get("pricing") {
                 let i = pricing.get("input").and_then(|v| v.as_f64()).unwrap_or(0.0);
                 let o = pricing.get("output").and_then(|v| v.as_f64()).unwrap_or(0.0);
@@ -164,6 +167,23 @@ fn fetch_live_provider_pricing(src: &ProviderSource, base_url: &str) -> HashMap<
         }
     }
     out
+}
+
+/// Wafer-style pricing nested under a vendor object, expressed in cents per
+/// million tokens (`{vendor}.pricing.input_cents_per_million`). Returns USD per
+/// million tokens so it lines up with every other pricing shape.
+fn cents_pricing(entry: &Value) -> Option<PriceTriple> {
+    let pricing = entry
+        .as_object()?
+        .values()
+        .filter_map(|v| v.get("pricing"))
+        .find(|p| p.get("input_cents_per_million").is_some())?;
+    let cents = |key: &str| pricing.get(key).and_then(|v| v.as_f64()).unwrap_or(0.0) / 100.0;
+    Some((
+        cents("input_cents_per_million"),
+        cents("output_cents_per_million"),
+        cents("cache_read_cents_per_million"),
+    ))
 }
 
 /// Resolve best price: live → models.dev → previous non-zero.
@@ -246,5 +266,35 @@ pub fn apply_cost(entry: &mut Value, i: f64, o: f64, cr: f64, cw: f64) {
 fn set_if_positive(c: &mut serde_json::Map<String, Value>, key: &str, new: f64) {
     if new > 0.0 {
         c.insert(key.into(), serde_json::json!(new));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cents_pricing_converts_wafer_shape_to_usd() {
+        let entry = serde_json::json!({
+            "id": "GLM-5.1",
+            "wafer": {
+                "pricing": {
+                    "currency": "usd",
+                    "input_cents_per_million": 100,
+                    "output_cents_per_million": 320,
+                    "cache_read_cents_per_million": 10,
+                }
+            }
+        });
+        let (i, o, c) = cents_pricing(&entry).expect("wafer pricing");
+        assert_eq!(i, 1.0);
+        assert_eq!(o, 3.2);
+        assert_eq!(c, 0.1);
+    }
+
+    #[test]
+    fn cents_pricing_ignores_other_shapes() {
+        let entry = serde_json::json!({ "id": "m", "pricing": { "input": 1.0, "output": 2.0 } });
+        assert!(cents_pricing(&entry).is_none());
     }
 }

@@ -40,7 +40,7 @@ async fn main() -> anyhow::Result<()> {
             None,
         )),
         FauxResponseStep::Static(faux_assistant_message(
-            vec![faux_text("I have listed all available tools above. Each tool includes its name, description, parameters, and required fields.")],
+            vec![faux_text("I have listed all available tools above. Each tool includes its name, description, and parameter schema.")],
             None,
         )),
     ]);
@@ -73,7 +73,7 @@ async fn main() -> anyhow::Result<()> {
                         println!("  [tool] {tool_name}");
                     }
                     AgentEvent::ToolExecutionEnd { tool_name, result, .. } => {
-                        // For list_available_tools, show a summary instead of full JSON
+                        // For list_available_tools, show a summary instead of the full XML
                         if tool_name == "list_available_tools" {
                             let text: String = result
                                 .content
@@ -83,21 +83,15 @@ async fn main() -> anyhow::Result<()> {
                                     _ => None,
                                 })
                                 .collect();
-                            if let Ok(list) = serde_json::from_str::<Vec<serde_json::Value>>(&text) {
-                                println!("  [OK] {tool_name}: {} tools listed", list.len());
-                                for entry in &list {
-                                    let name = entry.get("name").and_then(|v| v.as_str()).unwrap_or("?");
-                                    let desc = entry
-                                        .get("description")
-                                        .and_then(|v| v.as_str())
-                                        .unwrap_or("")
-                                        .chars()
-                                        .take(80)
-                                        .collect::<String>();
-                                    println!("       - {name}: {desc}");
-                                }
-                            } else {
-                                println!("  [OK] {tool_name}: {text}");
+                            // Each `<tool>` block carries exactly one `<name>` element.
+                            let names: Vec<&str> = text
+                                .split("<name>")
+                                .skip(1)
+                                .filter_map(|rest| rest.split("</name>").next())
+                                .collect();
+                            println!("  [OK] {tool_name}: {} tools listed", names.len());
+                            for name in &names {
+                                println!("       - {name}");
                             }
                         } else {
                             println!("  [OK] {tool_name}");

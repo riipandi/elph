@@ -58,6 +58,7 @@ use elph_tui::install_theme_config;
 use crate::agent::{load_resources, resolve_provider_and_model, slash_commands_for_palette};
 use crate::extensions::ExtensionHost;
 use crate::platform::{Paths, Settings};
+use crate::tui::transcript::LogDensity;
 use crate::types::{AgentMode, ThinkingLevel};
 
 use chrome::read_git_footer_info;
@@ -146,6 +147,7 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
         sticky_scroll: settings.ui.sticky_scroll,
         show_thinking: settings.ui.show_thinking,
         auto_expand_thinking: settings.ui.auto_expand_thinking,
+        density: LogDensity::from_setting(&settings.ui.density),
         agent_session: None,
         ui_events: None,
         extension_host: extension_host,

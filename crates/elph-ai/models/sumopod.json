@@ -11,7 +11,7 @@
             "cacheRead": 0.06,
             "cacheWrite": 0.375,
             "input": 0.6,
-            "output": 2.4
+            "output": 4.8
         },
         "id": "MiniMax-M2.7-highspeed",
         "input": ["text"],
@@ -68,10 +68,10 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 1.2,
-            "cacheWrite": 15.0,
-            "input": 12.0,
-            "output": 60.0
+            "cacheRead": 1.1,
+            "cacheWrite": 13.75,
+            "input": 10.0,
+            "output": 50.0
         },
         "id": "claude-fable-5",
         "input": ["text", "image"],
@@ -105,8 +105,8 @@
         },
         "id": "claude-haiku-4-5",
         "input": ["text", "image", "pdf"],
-        "maxTokens": 16384,
-        "name": "Claude Haiku 4.5 (latest)",
+        "maxTokens": 64000,
+        "name": "claude-haiku-4-5",
         "provider": "sumopod",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -128,15 +128,15 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.6,
-            "cacheWrite": 7.5,
-            "input": 6.0,
-            "output": 30.0
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "claude-opus-4-7",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
-        "name": "Claude Opus 4.7",
+        "name": "claude-opus-4-7",
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -158,10 +158,10 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.6,
-            "cacheWrite": 7.5,
-            "input": 6.0,
-            "output": 30.0
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "claude-opus-4-8",
         "input": ["text", "image"],
@@ -188,15 +188,15 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.36,
-            "cacheWrite": 4.5,
-            "input": 3.6,
-            "output": 18.0
+            "cacheRead": 0.3,
+            "cacheWrite": 3.75,
+            "input": 3.0,
+            "output": 15.0
         },
         "id": "claude-sonnet-4-6",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
-        "name": "Claude Sonnet 4.6",
+        "name": "claude-sonnet-4-6",
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -218,8 +218,8 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.3,
-            "cacheWrite": 3.75,
+            "cacheRead": 0.2,
+            "cacheWrite": 2.5,
             "input": 3.0,
             "output": 15.0
         },
@@ -248,15 +248,15 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.028,
+            "cacheRead": 0.0028,
             "cacheWrite": 0.0,
-            "input": 0.138,
-            "output": 0.275
+            "input": 0.14,
+            "output": 0.28
         },
         "id": "deepseek-v4-flash",
         "input": ["text"],
-        "maxTokens": 32768,
-        "name": "DeepSeek V4 Flash 0423",
+        "maxTokens": 384000,
+        "name": "DeepSeek V4 Flash",
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -278,14 +278,14 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.33,
+            "cacheRead": 0.003625,
             "cacheWrite": 0.0,
-            "input": 1.65,
-            "output": 3.301
+            "input": 0.435,
+            "output": 0.87
         },
         "id": "deepseek-v4-pro",
         "input": ["text"],
-        "maxTokens": 32768,
+        "maxTokens": 384000,
         "name": "DeepSeek V4 Pro",
         "provider": "sumopod",
         "reasoning": true,
@@ -344,7 +344,7 @@
             "output": 1.5
         },
         "id": "gemini/gemini-3.1-flash-lite",
-        "input": ["text", "image", "audio", "video", "pdf"],
+        "input": ["text", "image", "audio"],
         "maxTokens": 65536,
         "name": "Gemini 3.1 Flash Lite",
         "provider": "sumopod",
@@ -460,13 +460,13 @@
         "cost": {
             "cacheRead": 0.2,
             "cacheWrite": 0.43,
-            "input": 1.0,
-            "output": 3.2
+            "input": 0.6,
+            "output": 2.6
         },
         "id": "glm-5",
         "input": ["text"],
         "maxTokens": 131072,
-        "name": "GLM-5",
+        "name": "glm-5",
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -490,13 +490,13 @@
         "cost": {
             "cacheRead": 0.24,
             "cacheWrite": 1.544,
-            "input": 1.2,
-            "output": 4.0
+            "input": 0.72,
+            "output": 3.2
         },
         "id": "glm-5-turbo",
         "input": ["text"],
         "maxTokens": 131072,
-        "name": "GLM-5-Turbo",
+        "name": "glm-5-turbo",
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -520,13 +520,13 @@
         "cost": {
             "cacheRead": 0.26,
             "cacheWrite": 0.0,
-            "input": 1.4,
-            "output": 4.4
+            "input": 0.86,
+            "output": 3.5
         },
         "id": "glm-5.1",
         "input": ["text"],
         "maxTokens": 131072,
-        "name": "GLM-5.1",
+        "name": "glm-5.1",
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -548,14 +548,14 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.26,
+            "cacheRead": 0.2817,
             "cacheWrite": 0.0,
-            "input": 1.4,
-            "output": 4.4
+            "input": 1.1268,
+            "output": 3.9438
         },
         "id": "glm-5.2",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 128000,
         "name": "GLM-5.2",
         "provider": "sumopod",
         "reasoning": true,
@@ -578,13 +578,13 @@
         },
         "contextWindow": 200000,
         "cost": {
-            "cacheRead": 0.24,
+            "cacheRead": 0.169008,
             "cacheWrite": 1.544,
-            "input": 1.2,
-            "output": 4.0
+            "input": 0.72,
+            "output": 3.2
         },
         "id": "glm-5v-turbo",
-        "input": ["text", "image", "video", "pdf"],
+        "input": ["text", "image", "video", "audio", "pdf"],
         "maxTokens": 131072,
         "name": "GLM-5V-Turbo",
         "provider": "sumopod",
@@ -608,7 +608,7 @@
         },
         "contextWindow": 1047576,
         "cost": {
-            "cacheRead": 1.0,
+            "cacheRead": 0.5,
             "cacheWrite": 2.0,
             "input": 2.0,
             "output": 8.0
@@ -616,7 +616,7 @@
         "id": "gpt-4.1",
         "input": ["text", "image", "pdf"],
         "maxTokens": 32768,
-        "name": "GPT-4.1",
+        "name": "gpt-4.1",
         "provider": "sumopod",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -638,7 +638,7 @@
         },
         "contextWindow": 1047576,
         "cost": {
-            "cacheRead": 0.2,
+            "cacheRead": 0.1,
             "cacheWrite": 0.4,
             "input": 0.4,
             "output": 1.6
@@ -646,7 +646,7 @@
         "id": "gpt-4.1-mini",
         "input": ["text", "image", "pdf"],
         "maxTokens": 32768,
-        "name": "GPT-4.1 mini",
+        "name": "gpt-4.1-mini",
         "provider": "sumopod",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -668,7 +668,7 @@
         },
         "contextWindow": 1047576,
         "cost": {
-            "cacheRead": 0.05,
+            "cacheRead": 0.025,
             "cacheWrite": 0.1,
             "input": 0.1,
             "output": 0.4
@@ -676,7 +676,7 @@
         "id": "gpt-4.1-nano",
         "input": ["text", "image"],
         "maxTokens": 32768,
-        "name": "GPT-4.1 nano",
+        "name": "gpt-4.1-nano",
         "provider": "sumopod",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -706,7 +706,7 @@
         "id": "gpt-4o",
         "input": ["text", "image", "pdf"],
         "maxTokens": 16384,
-        "name": "GPT-4o",
+        "name": "gpt-4o",
         "provider": "sumopod",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -734,7 +734,7 @@
             "output": 0.6
         },
         "id": "gpt-4o-mini",
-        "input": ["text", "image", "pdf"],
+        "input": ["text", "image"],
         "maxTokens": 16384,
         "name": "GPT-4o mini",
         "provider": "sumopod",
@@ -796,7 +796,7 @@
         "id": "gpt-5-mini",
         "input": ["text", "image"],
         "maxTokens": 128000,
-        "name": "GPT-5 Mini",
+        "name": "gpt-5-mini",
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -856,7 +856,7 @@
         "id": "gpt-5.4",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
-        "name": "GPT-5.4",
+        "name": "gpt-5.4",
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -886,7 +886,7 @@
         "id": "gpt-5.4-mini",
         "input": ["text", "image"],
         "maxTokens": 128000,
-        "name": "GPT-5.4 mini",
+        "name": "gpt-5.4-mini",
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -906,7 +906,7 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 1047576,
+        "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.02,
             "cacheWrite": 0.2,
@@ -916,7 +916,7 @@
         "id": "gpt-5.4-nano",
         "input": ["text", "image"],
         "maxTokens": 128000,
-        "name": "GPT-5.4 nano",
+        "name": "gpt-5.4-nano",
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -936,12 +936,12 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 256000,
+        "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.103,
+            "cacheRead": 0.035,
             "cacheWrite": 0.0,
-            "input": 0.41,
-            "output": 1.025
+            "input": 0.14,
+            "output": 0.58
         },
         "id": "hy3",
         "input": ["text"],
@@ -968,14 +968,14 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.2508,
+            "cacheRead": 0.16,
             "cacheWrite": 0.0,
-            "input": 0.7524,
-            "output": 4.275
+            "input": 0.95,
+            "output": 4.0
         },
         "id": "kimi-k2.6",
         "input": ["text", "image", "video"],
-        "maxTokens": 262144,
+        "maxTokens": 32768,
         "name": "Kimi K2.6",
         "provider": "sumopod",
         "reasoning": true,
@@ -1026,15 +1026,15 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.375,
+            "cacheRead": 0.3,
             "cacheWrite": 0.0,
-            "input": 3.75,
-            "output": 18.75
+            "input": 3.0,
+            "output": 15.0
         },
         "id": "kimi-k3",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 131072,
         "name": "Kimi K3",
         "provider": "sumopod",
@@ -1056,7 +1056,7 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.0028,
             "cacheWrite": 0.0,
@@ -1088,10 +1088,10 @@
         },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.0036,
+            "cacheRead": 0.003,
             "cacheWrite": 0.0,
-            "input": 0.435,
-            "output": 0.87
+            "input": 0.4,
+            "output": 0.8
         },
         "id": "mimo-v2.5-pro",
         "input": ["text"],
@@ -1116,7 +1116,7 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 1000000,
+        "contextWindow": 991000,
         "cost": {
             "cacheRead": 0.0169,
             "cacheWrite": 0.21125,
@@ -1125,7 +1125,7 @@
         },
         "id": "qwen3.6-flash",
         "input": ["text", "image", "video"],
-        "maxTokens": 65536,
+        "maxTokens": 64000,
         "name": "Qwen3.6 Flash",
         "provider": "sumopod",
         "reasoning": true,
@@ -1146,7 +1146,7 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 1000000,
+        "contextWindow": 991000,
         "cost": {
             "cacheRead": 0.0282,
             "cacheWrite": 0.3525,
@@ -1155,7 +1155,7 @@
         },
         "id": "qwen3.6-plus",
         "input": ["text", "image", "video"],
-        "maxTokens": 65536,
+        "maxTokens": 64000,
         "name": "Qwen3.6 Plus",
         "provider": "sumopod",
         "reasoning": true,
@@ -1176,7 +1176,7 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 1000000,
+        "contextWindow": 991000,
         "cost": {
             "cacheRead": 0.169,
             "cacheWrite": 2.1125,
@@ -1185,7 +1185,7 @@
         },
         "id": "qwen3.7-max",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 64000,
         "name": "Qwen3.7 Max",
         "provider": "sumopod",
         "reasoning": true,
@@ -1206,7 +1206,7 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 1000000,
+        "contextWindow": 991000,
         "cost": {
             "cacheRead": 0.0564,
             "cacheWrite": 0.3525,
@@ -1214,8 +1214,8 @@
             "output": 1.128
         },
         "id": "qwen3.7-plus",
-        "input": ["text", "image", "video"],
-        "maxTokens": 65536,
+        "input": ["text"],
+        "maxTokens": 64000,
         "name": "Qwen3.7 Plus",
         "provider": "sumopod",
         "reasoning": true,
@@ -1390,7 +1390,7 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.09,
+            "input": 0.13,
             "output": 0.0
         },
         "id": "text-embedding-3-large",

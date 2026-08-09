@@ -18,7 +18,7 @@
 //!   "preferredChatLanguage": "english",
 //!   "maxRetries": 2,
 //!   "defaultTimeout": "120s",
-//!   "ui": { ... },
+//!   "ui": { "theme": "auto", "showThinking": true, "density": "compact", ... },
 //!   "models": {
 //!     "defaultModel": null,
 //!     "sessionTitleModel": "inherit",
@@ -149,6 +149,13 @@ pub struct UiSettings {
     /// When true, footer status uses mode/thinking/git accent colors; otherwise dimmed grey.
     #[serde(default = "default_true")]
     pub colored_status_footer: bool,
+    /// Transcript log density: `compact` (default) packs collapsed tool-call items into a
+    /// grouped log with no blank line between them; `loose` keeps the roomier spacing where
+    /// every process-log row has a blank line above and below.
+    /// Expanded (accessed) tool call items always keep line breaks above and below.
+    /// `Thinking` and AI chat response/assistant items always keep line breaks above and below.
+    #[serde(default = "default_log_density", deserialize_with = "deserialize_log_density_string")]
+    pub density: String,
     #[serde(default)]
     pub file_picker: FilePickerSettings,
     /// When true, allow mode changes (keyboard shortcut and agent request)
@@ -167,6 +174,7 @@ impl Default for UiSettings {
             sticky_scroll: true,
             footer_token_display: default_footer_token_display(),
             colored_status_footer: true,
+            density: default_log_density(),
             file_picker: FilePickerSettings::default(),
             allow_mode_change_while_busy: true,
         }
@@ -743,9 +751,24 @@ fn migrate_settings_value(value: &mut Value) {
             "stickyScroll",
             "footerTokenDisplay",
             "coloredStatusFooter",
+            "narrowLogLines",
+            "density",
             "filePicker",
         ],
     );
+
+    // Legacy `narrowLogLines` (boolean) → `ui.density` (`compact` / `loose`).
+    // `narrowLogLines: true` was the compact grouped log; `false` was the roomy spacing.
+    if let Some(ui) = root.get_mut("ui").and_then(Value::as_object_mut)
+        && let Some(narrow) = ui.remove("narrowLogLines")
+        && !ui.contains_key("density")
+    {
+        let density = match narrow {
+            Value::Bool(false) => Value::String("loose".to_string()),
+            _ => Value::String(default_log_density()),
+        };
+        ui.insert("density".to_string(), density);
+    }
 
     // Top-level preferredChatLanguage (already top-level in new shape; no-op if present).
     // Top-level scopedModelItems → models.scopedModels
@@ -1004,6 +1027,37 @@ fn default_false() -> bool {
     false
 }
 
+/// Canonical transcript log density (`compact` default).
+fn default_log_density() -> String {
+    "compact".to_string()
+}
+
+/// Accept missing / null / empty / unknown values and canonicalize to `compact` or `loose`.
+fn deserialize_log_density_string<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Option::<Value>::deserialize(deserializer)?;
+    let density = match value {
+        None | Some(Value::Null) => default_log_density(),
+        Some(Value::String(s)) => {
+            let trimmed = s.trim().to_ascii_lowercase();
+            match trimmed.as_str() {
+                "compact" | "loose" => trimmed,
+                // Tolerate the former boolean key (true was compact).
+                "true" => "compact".to_string(),
+                "false" => "loose".to_string(),
+                _ => default_log_density(),
+            }
+        }
+        // Tolerate accidental non-strings (e.g. `true` / `false`) as compact / loose.
+        Some(Value::Bool(true)) => "compact".to_string(),
+        Some(Value::Bool(false)) => "loose".to_string(),
+        Some(_) => default_log_density(),
+    };
+    Ok(density)
+}
+
 fn default_min_turn_duration_secs() -> f64 {
     5.0
 }
@@ -1119,6 +1173,44 @@ mod tests {
         assert!(!obj.contains_key("scopedModelItems"));
         assert_eq!(json["ui"]["footerTokenDisplay"], "both");
         assert!(json["models"]["scopedModels"].as_array().expect("arr").is_empty());
+    }
+
+    #[test]
+    fn migrate_legacy_narrow_log_lines_to_density() {
+        // `true` → compact (default), `false` → loose. New `density` wins when both present.
+        let mut value: Value = serde_json::from_str(r#"{ "ui": { "narrowLogLines": false } }"#).expect("parse");
+        migrate_settings_value(&mut value);
+        let decoded: Settings = serde_json::from_value(value).expect("decode");
+        assert_eq!(decoded.ui.density, "loose");
+
+        let mut value: Value = serde_json::from_str(r#"{ "ui": { "narrowLogLines": true } }"#).expect("parse");
+        migrate_settings_value(&mut value);
+        let decoded: Settings = serde_json::from_value(value).expect("decode");
+        assert_eq!(decoded.ui.density, "compact");
+
+        // Explicit density is never overwritten by the legacy key.
+        let mut value: Value =
+            serde_json::from_str(r#"{ "ui": { "narrowLogLines": false, "density": "compact" } }"#).expect("parse");
+        migrate_settings_value(&mut value);
+        let decoded: Settings = serde_json::from_value(value).expect("decode");
+        assert_eq!(decoded.ui.density, "compact");
+    }
+
+    #[test]
+    fn density_setting_normalizes_unknown_values() {
+        let decode = |ui: &str| -> String {
+            let mut value: Value = serde_json::from_str(&format!(r#"{{ "ui": {ui} }}"#)).expect("parse");
+            migrate_settings_value(&mut value);
+            let decoded: Settings = serde_json::from_value(value).expect("decode");
+            decoded.ui.density
+        };
+        assert_eq!(decode(r#"{ "density": "compact" }"#), "compact");
+        assert_eq!(decode(r#"{ "density": "loose" }"#), "loose");
+        assert_eq!(decode(r#"{ "density": "LOOSE" }"#), "loose");
+        assert_eq!(decode(r#"{ "density": "wide" }"#), "compact");
+        assert_eq!(decode(r#"{ "density": true }"#), "compact");
+        assert_eq!(decode(r#"{ "density": false }"#), "loose");
+        assert_eq!(decode(r#"{ }"#), "compact");
     }
 
     #[test]

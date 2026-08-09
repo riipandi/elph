@@ -123,59 +123,10 @@ pub fn activity_label_for_event(event: &AgentUiEvent, show_thinking: bool) -> Op
 
 /// Compact, auto-scaled duration for transcript / log / activity chrome.
 ///
-/// | Range        | Format   | Example        |
-/// |--------------|----------|----------------|
-/// | &lt; 1s      | ms       | `45ms`, `850ms`|
-/// | 1s – &lt;10s | tenths s | `1.2s`, `9.9s` |
-/// | 10s – &lt;1m | whole s  | `12s`, `59s`   |
-/// | 1m – &lt;1h  | m[+s]    | `1m`, `1m30s`  |
-/// | ≥ 1h         | h[+m][+s]| `1h`, `1h2m5s` |
+/// Shared implementation: [`elph_tui::format_duration_secs`] (ns → us → ms → s → m → h).
+/// Smallest unit is nanoseconds so sub-millisecond work never prints `0ms` / `0s`.
 pub fn format_duration_secs(elapsed_secs: f64) -> String {
-    let secs = if elapsed_secs.is_finite() {
-        elapsed_secs.max(0.0)
-    } else {
-        0.0
-    };
-
-    // Sub-second: integer milliseconds (readable for fast tool calls).
-    if secs < 1.0 {
-        let ms = (secs * 1000.0).round() as u64;
-        return format!("{ms}ms");
-    }
-
-    // Under 10s: one decimal second (drops trailing `.0`).
-    if secs < 10.0 {
-        let rounded_tenth = (secs * 10.0).round() / 10.0;
-        let whole = rounded_tenth.floor();
-        if (rounded_tenth - whole).abs() < 0.05 {
-            return format!("{}s", whole as u64);
-        }
-        return format!("{rounded_tenth:.1}s");
-    }
-
-    // 10s–59s: whole seconds.
-    if secs < 60.0 {
-        return format!("{}s", secs.round() as u64);
-    }
-
-    let total = secs.round() as u64;
-    let hours = total / 3600;
-    let minutes = (total % 3600) / 60;
-    let seconds = total % 60;
-
-    if hours > 0 {
-        if seconds > 0 {
-            format!("{hours}h{minutes}m{seconds}s")
-        } else if minutes > 0 {
-            format!("{hours}h{minutes}m")
-        } else {
-            format!("{hours}h")
-        }
-    } else if seconds > 0 {
-        format!("{minutes}m{seconds}s")
-    } else {
-        format!("{minutes}m")
-    }
+    elph_tui::format_duration_secs(elapsed_secs)
 }
 
 /// Dimmed suffix for completed process rows in the transcript (` · 1.2s` / ` · 45ms`).
@@ -511,11 +462,17 @@ mod tests {
     }
 
     #[test]
-    fn format_duration_secs_uses_ms_under_one_second() {
-        assert_eq!(format_duration_secs(0.0), "0ms");
+    fn format_duration_secs_uses_ns_us_ms_under_one_second() {
+        assert_eq!(format_duration_secs(0.0), "0ns");
+        assert_eq!(format_duration_secs(0.000_000_42), "420ns");
+        assert_eq!(format_duration_secs(0.000_4), "400us");
         assert_eq!(format_duration_secs(0.045), "45ms");
         assert_eq!(format_duration_secs(0.5), "500ms");
         assert_eq!(format_duration_secs(0.999), "999ms");
+        // Never collapse tiny intervals to `0ms` / `0s`.
+        assert_ne!(format_duration_secs(0.000_4), "0ms");
+        assert_ne!(format_duration_secs(0.0), "0ms");
+        assert_ne!(format_duration_secs(0.0), "0s");
     }
 
     #[test]

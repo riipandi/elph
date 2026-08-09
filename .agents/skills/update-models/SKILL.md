@@ -6,6 +6,8 @@ description: >-
     provider registration. Use when the user runs
     /update-models, asks to sync or regenerate model catalogs, update models.dev
     data, refresh pricing, or keep provider model lists current.
+metadata:
+    scope: project
 ---
 
 # Update Models (models.dev origin)

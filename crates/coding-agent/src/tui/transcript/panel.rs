@@ -15,7 +15,7 @@ use super::layout::{IncrementalLayoutCache, layout_transcript_rows_cached};
 use super::markdown::{
     apply_markdown_parse_result, collect_markdown_parse_jobs, parse_markdown_on_worker, partition_assistant_markdown,
 };
-use super::types::TranscriptMessage;
+use super::types::{LogDensity, TranscriptMessage};
 use crate::tui::focus::transcript_nav_key;
 use crate::tui::theme::{BORDER_MUTED, SCROLLBAR_THUMB, SCROLLBAR_TRACK, TRANSCRIPT_BORDER_FOCUSED};
 
@@ -27,7 +27,7 @@ const MARKDOWN_DEBOUNCE_MS: u64 = 120;
 const MARKDOWN_STREAMING_DEBOUNCE_MS: u64 = 400;
 const MAX_MARKDOWN_PARSE_JOBS_PER_TICK: usize = 1;
 
-#[derive(Default, Props)]
+#[derive(Props)]
 pub struct TranscriptPanelProps {
     pub screen_width: u16,
     pub messages: Option<State<Vec<TranscriptMessage>>>,
@@ -45,12 +45,34 @@ pub struct TranscriptPanelProps {
     /// Set by shell when a streaming response is active — slows markdown parse ticks.
     /// None/Some(false) = idle debounce (120ms), Some(true) = streaming debounce (400ms).
     pub streaming_active: Option<bool>,
+    /// Transcript log density for collapsed tool-call items (`settings.ui.density`).
+    /// Only meaningful from the running app; panel reads the process-wide pref
+    /// (`set_log_density`) which the shell installs from this prop at construction.
+    pub density: LogDensity,
     /// Arc<RwLock> messages — decouples panel from shell's State dirt chain.
     /// Panel reads/writes this directly instead of the `messages` State.
     pub messages_arc: Option<Arc<RwLock<Vec<TranscriptMessage>>>>,
     /// Click handler for subagent status lines. Fires with `(agent_id, title)` when
     /// a subagent status row is clicked.
     pub on_subagent_click: Option<HandlerMut<'static, (String, String)>>,
+}
+
+impl Default for TranscriptPanelProps {
+    fn default() -> Self {
+        Self {
+            screen_width: 0,
+            messages: None,
+            messages_revision: None,
+            sticky_scroll: false,
+            has_focus: false,
+            mouse_scroll: None,
+            text_select_mode: false,
+            streaming_active: None,
+            density: LogDensity::Compact,
+            messages_arc: None,
+            on_subagent_click: None,
+        }
+    }
 }
 
 struct TranscriptRenderCache {
@@ -73,6 +95,9 @@ struct StickyHeaderCache {
 
 #[component]
 pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
+    // Install the process-wide density pref on every render so panel-only tests /
+    // construction-time props still drive layout without a shell bootstrap.
+    crate::tui::transcript::set_log_density(props.density);
     let mut scroll_handle = hooks.use_ref_default::<ScrollViewHandle>();
     let mut render_cache = hooks.use_ref(|| None::<TranscriptRenderCache>);
     let mut cached_sticky_rows = hooks.use_ref(|| (None::<usize>, 0u16, 0u16)); // (idx, width, rows)

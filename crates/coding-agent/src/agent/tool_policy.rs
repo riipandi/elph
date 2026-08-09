@@ -29,6 +29,8 @@ pub fn coding_tool_exposure_policy() -> &'static ToolExposurePolicy {
             "ask_user_question".into(),
             "request_mode_change".into(),
             "list_available_tools".into(),
+            // On-demand skill catalog (read-only listing; never drops a skill).
+            "list_skills".into(),
             // Codegraph tools are read-only (search / impact / status / dirty reindex)
             // and only registered when `codegraph.enabled` is true — safe in Plan/Ask.
             "code_search".into(),
@@ -103,23 +105,50 @@ impl AgentModePolicy {
     }
 
     /// Resolve which registered tools are exposed to the model for `mode`.
+    ///
+    /// MCP tools (`mcp_*`) are **default-inactive**: registered on the harness but
+    /// omitted from the active set until the model activates them via
+    /// `list_available_tools(name_prefix: …)` → `added_tool_names` → harness lazy
+    /// activation. Callers that must keep already-activated MCP tools across a
+    /// reconcile should re-merge them (see `reconcile_harness_tools`).
     pub fn active_tool_names_for_mode(
         mode: AgentMode,
         all_registered: &[String],
         mcp_registry: Option<&McpToolRegistry>,
     ) -> Vec<String> {
         let policy = coding_tool_exposure_policy();
+        // MCP schemas stay off the wire until explicitly activated (lazy load).
+        let without_mcp: Vec<String> = all_registered
+            .iter()
+            .filter(|name| !is_mcp_tool(name))
+            .cloned()
+            .collect();
         let names = match mode {
-            AgentMode::Build | AgentMode::Brave => all_registered.to_vec(),
-            AgentMode::Plan => filter_active_tools(CollaborationMode::Plan, all_registered, Some(policy)),
-            AgentMode::Ask => filter_ask_mode_tools(all_registered, mcp_registry),
+            AgentMode::Build | AgentMode::Brave => without_mcp,
+            AgentMode::Plan => filter_active_tools(CollaborationMode::Plan, &without_mcp, Some(policy)),
+            AgentMode::Ask => filter_ask_mode_tools(&without_mcp, mcp_registry),
         };
         Self::ensure_list_available_tool(names)
+    }
+
+    /// Whether an MCP tool may remain/become active in this mode after lazy activation.
+    pub fn mcp_allowed_in_mode(mode: AgentMode, name: &str, mcp_registry: Option<&McpToolRegistry>) -> bool {
+        if !is_mcp_tool(name) {
+            return false;
+        }
+        match mode {
+            AgentMode::Build | AgentMode::Brave => true,
+            AgentMode::Plan => is_read_only_mcp_tool(name),
+            AgentMode::Ask => is_ask_mode_tool(name, mcp_registry, coding_tool_exposure_policy()),
+        }
     }
 
     fn ensure_list_available_tool(mut names: Vec<String>) -> Vec<String> {
         if !names.iter().any(|n| n == "list_available_tools") {
             names.push("list_available_tools".into());
+        }
+        if !names.iter().any(|n| n == "list_skills") {
+            names.push("list_skills".into());
         }
         names.sort();
         names.dedup();
@@ -230,12 +259,69 @@ mod tests {
     use super::*;
 
     #[test]
-    fn build_mode_exposes_all_registered_tools() {
-        let all = vec!["read_file".into(), "write_file".into(), "shell_exec".into()];
+    fn build_mode_exposes_native_tools_but_not_mcp() {
+        let all = vec![
+            "read_file".into(),
+            "write_file".into(),
+            "shell_exec".into(),
+            "mcp_deepwiki__ask_question".into(),
+            "mcp_github__list_issues".into(),
+        ];
         let active = AgentModePolicy::active_tool_names_for_mode(AgentMode::Build, &all, None);
-        assert_eq!(active.len(), 4);
+        // Native + meta (`list_available_tools`, `list_skills`); MCP stays inactive.
         assert!(active.contains(&"write_file".to_string()));
         assert!(active.contains(&"list_available_tools".to_string()));
+        assert!(active.contains(&"list_skills".to_string()));
+        assert!(!active.iter().any(|n| n.starts_with("mcp_")));
+        assert_eq!(active.len(), 5);
+    }
+
+    #[test]
+    fn ask_and_plan_also_keep_mcp_inactive_by_default() {
+        let all = vec![
+            "read_file".into(),
+            "write_file".into(),
+            "mcp_wiki__read_wiki".into(),
+            "mcp_fs__write_file".into(),
+        ];
+        for mode in [AgentMode::Ask, AgentMode::Plan] {
+            let active = AgentModePolicy::active_tool_names_for_mode(mode, &all, None);
+            assert!(
+                !active.iter().any(|n| n.starts_with("mcp_")),
+                "{mode:?} must not default-activate MCP tools: {active:?}"
+            );
+            assert!(active.contains(&"read_file".to_string()));
+            assert!(active.contains(&"list_available_tools".to_string()));
+        }
+    }
+
+    #[test]
+    fn mcp_allowed_in_mode_gates_mutating_tools_for_plan_ask() {
+        assert!(AgentModePolicy::mcp_allowed_in_mode(
+            AgentMode::Build,
+            "mcp_fs__write_file",
+            None
+        ));
+        assert!(AgentModePolicy::mcp_allowed_in_mode(
+            AgentMode::Plan,
+            "mcp_wiki__read_wiki",
+            None
+        ));
+        assert!(!AgentModePolicy::mcp_allowed_in_mode(
+            AgentMode::Plan,
+            "mcp_fs__write_file",
+            None
+        ));
+        assert!(AgentModePolicy::mcp_allowed_in_mode(
+            AgentMode::Ask,
+            "mcp_wiki__list_pages",
+            None
+        ));
+        assert!(!AgentModePolicy::mcp_allowed_in_mode(
+            AgentMode::Ask,
+            "mcp_fs__write_file",
+            None
+        ));
     }
 
     #[test]

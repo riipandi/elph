@@ -79,6 +79,7 @@ impl AgentBuilder {
 pub struct BuiltinToolsBuilder {
     env: Arc<LocalExecutionEnv>,
     include_web: bool,
+    skills: Vec<crate::agent::harness::types::Skill>,
 }
 
 impl BuiltinToolsBuilder {
@@ -86,12 +87,17 @@ impl BuiltinToolsBuilder {
         Self {
             env,
             include_web: false,
+            skills: Vec::new(),
         }
     }
 
     /// Start a builder that includes every built-in tool group enabled by Cargo features.
     pub fn all(env: Arc<LocalExecutionEnv>) -> Self {
-        Self { env, include_web: true }
+        Self {
+            env,
+            include_web: true,
+            skills: Vec::new(),
+        }
     }
 
     pub fn without_web(mut self) -> Self {
@@ -101,6 +107,13 @@ impl BuiltinToolsBuilder {
 
     pub fn with_web(mut self) -> Self {
         self.include_web = true;
+        self
+    }
+
+    /// Provide the loaded skill set so a `list_skills` catalog tool can be
+    /// registered (on-demand skill discovery for the model).
+    pub fn with_skills(mut self, skills: Vec<crate::agent::harness::types::Skill>) -> Self {
+        self.skills = skills;
         self
     }
 
@@ -135,6 +148,11 @@ impl BuiltinToolsBuilder {
         }
         // list_available_tools is a meta tool that describes all other tools.
         tools.push(crate::tools::create_list_available_tools(&tools));
+        // On-demand skill discovery: catalog the loaded skill set so the model
+        // can rediscover skills not advertised in <available_skills>.
+        if !self.skills.is_empty() {
+            tools.push(crate::tools::create_list_skills_tool(self.skills));
+        }
         tools
     }
 }

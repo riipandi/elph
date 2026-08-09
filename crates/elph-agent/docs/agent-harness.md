@@ -212,7 +212,7 @@ Multi-agent tools are registered in the harness tool map and included in the def
 
 ## Abort
 
-Abort is allowed during a turn. It aborts the low-level run and clears steering/follow-up queues.
+Abort is allowed during a turn. It aborts the low-level run and clears steering/follow-up queues. Aborting a running `shell_exec` terminates the command's **entire process group** (SIGTERM → SIGKILL), so long-running child processes can't keep the turn hanging while holding output pipes. Aborting mid-compaction (auto-compact during a busy turn) also cancels the summarization LLM call via the same run token.
 
 ```rust
 harness.abort().await?;

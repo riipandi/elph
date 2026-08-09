@@ -167,6 +167,73 @@ where
         .await
     }
 
+    /// Lazily activate tools advertised by a tool result (`added_tool_names`).
+    ///
+    /// Names that are not present in the harness registry are ignored (they may
+    /// belong to a different session or server). Only genuinely new names are
+    /// appended — an already-active tool is left untouched. The updated set is
+    /// persisted durably the same way [`Self::set_active_tools`] does (pending
+    /// write while a turn is active), and emits a `ToolsUpdate` event so guests
+    /// (UI, extensions) observe the activation.
+    pub(crate) async fn activate_lazy_tools(&self, names: &[String]) -> HarnessOpResult<()> {
+        // Snapshot registry then release the tools lock. This method runs from
+        // `after_tool_call` (nested under the agent turn); re-locking `tools` while
+        // building the ToolsUpdate event can deadlock the async Mutex on some paths.
+        let registered = self.shared.tools.lock().await.clone();
+        let registered_names: Vec<String> = registered.keys().cloned().collect();
+        let existing: Vec<String> = self.shared.active_tool_names.lock().await.clone();
+        let fresh: Vec<String> = filter_lazy_names(names, &existing, &registered);
+        if fresh.is_empty() {
+            let unknown: Vec<&String> = names.iter().filter(|n| !registered.contains_key(*n)).collect();
+            if !unknown.is_empty() {
+                log::warn!("lazy activation skipped: tools not in registry (catalog may be stale): {unknown:?}");
+            }
+            return Ok(());
+        }
+
+        let mut next = existing;
+        next.extend(fresh.clone());
+
+        // Keep baseline in sync so collaboration-mode rewrites (Plan ↔ Default)
+        // still see session-activated tools when re-filtering.
+        {
+            let mut baseline = self.shared.baseline_active_tool_names.lock().await;
+            for name in &fresh {
+                if !baseline.iter().any(|n| n == name) {
+                    baseline.push(name.clone());
+                }
+            }
+        }
+
+        if self.phase_async().await == AgentHarnessPhase::Idle {
+            self.shared
+                .session
+                .lock()
+                .await
+                .append_active_tools_change(next.clone())
+                .await
+                .map_err(session_error)?;
+        } else {
+            let write = PendingSessionWrite::ActiveToolsChange {
+                active_tool_names: next.clone(),
+            };
+            self.enqueue_pending_write(write).await?;
+        }
+
+        let previous = self.shared.active_tool_names.lock().await.clone();
+        *self.shared.active_tool_names.lock().await = next.clone();
+        self.emit_own(AgentHarnessOwnEvent::ToolsUpdate(
+            crate::agent::harness::types::ToolsUpdateEvent {
+                tool_names: registered_names.clone(),
+                previous_tool_names: registered_names,
+                active_tool_names: next,
+                previous_active_tool_names: previous,
+                source: ModelUpdateSource::Set,
+            },
+        ))
+        .await
+    }
+
     pub async fn set_resources(&self, resources: AgentHarnessResources) -> HarnessOpResult<()> {
         let previous_resources = self.shared.resources.lock().await.clone();
         *self.shared.resources.lock().await = resources;
@@ -192,5 +259,75 @@ where
     pub async fn set_system_prompt(&self, prompt: SystemPrompt<S>) -> HarnessOpResult<()> {
         *self.shared.system_prompt.lock().await = prompt;
         Ok(())
+    }
+}
+
+/// Compute tool names that are genuinely new (registered and not already active).
+///
+/// Pure logic extracted from [`AgentHarness::activate_lazy_tools`] so the filter
+/// behavior is unit-testable without a live harness.
+fn filter_lazy_names(
+    advertised: &[String],
+    existing: &[String],
+    registered: &HashMap<String, crate::types::AgentTool>,
+) -> Vec<String> {
+    advertised
+        .iter()
+        .filter(|name| registered.contains_key(*name) && !existing.iter().any(|n| n == *name))
+        .cloned()
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn tool(name: &str) -> crate::types::AgentTool {
+        crate::tools::simple_tool(
+            elph_ai::Tool {
+                name: name.into(),
+                constrained_sampling: None,
+                description: format!("{name} tool"),
+                parameters: serde_json::json!({"type": "object", "properties": {}}),
+            },
+            name,
+            |_, _| Box::pin(async move { Ok(crate::types::AgentToolResult::text("ok")) }),
+        )
+    }
+
+    #[test]
+    fn lazy_filter_adds_only_new_registered_names() {
+        let registered: HashMap<String, crate::types::AgentTool> =
+            vec![tool("mcp_a__x"), tool("mcp_a__y"), tool("read_file")]
+                .into_iter()
+                .map(|t| (t.name().to_string(), t))
+                .collect();
+        let existing = vec!["read_file".to_string()];
+
+        let fresh = filter_lazy_names(
+            &[
+                "mcp_a__x".into(),
+                "mcp_a__y".into(),
+                "read_file".into(),
+                "missing".into(),
+            ],
+            &existing,
+            &registered,
+        );
+        let mut fresh = fresh;
+        fresh.sort();
+        assert_eq!(fresh, vec!["mcp_a__x".to_string(), "mcp_a__y".to_string()]);
+    }
+
+    #[test]
+    fn lazy_filter_ignores_unknown_and_already_active() {
+        let registered: HashMap<String, crate::types::AgentTool> = vec![tool("exists")]
+            .into_iter()
+            .map(|t| (t.name().to_string(), t))
+            .collect();
+        let existing = vec!["exists".to_string(), "read_file".to_string()];
+
+        let fresh = filter_lazy_names(&["exists".into(), "read_file".into(), "nope".into()], &existing, &registered);
+        assert!(fresh.is_empty());
     }
 }

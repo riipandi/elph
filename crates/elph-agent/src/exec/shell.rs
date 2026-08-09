@@ -6,11 +6,14 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use tokio::process::Command;
-use tokio::time;
 
 use super::error::{ExecError, ExecErrorCode, Result};
 use super::output::sanitize_binary_output;
+use super::process::{reap_bounded, terminate_child_tree};
 use super::types::{ShellConfig, ShellExecOptions, ShellExecResult, ShellOutputCallback};
+
+/// Max time we wait to reap a child after terminating its process group.
+const REAP_GRACE: Duration = Duration::from_secs(2);
 
 const MAX_TIMEOUT_MS: u64 = 2_147_483_647;
 const MAX_TIMEOUT_SECONDS: u64 = MAX_TIMEOUT_MS / 1000;
@@ -146,8 +149,8 @@ async fn exec_pty(request: &PtyExecRequest<'_>) -> Result<ShellExecResult> {
 
     loop {
         if options.abort_token.as_ref().is_some_and(|t| t.is_cancelled()) {
-            let _ = child.kill().await;
-            return Err(ExecError::aborted());
+            terminate_child_tree(&mut child, true).await;
+            return kill_outcome(&mut child, &mut captured, true).await;
         }
 
         tokio::select! {
@@ -158,8 +161,8 @@ async fn exec_pty(request: &PtyExecRequest<'_>) -> Result<ShellExecResult> {
                     std::future::pending().await
                 }
             } => {
-                let _ = child.kill().await;
-                return Err(ExecError::aborted());
+                terminate_child_tree(&mut child, true).await;
+                return kill_outcome(&mut child, &mut captured, true).await;
             }
             _ = async {
                 if let Some(deadline) = deadline {
@@ -168,11 +171,8 @@ async fn exec_pty(request: &PtyExecRequest<'_>) -> Result<ShellExecResult> {
                     std::future::pending().await
                 }
             }, if deadline.is_some() => {
-                let _ = child.kill().await;
-                return Err(ExecError::new(
-                    ExecErrorCode::Timeout,
-                    format!("timeout:{}", options.timeout.unwrap_or_default()),
-                ));
+                terminate_child_tree(&mut child, false).await;
+                return kill_outcome(&mut child, &mut captured, false).await;
             }
             readable = async_pty.readable() => {
                 match readable {
@@ -206,6 +206,11 @@ async fn exec_pty(request: &PtyExecRequest<'_>) -> Result<ShellExecResult> {
                                 guard.clear_ready();
                             }
                             Ok(Err(error)) => {
+                                // A read error after we killed the process group is
+                                // expected (PTY closed by death) — not a real failure.
+                                if options.abort_token.as_ref().is_some_and(|t| t.is_cancelled()) {
+                                    return kill_outcome(&mut child, &mut captured, true).await;
+                                }
                                 return Err(ExecError::new(ExecErrorCode::SpawnError, error.to_string()));
                             }
                             Err(_) => {
@@ -228,6 +233,21 @@ async fn exec_pty(request: &PtyExecRequest<'_>) -> Result<ShellExecResult> {
                 });
             }
         }
+    }
+}
+
+async fn kill_outcome(
+    child: &mut tokio::process::Child,
+    _captured: &mut String,
+    aborted: bool,
+) -> Result<ShellExecResult> {
+    // Reap with a bounded wait so a grandchild still holding the PTY cannot
+    // hang us. We intentionally do not `.await` on `child.wait()` unbounded.
+    let _ = reap_bounded(child, REAP_GRACE).await;
+    if aborted {
+        Err(ExecError::aborted())
+    } else {
+        Err(ExecError::new(ExecErrorCode::Timeout, format!("timeout:{}", 0)))
     }
 }
 
@@ -274,25 +294,73 @@ async fn exec_piped(
 }
 
 async fn wait_child_with_output(
-    child: tokio::process::Child,
+    mut child: tokio::process::Child,
     options: &ShellExecOptions,
     timeout_ms: Option<u64>,
 ) -> Result<(String, String, i32)> {
-    if let Some(token) = options.abort_token.clone() {
-        tokio::select! {
-            _ = token.cancelled() => Err(ExecError::aborted()),
-            result = async { child.wait_with_output().await } => map_child_output(result),
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| ExecError::new(ExecErrorCode::SpawnError, "stdout pipe unavailable"))?;
+    let stderr = child
+        .stderr
+        .take()
+        .ok_or_else(|| ExecError::new(ExecErrorCode::SpawnError, "stderr pipe unavailable"))?;
+
+    let stdout_task = tokio::spawn(async move { read_piped_stream(stdout, None, 8 * 1024).await });
+    let stderr_task = tokio::spawn(async move { read_piped_stream(stderr, None, 8 * 1024).await });
+
+    let status = await_child_status(&mut child, options, timeout_ms).await?;
+
+    let stdout = stdout_task
+        .await
+        .map_err(|error| ExecError::new(ExecErrorCode::SpawnError, error.to_string()))??;
+    let stderr = stderr_task
+        .await
+        .map_err(|error| ExecError::new(ExecErrorCode::SpawnError, error.to_string()))??;
+
+    Ok((stdout, stderr, status.code().unwrap_or(0)))
+}
+
+/// Wait for a child's exit status with abort/timeout handling that terminates
+/// the **whole process group** (not just the direct child) and reaps bounded —
+/// so grandchildren holding the pipes can't hang the awaiters.
+async fn await_child_status(
+    child: &mut tokio::process::Child,
+    options: &ShellExecOptions,
+    timeout_ms: Option<u64>,
+) -> Result<std::process::ExitStatus> {
+    let deadline = timeout_ms.map(|ms| tokio::time::Instant::now() + Duration::from_millis(ms));
+
+    tokio::select! {
+        _ = async {
+            if let Some(token) = options.abort_token.clone() {
+                token.cancelled().await;
+            } else {
+                std::future::pending().await
+            }
+        } => {
+            terminate_child_tree(child, true).await;
+            let _ = reap_bounded(child, REAP_GRACE).await;
+            Err(ExecError::aborted())
         }
-    } else if let Some(timeout_ms) = timeout_ms {
-        match time::timeout(Duration::from_millis(timeout_ms), child.wait_with_output()).await {
-            Ok(result) => map_child_output(result),
-            Err(_) => Err(ExecError::new(
+        _ = async {
+            if let Some(deadline) = deadline {
+                tokio::time::sleep_until(deadline).await;
+            } else {
+                std::future::pending().await
+            }
+        }, if deadline.is_some() => {
+            terminate_child_tree(child, false).await;
+            let _ = reap_bounded(child, REAP_GRACE).await;
+            Err(ExecError::new(
                 ExecErrorCode::Timeout,
                 format!("timeout:{}", options.timeout.unwrap_or_default()),
-            )),
+            ))
         }
-    } else {
-        map_child_output(child.wait_with_output().await)
+        status = child.wait() => {
+            status.map_err(|error| ExecError::new(ExecErrorCode::SpawnError, error.to_string()))
+        }
     }
 }
 
@@ -318,34 +386,7 @@ async fn exec_piped_streaming(
     let stdout_task = tokio::spawn(async move { read_piped_stream(stdout, on_stdout, chunk_bytes).await });
     let stderr_task = tokio::spawn(async move { read_piped_stream(stderr, on_stderr, chunk_bytes).await });
 
-    let status = if let Some(token) = options.abort_token.clone() {
-        tokio::select! {
-            _ = token.cancelled() => {
-                let _ = child.kill().await;
-                let _ = stdout_task.await;
-                let _ = stderr_task.await;
-                return Err(ExecError::aborted());
-            }
-            status = child.wait() => status,
-        }
-    } else if let Some(timeout_ms) = timeout_ms {
-        match time::timeout(Duration::from_millis(timeout_ms), child.wait()).await {
-            Ok(status) => status,
-            Err(_) => {
-                let _ = child.kill().await;
-                let _ = stdout_task.await;
-                let _ = stderr_task.await;
-                return Err(ExecError::new(
-                    ExecErrorCode::Timeout,
-                    format!("timeout:{}", options.timeout.unwrap_or_default()),
-                ));
-            }
-        }
-    } else {
-        child.wait().await
-    }
-    .map_err(|error| ExecError::new(ExecErrorCode::SpawnError, error.to_string()))?;
-
+    let status = await_child_status(child, options, timeout_ms).await?;
     let stdout = stdout_task
         .await
         .map_err(|error| ExecError::new(ExecErrorCode::SpawnError, error.to_string()))??;
@@ -389,17 +430,6 @@ async fn read_piped_stream(
         }
     }
     Ok(captured)
-}
-
-fn map_child_output(result: std::io::Result<std::process::Output>) -> Result<(String, String, i32)> {
-    match result {
-        Ok(output) => Ok((
-            String::from_utf8_lossy(&output.stdout).into_owned(),
-            String::from_utf8_lossy(&output.stderr).into_owned(),
-            output.status.code().unwrap_or(0),
-        )),
-        Err(error) => Err(ExecError::new(ExecErrorCode::SpawnError, error.to_string())),
-    }
 }
 
 fn apply_env(cmd: &mut Command, config: &ShellConfig, options: &ShellExecOptions) {
@@ -466,5 +496,185 @@ fn invoke_output_callback(callback: &ShellOutputCallback, chunk: &str) -> Option
             };
             Some(ExecError::new(ExecErrorCode::CallbackError, message))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+    use tokio::time::Instant;
+    use tokio_util::sync::CancellationToken;
+
+    /// No streaming callbacks → goes through `exec_piped` → `wait_child_with_output`.
+    #[tokio::test]
+    async fn abort_kills_process_group_piped() {
+        let config = ShellConfig::default().with_prefer_pty(false);
+        let token = CancellationToken::new();
+
+        let run = {
+            let token = token.clone();
+            tokio::spawn(async move {
+                exec_shell_command(
+                    &config,
+                    "sleep 30",
+                    Path::new("/tmp"),
+                    ShellExecOptions {
+                        abort_token: Some(token),
+                        ..Default::default()
+                    },
+                )
+                .await
+            })
+        };
+
+        // Let the command start, then abort.
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        token.cancel();
+
+        let started = Instant::now();
+        let result = run.await.expect("join");
+        let elapsed = started.elapsed();
+        // Without process-group termination, `sleep 30` would keep the pipe open
+        // and this test would hang ~30s. With the fix it must return well under 5s.
+        assert!(
+            elapsed < Duration::from_secs(5),
+            "abort took {elapsed:?} — process group was not terminated"
+        );
+        let err = result.expect_err("expected aborted error");
+        assert_eq!(err.code, ExecErrorCode::Aborted, "got {err}");
+    }
+
+    /// Assert the helper actually delivers with a grandchild that ignores SIGTERM.
+    #[tokio::test]
+    #[cfg(unix)]
+    async fn abort_kills_grandchild_that_ignores_sigterm() {
+        let config = ShellConfig::default().with_prefer_pty(false);
+        let token = CancellationToken::new();
+        let run = {
+            let token = token.clone();
+            tokio::spawn(async move {
+                exec_shell_command(
+                    &config,
+                    "trap '' TERM; sleep 30",
+                    Path::new("/tmp"),
+                    ShellExecOptions {
+                        abort_token: Some(token),
+                        ..Default::default()
+                    },
+                )
+                .await
+            })
+        };
+
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        token.cancel();
+        let started = Instant::now();
+        let result = run.await.expect("join");
+        let elapsed = started.elapsed();
+        assert!(elapsed < Duration::from_secs(5), "SIGKILL escalation took {elapsed:?}");
+        // Even with SIGTERM ignored, escalation to SIGKILL must abort.
+        let err = result.expect_err("expected aborted error");
+        assert_eq!(err.code, ExecErrorCode::Aborted, "got {err}");
+    }
+
+    /// PTY path: abort must also terminate the group quickly.
+    #[tokio::test]
+    #[cfg(unix)]
+    async fn abort_kills_process_group_pty() {
+        let config = ShellConfig::default().with_prefer_pty(true);
+        let token = CancellationToken::new();
+        let run = {
+            let token = token.clone();
+            tokio::spawn(async move {
+                exec_shell_command(
+                    &config,
+                    "sleep 30",
+                    Path::new("/tmp"),
+                    ShellExecOptions {
+                        abort_token: Some(token),
+                        ..Default::default()
+                    },
+                )
+                .await
+            })
+        };
+
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        token.cancel();
+        let started = Instant::now();
+        let result = run.await.expect("join");
+        let elapsed = started.elapsed();
+        assert!(
+            elapsed < Duration::from_secs(5),
+            "PTY abort took {elapsed:?} — process group was not terminated"
+        );
+        let err = result.expect_err("expected aborted error");
+        assert_eq!(err.code, ExecErrorCode::Aborted, "got {err}");
+    }
+
+    /// Streaming path (callbacks set) must abort quickly too.
+    #[tokio::test]
+    async fn abort_streaming_kills_process_group() {
+        let config = ShellConfig::default().with_prefer_pty(false);
+        let token = CancellationToken::new();
+        let saw_chunk = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let saw = saw_chunk.clone();
+        let on_stdout: ShellOutputCallback = Arc::new(move |_chunk| {
+            saw.store(true, std::sync::atomic::Ordering::SeqCst);
+        });
+
+        let run = {
+            let token = token.clone();
+            let on_stdout = on_stdout.clone();
+            tokio::spawn(async move {
+                exec_shell_command(
+                    &config,
+                    "echo start; sleep 30",
+                    Path::new("/tmp"),
+                    ShellExecOptions {
+                        abort_token: Some(token),
+                        on_stdout: Some(on_stdout),
+                        on_stderr: None,
+                        ..Default::default()
+                    },
+                )
+                .await
+            })
+        };
+
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        token.cancel();
+        let started = Instant::now();
+        let result = run.await.expect("join");
+        let elapsed = started.elapsed();
+        assert!(elapsed < Duration::from_secs(5), "streaming abort took {elapsed:?}");
+        assert!(saw_chunk.load(std::sync::atomic::Ordering::SeqCst), "stream callback ran");
+        let err = result.expect_err("expected aborted error");
+        assert_eq!(err.code, ExecErrorCode::Aborted, "got {err}");
+    }
+
+    /// Timeout must terminate the process group too (not just the direct shell).
+    #[tokio::test]
+    async fn timeout_kills_process_group() {
+        let config = ShellConfig::default().with_prefer_pty(false);
+        let started = Instant::now();
+        let result = exec_shell_command(
+            &config,
+            "sleep 30",
+            Path::new("/tmp"),
+            ShellExecOptions {
+                timeout: Some(1),
+                ..Default::default()
+            },
+        )
+        .await;
+        let elapsed = started.elapsed();
+        assert!(
+            elapsed < Duration::from_secs(6),
+            "timeout took {elapsed:?} — process group was not terminated"
+        );
+        let err = result.expect_err("expected timeout error");
+        assert_eq!(err.code, ExecErrorCode::Timeout, "got {err}");
     }
 }

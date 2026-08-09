@@ -988,6 +988,7 @@ async fn run_agent_loop_uses_prepare_next_turn_snapshot_before_continuing() {
                 }),
                 model: None,
                 thinking_level: None,
+                execution_tools: None,
             })
         })
     }));

@@ -1878,7 +1878,7 @@
         },
         "id": "deepseek/deepseek-v4-flash-0731",
         "input": ["text"],
-        "maxTokens": 65536,
+        "maxTokens": 384000,
         "name": "DeepSeek V4 Flash 0731",
         "provider": "openrouter",
         "reasoning": true,
@@ -3373,7 +3373,7 @@
         },
         "id": "mancer/weaver",
         "input": ["text"],
-        "maxTokens": 2000,
+        "maxTokens": 6000,
         "name": "Weaver (alpha)",
         "provider": "openrouter",
         "reasoning": false,
@@ -3934,10 +3934,10 @@
         },
         "contextWindow": 204800,
         "cost": {
-            "cacheRead": 0.054,
+            "cacheRead": 0.06,
             "cacheWrite": 0.0,
-            "input": 0.27,
-            "output": 1.08
+            "input": 0.3,
+            "output": 1.2
         },
         "id": "minimax/minimax-m2.7",
         "input": ["text"],
@@ -9634,7 +9634,7 @@
         "cost": {
             "cacheRead": 0.05,
             "cacheWrite": 0.0,
-            "input": 0.14,
+            "input": 0.15,
             "output": 1.0
         },
         "id": "qwen/qwen3.6-35b-a3b",
@@ -10346,14 +10346,14 @@
         },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.17,
+            "cacheRead": 0.16,
             "cacheWrite": 0.0,
-            "input": 1.0,
+            "input": 0.95,
             "output": 4.05
         },
         "id": "thinkingmachines/inkling",
         "input": ["text", "image", "audio"],
-        "maxTokens": 1048576,
+        "maxTokens": 262144,
         "name": "Inkling",
         "provider": "openrouter",
         "reasoning": true,
@@ -10431,7 +10431,7 @@
         },
         "id": "undi95/remm-slerp-l2-13b",
         "input": ["text"],
-        "maxTokens": 2048,
+        "maxTokens": 6144,
         "name": "ReMM SLERP 13B",
         "provider": "openrouter",
         "reasoning": false,
@@ -11016,14 +11016,14 @@
         },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.10114,
+            "cacheRead": 0.0338,
             "cacheWrite": 0.0,
-            "input": 0.5446,
-            "output": 1.7116
+            "input": 0.182,
+            "output": 0.572
         },
         "id": "z-ai/glm-5.2",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 128000,
         "name": "GLM-5.2",
         "provider": "openrouter",
         "reasoning": true,
@@ -11222,14 +11222,14 @@
         "baseUrl": "https://openrouter.ai/api/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.018,
+            "cacheRead": 0.01792,
             "cacheWrite": 0.0,
-            "input": 0.09,
-            "output": 0.18
+            "input": 0.0896,
+            "output": 0.1792
         },
         "id": "~deepseek/deepseek-v4-flash-latest",
         "input": ["text"],
-        "maxTokens": 65536,
+        "maxTokens": 131072,
         "name": "DeepSeek V4 Flash Latest",
         "provider": "openrouter",
         "reasoning": true,
@@ -11314,7 +11314,7 @@
         "cost": {
             "cacheRead": 0.29,
             "cacheWrite": 0.0,
-            "input": 2.5,
+            "input": 2.8,
             "output": 14.0
         },
         "id": "~moonshotai/kimi-latest",

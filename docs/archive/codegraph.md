@@ -19,7 +19,6 @@ and co-locates storage with **floppy** memory in project `store.db`.
 | 2   | Canonical unit  | **Chunk-first**; graph nodes/edges are **derived**                                                                                                                          |
 | 3   | Merkle          | **File-only** leaves; for **reindex invalidation + snapshot fingerprint**; no remote cache/sync                                                                             |
 | 4   | Index payload   | **Full chunk body** stored (capped ~6k chars); embed uses compact text (path + kind + name + body ≤ ~1.8k chars)                                                            |
-| 5   | Storage         | Codegraph + memory in **`<project>/.elph/store.db`**; transcript archive is a separate file (`metadata.db`)                                                                 |
 | 6   | Concurrency     | **Logical partition + Turso MVCC**: domains may write in parallel (row-disjoint); **coordinated writer inside codegraph build**; Merkle root updated at **end of scan**     |
 | 7   | Graph v1        | **Minimal**: nodes from chunks, shallow edges (import heuristics), **impact BFS**; no multi-repo; no flows/communities/hub                                                  |
 | 8   | `ast-grep`      | **Chunking** via ast-grep; edges **heuristic/shallow**                                                                                                                      |

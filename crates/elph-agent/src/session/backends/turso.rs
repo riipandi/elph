@@ -20,6 +20,10 @@ use crate::session::types::{
 };
 use turso::Database;
 
+/// Max number of stale `Leaf` entries we tolerate before auto-healing breaks —
+/// each stale leaf is proof the tree was written by a crash/partial state.
+const MAX_STALE_LEAVES_BEFORE_HEAL: usize = 16;
+
 /// Options when creating a session row in a shared database.
 #[derive(Debug, Clone, Default)]
 pub struct TursoSessionCreateOptions {
@@ -68,8 +72,30 @@ impl TursoSessionStorage {
         };
         let metadata = load_metadata(&conn, &session_id, &db_path).await?;
         let entries = load_entries(&conn, &session_id).await?;
-        let leaf_id = load_leaf_id(&conn, &session_id).await?;
-        let index = build_index(entries, leaf_id)?;
+        // Resolve the leaf with tolerance for stale pointers (crash ordering,
+        // rows pruned by snapshot cleanup, partial recovery writes). Failing
+        // open here would make every `--continue`/`--resume` unrecoverable.
+        let persisted = load_leaf_id(&conn, &session_id).await?;
+        let index = build_index(entries, persisted)?;
+        // Best-effort auto-heal: if the tree is riddled with phantom leaves
+        // (>= 16), drop stale `Leaf` entries and re-resolve so a single corrupt
+        // row can't keep poisoning the leaf forever. When we heal, ALSO persist
+        // the cleanup (delete the stale rows) so the DB is self-consistent and
+        // we don't re-heal on every open.
+        let (index, stale_ids) = maybe_heal_stale_leaves(index)?;
+        if !stale_ids.is_empty() {
+            // Best-effort persistence: the in-memory heal already made the session
+            // usable; a DB-level delete failure (e.g. another process holds the
+            // write lock) must not fail the whole open — we simply re-heal next time.
+            if let Err(error) = persist_heal_stale_leaves(&conn, &session_id, &stale_ids).await {
+                log::warn!(
+                    "session {session_id}: healed {} stale leaf entries in memory but could not persist cleanup: {error}",
+                    stale_ids.len()
+                );
+            } else {
+                log::info!("session {session_id}: healed {} stale leaf entries", stale_ids.len());
+            }
+        }
         Ok(Self {
             db_path,
             session_id,
@@ -369,6 +395,92 @@ async fn load_entries(conn: &turso::Connection, session_id: &str) -> Result<Vec<
     Ok(entries)
 }
 
+/// Drop `Leaf` entries whose target no longer exists when the tree is polluted
+/// with so many of them that resolve-on-fail would keep guessing wrong.
+///
+/// Safe: `Leaf` entries are only ever rewritten on `move_to` / `set_leaf_id`, and
+/// dropping phantom ones is idempotent — the next `move_to` writes a fresh one.
+///
+/// Returns the repaired index plus the list of dropped (stale) leaf entry ids so
+/// the caller can persist the cleanup (delete those rows) and avoid re-healing
+/// on every open.
+fn maybe_heal_stale_leaves(index: SessionIndex) -> Result<(SessionIndex, Vec<String>), SessionError> {
+    let stale_count = crate::session::storage_utils::stale_leaf_count(&index);
+    if stale_count < MAX_STALE_LEAVES_BEFORE_HEAL {
+        return Ok((index, Vec::new()));
+    }
+    log::warn!("session tree has {stale_count} stale leaf entries — dropping them so the leaf can resolve",);
+    let stale_ids: Vec<String> = index
+        .entries
+        .iter()
+        .filter(|entry| {
+            matches!(
+                entry,
+                SessionTreeEntry::Leaf {
+                    target_id: Some(target),
+                    ..
+                } if !index.by_id.contains_key(target)
+            )
+        })
+        .map(|entry| entry.id().to_string())
+        .collect();
+    let keep: std::collections::HashSet<String> = stale_ids.iter().cloned().collect();
+    let entries: Vec<SessionTreeEntry> = index
+        .entries
+        .iter()
+        .filter(|entry| !keep.contains(entry.id()))
+        .cloned()
+        .collect();
+    // Preserve in-memory side state (checkpoints, name) across the rebuild —
+    // dropping phantom leaves must not silently lose live compaction checkpoints.
+    let mut healed = build_index(entries, None)?;
+    healed.checkpoints = index.checkpoints;
+    healed.name = index.name;
+    Ok((healed, stale_ids))
+}
+
+/// Delete the given stale `Leaf` rows from `session_entries` in one transaction.
+///
+/// Called only after `maybe_heal_stale_leaves` decided to heal (>= threshold).
+/// Best-effort but transactional: if the delete fails the open still succeeds
+/// (the in-memory heal already made the session usable); we re-heal next open.
+async fn persist_heal_stale_leaves(
+    conn: &turso::Connection,
+    session_id: &str,
+    stale_ids: &[String],
+) -> Result<(), SessionError> {
+    if stale_ids.is_empty() {
+        return Ok(());
+    }
+    conn.execute("BEGIN IMMEDIATE", ())
+        .await
+        .map_err(|e| SessionError::new(SessionErrorCode::Storage, format!("heal begin: {e}")))?;
+    let outcome = async {
+        for id in stale_ids {
+            conn.execute(
+                "DELETE FROM session_entries WHERE session_id = ? AND id = ?",
+                turso::params![session_id, id.as_str()],
+            )
+            .await
+            .map_err(|e| SessionError::new(SessionErrorCode::Storage, format!("heal delete {id}: {e}")))?;
+        }
+        Ok::<(), SessionError>(())
+    }
+    .await;
+    match outcome {
+        Ok(()) => {
+            conn.execute("COMMIT", ())
+                .await
+                .map_err(|e| SessionError::new(SessionErrorCode::Storage, format!("heal commit: {e}")))?;
+            Ok(())
+        }
+        Err(error) => {
+            let _ = conn.execute("ROLLBACK", ()).await;
+            Err(error)
+        }
+    }
+}
+
 fn map_storage_error(error: impl std::fmt::Display) -> SessionError {
     SessionError::new(SessionErrorCode::Storage, error.to_string())
 }
@@ -384,15 +496,18 @@ impl SessionStorage for TursoSessionStorage {
         if let Some(leaf_id) = &self.index.leaf_id
             && !self.index.by_id.contains_key(leaf_id)
         {
-            return Err(SessionError::new(
-                SessionErrorCode::InvalidSession,
-                format!("Entry {leaf_id} not found"),
-            ));
+            // Leaf pointer resolved to a phantom (crash between leaf-write and
+            // child write, rows pruned). Report `None` instead of failing so the
+            // harness can append a fresh entry and re-establish a real leaf.
+            return Ok(None);
         }
         Ok(self.index.leaf_id.clone())
     }
 
     async fn set_leaf_id(&mut self, leaf_id: Option<String>) -> Result<(), SessionError> {
+        // Contract: pointing the leaf at an entry that isn't in the tree is a
+        // genuine error. Callers that may race a broken tree guard first (recovery
+        // resolves to a real entry; flush_pending_session_writes skips phantoms).
         if let Some(leaf_id) = &leaf_id
             && !self.index.by_id.contains_key(leaf_id)
         {

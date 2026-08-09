@@ -1755,24 +1755,15 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     }
                     return;
                 }
-                if code == KeyCode::Up || code == KeyCode::Char('k') {
+                if let Some(delta) = provider_list_nav_delta(modifiers, code) {
                     let mut pending_ref = pending_provider_connect.write();
                     if let Some(pending) = pending_ref.as_mut() {
                         let count = pending.oauth_select_ids.len();
                         if count > 0 {
-                            pending.oauth_select_index = pending.oauth_select_index.saturating_sub(1);
-                            provider_connect_selected.set(pending.oauth_select_index);
-                        }
-                    }
-                    return;
-                }
-                if code == KeyCode::Down || code == KeyCode::Char('j') {
-                    let mut pending_ref = pending_provider_connect.write();
-                    if let Some(pending) = pending_ref.as_mut() {
-                        let count = pending.oauth_select_ids.len();
-                        if count > 0 {
-                            pending.oauth_select_index = (pending.oauth_select_index + 1).min(count - 1);
-                            provider_connect_selected.set(pending.oauth_select_index);
+                            let next =
+                                (pending.oauth_select_index as isize + delta).clamp(0, count as isize - 1) as usize;
+                            pending.oauth_select_index = next;
+                            provider_connect_selected.set(next);
                         }
                     }
                     return;
@@ -2174,7 +2165,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 return;
             }
 
-            // List navigation (↑↓ or j/k)
+            // List navigation (↑/↓)
             if let Some(delta) = provider_list_nav_delta(modifiers, code) {
                 let pending_ref = &mut *pending_provider_disconnect.write();
                 if let Some(pending) = pending_ref {
@@ -2265,62 +2256,90 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             return;
         }
 
-        // ── Character handling for auth method selection ─────
-        if is_select_auth_method {
-            if !modifiers.is_empty() {
-                // Ignore modified keys
-            } else {
-                let auth_methods = crate::tui::provider_connect_dialog::get_auth_methods();
-
-                // List navigation (↑↓ or j/k)
-                if let Some(delta) = provider_list_nav_delta(modifiers, code) {
-                    let pending_ref = &mut *pending_provider_connect.write();
-                    if let Some(pending) = pending_ref {
-                        let count = auth_methods.len();
-                        if count > 0 {
-                            let new_idx =
-                                ((pending.selected_auth_method as isize + delta).rem_euclid(count as isize)) as usize;
-                            pending.selected_auth_method = new_idx;
-                            provider_connect_selected.set(new_idx);
-                        }
-                    }
-                    return;
-                }
+        // ── Auth method selection: ↑/↓ only ──────────────────
+        if is_select_auth_method && let Some(delta) = provider_list_nav_delta(modifiers, code) {
+            let count = crate::tui::provider_connect_dialog::get_auth_methods().len();
+            let pending_ref = &mut *pending_provider_connect.write();
+            if let Some(pending) = pending_ref
+                && count > 0
+            {
+                let new_idx = ((pending.selected_auth_method as isize + delta).rem_euclid(count as isize)) as usize;
+                pending.selected_auth_method = new_idx;
+                provider_connect_selected.set(new_idx);
             }
+            return;
         }
 
-        // ── Character handling for provider selection ──────
-        if is_select_provider {
-            if !modifiers.is_empty() {
-                // Ignore modified keys
-            } else {
-                let _auth_method_idx = pending_provider_connect
+        // ── Provider selection: filter + list navigation ─────
+        // Mirrors the model selector: Tab switches focus, ↑/↓ move the highlight,
+        // and any printable key typed on the list seeds the filter field.
+        if is_select_provider && kind == KeyEventKind::Press {
+            let focus = pending_provider_connect
+                .read()
+                .as_ref()
+                .map(|p| p.input_focus)
+                .unwrap_or(ProviderConnectFocus::Search);
+
+            if modifiers.is_empty() && code == KeyCode::Tab {
+                if let Some(pending) = pending_provider_connect.write().as_mut() {
+                    if focus == ProviderConnectFocus::List {
+                        focus_provider_search(&mut provider_connect_input_focus, pending);
+                    } else {
+                        focus_provider_list(&mut provider_connect_input_focus, pending);
+                    }
+                }
+                return;
+            }
+
+            // ↑/↓ move the highlight and hand focus to the list so Enter confirms.
+            if let Some(delta) = provider_list_nav_delta(modifiers, code) {
+                let auth_method_idx = pending_provider_connect
                     .read()
                     .as_ref()
                     .map(|p| p.selected_auth_method)
                     .unwrap_or(0);
-
-                // Arrow keys move focus to the list (selection is handled by ModelOptionList)
-                if let Some(_delta) = provider_list_nav_delta(modifiers, code) {
-                    let pending_ref = &mut *pending_provider_connect.write();
-                    if let Some(pending) = pending_ref {
-                        focus_provider_list(&mut provider_connect_input_focus, pending);
+                let providers = get_provider_options_for_auth_method(provider_auth_method_from_index(auth_method_idx));
+                let count =
+                    crate::tui::provider_connect_dialog::count_filtered(&providers, &provider_connect_filter.read());
+                if let Some(pending) = pending_provider_connect.write().as_mut() {
+                    focus_provider_list(&mut provider_connect_input_focus, pending);
+                    if count > 0 {
+                        let current = *provider_connect_selected.read();
+                        let next = (current as isize + delta).clamp(0, count as isize - 1) as usize;
+                        pending.selected_provider = next;
+                        provider_connect_selected.set(next);
                     }
-                    return;
                 }
-
-                // `/` reopens search focus when already in list (like model selector)
-                if modifiers.is_empty() && code == KeyCode::Char('/') {
-                    let pending_ref = &mut *pending_provider_connect.write();
-                    if let Some(pending) = pending_ref {
-                        focus_provider_search(&mut provider_connect_input_focus, pending);
-                    }
-                    return;
-                }
-
-                // Typing and backspace are handled by the Input component (TextInput).
-                // The filter State is synced via the on_change callback below.
+                return;
             }
+
+            if focus == ProviderConnectFocus::List {
+                // Backspace trims the filter without leaving the list.
+                if modifiers.is_empty() && code == KeyCode::Backspace {
+                    if let Some(pending) = pending_provider_connect.write().as_mut() {
+                        provider_list_backspace(&mut provider_connect_filter, pending);
+                        provider_connect_selected.set(pending.selected_provider);
+                    }
+                    return;
+                }
+
+                // Printable keys jump back to the filter field (`/` without inserting).
+                if let Some(seed) = provider_filter_seed(modifiers, code) {
+                    if let Some(pending) = pending_provider_connect.write().as_mut() {
+                        apply_provider_filter_seed(
+                            seed,
+                            &mut provider_connect_filter,
+                            &mut provider_connect_input_focus,
+                            pending,
+                        );
+                        provider_connect_selected.set(pending.selected_provider);
+                    }
+                    return;
+                }
+            }
+
+            // Search focus: typing and backspace belong to the Input component (TextInput);
+            // the filter State is synced back into the pending dialog on render.
         }
 
         // ── API key dialog (separate dialog) ─────────────────────

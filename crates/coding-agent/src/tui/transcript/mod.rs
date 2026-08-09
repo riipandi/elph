@@ -22,4 +22,7 @@ pub use ephemeral::{
     select_mode_on_banner, theme_mode_banner,
 };
 pub use panel::TranscriptPanel;
-pub use types::{QUIT_BUSY_NOTICE_KEY, TranscriptMessage, TranscriptStyle, toggle_latest_collapsible_detail};
+pub use types::{
+    LogDensity, QUIT_BUSY_NOTICE_KEY, TranscriptMessage, TranscriptStyle, set_log_density,
+    toggle_latest_collapsible_detail,
+};

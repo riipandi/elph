@@ -22,7 +22,6 @@ use crate::session::tree::Session;
 use crate::session::types::CustomMessageEntryBlock;
 use crate::session::types::CustomMessageEntryContent;
 use crate::session::types::SessionError;
-use crate::session::types::SessionErrorCode;
 use crate::session::types::SessionStorage;
 use crate::session::types::SessionTreeEntry;
 use crate::types::AgentMessage;
@@ -143,10 +142,12 @@ pub async fn collect_entries_for_branch_summary<S: SessionStorage>(
         if common_ancestor_id.as_deref() == Some(entry_id.as_str()) {
             break;
         }
-        let entry = session
-            .entry(&entry_id)
-            .await
-            .ok_or_else(|| SessionError::new(SessionErrorCode::InvalidEntry, format!("Entry {entry_id} not found")))?;
+        let entry = session.entry(&entry_id).await;
+        let Some(entry) = entry else {
+            // Parent chain broken (rows pruned / partial recovery): stop at the
+            // entry that survived; navigation is still possible.
+            break;
+        };
         current = entry.parent_id().map(str::to_string);
         entries.push(entry);
     }

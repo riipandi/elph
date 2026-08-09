@@ -28,6 +28,18 @@ fn assistant_message(text: &str) -> AgentMessage {
     ))))
 }
 
+fn session_tree_message_entry(id: &str, parent_id: Option<&str>, message: AgentMessage) -> SessionTreeEntry {
+    use elph_agent::session::types::SessionTreeEntry;
+    SessionTreeEntry::Message {
+        id: id.to_string(),
+        parent_id: parent_id.map(str::to_string),
+        timestamp: "t".into(),
+        message,
+        prompt_title: String::new(),
+        prompt_kind: String::new(),
+    }
+}
+
 async fn run_session_suite<S, F, Fut>(mut create_storage: F)
 where
     S: SessionStorage,
@@ -270,4 +282,192 @@ async fn session_with_turso_storage() {
             .expect("create")
     })
     .await;
+}
+
+// Regression coverage for the "Entry 019… not found" resume bug:
+// a persisted leaf pointer that names an entry which no longer exists (crash
+// between leaf-write and child-write, rows pruned, partial recovery) must not
+// brick the session — open resolves to the newest real entry and reconcile
+// repairs the tree.
+#[tokio::test]
+async fn turso_reopen_with_phantom_leaf_pointer_stays_openable_and_repairable() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let db = tmp.path().join("reopen.db");
+
+    let mut storage = TursoSessionStorage::create(&db, Some("reopen_phantom".into()))
+        .await
+        .expect("create");
+    storage
+        .append_entry(session_tree_message_entry("u1", None, user_message("one")))
+        .await
+        .expect("append");
+    // Simulate the broken state directly in the DB: sessions.active_leaf_id
+    // points at an entry that was never written (or was pruned).
+    {
+        let handle = elph_agent::datastore::open_local(&db).await.expect("open db");
+        let conn = elph_agent::datastore::connect(&handle).await.expect("connect");
+        conn.execute("UPDATE sessions SET active_leaf_id = 'ghost' WHERE id = 'reopen_phantom'", ())
+            .await
+            .expect("corrupt active_leaf_id");
+    }
+    drop(storage);
+
+    // Open must NOT fail — build_index resolves the phantom to the newest entry.
+    let mut session = Session::new(
+        TursoSessionStorage::open(&db, "reopen_phantom", None)
+            .await
+            .expect("open with phantom leaf pointer"),
+    );
+    assert_eq!(session.leaf_id().await.expect("leaf"), Some("u1".to_string()));
+
+    // Context still builds and appends still work.
+    let context = session.build_context().await.expect("context");
+    assert_eq!(context.messages.len(), 1);
+    session
+        .append_message(assistant_message("two"))
+        .await
+        .expect("append after repair");
+
+    // Reopen again: recovered leaf is the newest entry (an appended message id).
+    let reloaded = Session::new(
+        TursoSessionStorage::open(&db, "reopen_phantom", None)
+            .await
+            .expect("reopen"),
+    );
+    assert!(reloaded.leaf_id().await.expect("leaf").is_some());
+    assert!(reloaded.entries().await.len() >= 2);
+}
+
+// End-to-end resume + continue: a turn that crashed mid-branch leaves tool calls
+// unanswered and possibly a dangling custom entry. Reopen → reconcile → append a
+// new user message (the "continue" step) must all succeed, and the fresh message
+// must chain onto a real entry.
+#[tokio::test]
+async fn turso_resume_after_crash_then_continue_appends_chain() {
+    use elph_agent::reconcile_session;
+
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let db = tmp.path().join("crash.db");
+
+    // Session 1 (the crashed run): user → assistant-with-toolcall (no result).
+    {
+        let mut storage = TursoSessionStorage::create(&db, Some("crash_sess".into()))
+            .await
+            .expect("create");
+        storage
+            .append_entry(session_tree_message_entry("u1", None, user_message("fix the bug")))
+            .await
+            .expect("append u1");
+        let assistant = elph_ai::faux_assistant_message(
+            vec![elph_ai::AssistantContentBlock::ToolCall(elph_ai::ToolCall::new(
+                "call_1",
+                "edit_file",
+                serde_json::json!({"path": "src/main.rs"}),
+            ))],
+            Some(elph_ai::StopReason::ToolUse),
+        );
+        storage
+            .append_entry(session_tree_message_entry(
+                "a1",
+                Some("u1"),
+                AgentMessage::Llm(Box::new(elph_ai::Message::Assistant(assistant))),
+            ))
+            .await
+            .expect("append a1");
+    }
+
+    // Resume: open + reconcile (repair unanswered tool call, re-establish leaf).
+    let mut session = Session::new(
+        TursoSessionStorage::open(&db, "crash_sess", None)
+            .await
+            .expect("resume open"),
+    );
+    let report = reconcile_session(&mut session).await.expect("reconcile");
+    assert!(report.repaired_tool_results >= 1, "must repair the unanswered tool call");
+
+    // The synthetic tool result is chained onto the real leaf, and context still builds.
+    let context = session.build_context().await.expect("context");
+    assert!(!context.messages.is_empty());
+
+    // Continue: user sends the next prompt.
+    session
+        .append_message(user_message("ok done"))
+        .await
+        .expect("continue append");
+
+    // Verify the chain is intact end-to-end after a fresh reopen.
+    let final_session = Session::new(
+        TursoSessionStorage::open(&db, "crash_sess", None)
+            .await
+            .expect("final reopen"),
+    );
+    final_session.build_context().await.expect("final context");
+    let entries = final_session.entries().await;
+    // u1, a1, synthetic tool result, u2 → at least 4 entries, all chained.
+    assert!(entries.len() >= 4, "expected >=4 entries, got {}", entries.len());
+}
+
+// Persist heal at open: a tree polluted with many phantom leaf rows is healed in
+// memory AND the stale rows are deleted from the DB, so a second open does not
+// re-heal and the tree stays self-consistent.
+#[tokio::test]
+async fn turso_open_persists_leaf_heal() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let db = tmp.path().join("heal.db");
+
+    let mut storage = TursoSessionStorage::create(&db, Some("heal_sess".into()))
+        .await
+        .expect("create");
+    // One real entry + MANY stale leaf rows (>= MAX_STALE_LEAVES_BEFORE_HEAL = 16).
+    storage
+        .append_entry(session_tree_message_entry("real1", None, user_message("root")))
+        .await
+        .expect("append real");
+    {
+        let handle = elph_agent::datastore::open_local(&db).await.expect("open db");
+        let conn = elph_agent::datastore::connect(&handle).await.expect("connect");
+        for i in 0..24 {
+            conn.execute(
+                "INSERT INTO session_entries (session_id, id, entry_seq, parent_id, type, timestamp, payload)
+                 VALUES ('heal_sess', ?, ?, 'real1', 'leaf', 't', ?)",
+                turso::params![
+                    format!("ghost_leaf_{i}"),
+                    (i + 100) as i64,
+                    serde_json::json!({
+                        "type": "leaf",
+                        "id": format!("ghost_leaf_{i}"),
+                        "parentId": "real1",
+                        "timestamp": "t",
+                        "targetId": format!("ghost_{i}")
+                    })
+                    .to_string()
+                ],
+            )
+            .await
+            .expect("insert ghost leaf");
+        }
+        conn.execute("UPDATE sessions SET active_leaf_id = 'ghost_0' WHERE id = 'heal_sess'", ())
+            .await
+            .expect("corrupt leaf");
+    }
+    drop(storage);
+
+    // First open heals (in memory) and persists the cleanup.
+    let opened = Session::new(
+        TursoSessionStorage::open(&db, "heal_sess", None)
+            .await
+            .expect("open after heal"),
+    );
+    assert!(opened.leaf_id().await.expect("leaf").is_some());
+
+    // Second open: rows are gone, leaf resolves to the real entry, no heal needed.
+    let reopened = Session::new(
+        TursoSessionStorage::open(&db, "heal_sess", None)
+            .await
+            .expect("reopen after persisted heal"),
+    );
+    assert_eq!(reopened.leaf_id().await.expect("leaf"), Some("real1".to_string()));
+    let entries = reopened.entries().await;
+    assert!(!entries.iter().any(|e| e.id().starts_with("ghost_")), "ghost rows must be gone");
+    assert_eq!(entries.len(), 1, "only the real entry survives");
 }

@@ -155,12 +155,28 @@ pub fn layout_transcript_rows_cached(
     layouts
 }
 
+/// True when `message` paints an ellipsis placeholder — a live streaming assistant reply
+/// whose display body produced zero elements (blank / tag-only payload so far). The render
+/// path (`chat_response_body`) and this measurement must agree exactly: the viewport rows
+/// mirror the placeholder so the card is never measured as a phantom zero-row blank.
+pub(crate) fn assistant_placeholder_shown(message: &TranscriptMessage) -> bool {
+    message.assistant_placeholder().is_some()
+}
+
 fn message_row_count(message: &TranscriptMessage, wrap_width: u16) -> u32 {
     let row_count = if message.style == TranscriptStyle::Assistant {
         // AI chat responses render as plain log lines — no phase header, no collapse.
         // `assistant_row_count` floors at 1 row; empty replies paint nothing, so zero it.
         let body = assistant_row_count(&message.content, message.markdown.as_ref(), wrap_width) as u32;
-        if message.content.trim().is_empty() { 0 } else { body }
+        let shows_placeholder = assistant_placeholder_shown(message);
+        if message.content.trim().is_empty() && !shows_placeholder {
+            0
+        } else if shows_placeholder {
+            // Live empty reply paints an ellipsis row (see `chat_response_body`); measure it.
+            body.max(1)
+        } else {
+            body
+        }
     } else if message.style.is_user_input_card() {
         let right_rail = user_input_right_rail(message.submitted_at, message.duration_secs);
         layout_user_input_lines(&message.content, right_rail.as_deref(), wrap_width).len() as u32
@@ -274,6 +290,29 @@ mod tests {
     use super::*;
     use crate::tui::transcript::card::FLUSH_CARD_PAD;
     use crate::tui::transcript::types::{EPHEMERAL_NOTICE_EXTRA_PAD_TOP, TranscriptMessage, TranscriptStyle};
+
+    /// A live assistant reply that only contains whitespace must still occupy scroll rows.
+    /// This is the layout-side guarantee for the "blank assistant response" bug: the card
+    /// paints an ellipsis placeholder, so measurement must not zero the row (which would
+    /// collapse the transcript around it).
+    #[test]
+    fn live_blank_reply_measure_keeps_placeholder_row() {
+        for width in [36u16, 60, 100] {
+            let message = TranscriptMessage::assistant_markdown("\n\n   \n");
+            let layouts = layout_transcript_rows(std::slice::from_ref(&message), width);
+            assert!(
+                layouts[0].row_count >= 1,
+                "width {width}: live blank reply must measure >= 1 row, got {:?}",
+                layouts[0]
+            );
+        }
+
+        // Settled (duration set) empty reply: nothing to render → zero rows, no blank box.
+        let mut settled = TranscriptMessage::assistant_markdown(String::new());
+        settled.duration_secs = Some(0.4);
+        let layouts = layout_transcript_rows(std::slice::from_ref(&settled), 60);
+        assert_eq!(layouts[0].row_count, 0, "settled empty reply must measure zero rows (hidden)");
+    }
 
     /// Simulate a long assistant reply with a table at/near the START. If measurement
     /// over-counts rows (or windowing spacer misplaces content), the auto-scrolled viewport

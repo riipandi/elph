@@ -2,7 +2,7 @@
     "auto": {
         "api": "openai-completions",
         "baseUrl": "https://opengateway.gitlawb.com/v1",
-        "contextWindow": 32000,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -10,9 +10,9 @@
             "output": 1.55
         },
         "id": "auto",
-        "input": ["text"],
-        "maxTokens": 32000,
-        "name": "Auto",
+        "input": ["text", "image"],
+        "maxTokens": 16384,
+        "name": "Auto Route",
         "provider": "opengateway",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -134,14 +134,14 @@
         "baseUrl": "https://opengateway.gitlawb.com/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.3,
+            "cacheRead": 0.5,
             "cacheWrite": 0.0,
             "input": 3.0,
-            "output": 15.0
+            "output": 12.5
         },
         "id": "moonshotai/kimi-k3",
-        "input": ["text", "image"],
-        "maxTokens": 1048576,
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 131072,
         "name": "Kimi K3",
         "provider": "opengateway",
         "reasoning": false,
@@ -168,7 +168,7 @@
         "id": "nvidia/nemotron-3-ultra-550b-a55b:free",
         "input": ["text"],
         "maxTokens": 65536,
-        "name": "Nemotron 3 Ultra (free)",
+        "name": "NVIDIA: Nemotron 3 Ultra (free)",
         "provider": "opengateway",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -236,16 +236,16 @@
     "xiaomi/mimo-v2.5": {
         "api": "openai-completions",
         "baseUrl": "https://opengateway.gitlawb.com/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.004,
+            "cacheRead": 0.08,
             "cacheWrite": 0.16,
-            "input": 0.16,
-            "output": 0.32
+            "input": 0.4,
+            "output": 2.0
         },
         "id": "xiaomi/mimo-v2.5",
-        "input": ["text", "image"],
-        "maxTokens": 128000,
+        "input": ["text", "image", "audio", "video"],
+        "maxTokens": 131072,
         "name": "MiMo-V2.5",
         "provider": "opengateway",
         "reasoning": true,
@@ -288,16 +288,16 @@
     "z-ai/glm-5.2": {
         "api": "openai-completions",
         "baseUrl": "https://opengateway.gitlawb.com/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 202752,
         "cost": {
-            "cacheRead": 0.3,
+            "cacheRead": 0.2,
             "cacheWrite": 1.2,
-            "input": 1.2,
+            "input": 1.05,
             "output": 4.4
         },
         "id": "z-ai/glm-5.2",
         "input": ["text"],
-        "maxTokens": 128000,
+        "maxTokens": 202752,
         "name": "GLM-5.2",
         "provider": "opengateway",
         "reasoning": false,

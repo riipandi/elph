@@ -165,7 +165,6 @@ Child agents managed by `AgentControl` on the harness (Codex thread style). Desi
 - Shared `AgentRegistry` across parent and children; `agent_path` for nested identity.
 - `max_depth = 3`, `max_concurrent = 4`; children may spawn further children when depth allows.
 - Multi-agent tools: `spawn_agent`, `send_message`, `followup_task`, `wait_agent`, `list_agents`.
-- Graph edges persisted in `metadata.db` (`agent_spawn_edges`).
 - `list_agents` returns `SubagentInfo` including the last completed output summary (`output: {text, output_path, turns, ...}`) instead of status-only rows.
 - `wait_agent` now returns the subagent's final assistant text (or a readable no-output placeholder) as its tool result, so the parent model always sees observable output after a wait.
 - Every subagent writes a persistent, traceable artifact set under the session data root — `~/.local/share/elph/sessions/<SESSION_ID>/subagents/<agent_id>/` (or `$ELPH_DATA_DIR`): `output.md` (final text), `events.jsonl` (streamed deltas), `meta.json` (spawn metadata). Best-effort writes never block the agent loop.
@@ -197,7 +196,6 @@ TypeID with prefix `sess` — shown in the footer.
 | -------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | Provider / model     | Per-session (tree + Turso row); new sessions seed from the project's last used model, falling back to `models.defaultModel` (TUI) |
 | Mode / thinking      | Per-session (default mode `build`; thinking seed `models.defaultThinkingLevel`)                                                   |
-| Conversation history | Turso session tree in `APP_DATA/metadata.db` (`session_entries`)                                                                  |
 | Platform metadata    | Same DB: goals, spawn graph, session index                                                                                        |
 | Model catalog        | Embedded + merge `CONFIG_DIR/providers/*.json` (disk wins by id)                                                                  |
 | Crash recovery       | Semi-durable harness journal + tool-result repair (see below)                                                                     |

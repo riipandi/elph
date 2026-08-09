@@ -76,6 +76,8 @@ pub struct AgentLoopTurnUpdate {
     pub context: Option<AgentContext>,
     pub model: Option<Model>,
     pub thinking_level: Option<AgentThinkingLevel>,
+    /// Full tool registry for execution lookup (includes default-inactive MCP tools).
+    pub execution_tools: Option<Vec<AgentTool>>,
 }
 
 pub type PrepareNextTurnContext = ShouldStopAfterTurnContext;
@@ -140,6 +142,15 @@ pub struct AgentLoopConfig {
     /// Application-defined tool context injected at execution time.
     /// Replaces captured `Arc<LocalExecutionEnv>` in tool factories.
     pub tool_context: ToolContext,
+    /// Full tool registry used to resolve tool calls for execution.
+    ///
+    /// May be a superset of [`AgentContext::tools`] (the model-visible / active
+    /// set). Lazy MCP activation leaves tools registered here while omitting
+    /// them from the active context until `list_available_tools` advertises
+    /// them — execution still looks up names in this registry so a model that
+    /// learned a schema from the catalog can invoke the tool without a
+    /// "Tool not found" failure.
+    pub execution_tools: Vec<AgentTool>,
 }
 
 #[derive(Debug, Clone)]

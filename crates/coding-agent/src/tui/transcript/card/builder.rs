@@ -254,6 +254,27 @@ mod tests {
     use crate::tui::transcript::types::{TranscriptMessage, TranscriptStyle};
 
     #[test]
+    fn live_blank_reply_paints_placeholder_not_blank_box() {
+        // A live assistant reply whose content is only whitespace renders a visible ellipsis
+        // row — never an empty card (the "blank assistant response" bug).
+        let message = TranscriptMessage::assistant_markdown("\n\n   \n");
+        let bubbles = build_transcript_bubbles(80, std::slice::from_ref(&message), None, None);
+        let rendered = iocraft::prelude::element! { View(width: 80) { #(bubbles) } }.to_string();
+        assert!(
+            rendered.contains('…'),
+            "live blank reply must paint the placeholder, got {rendered:?}"
+        );
+        assert!(!rendered.trim().is_empty(), "live blank reply must not paint an empty box");
+
+        // Settled (RunCompleted) with empty content → no placeholder, nothing to see.
+        let mut settled = TranscriptMessage::assistant_markdown(String::new());
+        settled.duration_secs = Some(0.5);
+        let bubbles = build_transcript_bubbles(80, std::slice::from_ref(&settled), None, None);
+        let rendered = iocraft::prelude::element! { View(width: 80) { #(bubbles) } }.to_string();
+        assert!(!rendered.contains('…'), "settled empty reply must not paint a placeholder");
+    }
+
+    #[test]
     fn windowed_build_emits_spacers_for_long_history() {
         let mut messages = Vec::new();
         for i in 0..40 {

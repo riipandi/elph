@@ -1685,7 +1685,7 @@
         },
         "id": "deepseek/deepseek-v4-flash-0731",
         "input": ["text"],
-        "maxTokens": 65536,
+        "maxTokens": 384000,
         "name": "DeepSeek V4 Flash 0731",
         "provider": "kilo",
         "reasoning": true,
@@ -2577,10 +2577,10 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.05,
+            "cacheRead": 0.01,
             "cacheWrite": 0.0,
-            "input": 0.09,
-            "output": 0.34
+            "input": 0.08,
+            "output": 0.35
         },
         "id": "google/gemma-4-31b-it",
         "input": ["image", "text", "video"],
@@ -3194,7 +3194,7 @@
         },
         "id": "mancer/weaver",
         "input": ["text"],
-        "maxTokens": 2000,
+        "maxTokens": 6000,
         "name": "Mancer: Weaver (alpha)",
         "provider": "kilo",
         "reasoning": false,
@@ -8702,7 +8702,7 @@
         "cost": {
             "cacheRead": 0.05,
             "cacheWrite": 0.0,
-            "input": 0.14,
+            "input": 0.15,
             "output": 1.0
         },
         "id": "qwen/qwen3.6-35b-a3b",
@@ -9710,7 +9710,7 @@
         },
         "id": "thinkingmachines/inkling",
         "input": ["text", "image", "audio"],
-        "maxTokens": 524288,
+        "maxTokens": 262144,
         "name": "Inkling",
         "provider": "kilo",
         "reasoning": true,
@@ -9767,7 +9767,7 @@
         },
         "id": "undi95/remm-slerp-l2-13b",
         "input": ["text"],
-        "maxTokens": 2048,
+        "maxTokens": 6144,
         "name": "ReMM SLERP 13B",
         "provider": "kilo",
         "reasoning": false,
@@ -10008,7 +10008,7 @@
         },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.003,
+            "cacheRead": 0.0028,
             "cacheWrite": 0.0,
             "input": 0.14,
             "output": 0.28
@@ -10039,10 +10039,10 @@
         },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.004,
+            "cacheRead": 0.08,
             "cacheWrite": 0.0,
-            "input": 0.435,
-            "output": 0.87
+            "input": 0.4,
+            "output": 1.5
         },
         "id": "xiaomi/mimo-v2.5-pro",
         "input": ["text"],
@@ -10378,7 +10378,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 1048576,
+        "contextWindow": 1024000,
         "cost": {
             "cacheRead": 0.26,
             "cacheWrite": 1.2,
@@ -10387,7 +10387,7 @@
         },
         "id": "z-ai/glm-5.2",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 128000,
         "name": "GLM-5.2",
         "provider": "kilo",
         "reasoning": true,
@@ -10561,14 +10561,14 @@
         "baseUrl": "https://api.kilo.ai/api/gateway",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.018,
+            "cacheRead": 0.01792,
             "cacheWrite": 0.0,
-            "input": 0.09,
-            "output": 0.18
+            "input": 0.0896,
+            "output": 0.1792
         },
         "id": "~deepseek/deepseek-v4-flash-latest",
         "input": ["text"],
-        "maxTokens": 65536,
+        "maxTokens": 131072,
         "name": "DeepSeek V4 Flash Latest",
         "provider": "kilo",
         "reasoning": true,
@@ -10656,7 +10656,7 @@
         "cost": {
             "cacheRead": 0.29,
             "cacheWrite": 0.0,
-            "input": 2.5,
+            "input": 2.8,
             "output": 14.0
         },
         "id": "~moonshotai/kimi-latest",

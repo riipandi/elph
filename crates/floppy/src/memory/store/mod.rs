@@ -1,4 +1,4 @@
-mod embed;
+pub mod embed;
 mod read;
 mod retrieve;
 mod tasks;

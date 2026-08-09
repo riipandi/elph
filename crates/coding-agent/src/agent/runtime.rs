@@ -5,7 +5,7 @@ use anyhow::Result;
 use elph_agent::create_goal_tools_with_hook;
 use elph_agent::{
     AgentGraphStore, AgentHarness, AgentHarnessOptions, AgentHarnessStreamOptions, BuiltinToolsBuilder, GoalRuntime,
-    GoalStore, LocalExecutionEnv, QueueMode, RestoreOptions, SubagentBootstrap, SystemPrompt,
+    GoalStore, LocalExecutionEnv, QueueMode, RestoreOptions, SubagentBootstrap, SystemPrompt, is_mcp_tool,
 };
 use std::path::Path;
 use std::sync::Arc;
@@ -87,7 +87,11 @@ pub async fn create_coding_session_with_events(
         Some(loaded) => loaded.resources,
         None => load_resources(options.paths, options.cwd, env.as_ref()).await.resources,
     };
-    let mut tools = BuiltinToolsBuilder::all(env.clone()).build();
+    // Provide the loaded skill set so `list_skills` (on-demand catalog) can be
+    // registered alongside the built-in tools.
+    let mut tools = BuiltinToolsBuilder::all(env.clone())
+        .with_skills(resources.skills.clone())
+        .build();
 
     // Shared memory runtime (tools + hooks + bootstrap use one store / task id).
     let memory_opts = crate::memory::runtime::MemoryRuntimeOptions::from_settings(&options.settings.memory);
@@ -210,6 +214,15 @@ pub async fn create_coding_session_with_events(
     let model = selection.model.clone();
     let models = Arc::clone(&selection.models);
     let compaction_settings = options.settings.compaction.to_agent_settings();
+    // MCP tools are registered for execution/discovery but default-inactive: omit them
+    // from the initial active set so empty/`None` restore does not activate every
+    // connected MCP server's schemas. Session-tree `ActiveToolsChange` (lazy activation
+    // or resume mid-session) still restores previously activated MCP names.
+    let active_tool_names: Vec<String> = tools
+        .iter()
+        .map(|t| t.name().to_string())
+        .filter(|name| !is_mcp_tool(name))
+        .collect();
     // Prefer restore for semi-durable recovery (queues, ops, tool-result repair, config rehydrate).
     let harness = AgentHarness::restore(
         AgentHarnessOptions {
@@ -222,7 +235,7 @@ pub async fn create_coding_session_with_events(
             stream_options,
             model,
             thinking_level: thinking,
-            active_tool_names: vec![],
+            active_tool_names,
             steering_mode: QueueMode::OneAtATime,
             follow_up_mode: QueueMode::OneAtATime,
             compaction_settings,

@@ -12,6 +12,8 @@ description: >-
     relevant, to ensure fixes align with active best practices, not deprecated patterns. Flags
     backward-compat/legacy code and structural refactors found during cleanup and asks the user before
     removing/restructuring.
+metadata:
+    scope: project
 ---
 
 # Rust Verify & Harden

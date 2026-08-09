@@ -1,5 +1,7 @@
 //! Transcript message types and per-style layout tokens.
 
+use std::sync::atomic::{AtomicU8, Ordering};
+
 use chrono::{DateTime, Utc};
 use iocraft::prelude::Color;
 
@@ -33,6 +35,52 @@ pub const QUIT_BUSY_NOTICE_PAD: u16 = 1;
 /// Context lines around each change hunk in transcript tool-card diffs.
 /// Must match the `context_lines` passed to [`elph_tui::components::DiffView`] in the tool card.
 pub const TOOL_CARD_DIFF_CONTEXT_LINES: usize = 3;
+
+/// Transcript log density. [`Compact`] packs collapsed tool-call rows flush together;
+/// [`Loose`] keeps a blank row between every process-log row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum LogDensity {
+    /// Collapsed tool-call rows group like a log with no blank line between them.
+    #[default]
+    Compact,
+    /// Every process-log row keeps a blank line above and below.
+    Loose,
+}
+
+impl LogDensity {
+    /// Map the `settings.ui.density` string (`compact` / `loose`) onto the enum.
+    /// Unknown / empty values fall back to [`LogDensity::Compact`] (the default).
+    pub fn from_setting(raw: &str) -> Self {
+        match raw.trim().to_ascii_lowercase().as_str() {
+            "loose" => LogDensity::Loose,
+            _ => LogDensity::Compact,
+        }
+    }
+}
+
+/// Process-wide transcript log density (default: [`LogDensity::Compact`]).
+///
+/// Mirrors `settings.ui.density` so layout/measurement and the view layer share one
+/// value without threading a prop through every card renderer. The host installs it during
+/// TUI bootstrap ([`set_log_density`]); tests toggle it directly.
+static LOG_DENSITY: AtomicU8 = AtomicU8::new(LogDensity::Compact as u8);
+
+/// Install the transcript's log density for this process.
+pub fn set_log_density(density: LogDensity) {
+    LOG_DENSITY.store(density as u8, Ordering::Relaxed);
+}
+
+/// Read the process-wide transcript log density.
+pub fn log_density() -> LogDensity {
+    match LOG_DENSITY.load(Ordering::Relaxed) {
+        1 => LogDensity::Loose,
+        _ => LogDensity::Compact,
+    }
+}
+
+/// Inter-item gap after a compact (collapsed / header-only) tool-log row when
+/// log density is [`LogDensity::Compact`] — a single packed row with no blank line.
+const COMPACT_TOOL_GAP: u16 = 0;
 
 /// Structured payload for tool invocation cards in the transcript.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -315,6 +363,24 @@ impl TranscriptMessage {
         self.style == TranscriptStyle::Thinking && self.duration_secs.is_none()
     }
 
+    /// True while this assistant reply is a live stream (deltas keep arriving and the
+    /// run-completed event has not landed yet).
+    pub fn is_assistant_streaming(&self) -> bool {
+        self.style == TranscriptStyle::Assistant
+            && self.duration_secs.is_none()
+            && !self.markdown.as_ref().is_some_and(|md| md.stream_complete)
+    }
+
+    /// Display text for the empty-live-reply placeholder: a soft ellipsis row painted so a
+    /// just-opened streaming response (which may start with blank / tag-only payload) shows a
+    /// visible card instead of a phantom blank box. `None` when the message renders real content.
+    pub(crate) fn assistant_placeholder(&self) -> Option<&'static str> {
+        if self.style != TranscriptStyle::Assistant || !self.content.trim().is_empty() {
+            return None;
+        }
+        self.is_assistant_streaming().then_some("…")
+    }
+
     /// Finished tool call with args/output folded into a single status header.
     ///
     /// `wait_agent` is always header-first (status-style); body only when expanded + has output.
@@ -564,6 +630,8 @@ impl TranscriptMessage {
 /// Gap between two process-log neighbors.
 ///
 /// - Status ↔ status (startup / MCP / subagent): packed [`FLUSH_CARD_GAP`] so the block is dense
+/// - Collapsed tool ↔ collapsed tool in [`LogDensity::Compact`]: packed [`COMPACT_TOOL_GAP`]
+///   (collapsed tool items group together; expanding either neighbor restores [`LOG_ROW_GAP`])
 /// - Other process rows: fixed [`LOG_ROW_GAP`] (collapse state does not change spacing)
 fn process_log_neighbor_gap(prev: &TranscriptMessage, next: &TranscriptMessage) -> Option<u16> {
     let prev_is_process = prev.is_compact_process_row() || prev.is_expanded_process_row();
@@ -574,6 +642,22 @@ fn process_log_neighbor_gap(prev: &TranscriptMessage, next: &TranscriptMessage) 
     // Startup / MCP / subagent status block: no blank row between consecutive status lines.
     if prev.style.is_status_line() && next.style.is_status_line() {
         return Some(FLUSH_CARD_GAP);
+    }
+    // Compact density: a finished+collapsed tool packs flush against the following finished
+    // tool when that one is also collapsed, so collapsed tool items group like a log.
+    // Expanding (accessing) either neighbor restores LOG_ROW_GAP. Ask-user and user-shell
+    // tools stay expanded by design and are never squeezed. Thinking / assistant rows always
+    // keep LOG_ROW_GAP (line break) above and below them.
+    if log_density() == LogDensity::Compact
+        && prev.is_tool_style()
+        && prev.is_tool_collapsed()
+        && !prev.user_shell
+        && !prev.is_ask_user_tool()
+        && next.is_tool_style()
+        && next.is_tool_collapsed()
+        && !next.user_shell
+    {
+        return Some(COMPACT_TOOL_GAP);
     }
     // Special case: ask-user tool → assistant reply keeps extra breathing room when either shows body.
     if prev.is_ask_user_tool()
@@ -957,6 +1041,35 @@ mod tests {
     }
 
     #[test]
+    fn live_empty_helper_reply_gets_streaming_placeholder() {
+        // A streaming reply whose payload has only been blank/tag-only so far must still
+        // be measurable and visible (ellipsis placeholder) — never a phantom zero-row box.
+        let mut live = TranscriptMessage::assistant_markdown("\n\n");
+        assert!(live.is_assistant_streaming(), "empty streaming reply is still live");
+        assert_eq!(live.assistant_placeholder(), Some("…"));
+        assert!(live.assistant_placeholder().is_some());
+
+        // Non-empty text → real content, no placeholder.
+        live.content = "  Some actual reply text  ".to_string();
+        assert!(!live.content.trim().is_empty());
+        assert!(live.assistant_placeholder().is_none());
+
+        // Settled (duration recorded) empty reply → nothing to show.
+        let mut settled = TranscriptMessage::assistant_markdown(String::new());
+        settled.duration_secs = Some(1.0);
+        assert!(!settled.is_assistant_streaming());
+        assert!(settled.assistant_placeholder().is_none());
+
+        // Settled via stream_complete → nothing to show (rehydrated messages).
+        let mut complete = TranscriptMessage::assistant_markdown(String::new());
+        if let Some(md) = complete.markdown.as_mut() {
+            std::sync::Arc::make_mut(md).mark_stream_complete();
+        }
+        assert!(!complete.is_assistant_streaming());
+        assert!(complete.assistant_placeholder().is_none());
+    }
+
+    #[test]
     fn flush_text_inserts_gap_before_tool_cards() {
         assert_eq!(
             TranscriptStyle::Assistant.entry_gap_after(Some(TranscriptStyle::ToolRunning)),
@@ -1225,15 +1338,69 @@ mod tests {
         assert_eq!(a.transcript_padding_top(), FLUSH_CARD_PAD);
         assert_eq!(a.transcript_padding_bottom(), FLUSH_CARD_PAD);
 
-        // Both collapsed, expand only second, both expanded — same margin (no density shrink).
-        assert_eq!(a.transcript_margin_bottom(Some(&b)), LOG_ROW_GAP);
+        // Compact density (default on): two collapsed tool rows group flush together.
+        set_log_density(LogDensity::Compact);
+        assert_eq!(a.transcript_margin_bottom(Some(&b)), COMPACT_TOOL_GAP);
+        // Expanding the following tool restores the normal breathing room.
         b.detail_expanded = true;
         assert!(b.is_expanded_process_row());
         assert_eq!(b.transcript_padding_top(), COLORED_CARD_PAD);
         assert_eq!(a.transcript_margin_bottom(Some(&b)), LOG_ROW_GAP);
+        // Expanding the previous tool also restores it.
         a.detail_expanded = true;
         assert_eq!(a.transcript_padding_bottom(), COLORED_CARD_PAD);
         assert_eq!(a.transcript_margin_bottom(Some(&b)), LOG_ROW_GAP);
+
+        // Loose density: collapsed rows keep the classic LOG_ROW_GAP rhythm.
+        set_log_density(LogDensity::Loose);
+        a.detail_expanded = false;
+        b.detail_expanded = false;
+        assert_eq!(a.transcript_margin_bottom(Some(&b)), LOG_ROW_GAP);
+        set_log_density(LogDensity::Compact);
+    }
+
+    #[test]
+    fn compact_density_packs_collapsed_tools_only() {
+        let make_tool = |name: &str, style: TranscriptStyle, expanded: bool| {
+            let mut tool = TranscriptMessage::tool_call(name, r#"{"path":"a.rs"}"#, style);
+            tool.detail_expanded = expanded;
+            tool
+        };
+        let collapsed_success = make_tool("read_file", TranscriptStyle::ToolSuccess, false);
+        let collapsed_failed = make_tool("edit_file", TranscriptStyle::ToolFailed, false);
+        let expanded = make_tool("read_file", TranscriptStyle::ToolSuccess, true);
+        let running = make_tool("read_file", TranscriptStyle::ToolRunning, true);
+        let thinking_done = {
+            let mut thinking = TranscriptMessage::text("reasoning", TranscriptStyle::Thinking);
+            thinking.duration_secs = Some(1.0);
+            thinking.detail_expanded = false;
+            thinking
+        };
+        let assistant = {
+            let mut reply = TranscriptMessage::text("Answer from…", TranscriptStyle::Assistant);
+            reply.duration_secs = Some(1.0);
+            reply
+        };
+
+        set_log_density(LogDensity::Compact);
+        // Collapsed tool → collapsed tool packs flush (grouped log).
+        assert_eq!(
+            collapsed_success.transcript_margin_bottom(Some(&collapsed_failed)),
+            COMPACT_TOOL_GAP
+        );
+        // Transitional: collapsed → running keeps the regular gap (running is live work).
+        assert_eq!(collapsed_success.transcript_margin_bottom(Some(&running)), LOG_ROW_GAP);
+        // Collapsed → expanded (accessed) tool restores breathing room.
+        assert_eq!(collapsed_success.transcript_margin_bottom(Some(&expanded)), LOG_ROW_GAP);
+        // Tools always keep a line break above/below Thinking and assistant responses.
+        assert_eq!(collapsed_success.transcript_margin_bottom(Some(&thinking_done)), LOG_ROW_GAP);
+        assert_eq!(collapsed_success.transcript_margin_bottom(Some(&assistant)), LOG_ROW_GAP);
+
+        // Loose density → everything keeps the classic rhythm.
+        set_log_density(LogDensity::Loose);
+        assert_eq!(collapsed_success.transcript_margin_bottom(Some(&collapsed_failed)), LOG_ROW_GAP);
+        assert_eq!(collapsed_success.transcript_margin_bottom(Some(&expanded)), LOG_ROW_GAP);
+        set_log_density(LogDensity::Compact);
     }
 
     #[test]

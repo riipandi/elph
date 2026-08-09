@@ -394,10 +394,10 @@
             "supportsReasoningEffort": false,
             "supportsStore": false
         },
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.125,
-            "cacheWrite": 0.0,
+            "cacheWrite": 1.25,
             "input": 1.25,
             "output": 10.0
         },
@@ -408,9 +408,9 @@
             "User-Agent": "GitHubCopilotChat/0.35.0"
         },
         "id": "gemini-2.5-pro",
-        "input": ["text", "image", "audio", "video", "pdf"],
+        "input": ["text", "image"],
         "maxTokens": 65536,
-        "name": "Gemini 2.5 Pro",
+        "name": "gemini-2.5-pro",
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -431,12 +431,12 @@
             "supportsReasoningEffort": false,
             "supportsStore": false
         },
-        "contextWindow": 256000,
+        "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.07,
+            "cacheRead": 0.05,
             "cacheWrite": 0.0,
-            "input": 0.7,
-            "output": 3.75
+            "input": 0.5,
+            "output": 3.0
         },
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
@@ -445,9 +445,9 @@
             "User-Agent": "GitHubCopilotChat/0.35.0"
         },
         "id": "gemini-3-flash-preview",
-        "input": ["text", "image", "video", "audio", "pdf"],
+        "input": ["text", "image"],
         "maxTokens": 65536,
-        "name": "Gemini 3 Flash Preview",
+        "name": "gemini-3-flash-preview",
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {

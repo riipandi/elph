@@ -288,7 +288,7 @@
     "zai-org/GLM-5.2-Fast": {
         "api": "openai-completions",
         "baseUrl": "https://inference.baseten.co/v1",
-        "contextWindow": 524288,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.21,
             "cacheWrite": 0.0,

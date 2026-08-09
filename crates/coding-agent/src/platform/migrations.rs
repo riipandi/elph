@@ -6,13 +6,10 @@ use elph_agent::Migration;
 /// 101–199**, floppy codegraph 500–599. All bands share one `app_migrations`
 /// table, so platform versions must not collide with other bands.
 ///
-/// The legacy user-level `metadata.db` (versions 1–8) is orphaned: sessions are
-/// project-scoped now, and the platform schema below is renumbered and reshaped
-/// to fully idempotent DDL (`CREATE ... IF NOT EXISTS`, no `ALTER TABLE`). That
-/// makes application order irrelevant: the session-tree migration (v100) may
+/// The platform schema is fully idempotent DDL (`CREATE ... IF NOT EXISTS`, no `ALTER TABLE`).
+/// That makes application order irrelevant: the session-tree migration (v100) may
 /// create `sessions`/`session_entries`/`session_sequences` first and these
-/// migrations become no-ops, or vice versa. The dual-model `messages` chat log
-/// (old v2, dropped by old v8) is not recreated.
+/// migrations become no-ops, or vice versa.
 pub fn metadata_migrations() -> &'static [Migration] {
     &[
         Migration {
@@ -135,6 +132,42 @@ pub fn metadata_migrations() -> &'static [Migration] {
                     next_seq INTEGER NOT NULL
                 ) STRICT;",
         },
+        // Transcript cache tables
+        Migration {
+            version: 107,
+            name: "transcript_cache_schema",
+            up: "CREATE TABLE IF NOT EXISTS transcript_messages (
+                    session_id  TEXT NOT NULL,
+                    seq         INTEGER NOT NULL,
+                    style       TEXT NOT NULL,
+                    content     TEXT NOT NULL,
+                    tool_name   TEXT,
+                    tool_args   TEXT,
+                    tool_output TEXT,
+                    tool_old    TEXT,
+                    tool_new    TEXT,
+                    tool_path   TEXT,
+                    duration    REAL,
+                    expanded    INTEGER NOT NULL DEFAULT 1,
+                    pinned      INTEGER NOT NULL DEFAULT 0,
+                    status      TEXT,
+                    indent      INTEGER NOT NULL DEFAULT 0,
+                    tree        TEXT,
+                    model       TEXT,
+                    agent       TEXT,
+                    user_shell  INTEGER NOT NULL DEFAULT 0,
+                    slash_resp  INTEGER NOT NULL DEFAULT 0,
+                    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+                    UNIQUE(session_id, seq)
+                );
+                CREATE INDEX IF NOT EXISTS idx_transcript_msg_session_seq
+                    ON transcript_messages(session_id, seq);
+                CREATE TABLE IF NOT EXISTS transcript_snapshot (
+                    session_id  TEXT PRIMARY KEY,
+                    data        TEXT NOT NULL,
+                    saved_at    TEXT NOT NULL DEFAULT (datetime('now'))
+                );",
+        },
     ]
 }
 
@@ -144,10 +177,10 @@ mod tests {
     use elph_agent::{GoalStore, TursoSessionRepo, TursoSessionRepoCreateOptions, ensure_database};
 
     #[test]
-    fn platform_migrations_end_at_session_tree() {
+    fn platform_migrations_end_at_transcript_cache() {
         let last = metadata_migrations().last().expect("migrations");
-        assert_eq!(last.version, 106);
-        assert_eq!(last.name, "session_tree_pi_schema");
+        assert_eq!(last.version, 107);
+        assert_eq!(last.name, "transcript_cache_schema");
         // Goals migration still present and unchanged in sequence.
         let goals = metadata_migrations().iter().find(|m| m.version == 103).expect("goals");
         assert_eq!(goals.name, "create_goals_table");

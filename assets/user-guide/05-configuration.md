@@ -28,6 +28,15 @@ Home settings are merged with project overrides (project wins on conflict).
 `models.defaultModel` and `models.defaultThinkingLevel` seed **new** sessions only;
 live model, thinking level, and agent mode are per-session (not shared settings).
 
+### Transcript log density
+
+`ui.density` controls how tool-call items are spaced in the transcript:
+
+- **`compact`** (default): collapsed tool call items pack together into a grouped log.
+  Expanded (accessed) tool call items, `Thinking`, and AI chat response/assistant items always
+  keep a line break above and below.
+- **`loose`**: every process-log row keeps a blank line above and below.
+
 ## Environment
 
 | Variable                       | Effect                      |

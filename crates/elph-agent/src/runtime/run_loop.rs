@@ -110,6 +110,9 @@ pub(super) async fn run_loop(
                     if let Some(level) = update.thinking_level {
                         config.stream_options.reasoning = level.to_stream_reasoning();
                     }
+                    if let Some(tools) = update.execution_tools {
+                        config.execution_tools = tools;
+                    }
                 }
             }
 

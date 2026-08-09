@@ -11,6 +11,8 @@ description: >-
     reports follow the user's current language. Use for port gap audit, upstream
     drift, parity check, Elph extension diff, implementation delta, changelog
     walk, selisih implementasi, or /pi-port-gap.
+metadata:
+    scope: project
 ---
 
 # Pi Port Gap Analysis
@@ -28,7 +30,7 @@ Split by destination:
 Free-form flags appended after `/pi-port-gap`. Parse before Phase 1; apply
 overrides; state any skipped/unrecognized flag in the Summary.
 
-- `path=<dir>` — override upstream pi clone path (default: `/Users/ariss/Developer/github.com/earendil-works/pi`)
+- `path=<dir>` — override upstream pi clone path (default: `~/Developer/github.com/earendil-works/pi`)
 - `branch=<name>` — upstream ref to check out (default: `main` — always live HEAD, not a tag)
 - `since=<commit|date>` — limit walk to changes after this point (default: last audit commit from `docs/porting/*.md`)
 - `scope=ai|agent|coding-agent|all` — restrict crate scope (default: `ai,agent`)
@@ -123,7 +125,7 @@ Pick shape by content (smart, not rigid):
 ## Source of truth (read in this order)
 
 1. Local baseline: [`docs/porting/README.md`](../../../docs/porting/README.md), [`pi-ai.md`](../../../docs/porting/pi-ai.md), [`pi-agent.md`](../../../docs/porting/pi-agent.md)
-2. Upstream clone (default path, or `path=` override): `/Users/ariss/Developer/github.com/earendil-works/pi`
+2. Upstream clone (default path, or `path=` override): `~/.local/share/elph/tmp/pi`
     - Track `main` (or `branch=` override) as live HEAD — **CHANGELOG lags reality**, never treat the last tag/CHANGELOG entry as the full picture.
     - `packages/ai/CHANGELOG.md`, `packages/agent/CHANGELOG.md` for the documented trail
     - `packages/ai/src/`, `packages/agent/src/` for the actual current implementation (source is the ground truth, CHANGELOG is the index)

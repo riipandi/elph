@@ -1,7 +1,7 @@
 //! Coding-agent system prompt assembly.
 //!
 //! Layering (generic runtime → product domain):
-//! 1. [`elph_agent::render_base_template`] — persona, session env, [`format_skills_for_system_prompt`] (`<available_skills>`)
+//! 1. [`elph_agent::render_base_template`] — persona, session env, [`format_skills_for_context`] (`<available_skills>`)
 //! 2. [`super::template::coding_agent_engine`] — Grok-style `coding_base.md` (MiniJinja) with tool names
 //! 3. `mode_section` — per-mode appendix (`<mode_context>`)
 //! 4. [`elph_agent::format_project_context`] — Pi-style `<project_context>` for AGENTS.md
@@ -10,7 +10,7 @@ use std::path::Path;
 
 use crate::types::AgentMode;
 use elph_agent::{AgentHarnessResources, PromptAssemblyMode, SystemPromptBuilder, SystemPromptTemplateContext};
-use elph_agent::{format_skills_for_system_prompt, now_iso_timestamp};
+use elph_agent::{format_skills_for_context, now_iso_timestamp};
 
 use super::context::{ElphCodingPromptContext, has_codegraph_tools};
 use super::modes::{build_mode_section, mode_footer_slug};
@@ -41,13 +41,13 @@ pub fn build_coding_system_prompt(
     let skills_section = if resources.skills.is_empty() {
         String::new()
     } else {
-        format_skills_for_system_prompt(&resources.skills)
+        format_skills_for_context(&resources.skills, cwd)
     };
 
     let preferred_chat_language: String = preferred_chat_language.into();
 
     let base_context = SystemPromptTemplateContext {
-        persona: "You are Elph, an expert, intelligent, and interactive AI agent. Complete the user's request end-to-end using the available context and tools."
+        persona: "You are an expert, intelligent, and interactive AI agent. Complete the user's request end-to-end using the available context and tools."
             .to_string(),
         working_directory: Some(cwd.display().to_string()),
         current_date: Some(date),
@@ -97,7 +97,7 @@ mod tests {
         )
         .expect("prompt");
 
-        assert!(prompt.contains("You are Elph, an expert, intelligent, and interactive AI agent"));
+        assert!(prompt.contains("You are an expert, intelligent, and interactive AI agent"));
         assert!(prompt.contains("Working directory: /tmp/project"));
         assert!(prompt.contains("<action_safety>"));
         assert!(prompt.contains("<tool_calling>"));
@@ -140,7 +140,13 @@ mod tests {
         let prompt = build_coding_system_prompt(
             Path::new("/tmp/project"),
             &AgentHarnessResources::default(),
-            &["read_file".into()],
+            &[
+                "read_file".into(),
+                "grep".into(),
+                // No codegraph tools — the literal string must not appear
+                // anywhere (step 3 of <execution> must inline-condition on
+                // codegraph.code_search, same as the <codegraph> block).
+            ],
             None,
             AgentMode::Build,
             "",
@@ -149,6 +155,28 @@ mod tests {
         .expect("prompt");
 
         assert!(!prompt.contains("<codegraph>"));
+        assert!(!prompt.contains("code_search"));
+        assert!(prompt.contains("Locate code with the narrowest tool (`grep` / targeted `read_file`)"));
+    }
+
+    #[test]
+    fn coding_prompt_documents_lazy_mcp_activation() {
+        let prompt = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["read_file".into(), "list_available_tools".into()],
+            None,
+            AgentMode::Build,
+            "",
+            true,
+        )
+        .expect("prompt");
+
+        assert!(prompt.contains("inactive by default"));
+        assert!(prompt.contains("name_prefix"));
+        assert!(prompt.contains("mcp_deepwiki__") || prompt.contains("mcp_<server>__"));
+        // Inactive MCP names must not appear in the authoritative active list.
+        assert!(!prompt.contains("<tool>mcp_"));
     }
 
     #[test]
@@ -369,10 +397,9 @@ mod tests {
         )
         .expect("prompt");
 
-        // Budget was raised from 7_500 to 9_000 when the <mode_context> /
-        // <memory_and_context> headers and the expanded tool-calling rules
-        // were added to the static prompt (measured ~7.9 KB at tool count 16).
-        assert!(prompt.len() < 9_000, "static prompt is {} bytes", prompt.len());
+        // Budget raised for lazy-MCP guidance in <tool_calling> (name_prefix
+        // activation path) plus earlier mode/memory/tool-routing expansions.
+        assert!(prompt.len() < 9_500, "static prompt is {} bytes", prompt.len());
     }
 
     #[test]
@@ -414,6 +441,18 @@ mod tests {
         assert!(with_subagents.contains("`send_message` only queues context without starting a turn"));
         assert!(with_subagents.contains("`wait_agent` blocks until a subagent is idle"));
         assert!(with_subagents.contains("tool results carry status only"));
-        assert!(with_subagents.contains("4 concurrent max, depth 3"));
+        // Backfill: subagent names used by the subagent guidance block must
+        // resolve to literals even when only `spawn_agent` is registered.
+        let only_spawn = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["spawn_agent".to_string()],
+            None,
+            AgentMode::Build,
+            "",
+            true,
+        )
+        .expect("prompt");
+        assert!(only_spawn.contains("`spawn_agent`"));
     }
 }

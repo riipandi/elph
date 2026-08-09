@@ -239,6 +239,10 @@ Run a shell command in the environment working directory. Output is truncated to
 
 Each `shell_exec` run (foreground and background) persists its raw output to the session terminal directory `~/.local/share/elph/sessions/<SESSION_ID>/terminals/*.txt` (`shell-<toolCallId>.txt` for foreground, `shell-<taskId>.txt` for background). The file path is returned in `details.outputPath` and is also referenced from `tool_outputs.jsonl` (the session transcript) so output survives session resume. In stateless contexts (e.g. tests) output falls back to a temp file and `outputPath` is omitted.
 
+**Abort / timeout semantics** — `shell_exec` runs each command as a new process group leader (`sh -c`). When the turn is aborted (Ctrl+C in the TUI) or the command times out, the **entire process group** is terminated — not just the direct shell — so grandchildren (`npm test`, `cargo build`, `sleep`, …) that hold the stdout/stderr pipes cannot keep the turn hanging. Termination is graceful (`SIGTERM`), escalated to `SIGKILL` after a short grace; the child is reaped with a bounded wait. A command whose output streams into a partial result returns the partial output with a `cancelled` flag (abort) or a timeout error.
+
+**Background task cancellation** — background tasks are registered in a live registry keyed by `taskId` (`bg-<n>`). They can be cancelled explicitly via `elph_agent::tools::cancel_background_task(&task_id)` (terminates the process group) and enumerated via `elph_agent::tools::list_background_tasks()`. Cancellation does not happen automatically on turn abort — the task uses its own token and keeps running independently until it finishes, times out, or is cancelled explicitly. When it exits, the footer (`[exit code: …]` or an error) is appended to its output file and it is removed from the registry.
+
 #### `create_dir`
 
 Create a new directory, including parent directories (like `mkdir -p`).
@@ -282,14 +286,21 @@ Search the web using multiple providers with automatic ranking and fallback.
 | Parameter | Type   | Required | Default | Description                          |
 | --------- | ------ | -------- | ------- | ------------------------------------ |
 | `query`   | string | yes      | —       | Search query string                  |
-| `engine`  | string | no       | `auto`  | Preferred engine (see aliases below) |
+| `engine`  | string | no       | `auto`  | Engine selector (see below)          |
 | `limit`   | number | no       | `5`     | Maximum results (max: 20)            |
 
 **Engine aliases:** `auto`, `duckduckgo` / `ddg`, `brave` / `brave-search`, `exa`, `firecrawl`, `jina` / `jina-search`, `perplexity`, `tavily`, `serpapi` / `serapi`.
 
+Unknown `engine` values are **rejected** (they do not silently become `auto`).
+
 #### Ranking and availability
 
-Auto mode picks the highest-ranked configured engine. DuckDuckGo is always tried last as a fallback. When every HTTP engine fails, `web_search` falls back to the DuckDuckGo HTML endpoint, which is fetched and parsed with the `astral-tl` selector engine (no API key, no in-process browser).
+| Mode | Behavior |
+| ---- | -------- |
+| **`auto`** (default) | Try configured/keyed engines by rank; DuckDuckGo HTML is last. On CAPTCHA/bot walls the error is recorded and the next engine is tried. |
+| **Explicit engine** | Use **only** that provider. No silent switch to Exa/etc. Failure returns an error naming the requested engine. |
+
+DuckDuckGo uses public HTML endpoints (POST → GET → Lite). Datacenter IPs are often CAPTCHA-walled; bot walls surface as explicit errors (not “no results”). Prefer API engines (`brave`, `tavily`, `exa`, `serpapi`, `jina`) when keys are available.
 
 | Rank | Engine     | Env var                | Key required |
 | ---- | ---------- | ---------------------- | ------------ |
@@ -415,9 +426,18 @@ List active subagents in this session. Takes no parameters.
 
 #### `list_available_tools`
 
-Lists all available tools that the agent can use, including their descriptions and usage instructions. Takes no parameters. Returns a JSON array of tool descriptors with `name`, `description`, `parameters`, and `required` fields.
+Lists tools the agent can **discover**, including full parameter schemas. Returns a compact XML catalog — token-cheaper than JSON (same family as `<available_skills>`). Parameter schemas flatten into `<property>` elements with `type` / `required` / `enum`; object-shaped properties recurse. Serialized with `quick-xml`.
 
-Automatically appended by `BuiltinToolsBuilder::build()`.
+MCP tools (`mcp_<server>__…`) are **registered** on the harness but **default-inactive** on the model-visible wire (active set) until activated. Pass optional `name_prefix` (e.g. `mcp_deepwiki__`) to:
+
+1. Return only matching tool schemas in the XML catalog.
+2. Set `added_tool_names` so the harness **lazily activates** those tools for subsequent turns.
+
+Execution still resolves names against the full registry (`execution_tools`), so a tool that was advertised in the catalog can be invoked even if activation has not yet landed in the active set; the first MCP call also auto-activates that name. Omit `name_prefix` to browse the full catalog without activating. Automatically appended by `BuiltinToolsBuilder::build()`.
+
+```xml
+<available_tools><tool><name>read_file</name><description>Read a text or image file...</description><parameters><property name="path" type="string" required="true">File path (relative or absolute)</property><property name="limit" type="number">Maximum lines to return</property><property name="ranges" type="array of object"><description>Multiple specific file ranges to read.</description><property name="path" type="string" required="true"/><property name="offset" type="number"/></property></parameters></tool></available_tools>
+```
 
 ### Other Tools
 
@@ -432,6 +452,10 @@ Loads instructions from an available Skill so the agent can follow project-speci
 ## Cancellation
 
 Tool execution accepts an optional `CancellationToken`. `grep` and `find_path` bridge cancellation into `fff-search` via an abort signal polled during the blocking search. `list_dir` bridges cancellation into `walkdir` the same way.
+
+`shell_exec` cancels by terminating its whole process group (`SIGTERM` → `SIGKILL` escalation), so multi-process commands cannot stall an abort. Exactly one `CancellationToken` is honored per run; background tasks use their own token and are never cancelled by the turn.
+
+Compaction summarization also honors the turn's abort token when compaction runs during a busy turn — Ctrl+C stops a hung summarization call as well, instead of freezing the UI while the provider stream hangs.
 
 ## Custom tools
 

@@ -29,11 +29,11 @@ impl JsonlSessionStorage {
     pub async fn open(file_path: impl AsRef<Path>) -> Result<Self, SessionError> {
         let file_path = file_path.as_ref().to_path_buf();
         let entries = load_entries(&file_path).await?;
-        let leaf_id = entries
+        let fallback_leaf = entries
             .iter()
             .rev()
             .find_map(crate::session::storage_utils::leaf_id_after_entry);
-        let index = build_index(entries, leaf_id)?;
+        let index = build_index(entries, fallback_leaf)?;
         let metadata = SessionMetadata {
             id: generate_session_id(),
             created_at: crate::messages::now_iso_timestamp(),
@@ -69,6 +69,12 @@ impl SessionStorage for JsonlSessionStorage {
     }
 
     async fn get_leaf_id(&self) -> Result<Option<String>, SessionError> {
+        if let Some(leaf_id) = &self.index.leaf_id
+            && !self.index.by_id.contains_key(leaf_id)
+        {
+            // Phantom leaf (crash between leaf-write and child write, rows pruned).
+            return Ok(None);
+        }
         Ok(self.index.leaf_id.clone())
     }
 

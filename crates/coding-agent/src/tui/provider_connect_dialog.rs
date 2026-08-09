@@ -516,39 +516,39 @@ pub fn count_filtered(providers: &[ProviderOption], filter: &str) -> usize {
 
 /// How a list keystroke seeds the filter field.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(dead_code)]
 pub enum ProviderFilterSeed {
+    /// `/` moves focus to the filter without inserting text.
     FocusOnly,
+    /// Printable character moves focus and appends to the filter query.
     Append(char),
 }
 
-/// Printable characters that seed the filter (like model selector).
-#[allow(dead_code)]
+/// Printable characters that seed the filter while the list is focused.
+///
+/// The dialog has no single-letter shortcuts, so every printable character is
+/// filter text — nothing is reserved for vim-style navigation.
 pub fn provider_filter_seed(modifiers: KeyModifiers, code: KeyCode) -> Option<ProviderFilterSeed> {
-    if !modifiers.is_empty() {
+    // Allow Shift (caps); reject Ctrl/Alt/Meta.
+    if modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::META) {
         return None;
     }
     match code {
         KeyCode::Char('/') => Some(ProviderFilterSeed::FocusOnly),
-        KeyCode::Char(' ') => Some(ProviderFilterSeed::Append(' ')),
-        KeyCode::Char(c)
-            if (c.is_ascii_alphabetic() || c.is_ascii_digit())
-                && !matches!(c, 'h' | 'j' | 'k' | 'l' | 'H' | 'J' | 'K' | 'L') =>
-        {
-            Some(ProviderFilterSeed::Append(c))
-        }
+        KeyCode::Char(c) if !c.is_control() => Some(ProviderFilterSeed::Append(c)),
         _ => None,
     }
 }
 
-/// List navigation delta for `↑/↓` or `k/j` (works for both auth method and provider lists).
+/// List navigation delta for `↑/↓` (auth method, provider, OAuth select and disconnect lists).
+///
+/// Arrow keys only — letters always belong to the filter field.
 pub fn provider_list_nav_delta(modifiers: KeyModifiers, code: KeyCode) -> Option<isize> {
     if !modifiers.is_empty() {
         return None;
     }
     match code {
-        KeyCode::Up | KeyCode::Char('k') => Some(-1),
-        KeyCode::Down | KeyCode::Char('j') => Some(1),
+        KeyCode::Up => Some(-1),
+        KeyCode::Down => Some(1),
         _ => None,
     }
 }
@@ -574,7 +574,8 @@ pub fn provider_confirm_on_enter(focus: ProviderConnectFocus) -> bool {
 }
 
 /// Apply a filter seed keystroke: focus search, optionally append a character.
-#[allow(dead_code)]
+///
+/// Appending resets the highlight to the first row, since the filtered list changes.
 pub fn apply_provider_filter_seed(
     seed: ProviderFilterSeed,
     filter: &mut State<String>,
@@ -587,7 +588,28 @@ pub fn apply_provider_filter_seed(
         next.push(ch);
         filter.set(next.clone());
         pending.filter = next;
+        pending.selected_provider = 0;
     }
+}
+
+/// Drop the last character of the filter; `false` when it was already empty.
+pub fn pop_provider_filter_char(filter: &mut String) -> bool {
+    let Some(ch) = filter.chars().last() else {
+        return false;
+    };
+    filter.truncate(filter.len() - ch.len_utf8());
+    true
+}
+
+/// Backspace while browsing the list trims the filter without refocusing the search field.
+pub fn provider_list_backspace(filter: &mut State<String>, pending: &mut PendingProviderConnectDialog) {
+    let mut next = filter.read().clone();
+    if !pop_provider_filter_char(&mut next) {
+        return;
+    }
+    filter.set(next.clone());
+    pending.filter = next;
+    pending.selected_provider = 0;
 }
 
 // ── Viewport height (mirrors model_selector_list_viewport_height) ────
@@ -607,11 +629,11 @@ pub fn provider_select_list_viewport_height(screen_width: u16, screen_height: u1
 // ── Rendering ────────────────────────────────────────────────────────
 
 fn auth_method_footer() -> String {
-    "↑↓ move · Enter select · Esc cancel".to_string()
+    "↑/↓ move · Enter select · Esc cancel".to_string()
 }
 
 fn provider_select_footer() -> String {
-    "↑↓ navigate · / filter · Enter confirm · Esc cancel".to_string()
+    "↑/↓ navigate · Tab focus · / filter · Enter confirm · Esc cancel".to_string()
 }
 
 fn oauth_device_code_footer() -> String {
@@ -662,6 +684,8 @@ fn render_select_auth_method_step(
             footer_hint: Some(auth_method_footer()),
         ) {
             View(width: w, flex_direction: FlexDirection::Column, gap: 0, flex_shrink: 0f32) {
+                // `has_focus: false` — the shell key handler owns navigation so the
+                // list never applies its own (vim-style) key bindings.
                 crate::tui::model_option_list::ModelOptionList(
                     width: w,
                     height: 0u16,
@@ -669,7 +693,7 @@ fn render_select_auth_method_step(
                     show_provider_hint: false,
                     custom_hints: desc_hints,
                     selected_index: Some(selected),
-                    has_focus: has_focus,
+                    has_focus: false,
                     theme: Some(theme),
                 )
             }
@@ -733,14 +757,9 @@ pub fn render_provider_connect_dialog(
             oauth_is_prompt,
             oauth_prompt_message,
         ),
-        ProviderConnectStep::OAuthSelect => render_oauth_select_step(
-            screen_width,
-            screen_height,
-            has_focus,
-            oauth_select_labels.clone(),
-            selected,
-            input_focus,
-        ),
+        ProviderConnectStep::OAuthSelect => {
+            render_oauth_select_step(screen_width, screen_height, has_focus, oauth_select_labels.clone(), selected)
+        }
         ProviderConnectStep::EnterApiKey => {
             render_api_key_step(screen_width, screen_height, has_focus, api_key_input, provider_name)
         }
@@ -785,7 +804,6 @@ fn render_select_provider_step(
     };
 
     let search_focused = has_focus && input_focus == ProviderConnectFocus::Search;
-    let list_focused = has_focus && input_focus == ProviderConnectFocus::List;
     let list_height = provider_select_list_viewport_height(screen_width, screen_height);
 
     let w = body_width;
@@ -849,6 +867,8 @@ fn render_select_provider_step(
                     )
                 }
                 // ── Provider list ──
+                // `has_focus: false` — the shell key handler owns navigation so the
+                // list never applies its own (vim-style) key bindings.
                 View(width: w, padding_top: OPTIONS_LIST_TOP_GAP, flex_shrink: 0f32) {
                     crate::tui::model_option_list::ModelOptionList(
                         width: w,
@@ -857,7 +877,7 @@ fn render_select_provider_step(
                         show_provider_hint: false,
                         custom_hints: config_hints,
                         selected_index: Some(selected),
-                        has_focus: list_focused,
+                        has_focus: false,
                         theme: Some(thm),
                     )
                 }
@@ -874,12 +894,9 @@ fn render_oauth_select_step(
     has_focus: bool,
     labels: Vec<String>,
     selected: State<usize>,
-    input_focus: ProviderConnectFocus,
 ) -> AnyElement<'static> {
     let theme = UiTheme::default();
     let body_width = inline_body_width(screen_width);
-
-    let list_focused = has_focus && input_focus == ProviderConnectFocus::OAuthSelectList;
 
     // Map options to ModelRow for consistent rendering
     let model_rows: Vec<crate::tui::model_selector::ModelRow> = labels
@@ -905,7 +922,7 @@ fn render_oauth_select_step(
             screen_width: screen_width,
             title: "Select login method".to_string(),
             has_focus: has_focus,
-            footer_hint: Some("↑↓ navigate · Enter confirm · Esc cancel".to_string()),
+            footer_hint: Some("↑/↓ navigate · Enter confirm · Esc cancel".to_string()),
         ) {
             View(width: w, flex_direction: FlexDirection::Column, gap: 0, flex_shrink: 0f32) {
                 View(width: w, flex_shrink: 0f32) {
@@ -915,6 +932,8 @@ fn render_oauth_select_step(
                         wrap: TextWrap::NoWrap,
                     )
                 }
+                // `has_focus: false` — the shell key handler owns navigation so the
+                // list never applies its own (vim-style) key bindings.
                 View(width: w, padding_top: OPTIONS_LIST_TOP_GAP, flex_shrink: 0f32) {
                     crate::tui::model_option_list::ModelOptionList(
                         width: w,
@@ -923,7 +942,7 @@ fn render_oauth_select_step(
                         show_provider_hint: false,
                         custom_hints: vec![String::new(); labels.len()],
                         selected_index: Some(selected),
-                        has_focus: list_focused,
+                        has_focus: false,
                         theme: Some(thm),
                     )
                 }
@@ -1151,6 +1170,51 @@ mod tests {
             get_provider_config_status_at(&auth_path, "opencode"),
             ProviderConfigStatus::Unconfigured
         );
+    }
+
+    #[test]
+    fn list_nav_delta_is_arrow_keys_only() {
+        assert_eq!(provider_list_nav_delta(KeyModifiers::empty(), KeyCode::Up), Some(-1));
+        assert_eq!(provider_list_nav_delta(KeyModifiers::empty(), KeyCode::Down), Some(1));
+        // Vim-style navigation is filter text, never navigation.
+        assert_eq!(provider_list_nav_delta(KeyModifiers::empty(), KeyCode::Char('k')), None);
+        assert_eq!(provider_list_nav_delta(KeyModifiers::empty(), KeyCode::Char('j')), None);
+        assert_eq!(provider_list_nav_delta(KeyModifiers::empty(), KeyCode::Char('h')), None);
+        assert_eq!(provider_list_nav_delta(KeyModifiers::empty(), KeyCode::Char('l')), None);
+        assert_eq!(provider_list_nav_delta(KeyModifiers::CONTROL, KeyCode::Up), None);
+    }
+
+    #[test]
+    fn filter_seed_accepts_every_printable_char() {
+        assert_eq!(
+            provider_filter_seed(KeyModifiers::empty(), KeyCode::Char('/')),
+            Some(ProviderFilterSeed::FocusOnly)
+        );
+        for ch in ['j', 'k', 'h', 'l', 'z', '4', ' ', '-'] {
+            assert_eq!(
+                provider_filter_seed(KeyModifiers::empty(), KeyCode::Char(ch)),
+                Some(ProviderFilterSeed::Append(ch)),
+                "char {ch:?} must seed the filter"
+            );
+        }
+        // Shift (caps) still types; Ctrl/Alt/Meta are shortcuts.
+        assert_eq!(
+            provider_filter_seed(KeyModifiers::SHIFT, KeyCode::Char('Z')),
+            Some(ProviderFilterSeed::Append('Z'))
+        );
+        assert_eq!(provider_filter_seed(KeyModifiers::CONTROL, KeyCode::Char('c')), None);
+        assert_eq!(provider_filter_seed(KeyModifiers::empty(), KeyCode::Up), None);
+    }
+
+    #[test]
+    fn pop_provider_filter_char_removes_last_scalar() {
+        let mut filter = "opén".to_string();
+        assert!(pop_provider_filter_char(&mut filter));
+        assert_eq!(filter, "opé");
+        assert!(pop_provider_filter_char(&mut filter));
+        assert_eq!(filter, "op");
+        let mut empty = String::new();
+        assert!(!pop_provider_filter_char(&mut empty));
     }
 
     #[test]

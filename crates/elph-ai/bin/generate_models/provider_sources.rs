@@ -373,6 +373,15 @@ const PROVIDERS: &[ProviderSource] = &[
         live_pricing_env: None,
     },
     ProviderSource {
+        id: "wafer",
+        models_dev_keys: &["wafer.ai", "wafer"],
+        default_api: "openai-completions",
+        default_base_url: "https://pass.wafer.ai/v1",
+        gateway_preserve_ids: true,
+        live_pricing_base: Some("https://pass.wafer.ai/v1"),
+        live_pricing_env: Some("WAFER_API_KEY"),
+    },
+    ProviderSource {
         id: "xai",
         models_dev_keys: &["xai", "x-ai"],
         default_api: "openai-completions",

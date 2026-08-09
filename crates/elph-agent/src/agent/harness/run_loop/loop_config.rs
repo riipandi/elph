@@ -49,6 +49,8 @@ where
         let snapshot = turn_state.lock().expect("turn state lock");
         let thinking_level = snapshot.thinking_level;
         let model = snapshot.model.clone();
+        // Full registry for execution (includes default-inactive MCP tools).
+        let execution_tools = snapshot._tools.clone();
         drop(snapshot);
 
         let get_steering: GetQueuedMessagesFn = {
@@ -79,14 +81,24 @@ where
             let turn_state = prepare_turn_state.clone();
             Box::pin(async move {
                 let harness = AgentHarness { shared };
-                harness.flush_pending_session_writes().await.ok()?;
-                let next = harness.create_turn_state().await.ok()?;
+                if let Err(err) = harness.flush_pending_session_writes().await {
+                    log::warn!("prepare_next_turn: flush pending writes failed: {err}");
+                }
+                let next = match harness.create_turn_state().await {
+                    Ok(state) => state,
+                    Err(err) => {
+                        log::warn!("prepare_next_turn: create_turn_state failed: {err}");
+                        return None;
+                    }
+                };
                 *turn_state.lock().expect("turn state lock") = next;
                 let snapshot = turn_state.lock().expect("turn state lock");
                 Some(AgentLoopTurnUpdate {
                     context: Some(harness.create_context(&snapshot, None)),
                     model: Some(snapshot.model.clone()),
                     thinking_level: Some(snapshot.thinking_level),
+                    // Keep execution registry in sync (MCP hot-reload / attach).
+                    execution_tools: Some(snapshot._tools.clone()),
                 })
             })
         }));
@@ -113,6 +125,26 @@ where
                             terminate: None,
                         });
                     }
+                    // Auto-activate registered-but-inactive tools (lazy MCP) when the
+                    // model invokes them — keeps active_tool_names / prompt in sync
+                    // even if list_available_tools activation was skipped or raced.
+                    if crate::collaboration::is_mcp_tool(&tool_name) {
+                        let harness = AgentHarness {
+                            shared: plan_shared.clone(),
+                        };
+                        let already = harness
+                            .shared
+                            .active_tool_names
+                            .lock()
+                            .await
+                            .iter()
+                            .any(|n| n == &tool_name);
+                        if !already
+                            && let Err(err) = harness.activate_lazy_tools(std::slice::from_ref(&tool_name)).await
+                        {
+                            log::warn!("auto-activate MCP tool {tool_name} failed: {err}");
+                        }
+                    }
                     let result = hooks.emit_tool_call(&event).await.ok()??;
                     Some(BeforeToolCallResult {
                         block: result.block,
@@ -123,9 +155,13 @@ where
                 })
             }));
         let hooks = Arc::new(self.shared.hooks.clone_shallow());
+        let after_shared = shared.clone();
         let after_tool_call: Option<crate::types::AfterToolCallFn> =
             Some(Arc::new(move |ctx: crate::types::AfterToolCallContext, _| {
                 let hooks = hooks.clone();
+                let harness = AgentHarness {
+                    shared: after_shared.clone(),
+                };
                 let event = ToolResultEvent {
                     tool_call_id: ctx.tool_call.id.clone(),
                     tool_name: ctx.tool_call.name.clone(),
@@ -135,14 +171,32 @@ where
                     is_error: ctx.is_error,
                 };
                 Box::pin(async move {
-                    let result = hooks.emit_tool_result(&event).await.ok()??;
-                    Some(AfterToolCallResult {
-                        content: result.content,
-                        details: result.details,
-                        is_error: result.is_error,
-                        added_tool_names: result.added_tool_names,
-                        terminate: result.terminate,
-                    })
+                    // Lazy tool activation: a tool result may advertise newly
+                    // available tools via `added_tool_names` (e.g. an MCP server's
+                    // tools becoming reachable after the model listed them). The
+                    // harness keeps the full registry, so activating only changes
+                    // which names are exposed to the model from the next turn.
+                    //
+                    // Run activation *before* optional tool-result hooks, and
+                    // even when no hook returns a patch — otherwise sessions
+                    // without `on_tool_result` handlers would never activate MCP.
+                    let advertised: Vec<String> = ctx.result.added_tool_names.clone().unwrap_or_default();
+                    if !advertised.is_empty()
+                        && let Err(err) = harness.activate_lazy_tools(&advertised).await
+                    {
+                        log::warn!("lazy tool activation failed for {advertised:?}: {err}");
+                    }
+                    match hooks.emit_tool_result(&event).await {
+                        Ok(Some(result)) => Some(AfterToolCallResult {
+                            content: result.content,
+                            details: result.details,
+                            is_error: result.is_error,
+                            // Prefer hook override; keep tool-advertised names otherwise.
+                            added_tool_names: result.added_tool_names.or(ctx.result.added_tool_names.clone()),
+                            terminate: result.terminate,
+                        }),
+                        Ok(None) | Err(_) => None,
+                    }
                 })
             }));
 
@@ -198,6 +252,7 @@ where
                 .clone()
                 .unwrap_or_else(PromptEncodingConfig::from_env),
             tool_context,
+            execution_tools,
         }
     }
 

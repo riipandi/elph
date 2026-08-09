@@ -30,6 +30,7 @@ pub(crate) struct ShellCtx {
     pub(crate) chrome_ui_revision: State<u64>,
     pub(crate) clipboard_toast: State<Option<elph_tui::ClipboardNotice>>,
     pub(crate) colored_status_footer: bool,
+    pub(crate) density: crate::tui::transcript::LogDensity,
     pub(crate) confetti_frame: State<u32>,
     pub(crate) confetti_runtime: Ref<Option<ConfettiRuntime>>,
     pub(crate) cwd: PathBuf,

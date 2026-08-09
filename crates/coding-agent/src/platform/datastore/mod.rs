@@ -38,7 +38,7 @@ pub async fn ensure_database(paths: &Paths) -> Result<Database> {
     .await?;
     let conn = connect(&db).await?;
 
-    // Platform band (v101–106).
+    // Platform band (v101–107).
     elph_agent::datastore::run_migrations(&conn, migrations::metadata_migrations()).await?;
 
     // Floppy memory (v1–4) and codegraph (v500–501).

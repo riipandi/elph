@@ -19,6 +19,8 @@ pub mod utils;
 pub use helpers::NavigateTreeOptions;
 pub use hooks::SUBSCRIBER_EVENT_TYPE;
 pub use hooks::{AgentHarnessEvent, HookRegistry};
+pub use system_prompt::filter_skills_for_context;
+pub use system_prompt::format_skills_for_context;
 pub use system_prompt::format_skills_for_system_prompt;
 pub use types::AbortEvent;
 pub use types::AbortResult;
@@ -269,7 +271,9 @@ where
             .clone()
             .unwrap_or_else(|| Arc::new(AgentRegistry::new()));
         let limits = SubagentLimits::default();
-        let is_child_harness = options.agent_control.is_some();
+        let _is_child_harness = options.agent_control.is_some();
+        #[cfg(feature = "tools-collaboration")]
+        let is_child_harness = _is_child_harness;
         let agent_control = if let Some(control) = options.agent_control {
             control
         } else {
@@ -281,6 +285,12 @@ where
                         model: model.clone(),
                         system_prompt: String::new(),
                         base_tools: base_tools.clone(),
+                        // Non-MCP tools active by default; MCP stays lazy-inactive.
+                        active_tool_names: base_tools
+                            .iter()
+                            .map(|t| t.name().to_string())
+                            .filter(|n| !crate::collaboration::is_mcp_tool(n))
+                            .collect(),
                         stream_fn,
                         models: options.models.clone(),
                         root_session_id: root_session_id.clone(),

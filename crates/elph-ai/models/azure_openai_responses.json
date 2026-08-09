@@ -218,7 +218,7 @@
             "output": 10.0
         },
         "id": "gpt-4o-2024-11-20",
-        "input": ["text", "image"],
+        "input": ["text", "image", "audio"],
         "maxTokens": 16384,
         "name": "GPT-4o (2024-11-20)",
         "provider": "azure-openai-responses",
@@ -294,17 +294,17 @@
         "compat": {
             "supportsOpenAIGrammarTools": true
         },
-        "contextWindow": 400000,
+        "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0.125,
+            "cacheRead": 0.12500000000000003,
             "cacheWrite": 0.0,
             "input": 1.25,
             "output": 10.0
         },
         "id": "gpt-5-chat-latest",
         "input": ["text", "image"],
-        "maxTokens": 128000,
-        "name": "GPT-5 Chat (latest)",
+        "maxTokens": 16384,
+        "name": "OpenAI GPT-5 Chat Latest",
         "provider": "azure-openai-responses",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -501,13 +501,13 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 21.0,
-            "output": 168.0
+            "input": 18.9,
+            "output": 151.2
         },
         "id": "gpt-5.2-pro",
         "input": ["text", "image"],
         "maxTokens": 128000,
-        "name": "GPT-5.2 Pro",
+        "name": "gpt-5.2-pro",
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -526,7 +526,7 @@
         "compat": {
             "supportsOpenAIGrammarTools": true
         },
-        "contextWindow": 128000,
+        "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.175,
             "cacheWrite": 0.0,
@@ -535,8 +535,8 @@
         },
         "id": "gpt-5.3-chat-latest",
         "input": ["text", "image"],
-        "maxTokens": 16384,
-        "name": "GPT-5.3 Chat (latest)",
+        "maxTokens": 128000,
+        "name": "GPT-5.3 Chat Latest",
         "provider": "azure-openai-responses",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -1006,7 +1006,7 @@
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 20.0,
-            "output": 80.0
+            "output": 40.0
         },
         "id": "o3-pro",
         "input": ["text", "image"],

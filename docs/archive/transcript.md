@@ -247,7 +247,6 @@ Event Loop                          Panel
            ▼
 ┌─────────────────────┐
 │  TranscriptCache    │  ← turso SQLite
-│  push_batch()       │    project/.elph/metadata.db
 └─────────────────────┘
 ```
 
@@ -308,14 +307,10 @@ const KEEP_MESSAGES: usize = 200;                // keep after truncation
 ### Database Location
 
 ```
-<project>/.elph/metadata.db    // per-project transcript archive (TUI card overflow only)
 <project>/.elph/store.db       // floppy memory + codegraph (no transcript tables)
-~/.local/share/elph/metadata.db // global sessions/goals (separate, machine-global)
 ```
 
-The transcript cache keeps its own per-project file, `.elph/metadata.db`, separate from the
 floppy `store.db` (memory + codegraph). It is not merged into `store.db`, and it is unrelated
-to the machine-global `~/.local/share/elph/metadata.db` (sessions, goals, session tree),
 which stays a separate file.
 
 The transcript schema is created with idempotent DDL (`CREATE TABLE IF NOT EXISTS` +

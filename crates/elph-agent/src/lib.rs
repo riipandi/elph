@@ -116,8 +116,10 @@ pub use agent::harness::TruncatedBy;
 pub use agent::harness::TruncationOptions;
 pub use agent::harness::err;
 pub use agent::harness::execute_shell_with_capture;
+pub use agent::harness::filter_skills_for_context;
 pub use agent::harness::finalize_shell_capture;
 pub use agent::harness::format_size;
+pub use agent::harness::format_skills_for_context;
 pub use agent::harness::format_skills_for_system_prompt;
 pub use agent::harness::get_or_throw;
 pub use agent::harness::get_or_undefined;
@@ -540,7 +542,10 @@ pub use tools::mcp::{McpLoadOptions, McpServerLoadProgress};
 #[cfg(feature = "tools-web")]
 pub use tools::{WebSearchEngine, WebSearchResult};
 #[cfg(feature = "tools-shell-exec")]
-pub use tools::{create_shell_exec_tool, normalize_shell_exec_args, strip_redundant_cd_prefix};
+pub use tools::{
+    cancel_background_task, create_shell_exec_tool, list_background_tasks, normalize_shell_exec_args,
+    strip_redundant_cd_prefix,
+};
 #[cfg(feature = "tools-web")]
 pub use tools::{create_web_extract_tool, create_web_fetch_tool, create_web_search_tool, create_web_tools};
 pub use tools::{echo_tool, simple_tool};

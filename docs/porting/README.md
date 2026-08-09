@@ -27,7 +27,7 @@ Upstream projects move quickly. Each page records:
 Last documented **2026-07-29T19:50:00Z** (pi snapshot). Catalog SSOT note updated **2026-08-01**.
 
 - **Upstream:** https://github.com/earendil-works/pi
-- **Local clone (analysis):** `/Users/ariss/Developer/github.com/earendil-works/pi`
+- **Local clone (analysis):** `~/.local/share/elph/tmp//pi`
 - **Snapshot commit:** `7aca0d7b3` (_fix(agent): make JSONL decode errors explicit_)
 - **Package version:** `0.84.1` (released 2026-08-07) + **Unreleased** on `main`
 - **Mapping:** `packages/ai` → `elph-ai`, `packages/agent` → `elph-agent`, `packages/coding-agent` → `crates/coding-agent/`

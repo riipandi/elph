@@ -556,38 +556,40 @@ fn collapsed_tool_target(tool_name: &str, params: &[ToolParam], args_raw: &str, 
             if let Ok(Value::Object(map)) = serde_json::from_str::<Value>(args_raw) {
                 // Try "question" field first
                 if let Some(q) = map.get("question").and_then(|v| v.as_str()) {
-                    return truncate_chars(&collapse_whitespace(q), max_detail_chars);
-                }
-                // Try "questions" array
-                if let Some(Value::Array(items)) = map.get("questions")
+                    truncate_chars(&collapse_whitespace(q), max_detail_chars)
+                } else if let Some(Value::Array(items)) = map.get("questions")
                     && let Some(first) = items.first()
                     && let Some(q) = first.get("question").and_then(|v| v.as_str())
                 {
-                    return truncate_chars(&collapse_whitespace(q), max_detail_chars);
+                    // Try "questions" array (first entry's question).
+                    truncate_chars(&collapse_whitespace(q), max_detail_chars)
+                } else {
+                    String::new()
                 }
+            } else {
+                // Fallback: use params
+                find_param(params, &["question", "questions"])
+                    .map(|text| truncate_chars(&collapse_whitespace(text), max_detail_chars))
+                    .unwrap_or_default()
             }
-            // Fallback: use params
-            if let Some(text) = find_param(params, &["question", "questions"]) {
-                return truncate_chars(&collapse_whitespace(text), max_detail_chars);
-            }
-            String::new()
         }
         _ => {
             // Prefer a known summary path; otherwise first scalar value.
             if let Some(summary) = summarize_known_tool(tool_name, params) {
-                return truncate_chars(&summary, max_detail_chars);
+                truncate_chars(&summary, max_detail_chars)
+            } else {
+                params
+                    .first()
+                    .map(|param| {
+                        let value = param.value.as_str();
+                        if value.contains('/') || value.contains('\\') {
+                            abbreviate_path(value, max_detail_chars)
+                        } else {
+                            truncate_chars(value, max_detail_chars)
+                        }
+                    })
+                    .unwrap_or_default()
             }
-            params
-                .first()
-                .map(|param| {
-                    let value = param.value.as_str();
-                    if value.contains('/') || value.contains('\\') {
-                        abbreviate_path(value, max_detail_chars)
-                    } else {
-                        truncate_chars(value, max_detail_chars)
-                    }
-                })
-                .unwrap_or_default()
         }
     }
 }
@@ -625,9 +627,20 @@ pub fn format_collapsed_tool_parts_linked_w(
     let verb = tool_display_verb(tool_name);
     let params = parse_tool_params(args_raw);
     let (detail, detail_href) = collapsed_tool_target_linked(tool_name, &params, args_raw, max_detail_chars);
+    // Collapsed headers are single-row in the transcript (compact density packs them flush):
+    // fold any newlines / tabs that made it into the label from AI-generated argument values
+    // (e.g. `"query": "a\nb"`) into single spaces, then trim. Without this a "collapsed" card
+    // renders across multiple rows, breaking the grouped-log rhythm and producing double blank
+    // lines next to inter-row margins. The OSC 8 href keeps the *original* path/URL, so
+    // clicking still opens the exact destination even when the label was reflowed.
+    let display = {
+        let mut value = detail.clone();
+        value = collapse_whitespace(&value);
+        truncate_chars(&value, max_detail_chars)
+    };
     CollapsedToolParts {
         verb,
-        detail,
+        detail: display,
         detail_href,
     }
 }
@@ -643,7 +656,9 @@ fn collapsed_tool_target_linked(
             match find_param(params, &["path", "file"]) {
                 Some(path) => {
                     let display = abbreviate_path(path, max_detail_chars);
-                    let href = elph_tui::components::markdown::path_to_file_url(path);
+                    // OSC 8 target: collapse whitespace so a stray newline in the raw argument
+                    // (some models emit them) cannot inject a control break into the escape.
+                    let href = elph_tui::components::markdown::path_to_file_url(&collapse_whitespace(path));
                     (display, href)
                 }
                 None => (String::new(), None),
@@ -652,8 +667,9 @@ fn collapsed_tool_target_linked(
         "web_fetch" => match find_param(params, &["url", "uri"]) {
             Some(url) => {
                 let display = truncate_chars(url, max_detail_chars);
-                // Prefer the original URL as the OSC 8 target (even when the label is truncated).
-                let href = is_openable_web_url(url).then(|| url.to_string());
+                // Prefer the original URL as the OSC 8 target (even when the label is truncated),
+                // but fold any whitespace/newlines out so the escape stays on one line.
+                let href = is_openable_web_url(url).then(|| collapse_whitespace(url));
                 (display, href)
             }
             None => (String::new(), None),
@@ -1403,6 +1419,60 @@ mod tests {
     }
 
     #[test]
+    fn collapsed_tool_label_is_single_line_even_with_newlines_in_args() {
+        // Some models (e.g. hyper/deepseek-v4-flash-0731) emit literal newlines inside a
+        // tool argument (query/command/pattern). Collapsed headers must stay one row so
+        // compact-density grouping cannot be broken by embedded line breaks.
+        let cases = [
+            (
+                "grep",
+                r#"{"pattern":"fn main\nfn run","path":"src/"}"#,
+                "Grep fn main fn run in src/",
+            ),
+            (
+                "web_search",
+                r#"{"query":"line one\nline two","engine":"auto"}"#,
+                "WebSearch auto · line one line two",
+            ),
+            (
+                "shell_exec",
+                r#"{"command":"echo a\n\necho b"}"#,
+                // shorten_command takes the first line only — still single-line.
+                "Shell echo a",
+            ),
+            (
+                "ask_user_question",
+                r#"{"question":"Option A\nOption B?","questions":[]}"#,
+                "Ask Option A Option B?",
+            ),
+            // Linked path/URL branches go through collapsed_tool_target_linked, which is
+            // ALSO normalized (single choke point in format_collapsed_tool_parts_linked_w).
+            (
+                "edit_file",
+                r#"{"path":"/src/dir one\n/dir two/main.rs"}"#,
+                "Edit /src/dir one /dir two/main.rs",
+            ),
+            (
+                "web_fetch",
+                r#"{"url":"https://example.com/a\nb\nc"}"#,
+                "WebFetch https://example.com/a b c",
+            ),
+        ];
+        for (tool, raw_args, expected) in cases {
+            let label = format_collapsed_tool_label(tool, raw_args);
+            assert!(!label.contains('\n'), "{tool} label leaked a newline: {label:?}");
+            assert_eq!(label, expected, "{tool}");
+            let parts = format_collapsed_tool_parts_linked_w(tool, raw_args, COLLAPSED_TARGET_MAX_CHARS);
+            assert!(
+                !parts.detail.contains('\n'),
+                "{tool} detail leaked a newline: {:?}",
+                parts.detail
+            );
+            assert!(!parts.detail.contains('\t'), "{tool} detail leaked a tab: {:?}", parts.detail);
+        }
+    }
+
+    #[test]
     fn collapsed_tool_parts_href_keeps_original_path_when_truncated() {
         let path = "/home/user/project/src/nama-file.ext";
         let parts = format_collapsed_tool_parts_linked("edit_file", &format!(r#"{{"path":"{path}"}}"#));
@@ -1424,6 +1494,21 @@ mod tests {
         assert_eq!(parts.verb, "WebFetch");
         assert!(parts.detail.chars().count() <= COLLAPSED_TARGET_MAX_CHARS);
         assert_eq!(parts.detail_href.as_deref(), Some(url));
+    }
+
+    #[test]
+    fn collapsed_hrefs_strip_embedded_newlines() {
+        // Model-emitted stray newlines (JSON `\n` escapes) must not leak into the OSC 8
+        // target: any whitespace in the href would break the escape sequence in the terminal.
+        let parts = format_collapsed_tool_parts_linked("web_fetch", r#"{"url":"https://example.com/a\nb"}"#);
+        assert_eq!(parts.detail_href.as_deref(), Some("https://example.com/a b"));
+        assert!(!parts.detail_href.expect("href").contains('\n'));
+
+        let parts = format_collapsed_tool_parts_linked("edit_file", r#"{"path":"/src/dir one\n/dir two/main.rs"}"#);
+        let href = parts.detail_href.expect("href");
+        assert!(!href.contains('\n'), "href leaked newline: {href}");
+        assert!(!href.contains(' '), "href leaked space: {href}");
+        assert!(href.contains("main.rs"), "{href}");
     }
 
     #[test]

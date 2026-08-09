@@ -54,10 +54,8 @@ impl SessionStorage for InMemorySessionStorage {
         if let Some(leaf_id) = &index.leaf_id
             && !index.by_id.contains_key(leaf_id)
         {
-            return Err(SessionError::new(
-                SessionErrorCode::InvalidSession,
-                format!("Entry {leaf_id} not found"),
-            ));
+            // Phantom leaf (crash between leaf-write and child write, rows pruned).
+            return Ok(None);
         }
         Ok(index.leaf_id.clone())
     }

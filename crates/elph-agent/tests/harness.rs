@@ -1672,3 +1672,375 @@ async fn harness_restore_rehydrates_next_turn_queue() {
     assert_eq!(state_after.next_turn.len(), 1);
     assert_eq!(state_after.next_turn[0].0, "q_restore_1");
 }
+
+/// Race test: several harnesses running blocking turns, all aborted
+/// concurrently. Guards against deadlocks in abort / wait_for_idle / phase
+/// reset (each harness has its own session, so this is process-level concurrency).
+#[tokio::test(flavor = "multi_thread")]
+async fn concurrent_aborts_do_not_deadlock() {
+    const HARNESSES: usize = 4;
+
+    let (_temp, env) = test_env();
+    let (release, release2) = (Arc::new(AtomicBool::new(false)), Arc::new(AtomicBool::new(false)));
+
+    // Each harness gets a faux provider whose first response blocks until its
+    // per-harness release flag flips (after abort).
+    let mut harnesses = Vec::with_capacity(HARNESSES);
+    for i in 0..HARNESSES {
+        let (faux, models) = common::new_faux();
+        let release = if i == 0 { release.clone() } else { release2.clone() };
+        faux.set_responses(vec![FauxResponseStep::Factory({
+            let release = release.clone();
+            Arc::new(move |_context, options, _, _| {
+                let signal = options.and_then(|o| o.signal.clone());
+                loop {
+                    if signal.as_ref().is_some_and(|t| t.is_cancelled()) {
+                        return faux_assistant_message(vec![faux_text("aborted-by-turn-cancel")], None);
+                    }
+                    if release.load(Ordering::SeqCst) {
+                        return faux_assistant_message(vec![faux_text("done")], None);
+                    }
+                    std::thread::sleep(Duration::from_millis(1));
+                }
+            })
+        })]);
+        harnesses.push(Arc::new(make_harness(&faux, models, env.clone(), HarnessOptions::default())));
+    }
+
+    // Spawn a turn on every harness in parallel.
+    let mut prompts = Vec::with_capacity(HARNESSES);
+    for h in &harnesses {
+        let h = h.clone();
+        prompts.push(tokio::spawn(async move { h.prompt("blocking turn", None).await }));
+    }
+
+    // Give the turns time to enter the blocking provider factory.
+    tokio::time::sleep(Duration::from_millis(100)).await;
+
+    // Abort ALL harnesses simultaneously — simulating rapid Ctrl+C across turns.
+    let mut aborts = Vec::with_capacity(HARNESSES);
+    for h in &harnesses {
+        let h = h.clone();
+        aborts.push(tokio::spawn(async move { h.abort().await }));
+    }
+
+    // All aborts must complete promptly (no deadlock on shared locks / idle channels).
+    // The returned `AbortResult` is deliberately discarded — the point of the test
+    // is prompt completion, not abort bookkeeping.
+    for (i, a) in aborts.into_iter().enumerate() {
+        let _ = tokio::time::timeout(Duration::from_secs(5), a)
+            .await
+            .unwrap_or_else(|_| panic!("abort #{i} deadlocked"))
+            .expect("abort task panicked")
+            .expect("abort returned Err");
+    }
+
+    // Release the blocking factories so prompt futures finish. The turn result is
+    // discarded too — a deadlock is the failure mode this test guards against.
+    release.store(true, Ordering::SeqCst);
+    release2.store(true, Ordering::SeqCst);
+    for (i, p) in prompts.into_iter().enumerate() {
+        let _ = tokio::time::timeout(Duration::from_secs(5), p)
+            .await
+            .unwrap_or_else(|_| panic!("prompt #{i} deadlocked"))
+            .expect("prompt task panicked");
+    }
+
+    // All harnesses back to Idle.
+    for (i, h) in harnesses.iter().enumerate() {
+        assert_eq!(h.phase().await, elph_agent::AgentHarnessPhase::Idle, "harness #{i} not idle");
+    }
+}
+
+/// Full-harness lazy MCP activation: MCP tools stay off the active set until
+/// `list_available_tools(name_prefix)` advertises them via `added_tool_names`.
+/// Uses DeepWiki-style exposed names (`mcp_deepwiki__…`) as the fixture.
+#[tokio::test(flavor = "multi_thread")]
+async fn harness_lazy_activates_mcp_tools_via_list_available_tools() {
+    let (_temp, env) = test_env();
+    let (faux, models) = common::new_faux();
+    let model = faux.provider.get_models()[0].clone();
+
+    let mcp_structure = simple_tool(
+        Tool {
+            name: "mcp_deepwiki__read_wiki_structure".into(),
+            constrained_sampling: None,
+            description: "DeepWiki: read wiki structure".into(),
+            parameters: json!({
+                "type": "object",
+                "properties": {
+                    "repoName": { "type": "string" }
+                },
+                "required": ["repoName"]
+            }),
+        },
+        "MCP:deepwiki",
+        |_, args| {
+            let repo = args.get("repoName").and_then(|v| v.as_str()).unwrap_or("?").to_string();
+            Box::pin(async move { Ok(elph_agent::AgentToolResult::text(format!("structure:{repo}"))) })
+        },
+    );
+    let mcp_ask = simple_tool(
+        Tool {
+            name: "mcp_deepwiki__ask_question".into(),
+            constrained_sampling: None,
+            description: "DeepWiki: ask a question".into(),
+            parameters: json!({
+                "type": "object",
+                "properties": {
+                    "repoName": { "type": "string" },
+                    "question": { "type": "string" }
+                },
+                "required": ["repoName", "question"]
+            }),
+        },
+        "MCP:deepwiki",
+        |_, _| Box::pin(async move { Ok(elph_agent::AgentToolResult::text("answer:ok")) }),
+    );
+    let read_file = simple_tool(
+        Tool {
+            name: "read_file".into(),
+            constrained_sampling: None,
+            description: "Read a file".into(),
+            parameters: json!({
+                "type": "object",
+                "properties": { "path": { "type": "string" } },
+                "required": ["path"]
+            }),
+        },
+        "read_file",
+        |_, _| Box::pin(async move { Ok(elph_agent::AgentToolResult::text("file contents")) }),
+    );
+
+    let registry = vec![read_file.clone(), mcp_structure.clone(), mcp_ask.clone()];
+    let list_tools = elph_agent::create_list_available_tools(&registry);
+    let mut tools = registry;
+    tools.push(list_tools);
+
+    let second_turn_tools: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+    let second_turn_tools_for_factory = second_turn_tools.clone();
+    let active = vec!["read_file".to_string(), "list_available_tools".to_string()];
+
+    faux.set_responses(vec![
+        FauxResponseStep::Static(faux_assistant_message(
+            vec![faux_tool_call(
+                "list_available_tools",
+                json!({ "name_prefix": "mcp_deepwiki__" }),
+                Some("list-1".into()),
+            )],
+            Some(StopReason::ToolUse),
+        )),
+        FauxResponseStep::Factory(Arc::new(move |context, _, _, _| {
+            let names: Vec<String> = context
+                .tools
+                .as_ref()
+                .map(|tools| tools.iter().map(|t| t.name.clone()).collect())
+                .unwrap_or_default();
+            *second_turn_tools_for_factory.lock() = names;
+            faux_assistant_message(
+                vec![faux_tool_call(
+                    "mcp_deepwiki__read_wiki_structure",
+                    json!({ "repoName": "modelcontextprotocol/rust-sdk" }),
+                    Some("mcp-1".into()),
+                )],
+                Some(StopReason::ToolUse),
+            )
+        })),
+        FauxResponseStep::Static(faux_assistant_message(vec![faux_text("DeepWiki structure loaded.")], None)),
+    ]);
+
+    let harness = AgentHarness::new(AgentHarnessOptions {
+        env,
+        session: Session::new(InMemorySessionStorage::new(None).expect("session")),
+        models,
+        tools,
+        resources: AgentHarnessResources::default(),
+        system_prompt: SystemPrompt::Static("You are helpful.".into()),
+        stream_options: Default::default(),
+        model,
+        thinking_level: AgentThinkingLevel::Off,
+        active_tool_names: active,
+        steering_mode: QueueMode::OneAtATime,
+        follow_up_mode: QueueMode::OneAtATime,
+        goal_runtime: None,
+        subagent_bootstrap: None,
+        compaction_settings: CompactionSettings::default(),
+        shared_registry: None,
+        agent_control: None,
+        headless: false,
+        terminals_dir: None,
+    })
+    .expect("harness");
+
+    let before: Vec<_> = harness
+        .get_active_tools()
+        .await
+        .into_iter()
+        .map(|t| t.name().to_string())
+        .collect();
+    assert!(
+        !before.iter().any(|n| n.starts_with("mcp_")),
+        "MCP must start inactive: {before:?}"
+    );
+
+    tokio::time::timeout(Duration::from_secs(15), harness.prompt("Use DeepWiki", None))
+        .await
+        .expect("prompt timed out — likely deadlock in lazy activation path")
+        .expect("prompt");
+
+    let mid_turn = second_turn_tools.lock().clone();
+    assert!(
+        mid_turn.iter().any(|n| n == "mcp_deepwiki__read_wiki_structure"),
+        "second model turn must see activated MCP tools; context tools={mid_turn:?}"
+    );
+    assert!(
+        mid_turn.iter().any(|n| n == "mcp_deepwiki__ask_question"),
+        "prefix activation should include all mcp_deepwiki__ tools; context tools={mid_turn:?}"
+    );
+
+    let after: Vec<_> = harness
+        .get_active_tools()
+        .await
+        .into_iter()
+        .map(|t| t.name().to_string())
+        .collect();
+    assert!(
+        after.iter().any(|n| n == "mcp_deepwiki__read_wiki_structure"),
+        "MCP structure tool should remain active after turn: {after:?}"
+    );
+
+    let tool_results: Vec<_> = harness
+        .session_entries()
+        .await
+        .into_iter()
+        .filter_map(|entry| match entry {
+            SessionTreeEntry::Message { message, .. } if message.role() == "toolResult" => message.as_llm().cloned(),
+            _ => None,
+        })
+        .collect();
+    let mcp_ok = tool_results.iter().any(|msg| match msg {
+        Message::ToolResult {
+            tool_name,
+            content,
+            is_error,
+            ..
+        } if tool_name == "mcp_deepwiki__read_wiki_structure" && !is_error => content.iter().any(|b| match b {
+            ContentBlock::Text { text } => text.contains("structure:modelcontextprotocol/rust-sdk"),
+            _ => false,
+        }),
+        _ => false,
+    });
+    assert!(
+        mcp_ok,
+        "expected successful mcp_deepwiki__read_wiki_structure tool result; entries={tool_results:?}"
+    );
+}
+
+/// Inactive MCP tools must still be *executable* via the full execution registry
+/// even before `list_available_tools` activation (fixes "Tool not found" when the
+/// model learned schemas from the catalog and calls immediately).
+#[tokio::test(flavor = "multi_thread")]
+async fn harness_executes_inactive_mcp_tools_from_execution_registry() {
+    let (_temp, env) = test_env();
+    let (faux, models) = common::new_faux();
+    let model = faux.provider.get_models()[0].clone();
+
+    let mcp = simple_tool(
+        Tool {
+            name: "mcp_deepwiki__read_wiki_structure".into(),
+            constrained_sampling: None,
+            description: "DeepWiki structure".into(),
+            parameters: json!({
+                "type": "object",
+                "properties": { "repoName": { "type": "string" } },
+                "required": ["repoName"]
+            }),
+        },
+        "MCP:deepwiki",
+        |_, args| {
+            let repo = args.get("repoName").and_then(|v| v.as_str()).unwrap_or("?").to_string();
+            Box::pin(async move { Ok(elph_agent::AgentToolResult::text(format!("ok:{repo}"))) })
+        },
+    );
+    let list = elph_agent::create_list_available_tools(std::slice::from_ref(&mcp));
+    let tools = vec![mcp, list];
+
+    // MCP registered but NOT active.
+    faux.set_responses(vec![
+        FauxResponseStep::Static(faux_assistant_message(
+            vec![faux_tool_call(
+                "mcp_deepwiki__read_wiki_structure",
+                json!({ "repoName": "facebook/react" }),
+                Some("mcp-direct".into()),
+            )],
+            Some(StopReason::ToolUse),
+        )),
+        FauxResponseStep::Static(faux_assistant_message(vec![faux_text("done")], None)),
+    ]);
+
+    let harness = AgentHarness::new(AgentHarnessOptions {
+        env,
+        session: Session::new(InMemorySessionStorage::new(None).expect("session")),
+        models,
+        tools,
+        resources: AgentHarnessResources::default(),
+        system_prompt: SystemPrompt::Static("You are helpful.".into()),
+        stream_options: Default::default(),
+        model,
+        thinking_level: AgentThinkingLevel::Off,
+        active_tool_names: vec!["list_available_tools".into()],
+        steering_mode: QueueMode::OneAtATime,
+        follow_up_mode: QueueMode::OneAtATime,
+        goal_runtime: None,
+        subagent_bootstrap: None,
+        compaction_settings: CompactionSettings::default(),
+        shared_registry: None,
+        agent_control: None,
+        headless: false,
+        terminals_dir: None,
+    })
+    .expect("harness");
+
+    assert!(
+        !harness
+            .get_active_tools()
+            .await
+            .iter()
+            .any(|t| t.name().starts_with("mcp_")),
+        "precondition: MCP inactive"
+    );
+
+    tokio::time::timeout(Duration::from_secs(15), harness.prompt("call deepwiki", None))
+        .await
+        .expect("timeout")
+        .expect("prompt");
+
+    // Tool executed successfully (not "Tool not found").
+    let ok = harness.session_entries().await.into_iter().any(|entry| match entry {
+        SessionTreeEntry::Message { message, .. } if message.role() == "toolResult" => match message.as_llm() {
+            Some(Message::ToolResult {
+                tool_name,
+                content,
+                is_error,
+                ..
+            }) if tool_name == "mcp_deepwiki__read_wiki_structure" && !is_error => content
+                .iter()
+                .any(|b| matches!(b, ContentBlock::Text { text } if text.contains("ok:facebook/react"))),
+            _ => false,
+        },
+        _ => false,
+    });
+    assert!(ok, "inactive MCP tool must execute via execution_tools registry");
+
+    // Auto-activate on first call should have promoted it into the active set.
+    let after: Vec<_> = harness
+        .get_active_tools()
+        .await
+        .into_iter()
+        .map(|t| t.name().to_string())
+        .collect();
+    assert!(
+        after.iter().any(|n| n == "mcp_deepwiki__read_wiki_structure"),
+        "first MCP call should auto-activate: {after:?}"
+    );
+}
