@@ -9,7 +9,27 @@ elph run "summarize this repo"
 elph run --prompt-file=./task.md --model=openai/gpt-5.6-luna
 elph run --mode=plan --effort=high "design auth for the API"
 elph run --output-format=json "list top 3 TODOs" 2>/dev/null
+
+# Skills (same discovery as TUI)
+elph run "/skill:code-review focus on auth"
+elph run "/skill:tui-design"          # also: /tui-design if that skill name exists
+
+# Prompt templates (name = file stem under prompts/)
+elph run "/my-template arg1 arg2"
 ```
+
+## Skills & prompt templates
+
+Headless uses the same resource load as the TUI (project + home skills / prompts).
+
+| Input | Action |
+| --- | --- |
+| Plain text | Normal agent prompt |
+| `/skill:name [args]` | Invoke skill (legacy prefix; preferred explicit form) |
+| `/skill-name [args]` | Invoke skill by raw name (if no built-in/template conflict) |
+| `/template-name [args]` | Expand prompt template and run |
+
+Other slash commands (`/compact`, `/help`, …) are **not** supported in headless and return a clear error.
 
 ## Flags
 
@@ -33,16 +53,22 @@ elph run --output-format=json "list top 3 TODOs" 2>/dev/null
 
 Aliases for output format: `text`→`plain`, `streaming-json`→`stream-json`, `streaming-messages-json`→`stream-message-json`.
 
-## Session trailer
+## Turn footer (after the response)
 
-Unless `--no-session`, stderr always prints:
+Unless `--no-session`, stderr prints a **dimmed** turn block with blank lines above/below so it does not blend into the model answer (stdout):
 
 ```text
-elph: session_id=<uuid> name=<optional>
-elph: resume: elph run --session-id=<uuid> "…"
+  session      <uuid>
+  name         my-run
+  turn         skill:code-review
+  model        openai/gpt-5.6-luna
+  context      12K / 200K (6.1%)
+  resume       elph run --session-id=<uuid> "…"
 ```
 
-Stdout stays clean for machine formats (`json` / stream).
+- `context` = estimated tokens used / model window (same family of estimate as the TUI chrome).
+- Colors only when stderr is a TTY and `NO_COLOR` is unset.
+- JSON / stream formats also embed the same fields under `session` on stdout.
 
 ## Progress indicator
 

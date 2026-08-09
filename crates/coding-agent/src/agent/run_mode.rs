@@ -11,7 +11,10 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use super::events::AgentUiEvent;
 use super::runtime::CreateSessionOptions;
 use super::runtime::create_coding_session_with_events;
+use super::slash_commands::{SlashDispatch, dispatch_slash_command};
+use crate::cli::style::{CliStyle, S_MUTED};
 use crate::platform::{Paths, Settings};
+use crate::tui::labels::format_token_count;
 use crate::types::{AgentMode, ThinkingLevel};
 
 /// Headless stdout shape (Grok/Pi-inspired).
@@ -111,10 +114,28 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
     let plain_streamed_w = Arc::clone(&plain_streamed);
     let harness_for_abort = session.harness();
 
-    spinner.set_message(format!(
-        "Waiting for {model_label} · mode {}…",
-        options.mode.footer_label()
-    ));
+    // Resolve `/skill:…` and `/template-name` (same dispatch as TUI) before the turn.
+    let turn_kind = match resolve_headless_turn(&session, options.prompt).await {
+        Ok(kind) => kind,
+        Err(err) => {
+            spinner.finish_and_clear();
+            return Err(err);
+        }
+    };
+    match &turn_kind {
+        HeadlessTurn::Prompt => {
+            spinner.set_message(format!(
+                "Waiting for {model_label} · mode {}…",
+                options.mode.footer_label()
+            ));
+        }
+        HeadlessTurn::Skill { name, .. } => {
+            spinner.set_message(format!("Loading skill `{name}` · {model_label}…"));
+        }
+        HeadlessTurn::PromptTemplate { name, .. } => {
+            spinner.set_message(format!("Loading prompt template `/{name}` · {model_label}…"));
+        }
+    }
 
     // Drive stdout formats + refresh the stderr spinner from live agent events.
     let spinner_for_events = spinner.clone();
@@ -172,7 +193,7 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
         }
     });
 
-    let prompt_result = session.submit_prompt(options.prompt.to_string(), false).await;
+    let prompt_result = execute_headless_input(&session, &turn_kind, options.prompt).await;
     // Allow stream task to drain RunCompleted.
     let _ = tokio::time::timeout(std::time::Duration::from_secs(2), stream_task).await;
 
@@ -181,24 +202,39 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
 
     let assistant_text = collect_last_assistant_text(&session).await;
     let session_name = session.harness().session_name().await;
+    let (tokens_used, context_limit) = session
+        .estimate_context_usage()
+        .await
+        .unwrap_or((0, session.context_window() as u64));
+    // Model may have changed mid-turn (rare); re-read for the footer.
+    let model_label = format!("{}/{}", session.model_provider(), session.model_id());
+    let turn_meta = TurnMeta {
+        session_id: session_id.clone(),
+        session_name: session_name.clone(),
+        model: model_label.clone(),
+        mode: options.mode,
+        tokens_used,
+        context_limit: context_limit.max(1),
+        cwd: options.cwd.display().to_string(),
+        turn_kind: turn_kind_label(&turn_kind),
+    };
 
     if let Err(err) = prompt_result {
         if format == OutputFormat::Json {
             let body = json!({
                 "ok": false,
                 "error": err.to_string(),
-                "session": session_info_json(&session_id, session_name.as_deref(), options.cwd, &model_label, options.mode),
+                "session": turn_meta.to_json(),
                 "result": assistant_text,
             });
             println!("{}", serde_json::to_string_pretty(&body)?);
         } else {
             eprintln!("error: {err:#}");
         }
-        // Still clean up ephemeral sessions.
         if options.no_session {
             let _ = session.session_manager().delete_by_id(&session_id).await;
         } else {
-            emit_session_trailer(format, &session_id, session_name.as_deref());
+            emit_turn_footer(format, &turn_meta);
         }
         return Err(err);
     }
@@ -212,7 +248,7 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
     } else if format == OutputFormat::Json {
         let body = json!({
             "ok": true,
-            "session": session_info_json(&session_id, session_name.as_deref(), options.cwd, &model_label, options.mode),
+            "session": turn_meta.to_json(),
             "result": assistant_text,
         });
         println!("{}", serde_json::to_string_pretty(&body)?);
@@ -222,7 +258,7 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
             json!({
                 "type": "result",
                 "ok": true,
-                "session_id": session_id,
+                "session": turn_meta.to_json(),
                 "text": assistant_text,
             })
         );
@@ -231,7 +267,7 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
             "{}",
             json!({
                 "type": "result",
-                "session_id": session_id,
+                "session": turn_meta.to_json(),
             })
         );
     }
@@ -239,7 +275,7 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
     if options.no_session {
         let _ = session.session_manager().delete_by_id(&session_id).await;
     } else {
-        emit_session_trailer(format, &session_id, session_name.as_deref());
+        emit_turn_footer(format, &turn_meta);
     }
 
     Ok(RunModeResult {
@@ -247,6 +283,124 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
         session_name,
         assistant_text,
     })
+}
+
+/// How the headless turn was launched (plain prompt vs skill vs template).
+enum HeadlessTurn {
+    Prompt,
+    Skill { name: String, args: String },
+    PromptTemplate { name: String, args: String },
+}
+
+fn turn_kind_label(kind: &HeadlessTurn) -> Option<String> {
+    match kind {
+        HeadlessTurn::Prompt => None,
+        HeadlessTurn::Skill { name, .. } => Some(format!("skill:{name}")),
+        HeadlessTurn::PromptTemplate { name, .. } => Some(format!("/{name}")),
+    }
+}
+
+/// Map user input to a skill, prompt template, or plain prompt (TUI slash parity).
+async fn resolve_headless_turn(
+    session: &super::session::CodingAgentSession,
+    input: &str,
+) -> Result<HeadlessTurn> {
+    let trimmed = input.trim();
+    if !trimmed.starts_with('/') {
+        return Ok(HeadlessTurn::Prompt);
+    }
+
+    let resources = session.harness().get_resources().await;
+    let dispatch = dispatch_slash_command(
+        trimmed,
+        None,
+        Some(resources.prompt_templates.as_slice()),
+        Some(resources.skills.as_slice()),
+    );
+
+    match dispatch {
+        Some(SlashDispatch::Skill { name, args }) => {
+            // Unknown skill returns Unimplemented from dispatch; only known skills land here.
+            Ok(HeadlessTurn::Skill { name, args })
+        }
+        Some(SlashDispatch::PromptTemplate { name, args }) => {
+            Ok(HeadlessTurn::PromptTemplate { name, args })
+        }
+        Some(SlashDispatch::Unimplemented(cmd)) => {
+            // Friendlier errors for the two headless-supported slash families.
+            if let Some(rest) = cmd.strip_prefix("/skill:") {
+                let name = rest.split_whitespace().next().unwrap_or(rest);
+                let available: Vec<_> = resources.skills.iter().map(|s| s.name.as_str()).collect();
+                bail!(
+                    "unknown skill `{name}`\n  Hint: use `/skill:name` (loaded skills: {})",
+                    if available.is_empty() {
+                        "none".into()
+                    } else {
+                        available.join(", ")
+                    }
+                );
+            }
+            if cmd.starts_with('/') {
+                let name = cmd.trim_start_matches('/').split_whitespace().next().unwrap_or("");
+                let available: Vec<_> = resources
+                    .prompt_templates
+                    .iter()
+                    .map(|t| t.name.as_str())
+                    .collect();
+                if !name.is_empty()
+                    && !resources
+                        .prompt_templates
+                        .iter()
+                        .any(|t| t.name == name)
+                    && !resources.skills.iter().any(|s| s.name == name)
+                {
+                    bail!(
+                        "unknown slash command `/{name}`\n  \
+                         Headless supports `/skill:name [args]` and `/prompt-template-name [args]`.\n  \
+                         Skills: {}\n  Templates: {}",
+                        if resources.skills.is_empty() {
+                            "none".into()
+                        } else {
+                            resources
+                                .skills
+                                .iter()
+                                .map(|s| s.name.as_str())
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        },
+                        if available.is_empty() {
+                            "none".into()
+                        } else {
+                            available.join(", ")
+                        }
+                    );
+                }
+            }
+            bail!(
+                "slash command `{cmd}` is not supported in headless mode\n  \
+                 Use a plain prompt, `/skill:name [args]`, or `/template-name [args]`"
+            );
+        }
+        Some(_) => {
+            bail!(
+                "this slash command is not supported in headless mode\n  \
+                 Use a plain prompt, `/skill:name [args]`, or `/template-name [args]`"
+            );
+        }
+        None => Ok(HeadlessTurn::Prompt),
+    }
+}
+
+async fn execute_headless_input(
+    session: &super::session::CodingAgentSession,
+    kind: &HeadlessTurn,
+    raw_prompt: &str,
+) -> Result<()> {
+    match kind {
+        HeadlessTurn::Prompt => session.submit_prompt(raw_prompt.to_string(), false).await,
+        HeadlessTurn::Skill { name, args } => session.invoke_skill(name, args).await,
+        HeadlessTurn::PromptTemplate { name, args } => session.prompt_from_template(name, args).await,
+    }
 }
 
 fn bootstrap_message(options: &RunModeOptions<'_>) -> String {
@@ -355,25 +509,86 @@ fn truncate_chars(s: &str, max: usize) -> String {
     out
 }
 
-fn session_info_json(session_id: &str, name: Option<&str>, cwd: &Path, model: &str, mode: AgentMode) -> Value {
-    json!({
-        "id": session_id,
-        "name": name,
-        "cwd": cwd.display().to_string(),
-        "model": model,
-        "mode": mode.footer_label(),
-    })
+struct TurnMeta {
+    session_id: String,
+    session_name: Option<String>,
+    model: String,
+    mode: AgentMode,
+    tokens_used: u64,
+    context_limit: u64,
+    cwd: String,
+    turn_kind: Option<String>,
 }
 
-fn emit_session_trailer(format: OutputFormat, session_id: &str, name: Option<&str>) {
-    // Trailer on stderr so stdout stays machine-parseable for json/stream formats.
-    let mut err = std::io::stderr().lock();
-    let name_part = name.map(|n| format!(" name={n}")).unwrap_or_default();
-    let _ = writeln!(err, "elph: session_id={session_id}{name_part}");
-    let _ = writeln!(err, "elph: resume: elph run --session-id={session_id} \"…\"");
-    if matches!(format, OutputFormat::Plain) {
-        // Already on stderr; nothing extra for plain.
+impl TurnMeta {
+    fn context_pct(&self) -> f64 {
+        if self.context_limit == 0 {
+            0.0
+        } else {
+            (self.tokens_used as f64 / self.context_limit as f64) * 100.0
+        }
     }
+
+    fn context_label(&self) -> String {
+        format!(
+            "{} / {} ({:.1}%)",
+            format_token_count(self.tokens_used),
+            format_token_count(self.context_limit),
+            self.context_pct()
+        )
+    }
+
+    fn to_json(&self) -> Value {
+        json!({
+            "id": self.session_id,
+            "name": self.session_name,
+            "cwd": self.cwd,
+            "model": self.model,
+            "mode": self.mode.footer_label(),
+            "tokens_used": self.tokens_used,
+            "context_limit": self.context_limit,
+            "context_pct": self.context_pct(),
+            "turn": self.turn_kind,
+        })
+    }
+}
+
+/// Dimmed turn footer on stderr — separated from the AI response with blank lines.
+fn emit_turn_footer(format: OutputFormat, meta: &TurnMeta) {
+    // Machine formats already embed session metadata in stdout JSON; still print a
+    // short dimmed footer so interactive users see it, without polluting parsers that
+    // only read stdout.
+    let _ = format;
+
+    let sty = CliStyle::auto_stderr();
+    let mut err = std::io::stderr().lock();
+
+    // Breathing room between model answer (stdout) and Elph metadata (stderr).
+    let _ = writeln!(err);
+    let _ = writeln!(err);
+
+    let line = |key: &str, value: &str| {
+        // Fixed-width key column so the block reads as a quiet table.
+        format!("  {:<12} {}", key, value)
+    };
+
+    let dim = |s: String| sty.paint(S_MUTED, s);
+
+    let _ = writeln!(err, "{}", dim(line("session", &meta.session_id)));
+    if let Some(name) = meta.session_name.as_deref().filter(|s| !s.is_empty()) {
+        let _ = writeln!(err, "{}", dim(line("name", name)));
+    }
+    if let Some(kind) = meta.turn_kind.as_deref() {
+        let _ = writeln!(err, "{}", dim(line("turn", kind)));
+    }
+    let _ = writeln!(err, "{}", dim(line("model", &meta.model)));
+    let _ = writeln!(err, "{}", dim(line("context", &meta.context_label())));
+    let _ = writeln!(
+        err,
+        "{}",
+        dim(line("resume", &format!("elph run --session-id={} \"…\"", meta.session_id)))
+    );
+    let _ = writeln!(err);
 }
 
 async fn collect_last_assistant_text(session: &super::session::CodingAgentSession) -> String {
@@ -505,6 +720,7 @@ pub fn parse_effort(raw: &str) -> Result<ThinkingLevel> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use elph_agent::{PromptTemplate, Skill};
 
     #[test]
     fn output_format_aliases() {
@@ -529,5 +745,55 @@ mod tests {
         assert_eq!(parse_effort("high").unwrap(), ThinkingLevel::High);
         assert_eq!(parse_effort("off").unwrap(), ThinkingLevel::Off);
         assert!(parse_effort("turbo").is_err());
+    }
+
+    #[test]
+    fn slash_dispatch_skill_and_template() {
+        let skills = [Skill {
+            name: "code-review".into(),
+            description: "Review".into(),
+            content: "Review the code".into(),
+            file_path: "/tmp/SKILL.md".into(),
+            ..Default::default()
+        }];
+        let templates = [PromptTemplate {
+            name: "ship-it".into(),
+            description: "Ship".into(),
+            content: "Ship $ARGS".into(),
+            argument_hint: None,
+        }];
+
+        match dispatch_slash_command("/skill:code-review src/", None, Some(&templates), Some(&skills)) {
+            Some(SlashDispatch::Skill { name, args }) => {
+                assert_eq!(name, "code-review");
+                assert_eq!(args, "src/");
+            }
+            other => panic!("expected Skill, got {other:?}"),
+        }
+        match dispatch_slash_command("/ship-it fast", None, Some(&templates), Some(&skills)) {
+            Some(SlashDispatch::PromptTemplate { name, args }) => {
+                assert_eq!(name, "ship-it");
+                assert_eq!(args, "fast");
+            }
+            other => panic!("expected PromptTemplate, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn turn_meta_context_label() {
+        let meta = TurnMeta {
+            session_id: "abc".into(),
+            session_name: None,
+            model: "openai/gpt".into(),
+            mode: AgentMode::Brave,
+            tokens_used: 12_000,
+            context_limit: 200_000,
+            cwd: "/tmp".into(),
+            turn_kind: Some("skill:code-review".into()),
+        };
+        assert_eq!(meta.context_label(), "12K / 200K (6.0%)");
+        let j = meta.to_json();
+        assert_eq!(j["id"], "abc");
+        assert_eq!(j["tokens_used"], 12_000);
     }
 }

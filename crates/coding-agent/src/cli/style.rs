@@ -36,6 +36,13 @@ impl CliStyle {
         }
     }
 
+    /// Style against stderr TTY (headless turn footers, progress-adjacent info).
+    pub fn auto_stderr() -> Self {
+        Self {
+            enabled: std::env::var_os("NO_COLOR").is_none() && std::io::stderr().is_terminal(),
+        }
+    }
+
     pub fn plain() -> Self {
         Self { enabled: false }
     }
