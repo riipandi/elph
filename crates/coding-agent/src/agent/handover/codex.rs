@@ -869,7 +869,7 @@ pub fn read_codex_session(path: &Path) -> Result<CodexHandover, HandoverError> {
     for turn in turns.iter_mut() {
         if turn.text.len() > MAX_TEXT_CHARS {
             if MAX_TEXT_CHARS > marker.len() {
-                turn.text = format!("{}{}", turn.text[..MAX_TEXT_CHARS - marker.len()].trim_end(), marker);
+                turn.text = format!("{}{}", turn.text.chars().take(MAX_TEXT_CHARS - marker.chars().count()).collect::<String>().trim_end(), marker);
             } else {
                 turn.text = turn.text.chars().take(MAX_TEXT_CHARS).collect();
             }
