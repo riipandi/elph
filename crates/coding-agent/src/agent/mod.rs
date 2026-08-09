@@ -38,9 +38,11 @@ pub use events::{
     RETRY_CONTINUE_PROMPT, ToolApprovalRequest, UserQuestionOption, UserQuestionRequest, UserQuestionStep,
 };
 pub use handover::{
-    ClaudeHandover, HANDOVER_PROMPT_PREFIX, HandoverError, HandoverSession, HandoverToolCall, HandoverToolResult,
-    HandoverTurn, HandoverWarning, build_handoff_prompt, claude_config_dir, discover_claude_sessions,
-    discover_claude_sessions_with_config, read_claude_session, resolve_claude_session, slugify,
+    CODEX_HANDOVER_PROMPT_PREFIX, ClaudeHandover, CodexHandover, HANDOVER_PROMPT_PREFIX, HandoverError,
+    HandoverSession, HandoverToolCall, HandoverToolResult, HandoverTurn, HandoverWarning, build_codex_handoff_prompt,
+    build_handoff_prompt, claude_config_dir, codex_config_dir, discover_claude_sessions,
+    discover_claude_sessions_with_config, discover_codex_sessions, discover_codex_sessions_with_config,
+    read_claude_session, read_codex_session, resolve_claude_session, resolve_codex_session, slugify,
 };
 pub use mcp_bootstrap::discover_mcp_registry;
 pub use model_registry::ModelSelection;

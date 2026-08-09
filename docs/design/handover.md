@@ -15,7 +15,7 @@ session.
 | `/handover claude latest`       | Same as no ref (aliases: `continue`, `-c`)                          |
 | `/handover claude <session-id>` | Resume that session directly by native UUID                         |
 | `/handover claude <words>`      | Resume the uniquely-matching session by title (ambiguous → lists ids) |
-| `/handover codex …`             | **Not yet implemented** (prints `Codex handover not yet implemented`) |
+| `/handover codex …`             | Same resolution against Codex rollout transcripts (`~/.codex/sessions`) |
 
 The slash palette offers `claude` / `codex` as argument completions.
 
@@ -46,6 +46,31 @@ Reader warnings (malformed/unknown records, truncation, preserved-segment
 gaps, parent cycles) are surfaced inside the handoff prompt as
 `## Reader warnings`.
 
+## How it works (Codex)
+
+`/handover codex` reads Codex CLI/VSCode rollout transcripts
+(`~/.codex/sessions/YYYY/MM/DD/rollout-<timestamp>-<uuid>.jsonl`) as inert
+history. It deliberately uses the **rollout filesystem store**, never the
+`state_N.sqlite` `threads` index — a running Codex process (hot WAL) is never
+disturbed.
+
+1. **Discover** — walk `~/.codex/sessions/` (bounded, within a 31-day window),
+   read each rollout's head (`session_meta` + first genuine command),
+   keep sessions whose recorded `cwd` is the current dir or a subdirectory of
+   it and whose `source` is `cli`/`vscode`, newest-first.
+2. **Resolve** — empty/`latest` → newest; native UUID → direct path lookup
+   (sessions + archived); free text → unique first-user-command title match
+   (ambiguous → candidate list).
+3. **Read** — parse `session_meta`, `response_item` (messages, function calls,
+   outputs) and `event_msg` (`user_message`/`agent_message`) records into an
+   *inert* turn chain; skip developer-role messages, injected AGENTS.md /
+   instruction wrappers, reasoning/control items, and unknown outer types;
+   apply `compacted.replacement_history` / `thread_rolled_back` reductions and
+   consecutive-duplicate collapse; truncate tool I/O (300 chars) and message
+   text (2000 chars).
+4. **Inject** — same handoff-prompt flow as Claude; the transcript shows a slim
+   `Handover from Codex…` meta line.
+
 ## Safety boundary
 
 Recovered transcript content is **untrusted inert history**. The injected
@@ -59,24 +84,31 @@ prompt instructs the model to:
 
 ## Layout
 
-- `crates/coding-agent/src/agent/handover/mod.rs` — discovery, resolution,
+- `crates/coding-agent/src/agent/handover/mod.rs` — Claude discovery, resolution,
   transcript reader, handoff-prompt builder (Rust port of the reference
-  `session_reader.py`).
-- `crates/coding-agent/src/agent/handover/tests.rs` — unit tests (fixtures are
-  written to a tempdir; never touch the real `~/.claude`).
+  `session_reader.py`), plus shared helpers.
+- `crates/coding-agent/src/agent/handover/codex.rs` — Codex rollout reader,
+  discovery, resolution, handoff-prompt builder.
+- `crates/coding-agent/src/agent/handover/tests.rs` (Claude) and
+  `crates/coding-agent/src/agent/handover/codex/tests.rs` (Codex) — unit tests
+  (fixtures are written to a tempdir; never touch the real `~/.claude` /
+  `~/.codex`).
 - `crates/coding-agent/src/agent/slash_commands.rs` — `/handover` registration
   + `SlashDispatch::Handover`, arg completions `[claude|codex]`.
 - `crates/coding-agent/src/tui/slash_handler.rs` — slash execution (resolves +
   reads + injects the turn, or returns a status for missing/ambiguous sessions
-  and for `codex`).
+  and for unknown tools).
 - `crates/coding-agent/src/tui/shell/tick.rs` — renders the handoff prompt's
   `UserPromptCommitted` as a slim meta line.
 
-Config dir override: `CLAUDE_CONFIG_DIR` (default `<home>/.claude`).
+Config dir overrides: `CLAUDE_CONFIG_DIR` (default `<home>/.claude`) and
+`CODEX_HOME` (default `<home>/.codex`).
 
 ## Status
 
 - **[Implemented]** Claude Code → Elph handover.
-- **[Gap]** Codex → Elph handover (accepts the arg, prints not yet implemented).
+- **[Implemented]** Codex → Elph handover (CLI/VSCode rollout transcripts).
 - **[Gap]** Interactive picker for ambiguous/multiple sessions (currently lists
   candidate ids and asks the user to re-run with a UUID).
+- **[Gap]** Compressed `.jsonl.zst` rollouts (decompression is not wired yet).
+

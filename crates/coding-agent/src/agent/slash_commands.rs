@@ -398,7 +398,7 @@ const HANDOVER_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
     },
     SlashArgCompletion {
         value: "codex",
-        description: "Resume work from a Codex session (not yet implemented)",
+        description: "Resume work from a Codex session",
     },
 ];
 

@@ -43,6 +43,23 @@ Elph deliberately **diverges** in product design (memory, codegraph, ACP, WASM e
 
 ## Timeline
 
+### 2026-08-09 — `/handover` Codex resume (Elph delta)
+
+**Scope:** `crates/coding-agent/` product crate. Follow-up to the `/handover`
+Claude launch (same session); adds the Codex source.
+
+- **`/handover codex [ref]`** — discovers Codex CLI/VSCode rollout transcripts
+  (`~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`), resolves
+  `latest`/UUID/free-text, reads the transcript as **inert history**
+  (`session_meta` + `response_item` + `event_msg`; skips developer-role and
+  injected AGENTS.md wrappers; applies `compacted`/`thread_rolled_back`
+  reduction + duplicate collapse), and injects a Codex handoff prompt
+  (`CODEX_HANDOVER_PROMPT_PREFIX`, slim `Handover from Codex…` meta line).
+- Reader lives entirely on the **rollout filesystem** — `state_N.sqlite` is
+  never opened, so a live Codex process (hot WAL) is never disturbed.
+- Codex reader: `crates/coding-agent/src/agent/handover/codex.rs` + tests
+  (`codex/tests.rs`, 11 tests).
+
 ### 2026-08-09 — `/handover` foreign-session resume (Elph delta)
 
 **Scope:** `crates/coding-agent/` product crate. Not a pi port — mirrors Grok Build's
@@ -173,8 +190,8 @@ elph built-in **names** largely mirror pi, plus `/provider`, `/help`, `/exit`. D
 - `/scoped-models` — **[Partial]** (editor + Ctrl+P cycle; no keybinding remaps / null=all semantics)
 - `/share` — **[Gap]**
 - `/goal` — **[Elph delta]** / **[Partial]** in elph (design + goal_slash)
-- `/handover` — **[Elph delta]** foreign-session resume (Claude implemented;
-  Codex arg accepted but not yet implemented; see [handover.md](../design/handover.md))
+- `/handover` — **[Elph delta]** foreign-session resume (Claude + Codex
+  implemented; see [handover.md](../design/handover.md))
 - Extension commands — **[Partial]** (JS vs WASM model)
 - Prompt templates as `/name` — **[Partial]** (planned)
 

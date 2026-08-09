@@ -16,6 +16,13 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+mod codex;
+
+pub use codex::{
+    CODEX_HANDOVER_PROMPT_PREFIX, CodexHandover, build_codex_handoff_prompt, codex_config_dir, discover_codex_sessions,
+    discover_codex_sessions_with_config, read_codex_session, resolve_codex_session,
+};
+
 /// Prefix of the handoff prompt injected into the current session. The TUI uses
 /// it to render a slim "Handover from Claude Code…" meta line instead of a
 /// giant user card in the transcript.
@@ -194,18 +201,18 @@ pub fn slugify(path: &Path) -> String {
 }
 
 /// Normalize a path (collapse `.` / `..`, strip redundant separators).
-fn normalize_path(path: &str) -> PathBuf {
+pub(crate) fn normalize_path(path: &str) -> PathBuf {
     Path::new(path).components().collect()
 }
 
-fn cwd_is_within(candidate: &str, target: &str) -> bool {
+pub(crate) fn cwd_is_within(candidate: &str, target: &str) -> bool {
     let candidate = normalize_path(candidate);
     let target = normalize_path(target);
     candidate == target || candidate.starts_with(&target)
 }
 
 /// True when `stem` looks like a Claude session UUID (`<uuid>.jsonl`).
-fn is_uuid_stem(stem: &str) -> bool {
+pub(crate) fn is_uuid_stem(stem: &str) -> bool {
     let bytes = stem.as_bytes();
     if bytes.len() != 36 {
         return false;
@@ -227,7 +234,7 @@ fn is_uuid_stem(stem: &str) -> bool {
     true
 }
 
-fn mtime_millis(path: &Path) -> u64 {
+pub(crate) fn mtime_millis(path: &Path) -> u64 {
     fs::metadata(path)
         .ok()
         .and_then(|meta| meta.modified().ok())
@@ -238,15 +245,15 @@ fn mtime_millis(path: &Path) -> u64 {
 
 // ── JSON helpers ───────────────────────────────────────────────────────────
 
-fn str_field(value: &Value, key: &str) -> Option<String> {
+pub(crate) fn str_field(value: &Value, key: &str) -> Option<String> {
     value.get(key).and_then(Value::as_str).map(str::to_owned)
 }
 
-fn bool_field(value: &Value, key: &str) -> bool {
+pub(crate) fn bool_field(value: &Value, key: &str) -> bool {
     value.get(key).and_then(Value::as_bool).unwrap_or(false)
 }
 
-fn one_line(value: &str, limit: usize) -> String {
+pub(crate) fn one_line(value: &str, limit: usize) -> String {
     let text = value.split_whitespace().collect::<Vec<_>>().join(" ");
     if text.len() <= limit {
         return text;
@@ -299,7 +306,7 @@ fn content_text(content: &Value) -> String {
 }
 
 /// True when the text is Claude-generated meta (interrupt notices, XML tags).
-fn is_generated_meta_text(text: &str) -> bool {
+pub(crate) fn is_generated_meta_text(text: &str) -> bool {
     let trimmed = text.trim_start();
     if trimmed.starts_with("[Request interrupted by user") {
         return true;

@@ -154,12 +154,8 @@ pub struct SlashContext<'a> {
 /// - `claude`: resolves the referenced Claude Code session for the current cwd,
 ///   reads it as inert history, and injects a handoff prompt into the current
 ///   agent session (a background turn — no `/handover` user card is echoed).
-/// - `codex`: not yet implemented — returns a status message.
+/// - `codex`: same flow against Codex rollout transcripts (`~/.codex/sessions`).
 fn handle_handover_slash(ctx: SlashContext<'_>, args: &str) -> SlashOutcome {
-    use crate::agent::{
-        HandoverError, build_handoff_prompt, claude_config_dir, read_claude_session, resolve_claude_session,
-    };
-
     let mut parts = args.splitn(2, char::is_whitespace);
     let tool = parts.next().unwrap_or("").trim().to_ascii_lowercase();
     let reference = parts.next().unwrap_or("").trim().to_string();
@@ -170,64 +166,111 @@ fn handle_handover_slash(ctx: SlashContext<'_>, args: &str) -> SlashOutcome {
              Example: /handover claude latest"
                 .into(),
         ),
-        "codex" => SlashOutcome::Status("Codex handover not yet implemented".into()),
-        "claude" => {
-            let Some(agent_session) = ctx.agent_session.as_ref() else {
-                return SlashOutcome::Status("Agent session required for this command.".into());
-            };
-            let Some(cwd) = ctx.cwd else {
-                return SlashOutcome::Status("Working directory required for /handover claude.".into());
-            };
-
-            let config_dir = match claude_config_dir() {
-                Some(dir) => dir,
-                None => {
-                    return SlashOutcome::Status(
-                        "Could not locate Claude config directory (expected ~/.claude).".to_string(),
-                    );
-                }
-            };
-
-            let reference_opt = if reference.is_empty() {
-                None
-            } else {
-                Some(reference.as_str())
-            };
-            let handover = match resolve_claude_session(cwd, Some(&config_dir), reference_opt) {
-                Ok(session) => match read_claude_session(&session.path) {
-                    Ok(handover) => handover,
-                    Err(HandoverError::ReadFailed(message)) => {
-                        return SlashOutcome::Status(format!("Failed to read Claude session: {message}"));
-                    }
-                    Err(err) => return SlashOutcome::Status(err.to_string()),
-                },
-                Err(HandoverError::Ambiguous { matches, .. }) => {
-                    // Free-text reference matched multiple sessions: list candidates
-                    // with their native ids so the user can pick one to resume.
-                    let mut lines =
-                        vec!["Multiple Claude sessions match, resume one by id (`/handover claude <id>`):".to_string()];
-                    for session in matches {
-                        lines.push(format!("  {}  {}", session.session_id, session.title));
-                    }
-                    return SlashOutcome::Status(lines.join("\n"));
-                }
-                Err(HandoverError::NoSession(message)) => return SlashOutcome::Status(message),
-                Err(err) => return SlashOutcome::Status(err.to_string()),
-            };
-
-            if ctx.spawn_agent_work {
-                let prompt = build_handoff_prompt(&handover, 0);
-                let session = agent_session.clone();
-                TurnDispatcher::spawn_turn(session, prompt, false);
-            }
-            // Quiet: the injected handoff prompt is the turn; do NOT echo a
-            // "/handover claude" user card (the handoff text carries the context).
-            SlashOutcome::SpawnAgentTurnQuiet
-        }
+        "claude" => handle_claude_handover(ctx, &reference),
+        "codex" => handle_codex_handover(ctx, &reference),
         other => SlashOutcome::Status(format!(
             "Unknown handover tool `{other}` — use `/handover claude` or `/handover codex`."
         )),
     }
+}
+
+/// `/handover claude [ref]` — Claude Code session resume.
+fn handle_claude_handover(ctx: SlashContext<'_>, reference: &str) -> SlashOutcome {
+    use crate::agent::{
+        HandoverError, build_handoff_prompt, claude_config_dir, read_claude_session, resolve_claude_session,
+    };
+
+    let Some(agent_session) = ctx.agent_session.as_ref() else {
+        return SlashOutcome::Status("Agent session required for this command.".into());
+    };
+    let Some(cwd) = ctx.cwd else {
+        return SlashOutcome::Status("Working directory required for /handover claude.".into());
+    };
+
+    let config_dir = match claude_config_dir() {
+        Some(dir) => dir,
+        None => {
+            return SlashOutcome::Status("Could not locate Claude config directory (expected ~/.claude).".to_string());
+        }
+    };
+
+    let reference_opt = if reference.is_empty() { None } else { Some(reference) };
+    match resolve_claude_session(cwd, Some(&config_dir), reference_opt) {
+        Ok(session) => match read_claude_session(&session.path) {
+            Ok(handover) => {
+                if ctx.spawn_agent_work {
+                    let prompt = build_handoff_prompt(&handover, 0);
+                    let session = agent_session.clone();
+                    TurnDispatcher::spawn_turn(session, prompt, false);
+                }
+                // Quiet: the injected handoff prompt is the turn; do NOT echo a
+                // "/handover claude" user card (the handoff text carries the context).
+                SlashOutcome::SpawnAgentTurnQuiet
+            }
+            Err(HandoverError::ReadFailed(message)) => {
+                SlashOutcome::Status(format!("Failed to read Claude session: {message}"))
+            }
+            Err(err) => SlashOutcome::Status(err.to_string()),
+        },
+        Err(HandoverError::Ambiguous { matches, .. }) => ambiguous_session_status("Claude", matches),
+        Err(HandoverError::NoSession(message)) => SlashOutcome::Status(message),
+        Err(err) => SlashOutcome::Status(err.to_string()),
+    }
+}
+
+/// `/handover codex [ref]` — Codex session resume.
+fn handle_codex_handover(ctx: SlashContext<'_>, reference: &str) -> SlashOutcome {
+    use crate::agent::{
+        HandoverError, build_codex_handoff_prompt, codex_config_dir, read_codex_session, resolve_codex_session,
+    };
+
+    let Some(agent_session) = ctx.agent_session.as_ref() else {
+        return SlashOutcome::Status("Agent session required for this command.".into());
+    };
+    let Some(cwd) = ctx.cwd else {
+        return SlashOutcome::Status("Working directory required for /handover codex.".into());
+    };
+
+    let config_dir = match codex_config_dir() {
+        Some(dir) => dir,
+        None => {
+            return SlashOutcome::Status("Could not locate Codex config directory (expected ~/.codex).".to_string());
+        }
+    };
+
+    let reference_opt = if reference.is_empty() { None } else { Some(reference) };
+    match resolve_codex_session(cwd, Some(&config_dir), reference_opt) {
+        Ok(session) => match read_codex_session(&session.path) {
+            Ok(handover) => {
+                if ctx.spawn_agent_work {
+                    let prompt = build_codex_handoff_prompt(&handover, 0);
+                    let session = agent_session.clone();
+                    TurnDispatcher::spawn_turn(session, prompt, false);
+                }
+                SlashOutcome::SpawnAgentTurnQuiet
+            }
+            Err(HandoverError::ReadFailed(message)) => {
+                SlashOutcome::Status(format!("Failed to read Codex session: {message}"))
+            }
+            Err(err) => SlashOutcome::Status(err.to_string()),
+        },
+        Err(HandoverError::Ambiguous { matches, .. }) => ambiguous_session_status("Codex", matches),
+        Err(HandoverError::NoSession(message)) => SlashOutcome::Status(message),
+        Err(err) => SlashOutcome::Status(err.to_string()),
+    }
+}
+
+/// Format an ambiguous free-text reference: list candidate ids so the user can
+/// resume one by native id.
+fn ambiguous_session_status(tool: &str, matches: Vec<crate::agent::HandoverSession>) -> SlashOutcome {
+    let mut lines = vec![format!(
+        "Multiple {tool} sessions match, resume one by id (`/handover {} <id>`):",
+        tool.to_ascii_lowercase()
+    )];
+    for session in matches {
+        lines.push(format!("  {}  {}", session.session_id, session.title));
+    }
+    SlashOutcome::Status(lines.join("\n"))
 }
 
 pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
@@ -938,7 +981,7 @@ mod tests {
     }
 
     #[test]
-    fn handover_codex_reports_not_implemented() {
+    fn handover_codex_without_session_returns_status() {
         let outcome = handle_slash_submit(SlashContext {
             input: "/handover codex",
             extensions: None,
@@ -952,7 +995,7 @@ mod tests {
         });
         assert!(matches!(
             outcome,
-            SlashOutcome::Status(ref message) if message == "Codex handover not yet implemented"
+            SlashOutcome::Status(ref message) if message == "Agent session required for this command."
         ));
         assert!(slash_outcome_is_ui_only(&outcome));
     }
@@ -998,7 +1041,7 @@ mod tests {
     #[test]
     fn handover_outcome_is_ui_only_for_codex() {
         assert!(slash_outcome_is_ui_only(&SlashOutcome::Status(
-            "Codex handover not yet implemented".to_string()
+            "Agent session required for this command.".to_string()
         )));
     }
 }
