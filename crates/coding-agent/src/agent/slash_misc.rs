@@ -25,7 +25,8 @@ Keyboard shortcuts
   /help              List slash commands
   /hotkeys           This list
   /workers           Live multi-worker peers
-  /resume [id]       List or switch sessions
+  /resume [id]       Interactive session picker (or switch by id)
+  /tree [id]         Interactive tree navigate (or jump by entry id)
   /session           Current session info
   /tools             Active tools
   /system-prompt     Compiled system prompt

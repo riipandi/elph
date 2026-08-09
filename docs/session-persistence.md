@@ -65,10 +65,26 @@ Messages are flushed on each `MessageEnd` into `session_entries` (transactional 
 | --- | --- |
 | `/export [path]` | Writes the **full** session DAG as JSONL (`SessionTreeEntry` per line). Default path: `./elph-session-<shortid>.jsonl`. |
 | `/import <path.jsonl>` | Creates a **new** Turso session for the current project, appends all lines, then switches the TUI to that session (`/resume` equivalent). CLI: `elph import <file>`. |
-| `/tree` | Inspect the full entry tree (ASCII); leaf marked with `●`. |
-| `/tree <entry_id> [--summary]` | Pi-style navigate: move active leaf to that entry; optional abandoned-branch summary via harness `navigate_tree`. Reloads the transcript so the UI matches the new leaf. |
-| `/tree --branch` | List only the active branch path (message previews). |
+| `/tree` | **Interactive picker** (messages / branch summaries / compaction). ↑↓ move, type to filter, **Enter** jump leaf, **Ctrl+Enter** jump + branch summary, **Esc** cancel. |
+| `/tree <entry_id> [--summary]` | Non-interactive navigate (scriptable / ACP). Reloads transcript for the new leaf. |
+| `/tree --branch` | Interactive picker limited to the active branch path. |
+| `/resume` | **Interactive session picker** for this project. ↑↓ / filter / Enter to switch. |
+| `/resume <session_id>` | Switch directly without the picker. |
 | `/trust` | Records the workspace under `CONFIG_DIR/trust.json` (`directories` map). Not project `.elph/trusted`. |
+
+### Interactive slash commands
+
+Some builtins open an **inline status-zone selector** (same pattern as `/model`, tool approval, `/rename`):
+
+| Command | Interaction |
+| --- | --- |
+| `/model` | Provider + model tabs, filter, scoped models |
+| `/resume` | Session list (`SelectItem` from `SessionManager::list`) |
+| `/tree` | Navigable tree entries; confirm moves harness leaf via `navigate_tree` |
+| `/rename` | Free-text title editor |
+| Tool approval / plan confirm | Fixed option lists |
+
+Implementation: `tui/item_selector.rs` + `item_selector_bar.rs` (`PendingItemSelector`, `SlashOutcome::OpenItemSelector`). Prefer interactive open when args are empty; keep path/id args for non-interactive use.
 
 **Design note — tree UX:** Elph adopts **Pi’s conversation-tree model** (entry DAG + leaf jump + branch summary). Grok Build’s strengths (`/resume` picker polish, `/rewind` file snapshots, multi-session dashboard) are complementary session-management UX, not a substitute for entry-level branching. Codex is closer to linear resume/fork and does not map to Elph’s `session_entries` tree.
 

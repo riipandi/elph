@@ -46,11 +46,20 @@ pub async fn list_session_select_items(session_manager: &SessionManager) -> Resu
 }
 
 pub fn list_tree_select_items(entries: &[SessionTreeEntry]) -> Vec<SelectItem> {
-    entries.iter().filter_map(tree_entry_to_select_item).collect()
+    list_tree_select_items_with_leaf(entries, None)
 }
 
-fn tree_entry_to_select_item(entry: &SessionTreeEntry) -> Option<SelectItem> {
+/// Selectable tree points for `/tree` interactive picker (messages, summaries, …).
+pub fn list_tree_select_items_with_leaf(entries: &[SessionTreeEntry], leaf_id: Option<&str>) -> Vec<SelectItem> {
+    entries
+        .iter()
+        .filter_map(|e| tree_entry_to_select_item(e, leaf_id))
+        .collect()
+}
+
+fn tree_entry_to_select_item(entry: &SessionTreeEntry, leaf_id: Option<&str>) -> Option<SelectItem> {
     let id = entry.id().to_string();
+    let leaf_mark = if leaf_id == Some(entry.id()) { "● " } else { "" };
     match entry {
         SessionTreeEntry::Message { message, timestamp, .. } => {
             let role = message.role();
@@ -61,8 +70,9 @@ fn tree_entry_to_select_item(entry: &SessionTreeEntry) -> Option<SelectItem> {
             if preview.is_empty() {
                 return None;
             }
-            let label = format!("{role}: {preview}");
-            Some(SelectItem::new(id, label).with_description(timestamp.clone()))
+            let short: String = id.chars().take(8).collect();
+            let label = format!("{leaf_mark}{role}: {preview}");
+            Some(SelectItem::new(id, label).with_description(format!("{short} · {timestamp}")))
         }
         SessionTreeEntry::CustomMessage {
             content,
@@ -75,11 +85,25 @@ fn tree_entry_to_select_item(entry: &SessionTreeEntry) -> Option<SelectItem> {
             if preview.is_empty() {
                 return None;
             }
-            let label = format!("{custom_type}: {preview}");
-            Some(SelectItem::new(id, label).with_description(timestamp.clone()))
+            let short: String = id.chars().take(8).collect();
+            let label = format!("{leaf_mark}{custom_type}: {preview}");
+            Some(SelectItem::new(id, label).with_description(format!("{short} · {timestamp}")))
         }
         SessionTreeEntry::BranchSummary { summary, timestamp, .. } => {
-            Some(SelectItem::new(id, format!("branch: {summary}")).with_description(timestamp.clone()))
+            let short: String = id.chars().take(8).collect();
+            let preview: String = summary.chars().take(60).collect();
+            Some(
+                SelectItem::new(id, format!("{leaf_mark}branch: {preview}"))
+                    .with_description(format!("{short} · {timestamp}")),
+            )
+        }
+        SessionTreeEntry::Compaction { summary, timestamp, .. } => {
+            let short: String = id.chars().take(8).collect();
+            let preview: String = summary.chars().take(60).collect();
+            Some(
+                SelectItem::new(id, format!("{leaf_mark}compaction: {preview}"))
+                    .with_description(format!("{short} · {timestamp}")),
+            )
         }
         _ => None,
     }

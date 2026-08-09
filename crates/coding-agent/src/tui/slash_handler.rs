@@ -146,6 +146,14 @@ pub enum SlashOutcome {
     ResumeSession {
         session_id: String,
     },
+    /// Interactive list picker (`/resume`, `/tree` without a direct id).
+    OpenItemSelector {
+        purpose: crate::tui::item_selector::ItemSelectorPurpose,
+        title: String,
+        items: Vec<crate::types::SelectItem>,
+        preferred_value: Option<String>,
+        footer_hint: String,
+    },
 }
 
 pub struct SlashContext<'a> {
@@ -491,16 +499,17 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             };
             let session = Arc::clone(session);
             let args = args.clone();
+            let trimmed = args.trim();
+            // Interactive picker when no target id (optional --branch filter).
+            if trimmed.is_empty() || trimmed == "--branch" || trimmed == "branch" {
+                let branch_only = trimmed == "--branch" || trimmed == "branch";
+                return open_tree_item_selector(Some(&session), branch_only);
+            }
             match elph_agent::try_block_on(tree_slash_message(&session, &args)) {
-                Ok(Ok(text)) => {
-                    // Jump returns a short status; list views open the dialog.
-                    if args.trim().is_empty() || args.trim() == "--branch" || args.trim() == "branch" {
-                        SlashOutcome::OpenSessionInfoDialog { text }
-                    } else {
-                        // Reload transcript so the TUI matches the new leaf (Pi chat re-render).
-                        SlashOutcome::ResumeSession {
-                            session_id: session.session_id().to_string(),
-                        }
+                Ok(Ok(_text)) => {
+                    // Reload transcript so the TUI matches the new leaf (Pi chat re-render).
+                    SlashOutcome::ResumeSession {
+                        session_id: session.session_id().to_string(),
                     }
                 }
                 Ok(Err(message)) => SlashOutcome::Status(message),
@@ -517,12 +526,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
                     session_id: id.to_string(),
                 };
             }
-            let session = Arc::clone(session);
-            match elph_agent::try_block_on(resume_list_message(&session)) {
-                Ok(Ok(text)) => SlashOutcome::OpenSessionInfoDialog { text },
-                Ok(Err(message)) => SlashOutcome::Status(message),
-                Err(e) => SlashOutcome::Status(format!("/resume failed: {e}")),
-            }
+            open_resume_item_selector(Some(&session))
         }
         SlashDispatch::Export { args } => {
             let Some(session) = ctx.agent_session.as_ref() else {
@@ -567,28 +571,8 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             OverlayCommand::Model { filter } => SlashOutcome::OpenModelSelector { filter },
             OverlayCommand::ScopedModels => SlashOutcome::OpenScopedModels,
             // Tree/Resume now have first-class dispatch; keep OverlayCommand for API compat.
-            OverlayCommand::Tree => {
-                let Some(session) = ctx.agent_session.as_ref() else {
-                    return SlashOutcome::Status("Agent session required for /tree.".into());
-                };
-                let session = Arc::clone(session);
-                match elph_agent::try_block_on(tree_slash_message(&session, "")) {
-                    Ok(Ok(text)) => SlashOutcome::OpenSessionInfoDialog { text },
-                    Ok(Err(message)) => SlashOutcome::Status(message),
-                    Err(e) => SlashOutcome::Status(format!("/tree failed: {e}")),
-                }
-            }
-            OverlayCommand::Resume => {
-                let Some(session) = ctx.agent_session.as_ref() else {
-                    return SlashOutcome::Status("Agent session required for /resume.".into());
-                };
-                let session = Arc::clone(session);
-                match elph_agent::try_block_on(resume_list_message(&session)) {
-                    Ok(Ok(text)) => SlashOutcome::OpenSessionInfoDialog { text },
-                    Ok(Err(message)) => SlashOutcome::Status(message),
-                    Err(e) => SlashOutcome::Status(format!("/resume failed: {e}")),
-                }
-            }
+            OverlayCommand::Tree => open_tree_item_selector(ctx.agent_session.as_ref(), false),
+            OverlayCommand::Resume => open_resume_item_selector(ctx.agent_session.as_ref()),
         },
         SlashDispatch::Continue => {
             if ctx.agent_session.is_none() {
@@ -687,7 +671,72 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
             | SlashOutcome::OpenMcpAuthDialog { .. }
             | SlashOutcome::OpenMemoryResultDialog { .. }
             | SlashOutcome::ResumeSession { .. }
+            | SlashOutcome::OpenItemSelector { .. }
     )
+}
+
+fn open_resume_item_selector(session: Option<&Arc<crate::agent::CodingAgentSession>>) -> SlashOutcome {
+    let Some(session) = session else {
+        return SlashOutcome::Status("Agent session required for /resume.".into());
+    };
+    let current = session.session_id().to_string();
+    match elph_agent::try_block_on(async {
+        let sm = session.session_manager();
+        crate::agent::list_session_select_items(sm)
+            .await
+            .map_err(|e| format!("list sessions: {e:#}"))
+    }) {
+        Ok(Ok(items)) if items.is_empty() => SlashOutcome::Status("No sessions for this project yet.".into()),
+        Ok(Ok(items)) => SlashOutcome::OpenItemSelector {
+            purpose: crate::tui::item_selector::ItemSelectorPurpose::ResumeSession,
+            title: "Resume session".into(),
+            items,
+            preferred_value: Some(current),
+            footer_hint: crate::tui::item_selector::default_resume_footer_hint(),
+        },
+        Ok(Err(message)) => SlashOutcome::Status(message),
+        Err(e) => SlashOutcome::Status(format!("/resume failed: {e}")),
+    }
+}
+
+fn open_tree_item_selector(session: Option<&Arc<crate::agent::CodingAgentSession>>, branch_only: bool) -> SlashOutcome {
+    let Some(session) = session else {
+        return SlashOutcome::Status("Agent session required for /tree.".into());
+    };
+    let session = Arc::clone(session);
+    match elph_agent::try_block_on(async {
+        let leaf = session.leaf_id().await.ok().flatten();
+        let entries = if branch_only {
+            session
+                .branch_entries()
+                .await
+                .map_err(|e| format!("branch entries: {e:#}"))?
+        } else {
+            session
+                .session_tree_entries()
+                .await
+                .map_err(|e| format!("session entries: {e:#}"))?
+        };
+        let items = crate::agent::list_tree_select_items_with_leaf(&entries, leaf.as_deref());
+        Ok::<_, String>((items, leaf))
+    }) {
+        Ok(Ok((items, _leaf))) if items.is_empty() => {
+            SlashOutcome::Status("Session tree is empty — nothing to navigate.".into())
+        }
+        Ok(Ok((items, leaf))) => SlashOutcome::OpenItemSelector {
+            purpose: crate::tui::item_selector::ItemSelectorPurpose::NavigateTree,
+            title: if branch_only {
+                "Session tree (branch)".into()
+            } else {
+                "Session tree".into()
+            },
+            items,
+            preferred_value: leaf,
+            footer_hint: crate::tui::item_selector::default_tree_footer_hint(),
+        },
+        Ok(Err(message)) => SlashOutcome::Status(message),
+        Err(e) => SlashOutcome::Status(format!("/tree failed: {e}")),
+    }
 }
 
 /// Whether the slash outcome should show an agent turn indicator.
@@ -699,8 +748,8 @@ pub fn overlay_deferred_message(overlay: &OverlayCommand) -> String {
     match overlay {
         OverlayCommand::Model { .. } => "/model overlay not yet implemented".into(),
         OverlayCommand::ScopedModels => "/scoped-models overlay not yet implemented".into(),
-        OverlayCommand::Tree => "Use /tree (session branch list).".into(),
-        OverlayCommand::Resume => "Use /resume [session_id] to list or switch sessions.".into(),
+        OverlayCommand::Tree => "Use /tree for the interactive session tree picker.".into(),
+        OverlayCommand::Resume => "Use /resume for the interactive session picker.".into(),
         OverlayCommand::ProviderConnect { .. } => "/provider connect overlay not yet implemented".into(),
     }
 }

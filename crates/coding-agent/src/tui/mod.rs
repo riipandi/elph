@@ -11,6 +11,8 @@ mod confetti;
 mod file_picker;
 mod focus;
 mod inline_dialog;
+pub(crate) mod item_selector;
+mod item_selector_bar;
 pub(crate) mod labels;
 pub(crate) mod mcp_auth_dialog;
 mod model_option_list;

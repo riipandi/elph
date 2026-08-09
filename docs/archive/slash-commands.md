@@ -30,6 +30,21 @@ Built-in commands always win over extension and template names.
 | `/settings`                 | `/config`     | Open settings (planned)                                                                                                               |
 | `/diff`                     | —             | Diff view (planned)                                                                                                                   |
 | `/diagnostic:debug`         | —             | Debug info (planned)                                                                                                                  |
+| `/resume`                   | —             | **Interactive** session picker (empty args); `/resume <id>` switches directly                                                       |
+| `/tree`                     | —             | **Interactive** session-tree navigator; `/tree <entry_id> [--summary]` jumps without picker                                           |
+| `/import`                   | —             | Import session JSONL into a new session (path required)                                                                               |
+| `/export`                   | —             | Export full session tree as JSONL                                                                                                     |
+| `/trust`                    | —             | Trust cwd in `CONFIG_DIR/trust.json`                                                                                                  |
+
+### Interactive vs text-only
+
+| Kind | Examples | UX |
+| --- | --- | --- |
+| Interactive (inline selector / editor) | `/model`, `/resume`, `/tree`, `/rename`, tool approval | Focus status zone; ↑↓ / type / Enter / Esc |
+| Scroll text dialog | `/session`, `/tools`, `/system-prompt`, `/settings` | Read-only report; copy optional |
+| Status line | `/trust`, `/export`, `/fork` | One-shot result in transcript |
+
+When adding a new slash that needs a choice, open an interactive overlay (`SlashOutcome::OpenItemSelector` or a dedicated dialog) rather than dumping a numbered list for the user to retype.
 
 ### `/goal` subcommands
 

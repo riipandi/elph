@@ -39,9 +39,9 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         mut live_cursor,
         mut live_draft,
         mention_index,
-        messages,
+        mut messages,
         messages_arc,
-        messages_revision,
+        mut messages_revision,
         model_filter,
         model_input_focus,
         model_provider_index,
@@ -60,6 +60,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         mut pending_provider_disconnect,
         pending_quit_confirm,
         mut pending_rename,
+        mut pending_item_selector,
+        mut item_selector_selected,
         mut pending_scoped_models,
         mut pending_system_prompt,
         pending_tool_approval,
@@ -491,6 +493,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
 
     let model_selector_open = pending_model_selector.read().is_some();
     let scoped_models_open = pending_scoped_models.read().is_some();
+    let item_selector_open = pending_item_selector.read().is_some();
     let provider_connect_open = pending_provider_connect.read().is_some();
     let mcp_auth_open = pending_mcp_auth.read().is_some();
     let provider_disconnect_open = pending_provider_disconnect.read().is_some();
@@ -504,6 +507,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         || pending_user_question.read().is_some()
         || model_selector_open
         || scoped_models_open
+        || item_selector_open
         || system_prompt_open
         || rename_open
         || confetti_open
@@ -815,6 +819,165 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     pending.toggle_selected();
                     apply_scoped_session(pending, &mut session_scoped_items.write());
                     scoped_selected_index.set(pending.selected_index);
+                }
+                return;
+            }
+
+            if !shell_global_shortcut(modifiers, code) {
+                return;
+            }
+        }
+
+        // ── Item selector (/resume, /tree) ─────────────────────────────
+        if item_selector_open
+            && pending_user_question.read().is_none()
+            && !system_prompt_open
+            && !confetti_open
+            && !model_selector_open
+            && !scoped_models_open
+            && !rename_open
+        {
+            if modifiers.is_empty() && code == KeyCode::Esc {
+                close_item_selector(&mut pending_item_selector, &mut draft, &mut live_draft, &mut shell_focus, true);
+                force_editor_clear.set(true);
+                return;
+            }
+
+            if let Some(delta) = item_selector_list_nav_delta(modifiers, code) {
+                if let Some(pending) = pending_item_selector.write().as_mut() {
+                    if delta == isize::MIN / 4 {
+                        let indices = pending.filtered_indices();
+                        if let Some(&first) = indices.first() {
+                            pending.selected = first;
+                        }
+                    } else if delta == isize::MAX / 4 {
+                        let indices = pending.filtered_indices();
+                        if let Some(&last) = indices.last() {
+                            pending.selected = last;
+                        }
+                    } else {
+                        pending.move_delta(delta);
+                    }
+                    item_selector_selected.set(pending.filtered_selected());
+                }
+                return;
+            }
+
+            if modifiers.is_empty() && code == KeyCode::Backspace {
+                if let Some(pending) = pending_item_selector.write().as_mut() {
+                    if pending.filter_backspace() {
+                        item_selector_selected.set(pending.filtered_selected());
+                    }
+                }
+                return;
+            }
+
+            // Printable filter characters (no modifiers).
+            if modifiers.is_empty()
+                && let KeyCode::Char(c) = code
+                && !c.is_control()
+            {
+                if let Some(pending) = pending_item_selector.write().as_mut() {
+                    pending.apply_filter_char(c);
+                    item_selector_selected.set(pending.filtered_selected());
+                }
+                return;
+            }
+
+            let with_summary = item_selector_confirm_summary_on_ctrl_enter(modifiers, code);
+            let plain_confirm = item_selector_confirm_on_enter(modifiers, code);
+            if plain_confirm || with_summary {
+                let snapshot = pending_item_selector.read().clone();
+                let Some(pending) = snapshot else {
+                    return;
+                };
+                let Some(value) = pending.selected_value().map(str::to_string) else {
+                    return;
+                };
+                let purpose = pending.purpose;
+                close_item_selector(&mut pending_item_selector, &mut draft, &mut live_draft, &mut shell_focus, false);
+                force_editor_clear.set(true);
+                match purpose {
+                    ItemSelectorPurpose::ResumeSession => {
+                        if let Some(session) = agent_session.as_ref() {
+                            let session = Arc::clone(session);
+                            tokio::spawn(async move {
+                                session.shutdown_workers().await;
+                            });
+                        }
+                        push_transcript_message_synced(
+                            &mut messages,
+                            messages_arc,
+                            &mut messages_revision,
+                            &mut prompt_history,
+                            TranscriptMessage::text(format!("Resuming session {value}…"), TranscriptStyle::Meta),
+                        );
+                        resume_session_requested.set(Some(value));
+                    }
+                    ItemSelectorPurpose::NavigateTree => {
+                        let Some(session) = agent_session.as_ref().map(Arc::clone) else {
+                            push_transcript_message_synced(
+                                &mut messages,
+                                messages_arc,
+                                &mut messages_revision,
+                                &mut prompt_history,
+                                TranscriptMessage::text(
+                                    "Agent session required for /tree.".to_string(),
+                                    TranscriptStyle::Meta,
+                                ),
+                            );
+                            return;
+                        };
+                        let summarize = with_summary;
+                        let entry_id = value.clone();
+                        let sid = session.session_id().to_string();
+                        let nav = elph_agent::try_block_on(async {
+                            session.navigate_tree_to_with_options(&entry_id, summarize).await
+                        });
+                        match nav {
+                            Ok(Ok(())) => {
+                                push_transcript_message_synced(
+                                    &mut messages,
+                                    messages_arc,
+                                    &mut messages_revision,
+                                    &mut prompt_history,
+                                    TranscriptMessage::text(
+                                        format!(
+                                            "Navigated to {entry_id}{}",
+                                            if summarize { " (with summary)" } else { "" }
+                                        ),
+                                        TranscriptStyle::Meta,
+                                    ),
+                                );
+                                // Reload transcript for the new leaf.
+                                resume_session_requested.set(Some(sid));
+                            }
+                            Ok(Err(e)) => {
+                                push_transcript_message_synced(
+                                    &mut messages,
+                                    messages_arc,
+                                    &mut messages_revision,
+                                    &mut prompt_history,
+                                    TranscriptMessage::text(
+                                        format!("/tree navigate failed: {e:#}"),
+                                        TranscriptStyle::Meta,
+                                    ),
+                                );
+                            }
+                            Err(e) => {
+                                push_transcript_message_synced(
+                                    &mut messages,
+                                    messages_arc,
+                                    &mut messages_revision,
+                                    &mut prompt_history,
+                                    TranscriptMessage::text(
+                                        format!("/tree navigate failed: {e}"),
+                                        TranscriptStyle::Meta,
+                                    ),
+                                );
+                            }
+                        }
+                    }
                 }
                 return;
             }
@@ -2857,6 +3020,32 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             show_copy: false,
                         });
                         force_editor_clear.set(true);
+                    }
+                    SlashOutcome::OpenItemSelector {
+                        purpose,
+                        title,
+                        items,
+                        preferred_value,
+                        footer_hint,
+                    } => {
+                        open_item_selector(OpenItemSelectorArgs {
+                            pending: &mut pending_item_selector,
+                            draft: &mut draft,
+                            live_draft: &mut live_draft,
+                            shell_focus: &mut shell_focus,
+                            purpose,
+                            title,
+                            items,
+                            preferred_value,
+                            footer_hint,
+                        });
+                        if let Some(p) = pending_item_selector.read().as_ref() {
+                            item_selector_selected.set(p.filtered_selected());
+                        }
+                        draft.set(String::new());
+                        live_draft.set(String::new());
+                        force_editor_clear.set(true);
+                        suppress_enter_newline.set(true);
                     }
                     SlashOutcome::OpenRenameDialog { initial } => {
                         open_rename_dialog(OpenRenameDialogArgs {

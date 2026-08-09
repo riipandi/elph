@@ -51,6 +51,12 @@ use crate::tui::file_picker::{
 };
 use crate::tui::focus::ShellFocus;
 use crate::tui::focus::{is_ctrl_enter_interject, is_text_select_toggle_key, prompt_focus_char, shell_global_shortcut};
+use crate::tui::item_selector::{
+    ItemSelectorPurpose, OpenItemSelectorArgs, PendingItemSelector, close_item_selector,
+    item_selector_confirm_on_enter, item_selector_confirm_summary_on_ctrl_enter, item_selector_list_nav_delta,
+    open_item_selector,
+};
+use crate::tui::item_selector_bar::ItemSelectorBar;
 use crate::tui::labels::GitFooterInfo;
 use crate::tui::mcp_auth_dialog::{
     OpenMcpAuthDialogArgs, PendingMcpAuthDialog, open_mcp_auth_dialog, start_mcp_oauth_for_server,
@@ -504,6 +510,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let system_prompt_scroll_tick = hooks.use_ref(|| 0u32);
     let pending_rename = hooks.use_ref(|| None::<crate::tui::rename_dialog::PendingRenameDialog>);
     let rename_value = hooks.use_state(String::new);
+    let pending_item_selector = hooks.use_ref(|| None::<PendingItemSelector>);
+    let item_selector_selected = hooks.use_state(|| 0usize);
     let pending_confetti = hooks.use_ref(|| None::<PendingConfetti>);
     let pending_provider_connect = hooks.use_ref(|| None::<PendingProviderConnectDialog>);
     let pending_provider_disconnect = hooks.use_ref(|| None::<PendingProviderDisconnectDialog>);
@@ -725,6 +733,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         pending_queue_click,
         pending_quit_confirm,
         pending_rename,
+        pending_item_selector,
+        item_selector_selected,
         pending_scoped_models,
         pending_subagent_output,
         pending_system_prompt,

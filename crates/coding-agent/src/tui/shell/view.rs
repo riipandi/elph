@@ -78,6 +78,8 @@ pub(crate) fn build_shell_view(
         mut pending_queue_click,
         mut pending_quit_confirm,
         mut pending_rename,
+        mut pending_item_selector,
+        mut item_selector_selected,
         mut pending_scoped_models,
         pending_subagent_output,
         mut pending_system_prompt,
@@ -284,6 +286,7 @@ pub(crate) fn build_shell_view(
         .as_ref()
         .is_some_and(|d| d.title == "Session");
     let rename_open = pending_rename.read().is_some();
+    let item_selector_open = pending_item_selector.read().is_some();
     let confetti_open = pending_confetti.read().is_some();
     let provider_connect_open = pending_provider_connect.read().is_some();
     let mcp_auth_open = pending_mcp_auth.read().is_some();
@@ -300,6 +303,7 @@ pub(crate) fn build_shell_view(
         || scoped_models_open
         || system_prompt_open
         || rename_open
+        || item_selector_open
         || confetti_open
         || provider_connect_open
         || mcp_auth_open
@@ -334,8 +338,19 @@ pub(crate) fn build_shell_view(
         && !provider_connect_open
         && !mcp_auth_open
         && !provider_disconnect_open;
-    let rename_has_focus =
-        rename_open && !user_question_open && !system_prompt_open && !confetti_open && !model_selector_open;
+    let rename_has_focus = rename_open
+        && !user_question_open
+        && !system_prompt_open
+        && !confetti_open
+        && !model_selector_open
+        && !item_selector_open;
+    let item_selector_has_focus = item_selector_open
+        && !user_question_open
+        && !system_prompt_open
+        && !rename_open
+        && !confetti_open
+        && !model_selector_open
+        && !scoped_models_open;
     let approval_has_focus = (pending_tool_approval.read().is_some()
         || pending_mode_change.read().is_some()
         || pending_plan_confirmation.read().is_some()
@@ -528,8 +543,42 @@ pub(crate) fn build_shell_view(
     } else {
         None
     };
+    // Sync SelectList highlight with filtered selection.
+    if let Some(pending) = pending_item_selector.read().as_ref() {
+        item_selector_selected.set(pending.filtered_selected());
+    }
+    let item_selector_overlay = if item_selector_open {
+        let pending_snap = pending_item_selector.read().clone();
+        Some(
+            element! {
+                ItemSelectorBar(
+                    screen_width: screen_width,
+                    screen_height: screen_height,
+                    has_focus: item_selector_has_focus,
+                    pending: pending_snap,
+                    selected_index: Some(item_selector_selected),
+                    on_cancel: move |_| {
+                        close_item_selector(
+                            &mut pending_item_selector,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                            true,
+                        );
+                        force_editor_clear.set(true);
+                    },
+                )
+            }
+            .into(),
+        )
+    } else {
+        None
+    };
     // Same slot as slash palette / model picker: above the editor, below the status row.
-    let editor_overlay = rename_overlay.or(model_selector_overlay).or(scoped_models_overlay);
+    let editor_overlay = rename_overlay
+        .or(item_selector_overlay)
+        .or(model_selector_overlay)
+        .or(scoped_models_overlay);
     let _confetti_frame = confetti_frame.get();
     let confetti_overlay = pending_confetti.read().as_ref().map(|_| -> AnyElement<'static> {
         let particles = if let Some(runtime) = confetti_runtime.write().as_mut() {
@@ -1649,6 +1698,33 @@ pub(crate) fn build_shell_view(
                                     body_height: Some(body_height),
                                     show_copy: false,
                                 });
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
+                            SlashOutcome::OpenItemSelector {
+                                purpose,
+                                title,
+                                items,
+                                preferred_value,
+                                footer_hint,
+                            } => {
+                                open_item_selector(OpenItemSelectorArgs {
+                                    pending: &mut pending_item_selector,
+                                    draft: &mut draft,
+                                    live_draft: &mut live_draft,
+                                    shell_focus: &mut shell_focus,
+                                    purpose,
+                                    title,
+                                    items,
+                                    preferred_value,
+                                    footer_hint,
+                                });
+                                if let Some(p) = pending_item_selector.read().as_ref() {
+                                    item_selector_selected.set(p.filtered_selected());
+                                }
                                 draft.set(String::new());
                                 live_draft.set(String::new());
                                 force_editor_clear.set(true);

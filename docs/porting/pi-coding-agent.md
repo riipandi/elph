@@ -232,7 +232,7 @@ elph built-in **names** largely mirror pi, plus `/provider`, `/help`, `/exit`. D
 - Registry list — **[Partial]** (names present)
 - Dispatch / handlers — **[Gap]** in behavior (mostly `slash_stub_message`)
 - `/model`, selectors — **[Partial]** (overlays partially stubbed)
-- `/tree` — **[Partial]** (list + jump + optional summary; no interactive TreeSelector yet)
+- `/tree` — **[Partial]** (interactive item selector + jump/summary; not full Pi TreeSelector filters/labels)
 - `/login` / `/logout` — **[Partial]** (CLI `provider` + oauth infra)
 - `/scoped-models` — **[Partial]** (editor + Ctrl+P cycle; no keybinding remaps / null=all semantics)
 - `/share` — **[Gap]**
