@@ -309,8 +309,15 @@ fn join_paths(base: &str, relative: &str) -> String {
 
 /// Render `absolute` as a path relative to `cwd` when possible, so grep output is
 /// token-efficient. The result stays actionable because other tools (read_file,
-/// edit_file, …) resolve relative paths against the working directory. When `cwd`
-/// is `None` or `absolute` is not under `cwd`, the absolute path is returned unchanged.
+/// edit_file, …) resolve relative paths against the working directory via
+/// `LocalExecutionEnv::resolve_path`, which does `cwd.join(path)` for non-absolute
+/// input — so a cwd-relative path always round-trips back to the same file.
+///
+/// The `/` prefix requirement (not just the bare `cwd`) prevents stripping a
+/// sibling directory that merely shares a name prefix (e.g. `cwd-other`). Any stray
+/// leading `/` or `./` left by the base/relative join is trimmed so the result is
+/// never accidentally absolute (which would otherwise resolve against the filesystem
+/// root instead of `cwd`).
 fn make_display_path(absolute: &str, cwd: &Option<String>) -> String {
     let Some(cwd) = cwd else {
         return absolute.to_string();
@@ -318,7 +325,14 @@ fn make_display_path(absolute: &str, cwd: &Option<String>) -> String {
     let norm_abs = absolute.replace('\\', "/");
     let norm_cwd = cwd.replace('\\', "/").trim_end_matches('/').to_string();
     match norm_abs.strip_prefix(&format!("{norm_cwd}/")) {
-        Some(rest) => rest.to_string(),
+        Some(rest) => {
+            let rel = rest.trim_start_matches('/').trim_start_matches("./");
+            if rel.is_empty() {
+                absolute.to_string()
+            } else {
+                rel.to_string()
+            }
+        }
         None => absolute.to_string(),
     }
 }
@@ -531,6 +545,23 @@ mod mention_tests {
     }
 
     #[test]
+    fn make_display_path_normalizes_stray_separators() {
+        let cwd = Some("/Users/me/project".to_string());
+        // A leading slash left by a base/relative join must not survive (would become
+        // absolute and resolve against the filesystem root instead of cwd).
+        assert_eq!(make_display_path("/Users/me/project//src/main.rs", &cwd), "src/main.rs");
+        assert_eq!(make_display_path("/Users/me/project/./src/main.rs", &cwd), "src/main.rs");
+        // Windows separators are normalized too.
+        assert_eq!(
+            make_display_path(
+                "C:\\Users\\me\\project\\src\\main.rs",
+                &Some("C:\\Users\\me\\project".to_string())
+            ),
+            "src/main.rs"
+        );
+    }
+
+    #[test]
     fn make_display_path_keeps_absolute_when_outside_cwd() {
         let cwd = Some("/Users/me/project".to_string());
         // Sibling directory whose name shares a prefix must not be stripped.
@@ -540,6 +571,8 @@ mod mention_tests {
         );
         // Path entirely outside cwd is unchanged.
         assert_eq!(make_display_path("/etc/hosts", &cwd), "/etc/hosts");
+        // A file whose name equals cwd (edge) is left absolute, not emptied.
+        assert_eq!(make_display_path("/Users/me/project", &cwd), "/Users/me/project");
         // No cwd configured -> absolute preserved.
         assert_eq!(
             make_display_path("/Users/me/project/src/main.rs", &None),
