@@ -150,8 +150,6 @@ pub struct SlashContext<'a> {
     pub extension_host: Option<&'a ExtensionHost>,
     pub paths: Option<&'a Paths>,
     pub cwd: Option<&'a Path>,
-    /// When false (agent busy), do not start skill/compact/etc. — caller queues or rejects.
-    pub spawn_agent_work: bool,
 }
 
 /// Handle `/handover` slash commands.
@@ -436,14 +434,16 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             if ctx.agent_session.is_none() {
                 return SlashOutcome::Status("Agent session required for this command.".into());
             }
-            if ctx.spawn_agent_work {
-                // Submit the recovery prompt (not "/continue") so the model resumes the
-                // interrupted task without re-doing completed tool work. The tick loop
-                // renders the matching UserPromptCommitted as a "Continuing tasks…" meta
-                // line — via SpawnAgentTurnQuiet no "/continue" user card is echoed.
-                let session = ctx.agent_session.clone().expect("checked above");
-                TurnDispatcher::spawn_turn(session, RETRY_CONTINUE_PROMPT.to_string(), false);
-            }
+            // Submit the recovery prompt (not "/continue") so the model resumes the
+            // interrupted task without re-doing completed tool work. The tick loop
+            // renders the matching UserPromptCommitted as a "Continuing tasks…" meta
+            // line — via SpawnAgentTurnQuiet no "/continue" user card is echoed.
+            //
+            // Always dispatch (even while a turn is active): `run_prompt_turn` waits on
+            // `turn_gate` and runs after the active turn completes. No raw "/continue"
+            // text is queued to the model at the shell layer anymore.
+            let session = ctx.agent_session.clone().expect("checked above");
+            TurnDispatcher::spawn_turn(session, RETRY_CONTINUE_PROMPT.to_string(), false);
             SlashOutcome::SpawnAgentTurnQuiet
         }
         SlashDispatch::Compact { .. } | SlashDispatch::PromptTemplate { .. } => {
@@ -451,13 +451,11 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             if ctx.agent_session.is_none() {
                 return SlashOutcome::Status("Agent session required for this command.".into());
             }
-            if ctx.spawn_agent_work {
-                let session = ctx.agent_session.clone().expect("checked above");
-                let paths = ctx.paths.cloned();
-                let cwd = ctx.cwd.map(|path| path.to_path_buf());
-                let extension_host = ctx.extension_host.cloned();
-                SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
-            }
+            let session = ctx.agent_session.clone().expect("checked above");
+            let paths = ctx.paths.cloned();
+            let cwd = ctx.cwd.map(|path| path.to_path_buf());
+            let extension_host = ctx.extension_host.cloned();
+            SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
             // `/compact` must not echo a "/compact" user prompt card — the compaction
             // notice already communicates it. Other turn-spawning slash commands do echo.
             if is_compact {
@@ -470,13 +468,11 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             if ctx.agent_session.is_none() {
                 return SlashOutcome::Status("Agent session required for this command.".into());
             }
-            if ctx.spawn_agent_work {
-                let session = ctx.agent_session.clone().expect("checked above");
-                let paths = ctx.paths.cloned();
-                let cwd = ctx.cwd.map(|path| path.to_path_buf());
-                let extension_host = ctx.extension_host.cloned();
-                SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
-            }
+            let session = ctx.agent_session.clone().expect("checked above");
+            let paths = ctx.paths.cloned();
+            let cwd = ctx.cwd.map(|path| path.to_path_buf());
+            let extension_host = ctx.extension_host.cloned();
+            SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
             SlashOutcome::BackgroundTask
         }
         SlashDispatch::Skill { ref name, ref args } => {
@@ -489,13 +485,11 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             if ctx.agent_session.is_none() {
                 return SlashOutcome::Status("Agent session required for this command.".into());
             }
-            if ctx.spawn_agent_work {
-                let session = ctx.agent_session.clone().expect("checked above");
-                let paths = ctx.paths.cloned();
-                let cwd = ctx.cwd.map(|path| path.to_path_buf());
-                let extension_host = ctx.extension_host.cloned();
-                SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
-            }
+            let session = ctx.agent_session.clone().expect("checked above");
+            let paths = ctx.paths.cloned();
+            let cwd = ctx.cwd.map(|path| path.to_path_buf());
+            let extension_host = ctx.extension_host.cloned();
+            SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
             SlashOutcome::SpawnAgentTurn
         }
     }
@@ -659,7 +653,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,
@@ -678,7 +671,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(outcome, SlashOutcome::OpenScopedModels));
     }
@@ -694,7 +686,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,
@@ -733,7 +724,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(!slash_echoes_prompt_in_transcript(&outcome));
         assert!(matches!(
@@ -756,7 +746,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(!slash_echoes_prompt_in_transcript(&outcome));
         assert!(matches!(
@@ -779,7 +768,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,
@@ -799,7 +787,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,
@@ -819,7 +806,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,
@@ -839,7 +825,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,
@@ -870,7 +855,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,
@@ -889,7 +873,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,
@@ -908,7 +891,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(outcome, SlashOutcome::Status(message) if message.contains("Slash commands:")));
     }
@@ -924,7 +906,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,
@@ -950,7 +931,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,
@@ -977,7 +957,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,
@@ -1005,7 +984,6 @@ mod tests {
             extension_host: None,
             paths: Some(&paths),
             cwd: None,
-            spawn_agent_work: true,
         });
         let text = match outcome {
             SlashOutcome::OpenProviderUpdateDialog { ref text } => text.clone(),
@@ -1032,7 +1010,6 @@ mod tests {
             extension_host: None,
             paths: Some(&paths),
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,
@@ -1051,7 +1028,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,
@@ -1071,7 +1047,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,
@@ -1090,7 +1065,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,

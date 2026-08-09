@@ -43,6 +43,29 @@ Elph deliberately **diverges** in product design (memory, codegraph, ACP, WASM e
 
 ## Timeline
 
+### 2026-08-09 — Busy-state queueing: action dispatch, not raw text (Elph delta)
+
+**Scope:** `crates/coding-agent/` product crate. Follow-up to the `/handover`
+resilience pass.
+
+Previously, when the agent was busy (`agent_turn_active`), turn-spawning slash
+commands queued their **raw slash text** (`/continue`, `/compact`) to the model
+as a follow-up prompt — semantically wrong (the model received the literal
+command string), while `goal`/`reload`/`extension` work was silently **dropped**.
+
+Now:
+
+- `handle_slash_submit` **always dispatches** turn-spawning commands (Continue,
+  compact, skill, template, goal, reload, extension) on a background task. The
+  session's internal `turn_gate` serializes them behind the active turn — the
+  same mechanism `/handover` uses. The `spawn_agent_work` field is gone.
+- The shell no longer pushes raw slash text as a follow-up. When busy, a clear
+  meta notice is shown ("Command /x queued — runs after the current task.");
+  when idle, the normal echo/busy flow applies. Normal text prompts are
+  unaffected (they still queue/steer as user input).
+- Consequence: `.jsonl.zst` still unsupported, but the busy-path semantic gap
+  (raw text vs. real action) is closed for every turn-spawning command.
+
 ### 2026-08-09 — `/handover` resilience hardening (Elph delta)
 
 **Scope:** `crates/coding-agent/` product crate. Follow-up to the Claude+Codex
