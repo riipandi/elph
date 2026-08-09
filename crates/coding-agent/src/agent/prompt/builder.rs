@@ -33,6 +33,7 @@ pub fn build_coding_system_prompt(
     mode: AgentMode,
     preferred_chat_language: impl Into<String>,
     codegraph_enabled: bool,
+    ste_enabled: bool,
 ) -> anyhow::Result<String> {
     let date = now_iso_timestamp().chars().take(10).collect::<String>();
     let shell_path = std::env::var("SHELL").ok();
@@ -69,6 +70,7 @@ pub fn build_coding_system_prompt(
     } else {
         elph_context
     };
+    let elph_context = elph_context.with_ste_code(ste_enabled);
 
     let coding_base = coding_agent_engine().render("coding_base", &elph_context)?;
     SystemPromptBuilder::new()
@@ -93,6 +95,7 @@ mod tests {
             None,
             AgentMode::Build,
             "",
+            true,
             true,
         )
         .expect("prompt");
@@ -126,6 +129,7 @@ mod tests {
             AgentMode::Build,
             "",
             true,
+            true,
         )
         .expect("prompt");
 
@@ -151,6 +155,7 @@ mod tests {
             AgentMode::Build,
             "",
             true,
+            true,
         )
         .expect("prompt");
 
@@ -168,6 +173,7 @@ mod tests {
             None,
             AgentMode::Build,
             "",
+            true,
             true,
         )
         .expect("prompt");
@@ -192,6 +198,7 @@ mod tests {
             AgentMode::Build,
             "",
             false,
+            true,
         )
         .expect("prompt");
 
@@ -212,6 +219,7 @@ mod tests {
             AgentMode::Plan,
             "",
             true,
+            true,
         )
         .expect("prompt");
 
@@ -230,6 +238,7 @@ mod tests {
             AgentMode::Ask,
             "",
             true,
+            true,
         )
         .expect("prompt");
 
@@ -241,6 +250,42 @@ mod tests {
     }
 
     #[test]
+    fn ste_flag_controls_response_style_section() {
+        let enabled = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["read_file".to_string()],
+            None,
+            AgentMode::Build,
+            "",
+            true,
+            true,
+        )
+        .expect("prompt");
+        assert!(enabled.contains("<response_style>"));
+        assert!(enabled.contains("Simplified Technical English"));
+        assert!(enabled.contains("No preamble, no recap, no closing pleasantries"));
+
+        let disabled = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["read_file".to_string()],
+            None,
+            AgentMode::Build,
+            "",
+            true,
+            false,
+        )
+        .expect("prompt");
+        assert!(!disabled.contains("<response_style>"));
+        assert!(!disabled.contains("Simplified Technical English"));
+        assert!(
+            !disabled.contains("No preamble"),
+            "STE-only rule must not appear when the flag is off"
+        );
+    }
+
+    #[test]
     fn brave_mode_skips_build_approval_block() {
         let prompt = build_coding_system_prompt(
             Path::new("/tmp/project"),
@@ -249,6 +294,7 @@ mod tests {
             None,
             AgentMode::Brave,
             "",
+            true,
             true,
         )
         .expect("prompt");
@@ -269,6 +315,7 @@ mod tests {
             AgentMode::Build,
             "",
             true,
+            true,
         )
         .expect("prompt");
 
@@ -285,6 +332,7 @@ mod tests {
             Some("Always run tests."),
             AgentMode::Build,
             "",
+            true,
             true,
         )
         .expect("prompt");
@@ -313,6 +361,7 @@ mod tests {
             AgentMode::Build,
             "",
             true,
+            true,
         )
         .expect("prompt");
 
@@ -336,6 +385,7 @@ mod tests {
             AgentMode::Build,
             "",
             true,
+            true,
         )
         .expect("prompt");
 
@@ -354,6 +404,7 @@ mod tests {
             None,
             AgentMode::Build,
             "",
+            true,
             true,
         )
         .expect("prompt");
@@ -376,6 +427,7 @@ mod tests {
             AgentMode::Build,
             "",
             true,
+            true,
         )
         .expect("prompt");
 
@@ -392,6 +444,7 @@ mod tests {
             Some("Always run tests."),
             AgentMode::Build,
             "indonesian",
+            true,
             true,
         )
         .expect("prompt");
@@ -432,12 +485,14 @@ mod tests {
             AgentMode::Build,
             "",
             true,
+            true,
         )
         .expect("prompt");
 
         // Budget raised for lazy-MCP guidance in <tool_calling> (name_prefix
         // activation path) plus earlier mode/memory/tool-routing expansions.
-        assert!(prompt.len() < 9_500, "static prompt is {} bytes", prompt.len());
+        // The <response_style> section adds ~1KB; the budget accounts for it.
+        assert!(prompt.len() < 11_000, "static prompt is {} bytes", prompt.len());
     }
 
     #[test]
@@ -449,6 +504,7 @@ mod tests {
             None,
             AgentMode::Build,
             "",
+            true,
             true,
         )
         .expect("prompt");
@@ -469,6 +525,7 @@ mod tests {
             AgentMode::Build,
             "",
             true,
+            true,
         )
         .expect("prompt");
 
@@ -488,6 +545,7 @@ mod tests {
             None,
             AgentMode::Build,
             "",
+            true,
             true,
         )
         .expect("prompt");

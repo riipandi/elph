@@ -179,6 +179,7 @@ fn prompt_tokens(mode: AgentMode) -> usize {
         mode,
         "",
         true,
+        true,
     )
     .expect("prompt renders");
 
