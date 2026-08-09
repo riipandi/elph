@@ -43,6 +43,25 @@ Elph deliberately **diverges** in product design (memory, codegraph, ACP, WASM e
 
 ## Timeline
 
+### 2026-08-09 — `/handover` foreign-session resume (Elph delta)
+
+**Scope:** `crates/coding-agent/` product crate. Not a pi port — mirrors Grok Build's
+`foreign_sessions/claude` resume flow (powered by the portable Claude resume
+skills) as an **Elph delta**.
+
+- **`/handover claude [ref]`** — discovers Claude Code sessions
+  (`~/.claude/projects/<slug>/*.jsonl`), resolves `latest` / UUID / free-text
+  title, reads the transcript as **inert history** (leaf chain, preserved/snipped
+  compaction segments, parallel siblings; strips meta/sidechain/thinking; caps
+  tool I/O and message text; stubs summarized results), and injects a handoff
+  prompt into the current Elph session. New module
+  `crates/coding-agent/src/agent/handover/` + design doc
+  [handover.md](../design/handover.md).
+- **`/handover codex …`** — accepted arg (`[claude|codex]` palette
+  completions), prints `Codex handover not yet implemented`.
+- `SlashDispatch::Handover`, ACP guard (`handler.rs`), TUI slim
+  `Handover from Claude Code…` meta line (`tick.rs`).
+
 ### 2026-07-29 — Rust verify & harden + dead code cleanup
 
 **Upstream baseline:** unchanged (`4c18610`, v0.80.6 + Unreleased).
@@ -154,6 +173,8 @@ elph built-in **names** largely mirror pi, plus `/provider`, `/help`, `/exit`. D
 - `/scoped-models` — **[Partial]** (editor + Ctrl+P cycle; no keybinding remaps / null=all semantics)
 - `/share` — **[Gap]**
 - `/goal` — **[Elph delta]** / **[Partial]** in elph (design + goal_slash)
+- `/handover` — **[Elph delta]** foreign-session resume (Claude implemented;
+  Codex arg accepted but not yet implemented; see [handover.md](../design/handover.md))
 - Extension commands — **[Partial]** (JS vs WASM model)
 - Prompt templates as `/name` — **[Partial]** (planned)
 

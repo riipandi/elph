@@ -147,6 +147,89 @@ pub struct SlashContext<'a> {
     pub spawn_agent_work: bool,
 }
 
+/// Handle `/handover` slash commands.
+///
+/// Syntax: `/handover <tool> [ref]` where `<tool>` is `claude` or `codex`.
+///
+/// - `claude`: resolves the referenced Claude Code session for the current cwd,
+///   reads it as inert history, and injects a handoff prompt into the current
+///   agent session (a background turn — no `/handover` user card is echoed).
+/// - `codex`: not yet implemented — returns a status message.
+fn handle_handover_slash(ctx: SlashContext<'_>, args: &str) -> SlashOutcome {
+    use crate::agent::{
+        HandoverError, build_handoff_prompt, claude_config_dir, read_claude_session, resolve_claude_session,
+    };
+
+    let mut parts = args.splitn(2, char::is_whitespace);
+    let tool = parts.next().unwrap_or("").trim().to_ascii_lowercase();
+    let reference = parts.next().unwrap_or("").trim().to_string();
+
+    match tool.as_str() {
+        "" => SlashOutcome::Status(
+            "Usage: /handover <claude|codex> [latest|<session-id>|<free-text>]\n\
+             Example: /handover claude latest"
+                .into(),
+        ),
+        "codex" => SlashOutcome::Status("Codex handover not yet implemented".into()),
+        "claude" => {
+            let Some(agent_session) = ctx.agent_session.as_ref() else {
+                return SlashOutcome::Status("Agent session required for this command.".into());
+            };
+            let Some(cwd) = ctx.cwd else {
+                return SlashOutcome::Status("Working directory required for /handover claude.".into());
+            };
+
+            let config_dir = match claude_config_dir() {
+                Some(dir) => dir,
+                None => {
+                    return SlashOutcome::Status(
+                        "Could not locate Claude config directory (expected ~/.claude).".to_string(),
+                    );
+                }
+            };
+
+            let reference_opt = if reference.is_empty() {
+                None
+            } else {
+                Some(reference.as_str())
+            };
+            let handover = match resolve_claude_session(cwd, Some(&config_dir), reference_opt) {
+                Ok(session) => match read_claude_session(&session.path) {
+                    Ok(handover) => handover,
+                    Err(HandoverError::ReadFailed(message)) => {
+                        return SlashOutcome::Status(format!("Failed to read Claude session: {message}"));
+                    }
+                    Err(err) => return SlashOutcome::Status(err.to_string()),
+                },
+                Err(HandoverError::Ambiguous { matches, .. }) => {
+                    // Free-text reference matched multiple sessions: list candidates
+                    // with their native ids so the user can pick one to resume.
+                    let mut lines =
+                        vec!["Multiple Claude sessions match, resume one by id (`/handover claude <id>`):".to_string()];
+                    for session in matches {
+                        lines.push(format!("  {}  {}", session.session_id, session.title));
+                    }
+                    return SlashOutcome::Status(lines.join("\n"));
+                }
+                Err(HandoverError::NoSession(message)) => return SlashOutcome::Status(message),
+                Err(err) => return SlashOutcome::Status(err.to_string()),
+            };
+
+            if ctx.spawn_agent_work {
+                let prompt = build_handoff_prompt(&handover, 0);
+                let session = agent_session.clone();
+                TurnDispatcher::spawn_turn(session, prompt, false);
+            }
+            // Quiet: the injected handoff prompt is the turn; do NOT echo a
+            // "/handover claude" user card (the handoff text carries the context).
+            SlashOutcome::SpawnAgentTurnQuiet
+        }
+        other => SlashOutcome::Status(format!(
+            "Unknown handover tool `{other}` — use `/handover claude` or `/handover codex`."
+        )),
+    }
+}
+
 pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
     let Some(dispatch) = dispatch_slash_command(ctx.input, ctx.extensions, ctx.prompt_templates, ctx.skills) else {
         return SlashOutcome::SpawnAgentTurn;
@@ -155,6 +238,11 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
     // Memory commands run without an agent session — dispatch immediately.
     if let SlashDispatch::Memory { ref args } = dispatch {
         return handle_memory_slash(ctx, args);
+    }
+
+    // Handover commands read the foreign session store and inject a turn.
+    if let SlashDispatch::Handover { ref args } = dispatch {
+        return handle_handover_slash(ctx, args);
     }
 
     match dispatch {
@@ -234,6 +322,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
         }
         // Handled by early return above — unreachable here.
         SlashDispatch::Memory { .. } => unreachable!(),
+        SlashDispatch::Handover { .. } => unreachable!(),
         SlashDispatch::Unimplemented(command) => SlashOutcome::Unimplemented(slash_unimplemented_message(&command)),
         SlashDispatch::OverlayNeeded(overlay) => match overlay {
             OverlayCommand::ProviderConnect { .. } => SlashOutcome::OverlayDeferred(overlay),
@@ -846,5 +935,70 @@ mod tests {
             outcome,
             SlashOutcome::Status(ref message) if message.contains("Unknown builtin provider")
         ));
+    }
+
+    #[test]
+    fn handover_codex_reports_not_implemented() {
+        let outcome = handle_slash_submit(SlashContext {
+            input: "/handover codex",
+            extensions: None,
+            prompt_templates: None,
+            skills: None,
+            agent_session: None,
+            extension_host: None,
+            paths: None,
+            cwd: None,
+            spawn_agent_work: true,
+        });
+        assert!(matches!(
+            outcome,
+            SlashOutcome::Status(ref message) if message == "Codex handover not yet implemented"
+        ));
+        assert!(slash_outcome_is_ui_only(&outcome));
+    }
+
+    #[test]
+    fn handover_missing_tool_shows_usage() {
+        let outcome = handle_slash_submit(SlashContext {
+            input: "/handover",
+            extensions: None,
+            prompt_templates: None,
+            skills: None,
+            agent_session: None,
+            extension_host: None,
+            paths: None,
+            cwd: None,
+            spawn_agent_work: true,
+        });
+        assert!(matches!(
+            outcome,
+            SlashOutcome::Status(ref message) if message.contains("Usage: /handover")
+        ));
+    }
+
+    #[test]
+    fn handover_unknown_tool_shows_usage() {
+        let outcome = handle_slash_submit(SlashContext {
+            input: "/handover cursor",
+            extensions: None,
+            prompt_templates: None,
+            skills: None,
+            agent_session: None,
+            extension_host: None,
+            paths: None,
+            cwd: None,
+            spawn_agent_work: true,
+        });
+        assert!(matches!(
+            outcome,
+            SlashOutcome::Status(ref message) if message.contains("Unknown handover tool `cursor`")
+        ));
+    }
+
+    #[test]
+    fn handover_outcome_is_ui_only_for_codex() {
+        assert!(slash_outcome_is_ui_only(&SlashOutcome::Status(
+            "Codex handover not yet implemented".to_string()
+        )));
     }
 }

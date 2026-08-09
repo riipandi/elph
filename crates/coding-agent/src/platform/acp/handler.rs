@@ -190,6 +190,9 @@ async fn handle_acp_slash_command(
         Some(SlashDispatch::Unimplemented(cmd)) => {
             Err(anyhow::anyhow!("Slash command '{cmd}' is not available via ACP."))
         }
+        Some(SlashDispatch::Handover { .. }) => Err(anyhow::anyhow!(
+            "Command '/handover' reads local foreign-agent sessions and is not available via ACP."
+        )),
 
         // ── Not actually a slash command → submit as prompt ──────────────────
         None => {

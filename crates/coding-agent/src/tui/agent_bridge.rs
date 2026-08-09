@@ -188,6 +188,7 @@ impl SlashDispatcher {
                 | SlashDispatch::McpAuth { .. }
                 | SlashDispatch::McpLogout { .. }
                 | SlashDispatch::McpList
+                | SlashDispatch::Handover { .. }
                 | SlashDispatch::Unimplemented(_)
                 | SlashDispatch::OverlayNeeded(_)
                 | SlashDispatch::Memory { .. } => {}
