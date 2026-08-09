@@ -114,15 +114,11 @@ pub async fn execute_shell_with_capture<E: ExecutionEnv>(
             }
             if *bytes > max_output_bytes {
                 // Single oversized chunk — truncate from the head so the tail
-                // (most recent output) survives. Clamp to a char boundary so
-                // slicing a multi-byte UTF-8 chunk can't panic.
+                // (most recent output) survives.
                 let chunk = chunks.last_mut().expect("at least one chunk");
                 let overflow = *bytes - max_output_bytes;
                 let keep_from = chunk.len().min(overflow);
-                let start = chunk.floor_char_boundary(keep_from);
-                *chunk = chunk[start..].to_string();
-                *bytes = chunk.len();
-            }
+                *chunk = chunk[keep_from..].to_string();
                 *bytes = chunk.len();
             }
             if let Some(progress) = on_progress.as_ref() {
