@@ -82,6 +82,10 @@ Inbound mail is polled, injected as `worker.inbound` (idempotent by `msg_id`), t
 
 Compared to classic intercom: delivery is **poll-based durable SoT** (survives restart); latency ≈ `inboxPollMs` / reaper interval, not sub-ms IPC.
 
+### Local notify (v2 — not implemented)
+
+A future optional **wake channel** (Unix socket / FS watch) may reduce poll latency for inbox and presence. It must stay **best-effort only** — mailbox + `workers` / `session_leases` / `file_leases` remain the source of truth. Missed notifies recover via poll.
+
 ## TUI
 
 When **≥ 2** live workers and `tuiShowPeers` is true, the status footer shows a compact badge: `⬡ N`. Hidden when alone.

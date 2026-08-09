@@ -37,6 +37,8 @@ pub struct CodingPromptOptions {
     pub ste_enabled: bool,
     /// Memorable multi-worker display name when workers are enabled.
     pub worker_name: Option<String>,
+    /// Live peer summary (comma-separated names), refreshed each turn when available.
+    pub worker_peers: Option<String>,
 }
 
 impl CodingPromptOptions {
@@ -48,12 +50,19 @@ impl CodingPromptOptions {
             codegraph_enabled: true,
             ste_enabled: true,
             worker_name: None,
+            worker_peers: None,
         }
     }
 
     pub fn with_worker_name(mut self, name: impl Into<String>) -> Self {
         let name = name.into();
         self.worker_name = if name.trim().is_empty() { None } else { Some(name) };
+        self
+    }
+
+    pub fn with_worker_peers(mut self, peers: impl Into<String>) -> Self {
+        let peers = peers.into();
+        self.worker_peers = if peers.trim().is_empty() { None } else { Some(peers) };
         self
     }
 
@@ -90,6 +99,7 @@ pub fn build_coding_system_prompt(
         codegraph_enabled,
         ste_enabled,
         worker_name,
+        worker_peers,
     } = options.clone();
     let date = now_iso_timestamp().chars().take(10).collect::<String>();
     let shell_path = std::env::var("SHELL").ok();
@@ -126,6 +136,7 @@ pub fn build_coding_system_prompt(
     };
     let elph_context = elph_context.with_ste_code(ste_enabled);
     let elph_context = elph_context.with_worker_name(worker_name.as_deref());
+    let elph_context = elph_context.with_worker_peers(worker_peers.as_deref());
 
     let coding_base = coding_agent_engine().render("coding_base", &elph_context)?;
     SystemPromptBuilder::new()

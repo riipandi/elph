@@ -76,14 +76,23 @@ impl FileLeaseStore {
             async move {
                 if let Some(existing) = load_file_lease(&conn, &project_key, &path_norm).await? {
                     if existing.worker_id == worker_id {
+                        // Keep the original content_hash unless the caller forces a new one
+                        // via purpose `refresh_hash` — default refresh only heartbeats so
+                        // `ensure_content_unchanged` still detects external writes.
+                        let refresh_hash = purpose.as_deref() == Some("refresh_hash");
+                        let new_hash = if refresh_hash {
+                            content_hash.clone().or(existing.content_hash.clone())
+                        } else {
+                            existing.content_hash.clone()
+                        };
                         conn.execute(
                             "UPDATE file_leases SET heartbeat_at = ?, purpose = COALESCE(?, purpose),
-                                content_hash = COALESCE(?, content_hash)
+                                content_hash = ?
                              WHERE project_key = ? AND path_norm = ?",
                             turso::params![
                                 now.as_str(),
                                 purpose.as_deref(),
-                                content_hash.as_deref(),
+                                new_hash.as_deref(),
                                 project_key.as_str(),
                                 path_norm.as_str(),
                             ],
@@ -92,7 +101,7 @@ impl FileLeaseStore {
                         return Ok(FileLease {
                             heartbeat_at: now,
                             purpose: purpose.or(existing.purpose),
-                            content_hash: content_hash.or(existing.content_hash),
+                            content_hash: new_hash,
                             ..existing
                         });
                     }

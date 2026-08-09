@@ -30,8 +30,11 @@ v1 = same machine, shared `.elph/store.db`. Multi-host hub out of scope.
 | Memorable-id worker names + pid demote reaper | **Done** |
 | Graceful quit → `shutdown_workers` | **Done** |
 | Multi-worker prompt snippet | **Done** |
-| File claim content fingerprint | **Done** |
-| Integration tests (`workers_multi`) | **Done** |
+| File claim content fingerprint + ensure before edit | **Done** |
+| Integration tests (`workers_multi` 7 cases) | **Done** |
+| Peers summary injected each turn | **Done** |
+| Graceful quit awaits shutdown (≤2s) | **Done** |
+| Local notify v2 | **Skipped** (docs only; DB poll remains SoT) |
 | Retention protect leased + `docs/workers.md` | **Done (PR-E)** |
 
 ---

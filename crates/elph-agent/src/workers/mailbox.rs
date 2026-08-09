@@ -343,7 +343,9 @@ fn approx_age_ms(created: &str, now: &str) -> i64 {
         let se: i64 = p[5].parse().unwrap_or(0);
         y * 365 * 86400 + mo * 30 * 86400 + d * 86400 + h * 3600 + mi * 60 + se
     }
-    approx_secs(now).saturating_sub(approx_secs(created)).saturating_mul(1000)
+    approx_secs(now)
+        .saturating_sub(approx_secs(created))
+        .saturating_mul(1000)
 }
 
 async fn load_message(conn: &Connection, id: &str) -> Result<Option<WorkerMessage>> {

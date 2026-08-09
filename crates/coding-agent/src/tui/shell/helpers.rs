@@ -397,13 +397,8 @@ pub(crate) fn confirm_pending_quit(
             TurnDispatcher::spawn_abort(Arc::clone(session));
         }
     }
-    // Best-effort: mark worker offline + release leases before process teardown.
-    if let Some(session) = ctx.agent_session.as_ref() {
-        let session = Arc::clone(session);
-        tokio::spawn(async move {
-            session.shutdown_workers().await;
-        });
-    }
+    // Graceful worker teardown before exit (bounded wait so quit still responds).
+    await_worker_shutdown(ctx.agent_session.as_ref());
     ctx.should_exit.set(true);
 }
 
@@ -429,15 +424,26 @@ pub(crate) fn request_quit(
         }
     } else {
         ctx.pending_quit_confirm.set(false);
-        if let Some(session) = ctx.agent_session.as_ref() {
-            let session = Arc::clone(session);
-            tokio::spawn(async move {
-                session.shutdown_workers().await;
-            });
-        }
+        await_worker_shutdown(ctx.agent_session.as_ref());
         ctx.should_exit.set(true);
         true
     }
+}
+
+/// Best-effort: run `shutdown_workers` and wait up to 2s (multi-thread runtime).
+fn await_worker_shutdown(session: Option<&Arc<CodingAgentSession>>) {
+    let Some(session) = session.map(Arc::clone) else {
+        return;
+    };
+    let Ok(handle) = tokio::runtime::Handle::try_current() else {
+        return;
+    };
+    let (tx, rx) = std::sync::mpsc::channel();
+    handle.spawn(async move {
+        session.shutdown_workers().await;
+        let _ = tx.send(());
+    });
+    let _ = rx.recv_timeout(std::time::Duration::from_secs(2));
 }
 
 pub(crate) fn begin_turn_token_tracking(tracker: &mut Ref<Option<TurnTokenTracker>>, chrome: &ChromeStats) {

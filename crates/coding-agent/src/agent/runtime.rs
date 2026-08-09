@@ -285,7 +285,14 @@ pub async fn create_coding_session_with_events(
         codegraph_enabled: options.settings.codegraph.enabled,
         ste_enabled: options.settings.simplified_technical_english,
         worker_name: worker_runtime.as_ref().map(|w| w.name.clone()),
+        worker_peers: None,
     };
+
+    // Peers summary is refreshed each turn via registry (near-realtime demote first).
+    let peers_registry = worker_runtime.as_ref().map(|w| w.registry());
+    let peers_project_key = worker_runtime.as_ref().map(|w| w.project_key.clone());
+    let peers_worker_id = worker_runtime.as_ref().map(|w| w.worker_id.clone());
+    let peers_stale = worker_runtime.as_ref().map(|w| w.stale_secs()).unwrap_or(30);
 
     let system_prompt = SystemPrompt::Dynamic(Arc::new(move |ctx| {
         let cwd = cwd.clone();
@@ -293,8 +300,24 @@ pub async fn create_coding_session_with_events(
         let mode_state = Arc::clone(&mode_for_prompt);
         let memory_section = injected_memory.clone();
         let mut prompt_options = prompt_options.clone();
+        let peers_registry = peers_registry.clone();
+        let peers_project_key = peers_project_key.clone();
+        let peers_worker_id = peers_worker_id.clone();
         Box::pin(async move {
             prompt_options.mode = *mode_state.lock().await;
+            if let (Some(reg), Some(pk), Some(wid)) =
+                (peers_registry.as_ref(), peers_project_key.as_ref(), peers_worker_id.as_ref())
+            {
+                if let Ok(peers) = reg.list_live_peers(pk, wid, peers_stale).await {
+                    let summary = peers
+                        .into_iter()
+                        .filter(|p| !p.is_self)
+                        .map(|p| p.name)
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    prompt_options.worker_peers = if summary.is_empty() { None } else { Some(summary) };
+                }
+            }
             let tool_names: Vec<String> = ctx.active_tools.iter().map(|t| t.name().to_string()).collect();
             let mut prompt =
                 build_coding_system_prompt(&cwd, &ctx.resources, &tool_names, agents_md.as_deref(), &prompt_options)

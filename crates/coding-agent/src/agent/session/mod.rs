@@ -433,6 +433,12 @@ impl CodingAgentSession {
         let tool_names: Vec<String> = tools.iter().map(|tool| tool.name().to_string()).collect();
         let agents_md = agents_md_for_cwd(cwd);
         let mode = *self.mode_state.lock().await;
+        let worker_peers = if let Some(rt) = self.worker_runtime.as_ref() {
+            let s = rt.peer_names_summary().await;
+            if s.is_empty() { None } else { Some(s) }
+        } else {
+            None
+        };
         let text = build_coding_system_prompt(
             cwd,
             &resources,
@@ -444,6 +450,7 @@ impl CodingAgentSession {
                 codegraph_enabled: self.codegraph_enabled,
                 ste_enabled: self.ste_enabled,
                 worker_name: self.worker_name().map(str::to_string),
+                worker_peers,
             },
         )?;
         *self.system_prompt_cache.write() = Some(text.clone());

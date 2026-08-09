@@ -29,6 +29,8 @@ pub struct ElphCodingPromptContext<'a> {
     pub ste_code: bool,
     /// Multi-worker display name (memorable-id), when registered.
     pub worker_name: String,
+    /// Compact live peer list for the prompt (names only), when multi-worker.
+    pub worker_peers: String,
 }
 
 impl<'a> ElphCodingPromptContext<'a> {
@@ -38,11 +40,17 @@ impl<'a> ElphCodingPromptContext<'a> {
             codegraph: ElphToolNamesContext::default(),
             ste_code: true,
             worker_name: String::new(),
+            worker_peers: String::new(),
         }
     }
 
     pub fn with_worker_name(mut self, name: Option<&str>) -> Self {
         self.worker_name = name.unwrap_or("").trim().to_string();
+        self
+    }
+
+    pub fn with_worker_peers(mut self, peers: Option<&str>) -> Self {
+        self.worker_peers = peers.unwrap_or("").trim().to_string();
         self
     }
 

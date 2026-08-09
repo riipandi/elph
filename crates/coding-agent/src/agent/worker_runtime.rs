@@ -7,8 +7,8 @@ use std::time::Duration;
 use anyhow::{Context, Result};
 use elph_agent::types::AgentTool;
 use elph_agent::{
-    FileLeaseStore, MailboxStore, SessionLeaseStore, WorkerRegistry, WorkerStatus, WorkerToolContext,
-    create_worker_id, create_worker_tools,
+    FileLeaseStore, MailboxStore, SessionLeaseStore, WorkerRegistry, WorkerStatus, WorkerToolContext, create_worker_id,
+    create_worker_tools,
 };
 use parking_lot::Mutex;
 use tokio::task::JoinHandle;
@@ -216,6 +216,23 @@ impl WorkerRuntime {
         Arc::clone(&self.stop)
     }
 
+    /// Comma-separated live peer names (excludes self), for system prompt injection.
+    pub async fn peer_names_summary(&self) -> String {
+        match self
+            .registry
+            .list_live_peers(&self.project_key, &self.worker_id, self.stale_secs)
+            .await
+        {
+            Ok(peers) => peers
+                .into_iter()
+                .filter(|p| !p.is_self)
+                .map(|p| p.name)
+                .collect::<Vec<_>>()
+                .join(", "),
+            Err(_) => String::new(),
+        }
+    }
+
     /// Agent tools for peer coordination.
     pub fn create_tools(&self) -> Vec<AgentTool> {
         let ctx = Arc::new(WorkerToolContext {
@@ -313,9 +330,7 @@ impl Drop for WorkerRuntime {
             handle.spawn(async move {
                 let _ = files.release_all_for_worker(&worker_id).await;
                 let _ = lease.release(&session_id, &worker_id).await;
-                let _ = registry
-                    .mark_offline_with_reason(&worker_id, "process_drop")
-                    .await;
+                let _ = registry.mark_offline_with_reason(&worker_id, "process_drop").await;
             });
         }
     }

@@ -43,8 +43,13 @@ ${%- endif %}
 
 ${% if worker_name %}
 <workers>
-- You are multi-worker peer **`${{ worker_name }}`** in this project (other terminals may run peers).
-- Use `${{ tools.worker_list }}` to see live peers (memorable names). Coordinate with `${{ tools.worker_send }}` / `${{ tools.worker_ask }}` when work overlaps.
+- You are multi-worker peer **`${{ worker_name }}`** in this project.
+${% if worker_peers %}
+- Live peers right now: ${{ worker_peers }}. Prefer coordinating with them by name via tools.
+${% else %}
+- No other live peers reported at prompt build time (you may still be alone, or peers just joined).
+${% endif %}
+- Use `${{ tools.worker_list }}` to refresh the live peer list. Coordinate with `${{ tools.worker_send }}` / `${{ tools.worker_ask }}` when work overlaps.
 - Prefer non-overlapping file ownership. Mutate tools claim paths automatically — on claim conflict, pick another path or ask the holder.
 - Answer inbound worker messages in normal assistant text (do not `worker_send` as a reply). Large parallel features: separate git worktrees when possible.
 </workers>
