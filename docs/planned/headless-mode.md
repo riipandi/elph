@@ -72,20 +72,20 @@ Unless `--no-session`, stderr prints a **dimmed** turn block with blank lines ab
 
 ## Progress indicator
 
-On a TTY, `elph run` shows a **stderr spinner** (same `CliSpinner` as codegraph / datastore):
+On a TTY, `elph run` shows a **stderr spinner** (same `CliSpinner` as codegraph / datastore) while waiting:
 
 | Phase | Example message |
 | --- | --- |
-| Bootstrap | `Starting session…` / `Resuming session…` |
-| Waiting | `Waiting for openai/gpt-5.6-luna · mode brave…` |
+| Bootstrap | `Loading providers, tools, and session…` |
+| Ready | `Running · openai/gpt-5.6-luna · mode brave…` |
+| Skill / template | `Skill \`code-review\` · …` / `Prompt \`/ship-it\` · …` |
 | Thinking | `Thinking · openai/gpt-5.6-luna…` |
-| Tools | `Tool \`read_file\` · path/to/file…` |
+| Tools | `Tool \`read_file\` · path…` |
 | Generating | `Generating · openai/gpt-5.6-luna…` |
-| Subagents | `Subagent research · running · …` |
 
-Stdout stays clean for `--output-format` payloads. Spinner is cleared before the final answer / JSON. Ctrl+C during the run yields a clean interrupt (exit 130) like other CLI progress phases.
+**After the turn**, the spinner is always cleared (with a newline) before the model answer is printed — so it cannot stick on the last `\r` line. Plain mode prints the full assistant reply only after the spinner is gone (no interleaving). Stream formats clear the spinner when the first NDJSON event lands.
 
-When stderr is not a TTY (CI pipes), the spinner falls back to a one-line status print and stays quiet.
+Ctrl+C during the wait spinner yields a clean interrupt (exit 130). Non-TTY stderr: quiet one-line fallback, no animation.
 
 ## Defaults
 

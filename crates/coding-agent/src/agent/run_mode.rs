@@ -63,10 +63,11 @@ pub struct RunModeResult {
 }
 
 pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeResult> {
-    // Spinner lives on stderr (same pattern as codegraph / datastore / bootstrap).
-    // Keeps stdout clean for plain text, JSON, and stream formats.
-    let spinner = CliSpinner::new(bootstrap_message(&options));
+    // Spinner on stderr only. Always torn down via `SpinnerGuard` so a residual
+    // `\r` line cannot stick after the response (the previous failure mode).
+    let mut status = RunStatus::start(bootstrap_message(&options));
 
+    status.set("Loading providers, tools, and session…");
     let session_result = create_coding_session_with_events(CreateSessionOptions {
         paths: options.paths,
         settings: options.settings,
@@ -87,7 +88,7 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
     let (session, mut ui_rx) = match session_result {
         Ok(pair) => pair,
         Err(err) => {
-            spinner.finish_and_clear();
+            status.finish();
             return Err(err);
         }
     };
@@ -95,8 +96,11 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
     session.start_worker_inbox_poller();
 
     if let Some(level) = options.effort {
-        spinner.set_message(format!("Setting effort to {}…", level.label()));
-        session.set_thinking_level(level).await?;
+        status.set(format!("Setting effort ({})…", level.label()));
+        if let Err(err) = session.set_thinking_level(level).await {
+            status.finish();
+            return Err(err);
+        }
     }
     if let Some(name) = options.name
         && !name.trim().is_empty()
@@ -110,71 +114,70 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
     let max_turns = options.max_turns;
     let tool_starts = Arc::new(AtomicU32::new(0));
     let tool_starts_watch = Arc::clone(&tool_starts);
-    let plain_streamed = Arc::new(std::sync::atomic::AtomicBool::new(false));
-    let plain_streamed_w = Arc::clone(&plain_streamed);
     let harness_for_abort = session.harness();
 
     // Resolve `/skill:…` and `/template-name` (same dispatch as TUI) before the turn.
     let turn_kind = match resolve_headless_turn(&session, options.prompt).await {
         Ok(kind) => kind,
         Err(err) => {
-            spinner.finish_and_clear();
+            status.finish();
             return Err(err);
         }
     };
     match &turn_kind {
         HeadlessTurn::Prompt => {
-            spinner.set_message(format!(
-                "Waiting for {model_label} · mode {}…",
+            status.set(format!(
+                "Running · {model_label} · mode {}",
                 options.mode.footer_label()
             ));
         }
         HeadlessTurn::Skill { name, .. } => {
-            spinner.set_message(format!("Loading skill `{name}` · {model_label}…"));
+            status.set(format!("Skill `{name}` · {model_label}…"));
         }
         HeadlessTurn::PromptTemplate { name, .. } => {
-            spinner.set_message(format!("Loading prompt template `/{name}` · {model_label}…"));
+            status.set(format!("Prompt `/{name}` · {model_label}…"));
         }
     }
 
-    // Drive stdout formats + refresh the stderr spinner from live agent events.
-    let spinner_for_events = spinner.clone();
+    // Event task: update spinner for tools/thinking; stream-json formats write live
+    // NDJSON. Plain mode does **not** stream tokens while the spinner is active —
+    // the final answer is printed after the spinner is cleared (clean separation).
+    let status_handle = status.handle();
     let mode_label = options.mode.footer_label().to_string();
     let model_for_events = model_label.clone();
     let stream_task = tokio::spawn(async move {
         let mut msg_started = false;
-        let mut saw_text = false;
         while let Some(event) = ui_rx.recv().await {
-            update_spinner_for_event(
-                &spinner_for_events,
-                &event,
-                &model_for_events,
-                &mode_label,
-                &mut saw_text,
-            );
+            update_status_for_event(&status_handle, &event, &model_for_events, &mode_label);
 
             match format {
-                OutputFormat::Plain => {
-                    if let AgentUiEvent::TextDelta(text) = &event {
-                        print!("{text}");
-                        let _ = std::io::stdout().flush();
-                        plain_streamed_w.store(true, Ordering::Relaxed);
-                    }
+                OutputFormat::Plain | OutputFormat::Json => {
+                    // Final text is collected from the session tree after the turn.
                 }
                 OutputFormat::StreamJson => {
+                    // Clear wait spinner once machine output starts so NDJSON isn't
+                    // interleaved with a \r spinner on the same visual row in odd TTYs.
+                    if matches!(
+                        &event,
+                        AgentUiEvent::TextDelta(_)
+                            | AgentUiEvent::ToolStart { .. }
+                            | AgentUiEvent::ThinkingDelta(_)
+                    ) {
+                        status_handle.finish_quiet();
+                    }
                     if let Some(line) = stream_json_line(&event) {
                         println!("{line}");
                         let _ = std::io::stdout().flush();
                     }
                 }
                 OutputFormat::StreamMessageJson => {
+                    if matches!(&event, AgentUiEvent::TextDelta(_) | AgentUiEvent::ToolStart { .. }) {
+                        status_handle.finish_quiet();
+                    }
                     for line in stream_message_json_lines(&event, &mut msg_started) {
                         println!("{line}");
                         let _ = std::io::stdout().flush();
                     }
-                }
-                OutputFormat::Json => {
-                    // Collect only via final transcript; ignore live events.
                 }
             }
             if let AgentUiEvent::ToolStart { .. } = &event {
@@ -183,7 +186,7 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
                     && n > max
                 {
                     log::warn!("max-turns exceeded ({n} > {max}); aborting run");
-                    spinner_for_events.set_message(format!("Max turns reached ({n}/{max}) — aborting…"));
+                    status_handle.set(format!("Max turns reached ({n}/{max}) — aborting…"));
                     let _ = harness_for_abort.abort().await;
                 }
             }
@@ -194,11 +197,11 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
     });
 
     let prompt_result = execute_headless_input(&session, &turn_kind, options.prompt).await;
-    // Allow stream task to drain RunCompleted.
-    let _ = tokio::time::timeout(std::time::Duration::from_secs(2), stream_task).await;
+    // Drain RunCompleted (or time out if the harness never emitted it).
+    let _ = tokio::time::timeout(std::time::Duration::from_secs(5), stream_task).await;
 
-    // Clear the spinner before any final stdout payload so lines don't collide.
-    spinner.finish_and_clear();
+    // Hide spinner + newline so the model answer / footer never share a line with it.
+    status.finish();
 
     let assistant_text = collect_last_assistant_text(&session).await;
     let session_name = session.harness().session_name().await;
@@ -206,7 +209,6 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
         .estimate_context_usage()
         .await
         .unwrap_or((0, session.context_window() as u64));
-    // Model may have changed mid-turn (rare); re-read for the footer.
     let model_label = format!("{}/{}", session.model_provider(), session.model_id());
     let turn_meta = TurnMeta {
         session_id: session_id.clone(),
@@ -239,37 +241,40 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
         return Err(err);
     }
 
-    if format == OutputFormat::Plain {
-        if plain_streamed.load(Ordering::Relaxed) {
-            println!();
-        } else if !assistant_text.is_empty() {
-            println!("{assistant_text}");
+    match format {
+        OutputFormat::Plain => {
+            if !assistant_text.is_empty() {
+                println!("{assistant_text}");
+            }
         }
-    } else if format == OutputFormat::Json {
-        let body = json!({
-            "ok": true,
-            "session": turn_meta.to_json(),
-            "result": assistant_text,
-        });
-        println!("{}", serde_json::to_string_pretty(&body)?);
-    } else if format == OutputFormat::StreamJson {
-        println!(
-            "{}",
-            json!({
-                "type": "result",
+        OutputFormat::Json => {
+            let body = json!({
                 "ok": true,
                 "session": turn_meta.to_json(),
-                "text": assistant_text,
-            })
-        );
-    } else if format == OutputFormat::StreamMessageJson {
-        println!(
-            "{}",
-            json!({
-                "type": "result",
-                "session": turn_meta.to_json(),
-            })
-        );
+                "result": assistant_text,
+            });
+            println!("{}", serde_json::to_string_pretty(&body)?);
+        }
+        OutputFormat::StreamJson => {
+            println!(
+                "{}",
+                json!({
+                    "type": "result",
+                    "ok": true,
+                    "session": turn_meta.to_json(),
+                    "text": assistant_text,
+                })
+            );
+        }
+        OutputFormat::StreamMessageJson => {
+            println!(
+                "{}",
+                json!({
+                    "type": "result",
+                    "session": turn_meta.to_json(),
+                })
+            );
+        }
     }
 
     if options.no_session {
@@ -283,6 +288,65 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
         session_name,
         assistant_text,
     })
+}
+
+/// Owns the headless wait spinner and guarantees it is cleared (with a newline).
+struct RunStatus {
+    spinner: CliSpinner,
+    finished: bool,
+}
+
+/// Cheap clone for the event task — shares the same underlying spinner.
+#[derive(Clone)]
+struct RunStatusHandle {
+    spinner: CliSpinner,
+}
+
+impl RunStatus {
+    fn start(message: impl Into<String>) -> Self {
+        Self {
+            spinner: CliSpinner::new(message),
+            finished: false,
+        }
+    }
+
+    fn handle(&self) -> RunStatusHandle {
+        RunStatusHandle {
+            spinner: self.spinner.clone(),
+        }
+    }
+
+    fn set(&self, message: impl Into<String>) {
+        if !self.finished {
+            self.spinner.set_message(message);
+        }
+    }
+
+    /// Clear spinner and leave a clean line for the answer / footer.
+    fn finish(&mut self) {
+        if self.finished {
+            return;
+        }
+        self.finished = true;
+        self.spinner.finish_and_clear_with_newline();
+    }
+}
+
+impl Drop for RunStatus {
+    fn drop(&mut self) {
+        self.finish();
+    }
+}
+
+impl RunStatusHandle {
+    fn set(&self, message: impl Into<String>) {
+        self.spinner.set_message(message);
+    }
+
+    /// Stop spinner without forcing an extra blank line (stream formats already write).
+    fn finish_quiet(&self) {
+        self.spinner.finish_and_clear();
+    }
 }
 
 /// How the headless turn was launched (plain prompt vs skill vs template).
@@ -417,50 +481,39 @@ fn bootstrap_message(options: &RunModeOptions<'_>) -> String {
     }
 }
 
-/// Refresh the stderr spinner from agent UI events so the user sees live activity.
-fn update_spinner_for_event(
-    spinner: &CliSpinner,
-    event: &AgentUiEvent,
-    model: &str,
-    mode: &str,
-    saw_text: &mut bool,
-) {
+/// Refresh the wait spinner from agent UI events (stderr only).
+fn update_status_for_event(status: &RunStatusHandle, event: &AgentUiEvent, model: &str, mode: &str) {
     match event {
         AgentUiEvent::Status(msg) => {
             let msg = msg.trim();
             if !msg.is_empty() {
-                spinner.set_message(shorten_status(msg));
+                status.set(shorten_status(msg));
             }
         }
         AgentUiEvent::ThinkingDelta(_) => {
-            spinner.set_message(format!("Thinking · {model}…"));
+            status.set(format!("Thinking · {model}…"));
         }
         AgentUiEvent::TextDelta(_) => {
-            if !*saw_text {
-                *saw_text = true;
-                spinner.set_message(format!("Generating · {model}…"));
-            }
+            status.set(format!("Generating · {model}…"));
         }
         AgentUiEvent::ToolStart { name, args_summary, .. } => {
             let summary = args_summary.trim();
             if summary.is_empty() {
-                spinner.set_message(format!("Tool `{name}`…"));
+                status.set(format!("Tool `{name}`…"));
             } else {
-                spinner.set_message(format!("Tool `{name}` · {}…", truncate_chars(summary, 48)));
+                status.set(format!("Tool `{name}` · {}…", truncate_chars(summary, 48)));
             }
         }
-        AgentUiEvent::ToolUpdate { .. } => {
-            // Keep the current tool message; updates are noisy for a single-line spinner.
-        }
+        AgentUiEvent::ToolUpdate { .. } => {}
         AgentUiEvent::ToolEnd { is_error, .. } => {
             if *is_error {
-                spinner.set_message(format!("Tool failed — continuing · {model}…"));
+                status.set(format!("Tool failed — continuing · {model}…"));
             } else {
-                spinner.set_message(format!("Waiting for {model} · mode {mode}…"));
+                status.set(format!("Running · {model} · mode {mode}…"));
             }
         }
         AgentUiEvent::Retrying { attempt } => {
-            spinner.set_message(format!("Retrying (attempt {attempt})…"));
+            status.set(format!("Retrying (attempt {attempt})…"));
         }
         AgentUiEvent::SubagentStatus {
             task_name,
@@ -471,23 +524,23 @@ fn update_spinner_for_event(
             let label = if task_name.is_empty() { "subagent" } else { task_name.as_str() };
             let detail = message.trim();
             if detail.is_empty() {
-                spinner.set_message(format!("Subagent {label} · {}…", phase.as_word()));
+                status.set(format!("Subagent {label} · {}…", phase.as_word()));
             } else {
-                spinner.set_message(format!(
+                status.set(format!(
                     "Subagent {label} · {} · {}…",
                     phase.as_word(),
                     truncate_chars(detail, 40)
                 ));
             }
         }
-        AgentUiEvent::RunCompleted { elapsed_secs } => {
-            spinner.set_message(format!("Finishing · {elapsed_secs:.1}s…"));
+        AgentUiEvent::RunCompleted { .. } => {
+            // Spinner is cleared by the main path after the turn; avoid a flash message.
         }
         AgentUiEvent::PlanConfirmationRequired(_) => {
-            spinner.set_message("Waiting for plan confirmation…");
+            status.set("Waiting for plan confirmation…");
         }
         AgentUiEvent::ToolApprovalRequired(_) => {
-            spinner.set_message("Waiting for tool approval…");
+            status.set("Waiting for tool approval…");
         }
         _ => {}
     }
@@ -563,15 +616,10 @@ fn emit_turn_footer(format: OutputFormat, meta: &TurnMeta) {
     let sty = CliStyle::auto_stderr();
     let mut err = std::io::stderr().lock();
 
-    // Breathing room between model answer (stdout) and Elph metadata (stderr).
-    let _ = writeln!(err);
+    // Spinner already ended with a newline; add one more blank line before metadata.
     let _ = writeln!(err);
 
-    let line = |key: &str, value: &str| {
-        // Fixed-width key column so the block reads as a quiet table.
-        format!("  {:<12} {}", key, value)
-    };
-
+    let line = |key: &str, value: &str| format!("  {:<12} {}", key, value);
     let dim = |s: String| sty.paint(S_MUTED, s);
 
     let _ = writeln!(err, "{}", dim(line("session", &meta.session_id)));
@@ -586,7 +634,10 @@ fn emit_turn_footer(format: OutputFormat, meta: &TurnMeta) {
     let _ = writeln!(
         err,
         "{}",
-        dim(line("resume", &format!("elph run --session-id={} \"…\"", meta.session_id)))
+        dim(line(
+            "resume",
+            &format!("elph run --session-id={} \"…\"", meta.session_id)
+        ))
     );
     let _ = writeln!(err);
 }
