@@ -93,6 +93,10 @@ pub struct Settings {
     /// Inactivity / SSE stall limit for LLM streams (e.g. `"120s"`, `"2m"`).
     #[serde(default = "default_provider_timeout")]
     pub default_timeout: String,
+    /// Follow Simplified Technical English (ASD-STE100) in every response.
+    /// On by default; set `false` to fall back to the plain style rules.
+    #[serde(default = "default_true")]
+    pub simplified_technical_english: bool,
     /// Transcript / chrome / picker presentation.
     #[serde(default)]
     pub ui: UiSettings,
@@ -660,6 +664,7 @@ impl Settings {
             preferred_chat_language: default_preferred_chat_language(),
             max_retries: default_provider_max_retries(),
             default_timeout: default_provider_timeout(),
+            simplified_technical_english: default_true(),
             ui: UiSettings::default(),
             models: ModelsSettings::default(),
             prompt_encoding: None,
@@ -1100,6 +1105,7 @@ mod tests {
         assert_eq!(decoded.preferred_chat_language, "english");
         assert_eq!(decoded.max_retries, 2);
         assert_eq!(decoded.default_timeout, "120s");
+        assert!(decoded.simplified_technical_english);
         assert!(decoded.ui.show_thinking);
         assert_eq!(decoded.ui.theme, "auto");
         assert!(decoded.ui.themes.dark.is_empty());

@@ -197,6 +197,7 @@ pub fn tool_display_verb(tool_name: &str) -> String {
         "edit_file" => "Edit".to_string(),
         "write_file" => "Write".to_string(),
         "shell_exec" => "Shell".to_string(),
+        "shell_use" => "Terminal".to_string(),
         "list_dir" => "List".to_string(),
         "delete_path" => "Delete".to_string(),
         "create_dir" => "Mkdir".to_string(),
@@ -261,8 +262,8 @@ fn title_case_snake(name: &str) -> String {
 /// Inside the project directory, leading path components are abbreviated to
 /// their first character so the project context is clear with minimal space:
 ///
-/// - `/Users/ariss/Developer/github.com/riipandi/crates/coding-agent/src/tui/shell/mod.rs`
-///   → `/U/a/d/g/r/crates/coding-agent/src/tui/shell/mod.rs`
+/// - `/Users/me/elph/crates/coding-agent/src/tui/shell/mod.rs`
+///   → `/U/m/e/crates/coding-agent/src/tui/shell/mod.rs`
 ///
 /// Outside the project directory the path is shown in full with `~` for home:
 ///
@@ -483,6 +484,17 @@ fn collapsed_tool_target(tool_name: &str, params: &[ToolParam], args_raw: &str, 
                 line.trim_start_matches("$ ").to_string()
             })
             .unwrap_or_default(),
+        "shell_use" => {
+            let action = find_param(params, &["action"]).map(str::to_string).unwrap_or_default();
+            let session = find_param(params, &["session"]).map(str::to_string).unwrap_or_default();
+            if action.is_empty() {
+                String::new()
+            } else if session.is_empty() || session == "default" {
+                action
+            } else {
+                format!("{action} [{session}]")
+            }
+        }
         "grep" => {
             let pattern = find_param(params, &["pattern", "query"]).map(|p| truncate_chars(p, 24));
             let path = find_param(params, &["path", "glob", "file"]).map(|p| abbreviate_path(p, 28));
@@ -734,6 +746,26 @@ fn summarize_known_tool(tool_name: &str, params: &[ToolParam]) -> Option<String>
     match tool_base_name(tool_name) {
         "shell_exec" => {
             find_param(params, &["command", "cmd"]).map(|command| format!("$ {}", shorten_command(command)))
+        }
+        "shell_use" => {
+            let action = find_param(params, &["action"]).map(str::to_string).unwrap_or_default();
+            let detail = find_param(params, &["data", "text", "program"])
+                .map(str::to_string)
+                .unwrap_or_default();
+            let kind = find_param(params, &["kind", "field", "mouse_action"])
+                .map(str::to_string)
+                .unwrap_or_default();
+            let mut parts: Vec<String> = vec![if action.is_empty() {
+                "terminal".to_string()
+            } else {
+                action
+            }];
+            if !detail.is_empty() {
+                parts.push(shorten_command(&detail));
+            } else if !kind.is_empty() {
+                parts.push(kind);
+            }
+            Some(join_summary_parts(parts))
         }
         "read_file" | "list_dir" | "delete_path" | "create_dir" => {
             // Check batch paths first

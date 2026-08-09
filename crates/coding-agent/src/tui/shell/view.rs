@@ -1257,13 +1257,14 @@ pub(crate) fn build_shell_view(
                             extension_host: Some(&extension_host),
                             paths: Some(&paths_snapshot),
                             cwd: Some(&cwd),
-                            // Defer skill/compact/etc. only while a real agent turn is active.
-                            spawn_agent_work: !agent_turn_active.get(),
                         });
 
-                        // Queue only during an active agent turn — never for new session / first prompt.
-                        let queue_follow_up = agent_turn_active.get()
-                            && matches!(outcome, SlashOutcome::SpawnAgentTurn);
+                        // The handler now ALWAYS dispatches turn-spawning work (Continue,
+                        // compact, skill, template) on a background task; `turn_gate`
+                        // inside the session queues it behind the active turn. When the
+                        // agent is busy, suppress the pre-echo — the busy arm below shows a
+                        // "queued" notice instead, and no raw slash text reaches the model.
+                        let queue_follow_up = agent_turn_active.get();
                         if slash_echoes_prompt_in_transcript(&outcome) && !queue_follow_up {
                             let echo = if is_slash {
                                 // Keep leading `/` so history / skill cards restore as `/name` or `/cmd`.
@@ -1684,21 +1685,31 @@ pub(crate) fn build_shell_view(
                                 );
                             }
                             SlashOutcome::BackgroundTask => {
-                                // Background task already dispatched via spawn_agent_work in
-                                // handle_slash_submit. No busy/turn state needed — the task will
-                                // emit Status events when done.
+                                // Background task already dispatched by handle_slash_submit.
+                                // No busy/turn state needed — the task will emit Status events
+                                // when done.
+                            }
+                            SlashOutcome::BackgroundTaskQuiet => {
+                                // Like BackgroundTask, but no slash input is echoed as a user
+                                // card — the handover task delivers its own transcript events
+                                // (slim meta line / stream) and derives busy state from the
+                                // agent loop, so a read failure never strands a stale busy UI.
                             }
                             SlashOutcome::SpawnAgentTurn | SlashOutcome::SpawnAgentTurnQuiet if is_slash => {
                                 if agent_turn_active.get() {
-                                    // Queue agent slash for after the current turn (no nested spawn).
-                                    let queued = slash_input.clone();
-                                    prompt_queue.write().push_follow_up_local(queued.clone());
-                                    queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
-                                    if let Some(session) = agent_session.as_ref() {
-                                        TurnDispatcher::spawn_follow_up(Arc::clone(session), queued);
-                                    }
+                                    // The command was already dispatched by handle_slash_submit
+                                    // (turn_gate queues it behind the active turn). Tell the user —
+                                    // do NOT push raw slash text as a follow-up prompt to the model.
+                                    let notice = format!("Command {slash_input} queued — runs after the current task.");
+                                    push_transcript_message_synced(
+                                        &mut messages,
+                                        messages_arc,
+                                        &mut messages_revision,
+                                        &mut prompt_history,
+                                        TranscriptMessage::text(notice, TranscriptStyle::Meta),
+                                    );
                                 } else if agent_session.is_some() {
-                                    // Skill/compact already spawned via spawn_agent_work.
+                                    // Skill/compact already spawned via handle_slash_submit.
                                     agent_turn_active.set(true);
                                     chrome_refresh_pending.set(true);
                                     idle_status_notice.set(None);

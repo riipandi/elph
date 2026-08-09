@@ -1,12 +1,12 @@
 //! Slash command outcomes for the TUI shell.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use elph_agent::{ExtensionRegistry, PromptTemplate, Skill};
 
 use crate::agent::RETRY_CONTINUE_PROMPT;
-use crate::agent::{OverlayCommand, SlashDispatch};
+use crate::agent::{HandoverError, HandoverSession, OverlayCommand, SlashDispatch};
 use crate::agent::{
     confetti_mode_from_args, dispatch_slash_command, format_help_message, session_info_slash_message,
     session_title_for_rename, slash_unimplemented_message, system_prompt_slash_message, tools_slash_message,
@@ -132,6 +132,13 @@ pub enum SlashOutcome {
     OpenMcpAuthDialog {
         server_name: Option<String>,
     },
+    /// A background handover task was dispatched directly. Unlike
+    /// [`SlashOutcome::BackgroundTask`], the work's final user-visible text is
+    /// delivered via its own transcript events (slim handover meta line) rather
+    /// than echoing the raw slash input as a user card. The shell treats this as
+    /// a no-op; the task drives busy UI through normal stream events, so a read
+    /// failure never leaves the host stuck "busy".
+    BackgroundTaskQuiet,
 }
 
 pub struct SlashContext<'a> {
@@ -143,8 +150,184 @@ pub struct SlashContext<'a> {
     pub extension_host: Option<&'a ExtensionHost>,
     pub paths: Option<&'a Paths>,
     pub cwd: Option<&'a Path>,
-    /// When false (agent busy), do not start skill/compact/etc. — caller queues or rejects.
-    pub spawn_agent_work: bool,
+}
+
+/// Handle `/handover` slash commands.
+///
+/// Syntax: `/handover <tool> [ref]` where `<tool>` is `claude` or `codex`.
+///
+/// Both tools resolve the referenced session for the current cwd, read it as
+/// inert history, and inject a handoff prompt into the current agent session.
+/// The heavy file I/O + parse runs on a **background task** (never the TUI
+/// thread), so even a large transcript cannot block the render loop. Errors are
+/// surfaced via a status notice; nothing is echoed as a `/handover` user card.
+fn handle_handover_slash(ctx: SlashContext<'_>, args: &str) -> SlashOutcome {
+    let mut parts = args.splitn(2, char::is_whitespace);
+    let tool = parts.next().unwrap_or("").trim().to_ascii_lowercase();
+    let reference = parts.next().unwrap_or("").trim().to_string();
+
+    let tool_kind = match tool.as_str() {
+        "" => {
+            return SlashOutcome::Status(
+                "Usage: /handover <claude|codex> [latest|<session-id>|<free-text>]\n\
+                 Example: /handover claude latest"
+                    .into(),
+            );
+        }
+        "claude" => HandoverTool::Claude,
+        "codex" => HandoverTool::Codex,
+        other => {
+            return SlashOutcome::Status(format!(
+                "Unknown handover tool `{other}` — use `/handover claude` or `/handover codex`."
+            ));
+        }
+    };
+
+    let Some(agent_session) = ctx.agent_session.as_ref() else {
+        return SlashOutcome::Status("Agent session required for this command.".into());
+    };
+    let Some(cwd) = ctx.cwd else {
+        return SlashOutcome::Status(format!("Working directory required for /handover {}.", tool_kind.name()));
+    };
+
+    let reference_opt = if reference.is_empty() {
+        None
+    } else {
+        Some(reference.clone())
+    };
+    let session = agent_session.clone();
+    let cwd = cwd.to_path_buf();
+    tokio::spawn(async move {
+        // Resolve + read + prompt-build run on a blocking pool thread, off the
+        // TUI render loop. `spawn_blocking` is a no-op dispatch when we are
+        // already inside a blocking context, which is fine here (the caller is
+        // never inside one).
+        let outcome =
+            tokio::task::spawn_blocking(move || run_handover_resolution(tool_kind, &cwd, reference_opt.as_deref()))
+                .await;
+        match outcome {
+            Ok(Ok(prompt)) => {
+                if let Err(err) = session.submit_prompt(prompt, false).await {
+                    log::warn!("handover turn failed: {err}");
+                }
+            }
+            Ok(Err(message)) => emit_handover_status(&session, message),
+            Err(join_err) => emit_handover_status(&session, format!("Handover task failed: {join_err}")),
+        }
+    });
+    // Quiet background dispatch: no slash card echo; busy UI is driven by the
+    // agent loop's own stream events (RunCompleted clears it), so a read failure
+    // never strands a stale "busy" chip.
+    SlashOutcome::BackgroundTaskQuiet
+}
+
+/// Which foreign tool a `/handover` refers to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum HandoverTool {
+    Claude,
+    Codex,
+}
+
+impl HandoverTool {
+    fn name(self) -> &'static str {
+        match self {
+            HandoverTool::Claude => "claude",
+            HandoverTool::Codex => "codex",
+        }
+    }
+
+    fn display(self) -> &'static str {
+        match self {
+            HandoverTool::Claude => "Claude Code",
+            HandoverTool::Codex => "Codex",
+        }
+    }
+
+    fn config_dir(self) -> Option<PathBuf> {
+        match self {
+            HandoverTool::Claude => crate::agent::claude_config_dir(),
+            HandoverTool::Codex => crate::agent::codex_config_dir(),
+        }
+    }
+
+    fn resolve(self, cwd: &Path, config_dir: &Path, reference: Option<&str>) -> Result<HandoverSession, HandoverError> {
+        match self {
+            HandoverTool::Claude => crate::agent::resolve_claude_session(cwd, Some(config_dir), reference),
+            HandoverTool::Codex => crate::agent::resolve_codex_session(cwd, Some(config_dir), reference),
+        }
+    }
+
+    fn read(self, path: &Path) -> Result<HandoverPayload, HandoverError> {
+        match self {
+            HandoverTool::Claude => crate::agent::read_claude_session(path).map(HandoverPayload::Claude),
+            HandoverTool::Codex => crate::agent::read_codex_session(path).map(HandoverPayload::Codex),
+        }
+    }
+
+    fn build_prompt(self, payload: &HandoverPayload) -> String {
+        match (self, payload) {
+            (HandoverTool::Claude, HandoverPayload::Claude(h)) => crate::agent::build_handoff_prompt(h, 0),
+            (HandoverTool::Codex, HandoverPayload::Codex(h)) => crate::agent::build_codex_handoff_prompt(h, 0),
+            _ => unreachable!("tool/payload mismatch"),
+        }
+    }
+
+    fn config_dir_label(self) -> &'static str {
+        match self {
+            HandoverTool::Claude => "~/.claude",
+            HandoverTool::Codex => "~/.codex",
+        }
+    }
+}
+
+/// A resolved + read + prompt-built handover payload, ready to submit.
+enum HandoverPayload {
+    Claude(crate::agent::ClaudeHandover),
+    Codex(crate::agent::CodexHandover),
+}
+
+/// Run the (blocking) resolution + read + prompt-build. Returns the handoff
+/// prompt, or a user-facing error message.
+fn run_handover_resolution(tool: HandoverTool, cwd: &Path, reference: Option<&str>) -> Result<String, String> {
+    let config_dir = tool.config_dir().ok_or_else(|| {
+        format!(
+            "Could not locate {} config directory (expected {}).",
+            tool.display(),
+            tool.config_dir_label()
+        )
+    })?;
+
+    let session = match tool.resolve(cwd, &config_dir, reference) {
+        Ok(session) => session,
+        Err(HandoverError::Ambiguous { matches, .. }) => {
+            return Err(ambiguous_session_message(tool.display(), matches));
+        }
+        Err(err) => return Err(err.to_string()),
+    };
+    let payload = tool
+        .read(&session.path)
+        .map_err(|err| format!("Failed to read {} session: {err}", tool.display()))?;
+    Ok(tool.build_prompt(&payload))
+}
+
+/// Format an ambiguous free-text reference: list candidate ids so the user can
+/// resume one by native id.
+fn ambiguous_session_message(tool: &str, matches: Vec<HandoverSession>) -> String {
+    let mut lines = vec![format!(
+        "Multiple {tool} sessions match, resume one by id (`/handover {tool_lower} <id>`):",
+        tool_lower = tool.to_ascii_lowercase()
+    )];
+    for session in matches {
+        lines.push(format!("  {}  {}", session.session_id, session.title));
+    }
+    lines.join("\n")
+}
+
+/// Push a status notice onto the host transcript (background task error path).
+fn emit_handover_status(session: &crate::agent::CodingAgentSession, message: String) {
+    let _ = session
+        .ui_event_sender()
+        .send(crate::agent::AgentUiEvent::Status(message));
 }
 
 pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
@@ -155,6 +338,11 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
     // Memory commands run without an agent session — dispatch immediately.
     if let SlashDispatch::Memory { ref args } = dispatch {
         return handle_memory_slash(ctx, args);
+    }
+
+    // Handover commands read the foreign session store and inject a turn.
+    if let SlashDispatch::Handover { ref args } = dispatch {
+        return handle_handover_slash(ctx, args);
     }
 
     match dispatch {
@@ -234,6 +422,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
         }
         // Handled by early return above — unreachable here.
         SlashDispatch::Memory { .. } => unreachable!(),
+        SlashDispatch::Handover { .. } => unreachable!(),
         SlashDispatch::Unimplemented(command) => SlashOutcome::Unimplemented(slash_unimplemented_message(&command)),
         SlashDispatch::OverlayNeeded(overlay) => match overlay {
             OverlayCommand::ProviderConnect { .. } => SlashOutcome::OverlayDeferred(overlay),
@@ -245,14 +434,16 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             if ctx.agent_session.is_none() {
                 return SlashOutcome::Status("Agent session required for this command.".into());
             }
-            if ctx.spawn_agent_work {
-                // Submit the recovery prompt (not "/continue") so the model resumes the
-                // interrupted task without re-doing completed tool work. The tick loop
-                // renders the matching UserPromptCommitted as a "Continuing tasks…" meta
-                // line — via SpawnAgentTurnQuiet no "/continue" user card is echoed.
-                let session = ctx.agent_session.clone().expect("checked above");
-                TurnDispatcher::spawn_turn(session, RETRY_CONTINUE_PROMPT.to_string(), false);
-            }
+            // Submit the recovery prompt (not "/continue") so the model resumes the
+            // interrupted task without re-doing completed tool work. The tick loop
+            // renders the matching UserPromptCommitted as a "Continuing tasks…" meta
+            // line — via SpawnAgentTurnQuiet no "/continue" user card is echoed.
+            //
+            // Always dispatch (even while a turn is active): `run_prompt_turn` waits on
+            // `turn_gate` and runs after the active turn completes. No raw "/continue"
+            // text is queued to the model at the shell layer anymore.
+            let session = ctx.agent_session.clone().expect("checked above");
+            TurnDispatcher::spawn_turn(session, RETRY_CONTINUE_PROMPT.to_string(), false);
             SlashOutcome::SpawnAgentTurnQuiet
         }
         SlashDispatch::Compact { .. } | SlashDispatch::PromptTemplate { .. } => {
@@ -260,13 +451,11 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             if ctx.agent_session.is_none() {
                 return SlashOutcome::Status("Agent session required for this command.".into());
             }
-            if ctx.spawn_agent_work {
-                let session = ctx.agent_session.clone().expect("checked above");
-                let paths = ctx.paths.cloned();
-                let cwd = ctx.cwd.map(|path| path.to_path_buf());
-                let extension_host = ctx.extension_host.cloned();
-                SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
-            }
+            let session = ctx.agent_session.clone().expect("checked above");
+            let paths = ctx.paths.cloned();
+            let cwd = ctx.cwd.map(|path| path.to_path_buf());
+            let extension_host = ctx.extension_host.cloned();
+            SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
             // `/compact` must not echo a "/compact" user prompt card — the compaction
             // notice already communicates it. Other turn-spawning slash commands do echo.
             if is_compact {
@@ -279,14 +468,15 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             if ctx.agent_session.is_none() {
                 return SlashOutcome::Status("Agent session required for this command.".into());
             }
-            if ctx.spawn_agent_work {
-                let session = ctx.agent_session.clone().expect("checked above");
-                let paths = ctx.paths.cloned();
-                let cwd = ctx.cwd.map(|path| path.to_path_buf());
-                let extension_host = ctx.extension_host.cloned();
-                SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
-            }
-            SlashOutcome::BackgroundTask
+            let session = ctx.agent_session.clone().expect("checked above");
+            let paths = ctx.paths.cloned();
+            let cwd = ctx.cwd.map(|path| path.to_path_buf());
+            let extension_host = ctx.extension_host.cloned();
+            SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
+            // Quiet background work: no slash input echo, no prompt-history entry.
+            // The task reports via AgentUiEvent (Status / notices), and the agent
+            // loop derives busy state — a failure never strands a stale busy UI.
+            SlashOutcome::BackgroundTaskQuiet
         }
         SlashDispatch::Skill { ref name, ref args } => {
             if let Some(skills) = ctx.skills
@@ -298,13 +488,11 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             if ctx.agent_session.is_none() {
                 return SlashOutcome::Status("Agent session required for this command.".into());
             }
-            if ctx.spawn_agent_work {
-                let session = ctx.agent_session.clone().expect("checked above");
-                let paths = ctx.paths.cloned();
-                let cwd = ctx.cwd.map(|path| path.to_path_buf());
-                let extension_host = ctx.extension_host.cloned();
-                SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
-            }
+            let session = ctx.agent_session.clone().expect("checked above");
+            let paths = ctx.paths.cloned();
+            let cwd = ctx.cwd.map(|path| path.to_path_buf());
+            let extension_host = ctx.extension_host.cloned();
+            SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
             SlashOutcome::SpawnAgentTurn
         }
     }
@@ -321,6 +509,7 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
             | SlashOutcome::Unimplemented(_)
             | SlashOutcome::NewSession
             | SlashOutcome::BackgroundTask
+            | SlashOutcome::BackgroundTaskQuiet
             | SlashOutcome::OpenModelSelector { .. }
             | SlashOutcome::OpenScopedModels
             | SlashOutcome::OpenSystemPromptDialog { .. }
@@ -467,7 +656,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,
@@ -486,7 +674,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(outcome, SlashOutcome::OpenScopedModels));
     }
@@ -502,7 +689,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,
@@ -541,7 +727,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(!slash_echoes_prompt_in_transcript(&outcome));
         assert!(matches!(
@@ -564,7 +749,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(!slash_echoes_prompt_in_transcript(&outcome));
         assert!(matches!(
@@ -587,7 +771,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,
@@ -607,7 +790,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,
@@ -627,7 +809,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,
@@ -647,7 +828,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,
@@ -678,7 +858,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,
@@ -697,7 +876,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,
@@ -716,7 +894,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(outcome, SlashOutcome::Status(message) if message.contains("Slash commands:")));
     }
@@ -732,7 +909,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,
@@ -758,7 +934,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,
@@ -785,7 +960,6 @@ mod tests {
             extension_host: None,
             paths: None,
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,
@@ -813,7 +987,6 @@ mod tests {
             extension_host: None,
             paths: Some(&paths),
             cwd: None,
-            spawn_agent_work: true,
         });
         let text = match outcome {
             SlashOutcome::OpenProviderUpdateDialog { ref text } => text.clone(),
@@ -840,11 +1013,85 @@ mod tests {
             extension_host: None,
             paths: Some(&paths),
             cwd: None,
-            spawn_agent_work: true,
         });
         assert!(matches!(
             outcome,
             SlashOutcome::Status(ref message) if message.contains("Unknown builtin provider")
         ));
+    }
+
+    #[test]
+    fn handover_codex_without_session_returns_status() {
+        let outcome = handle_slash_submit(SlashContext {
+            input: "/handover codex",
+            extensions: None,
+            prompt_templates: None,
+            skills: None,
+            agent_session: None,
+            extension_host: None,
+            paths: None,
+            cwd: None,
+        });
+        assert!(matches!(
+            outcome,
+            SlashOutcome::Status(ref message) if message == "Agent session required for this command."
+        ));
+        assert!(slash_outcome_is_ui_only(&outcome));
+    }
+
+    #[test]
+    fn handover_missing_tool_shows_usage() {
+        let outcome = handle_slash_submit(SlashContext {
+            input: "/handover",
+            extensions: None,
+            prompt_templates: None,
+            skills: None,
+            agent_session: None,
+            extension_host: None,
+            paths: None,
+            cwd: None,
+        });
+        assert!(matches!(
+            outcome,
+            SlashOutcome::Status(ref message) if message.contains("Usage: /handover")
+        ));
+    }
+
+    #[test]
+    fn handover_unknown_tool_shows_usage() {
+        let outcome = handle_slash_submit(SlashContext {
+            input: "/handover cursor",
+            extensions: None,
+            prompt_templates: None,
+            skills: None,
+            agent_session: None,
+            extension_host: None,
+            paths: None,
+            cwd: None,
+        });
+        assert!(matches!(
+            outcome,
+            SlashOutcome::Status(ref message) if message.contains("Unknown handover tool `cursor`")
+        ));
+    }
+
+    #[test]
+    fn handover_outcome_is_ui_only_for_codex() {
+        assert!(slash_outcome_is_ui_only(&SlashOutcome::Status(
+            "Agent session required for this command.".to_string()
+        )));
+    }
+
+    #[test]
+    fn background_task_quiet_does_not_echo_and_is_ui_only() {
+        // The handover dispatch is a quiet background task: the slash input must
+        // NOT be echoed as a user card (visible feedback comes from the handoff
+        // meta line / stream events), and it must never be treated as an
+        // agent-turn spawn (busy is derived from the agent loop itself).
+        let outcome = SlashOutcome::BackgroundTaskQuiet;
+        assert!(slash_outcome_is_ui_only(&outcome));
+        assert!(!slash_echoes_prompt_in_transcript(&outcome));
+        // Contrast with the regular background task, which does echo.
+        assert!(slash_echoes_prompt_in_transcript(&SlashOutcome::BackgroundTask));
     }
 }

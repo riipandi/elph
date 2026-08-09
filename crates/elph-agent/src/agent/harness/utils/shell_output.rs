@@ -104,9 +104,22 @@ pub async fn execute_shell_with_capture<E: ExecutionEnv>(
             chunks.push(text.clone());
             let mut bytes = output_bytes.lock().expect("lock");
             *bytes += text.len();
+            // Evict oldest chunks until we're within the memory bound. A single
+            // chunk larger than the bound (e.g. `cat` of a large file) is kept
+            // but truncated to `max_output_bytes` — memory stays bounded while
+            // the most recent data is still returned.
             while *bytes > max_output_bytes && chunks.len() > 1 {
                 let removed = chunks.remove(0);
                 *bytes -= removed.len();
+            }
+            if *bytes > max_output_bytes {
+                // Single oversized chunk — truncate from the head so the tail
+                // (most recent output) survives.
+                let chunk = chunks.last_mut().expect("at least one chunk");
+                let overflow = *bytes - max_output_bytes;
+                let keep_from = chunk.len().min(overflow);
+                *chunk = chunk[keep_from..].to_string();
+                *bytes = chunk.len();
             }
             if let Some(progress) = on_progress.as_ref() {
                 progress(&text);

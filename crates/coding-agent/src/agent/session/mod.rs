@@ -22,7 +22,7 @@ use super::model_registry::ModelSelection;
 use super::resource_loader::LoadResourcesResult;
 use super::resource_loader::load_resources;
 
-use super::prompt::{agents_md_for_cwd, build_coding_system_prompt};
+use super::prompt::{CodingPromptOptions, agents_md_for_cwd, build_coding_system_prompt};
 use super::session_manager::SessionManager;
 use super::tool_policy::AgentModePolicy;
 use super::tool_policy::{from_agent_thinking, to_agent_thinking};
@@ -59,6 +59,8 @@ pub struct CodingAgentSessionParams {
     pub compaction_model_ref: String,
     /// Whether `codegraph.enabled` is on — gates the `<codegraph>` prompt section.
     pub codegraph_enabled: bool,
+    /// Whether `simplifiedTechnicalEnglish` is on — gates the `<response_style>` section.
+    pub ste_enabled: bool,
 }
 
 pub struct CodingAgentSession {
@@ -89,6 +91,8 @@ pub struct CodingAgentSession {
     compaction_model_ref: String,
     /// Whether `codegraph.enabled` is on — gates the `<codegraph>` prompt section.
     codegraph_enabled: bool,
+    /// Whether `simplifiedTechnicalEnglish` is on — gates the `<response_style>` section.
+    ste_enabled: bool,
     /// Bounded retry counter for background auto-title generation
     /// (caps at [`SESSION_TITLE_MAX_ATTEMPTS`] per session instance).
     title_generation_attempts: Arc<AtomicU32>,
@@ -111,6 +115,7 @@ impl CodingAgentSession {
             preferred_chat_language,
             compaction_model_ref,
             codegraph_enabled,
+            ste_enabled,
         } = params;
         let mut policy = AgentModePolicy::new(agent_mode);
         let mcp_slot = Arc::new(RwLock::new(mcp_registry));
@@ -137,6 +142,7 @@ impl CodingAgentSession {
             preferred_chat_language,
             compaction_model_ref,
             codegraph_enabled,
+            ste_enabled,
             title_generation_attempts: Arc::new(AtomicU32::new(if already_named {
                 SESSION_TITLE_MAX_ATTEMPTS
             } else {
@@ -288,9 +294,12 @@ impl CodingAgentSession {
             &resources,
             &tool_names,
             agents_md.as_deref(),
-            mode,
-            &self.preferred_chat_language,
-            self.codegraph_enabled,
+            &CodingPromptOptions {
+                mode,
+                preferred_chat_language: self.preferred_chat_language.clone(),
+                codegraph_enabled: self.codegraph_enabled,
+                ste_enabled: self.ste_enabled,
+            },
         )?;
         *self.system_prompt_cache.write() = Some(text.clone());
         Ok(text)

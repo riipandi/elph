@@ -25,6 +25,8 @@ pub struct ElphCodingPromptContext<'a> {
     #[serde(flatten)]
     pub base: &'a elph_agent::SystemPromptTemplateContext,
     pub codegraph: ElphToolNamesContext,
+    /// Simplified Technical English (ASD-STE100) response rules are enabled.
+    pub ste_code: bool,
 }
 
 impl<'a> ElphCodingPromptContext<'a> {
@@ -32,6 +34,7 @@ impl<'a> ElphCodingPromptContext<'a> {
         Self {
             base,
             codegraph: ElphToolNamesContext::default(),
+            ste_code: true,
         }
     }
 
@@ -50,6 +53,12 @@ impl<'a> ElphCodingPromptContext<'a> {
             code_status: name("code_status"),
             code_reindex: name("code_reindex"),
         };
+        self
+    }
+
+    /// Enable or disable the Simplified Technical English response rules.
+    pub fn with_ste_code(mut self, enabled: bool) -> Self {
+        self.ste_code = enabled;
         self
     }
 }

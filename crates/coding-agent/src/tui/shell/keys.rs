@@ -2728,11 +2728,12 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     extension_host: Some(&extension_host_for_keys),
                     paths: Some(&paths),
                     cwd: Some(&cwd_for_keys),
-                    spawn_agent_work: !agent_turn_active.get(),
                 });
 
-                // Queue only during a real agent turn — not bootstrap/shell busy.
-                let queue_follow_up = agent_turn_active.get() && matches!(outcome, SlashOutcome::SpawnAgentTurn);
+                // The handler ALWAYS dispatches turn-spawning work; turn_gate queues it
+                // behind the active turn. When busy, suppress the pre-echo — the busy arm
+                // shows a "queued" notice instead, and no raw slash text reaches the model.
+                let queue_follow_up = agent_turn_active.get();
                 if slash_echoes_prompt_in_transcript(&outcome) && !queue_follow_up {
                     let mut submitted =
                         TranscriptMessage::text(echo.clone(), TranscriptStyle::for_slash_turn_echo(&slash_input));
@@ -2992,14 +2993,19 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     }
                     SlashOutcome::SpawnAgentTurn | SlashOutcome::SpawnAgentTurnQuiet => {
                         if agent_turn_active.get() {
-                            let queued = slash_input.clone();
-                            prompt_queue.write().push_follow_up_local(queued.clone());
-                            queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
-                            if let Some(session) = agent_session.as_ref() {
-                                TurnDispatcher::spawn_follow_up(Arc::clone(session), queued);
-                            }
+                            // The command was already dispatched by handle_slash_submit
+                            // (turn_gate queues it behind the active turn). Tell the user —
+                            // do NOT push raw slash text as a follow-up prompt to the model.
+                            let notice = format!("Command {slash_input} queued — runs after the current task.");
+                            push_transcript_message_synced(
+                                &mut messages,
+                                messages_arc,
+                                &mut messages_revision,
+                                &mut prompt_history,
+                                TranscriptMessage::text(notice, TranscriptStyle::Meta),
+                            );
                         } else if agent_session.is_some() {
-                            // Skill/compact may already be running via spawn_agent_work.
+                            // Skill/compact may already be running via handle_slash_submit.
                             agent_turn_active.set(true);
                             chrome_refresh_pending.set(true);
                             idle_status_notice.set(None);

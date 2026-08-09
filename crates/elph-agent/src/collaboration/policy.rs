@@ -36,6 +36,7 @@ fn default_mutating_tools() -> Vec<String> {
         "write_file".into(),
         "edit_file".into(),
         "shell_exec".into(),
+        "shell_use".into(),
         "create_dir".into(),
         "copy_path".into(),
         "delete_path".into(),
@@ -238,6 +239,12 @@ mod tests {
     fn blocks_shell_exec_in_plan_mode() {
         assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "shell_exec", None));
         assert!(!plan_mode_blocks_tool(CollaborationMode::Default, "shell_exec", None));
+    }
+
+    #[test]
+    fn blocks_shell_use_in_plan_mode() {
+        assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "shell_use", None));
+        assert!(!plan_mode_blocks_tool(CollaborationMode::Default, "shell_use", None));
     }
 
     #[test]

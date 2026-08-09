@@ -16,24 +16,71 @@ use super::context::{ElphCodingPromptContext, has_codegraph_tools};
 use super::modes::{build_mode_section, mode_footer_slug};
 use super::template::coding_agent_engine;
 
+/// Per-session prompt knobs derived from `Settings` and the live agent mode.
+///
+/// Grouped into a struct so the two booleans are named at every call site — as
+/// positional `bool` arguments they were trivially swappable and pushed
+/// `build_coding_system_prompt` past the `clippy::too_many_arguments` limit.
+#[derive(Clone, Debug, Default)]
+pub struct CodingPromptOptions {
+    /// Agent permission / interaction mode for this turn.
+    pub mode: AgentMode,
+    /// Language the AI uses for conversational responses in the transcript.
+    /// Code, comments, and documentation remain in English regardless of this
+    /// value. Empty string uses the default (English).
+    pub preferred_chat_language: String,
+    /// Mirrors the `codegraph.enabled` setting: when false, the `<codegraph>`
+    /// guidance section is omitted even if `code_*` tool names leak into
+    /// `tool_names` (defense-in-depth on top of the tool-name check).
+    pub codegraph_enabled: bool,
+    /// Mirrors `simplifiedTechnicalEnglish`: renders the `<response_style>` block.
+    pub ste_enabled: bool,
+}
+
+impl CodingPromptOptions {
+    /// Options for `mode` with both feature sections enabled (test/default helper).
+    pub fn new(mode: AgentMode) -> Self {
+        Self {
+            mode,
+            preferred_chat_language: String::new(),
+            codegraph_enabled: true,
+            ste_enabled: true,
+        }
+    }
+
+    /// Set the preferred conversational language.
+    pub fn with_language(mut self, language: impl Into<String>) -> Self {
+        self.preferred_chat_language = language.into();
+        self
+    }
+
+    /// Toggle the `<codegraph>` guidance section.
+    pub fn with_codegraph(mut self, enabled: bool) -> Self {
+        self.codegraph_enabled = enabled;
+        self
+    }
+
+    /// Toggle the `<response_style>` (Simplified Technical English) section.
+    pub fn with_ste(mut self, enabled: bool) -> Self {
+        self.ste_enabled = enabled;
+        self
+    }
+}
+
 /// Build the dynamic system prompt for a coding session turn.
-///
-/// `preferred_chat_language` controls the language the AI uses for conversational
-/// responses in the transcript. Code, comments, and documentation remain in English
-/// regardless of this value. Pass an empty string to use the default (English).
-///
-/// `codegraph_enabled` mirrors the `codegraph.enabled` setting: when false, the
-/// `<codegraph>` guidance section is omitted even if `code_*` tool names leak into
-/// `tool_names` (defense-in-depth on top of the tool-name check).
 pub fn build_coding_system_prompt(
     cwd: &Path,
     resources: &AgentHarnessResources,
     tool_names: &[String],
     agents_md: Option<&str>,
-    mode: AgentMode,
-    preferred_chat_language: impl Into<String>,
-    codegraph_enabled: bool,
+    options: &CodingPromptOptions,
 ) -> anyhow::Result<String> {
+    let CodingPromptOptions {
+        mode,
+        preferred_chat_language,
+        codegraph_enabled,
+        ste_enabled,
+    } = options.clone();
     let date = now_iso_timestamp().chars().take(10).collect::<String>();
     let shell_path = std::env::var("SHELL").ok();
     let os_name = std::env::consts::OS.to_string();
@@ -43,8 +90,6 @@ pub fn build_coding_system_prompt(
     } else {
         format_skills_for_context(&resources.skills, cwd)
     };
-
-    let preferred_chat_language: String = preferred_chat_language.into();
 
     let base_context = SystemPromptTemplateContext {
         persona: "You are an expert, intelligent, and interactive AI agent. Complete the user's request end-to-end using the available context and tools."
@@ -69,6 +114,7 @@ pub fn build_coding_system_prompt(
     } else {
         elph_context
     };
+    let elph_context = elph_context.with_ste_code(ste_enabled);
 
     let coding_base = coding_agent_engine().render("coding_base", &elph_context)?;
     SystemPromptBuilder::new()
@@ -91,9 +137,7 @@ mod tests {
             &AgentHarnessResources::default(),
             &["read_file", "write_file", "grep", "list_dir", "shell_exec"].map(String::from),
             None,
-            AgentMode::Build,
-            "",
-            true,
+            &CodingPromptOptions::new(AgentMode::Build),
         )
         .expect("prompt");
 
@@ -123,9 +167,7 @@ mod tests {
                 "memory_search".into(),
             ],
             None,
-            AgentMode::Build,
-            "",
-            true,
+            &CodingPromptOptions::new(AgentMode::Build),
         )
         .expect("prompt");
 
@@ -148,9 +190,7 @@ mod tests {
                 // codegraph.code_search, same as the <codegraph> block).
             ],
             None,
-            AgentMode::Build,
-            "",
-            true,
+            &CodingPromptOptions::new(AgentMode::Build),
         )
         .expect("prompt");
 
@@ -166,9 +206,7 @@ mod tests {
             &AgentHarnessResources::default(),
             &["read_file".into(), "list_available_tools".into()],
             None,
-            AgentMode::Build,
-            "",
-            true,
+            &CodingPromptOptions::new(AgentMode::Build),
         )
         .expect("prompt");
 
@@ -189,9 +227,7 @@ mod tests {
             &AgentHarnessResources::default(),
             &["read_file".into(), "code_search".into(), "code_impact".into()],
             None,
-            AgentMode::Build,
-            "",
-            false,
+            &CodingPromptOptions::new(AgentMode::Build).with_codegraph(false),
         )
         .expect("prompt");
 
@@ -209,9 +245,7 @@ mod tests {
             &AgentHarnessResources::default(),
             &[],
             None,
-            AgentMode::Plan,
-            "",
-            true,
+            &CodingPromptOptions::new(AgentMode::Plan),
         )
         .expect("prompt");
 
@@ -227,9 +261,7 @@ mod tests {
             &AgentHarnessResources::default(),
             &["read_file".to_string()],
             None,
-            AgentMode::Ask,
-            "",
-            true,
+            &CodingPromptOptions::new(AgentMode::Ask),
         )
         .expect("prompt");
 
@@ -241,15 +273,43 @@ mod tests {
     }
 
     #[test]
+    fn ste_flag_controls_response_style_section() {
+        let enabled = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["read_file".to_string()],
+            None,
+            &CodingPromptOptions::new(AgentMode::Build),
+        )
+        .expect("prompt");
+        assert!(enabled.contains("<response_style>"));
+        assert!(enabled.contains("Simplified Technical English"));
+        assert!(enabled.contains("No preamble, no recap, no closing pleasantries"));
+
+        let disabled = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["read_file".to_string()],
+            None,
+            &CodingPromptOptions::new(AgentMode::Build).with_ste(false),
+        )
+        .expect("prompt");
+        assert!(!disabled.contains("<response_style>"));
+        assert!(!disabled.contains("Simplified Technical English"));
+        assert!(
+            !disabled.contains("No preamble"),
+            "STE-only rule must not appear when the flag is off"
+        );
+    }
+
+    #[test]
     fn brave_mode_skips_build_approval_block() {
         let prompt = build_coding_system_prompt(
             Path::new("/tmp/project"),
             &AgentHarnessResources::default(),
             &["write_file".to_string()],
             None,
-            AgentMode::Brave,
-            "",
-            true,
+            &CodingPromptOptions::new(AgentMode::Brave),
         )
         .expect("prompt");
 
@@ -266,9 +326,7 @@ mod tests {
             &AgentHarnessResources::default(),
             &["write_file".to_string()],
             None,
-            AgentMode::Build,
-            "",
-            true,
+            &CodingPromptOptions::new(AgentMode::Build),
         )
         .expect("prompt");
 
@@ -283,9 +341,7 @@ mod tests {
             &AgentHarnessResources::default(),
             &[],
             Some("Always run tests."),
-            AgentMode::Build,
-            "",
-            true,
+            &CodingPromptOptions::new(AgentMode::Build),
         )
         .expect("prompt");
 
@@ -310,9 +366,7 @@ mod tests {
             ]
             .map(String::from),
             None,
-            AgentMode::Build,
-            "",
-            true,
+            &CodingPromptOptions::new(AgentMode::Build),
         )
         .expect("prompt");
 
@@ -333,9 +387,7 @@ mod tests {
             &AgentHarnessResources::default(),
             &["read_file", "grep", "list_dir", "edit_file", "write_file"].map(String::from),
             None,
-            AgentMode::Build,
-            "",
-            true,
+            &CodingPromptOptions::new(AgentMode::Build),
         )
         .expect("prompt");
 
@@ -346,15 +398,47 @@ mod tests {
     }
 
     #[test]
+    fn shell_use_guidance_renders_alongside_shell_exec() {
+        let prompt = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["shell_exec", "shell_use"].map(String::from),
+            None,
+            &CodingPromptOptions::new(AgentMode::Build),
+        )
+        .expect("prompt");
+
+        assert!(prompt.contains("`shell_use` drives stateful PTY sessions"));
+        assert!(prompt.contains("Prefer `shell_exec` for one-shot commands"));
+        assert!(
+            prompt.contains("sessions persist across calls until `action: close`")
+                || prompt.contains("`close` with `all: true`")
+        );
+    }
+
+    #[test]
+    fn shell_use_guidance_omitted_when_tool_inactive() {
+        let prompt = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["shell_exec"].map(String::from),
+            None,
+            &CodingPromptOptions::new(AgentMode::Build),
+        )
+        .expect("prompt");
+
+        assert!(prompt.contains("`shell_exec` runs commands in the working directory"));
+        assert!(!prompt.contains("`shell_use` drives stateful PTY sessions"));
+    }
+
+    #[test]
     fn project_rules_remain_after_language_and_mode_context() {
         let prompt = build_coding_system_prompt(
             Path::new("/tmp/project"),
             &AgentHarnessResources::default(),
             &[],
             Some("Always run tests."),
-            AgentMode::Build,
-            "indonesian",
-            true,
+            &CodingPromptOptions::new(AgentMode::Build).with_language("indonesian"),
         )
         .expect("prompt");
 
@@ -391,15 +475,14 @@ mod tests {
             ]
             .map(String::from),
             None,
-            AgentMode::Build,
-            "",
-            true,
+            &CodingPromptOptions::new(AgentMode::Build),
         )
         .expect("prompt");
 
         // Budget raised for lazy-MCP guidance in <tool_calling> (name_prefix
         // activation path) plus earlier mode/memory/tool-routing expansions.
-        assert!(prompt.len() < 9_500, "static prompt is {} bytes", prompt.len());
+        // The <response_style> section adds ~1KB; the budget accounts for it.
+        assert!(prompt.len() < 11_000, "static prompt is {} bytes", prompt.len());
     }
 
     #[test]
@@ -409,9 +492,7 @@ mod tests {
             &AgentHarnessResources::default(),
             &["read_file".to_string()],
             None,
-            AgentMode::Build,
-            "",
-            true,
+            &CodingPromptOptions::new(AgentMode::Build),
         )
         .expect("prompt");
         assert!(!without_subagents.contains("<subagents>"));
@@ -428,9 +509,7 @@ mod tests {
             ]
             .map(String::from),
             None,
-            AgentMode::Build,
-            "",
-            true,
+            &CodingPromptOptions::new(AgentMode::Build),
         )
         .expect("prompt");
 
@@ -448,9 +527,7 @@ mod tests {
             &AgentHarnessResources::default(),
             &["spawn_agent".to_string()],
             None,
-            AgentMode::Build,
-            "",
-            true,
+            &CodingPromptOptions::new(AgentMode::Build),
         )
         .expect("prompt");
         assert!(only_spawn.contains("`spawn_agent`"));

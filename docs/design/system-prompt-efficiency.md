@@ -9,12 +9,12 @@ degrading structure, tool discipline, or memory/skill recall quality.
 now gate skill visibility per-session via the `filter_skills_for_context` helper,
 keyed on the soft-typed frontmatter key `metadata.scope`:
 
-| `metadata.scope`          | Behavior                                                       |
-|---------------------------|----------------------------------------------------------------|
-| *(unset)*                 | Always visible (backward compatible)                           |
-| `global`                  | Always visible                                                 |
-| `project`                 | Visible only while `cwd` is inside the skill's project root    |
-| anything else             | Treated as unset (never silently hides a skill)                |
+| `metadata.scope` | Behavior                                                    |
+| ---------------- | ----------------------------------------------------------- |
+| _(unset)_        | Always visible (backward compatible)                        |
+| `global`         | Always visible                                              |
+| `project`        | Visible only while `cwd` is inside the skill's project root |
+| anything else    | Treated as unset (never silently hides a skill)             |
 
 A project-scoped skill must live at `<project>/.agents/skills/<name>/SKILL.md`
 (or `<project>/.elph/skills/...`). The project root is reconstructed from the
@@ -35,13 +35,13 @@ metadata:
 
 Designed so that all existing skills (no `scope`) behave exactly as before.
 Full set of skills remains reachable via the slash palette / dispatch; the
-filter only removes *model-visible advertisements* in `<available_skills>`.
+filter only removes _model-visible advertisements_ in `<available_skills>`.
 
 Measured (tokenx estimator, same module used by compaction) on the dev machine's
 18-skill set + 33 native/memory tools, cwd `/tmp/elph-project`:
 
 | Mode  | Before (full) | After (full) | Before `<available_skills>` | After `<available_skills>` |
-|-------|---------------|--------------|-----------------------------|----------------------------|
+| ----- | ------------- | ------------ | --------------------------- | -------------------------- |
 | Build | 4083          | 3704         | 1279                        | 913                        |
 | Plan  | 3876          | 3497         | 1279                        | 913                        |
 | Brave | 4048          | 3669         | 1279                        | 913                        |
@@ -103,11 +103,36 @@ is whitelisted in Ask/Plan mode policies (`tool_policy.rs`). Skills therefore
 remain fully reachable by the model even when relevance filtering hides their
 advertisement from the static prompt.
 
+## Simplified Technical English response style
+
+The coding-agent domain template (`crates/coding-agent/templates/agent/coding_base.md`)
+now ends with a `<response_style>` section derived from ASD-STE100 (Simplified
+Technical English) applied to **every response** the agent writes: chat replies and
+content written to files (code, comments, docs, commit messages).
+
+The section stays lean (~1.2 KB): short active sentences, one instruction per
+sentence, imperative for actions, plain words (no jargon/slang/hedging), one
+consistent term per concept, no undefined abbreviations, American spelling,
+noun phrases ≤ 3 words, no preamble/recap/closing pleasantries.
+
+The rules apply to any language the agent writes in; the controlled-vocabulary
+rules apply to English prose. An explicit escape hatch preserves meaning and
+full content for tasks that require explanation or a list of options, and a
+closing line states that these rules never override higher-priority rules or
+explicit user instructions (mitigating conflict with `<language_preference>`
+and per-task requirements).
+
+Rendered prompt size is guarded by `static_coding_prompt_stays_compact` (upper bound 11,000 bytes). The section is **configurable**:
+setting `simplifiedTechnicalEnglish` (top-level, default `true`) gates it —
+`false` drops `<response_style>` from the rendered prompt, keeping the template
+lean when the user opts out.
+
 ## Caller-side consistency (`format_skills_for_context`)
 
 The single combined entry point `format_skills_for_context(skills, cwd)` (filter
-+ XML render) is exported (`elph_agent`) and used by the coding-agent prompt
-builder. Other hosts using `PromptAssemblyMode::Full` append `skills_section`
-verbatim, so they should call `format_skills_for_context` (or pre-filter with
-`filter_skills_for_context`) before setting `skills_section` — the builder itself
-keeps rendering exactly what it receives.
+
+- XML render) is exported (`elph_agent`) and used by the coding-agent prompt
+  builder. Other hosts using `PromptAssemblyMode::Full` append `skills_section`
+  verbatim, so they should call `format_skills_for_context` (or pre-filter with
+  `filter_skills_for_context`) before setting `skills_section` — the builder itself
+  keeps rendering exactly what it receives.

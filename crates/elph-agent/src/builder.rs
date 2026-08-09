@@ -123,6 +123,8 @@ impl BuiltinToolsBuilder {
             crate::tools::create_read_file_tool(self.env.clone()),
             #[cfg(feature = "tools-shell-exec")]
             crate::tools::create_shell_exec_tool(self.env.clone()),
+            #[cfg(feature = "tools-shell-use")]
+            crate::tools::create_shell_use_tool(self.env.clone()),
             #[cfg(feature = "tools-edit-file")]
             crate::tools::create_edit_file_tool(self.env.clone()),
             #[cfg(feature = "tools-write-file")]
@@ -185,5 +187,14 @@ mod tests {
         assert!(names.contains(&"shell_exec".to_string()));
         assert!(names.contains(&"grep".to_string()));
         assert!(names.contains(&"web_search".to_string()));
+    }
+
+    #[cfg(feature = "tools-shell-use")]
+    #[test]
+    fn builtin_tools_builder_includes_shell_use() {
+        let env = Arc::new(LocalExecutionEnv::new(PathBuf::from(".").as_path()));
+        let tools = BuiltinToolsBuilder::all(env).build();
+        let names: Vec<_> = tools.iter().map(|tool| tool.name().to_string()).collect();
+        assert!(names.contains(&"shell_use".to_string()));
     }
 }
