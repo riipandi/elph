@@ -1,6 +1,7 @@
 //! Non-interactive `elph run` execution.
 
 use anyhow::{Context, Result, bail};
+use elph_tui::CliSpinner;
 use serde_json::{Value, json};
 use std::io::Write;
 use std::path::Path;
@@ -59,7 +60,11 @@ pub struct RunModeResult {
 }
 
 pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeResult> {
-    let (session, mut ui_rx) = create_coding_session_with_events(CreateSessionOptions {
+    // Spinner lives on stderr (same pattern as codegraph / datastore / bootstrap).
+    // Keeps stdout clean for plain text, JSON, and stream formats.
+    let spinner = CliSpinner::new(bootstrap_message(&options));
+
+    let session_result = create_coding_session_with_events(CreateSessionOptions {
         paths: options.paths,
         settings: options.settings,
         cwd: options.cwd,
@@ -74,11 +79,20 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
         defer_mcp_load: false,
         headless: true,
     })
-    .await?;
+    .await;
+
+    let (session, mut ui_rx) = match session_result {
+        Ok(pair) => pair,
+        Err(err) => {
+            spinner.finish_and_clear();
+            return Err(err);
+        }
+    };
     let session = Arc::new(session);
     session.start_worker_inbox_poller();
 
     if let Some(level) = options.effort {
+        spinner.set_message(format!("Setting effort to {}…", level.label()));
         session.set_thinking_level(level).await?;
     }
     if let Some(name) = options.name
@@ -97,10 +111,27 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
     let plain_streamed_w = Arc::clone(&plain_streamed);
     let harness_for_abort = session.harness();
 
-    // Stream UI events to stdout for streaming formats / plain deltas.
+    spinner.set_message(format!(
+        "Waiting for {model_label} · mode {}…",
+        options.mode.footer_label()
+    ));
+
+    // Drive stdout formats + refresh the stderr spinner from live agent events.
+    let spinner_for_events = spinner.clone();
+    let mode_label = options.mode.footer_label().to_string();
+    let model_for_events = model_label.clone();
     let stream_task = tokio::spawn(async move {
         let mut msg_started = false;
+        let mut saw_text = false;
         while let Some(event) = ui_rx.recv().await {
+            update_spinner_for_event(
+                &spinner_for_events,
+                &event,
+                &model_for_events,
+                &mode_label,
+                &mut saw_text,
+            );
+
             match format {
                 OutputFormat::Plain => {
                     if let AgentUiEvent::TextDelta(text) = &event {
@@ -131,6 +162,7 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
                     && n > max
                 {
                     log::warn!("max-turns exceeded ({n} > {max}); aborting run");
+                    spinner_for_events.set_message(format!("Max turns reached ({n}/{max}) — aborting…"));
                     let _ = harness_for_abort.abort().await;
                 }
             }
@@ -144,6 +176,9 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
     // Allow stream task to drain RunCompleted.
     let _ = tokio::time::timeout(std::time::Duration::from_secs(2), stream_task).await;
 
+    // Clear the spinner before any final stdout payload so lines don't collide.
+    spinner.finish_and_clear();
+
     let assistant_text = collect_last_assistant_text(&session).await;
     let session_name = session.harness().session_name().await;
 
@@ -156,6 +191,8 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
                 "result": assistant_text,
             });
             println!("{}", serde_json::to_string_pretty(&body)?);
+        } else {
+            eprintln!("error: {err:#}");
         }
         // Still clean up ephemeral sessions.
         if options.no_session {
@@ -210,6 +247,112 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
         session_name,
         assistant_text,
     })
+}
+
+fn bootstrap_message(options: &RunModeOptions<'_>) -> String {
+    if options.resume_id.is_some() {
+        if options.create_if_missing {
+            "Opening session (create if missing)…".into()
+        } else {
+            "Resuming session…".into()
+        }
+    } else if options.no_session {
+        "Starting ephemeral run…".into()
+    } else {
+        "Starting session…".into()
+    }
+}
+
+/// Refresh the stderr spinner from agent UI events so the user sees live activity.
+fn update_spinner_for_event(
+    spinner: &CliSpinner,
+    event: &AgentUiEvent,
+    model: &str,
+    mode: &str,
+    saw_text: &mut bool,
+) {
+    match event {
+        AgentUiEvent::Status(msg) => {
+            let msg = msg.trim();
+            if !msg.is_empty() {
+                spinner.set_message(shorten_status(msg));
+            }
+        }
+        AgentUiEvent::ThinkingDelta(_) => {
+            spinner.set_message(format!("Thinking · {model}…"));
+        }
+        AgentUiEvent::TextDelta(_) => {
+            if !*saw_text {
+                *saw_text = true;
+                spinner.set_message(format!("Generating · {model}…"));
+            }
+        }
+        AgentUiEvent::ToolStart { name, args_summary, .. } => {
+            let summary = args_summary.trim();
+            if summary.is_empty() {
+                spinner.set_message(format!("Tool `{name}`…"));
+            } else {
+                spinner.set_message(format!("Tool `{name}` · {}…", truncate_chars(summary, 48)));
+            }
+        }
+        AgentUiEvent::ToolUpdate { .. } => {
+            // Keep the current tool message; updates are noisy for a single-line spinner.
+        }
+        AgentUiEvent::ToolEnd { is_error, .. } => {
+            if *is_error {
+                spinner.set_message(format!("Tool failed — continuing · {model}…"));
+            } else {
+                spinner.set_message(format!("Waiting for {model} · mode {mode}…"));
+            }
+        }
+        AgentUiEvent::Retrying { attempt } => {
+            spinner.set_message(format!("Retrying (attempt {attempt})…"));
+        }
+        AgentUiEvent::SubagentStatus {
+            task_name,
+            phase,
+            message,
+            ..
+        } => {
+            let label = if task_name.is_empty() { "subagent" } else { task_name.as_str() };
+            let detail = message.trim();
+            if detail.is_empty() {
+                spinner.set_message(format!("Subagent {label} · {}…", phase.as_word()));
+            } else {
+                spinner.set_message(format!(
+                    "Subagent {label} · {} · {}…",
+                    phase.as_word(),
+                    truncate_chars(detail, 40)
+                ));
+            }
+        }
+        AgentUiEvent::RunCompleted { elapsed_secs } => {
+            spinner.set_message(format!("Finishing · {elapsed_secs:.1}s…"));
+        }
+        AgentUiEvent::PlanConfirmationRequired(_) => {
+            spinner.set_message("Waiting for plan confirmation…");
+        }
+        AgentUiEvent::ToolApprovalRequired(_) => {
+            spinner.set_message("Waiting for tool approval…");
+        }
+        _ => {}
+    }
+}
+
+fn shorten_status(msg: &str) -> String {
+    let one_line = msg.lines().next().unwrap_or(msg).trim();
+    truncate_chars(one_line, 72).to_string()
+}
+
+fn truncate_chars(s: &str, max: usize) -> String {
+    let count = s.chars().count();
+    if count <= max {
+        return s.to_string();
+    }
+    let take = max.saturating_sub(1);
+    let mut out: String = s.chars().take(take).collect();
+    out.push('…');
+    out
 }
 
 fn session_info_json(session_id: &str, name: Option<&str>, cwd: &Path, model: &str, mode: AgentMode) -> Value {

@@ -163,6 +163,9 @@ pub fn handle(args: &RunArgs) -> ExitCode {
     // Initialize resilience manager with CLI overrides
     init_resilience_from_args(args);
 
+    // Spinner tick threads observe SIGINT via this guard (same as codegraph / boot).
+    let _interrupt = super::CliProgressInterruptGuard::new();
+
     let paths = match Paths::resolve() {
         Ok(p) => p,
         Err(err) => {
@@ -229,6 +232,7 @@ pub fn handle(args: &RunArgs) -> ExitCode {
     match result {
         Ok(_) => EXIT_SUCCESS,
         Err(err) => {
+            // run_non_interactive already cleared the spinner and may have printed details.
             help::cli_error(format!("run failed: {err}"));
             EXIT_ERROR
         }

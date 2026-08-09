@@ -44,6 +44,23 @@ elph: resume: elph run --session-id=<uuid> "…"
 
 Stdout stays clean for machine formats (`json` / stream).
 
+## Progress indicator
+
+On a TTY, `elph run` shows a **stderr spinner** (same `CliSpinner` as codegraph / datastore):
+
+| Phase | Example message |
+| --- | --- |
+| Bootstrap | `Starting session…` / `Resuming session…` |
+| Waiting | `Waiting for openai/gpt-5.6-luna · mode brave…` |
+| Thinking | `Thinking · openai/gpt-5.6-luna…` |
+| Tools | `Tool \`read_file\` · path/to/file…` |
+| Generating | `Generating · openai/gpt-5.6-luna…` |
+| Subagents | `Subagent research · running · …` |
+
+Stdout stays clean for `--output-format` payloads. Spinner is cleared before the final answer / JSON. Ctrl+C during the run yields a clean interrupt (exit 130) like other CLI progress phases.
+
+When stderr is not a TTY (CI pipes), the spinner falls back to a one-line status print and stays quiet.
+
 ## Defaults
 
 - **Agent mode:** `brave` (auto-approve tools) for headless only; TUI still defaults to `build`.
