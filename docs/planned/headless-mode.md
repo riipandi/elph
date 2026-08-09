@@ -44,7 +44,7 @@ Other slash commands (`/compact`, `/help`, …) are **not** supported in headles
 | `--no-session` | Delete session after the run (not resumable) |
 | `--cwd <path>` | Working directory / project root |
 | `--max-turns <N>` | Abort after N tool starts |
-| `--output-format` / `--output` | `plain` (default, raw tokens), **`pretty`** (streaming CommonMark via streamdown), `json`, `stream-json`, `stream-message-json` |
+| `--output-format` / `--output` | `plain` (default, raw tokens), **`pretty`** (streaming CommonMark via rendown), `json`, `stream-json`, `stream-message-json` |
 | `--effort` / `--reasoning-effort` | `off\|low\|medium\|high\|xhigh\|max` |
 | `--session-id <id>` | Open or create that session id |
 | `-r, --resume <id>` | Resume existing session (error if missing) |
@@ -88,7 +88,7 @@ Unless `--no-session`, stderr prints a **dimmed** turn block with blank lines ab
 
 ### Pretty markdown (`--output=pretty` / `--output-format=pretty`)
 
-Streaming **CommonMark/markdown** render via [`streamdown-parser` + `streamdown-render`](https://github.com/fed-stew/streamdown-rs) (uses **crossterm** for terminal width — same family as iocraft). Line-oriented: tokens buffer until `\n`, then parse + ANSI render; open fences/lists closed on turn end.
+Streaming **CommonMark/markdown** render via the workspace crate **`rendown`** (pulldown-cmark + syntect, cloned from elph-tui markdown; **crossterm** for terminal width). Full source is re-parsed on each newline (and on turn end); only new visual lines are emitted.
 
 ```sh
 elph run --output=pretty "explain this crate in markdown"

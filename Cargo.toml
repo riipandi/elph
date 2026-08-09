@@ -1,6 +1,12 @@
 [workspace]
 resolver = "2"
-members = ["crates/coding-agent", "crates/elph-agent", "crates/elph-ai", "crates/floppy"]
+members = [
+  "crates/coding-agent",
+  "crates/elph-agent",
+  "crates/elph-ai",
+  "crates/floppy",
+  "crates/rendown",
+]
 exclude = [
   "crates/control-plane",
   "crates/elph-cron",
@@ -127,8 +133,7 @@ schemars = "1.2.2"
 serde = { version = "1.0.229", default-features = false, features = ["derive", "std"] }
 serde-jsonlines = "0.7.0"
 serde_json = { version = "1.0.151", default-features = false, features = ["std"] }
-streamdown-parser = "0.1.4"
-streamdown-render = "0.1.4"
+rendown = { path = "crates/rendown", version = "0.0.1" }
 shell-use = { version = "0.0.1-beta.6" }
 smol = "2.0.2"
 smol-macros = "0.1.1"

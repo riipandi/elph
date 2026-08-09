@@ -51,7 +51,7 @@ pub struct RunArgs {
 
     /// Output format: plain | pretty | json | stream-json | stream-message-json
     ///
-    /// `pretty` renders CommonMark/markdown to the terminal (streamdown; crossterm width).
+    /// `pretty` renders CommonMark/markdown to the terminal (rendown; crossterm width).
     /// Aliases: `--output` (same values). `markdown` / `md` map to `pretty`.
     #[arg(
         long = "output-format",

@@ -53,8 +53,7 @@ regex.workspace = true
 rustc-hash.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-streamdown-parser.workspace = true
-streamdown-render.workspace = true
+rendown.workspace = true
 tokio = { workspace = true, features = [
   "fs",
   "io-util",

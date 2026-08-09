@@ -186,11 +186,11 @@ Optional later: `to_plain_text(doc)` for tests.
 
 ## Acceptance criteria
 
-- [ ] `elph run --output=pretty` / `--output-format=pretty` renders via **rendown** only
-- [ ] `streamdown-*` gone from workspace and elph dependency graph
-- [ ] **No** edits under `coding-agent/src/tui/transcript/**`
-- [ ] **No** edits required to elph-tui markdown (optional: none)
-- [ ] Plain still: raw stream, no wait indicator
-- [ ] Pretty TTY: headings/lists/code look closer to transcript than streamdown did
-- [ ] Pretty non-TTY / `NO_COLOR`: raw fallback
-- [ ] `cargo test -p rendown` and `cargo check -p elph` pass
+- [x] `elph run --output=pretty` / `--output-format=pretty` renders via **rendown** only
+- [x] `streamdown-*` gone from workspace and elph dependency graph
+- [x] **No** edits under `coding-agent/src/tui/transcript/**`
+- [x] **No** edits required to elph-tui markdown (optional: none)
+- [x] Plain still: raw stream, no wait indicator
+- [x] Pretty TTY: headings/lists/code via same parse pipeline as transcript (clone)
+- [x] Pretty non-TTY / `NO_COLOR`: raw fallback
+- [x] `cargo test -p rendown` and `cargo check -p elph` pass

@@ -23,7 +23,7 @@ use crate::types::{AgentMode, ThinkingLevel};
 pub enum OutputFormat {
     /// Raw model text as-is (token stream).
     Plain,
-    /// Streaming CommonMark/markdown rendered to the terminal (streamdown + crossterm width).
+    /// Streaming CommonMark/markdown rendered to the terminal (rendown + crossterm width).
     Pretty,
     Json,
     StreamJson,
@@ -38,9 +38,9 @@ impl OutputFormat {
             "json" => Ok(Self::Json),
             "stream-json" | "streaming-json" => Ok(Self::StreamJson),
             "stream-message-json" | "streaming-messages-json" | "streaming-message-json" => Ok(Self::StreamMessageJson),
-            other => bail!(
-                "unknown --output-format `{other}` (expected plain|pretty|json|stream-json|stream-message-json)"
-            ),
+            other => {
+                bail!("unknown --output-format `{other}` (expected plain|pretty|json|stream-json|stream-message-json)")
+            }
         }
     }
 }
@@ -139,10 +139,7 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
     };
     match &turn_kind {
         HeadlessTurn::Prompt => {
-            status.set(format!(
-                "Running · {model_label} · mode {}",
-                options.mode.footer_label()
-            ));
+            status.set(format!("Running · {model_label} · mode {}", options.mode.footer_label()));
         }
         HeadlessTurn::Skill { name, .. } => {
             status.set(format!("Skill `{name}` · {model_label}…"));
@@ -199,9 +196,7 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
                 OutputFormat::StreamJson => {
                     if matches!(
                         &event,
-                        AgentUiEvent::TextDelta(_)
-                            | AgentUiEvent::ToolStart { .. }
-                            | AgentUiEvent::ThinkingDelta(_)
+                        AgentUiEvent::TextDelta(_) | AgentUiEvent::ToolStart { .. } | AgentUiEvent::ThinkingDelta(_)
                     ) {
                         status_handle.finish_quiet();
                     } else {
@@ -372,10 +367,7 @@ fn turn_kind_label(kind: &HeadlessTurn) -> Option<String> {
 }
 
 /// Map user input to a skill, prompt template, or plain prompt (TUI slash parity).
-async fn resolve_headless_turn(
-    session: &super::session::CodingAgentSession,
-    input: &str,
-) -> Result<HeadlessTurn> {
+async fn resolve_headless_turn(session: &super::session::CodingAgentSession, input: &str) -> Result<HeadlessTurn> {
     let trimmed = input.trim();
     if !trimmed.starts_with('/') {
         return Ok(HeadlessTurn::Prompt);
@@ -394,9 +386,7 @@ async fn resolve_headless_turn(
             // Unknown skill returns Unimplemented from dispatch; only known skills land here.
             Ok(HeadlessTurn::Skill { name, args })
         }
-        Some(SlashDispatch::PromptTemplate { name, args }) => {
-            Ok(HeadlessTurn::PromptTemplate { name, args })
-        }
+        Some(SlashDispatch::PromptTemplate { name, args }) => Ok(HeadlessTurn::PromptTemplate { name, args }),
         Some(SlashDispatch::Unimplemented(cmd)) => {
             // Friendlier errors for the two headless-supported slash families.
             if let Some(rest) = cmd.strip_prefix("/skill:") {
@@ -413,16 +403,9 @@ async fn resolve_headless_turn(
             }
             if cmd.starts_with('/') {
                 let name = cmd.trim_start_matches('/').split_whitespace().next().unwrap_or("");
-                let available: Vec<_> = resources
-                    .prompt_templates
-                    .iter()
-                    .map(|t| t.name.as_str())
-                    .collect();
+                let available: Vec<_> = resources.prompt_templates.iter().map(|t| t.name.as_str()).collect();
                 if !name.is_empty()
-                    && !resources
-                        .prompt_templates
-                        .iter()
-                        .any(|t| t.name == name)
+                    && !resources.prompt_templates.iter().any(|t| t.name == name)
                     && !resources.skills.iter().any(|s| s.name == name)
                 {
                     bail!(
@@ -531,7 +514,11 @@ fn update_status_for_event(status: &HeadlessStatus, event: &AgentUiEvent, model:
             message,
             ..
         } => {
-            let label = if task_name.is_empty() { "subagent" } else { task_name.as_str() };
+            let label = if task_name.is_empty() {
+                "subagent"
+            } else {
+                task_name.as_str()
+            };
             let detail = message.trim();
             if detail.is_empty() {
                 status.set(format!("Subagent {label} · {}…", phase.as_word()));
@@ -652,10 +639,7 @@ fn emit_turn_footer(format: OutputFormat, meta: &TurnMeta) {
     let _ = writeln!(
         err,
         "{}",
-        dim(line(
-            "resume",
-            &format!("elph run --session-id={} \"…\"", meta.session_id)
-        ))
+        dim(line("resume", &format!("elph run --session-id={} \"…\"", meta.session_id)))
     );
     let _ = writeln!(err);
 }

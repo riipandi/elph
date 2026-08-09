@@ -99,10 +99,7 @@ impl HeadlessStatus {
 
         *inner.tick.lock().expect("tick") = Some(handle);
 
-        Self {
-            inner,
-            owner: true,
-        }
+        Self { inner, owner: true }
     }
 
     pub fn handle(&self) -> Self {
@@ -122,11 +119,7 @@ impl HeadlessStatus {
 
     /// Stop animation, clear the line, leave a newline for subsequent output.
     pub fn finish(&self) {
-        if self
-            .inner
-            .finished
-            .swap(true, Ordering::SeqCst)
-        {
+        if self.inner.finished.swap(true, Ordering::SeqCst) {
             // Already finished — still ensure a clean line once for the owner.
             if self.owner && self.inner.enabled {
                 clear_line();
