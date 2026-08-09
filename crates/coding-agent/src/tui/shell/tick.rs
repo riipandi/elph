@@ -294,7 +294,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             }
         }
 
-        // ── OAuth completed: close dialog ──────────────────────────
+        // ── OAuth completed: close dialog + ensure live creds reloaded ──
         if pending_provider_connect_for_tick
             .read()
             .as_ref()
@@ -302,18 +302,30 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         {
             let notice = pending_provider_connect_for_tick.read().as_ref().and_then(|p| {
                 let url = &p.oauth_url;
-                // If the done flag was set with a notification message, use it
                 if url.starts_with("Signed in to ") {
                     Some(url.clone())
                 } else {
                     None
                 }
             });
+            // Best-effort: re-read auth.json into the live session models store
+            // for the provider that just connected (not only the current model).
+            let completed_pid = pending_provider_connect_for_tick
+                .read()
+                .as_ref()
+                .and_then(|p| p.completed_provider_id.clone());
+            if let (Some(session), Some(provider)) = (agent_session_slot.read().clone(), completed_pid) {
+                let path = paths.read().auth_store_path();
+                tokio::spawn(async move {
+                    if let Err(e) = session.reload_provider_credential_from_disk(&path, &provider).await {
+                        log::warn!("reload credential after OAuth for {provider}: {e:#}");
+                    }
+                });
+            }
             pending_provider_connect_for_tick.set(None);
             provider_connect_api_key_for_tick.set(String::new());
             provider_connect_input_focus_for_tick.set(ProviderConnectFocus::default());
             shell_focus_for_tick.set(ShellFocus::Prompt);
-            // Push transcript notification
             if let Some(notice) = notice {
                 let mut msgs = messages_for_tick.write().clone();
                 msgs.push(TranscriptMessage::text(notice, TranscriptStyle::Meta));

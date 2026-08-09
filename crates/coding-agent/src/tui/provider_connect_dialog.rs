@@ -129,6 +129,8 @@ pub struct PendingProviderConnectDialog {
     pub opened_at: Instant,
     /// Set to true when OAuth flow completes — main loop will close the dialog.
     pub done: bool,
+    /// Provider id that finished connect (for live credential reload on tick).
+    pub completed_provider_id: Option<String>,
     /// True right after `open_provider_connect_dialog` sets up the dialog.
     /// Resets to false on the first step transition. The render function uses
     /// this to force the initial step to `SelectAuthMethod` regardless of any
@@ -403,6 +405,7 @@ pub fn open_provider_connect_dialog(args: OpenProviderConnectDialogArgs<'_>) {
         stashed_prompt_draft: stashed,
         opened_at: Instant::now(),
         done: false,
+        completed_provider_id: None,
         fresh_open: true,
     }));
     args.shell_focus.set(ShellFocus::StatusDialog);

@@ -1,4 +1,39 @@
 {
+    "auto": {
+        "api": "openai-responses",
+        "baseUrl": "https://api.individual.githubcopilot.com",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
+        "contextWindow": 264000,
+        "cost": {
+            "cacheRead": 0.025,
+            "cacheWrite": 0.0,
+            "input": 0.25,
+            "output": 2.0
+        },
+        "headers": {
+            "Copilot-Integration-Id": "vscode-chat",
+            "Editor-Plugin-Version": "copilot-chat/0.35.0",
+            "Editor-Version": "vscode/1.107.0",
+            "User-Agent": "GitHubCopilotChat/0.35.0"
+        },
+        "id": "auto",
+        "input": ["text", "image"],
+        "maxTokens": 64000,
+        "name": "Auto",
+        "provider": "github-copilot",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": "low",
+            "off": null,
+            "xhigh": null
+        }
+    },
     "claude-fable-5": {
         "api": "openai-completions",
         "baseUrl": "https://api.individual.githubcopilot.com",

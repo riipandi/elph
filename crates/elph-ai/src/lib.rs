@@ -24,7 +24,8 @@ pub use auth::oauth::unregister_oauth_provider;
 pub use auth::oauth::{OAuthApiKeyResult, OAuthProviderInterface, OPENAI_CODEX_BROWSER_LOGIN_METHOD};
 pub use auth::oauth::{anthropic_oauth, builtin_oauth_provider_ids, get_oauth_api_key, get_oauth_provider};
 pub use auth::oauth::{
-    get_oauth_providers, github_copilot_oauth, oauth_provider_login, oauth_provider_modify_models, openai_codex_oauth,
+    ensure_copilot_available_model_ids, get_oauth_providers, github_copilot_oauth, oauth_provider_login,
+    oauth_provider_modify_models, openai_codex_oauth,
 };
 pub use auth::oauth::{refresh_oauth_token, register_oauth_provider, reset_oauth_providers};
 pub use auth::{ApiKeyAuth, ApiKeyCredential, AuthContext, AuthResolveInput, AuthResult, BoxFuture, Credential};

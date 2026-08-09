@@ -842,6 +842,44 @@ impl CodingAgentSession {
         *self.selection.write() = selection;
     }
 
+    /// Inject a provider credential into the live [`elph_ai::Models`] store so the
+    /// next stream uses it without restarting the session (after `/provider connect`).
+    ///
+    /// For GitHub Copilot OAuth, fills plan-available model ids when missing and
+    /// re-filters the live catalog so Free/Student users only see supported models.
+    pub async fn inject_provider_credential(&self, provider_id: &str, credential: elph_ai::Credential) {
+        let models = Arc::clone(&self.selection.read().models);
+        let credential = if provider_id == "github-copilot" {
+            if let elph_ai::Credential::OAuth(mut oauth) = credential {
+                let _ = elph_ai::ensure_copilot_available_model_ids(&mut oauth).await;
+                elph_ai::Credential::OAuth(oauth)
+            } else {
+                credential
+            }
+        } else {
+            credential
+        };
+        models.set_credential(provider_id, credential).await;
+        log::info!("injected live credential for provider {provider_id}");
+    }
+
+    /// Reload one provider credential from `auth.json` into the live models store.
+    pub async fn reload_provider_credential_from_disk(
+        &self,
+        auth_store_path: &std::path::Path,
+        provider_id: &str,
+    ) -> anyhow::Result<bool> {
+        let models = Arc::clone(&self.selection.read().models);
+        let loaded = super::model_registry::load_single_credential_from_auth_json(auth_store_path, provider_id).await?;
+        if let Some(cred) = loaded {
+            models.set_credential(provider_id, cred).await;
+            log::info!("reloaded live credential for provider {provider_id} from auth.json");
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
     pub async fn invoke_skill(&self, name: &str, args: &str) -> Result<()> {
         let _guard = self.turn_gate.lock().await;
         let started = Instant::now();

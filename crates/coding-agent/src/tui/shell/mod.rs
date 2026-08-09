@@ -220,7 +220,14 @@ impl elph_ai::auth::AuthLoginCallbacks for OAuthLoginCallbacksImpl {
             .unwrap_or_default()
             .as_nanos() as u64;
 
-        // Send the prompt event through the channel so the UI can show it.
+        // Register the oneshot **before** notifying the UI so a fast Enter (e.g. blank
+        // enterprise host → github.com) is never dropped on an empty store.
+        let (response_tx, response_rx) = tokio::sync::oneshot::channel();
+        {
+            let mut store = OAUTH_PROMPT_STORE.lock().unwrap();
+            store.insert(prompt_id, response_tx);
+        }
+
         match &prompt {
             elph_ai::auth::AuthPrompt::Text { message, placeholder } => {
                 let _ = tx.send(OAuthDialogEvent::PromptText {
@@ -253,13 +260,6 @@ impl elph_ai::auth::AuthLoginCallbacks for OAuthLoginCallbacksImpl {
         }
 
         Box::pin(async move {
-            let (response_tx, response_rx) = tokio::sync::oneshot::channel();
-            // Use std::sync::Mutex::lock() — held briefly, dropped before await.
-            {
-                let mut store = OAUTH_PROMPT_STORE.lock().unwrap();
-                store.insert(prompt_id, response_tx);
-            }
-
             match response_rx.await {
                 Ok(response) => Ok(response),
                 Err(_) => Err(anyhow::anyhow!("OAuth prompt cancelled")),

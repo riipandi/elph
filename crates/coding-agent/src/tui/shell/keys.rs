@@ -2099,6 +2099,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             let provider_id_for_task = provider_id.clone();
                             let mut pending_ref = pending_provider_connect;
                             let auth_store_path_for_task = auth_store_path.clone();
+                            // Inject into the live session models store after save (no restart).
+                            let session_for_inject = agent_session.clone();
 
                             tokio::spawn(async move {
                                 // Build AuthLoginCallbacks that sends events through the channel
@@ -2108,55 +2110,89 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                                     Ok(credential) => {
                                         log::info!("OAuth login succeeded for provider: {}", provider_id_for_task);
 
-                                        // Derive API key from OAuth credential
-                                        match elph_ai::get_oauth_api_key(&provider_id_for_task, credential.clone())
-                                            .await
+                                        // Prefer refreshed credential from get_oauth_api_key when needed.
+                                        let credential = match elph_ai::get_oauth_api_key(
+                                            &provider_id_for_task,
+                                            credential.clone(),
+                                        )
+                                        .await
                                         {
                                             Ok(api_key_result) => {
-                                                // OAuth credentials are stored differently — they provide
-                                                // access tokens that auto-refresh. For now we save the
-                                                // access token as an encrypted API key as a fallback,
-                                                // but the real OAuth flow stores tokens in-memory.
                                                 log::info!(
                                                     "OAuth login complete for {} — token expires at {}",
                                                     provider_id_for_task,
                                                     api_key_result.new_credentials.expires,
                                                 );
+                                                api_key_result.new_credentials
+                                            }
+                                            Err(e) => {
+                                                log::warn!(
+                                                    "get_oauth_api_key for {provider_id_for_task} failed ({e}); using login credential"
+                                                );
+                                                credential
+                                            }
+                                        };
 
-                                                // Store OAuth credential in auth.json for persistence
-                                                if let Ok(json) = serde_json::to_string(&credential) {
-                                                    let _ = crate::tui::provider_credential_store::save_provider_credential(
-                                                            &auth_store_path_for_task,
-                                                            &provider_id_for_task,
-                                                            &json,
-                                                        ).await;
-                                                }
-
-                                                // Close dialog — OAuth is complete.
-                                                // The main loop detects the done flag
-                                                // and cleans up focus + clears the draft.
-                                                if let Some(pending) = pending_ref.write().as_mut() {
-                                                    pending.done = true;
-                                                    pending.oauth_url =
-                                                        format!("Signed in to {provider_name_for_clone}");
+                                        // Persist OAuth JSON blob in auth.json.
+                                        let save_ok = match serde_json::to_string(&credential) {
+                                            Ok(json) => {
+                                                match crate::tui::provider_credential_store::save_provider_credential(
+                                                    &auth_store_path_for_task,
+                                                    &provider_id_for_task,
+                                                    &json,
+                                                )
+                                                .await
+                                                {
+                                                    Ok(()) => {
+                                                        log::info!(
+                                                            "saved OAuth credential for {provider_id_for_task} to auth.json"
+                                                        );
+                                                        true
+                                                    }
+                                                    Err(e) => {
+                                                        log::error!(
+                                                            "failed to save OAuth credential for {provider_id_for_task}: {e}"
+                                                        );
+                                                        false
+                                                    }
                                                 }
                                             }
                                             Err(e) => {
-                                                log::error!(
-                                                    "Failed to derive API key from OAuth for {}: {}",
-                                                    provider_id_for_task,
-                                                    e
-                                                );
-                                                if let Some(pending) = pending_ref.write().as_mut() {
-                                                    pending.oauth_url = format!("OAuth error: {e}");
-                                                }
+                                                log::error!("serialize OAuth credential: {e}");
+                                                false
                                             }
+                                        };
+
+                                        // Always inject into the live Models store so the current
+                                        // session can stream without restart.
+                                        if let Some(session) = session_for_inject.as_ref() {
+                                            session
+                                                .inject_provider_credential(
+                                                    &provider_id_for_task,
+                                                    elph_ai::Credential::OAuth(credential.clone()),
+                                                )
+                                                .await;
+                                        } else if save_ok {
+                                            // No live session — disk save is enough for next boot.
+                                        }
+
+                                        if let Some(pending) = pending_ref.write().as_mut() {
+                                            pending.done = true;
+                                            pending.completed_provider_id = Some(provider_id_for_task.clone());
+                                            pending.oauth_url = if save_ok {
+                                                format!("Signed in to {provider_name_for_clone}")
+                                            } else {
+                                                format!(
+                                                    "Signed in to {provider_name_for_clone} (live only; auth.json save failed)"
+                                                )
+                                            };
                                         }
                                     }
                                     Err(e) => {
                                         log::error!("OAuth login failed for {}: {}", provider_id_for_task, e);
                                         if let Some(pending) = pending_ref.write().as_mut() {
                                             pending.oauth_url = format!("OAuth failed: {e}");
+                                            pending.oauth_is_prompt = false;
                                         }
                                     }
                                 }
@@ -2553,30 +2589,43 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 if let Some(pid) = provider_id {
                     let auth_store_path = paths.auth_store_path();
                     let api_key_clone = api_key.clone();
+                    let session_for_inject = agent_session.clone();
                     tokio::spawn(async move {
                         // Detect env: prefix — store as plaintext reference, not encrypted.
-                        if let Some(env_var) = api_key_clone.strip_prefix("env:") {
-                            match crate::tui::provider_credential_store::save_provider_env_ref(
+                        let save_result = if let Some(env_var) = api_key_clone.strip_prefix("env:") {
+                            crate::tui::provider_credential_store::save_provider_env_ref(
                                 &auth_store_path,
                                 &pid,
                                 env_var,
                             )
                             .await
-                            {
-                                Ok(()) => log::info!("Saved env ref for provider: {pid}"),
-                                Err(e) => log::error!("Failed to save env ref for provider {pid}: {e}"),
-                            }
+                            .map(|_| {
+                                log::info!("Saved env ref for provider: {pid}");
+                                crate::agent::model_registry::credential_from_auth_value(&format!(
+                                    "{}{env_var}",
+                                    elph_agent::ENV_REF_PREFIX
+                                ))
+                            })
                         } else {
-                            match crate::tui::provider_credential_store::save_provider_credential(
+                            crate::tui::provider_credential_store::save_provider_credential(
                                 &auth_store_path,
                                 &pid,
                                 &api_key_clone,
                             )
                             .await
-                            {
-                                Ok(()) => log::info!("Saved encrypted API key for provider: {pid}"),
-                                Err(e) => log::error!("Failed to save API key for provider {pid}: {e}"),
+                            .map(|_| {
+                                log::info!("Saved encrypted API key for provider: {pid}");
+                                crate::agent::model_registry::credential_from_auth_value(&api_key_clone)
+                            })
+                        };
+                        match save_result {
+                            Ok(Some(cred)) => {
+                                if let Some(session) = session_for_inject.as_ref() {
+                                    session.inject_provider_credential(&pid, cred).await;
+                                }
                             }
+                            Ok(None) => log::warn!("empty credential for provider {pid}"),
+                            Err(e) => log::error!("Failed to save credential for provider {pid}: {e}"),
                         }
                     });
                 }
