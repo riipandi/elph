@@ -241,6 +241,9 @@ async fn execute_grep(
     }
 
     let multi_target = targets.len() > 1;
+    // Render match paths relative to the working directory (token-efficient). Computed
+    // once here; cloned per iteration because the per-target closure is `move`.
+    let grep_cwd = env.cwd().replace('\\', "/").trim_end_matches('/').to_string();
 
     // ── Execute ────────────────────────────────────────────────
     let mut all_results: Vec<String> = Vec::new();
@@ -257,6 +260,7 @@ async fn execute_grep(
         let sig = signal.clone();
         // Clone patterns so each thread owns its copy (not moved on first iter).
         let patterns_for_thread = patterns.clone();
+        let cwd_for_thread = grep_cwd.clone();
 
         // One picker build per target; all patterns run through it.
         let (target_results, truncated) = tokio::task::spawn_blocking(move || {
@@ -287,6 +291,7 @@ async fn execute_grep(
 
                     let fmt_opts = GrepOutputOptions {
                         mode: output_mode,
+                        cwd: Some(cwd_for_thread.clone()),
                         ..Default::default()
                     };
                     let (matches, lt) = format_grep_output_ex(&picker, &result, &fmt_opts);

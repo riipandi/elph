@@ -1213,7 +1213,7 @@ mod tests {
     fn tool_card_layout_collapses_finished_body() {
         let mut message = TranscriptMessage::tool_call(
             "edit_file",
-            r#"{"path":"/Users/ariss/Developer/crates/coding-agent/src/main.rs"}"#,
+            r#"{"path":"/Users/me/elph/crates/coding-agent/src/main.rs"}"#,
             TranscriptStyle::ToolSuccess,
         );
         message.tool.as_mut().expect("tool detail").output = "ok".to_string();

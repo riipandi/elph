@@ -173,7 +173,7 @@ Search file contents under a directory or single file. Powered by `fff-search` i
 | `ignoreCase` | boolean | no       | `false` | Case-insensitive match                   |
 | `limit`      | number  | no       | `100`   | Maximum matches                          |
 
-Output format: `absolute/path:line:content`, one match per line. Long lines are truncated to 500 characters. Overall output is capped at 50 KB.
+Output format: `path:line:content`, one match per line. Paths are rendered relative to the working directory when possible (absolute otherwise), so results stay token-efficient while remaining actionable. Long lines are truncated to 500 characters. Overall output is capped at 50 KB.
 
 When `path` points to a file, the search is scoped to that file via `AiGrepConfig` path constraints. When `path` is a directory, the picker indexes from that root.
 

@@ -130,7 +130,7 @@ fn meta_record(uuid: &str, parent: Option<&str>, text: &str, timestamp: &str) ->
 
 #[test]
 fn slugify_matches_reference() {
-    assert_eq!(slugify(Path::new("/Users/ariss/dev/my-repo")), "-Users-ariss-dev-my-repo");
+    assert_eq!(slugify(Path::new("/Users/me/dev/my-repo")), "-Users-me-dev-my-repo");
     assert_eq!(slugify(Path::new("a/b c.d")), "a-b-c-d");
 }
 
@@ -200,8 +200,8 @@ fn discover_includes_subdirectory_sessions() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let config = tmp.path().join(".claude");
     // Session launched from an ancestor ($HOME) but cd'd into /repo/src.
-    let home = Path::new("/Users/ariss");
-    let cwd = Path::new("/Users/ariss/Developer/repo/src");
+    let home = Path::new("/Users/me");
+    let cwd = Path::new("/Users/me/Developer/repo/src");
     write_session(
         &config,
         home,
@@ -210,7 +210,7 @@ fn discover_includes_subdirectory_sessions() {
             "type": "user",
             "uuid": "u-disc",
             "timestamp": "2026-07-04T00:00:00.000Z",
-            "cwd": "/Users/ariss/Developer/repo/src",
+            "cwd": "/Users/me/Developer/repo/src",
             "message": { "role": "user", "content": [{ "type": "text", "text": "from ancestor" }] }
         })],
         4000,

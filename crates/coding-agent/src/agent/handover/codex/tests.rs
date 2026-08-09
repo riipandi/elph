@@ -96,7 +96,7 @@ fn read_texts(handover: &CodexHandover) -> Vec<String> {
 fn discovers_rollouts_for_cwd_newest_first() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let config = tmp.path().join(".codex");
-    let cwd = "/Users/ariss/repo".to_string();
+    let cwd = "/Users/me/repo".to_string();
 
     // Newer session (explicit later mtime).
     let uuid2 = "019d58bb-2222-79b1-a4f4-2807b93763f5";
@@ -127,7 +127,7 @@ fn discovers_rollouts_for_cwd_newest_first() {
     fs::write(&p1, format!("{}\n{}\n", meta_record(&cwd), user_msg("older user text"))).expect("write");
     set_mtime(&p1, now_ms() - 3_600_000);
 
-    let sessions = discover_codex_sessions_with_config(Path::new("/Users/ariss/repo"), &config);
+    let sessions = discover_codex_sessions_with_config(Path::new("/Users/me/repo"), &config);
     assert_eq!(sessions.len(), 2, "both sessions discovered: {sessions:?}");
     assert_eq!(sessions[0].session_id, uuid2, "newest first by mtime");
     assert_eq!(sessions[0].title, "fix the build");
@@ -157,18 +157,18 @@ fn discovery_ignores_wrong_cwd_and_non_cli_sources() {
     fs::create_dir_all(p.parent().expect("parent")).expect("dirs");
     // Wrong cwd (different repo).
     fs::write(&p, format!("{}\n", meta_record("/elsewhere"))).expect("write");
-    assert!(discover_codex_sessions_with_config(Path::new("/Users/ariss/repo"), &config).is_empty());
+    assert!(discover_codex_sessions_with_config(Path::new("/Users/me/repo"), &config).is_empty());
 
     // Non-cli source (atlas subagent): excluded from discovery.
     fs::write(
         &p,
         format!(
             "{}\n",
-            json!({ "type": "session_meta", "payload": { "id": UUID, "cwd": "/Users/ariss/repo", "source": "atlas" } })
+            json!({ "type": "session_meta", "payload": { "id": UUID, "cwd": "/Users/me/repo", "source": "atlas" } })
         ),
     )
     .expect("write");
-    assert!(discover_codex_sessions_with_config(Path::new("/Users/ariss/repo"), &config).is_empty());
+    assert!(discover_codex_sessions_with_config(Path::new("/Users/me/repo"), &config).is_empty());
 }
 
 // ── raw turn normalization ─────────────────────────────────────────────────
@@ -289,9 +289,9 @@ fn reads_full_rollout_chain_with_tools() {
     let config = tmp.path().join(".codex");
     let path = write_rollout(
         &config,
-        "/Users/ariss/repo",
+        "/Users/me/repo",
         &[
-            meta_record("/Users/ariss/repo"),
+            meta_record("/Users/me/repo"),
             user_msg("investigate flaky test"),
             response_tool_call("exec_command", json!({"cmd": "cargo test"})),
             response_tool_output("failures: test_a"),
@@ -303,7 +303,7 @@ fn reads_full_rollout_chain_with_tools() {
     let h = read_codex_session(&path).expect("read");
     assert_eq!(h.session_id, UUID);
     assert_eq!(h.source, "cli");
-    assert_eq!(h.cwd.as_deref(), Some("/Users/ariss/repo"));
+    assert_eq!(h.cwd.as_deref(), Some("/Users/me/repo"));
     assert_eq!(h.branch.as_deref(), Some("main"));
     assert_eq!(h.created_at.as_deref(), Some("2026-07-29T09:06:50.000Z"));
     // order: user, tool call (assistant), tool output (user), agent msg, assistant msg
@@ -366,7 +366,7 @@ fn unknown_records_surface_warning() {
 fn resolve_accepts_latest_uuid_and_title() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let config = tmp.path().join(".codex");
-    let cwd = "/Users/ariss/repo";
+    let cwd = "/Users/me/repo";
     write_rollout(&config, cwd, &[meta_record(cwd), user_msg("setup dev env")]);
 
     let latest = resolve_codex_session(Path::new(cwd), Some(&config), None).expect("latest");
@@ -381,7 +381,7 @@ fn resolve_accepts_latest_uuid_and_title() {
 fn resolve_ambiguous_or_missing_fails_cleanly() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let config = tmp.path().join(".codex");
-    let cwd = "/Users/ariss/repo";
+    let cwd = "/Users/me/repo";
     write_rollout(&config, cwd, &[meta_record(cwd), user_msg("fix login bug")]);
 
     let missing = resolve_codex_session(Path::new(cwd), Some(&config), Some("99999999-9999-9999-9999-999999999999"))

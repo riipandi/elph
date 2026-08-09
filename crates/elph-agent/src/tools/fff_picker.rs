@@ -35,6 +35,9 @@ pub struct GrepOutputOptions {
     pub mode: GrepOutputMode,
     /// Line-length truncation in standard mode.
     pub max_line_length: usize,
+    /// Working directory used to render match paths relative to it (token-efficient).
+    /// When `None`, absolute paths are used.
+    pub cwd: Option<String>,
 }
 
 impl Default for GrepOutputOptions {
@@ -42,6 +45,7 @@ impl Default for GrepOutputOptions {
         Self {
             mode: GrepOutputMode::Standard,
             max_line_length: GREP_MAX_LINE_LENGTH,
+            cwd: None,
         }
     }
 }
@@ -182,6 +186,7 @@ pub fn format_grep_output_ex(
                 let file = result.files[grep_match.file_index];
                 let relative = file.relative_path(picker);
                 let absolute = join_paths(&base, &relative);
+                let display = make_display_path(&absolute, &options.cwd);
 
                 // Print file header when switching files
                 if current_file_index != Some(grep_match.file_index) {
@@ -199,7 +204,7 @@ pub fn format_grep_output_ex(
                         lines_truncated = true;
                     }
                     let ctx_line_num = grep_match.line_number.saturating_sub((ctx_before_count - ctx_i) as u64);
-                    lines.push(format!("{absolute}:{ctx_line_num}:{rendered}"));
+                    lines.push(format!("{display}:{ctx_line_num}:{rendered}"));
                 }
 
                 // Match line
@@ -207,7 +212,7 @@ pub fn format_grep_output_ex(
                 if truncated {
                     lines_truncated = true;
                 }
-                lines.push(format!("{}:{}:{}", absolute, grep_match.line_number, rendered));
+                lines.push(format!("{}:{}:{}", display, grep_match.line_number, rendered));
 
                 // Context after — each line gets its correct line number
                 for (ctx_i, ctx_line) in grep_match.context_after.iter().enumerate() {
@@ -216,7 +221,7 @@ pub fn format_grep_output_ex(
                         lines_truncated = true;
                     }
                     let ctx_line_num = grep_match.line_number + 1 + ctx_i as u64;
-                    lines.push(format!("{absolute}:{ctx_line_num}:{rendered}"));
+                    lines.push(format!("{display}:{ctx_line_num}:{rendered}"));
                 }
 
                 // Blank line separator between match groups when context is present
@@ -231,7 +236,7 @@ pub fn format_grep_output_ex(
                 let file = result.files[grep_match.file_index];
                 let relative = file.relative_path(picker);
                 let absolute = join_paths(&base, &relative);
-                seen_files.insert(absolute);
+                seen_files.insert(make_display_path(&absolute, &options.cwd));
             }
             lines.extend(seen_files);
         }
@@ -241,7 +246,7 @@ pub fn format_grep_output_ex(
                 let file = result.files[grep_match.file_index];
                 let relative = file.relative_path(picker);
                 let absolute = join_paths(&base, &relative);
-                *counts.entry(absolute).or_insert(0) += 1;
+                *counts.entry(make_display_path(&absolute, &options.cwd)).or_insert(0) += 1;
             }
             let mut total = 0;
             for (path, count) in &counts {
@@ -299,6 +304,22 @@ fn join_paths(base: &str, relative: &str) -> String {
         format!("{base}{relative}")
     } else {
         format!("{base}/{relative}")
+    }
+}
+
+/// Render `absolute` as a path relative to `cwd` when possible, so grep output is
+/// token-efficient. The result stays actionable because other tools (read_file,
+/// edit_file, …) resolve relative paths against the working directory. When `cwd`
+/// is `None` or `absolute` is not under `cwd`, the absolute path is returned unchanged.
+fn make_display_path(absolute: &str, cwd: &Option<String>) -> String {
+    let Some(cwd) = cwd else {
+        return absolute.to_string();
+    };
+    let norm_abs = absolute.replace('\\', "/");
+    let norm_cwd = cwd.replace('\\', "/").trim_end_matches('/').to_string();
+    match norm_abs.strip_prefix(&format!("{norm_cwd}/")) {
+        Some(rest) => rest.to_string(),
+        None => absolute.to_string(),
     }
 }
 
@@ -500,5 +521,29 @@ mod mention_tests {
     fn grep_output_mode_default_is_standard() {
         let opts = GrepOutputOptions::default();
         assert_eq!(opts.mode, GrepOutputMode::Standard);
+    }
+
+    #[test]
+    fn make_display_path_strips_cwd_prefix() {
+        let cwd = Some("/Users/me/project".to_string());
+        assert_eq!(make_display_path("/Users/me/project/src/main.rs", &cwd), "src/main.rs");
+        assert_eq!(make_display_path("/Users/me/project/src/foo/bar.rs", &cwd), "src/foo/bar.rs");
+    }
+
+    #[test]
+    fn make_display_path_keeps_absolute_when_outside_cwd() {
+        let cwd = Some("/Users/me/project".to_string());
+        // Sibling directory whose name shares a prefix must not be stripped.
+        assert_eq!(
+            make_display_path("/Users/me/project-other/lib.rs", &cwd),
+            "/Users/me/project-other/lib.rs"
+        );
+        // Path entirely outside cwd is unchanged.
+        assert_eq!(make_display_path("/etc/hosts", &cwd), "/etc/hosts");
+        // No cwd configured -> absolute preserved.
+        assert_eq!(
+            make_display_path("/Users/me/project/src/main.rs", &None),
+            "/Users/me/project/src/main.rs"
+        );
     }
 }
