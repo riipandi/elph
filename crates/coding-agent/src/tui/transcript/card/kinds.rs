@@ -64,7 +64,7 @@ fn status_indicator_color(status: ProcessStatus) -> Color {
     }
 }
 
-/// Meta chip packed next to the label (`· 0.3s` / `· running`) — always dim grey.
+/// Meta chip packed next to the label (`· 45ms` / `· running`) — always dim grey.
 fn process_meta_chip(status: ProcessStatus, duration_secs: Option<f64>) -> Option<String> {
     use elph_tui::GLYPH_META_SEP;
     if let Some(secs) = duration_secs {
@@ -101,7 +101,7 @@ pub fn skill_prompt_card(screen_width: u16, message: &TranscriptMessage, margin_
 #[derive(Props)]
 struct ProcessHeaderToggleProps {
     inner_width: u16,
-    /// Task title only (white; bold when finished).
+    /// Task title only (dim mid-grey; regular weight — less loud than assistant text).
     label: String,
     /// Optional params / target path — highlight color, normal weight.
     detail: String,
@@ -132,8 +132,8 @@ impl Default for ProcessHeaderToggleProps {
 
 /// Shared process-phase header: `[glyph] Task [detail] · duration` (left-clustered).
 ///
-/// Colors: task = white · params = accent highlight · timestamp/meta = dim grey.
-/// Only the **task** label is bold when finished.
+/// Colors: task = dim mid-grey · params = accent highlight · timestamp/meta = dimmer grey.
+/// Labels stay regular weight so assistant replies remain the visual focus.
 /// When `clickable`, wraps in iocraft [`Button`] so `use_local_terminal_events` hit-tests the header
 /// row (see vendor `button.rs` / `use_terminal_events.rs`).
 #[component]
@@ -141,11 +141,8 @@ fn ProcessHeaderToggle(props: &mut ProcessHeaderToggleProps) -> impl Into<AnyEle
     let inner_width = props.inner_width.max(1);
     let status = props.status;
     let indicator_color = status_indicator_color(status);
-    // Finished process rows: bold **task** only (running stays regular).
-    let task_weight = match status {
-        ProcessStatus::Done | ProcessStatus::Failed => Weight::Bold,
-        ProcessStatus::Running | ProcessStatus::Queued => Weight::Normal,
-    };
+    // Process labels stay regular weight — bold + bright competed with assistant replies.
+    let task_weight = Weight::Normal;
     let meta_chip = process_meta_chip(status, props.duration_secs);
     let label = props.label.clone();
     let detail = props.detail.trim().to_string();
@@ -178,7 +175,7 @@ fn ProcessHeaderToggle(props: &mut ProcessHeaderToggleProps) -> impl Into<AnyEle
         }
     });
 
-    // Pack glyph + white task + highlighted params + dim meta.
+    // Pack glyph + dim task label + highlighted params + dimmer meta.
     let row = element! {
         View(
             width: inner_width,

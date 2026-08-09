@@ -46,6 +46,7 @@ pub use types::{
     DialogAgentMode, DialogTodoItem, DialogTodoProgress, DialogTodoProgressItem, DialogTodoStatus, SelectOption,
     TabItem,
 };
+pub use utils::format_duration_secs;
 
 /// Convenience re-exports for application authors.
 pub mod prelude {

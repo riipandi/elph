@@ -71,8 +71,14 @@ pub const USER_INPUT_ACCENT: Color = Color::Rgb {
     b: 0xff,
 };
 
-/// Process-row **task** title — bright white (palette 15).
-pub const TOOL_TASK_LABEL_FG: Color = Color::White;
+/// Process-row **task** title (tool verb / "Thinking") — mid-grey, dimmer than
+/// assistant chat text so the eye settles on the reply. Brighter than
+/// [`THINKING_FG`] / tool-output body so headers stay readable but not loud.
+pub const TOOL_TASK_LABEL_FG: Color = Color::Rgb {
+    r: 0xa0,
+    g: 0xa4,
+    b: 0xaa,
+};
 
 /// Process-row **parameter / target** — soft blue accent.
 pub const TOOL_PARAM_HIGHLIGHT_FG: Color = USER_INPUT_ACCENT;
