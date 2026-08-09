@@ -122,8 +122,7 @@ closing line states that these rules never override higher-priority rules or
 explicit user instructions (mitigating conflict with `<language_preference>`
 and per-task requirements).
 
-Rendered prompt size is guarded by `static_coding_prompt_stays_compact` (budget
-11,000 bytes) plus a lower-bound sanity check. The section is **configurable**:
+Rendered prompt size is guarded by `static_coding_prompt_stays_compact` (upper bound 11,000 bytes). The section is **configurable**:
 setting `simplifiedTechnicalEnglish` (top-level, default `true`) gates it —
 `false` drops `<response_style>` from the rendered prompt, keeping the template
 lean when the user opts out.
