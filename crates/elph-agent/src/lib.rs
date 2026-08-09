@@ -292,6 +292,8 @@ pub use session::build_context_entries;
 pub use session::build_session_context;
 pub use session::build_session_context_with_options;
 pub use session::create_session_id;
+pub use session::create_worker_id;
+pub use session::create_worker_msg_id;
 pub use session::create_timestamp;
 pub use session::default_context_entry_transform;
 pub use session::derive_session_context_state;
@@ -326,8 +328,9 @@ pub use skills::skill_args_validation_notice;
 pub use skills::skill_requires_arguments;
 pub use todos::{TodoItem, TodoStatus, TodoStore, TodoUpdate, create_todo_tools};
 pub use workers::{
-    FileLeaseStore, LeaseConflict, LeaseError, LiveWorker, MailboxStore, SessionLease, SessionLeaseStore,
-    WorkerMessage, WorkerRecord, WorkerRegistry, WorkerStatus, WorkerToolContext, create_worker_tools,
+    FileLeaseStore, LeaseConflict, LeaseError, LiveWorker, MailboxStore, PathClaimContext, SessionLease,
+    SessionLeaseStore, SharedPathClaim, WorkerMessage, WorkerRecord, WorkerRegistry, WorkerStatus,
+    WorkerToolContext, create_worker_tools, normalize_claim_path,
 };
 #[cfg(any(feature = "tools-edit", feature = "tools-search"))]
 pub use tools::create_all_tools;

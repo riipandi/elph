@@ -11,8 +11,13 @@ use crate::runtime::local_env::LocalExecutionEnv;
 use crate::tools::common::{check_aborted, ensure_parent_dir, resolve_path};
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
+use crate::workers::SharedPathClaim;
 
 pub fn create_move_path_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
+    create_move_path_tool_with_claims(env, None)
+}
+
+pub fn create_move_path_tool_with_claims(env: Arc<LocalExecutionEnv>, claims: SharedPathClaim) -> AgentTool {
     let env_for_tool = env.clone();
     simple_tool(
         Tool {
@@ -33,7 +38,8 @@ pub fn create_move_path_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
         "move_path",
         move |_, args| {
             let env = env_for_tool.clone();
-            Box::pin(async move { execute_move_path(env, args, None).await })
+            let claims = claims.clone();
+            Box::pin(async move { execute_move_path(env, args, None, claims).await })
         },
     )
 }
@@ -42,6 +48,7 @@ async fn execute_move_path(
     env: Arc<LocalExecutionEnv>,
     args: Value,
     signal: Option<CancellationToken>,
+    claims: SharedPathClaim,
 ) -> anyhow::Result<AgentToolResult> {
     check_aborted(signal.as_ref())?;
     let source = args
@@ -55,6 +62,10 @@ async fn execute_move_path(
 
     let src_absolute = resolve_path(&env, source, signal.as_ref()).await?;
     let dst_absolute = resolve_path(&env, destination, signal.as_ref()).await?;
+    if let Some(claim) = claims.as_ref() {
+        claim.claim(&src_absolute, "move_path:src").await?;
+        claim.claim(&dst_absolute, "move_path:dst").await?;
+    }
 
     if !std::path::Path::new(&src_absolute).exists() {
         return Err(anyhow::anyhow!("Source path does not exist: {source}"));

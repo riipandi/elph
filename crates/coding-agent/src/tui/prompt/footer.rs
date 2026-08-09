@@ -3,8 +3,7 @@
 use iocraft::prelude::*;
 
 use crate::tui::chrome::{
-    chrome_footer_widths, fit_footer_status_left, fit_footer_status_right, fit_footer_status_right_with_select,
-    footer_mode_model_width,
+    chrome_footer_widths, fit_footer_status_left, fit_footer_status_right_with_select, footer_mode_model_width,
 };
 use crate::tui::labels::GitFooterInfo;
 use crate::tui::labels::{FOOTER_IMG_INDICATOR, FOOTER_SELECT_MODE_BADGE, FOOTER_SEP, footer_mode_label};
@@ -26,6 +25,8 @@ pub struct FooterProps {
     pub colored_status_footer: bool,
     /// Native text-selection mode (`Ctrl+S`) — shows `sel |` on the right cluster.
     pub select_mode: bool,
+    /// Live multi-worker count for peer badge (`⬡ N` when ≥ 2; 0 hides).
+    pub worker_live_count: usize,
     /// Bumped when chrome stats/git refresh so footer repaints eagerly.
     pub chrome_revision: u64,
 }
@@ -233,11 +234,13 @@ pub fn Footer(props: &FooterProps) -> impl Into<AnyElement<'static>> {
         props.supports_images,
         left_w.max(1),
     );
-    let right = if props.select_mode {
-        fit_footer_status_right_with_select(props.turn, props.git.as_ref(), right_w, true)
-    } else {
-        fit_footer_status_right(props.turn, props.git.as_ref(), right_w)
-    };
+    let right = fit_footer_status_right_with_select(
+        props.turn,
+        props.git.as_ref(),
+        right_w,
+        props.select_mode,
+        props.worker_live_count,
+    );
     let parts = split_footer_status_left(props.agent_mode, &left);
     let right_parts = split_footer_status_right(&right);
     let colored = props.colored_status_footer;
@@ -459,6 +462,7 @@ mod tests {
                 git: None,
                 colored_status_footer: true,
                 select_mode: false,
+                worker_live_count: 0usize,
                 chrome_revision: 1u64,
             )
         }
@@ -491,6 +495,7 @@ mod tests {
                 git: Some(git),
                 colored_status_footer: true,
                 select_mode: false,
+                worker_live_count: 0usize,
                 chrome_revision: 2u64,
             )
         }
@@ -519,6 +524,7 @@ mod tests {
                 git: Some(git),
                 colored_status_footer: true,
                 select_mode: true,
+                worker_live_count: 0usize,
                 chrome_revision: 1u64,
             )
         }
@@ -540,6 +546,7 @@ mod tests {
                 git: None,
                 colored_status_footer: false,
                 select_mode: false,
+                worker_live_count: 0usize,
                 chrome_revision: 1u64,
             )
         }

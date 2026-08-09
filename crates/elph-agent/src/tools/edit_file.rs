@@ -12,8 +12,13 @@ use crate::runtime::local_env::LocalExecutionEnv;
 use crate::tools::common::{check_aborted, file_error, read_file_text, resolve_path};
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult, ToolResultContent};
+use crate::workers::SharedPathClaim;
 
 pub fn create_edit_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
+    create_edit_file_tool_with_claims(env, None)
+}
+
+pub fn create_edit_file_tool_with_claims(env: Arc<LocalExecutionEnv>, claims: SharedPathClaim) -> AgentTool {
     let env_for_tool = env.clone();
     simple_tool(
         Tool {
@@ -40,7 +45,8 @@ pub fn create_edit_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
         "edit_file",
         move |_, args| {
             let env = env_for_tool.clone();
-            Box::pin(async move { execute_edit(env, args, None).await })
+            let claims = claims.clone();
+            Box::pin(async move { execute_edit(env, args, None, claims).await })
         },
     )
 }
@@ -49,6 +55,7 @@ async fn execute_edit(
     env: Arc<LocalExecutionEnv>,
     args: Value,
     signal: Option<CancellationToken>,
+    claims: SharedPathClaim,
 ) -> anyhow::Result<AgentToolResult> {
     check_aborted(signal.as_ref())?;
     let path = args
@@ -68,6 +75,9 @@ async fn execute_edit(
         .ok_or_else(missing_required("new_string"))?;
 
     let absolute = resolve_path(&env, path, signal.as_ref()).await?;
+    if let Some(claim) = claims.as_ref() {
+        claim.claim(&absolute, "edit_file").await?;
+    }
     let content = read_file_text(&env, &absolute, signal.as_ref()).await?;
 
     let occurrences: Vec<usize> = content.match_indices(old_string).map(|(i, _)| i).collect();
@@ -381,6 +391,7 @@ mod tests {
             env.clone(),
             serde_json::json!({ "path": "a.txt", "old_string": "hello", "new_string": "hi" }),
             None,
+            None,
         )
         .await;
         assert!(result.is_ok(), "edit failed: {result:?}");
@@ -401,6 +412,7 @@ mod tests {
         let result = execute_edit(
             env.clone(),
             serde_json::json!({ "path": "b.txt", "old_string": "a", "new_string": "x" }),
+            None,
             None,
         )
         .await;
@@ -424,6 +436,7 @@ mod tests {
         let result = execute_edit(
             env.clone(),
             serde_json::json!({ "path": "c.txt", "old_string": "a", "new_string": "axa" }),
+            None,
             None,
         )
         .await;
@@ -451,6 +464,7 @@ mod tests {
         let result = execute_edit(
             env.clone(),
             serde_json::json!({ "path": "d.txt", "old_string": "hello", "new_string": "hi" }),
+            None,
             None,
         )
         .await;
@@ -480,6 +494,7 @@ mod tests {
                 "new_string": "</div></div>",
             }),
             None,
+            None,
         )
         .await;
         assert!(result.is_ok(), "adjacent append must succeed: {result:?}");
@@ -507,6 +522,7 @@ mod tests {
                 "new_string": "mid-mid",
             }),
             None,
+            None,
         )
         .await;
         assert!(result.is_ok(), "duplicate at seam must succeed: {result:?}");
@@ -528,6 +544,7 @@ mod tests {
         let result = execute_edit(
             env.clone(),
             serde_json::json!({ "path": "f.txt", "old_string": "xxx", "new_string": "yay" }),
+            None,
             None,
         )
         .await;
@@ -551,6 +568,7 @@ mod tests {
             env.clone(),
             serde_json::json!({ "path": "g.txt", "old_string": "old_string", "new_string": "ol" }),
             None,
+            None,
         )
         .await;
         assert!(result.is_ok(), "prefix replacement must succeed: {result:?}");
@@ -571,6 +589,7 @@ mod tests {
             env.clone(),
             serde_json::json!({ "path": "h.txt", "old_string": "same", "new_string": "same" }),
             None,
+            None,
         )
         .await;
         assert!(result.is_err(), "no-op edit must be rejected");
@@ -590,6 +609,7 @@ mod tests {
         let result = execute_edit(
             env.clone(),
             serde_json::json!({ "path": "c.txt", "old_string": "xxx", "new_string": "yyy" }),
+            None,
             None,
         )
         .await;

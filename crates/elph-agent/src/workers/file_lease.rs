@@ -281,3 +281,50 @@ fn heartbeat_age_secs(heartbeat_at: &str, now: &str) -> i64 {
     }
     approx(now).saturating_sub(approx(heartbeat_at))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::datastore::ensure_database;
+    use crate::session::migrations::SESSION_TREE_MIGRATIONS;
+
+    async fn setup() -> (tempfile::TempDir, FileLeaseStore) {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let db = tmp.path().join("store.db");
+        ensure_database(&db, &SESSION_TREE_MIGRATIONS)
+            .await
+            .expect("migrate");
+        (tmp, FileLeaseStore::new(db))
+    }
+
+    #[tokio::test]
+    async fn claim_reentrant_same_worker() {
+        let (_t, store) = setup().await;
+        let a = store
+            .try_claim("/proj", "src/a.rs", "wrk_a", "sess_a", Some("edit"), None, 30)
+            .await
+            .expect("claim");
+        assert_eq!(a.worker_id, "wrk_a");
+        let b = store
+            .try_claim("/proj", "src/a.rs", "wrk_a", "sess_a", Some("edit"), None, 30)
+            .await
+            .expect("reclaim");
+        assert_eq!(b.worker_id, "wrk_a");
+    }
+
+    #[tokio::test]
+    async fn second_worker_conflicts_on_path() {
+        let (_t, store) = setup().await;
+        store
+            .try_claim("/proj", "src/a.rs", "wrk_a", "sess_a", Some("edit"), None, 30)
+            .await
+            .expect("a");
+        let err = store
+            .try_claim("/proj", "src/a.rs", "wrk_b", "sess_b", Some("edit"), None, 30)
+            .await
+            .expect_err("b");
+        let msg = format!("{err:#}");
+        assert!(msg.contains("claimed by worker"), "{msg}");
+        assert!(msg.contains("wrk_a"), "{msg}");
+    }
+}

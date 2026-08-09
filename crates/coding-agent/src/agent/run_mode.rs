@@ -3,6 +3,7 @@
 use anyhow::Result;
 use std::io::Write;
 use std::path::Path;
+use std::sync::Arc;
 
 use super::runtime::CreateSessionOptions;
 use super::runtime::create_coding_session;
@@ -25,19 +26,22 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<()> {
         None
     };
 
-    let session = create_coding_session(CreateSessionOptions {
-        paths: options.paths,
-        settings: options.settings,
-        cwd: options.cwd,
-        resume_id: options.resume_id,
-        provider_override: None,
-        model_override: options.model,
-        agent_mode,
-        preloaded_resources: None,
-        defer_mcp_load: false,
-        headless: true,
-    })
-    .await?;
+    let session = Arc::new(
+        create_coding_session(CreateSessionOptions {
+            paths: options.paths,
+            settings: options.settings,
+            cwd: options.cwd,
+            resume_id: options.resume_id,
+            provider_override: None,
+            model_override: options.model,
+            agent_mode,
+            preloaded_resources: None,
+            defer_mcp_load: false,
+            headless: true,
+        })
+        .await?,
+    );
+    session.start_worker_inbox_poller();
 
     session.submit_prompt(options.prompt.to_string(), false).await?;
 

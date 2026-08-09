@@ -81,12 +81,22 @@ pub async fn list_session_gc_rows(database: &Database) -> Result<Vec<SessionGcCa
 }
 
 /// Select session ids to delete under `policy` (does not mutate DB).
-pub fn plan_session_gc(candidates: &[SessionGcCandidate], policy: &RetentionPolicy) -> Vec<String> {
+///
+/// `extra_protect` — additional session ids that must not be deleted (e.g. active
+/// multi-worker `session_leases` holders).
+pub fn plan_session_gc(
+    candidates: &[SessionGcCandidate],
+    policy: &RetentionPolicy,
+    extra_protect: &HashSet<String>,
+) -> Vec<String> {
     if !policy.enabled {
         return Vec::new();
     }
 
-    let protect: HashSet<&str> = policy.protect_session_id.as_deref().into_iter().collect();
+    let mut protect: HashSet<&str> = policy.protect_session_id.as_deref().into_iter().collect();
+    for id in extra_protect {
+        protect.insert(id.as_str());
+    }
 
     let mut latest_per_cwd: HashMap<&str, &str> = HashMap::new();
     if policy.protect_latest_per_cwd {
@@ -209,9 +219,29 @@ pub async fn set_session_pinned(database: &Database, session_id: &str, pinned: b
     Ok(())
 }
 
+/// Session ids that currently hold a multi-worker exclusive lease (must not GC).
+pub async fn list_leased_session_ids(database: &Database) -> Result<HashSet<String>> {
+    let conn = connect(database).await?;
+    // Table may be missing on very old DBs; treat as empty.
+    let mut rows = match conn
+        .query("SELECT session_id FROM session_leases", ())
+        .await
+    {
+        Ok(r) => r,
+        Err(_) => return Ok(HashSet::new()),
+    };
+    let mut out = HashSet::new();
+    while let Some(row) = rows.next().await? {
+        let id: String = row.get(0)?;
+        out.insert(id);
+    }
+    Ok(out)
+}
+
 /// Run GC: plan + delete. When `dry_run`, only report candidates.
 pub async fn run_session_gc(database: &Database, policy: &RetentionPolicy, dry_run: bool) -> Result<SessionGcReport> {
     let candidates = list_session_gc_rows(database).await?;
+    let leased = list_leased_session_ids(database).await.unwrap_or_default();
     let mut report = SessionGcReport {
         examined: candidates.len(),
         dry_run,
@@ -227,8 +257,12 @@ pub async fn run_session_gc(database: &Database, policy: &RetentionPolicy, dry_r
     {
         report.skipped_protected += 1;
     }
+    report.skipped_protected += leased
+        .iter()
+        .filter(|id| candidates.iter().any(|c| c.id == **id))
+        .count();
 
-    let to_delete = plan_session_gc(&candidates, policy);
+    let to_delete = plan_session_gc(&candidates, policy, &leased);
 
     if dry_run {
         report.deleted_ids = to_delete;
@@ -256,7 +290,11 @@ pub async fn expand_gc_for_size(
     }
 
     let candidates = list_session_gc_rows(database).await?;
-    let protect: HashSet<&str> = policy.protect_session_id.as_deref().into_iter().collect();
+    let leased = list_leased_session_ids(database).await.unwrap_or_default();
+    let mut protect: HashSet<&str> = policy.protect_session_id.as_deref().into_iter().collect();
+    for id in &leased {
+        protect.insert(id.as_str());
+    }
     let mut latest_per_cwd: HashMap<&str, &str> = HashMap::new();
     if policy.protect_latest_per_cwd {
         for c in &candidates {
@@ -405,7 +443,7 @@ mod tests {
             protect_latest_per_cwd: true,
             protect_session_id: None,
         };
-        let plan = plan_session_gc(&c, &policy);
+        let plan = plan_session_gc(&c, &policy, &HashSet::new());
         assert!(plan.contains(&"s4".to_string()));
         assert!(!plan.contains(&"s1".to_string()));
         assert!(!plan.contains(&"s3".to_string()));

@@ -61,6 +61,8 @@ pub struct CodingAgentSessionParams {
     pub codegraph_enabled: bool,
     /// Whether `simplifiedTechnicalEnglish` is on — gates the `<response_style>` section.
     pub ste_enabled: bool,
+    /// Multi-worker host lifecycle (lease heartbeat + registry); None if start failed.
+    pub worker_runtime: Option<super::worker_runtime::WorkerRuntime>,
 }
 
 pub struct CodingAgentSession {
@@ -96,6 +98,8 @@ pub struct CodingAgentSession {
     /// Bounded retry counter for background auto-title generation
     /// (caps at [`SESSION_TITLE_MAX_ATTEMPTS`] per session instance).
     title_generation_attempts: Arc<AtomicU32>,
+    /// Multi-worker coordination (session lease heartbeat + presence registry).
+    worker_runtime: Option<super::worker_runtime::WorkerRuntime>,
 }
 
 impl CodingAgentSession {
@@ -116,6 +120,7 @@ impl CodingAgentSession {
             compaction_model_ref,
             codegraph_enabled,
             ste_enabled,
+            worker_runtime,
         } = params;
         let mut policy = AgentModePolicy::new(agent_mode);
         let mcp_slot = Arc::new(RwLock::new(mcp_registry));
@@ -148,6 +153,7 @@ impl CodingAgentSession {
             } else {
                 0
             })),
+            worker_runtime,
         };
         session.wire_harness(ui_tx).await?;
         session.apply_agent_mode(agent_mode).await?;
@@ -168,6 +174,114 @@ impl CodingAgentSession {
 
     pub fn mode_state(&self) -> Arc<Mutex<AgentMode>> {
         self.mode_state.clone()
+    }
+
+    /// Live peer worker count (includes self when registry is up). 0 if workers not started.
+    pub fn worker_live_count(&self) -> usize {
+        self.worker_runtime.as_ref().map(|w| w.live_count()).unwrap_or(0)
+    }
+
+    /// TUI badge count: live workers when ≥2 and `tuiShowPeers`, else 0 (hidden).
+    pub fn worker_tui_badge_count(&self) -> usize {
+        self.worker_runtime
+            .as_ref()
+            .map(|w| w.tui_peer_badge_count())
+            .unwrap_or(0)
+    }
+
+    /// Display name assigned in the project worker registry, if any.
+    pub fn worker_name(&self) -> Option<&str> {
+        self.worker_runtime.as_ref().map(|w| w.name.as_str())
+    }
+
+    /// Graceful multi-worker teardown (release lease, mark offline, stop heartbeat).
+    pub async fn shutdown_workers(&mut self) {
+        if let Some(mut rt) = self.worker_runtime.take() {
+            rt.shutdown().await;
+        } else if self.session_manager.lease_worker_id().is_some() {
+            if let Err(err) = self
+                .session_manager
+                .release_session_lease(&self.session_id)
+                .await
+            {
+                log::warn!("release session lease: {err:#}");
+            }
+        }
+    }
+
+    /// Start durable mailbox inbox poller (claim → inject → steer/prompt). Call once after `Arc::new`.
+    pub fn start_worker_inbox_poller(self: &Arc<Self>) {
+        let Some(rt) = self.worker_runtime.as_ref() else {
+            return;
+        };
+        let mailbox = rt.mailbox();
+        let session_id = self.session_id.clone();
+        let poll_ms = rt.inbox_poll_ms();
+        let stop = rt.stop_flag();
+        let session = Arc::clone(self);
+        let handle = tokio::spawn(async move {
+            let interval = std::time::Duration::from_millis(poll_ms);
+            loop {
+                if stop.load(Ordering::Relaxed) {
+                    break;
+                }
+                match mailbox.claim_next_inbound(&session_id).await {
+                    Ok(Some(msg)) => {
+                        if let Err(err) = session.deliver_worker_inbound(msg).await {
+                            log::warn!("worker inbox deliver: {err:#}");
+                        }
+                    }
+                    Ok(None) => {}
+                    Err(err) => log::debug!("worker inbox poll: {err:#}"),
+                }
+                tokio::time::sleep(interval).await;
+            }
+        });
+        rt.set_inbox_handle(handle);
+    }
+
+    async fn deliver_worker_inbound(&self, msg: elph_agent::WorkerMessage) -> Result<()> {
+        // Idempotency: skip inject if this msg_id already appears in the session tree.
+        let entries = self.harness.session_entries().await;
+        let already = entries.iter().any(|e| {
+            if let elph_agent::SessionTreeEntry::Custom { custom_type, data, .. } = e {
+                if custom_type == "worker.inbound" {
+                    return data
+                        .as_ref()
+                        .and_then(|d| d.get("msg_id"))
+                        .and_then(|v| v.as_str())
+                        == Some(msg.id.as_str());
+                }
+            }
+            false
+        });
+        if already {
+            log::debug!("worker inbound {} already injected — skip", msg.id);
+            return Ok(());
+        }
+
+        let details = serde_json::json!({
+            "msg_id": msg.id,
+            "from_worker_id": msg.from_worker_id,
+            "from_session_id": msg.from_session_id,
+            "kind": msg.kind.as_str(),
+            "hops": msg.hops,
+        });
+        if let Err(err) = self
+            .harness
+            .append_custom_entry("worker.inbound", Some(details))
+            .await
+        {
+            log::warn!("append worker.inbound custom entry: {err}");
+        }
+
+        let text = format!(
+            "[Inbound worker message from {} · msg {}]\n\n{}\n\n\
+             Respond in normal assistant text. Do not use worker_send to reply to this message.",
+            msg.from_worker_id, msg.id, msg.payload
+        );
+        // Steer if busy; otherwise start a normal turn (queue_steer falls back when idle).
+        self.queue_steer(text).await
     }
 
     /// Eagerly invalidate the system prompt cache synchronously so the next

@@ -20,6 +20,7 @@ mod runtime;
 mod session;
 mod session_info_slash;
 mod session_manager;
+mod worker_runtime;
 mod skills_load;
 mod slash_commands;
 mod system_prompt_slash;

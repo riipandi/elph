@@ -57,6 +57,8 @@ pub struct PromptChromeProps {
     pub blocked_hint: Option<String>,
     /// Native terminal text-select mode (mouse capture off). Prompt stays interactive.
     pub text_select_mode: bool,
+    /// Live multi-worker count for footer badge (≥2 shows `⬡ N`).
+    pub worker_live_count: usize,
 }
 
 #[component]
@@ -173,6 +175,7 @@ pub fn PromptChrome(props: &mut PromptChromeProps) -> impl Into<AnyElement<'stat
                 git: props.git.clone(),
                 colored_status_footer: props.colored_status_footer,
                 select_mode: props.text_select_mode,
+                worker_live_count: props.worker_live_count,
                 chrome_revision: props.chrome_revision,
             )
         }

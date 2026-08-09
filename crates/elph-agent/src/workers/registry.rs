@@ -8,7 +8,6 @@ use turso::Connection;
 
 use crate::datastore::{connect, with_conn};
 use crate::messages::now_iso_timestamp;
-use crate::session::id::create_worker_id;
 
 use super::types::{LiveWorker, WorkerRecord, WorkerStatus};
 
@@ -51,9 +50,14 @@ impl WorkerRegistry {
         }
     }
 
-    /// Register or re-bind a worker for a session. Generates a unique live name if needed.
+    /// Register or re-bind a worker for a session.
+    ///
+    /// `worker_id` must be the same id used for the session lease and file claims
+    /// (one id per process lifetime — host generates once via `create_worker_id`).
+    /// Allocates a unique live display name when `desired_name` collides.
     pub async fn register(
         &self,
+        worker_id: &str,
         session_id: &str,
         project_key: &str,
         desired_name: &str,
@@ -61,7 +65,9 @@ impl WorkerRegistry {
         model: Option<&str>,
         stale_secs: u64,
     ) -> Result<WorkerRecord> {
-        let worker_id = create_worker_id();
+        if worker_id.trim().is_empty() {
+            bail!("worker_id is required");
+        }
         let now = now_iso_timestamp();
         let pid = std::process::id() as i64;
         let hostname = std::env::var("HOSTNAME")
@@ -71,7 +77,7 @@ impl WorkerRegistry {
         let name = self.unique_name(project_key, desired_name).await?;
 
         self.with_conn(|conn| {
-            let worker_id = worker_id.clone();
+            let worker_id = worker_id.to_string();
             let name = name.clone();
             let now = now.clone();
             let hostname = hostname.clone();
@@ -80,10 +86,10 @@ impl WorkerRegistry {
             let purpose = purpose.to_string();
             let model = model.map(str::to_string);
             async move {
-                // Drop any previous worker row for this session.
+                // Drop any previous worker row for this session or this worker id.
                 conn.execute(
-                    "DELETE FROM workers WHERE session_id = ?",
-                    turso::params![session_id.as_str()],
+                    "DELETE FROM workers WHERE session_id = ? OR worker_id = ?",
+                    turso::params![session_id.as_str(), worker_id.as_str()],
                 )
                 .await?;
                 conn.execute(

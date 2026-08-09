@@ -1047,6 +1047,10 @@ pub(crate) fn build_shell_view(
                 model_label: model_label.clone(),
                 supports_images: supports_images,
                 colored_status_footer: colored_status_footer,
+                worker_live_count: agent_session
+                    .as_ref()
+                    .map(|s| s.worker_tui_badge_count())
+                    .unwrap_or(0),
                 chrome_revision: chrome_ui_revision.get(),
                 draft: Some(draft),
                 live_draft: Some(live_draft),

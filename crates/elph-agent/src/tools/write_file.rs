@@ -12,14 +12,18 @@ use crate::runtime::local_env::LocalExecutionEnv;
 use crate::tools::common::{check_aborted, ensure_parent_dir, file_error, resolve_path};
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
+use crate::workers::SharedPathClaim;
 
 pub fn create_write_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
+    create_write_file_tool_with_claims(env, None)
+}
+
+pub fn create_write_file_tool_with_claims(env: Arc<LocalExecutionEnv>, claims: SharedPathClaim) -> AgentTool {
     let env_for_tool = env.clone();
     simple_tool(
         Tool {
             name: "write_file".into(),
-                constrained_sampling: None,
-
+            constrained_sampling: None,
             description: "Creates a new file or overwrites an existing file with completely new contents. Creates parent directories when needed.".into(),
             parameters: json!({
                 "type": "object",
@@ -33,7 +37,8 @@ pub fn create_write_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
         "write_file",
         move |_, args| {
             let env = env_for_tool.clone();
-            Box::pin(async move { execute_write(env, args, None).await })
+            let claims = claims.clone();
+            Box::pin(async move { execute_write(env, args, None, claims).await })
         },
     )
 }
@@ -42,6 +47,7 @@ async fn execute_write(
     env: Arc<LocalExecutionEnv>,
     args: Value,
     signal: Option<CancellationToken>,
+    claims: SharedPathClaim,
 ) -> anyhow::Result<AgentToolResult> {
     check_aborted(signal.as_ref())?;
     let path = args
@@ -54,6 +60,9 @@ async fn execute_write(
         .ok_or_else(|| anyhow::anyhow!("Missing required argument: content"))?;
 
     let absolute = resolve_path(&env, path, signal.as_ref()).await?;
+    if let Some(claim) = claims.as_ref() {
+        claim.claim(&absolute, "write_file").await?;
+    }
     ensure_parent_dir(&env, &absolute, signal.as_ref()).await?;
 
     // Read existing content before writing (for diff display)

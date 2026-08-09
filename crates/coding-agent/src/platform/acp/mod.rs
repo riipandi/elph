@@ -122,11 +122,13 @@ async fn create_acp_session(state: &Arc<Mutex<AcpAgentState>>, cwd: &PathBuf) ->
 
     let session_id = SessionId::from(session.session_id().to_string());
     let key = session.session_id().to_string();
+    let session = Arc::new(session);
+    session.start_worker_inbox_poller();
 
     state.lock().sessions.insert(
         key,
         AcpSessionState {
-            session: Arc::new(session),
+            session,
             ui_rx: Arc::new(tokio::sync::Mutex::new(ui_rx)),
             cwd: cwd.clone(),
         },

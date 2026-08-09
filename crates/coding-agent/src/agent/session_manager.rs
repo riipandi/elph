@@ -88,6 +88,31 @@ impl SessionManager {
         &self.data_dir
     }
 
+    /// Normalized project cwd key (same string stored on sessions / workers).
+    pub fn project_key(&self) -> &str {
+        &self.cwd
+    }
+
+    pub fn db_path(&self) -> &Path {
+        &self.db_path
+    }
+
+    pub fn database(&self) -> Option<Arc<Database>> {
+        self.database.clone()
+    }
+
+    pub fn lease_worker_id(&self) -> Option<&str> {
+        self.lease_worker_id.as_deref()
+    }
+
+    /// Best-effort release of the exclusive session lease (call on clean exit).
+    pub async fn release_session_lease(&self, session_id: &str) -> Result<()> {
+        let Some(worker_id) = self.lease_worker_id.as_deref() else {
+            return Ok(());
+        };
+        self.lease_store().release(session_id, worker_id).await
+    }
+
     pub fn artifact_dir_for(&self, session_id: &str) -> PathBuf {
         self.data_dir.join("sessions").join(session_id)
     }

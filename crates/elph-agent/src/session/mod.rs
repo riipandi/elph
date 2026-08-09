@@ -41,6 +41,8 @@ pub use repo::SessionDirListOptions;
 pub use repo::SessionDirRepo;
 pub use repo::SessionDirRepoCreateOptions;
 pub use repo_utils::{ForkEntriesOptions, ForkPosition};
+pub use id::create_worker_id;
+pub use id::create_worker_msg_id;
 pub use repo_utils::{create_session_id, create_timestamp, get_entries_to_fork, to_session};
 pub use retention::{
     RetentionPolicy, SessionGcReport, list_session_gc_rows, run_full_session_gc, run_session_gc, set_session_pinned,

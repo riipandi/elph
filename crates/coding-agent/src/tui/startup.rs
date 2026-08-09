@@ -347,6 +347,7 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
     .await?;
 
     let session = Arc::new(session);
+    session.start_worker_inbox_poller();
     let session_id = session.session_id().to_string();
     let is_resume = config.resume_id.is_some();
 

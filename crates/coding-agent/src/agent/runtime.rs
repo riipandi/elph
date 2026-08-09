@@ -19,6 +19,7 @@ use super::resource_loader::{LoadResourcesResult, load_resources};
 use super::session::{CodingAgentSession, CodingAgentSessionParams};
 use super::session_manager::SessionManager;
 use super::tool_policy::{thinking_level_from_setting, to_agent_thinking};
+use super::worker_runtime::{WorkerRuntime, WorkerRuntimeStart};
 use crate::platform::{Paths, Settings};
 use crate::types::AgentMode;
 pub struct CreateSessionOptions<'a> {
@@ -83,12 +84,21 @@ pub async fn create_coding_session_with_events(
     }
 
     let env = Arc::new(LocalExecutionEnv::new(options.cwd));
-    let session_manager = SessionManager::new_with_database(options.paths, options.cwd, database.clone())?;
+    let workers_cfg = &options.settings.workers;
+    // One worker_id for lease + registry + file claims for this process.
+    let worker_id = WorkerRuntime::new_worker_id();
+    let lease_stale_secs = workers_cfg.lease_stale_secs.max(1);
+    let mut session_manager =
+        SessionManager::new_with_database(options.paths, options.cwd, database.clone())?;
+    if workers_cfg.enabled {
+        session_manager = session_manager.with_session_lease(worker_id.clone(), lease_stale_secs);
+    }
     let session = session_manager.create(options.resume_id).await?;
     let session_id = {
         use elph_agent::session::types::HasSessionId;
         session.metadata().await.session_id().to_string()
     };
+    let project_key = session_manager.project_key().to_string();
 
     // resolve_model and discover_mcp_registry are pure file reads independent
     // of each other and of the DB operations above — run them concurrently.
@@ -120,11 +130,75 @@ pub async fn create_coding_session_with_events(
         Some(loaded) => loaded.resources,
         None => load_resources(options.paths, options.cwd, env.as_ref()).await.resources,
     };
+
+    // Multi-worker: start before built-in tools so path claims + worker_* tools wire in.
+    let worker_runtime = if workers_cfg.enabled {
+        let desired_name = workers_cfg
+            .name
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string)
+            .unwrap_or_else(hostname_worker_name);
+        match WorkerRuntime::start(WorkerRuntimeStart {
+            database: database.clone(),
+            db_path: options.paths.memory_db_path(),
+            worker_id: worker_id.clone(),
+            session_id: session_id.clone(),
+            project_key: project_key.clone(),
+            desired_name,
+            purpose: workers_cfg.purpose.clone(),
+            model: Some(format!("{}/{}", selection.model.provider, selection.model_id)),
+            heartbeat_secs: workers_cfg.heartbeat_secs.max(1),
+            stale_secs: lease_stale_secs,
+            ask_timeout_ms: workers_cfg.ask_timeout_ms,
+            max_hops: workers_cfg.max_hops,
+            tui_show_peers: workers_cfg.tui_show_peers,
+            file_leases: workers_cfg.file_leases,
+            inbox_poll_ms: workers_cfg.inbox_poll_ms,
+        })
+        .await
+        {
+            Ok(rt) => {
+                log::info!(
+                    "worker registered name={} id={} session={}",
+                    rt.name,
+                    rt.worker_id,
+                    session_id
+                );
+                Some(rt)
+            }
+            Err(err) => {
+                log::warn!("worker registry start failed (lease still held): {err:#}");
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    let path_claims = worker_runtime.as_ref().and_then(|rt| {
+        if !rt.file_leases_enabled() {
+            return None;
+        }
+        Some(std::sync::Arc::new(elph_agent::PathClaimContext::new(
+            rt.file_leases(),
+            rt.project_key.clone(),
+            rt.worker_id.clone(),
+            rt.session_id.clone(),
+            rt.stale_secs(),
+        )))
+    });
+
     // Provide the loaded skill set so `list_skills` (on-demand catalog) can be
     // registered alongside the built-in tools.
     let mut tools = BuiltinToolsBuilder::all(env.clone())
         .with_skills(resources.skills.clone())
+        .with_path_claims(path_claims)
         .build();
+    if let Some(rt) = worker_runtime.as_ref() {
+        tools.extend(rt.create_tools());
+    }
 
     // Shared memory runtime (tools + hooks + bootstrap use one store / task id).
     let memory_opts = crate::memory::runtime::MemoryRuntimeOptions::from_settings(&options.settings.memory);
@@ -318,12 +392,21 @@ pub async fn create_coding_session_with_events(
         compaction_model_ref: options.settings.models.compaction_model.clone(),
         codegraph_enabled: options.settings.codegraph.enabled,
         ste_enabled: options.settings.simplified_technical_english,
+        worker_runtime,
     })
     .await?;
 
     start_mcp_notifications(&session, Arc::clone(&mcp_registry), mcp_config_warnings);
 
     Ok((session, ui_rx))
+}
+
+fn hostname_worker_name() -> String {
+    std::env::var("HOSTNAME")
+        .or_else(|_| std::env::var("COMPUTERNAME"))
+        .ok()
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| "worker".into())
 }
 
 pub async fn create_coding_session(options: CreateSessionOptions<'_>) -> Result<CodingAgentSession> {

@@ -47,6 +47,18 @@
 //!       "journalKeepTurns": 20,
 //!       "maxTerminalFilesPerSession": 50
 //!     }
+//!   },
+//!   "workers": {
+//!     "enabled": true,
+//!     "name": null,
+//!     "purpose": "",
+//!     "heartbeatSecs": 10,
+//!     "leaseStaleSecs": 30,
+//!     "inboxPollMs": 750,
+//!     "askTimeoutMs": 600000,
+//!     "maxHops": 5,
+//!     "tuiShowPeers": true,
+//!     "fileLeases": true
 //!   }
 //! }
 //! ```
@@ -139,6 +151,78 @@ pub struct Settings {
     /// Session storage and retention (not live model/mode state).
     #[serde(default)]
     pub session: SessionSettings,
+    /// Multi-process worker coordination (leases, registry, mailbox, TUI peers).
+    #[serde(default)]
+    pub workers: WorkersSettings,
+}
+
+/// Multi-worker coordination preferences (same machine / shared project store).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkersSettings {
+    /// Master switch: session lease, registry, worker tools, heartbeat.
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    /// Preferred display name among live peers (suffix allocated on collision).
+    #[serde(default)]
+    pub name: Option<String>,
+    /// Short purpose shown in `worker_list`.
+    #[serde(default)]
+    pub purpose: String,
+    /// Heartbeat interval for lease + registry + file claims (seconds).
+    #[serde(default = "default_workers_heartbeat_secs")]
+    pub heartbeat_secs: u64,
+    /// Stale window before reclaim / demote (seconds). Must be > heartbeat.
+    #[serde(default = "default_workers_lease_stale_secs")]
+    pub lease_stale_secs: u64,
+    /// Inbox poll interval for durable mailbox delivery (milliseconds).
+    #[serde(default = "default_workers_inbox_poll_ms")]
+    pub inbox_poll_ms: u64,
+    /// Ask timeout before message marked `timeout` (milliseconds).
+    #[serde(default = "default_workers_ask_timeout_ms")]
+    pub ask_timeout_ms: u64,
+    /// Max hops when forwarding worker messages.
+    #[serde(default = "default_workers_max_hops")]
+    pub max_hops: u32,
+    /// Show compact peer badge in TUI when live workers ≥ 2.
+    #[serde(default = "default_true")]
+    pub tui_show_peers: bool,
+    /// Cross-process path claims on mutate tools (shared-cwd safety).
+    #[serde(default = "default_true")]
+    pub file_leases: bool,
+}
+
+impl Default for WorkersSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            name: None,
+            purpose: String::new(),
+            heartbeat_secs: default_workers_heartbeat_secs(),
+            lease_stale_secs: default_workers_lease_stale_secs(),
+            inbox_poll_ms: default_workers_inbox_poll_ms(),
+            ask_timeout_ms: default_workers_ask_timeout_ms(),
+            max_hops: default_workers_max_hops(),
+            tui_show_peers: true,
+            file_leases: true,
+        }
+    }
+}
+
+fn default_workers_heartbeat_secs() -> u64 {
+    10
+}
+fn default_workers_lease_stale_secs() -> u64 {
+    30
+}
+fn default_workers_inbox_poll_ms() -> u64 {
+    750
+}
+fn default_workers_ask_timeout_ms() -> u64 {
+    600_000
+}
+fn default_workers_max_hops() -> u32 {
+    5
 }
 
 /// Session storage preferences (retention / GC). Per-session pin is DB state, not settings.
@@ -782,6 +866,7 @@ impl Settings {
             notifications: NotificationSettings::default(),
             compaction: CompactionConfig::default(),
             session: SessionSettings::default(),
+            workers: WorkersSettings::default(),
         }
     }
 
