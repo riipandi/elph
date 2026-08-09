@@ -55,6 +55,20 @@ use elph_agent::LocalExecutionEnv;
 use elph_ai::get_builtin_model;
 use elph_tui::install_theme_config;
 
+/// Closes in-process `shell_use` PTY sessions when the process exits.
+///
+/// `shell_use` sessions are process-global (like background shell tasks) and,
+/// absent an explicit `close`, would otherwise outlive the agent turn. The
+/// guard is held for the whole `cli::run` lifetime so a TUI/run/server/ACP
+/// process tears down terminal sessions on exit.
+pub struct ShellUseTeardownGuard;
+
+impl Drop for ShellUseTeardownGuard {
+    fn drop(&mut self) {
+        elph_agent::close_shell_use_sessions();
+    }
+}
+
 use crate::agent::{load_resources, resolve_provider_and_model, slash_commands_for_palette};
 use crate::extensions::ExtensionHost;
 use crate::platform::{Paths, Settings};

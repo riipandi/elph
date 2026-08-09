@@ -346,6 +346,44 @@ mod tests {
     }
 
     #[test]
+    fn shell_use_guidance_renders_alongside_shell_exec() {
+        let prompt = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["shell_exec", "shell_use"].map(String::from),
+            None,
+            AgentMode::Build,
+            "",
+            true,
+        )
+        .expect("prompt");
+
+        assert!(prompt.contains("`shell_use` drives stateful PTY sessions"));
+        assert!(prompt.contains("Prefer `shell_exec` for one-shot commands"));
+        assert!(
+            prompt.contains("sessions persist across calls until `action: close`")
+                || prompt.contains("`close` with `all: true`")
+        );
+    }
+
+    #[test]
+    fn shell_use_guidance_omitted_when_tool_inactive() {
+        let prompt = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["shell_exec"].map(String::from),
+            None,
+            AgentMode::Build,
+            "",
+            true,
+        )
+        .expect("prompt");
+
+        assert!(prompt.contains("`shell_exec` runs commands in the working directory"));
+        assert!(!prompt.contains("`shell_use` drives stateful PTY sessions"));
+    }
+
+    #[test]
     fn project_rules_remain_after_language_and_mode_context() {
         let prompt = build_coding_system_prompt(
             Path::new("/tmp/project"),

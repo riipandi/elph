@@ -546,6 +546,8 @@ pub use tools::{
     cancel_background_task, create_shell_exec_tool, list_background_tasks, normalize_shell_exec_args,
     strip_redundant_cd_prefix,
 };
+#[cfg(feature = "tools-shell-use")]
+pub use tools::{close_shell_use_sessions, create_shell_use_tool, shell_use_open_sessions};
 #[cfg(feature = "tools-web")]
 pub use tools::{create_web_extract_tool, create_web_fetch_tool, create_web_search_tool, create_web_tools};
 pub use tools::{echo_tool, simple_tool};

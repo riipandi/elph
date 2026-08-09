@@ -232,6 +232,10 @@ pub fn run(cli: &Cli) -> ExitCode {
     // before any long-running command handler (server, run, TUI) dispatches.
     let _progress_interrupt = CliProgressInterruptGuard::new();
 
+    // Close any in-process `shell_use` PTY sessions when the process exits so
+    // terminal sessions don't outlive the agent turn.
+    let _shell_use_teardown = crate::tui::ShellUseTeardownGuard;
+
     let paths = match init_home() {
         Ok(paths) => paths,
         Err(code) => return code,

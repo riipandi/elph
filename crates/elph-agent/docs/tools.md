@@ -9,6 +9,7 @@ Register them with [`BuiltinToolsBuilder`](../src/builder.rs), group helpers, or
 | ---------------- | --------------------- | ---------------------------------------------------------------------------------------------- |
 | Read & Search    | `tools-search`        | `read_file`, `grep`, `find_path`, `list_dir`                                                   |
 | Edit             | `tools-edit`          | `edit_file`, `write_file`, `shell_exec`, `create_dir`, `copy_path`, `delete_path`, `move_path` |
+| Terminal         | `tools-shell-use`     | `shell_use`                                                                                    |
 | Web              | `tools-web`           | `web_search`, `web_fetch`, `web_extract`                                                       |
 | Collaboration    | `tools-collaboration` | `spawn_agent`, `send_message`, `followup_task`, `wait_agent`, `list_agents`                    |
 | Meta             | —                     | `list_available_tools` (auto-included by `BuiltinToolsBuilder`)                                |
@@ -34,6 +35,9 @@ Edit Tools
   - copy_path    : Copies a file or directory recursively in the project, more efficient than manually reading and writing files when duplicating content.
   - delete_path  : Deletes a file or directory (including contents recursively) at the specified path and confirms the deletion.
   - move_path    : Moves or renames a file or directory in the project, performing a rename if only the filename differs.
+
+Terminal Tools
+  - shell_use    : Drives a real PTY terminal session (bash/zsh/fish/pwsh/cmd/nushell/...). Use for interactive programs, TUIs, REPLs, keystroke-driven prompts, and verifying on-screen state.
 
 Web Tools
   - web_fetch    : Fetches a URL and optionally returns the content as Markdown. Useful for providing docs as context.
@@ -61,6 +65,7 @@ Other Tools
 | `tools-collaboration` | no      | `spawn_agent`, `send_message`, … (harness injection)                                           |
 | `tools-read-file`     | no      | `read_file` only                                                                               |
 | `tools-shell-exec`    | no      | `shell_exec` only                                                                              |
+| `tools-shell-use`     | no      | `shell_use` only (pulls in the `shell-use` crate — in-process PTY + terminal emulator)         |
 | `tools-edit-file`     | no      | `edit_file` only                                                                               |
 | `tools-write-file`    | no      | `write_file` only                                                                              |
 | `tools-create-dir`    | no      | `create_dir` only                                                                              |
@@ -74,11 +79,11 @@ Other Tools
 | `extensions`          | yes     | WASM extension host                                                                            |
 | `tracing`             | no      | `fastrace` spans + HTTP trace propagation — see [observability.md](./observability.md)         |
 
-The `elph` binary enables `builtin-tools` (and `tracing`) by default:
+The `elph` binary enables `builtin-tools`, `tools-shell-use`, and `tracing` by default:
 
 ```toml
 # crates/coding-agent/Cargo.toml
-elph-agent = { workspace = true, features = ["tracing", "builtin-tools"] }
+elph-agent = { workspace = true, features = ["tracing", "builtin-tools", "tools-shell-use"] }
 ```
 
 Minimal library consumer without built-in tools:
@@ -126,6 +131,7 @@ let fs_tools = BuiltinToolsBuilder::new(env).without_web().build();
 | `create_web_tools`           | `tools-web`           | `web_search`, `web_fetch`, `web_extract`                                                       |
 | `create_all_tools_with_web`  | edit-tools/search/web | filesystem + web tools                                                                         |
 | `create_collaboration_tools` | `tools-collaboration` | harness-only collaboration tools                                                               |
+| `create_shell_use_tool`      | `tools-shell-use`     | `shell_use` (standalone) — also included by `BuiltinToolsBuilder` when enabled                 |
 
 ```rust
 use elph_agent::{BuiltinToolsBuilder, LocalExecutionEnv};
@@ -140,6 +146,8 @@ let tools = BuiltinToolsBuilder::all(env).build();
 ## Execution environment
 
 Filesystem tools resolve paths through `ExecutionEnv::absolute_path` and perform I/O through `ExecutionEnv` file and shell APIs.
+
+`shell_use` does not use `ExecutionEnv` shell APIs. It wraps the [`shell-use`](https://crates.io/crates/shell-use) crate, which runs a `portable-pty` + alacritty terminal emulator fully in-process: each `shell_use` call executes synchronously against a process-global `SessionRegistry`. Work runs on the async runtime (the engine is bounded by per-operation internal locks and per-class timeouts).
 
 `grep` and `find_path` resolve the search root via `ExecutionEnv`, then index and search the real filesystem under that path using [`fff-search`](https://crates.io/crates/fff-search). Indexing is synchronous and one-shot (`FilePicker::collect_files`), with `watch: false`. Work runs on a blocking thread pool so the async runtime stays responsive.
 
@@ -248,6 +256,49 @@ Each `shell_exec` run (foreground and background) persists its raw output to the
 **Abort / timeout semantics** — `shell_exec` runs each command as a new process group leader (`sh -c`). When the turn is aborted (Ctrl+C in the TUI) or the command times out, the **entire process group** is terminated — not just the direct shell — so grandchildren (`npm test`, `cargo build`, `sleep`, …) that hold the stdout/stderr pipes cannot keep the turn hanging. Termination is graceful (`SIGTERM`), escalated to `SIGKILL` after a short grace; the child is reaped with a bounded wait. A command whose output streams into a partial result returns the partial output with a `cancelled` flag (abort) or a timeout error.
 
 **Background task cancellation** — background tasks are registered in a live registry keyed by `taskId` (`bg-<n>`). They can be cancelled explicitly via `elph_agent::tools::cancel_background_task(&task_id)` (terminates the process group) and enumerated via `elph_agent::tools::list_background_tasks()`. Cancellation does not happen automatically on turn abort — the task uses its own token and keeps running independently until it finishes, times out, or is cancelled explicitly. When it exits, the footer (`[exit code: …]` or an error) is appended to its output file and it is removed from the registry.
+
+#### `shell_use`
+
+Drive, inspect, assert on, and record real terminal sessions via a **PTY + in-process terminal emulator** (backed by the [`shell-use`](https://crates.io/crates/shell-use) crate — no external daemon or binary). Use it for interactive programs, TUIs, REPLs, and any workflow that needs keystrokes or on-screen verification; for one-shot commands prefer `shell_exec`.
+
+One `shell_use` call maps to one `action`. Sessions are process-global and persist across calls until closed (or the process exits). The tool is classified as a mutating tool (approval + Plan-mode block like `shell_exec`).
+
+| Parameter        | Type             | Required | Description                                                                                 |
+| ---------------- | ---------------- | -------- | ------------------------------------------------------------------------------------------- |
+| `action`         | string           | yes      | `open`, `run`, `submit`, `type`, `press`, `keys`, `mouse`, `resize`, `signal`, `kill`, `write`, `text`, `state`, `cells`, `get`, `screenshot`, `wait`, `expect`, `sessions`, `close` |
+| `session`        | string           | no       | Session name (default `"default"`); independent sessions are keyed by name                  |
+| `shell`          | string           | no       | Shell for `open` (bash/zsh/fish/pwsh/cmd/nushell/...; default: platform)                     |
+| `cols`/`rows`    | number           | no       | PTY size (default 80x30)                                                                    |
+| `cwd`            | string           | no       | Working directory for `open`/`run` (default: agent cwd)                                      |
+| `env`            | array of strings | no       | Extra `KEY=VALUE` env vars for `open`/`run`                                                  |
+| `program`/`args` | string/array     | no       | Program + args for `run`                                                                     |
+| `data`           | string           | no       | Text to `type` / `submit` / `write`                                                          |
+| `keys`/`key`     | array/string     | no       | Named keys for `press`/`keys` (`["Ctrl+C"]`, `["Escape",":","w","q","Enter"]`)               |
+| `mouse_action`   | string           | no       | `click`/`move`/`down`/`up`/`drag`/`scroll` for `mouse` (default `click`)                       |
+| `on_text`        | string           | no       | Click a visible label (`mouse click`)                                                       |
+| `x`,`y`,`w`,`h`,`x1`,`y1`,`x2`,`y2`,`button`,`clicks`,`direction`,`amount` | number | no | Mouse / `cells` geometry and options |
+| `signal`         | string           | no       | `INT`/`TERM`/`KILL`/`QUIT` for `signal` (default `TERM`)                                      |
+| `field`          | string           | no       | `get` field: `command`/`output`/`exit-code`/`cwd`/`cursor`/`size`/`title`                   |
+| `kind`           | string           | no       | `wait`/`expect` kind (see below)                                                            |
+| `text`           | string           | no       | Expected text/pattern for `wait`/`expect`                                                    |
+| `regex`/`not`/`strict`/`full` | boolean | no       | Match modifiers                                                                             |
+| `timeout_ms`     | number           | no       | Wait/expect timeout (default per-class: text/idle 5s, command/exit/ready 30s)                |
+| `fg`/`bg`        | string           | no       | Expected color for `expect text` (`ansi-256`, `#hex`, or `default`)                           |
+| `code`           | number           | no       | Expected exit code for `expect exit-code`                                                    |
+| `name`/`update`/`include_colors` | string/boolean | no | `expect snapshot` options |
+| `path`           | string           | no       | File path for `screenshot` (writes an SVG file)                                              |
+| `all`            | boolean          | no       | `close` all sessions                                                                        |
+
+**Typical workflow**
+
+1. `open` (spawn `bash`/`zsh`/…) or `run` (spawn a program directly).
+2. `submit "cmd"` → `wait` (`text`/`idle`/`command`/`exit`) → `expect` (`text`/`exit-code`/`output`/`snapshot`).
+3. Inspect: `text`, `state`, `cells X Y`, `get field`, `screenshot [path]`.
+4. `close` when done.
+
+**Exit-code semantics** — assertions return a stable error class on `expect`/`wait` failure instead of raw text scraping; the tool surfaces the failure kind (`assertion`, `usage`, `no_session`, `internal`) in the message.
+
+**Lifecycle** — sessions are process-global; `elph_agent::tools::close_shell_use_sessions()` closes them all (the `elph` binary does this on process exit via `ShellUseTeardownGuard`). `shell_use_open_sessions()` and the `sessions` action list open sessions.
 
 #### `create_dir`
 
@@ -492,4 +543,6 @@ See the [README](../README.md#tools) for a minimal custom-tool example.
 cargo test -p elph-agent --features builtin-tools --test tools_fff
 cargo test -p elph-agent --features tools-web --test web_tools
 cargo test -p elph-agent --features builtin-tools --test plan_mode
+```
+an_mode
 ```

@@ -19,6 +19,8 @@ mod list_dir;
 mod read_file;
 #[cfg(feature = "tools-shell-exec")]
 mod shell_exec;
+#[cfg(feature = "tools-shell-use")]
+mod shell_use;
 #[cfg(feature = "tools-web")]
 pub mod web;
 #[cfg(feature = "tools-write-file")]
@@ -49,6 +51,7 @@ use std::sync::Arc;
 use elph_ai::Tool;
 use serde_json::Value;
 
+#[cfg(any(feature = "tools-edit", feature = "tools-search", feature = "tools-web"))]
 use crate::runtime::local_env::LocalExecutionEnv;
 use crate::types::{AgentTool, AgentToolResult, ToolExecuteFn};
 
@@ -81,6 +84,8 @@ pub use shell_exec::{
     cancel_background_task, create_shell_exec_tool, list_background_tasks, normalize_shell_exec_args,
     strip_redundant_cd_prefix,
 };
+#[cfg(feature = "tools-shell-use")]
+pub use shell_use::{close_shell_use_sessions, create_shell_use_tool, shell_use_open_sessions};
 #[cfg(feature = "tools-web")]
 pub use web::{Engine as WebSearchEngine, SearchResult as WebSearchResult};
 #[cfg(feature = "tools-web")]

@@ -53,6 +53,7 @@ serde-jsonlines = { workspace = true, features = ["async"] }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
+shell-use = { workspace = true, optional = true }
 tempfile.workspace = true
 thiserror.workspace = true
 time.workspace = true
@@ -81,7 +82,6 @@ yaml_serde.workspace = true
 [target.'cfg(unix)'.dependencies]
 rustix = { workspace = true }
 
-
 [features]
 default = []
 full = ["mcp", "prompt-templates", "extensions", "builtin-tools"]
@@ -104,6 +104,7 @@ tools-edit = [
   "tools-move-path",
 ]
 tools-shell-exec = []
+tools-shell-use = ["dep:shell-use"]
 tools-find-path = ["dep:fff-search"]
 tools-grep = ["dep:fff-search"]
 tools-list-dir = ["dep:walkdir"]

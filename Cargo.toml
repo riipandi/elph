@@ -123,6 +123,7 @@ schemars = "1.2.2"
 serde = { version = "1.0.229", default-features = false, features = ["derive", "std"] }
 serde-jsonlines = "0.7.0"
 serde_json = { version = "1.0.151", default-features = false, features = ["std"] }
+shell-use = { version = "0.0.1-beta.6" }
 yaml_serde = "0.10.4"
 sha2 = "0.11.0"
 similar = { version = "3.1.2", features = ["inline", "unicode"] }
