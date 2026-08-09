@@ -129,13 +129,11 @@ async fn run_aside_inner(session: &CodingAgentSession, question: &str) -> Result
     let model = selection.model.clone();
     let models = selection.models.clone();
 
-    let system_prompt = session.cached_system_prompt().filter(|s| !s.is_empty()).or_else(|| {
-        // Best-effort: compile if cache empty (may be slow; mid-turn prefer cache).
-        None
-    });
+    // Best-effort: empty cache stays None (may be slow to compile mid-turn).
+    let system_prompt = session.cached_system_prompt().filter(|s| !s.is_empty());
 
     let max_tokens = if model.max_tokens > 0 {
-        (model.max_tokens as u32).min(4096).max(256)
+        model.max_tokens.clamp(256, 4096)
     } else {
         2048
     };

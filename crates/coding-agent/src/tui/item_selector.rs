@@ -109,10 +109,10 @@ impl PendingItemSelector {
         footer_hint: impl Into<String>,
     ) -> Self {
         let mut selected = 0usize;
-        if let Some(pref) = preferred_value {
-            if let Some(i) = items.iter().position(|it| it.value == pref) {
-                selected = i;
-            }
+        if let Some(pref) = preferred_value
+            && let Some(i) = items.iter().position(|it| it.value == pref)
+        {
+            selected = i;
         }
         let mut this = Self {
             purpose,
@@ -180,14 +180,6 @@ impl PendingItemSelector {
             .position(|&i| i == self.selected)
             .unwrap_or(0)
             .min(indices.len().saturating_sub(1))
-    }
-
-    /// Map a filtered-list index back onto `self.selected` (absolute).
-    pub fn set_filtered_selected(&mut self, filtered_index: usize) {
-        let indices = self.filtered_indices();
-        if let Some(&abs) = indices.get(filtered_index) {
-            self.selected = abs;
-        }
     }
 
     pub fn ensure_selection_visible(&mut self) {
@@ -344,10 +336,11 @@ pub fn close_item_selector(
 }
 
 pub fn item_selector_list_nav_delta(modifiers: KeyModifiers, code: KeyCode) -> Option<isize> {
-    if !modifiers.is_empty() && !modifiers.contains(KeyModifiers::SHIFT) {
-        if !matches!(code, KeyCode::Up | KeyCode::Down | KeyCode::PageUp | KeyCode::PageDown) {
-            return None;
-        }
+    if !modifiers.is_empty()
+        && !modifiers.contains(KeyModifiers::SHIFT)
+        && !matches!(code, KeyCode::Up | KeyCode::Down | KeyCode::PageUp | KeyCode::PageDown)
+    {
+        return None;
     }
     match code {
         KeyCode::Up => Some(-1),

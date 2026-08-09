@@ -8,7 +8,7 @@ use elph_agent::AgentGraphStore;
 use elph_agent::AgentHarnessResources;
 use elph_agent::AgentHarnessStreamOptions;
 use elph_agent::LocalExecutionEnv;
-use elph_agent::Migration;
+use elph_agent::SESSION_TREE_MIGRATIONS;
 use elph_agent::SubagentBootstrap;
 use elph_agent::SubagentLimits;
 use elph_agent::SubagentSpawnConfig;
@@ -18,26 +18,17 @@ use elph_agent::ensure_database;
 use elph_ai::{FauxResponseStep, StopReason};
 use elph_ai::{faux_assistant_message, faux_text};
 
-const PLATFORM_LIKE: &[Migration] = &[
-    Migration {
-        version: 7,
-        name: "create_agent_spawn_edges_table",
-        up: "CREATE TABLE IF NOT EXISTS agent_spawn_edges (
-            parent_session_id TEXT NOT NULL,
-            child_session_id TEXT NOT NULL,
-            agent_path TEXT NOT NULL,
-            depth INTEGER NOT NULL,
-            status TEXT NOT NULL DEFAULT 'open',
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (parent_session_id, child_session_id)
-        ) STRICT;",
-    },
-    Migration {
-        version: 100,
-        name: "session_tree_pi_schema",
-        up: elph_agent::SESSION_TREE_MIGRATIONS[0].up,
-    },
-];
+/// Parent session row required by FK on `agent_spawn_edges` / child sessions.
+async fn seed_parent_session(db_path: &std::path::Path, session_id: &str) {
+    let db = elph_agent::datastore::open_local(db_path).await.expect("open");
+    let conn = elph_agent::datastore::connect(&db).await.expect("connect");
+    conn.execute(
+        "INSERT INTO sessions (id, created_at, updated_at, cwd) VALUES (?, ?, ?, ?)",
+        turso::params![session_id, "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z", "/tmp"],
+    )
+    .await
+    .expect("seed parent session");
+}
 
 #[tokio::test(flavor = "multi_thread")]
 async fn spawn_and_list_subagents_with_turso_sessions() {
@@ -52,9 +43,10 @@ async fn spawn_and_list_subagents_with_turso_sessions() {
     let tools = create_search_tools(env.clone());
 
     let graph_db = temp.path().join("store.db");
-    ensure_database(&graph_db, PLATFORM_LIKE)
+    ensure_database(&graph_db, &SESSION_TREE_MIGRATIONS)
         .await
         .expect("platform migrate");
+    seed_parent_session(&graph_db, "parent_sess").await;
 
     let bootstrap = SubagentBootstrap {
         cwd: temp.path().to_string_lossy().to_string(),
@@ -158,9 +150,10 @@ async fn subagent_inherits_current_model_after_switch() {
     let tools = create_search_tools(env.clone());
 
     let graph_db = temp.path().join("store.db");
-    ensure_database(&graph_db, PLATFORM_LIKE)
+    ensure_database(&graph_db, &SESSION_TREE_MIGRATIONS)
         .await
         .expect("platform migrate");
+    seed_parent_session(&graph_db, "parent_sess").await;
 
     let bootstrap = SubagentBootstrap {
         cwd: temp.path().to_string_lossy().to_string(),
@@ -242,9 +235,10 @@ async fn wait_immediately_after_followup_never_races_turn_start() {
     let tools = create_search_tools(env.clone());
 
     let graph_db = temp.path().join("store.db");
-    ensure_database(&graph_db, PLATFORM_LIKE)
+    ensure_database(&graph_db, &SESSION_TREE_MIGRATIONS)
         .await
         .expect("platform migrate");
+    seed_parent_session(&graph_db, "parent_sess").await;
 
     let bootstrap = SubagentBootstrap {
         cwd: temp.path().to_string_lossy().to_string(),

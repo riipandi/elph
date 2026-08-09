@@ -55,6 +55,7 @@ impl WorkerRegistry {
     /// `worker_id` must be the same id used for the session lease and file claims
     /// (one id per process lifetime — host generates once via `create_worker_id`).
     /// Allocates a unique live display name when `desired_name` collides.
+    #[allow(clippy::too_many_arguments)] // registration row fields
     pub async fn register(
         &self,
         worker_id: &str,

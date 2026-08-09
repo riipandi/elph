@@ -32,10 +32,6 @@ impl PrettyMarkdownSink {
         }
     }
 
-    pub fn is_pretty(&self) -> bool {
-        self.pretty
-    }
-
     pub fn wrote_output(&self) -> bool {
         self.wrote
     }

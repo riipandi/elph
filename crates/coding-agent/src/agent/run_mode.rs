@@ -159,16 +159,15 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
         let mut pretty = PrettyMarkdownSink::new();
         while let Some(event) = ui_rx.recv().await {
             match format {
-                OutputFormat::Plain => match &event {
-                    AgentUiEvent::TextDelta(text) => {
+                // Plain: raw response only (no tool chrome / status).
+                OutputFormat::Plain => {
+                    if let AgentUiEvent::TextDelta(text) = &event {
                         streaming_out = true;
                         print!("{text}");
                         let _ = std::io::stdout().flush();
                         plain_streamed_w.store(true, Ordering::Relaxed);
                     }
-                    // No tool chrome / status in plain — raw response only.
-                    _ => {}
-                },
+                }
                 OutputFormat::Pretty => match &event {
                     AgentUiEvent::TextDelta(text) => {
                         if !streaming_out {
@@ -724,12 +723,10 @@ fn stream_message_json_lines(event: &AgentUiEvent, msg_started: &mut bool) -> Ve
                 .to_string(),
             );
         }
-        AgentUiEvent::RunCompleted { .. } => {
-            if *msg_started {
-                out.push(json!({"type": "content_block_stop", "index": 0}).to_string());
-                out.push(json!({"type": "message_stop"}).to_string());
-                *msg_started = false;
-            }
+        AgentUiEvent::RunCompleted { .. } if *msg_started => {
+            out.push(json!({"type": "content_block_stop", "index": 0}).to_string());
+            out.push(json!({"type": "message_stop"}).to_string());
+            *msg_started = false;
         }
         _ => {}
     }

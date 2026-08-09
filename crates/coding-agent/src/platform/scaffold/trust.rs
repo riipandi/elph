@@ -102,10 +102,10 @@ fn expand_user_path(path: &Path) -> PathBuf {
         if let Some(home) = home_dir() {
             return home.join(rest);
         }
-    } else if s == "$HOME" {
-        if let Some(home) = home_dir() {
-            return home;
-        }
+    } else if s == "$HOME"
+        && let Some(home) = home_dir()
+    {
+        return home;
     }
     path.to_path_buf()
 }

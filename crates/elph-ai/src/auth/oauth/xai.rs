@@ -340,7 +340,7 @@ mod tests {
     fn expires_is_epoch_milliseconds_not_seconds() {
         // A correctly-skewed 1h token must be in the future as ms (≈ 1.7e12 scale).
         let now_ms = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as i64;
-        let expires = now_ms + 3600_000 - REFRESH_SKEW_MS as i64;
+        let expires = now_ms + 3_600_000 - REFRESH_SKEW_MS as i64;
         assert!(expires > 1_000_000_000_000, "expires should be ms epoch, got {expires}");
         assert!(expires > chrono::Utc::now().timestamp_millis());
     }

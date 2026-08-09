@@ -319,16 +319,15 @@ pub async fn create_coding_session_with_events(
                 prompt_options.mode = *mode_state.lock().await;
                 if let (Some(reg), Some(pk), Some(wid)) =
                     (peers_registry.as_ref(), peers_project_key.as_ref(), peers_worker_id.as_ref())
+                    && let Ok(peers) = reg.list_live_peers(pk, wid, peers_stale).await
                 {
-                    if let Ok(peers) = reg.list_live_peers(pk, wid, peers_stale).await {
-                        let summary = peers
-                            .into_iter()
-                            .filter(|p| !p.is_self)
-                            .map(|p| p.name)
-                            .collect::<Vec<_>>()
-                            .join(", ");
-                        prompt_options.worker_peers = if summary.is_empty() { None } else { Some(summary) };
-                    }
+                    let summary = peers
+                        .into_iter()
+                        .filter(|p| !p.is_self)
+                        .map(|p| p.name)
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    prompt_options.worker_peers = if summary.is_empty() { None } else { Some(summary) };
                 }
                 let tool_names: Vec<String> = ctx.active_tools.iter().map(|t| t.name().to_string()).collect();
                 let mut prompt = build_coding_system_prompt(
@@ -458,9 +457,4 @@ fn hostname_worker_name_fallback() -> String {
         .ok()
         .filter(|s| !s.trim().is_empty())
         .unwrap_or_else(|| "worker".into())
-}
-
-pub async fn create_coding_session(options: CreateSessionOptions<'_>) -> Result<CodingAgentSession> {
-    let (session, _rx) = create_coding_session_with_events(options).await?;
-    Ok(session)
 }

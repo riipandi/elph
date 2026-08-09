@@ -199,10 +199,10 @@ impl CodingAgentSession {
     pub async fn shutdown_workers(&self) {
         if let Some(rt) = self.worker_runtime.as_ref() {
             rt.shutdown().await;
-        } else if self.session_manager.lease_worker_id().is_some() {
-            if let Err(err) = self.session_manager.release_session_lease(&self.session_id).await {
-                log::warn!("release session lease: {err:#}");
-            }
+        } else if self.session_manager.lease_worker_id().is_some()
+            && let Err(err) = self.session_manager.release_session_lease(&self.session_id).await
+        {
+            log::warn!("release session lease: {err:#}");
         }
     }
 
@@ -224,22 +224,21 @@ impl CodingAgentSession {
     async fn last_assistant_text_for_worker_reply(&self) -> Option<String> {
         let entries = self.harness.session_entries().await;
         for entry in entries.iter().rev() {
-            if let elph_agent::SessionTreeEntry::Message { message, .. } = entry {
-                if message.role() == "assistant" {
-                    if let Some(elph_ai::Message::Assistant(a)) = message.as_llm() {
-                        let mut parts = Vec::new();
-                        for block in &a.content {
-                            if let elph_ai::AssistantContentBlock::Text(t) = block {
-                                if !t.text.trim().is_empty() {
-                                    parts.push(t.text.clone());
-                                }
-                            }
-                        }
-                        let joined = parts.join("\n").trim().to_string();
-                        if !joined.is_empty() {
-                            return Some(joined);
-                        }
+            if let elph_agent::SessionTreeEntry::Message { message, .. } = entry
+                && message.role() == "assistant"
+                && let Some(elph_ai::Message::Assistant(a)) = message.as_llm()
+            {
+                let mut parts = Vec::new();
+                for block in &a.content {
+                    if let elph_ai::AssistantContentBlock::Text(t) = block
+                        && !t.text.trim().is_empty()
+                    {
+                        parts.push(t.text.clone());
                     }
+                }
+                let joined = parts.join("\n").trim().to_string();
+                if !joined.is_empty() {
+                    return Some(joined);
                 }
             }
         }
@@ -281,11 +280,10 @@ impl CodingAgentSession {
         // Idempotency: skip inject if this msg_id already appears in the session tree.
         let entries = self.harness.session_entries().await;
         let already = entries.iter().any(|e| {
-            if let elph_agent::SessionTreeEntry::Custom { custom_type, data, .. } = e {
-                if custom_type == "worker.inbound" {
-                    return data.as_ref().and_then(|d| d.get("msg_id")).and_then(|v| v.as_str())
-                        == Some(msg.id.as_str());
-                }
+            if let elph_agent::SessionTreeEntry::Custom { custom_type, data, .. } = e
+                && custom_type == "worker.inbound"
+            {
+                return data.as_ref().and_then(|d| d.get("msg_id")).and_then(|v| v.as_str()) == Some(msg.id.as_str());
             }
             false
         });

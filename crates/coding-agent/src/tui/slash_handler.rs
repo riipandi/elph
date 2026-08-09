@@ -537,7 +537,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
                     session_id: id.to_string(),
                 };
             }
-            open_resume_item_selector(Some(&session))
+            open_resume_item_selector(Some(session))
         }
         SlashDispatch::Export { args } => {
             let Some(session) = ctx.agent_session.as_ref() else {

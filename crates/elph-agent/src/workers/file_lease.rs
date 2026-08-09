@@ -1,6 +1,6 @@
 //! Cross-process file path claims for shared-cwd safety.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::{Context, Result, bail};
@@ -10,12 +10,6 @@ use crate::datastore::{connect, with_conn};
 use crate::messages::now_iso_timestamp;
 
 use super::types::FileLease;
-
-#[derive(Debug, Clone)]
-pub struct FileLeaseConflict {
-    pub holder: FileLease,
-    pub message: String,
-}
 
 #[derive(Clone)]
 pub struct FileLeaseStore {
@@ -53,6 +47,7 @@ impl FileLeaseStore {
     }
 
     /// Claim a path for exclusive write. Same worker re-claims refresh the lease.
+    #[allow(clippy::too_many_arguments)] // claim fields map 1:1 to row columns
     pub async fn try_claim(
         &self,
         project_key: &str,

@@ -39,9 +39,9 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         mut live_cursor,
         mut live_draft,
         mention_index,
-        mut messages,
+        messages,
         messages_arc,
-        mut messages_revision,
+        messages_revision,
         model_filter,
         model_input_focus,
         model_provider_index,
@@ -505,7 +505,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 if let Some(notice) = notice {
                     push_transcript_message_synced(
                         &mut messages,
-                        messages_arc.clone(),
+                        messages_arc,
                         &mut messages_revision,
                         &mut prompt_history,
                         crate::tui::transcript::TranscriptMessage::text(
@@ -888,16 +888,15 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             }
 
             // Pi TreeSelector filter modes (Tab / Ctrl+O cycle, Ctrl+D/T/U/L/A).
-            if let Some(action) = tree_filter_key_action(modifiers, code) {
-                if let Some(pending) = pending_item_selector.write().as_mut() {
-                    if pending.purpose == ItemSelectorPurpose::NavigateTree {
-                        apply_tree_filter_key(pending, action);
-                        item_selector_selected.set(pending.filtered_selected());
-                        return;
-                    }
-                }
-                // Resume picker: ignore tree filter chords (fall through for Esc-global etc.).
+            if let Some(action) = tree_filter_key_action(modifiers, code)
+                && let Some(pending) = pending_item_selector.write().as_mut()
+                && pending.purpose == ItemSelectorPurpose::NavigateTree
+            {
+                apply_tree_filter_key(pending, action);
+                item_selector_selected.set(pending.filtered_selected());
+                return;
             }
+            // Resume picker: ignore tree filter chords (fall through for Esc-global etc.).
 
             if let Some(delta) = item_selector_list_nav_delta(modifiers, code) {
                 if let Some(pending) = pending_item_selector.write().as_mut() {
@@ -920,10 +919,10 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             }
 
             if modifiers.is_empty() && code == KeyCode::Backspace {
-                if let Some(pending) = pending_item_selector.write().as_mut() {
-                    if pending.filter_backspace() {
-                        item_selector_selected.set(pending.filtered_selected());
-                    }
+                if let Some(pending) = pending_item_selector.write().as_mut()
+                    && pending.filter_backspace()
+                {
+                    item_selector_selected.set(pending.filtered_selected());
                 }
                 return;
             }

@@ -86,13 +86,6 @@ impl AsidePanelState {
         }
     }
 
-    pub fn scroll_offset(&self) -> usize {
-        match self {
-            Self::Done { scroll_offset, .. } => *scroll_offset,
-            _ => 0,
-        }
-    }
-
     pub fn max_scroll_offset(&self, content_width: usize) -> usize {
         match self {
             Self::Done { answer, .. } => {

@@ -108,11 +108,11 @@ pub struct RunArgs {
 
 pub fn handle(args: &RunArgs) -> ExitCode {
     // --cwd first so Paths::resolve binds to the target project tree.
-    if let Some(cwd) = &args.cwd {
-        if let Err(err) = env::set_current_dir(cwd) {
-            help::cli_error(format!("--cwd {}: {err}", cwd.display()));
-            return EXIT_ERROR;
-        }
+    if let Some(cwd) = &args.cwd
+        && let Err(err) = env::set_current_dir(cwd)
+    {
+        help::cli_error(format!("--cwd {}: {err}", cwd.display()));
+        return EXIT_ERROR;
     }
 
     let prompt = match resolve_prompt(args) {

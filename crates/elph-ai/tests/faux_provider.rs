@@ -105,13 +105,9 @@ async fn supports_multiple_models_with_per_model_reasoning() {
         })),
     ]);
 
-    let fast = faux.provider.get_models().iter().find(|m| m.id == "faux-fast").unwrap();
-    let thinker = faux
-        .provider
-        .get_models()
-        .iter()
-        .find(|m| m.id == "faux-thinker")
-        .unwrap();
+    let models = faux.provider.get_models();
+    let fast = models.iter().find(|m| m.id == "faux-fast").unwrap();
+    let thinker = models.iter().find(|m| m.id == "faux-thinker").unwrap();
     let ctx = Context {
         system_prompt: None,
         messages: vec![Message::User {

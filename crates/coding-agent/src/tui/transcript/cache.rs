@@ -62,6 +62,7 @@ impl TranscriptCache {
     }
 
     /// Load the latest transcript snapshot for this session, if any.
+    #[cfg_attr(not(test), allow(dead_code))]
     pub async fn load_snapshot(&self) -> Result<Option<String>> {
         let mut rows = self
             .conn
@@ -123,6 +124,7 @@ impl TranscriptCache {
     ///
     /// Wrapping the batch in `BEGIN`/`COMMIT` turns N individual fsyncs into one,
     /// cutting archive latency from ~200 ms to ~20 ms for a 130-message batch.
+    #[allow(dead_code)] // batch archive path reserved for bulk restore; unit tests use push one-by-one
     pub async fn push_batch(&self, batch: impl IntoIterator<Item = (usize, &TranscriptMessage)>) -> Result<()> {
         let sql = "INSERT OR IGNORE INTO transcript_messages \
                     (session_id, seq, style, content, \
@@ -171,6 +173,7 @@ impl TranscriptCache {
 // Serialization helpers
 // ---------------------------------------------------------------------------
 
+#[allow(dead_code)] // only referenced by push_batch
 fn style_to_str(style: TranscriptStyle) -> &'static str {
     match style {
         TranscriptStyle::User => "user",

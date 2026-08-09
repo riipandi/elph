@@ -43,7 +43,7 @@ pub fn handle(args: &ImportArgs) -> ExitCode {
     if !path.is_file() {
         let mut out = String::new();
         style::section(&mut out, sty, "Import");
-        style::warn(&mut out, sty, &format!("file not found: {}", path.display()));
+        style::warn(&mut out, sty, format!("file not found: {}", path.display()));
         eprint!("{out}");
         return EXIT_ERROR;
     }
@@ -53,7 +53,7 @@ pub fn handle(args: &ImportArgs) -> ExitCode {
         Err(e) => {
             let mut out = String::new();
             style::section(&mut out, sty, "Import");
-            style::warn(&mut out, sty, &format!("{e:#}"));
+            style::warn(&mut out, sty, format!("{e:#}"));
             eprint!("{out}");
             return EXIT_ERROR;
         }
@@ -71,8 +71,8 @@ pub fn handle(args: &ImportArgs) -> ExitCode {
         } else {
             let mut out = String::new();
             style::section(&mut out, sty, "Import (list)");
-            style::kv(&mut out, sty, "File", &path.display().to_string());
-            style::kv(&mut out, sty, "Entries", &entries.len().to_string());
+            style::kv(&mut out, sty, "File", path.display().to_string());
+            style::kv(&mut out, sty, "Entries", entries.len().to_string());
             print!("{out}");
         }
         return EXIT_SUCCESS;
@@ -82,7 +82,7 @@ pub fn handle(args: &ImportArgs) -> ExitCode {
         Ok(p) => p,
         Err(e) => {
             let mut out = String::new();
-            style::warn(&mut out, sty, &format!("paths: {e:#}"));
+            style::warn(&mut out, sty, format!("paths: {e:#}"));
             eprint!("{out}");
             return EXIT_ERROR;
         }
@@ -92,7 +92,7 @@ pub fn handle(args: &ImportArgs) -> ExitCode {
         Ok(m) => m,
         Err(e) => {
             let mut out = String::new();
-            style::warn(&mut out, sty, &format!("session manager: {e:#}"));
+            style::warn(&mut out, sty, format!("session manager: {e:#}"));
             eprint!("{out}");
             return EXIT_ERROR;
         }
@@ -114,23 +114,23 @@ pub fn handle(args: &ImportArgs) -> ExitCode {
                 let mut out = String::new();
                 style::section(&mut out, sty, "Import");
                 style::info(&mut out, sty, sty.paint(S_OK, "Session imported"));
-                style::kv(&mut out, sty, "File", &path.display().to_string());
-                style::kv(&mut out, sty, "Entries", &n.to_string());
+                style::kv(&mut out, sty, "File", path.display().to_string());
+                style::kv(&mut out, sty, "Entries", n.to_string());
                 style::kv(&mut out, sty, "Session", &id);
-                style::info(&mut out, sty, sty.paint(S_MUTED, &format!("Resume: elph --resume {id}")));
+                style::info(&mut out, sty, sty.paint(S_MUTED, format!("Resume: elph --resume {id}")));
                 print!("{out}");
             }
             EXIT_SUCCESS
         }
         Ok(Err(e)) => {
             let mut out = String::new();
-            style::warn(&mut out, sty, &format!("import failed: {e:#}"));
+            style::warn(&mut out, sty, format!("import failed: {e:#}"));
             eprint!("{out}");
             EXIT_ERROR
         }
         Err(e) => {
             let mut out = String::new();
-            style::warn(&mut out, sty, &format!("import failed: {e}"));
+            style::warn(&mut out, sty, format!("import failed: {e}"));
             eprint!("{out}");
             EXIT_ERROR
         }

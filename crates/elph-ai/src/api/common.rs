@@ -101,40 +101,6 @@ pub fn merge_model_headers(model: &Model, options: Option<&StreamOptions>) -> Ha
 
 pub const REQUEST_ABORTED: &str = "Request aborted";
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::collections::HashMap;
-
-    #[test]
-    fn local_base_url_allows_missing_key() {
-        let h = HashMap::new();
-        let key = get_client_api_key_for_url("local-llm", None, &h, Some("http://localhost:11434/v1")).unwrap();
-        assert!(key.is_empty());
-    }
-
-    #[test]
-    fn local_provider_id_allows_missing_key() {
-        let h = HashMap::new();
-        let key = get_client_api_key_for_url("local-llm", None, &h, None).unwrap();
-        assert!(key.is_empty());
-    }
-
-    #[test]
-    fn cloud_provider_requires_key() {
-        let h = HashMap::new();
-        let err = get_client_api_key_for_url("xai", None, &h, Some("https://api.x.ai/v1")).unwrap_err();
-        assert!(err.to_string().contains("No API key"));
-    }
-
-    #[test]
-    fn empty_key_is_allowed() {
-        let h = HashMap::new();
-        let key = get_client_api_key_for_url("xai", Some(""), &h, Some("https://api.x.ai/v1")).unwrap();
-        assert_eq!(key, "");
-    }
-}
-
 pub fn is_request_aborted(token: &Option<tokio_util::sync::CancellationToken>) -> bool {
     token.as_ref().is_some_and(|t| t.is_cancelled())
 }
@@ -420,4 +386,38 @@ pub async fn send_with_resilience_retry(
 
     // All retries exhausted
     Err(last_err.unwrap_or_else(|| anyhow!("max retries exhausted for {provider_id}")))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn local_base_url_allows_missing_key() {
+        let h = HashMap::new();
+        let key = get_client_api_key_for_url("local-llm", None, &h, Some("http://localhost:11434/v1")).unwrap();
+        assert!(key.is_empty());
+    }
+
+    #[test]
+    fn local_provider_id_allows_missing_key() {
+        let h = HashMap::new();
+        let key = get_client_api_key_for_url("local-llm", None, &h, None).unwrap();
+        assert!(key.is_empty());
+    }
+
+    #[test]
+    fn cloud_provider_requires_key() {
+        let h = HashMap::new();
+        let err = get_client_api_key_for_url("xai", None, &h, Some("https://api.x.ai/v1")).unwrap_err();
+        assert!(err.to_string().contains("No API key"));
+    }
+
+    #[test]
+    fn empty_key_is_allowed() {
+        let h = HashMap::new();
+        let key = get_client_api_key_for_url("xai", Some(""), &h, Some("https://api.x.ai/v1")).unwrap();
+        assert_eq!(key, "");
+    }
 }

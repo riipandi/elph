@@ -125,6 +125,7 @@ impl TurnStore {
     }
 
     /// Finish a turn and update session rollups when completed successfully.
+    #[allow(clippy::too_many_arguments)] // turn completion fields map to columns
     pub async fn finish_turn(
         &self,
         turn_id: &str,

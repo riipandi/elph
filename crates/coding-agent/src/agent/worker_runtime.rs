@@ -102,7 +102,7 @@ impl WorkerRuntime {
 
         let heartbeat_handle = tokio::spawn(async move {
             let interval = Duration::from_secs(heartbeat_secs);
-            let reaper = Duration::from_secs(heartbeat_secs.min(2).max(1));
+            let reaper = Duration::from_secs(heartbeat_secs.clamp(1, 2));
             let mut since_hb = Duration::ZERO;
             loop {
                 if hb_stop.load(Ordering::Relaxed) {

@@ -99,6 +99,7 @@ pub const FOOTER_IMG_INDICATOR: &str = "◐";
 pub const FOOTER_WORKERS_BADGE_PREFIX: &str = "⬡";
 
 /// Format the workers badge (`⬡ N` or `⬡ N · name`) or empty when count &lt; 2.
+#[cfg(test)]
 pub fn footer_workers_badge(live_count: usize) -> Option<String> {
     footer_workers_badge_with_name(live_count, "")
 }
@@ -121,11 +122,13 @@ pub fn footer_workers_badge_with_name(live_count: usize, worker_name: &str) -> O
 ///
 /// With select mode: `sel · turn: N · [+A/B -C/D]`.
 /// With workers ≥2: `⬡ N · turn: …` (or after `sel`).
+#[cfg(test)]
 pub fn footer_status_right_label(turn: u32, git: Option<&GitFooterInfo>) -> String {
     footer_status_right_label_with_select(turn, git, false, 0)
 }
 
 /// Like [`footer_status_right_label`], optionally prefixing select-mode and/or workers badges.
+#[cfg(test)]
 pub fn footer_status_right_label_with_select(
     turn: u32,
     git: Option<&GitFooterInfo>,

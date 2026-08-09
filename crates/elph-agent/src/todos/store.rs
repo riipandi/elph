@@ -208,10 +208,10 @@ pub struct TodoUpdate {
 fn validate_updates(updates: &[TodoUpdate]) -> Result<()> {
     let mut seen = HashSet::new();
     for u in updates {
-        if let Some(id) = &u.id {
-            if !seen.insert(id.clone()) {
-                bail!("duplicate todo id in one call: {id}");
-            }
+        if let Some(id) = &u.id
+            && !seen.insert(id.clone())
+        {
+            bail!("duplicate todo id in one call: {id}");
         }
     }
     let in_progress = updates

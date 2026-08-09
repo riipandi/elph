@@ -316,7 +316,7 @@ pub async fn expand_gc_for_size(
             break;
         }
         already.push(c.id.clone());
-        delete_sessions(database, &[c.id.clone()]).await?;
+        delete_sessions(database, std::slice::from_ref(&c.id)).await?;
         size = std::fs::metadata(db_path).map(|m| m.len()).unwrap_or(size);
     }
     Ok(already)

@@ -9,9 +9,9 @@ pub(crate) mod markdown;
 mod panel;
 mod types;
 
-pub use archive::{
-    TRANSCRIPT_SNAPSHOT_CUSTOM_TYPE, build_snapshot_data, duration_from_tool_details, messages_from_snapshot_data,
-};
+#[cfg(test)]
+pub use archive::messages_from_snapshot_data;
+pub use archive::{TRANSCRIPT_SNAPSHOT_CUSTOM_TYPE, build_snapshot_data, duration_from_tool_details};
 pub use cache::TranscriptCache;
 pub use ephemeral::{
     AGENT_MODE_NOTICE_TTL, EphemeralBanner, EphemeralBannerGeneration, EphemeralBannerKind,

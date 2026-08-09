@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 use turso::Connection;
 
 use crate::datastore::{connect, with_conn};
@@ -51,6 +51,7 @@ impl MailboxStore {
         }
     }
 
+    #[allow(clippy::too_many_arguments)] // message envelope fields
     pub async fn send_prompt(
         &self,
         project_key: &str,
@@ -87,6 +88,7 @@ impl MailboxStore {
         .await
     }
 
+    #[allow(clippy::too_many_arguments)] // message envelope fields
     pub async fn send_response(
         &self,
         project_key: &str,

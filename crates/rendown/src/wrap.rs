@@ -76,7 +76,6 @@ pub fn wrap_text_to_lines(text: &str, wrap_width: usize) -> Vec<String> {
         } else {
             if !current.is_empty() {
                 lines.push(std::mem::take(&mut current));
-                current_width = 0;
             }
             let content_end = segment
                 .char_indices()

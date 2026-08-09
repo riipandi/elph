@@ -120,6 +120,7 @@ pub struct Cli {
 }
 
 #[derive(Subcommand)]
+#[allow(clippy::large_enum_variant)] // clap subcommand payloads; boxing changes CLI parse ergonomics
 pub enum Commands {
     /// Run Elph as an Agent Client Protocol (ACP) server over stdio
     Acp,

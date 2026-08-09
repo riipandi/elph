@@ -3,8 +3,7 @@
 use crate::tui::labels::{
     FOOTER_IMG_INDICATOR, FOOTER_SELECT_MODE_BADGE, FOOTER_SEP, GitFooterInfo, context_pct_limit_label,
     editor_border_project_label, footer_mode_label, footer_model_name, footer_model_thinking_label,
-    footer_status_left_label, footer_status_right_label, footer_status_right_label_with_select, format_token_count,
-    session_header_segments, session_label,
+    footer_status_left_label, format_token_count, session_header_segments, session_label,
 };
 use crate::types::{AgentMode, ThinkingLevel};
 use elph_tui::utils::{display_width, truncate_with_ellipsis};
@@ -194,6 +193,7 @@ pub fn fit_footer_status_left(
 /// Status footer right progressive fit. **Git yields first when narrowing.**
 ///
 /// Drop order: full (`turn | git`) → turn only → empty/truncated.
+#[cfg(test)]
 pub fn fit_footer_status_right(turn: u32, git: Option<&GitFooterInfo>, max_width: usize) -> String {
     fit_footer_status_right_with_select(turn, git, max_width, false, 0)
 }
@@ -201,6 +201,7 @@ pub fn fit_footer_status_right(turn: u32, git: Option<&GitFooterInfo>, max_width
 /// Like [`fit_footer_status_right`], with optional select-mode and multi-worker badges.
 ///
 /// Drop order: full → drop git → drop workers → select/turn only → sel → empty/truncated.
+#[cfg(test)]
 pub fn fit_footer_status_right_with_select(
     turn: u32,
     git: Option<&GitFooterInfo>,

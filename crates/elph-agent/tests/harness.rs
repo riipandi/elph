@@ -740,9 +740,8 @@ async fn harness_save_point_refreshes_config_at_tool_execution() {
         ..Default::default()
     });
     let models = faux_models(&faux);
-    let second_model = faux
-        .provider
-        .get_models()
+    let provider_models = faux.provider.get_models();
+    let second_model = provider_models
         .iter()
         .find(|model| model.id == "second")
         .expect("second model");

@@ -275,14 +275,14 @@ async fn await_response(ctx: &WorkerToolContext, msg_id: &str, timeout_ms: u64) 
             }
             return Ok(AgentToolResult::text(text));
         }
-        if let Some(msg) = ctx.mailbox.get(msg_id).await? {
-            if matches!(msg.status, MessageStatus::Timeout | MessageStatus::Error) {
-                return Ok(AgentToolResult::text(format!(
-                    "status {} {}",
-                    msg.status.as_str(),
-                    msg.error.unwrap_or_default()
-                )));
-            }
+        if let Some(msg) = ctx.mailbox.get(msg_id).await?
+            && matches!(msg.status, MessageStatus::Timeout | MessageStatus::Error)
+        {
+            return Ok(AgentToolResult::text(format!(
+                "status {} {}",
+                msg.status.as_str(),
+                msg.error.unwrap_or_default()
+            )));
         }
         if tokio::time::Instant::now() >= deadline {
             let _ = ctx.mailbox.mark_timeout(msg_id).await;

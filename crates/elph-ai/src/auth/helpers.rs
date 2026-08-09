@@ -52,9 +52,7 @@ pub fn github_copilot_api_key_auth() -> ApiKeyAuth {
                         }
                     }
                 }
-                let Some(token) = raw else {
-                    return None;
-                };
+                let token = raw?;
                 match crate::auth::oauth::ensure_copilot_session_token(&token, None).await {
                     Ok(session) => {
                         let base = crate::auth::oauth::get_github_copilot_base_url(Some(&session), None);
@@ -105,18 +103,18 @@ fn flexible_api_key_auth_with_options(
         resolve: Arc::new(move |input: AuthResolveInput| {
             let env_vars = env_vars.clone();
             Box::pin(async move {
-                if let Some(key) = input.credential.as_ref().and_then(|c| c.key.clone()) {
-                    if !key.is_empty() {
-                        return Some(AuthResult {
-                            auth: ModelAuth {
-                                api_key: Some(key),
-                                headers: None,
-                                base_url: None,
-                            },
-                            env: None,
-                            source: Some("stored credential".to_string()),
-                        });
-                    }
+                if let Some(key) = input.credential.as_ref().and_then(|c| c.key.clone())
+                    && !key.is_empty()
+                {
+                    return Some(AuthResult {
+                        auth: ModelAuth {
+                            api_key: Some(key),
+                            headers: None,
+                            base_url: None,
+                        },
+                        env: None,
+                        source: Some("stored credential".to_string()),
+                    });
                 }
                 // Check the credential's embedded env map (from env-ref entries).
                 if let Some(cred) = &input.credential
