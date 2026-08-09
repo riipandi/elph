@@ -70,22 +70,27 @@ Unless `--no-session`, stderr prints a **dimmed** turn block with blank lines ab
 - Colors only when stderr is a TTY and `NO_COLOR` is unset.
 - JSON / stream formats also embed the same fields under `session` on stdout.
 
-## Progress indicator
+## Progress + streaming
 
-On a TTY, `elph run` shows a **stderr spinner** (same `CliSpinner` as codegraph / datastore) while waiting:
+### Wait line (stderr)
 
-| Phase | Example message |
+`elph run` uses a **lightweight ANSI wait line** (braille + message + elapsed), **not** iocraft/`CliSpinner`. Full iocraft needs a render loop and is a poor fit for headless CLI (mouse capture / fullscreen not required, but layout-on-every-tick was freezing the first frame). The wait line is a plain `\r` overwrite on stderr.
+
+| Phase | Example |
 | --- | --- |
 | Bootstrap | `Loading providers, tools, and session…` |
-| Ready | `Running · openai/gpt-5.6-luna · mode brave…` |
-| Skill / template | `Skill \`code-review\` · …` / `Prompt \`/ship-it\` · …` |
-| Thinking | `Thinking · openai/gpt-5.6-luna…` |
-| Tools | `Tool \`read_file\` · path…` |
-| Generating | `Generating · openai/gpt-5.6-luna…` |
+| Ready | `Running · openai/… · mode brave…` |
+| Tools | `Tool \`read_file\` · …` |
 
-**After the turn**, the spinner is always cleared (with a newline) before the model answer is printed — so it cannot stick on the last `\r` line. Plain mode prints the full assistant reply only after the spinner is gone (no interleaving). Stream formats clear the spinner when the first NDJSON event lands.
+### Plain streaming (stdout)
 
-Ctrl+C during the wait spinner yields a clean interrupt (exit 130). Non-TTY stderr: quiet one-line fallback, no animation.
+Transcript-style **token streaming**: as soon as the first `TextDelta` arrives, the wait line is cleared and tokens print to stdout as they land. Mid-turn tools emit a dim one-liner on stderr (`  · tool \`name\``) without decorations. No borders, cards, or mouse capture.
+
+### Runtime
+
+The `elph` binary is already `#[tokio::main]` (multi-thread). Headless uses `elph_agent::block_on` → `block_in_place` on that runtime so event tasks and the wait-line OS thread stay concurrent. Nesting a second `Runtime::block_on` panics (`Cannot start a runtime from within a runtime`).
+
+Ctrl+C during the wait line → clean interrupt (exit 130). Non-TTY: one static status print, no animation.
 
 ## Defaults
 

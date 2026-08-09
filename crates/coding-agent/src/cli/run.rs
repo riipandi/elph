@@ -212,6 +212,9 @@ pub fn handle(args: &RunArgs) -> ExitCode {
     }
 
     let system_prompt_ref = system_prompt_override.as_deref();
+    // Binary is `#[tokio::main]` (already multi-thread). Never nest Runtime::block_on —
+    // use elph_agent::block_on which does block_in_place + Handle::block_on on the
+    // existing runtime (spawned tasks + wait-line OS thread stay concurrent).
     let result = elph_agent::block_on(run_non_interactive(RunModeOptions {
         paths: &paths,
         settings: &settings,
@@ -232,7 +235,6 @@ pub fn handle(args: &RunArgs) -> ExitCode {
     match result {
         Ok(_) => EXIT_SUCCESS,
         Err(err) => {
-            // run_non_interactive already cleared the spinner and may have printed details.
             help::cli_error(format!("run failed: {err}"));
             EXIT_ERROR
         }

@@ -1,14 +1,14 @@
 //! Non-interactive `elph run` execution.
 
 use anyhow::{Context, Result, bail};
-use elph_tui::CliSpinner;
 use serde_json::{Value, json};
 use std::io::Write;
 use std::path::Path;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 use super::events::AgentUiEvent;
+use super::headless_status::HeadlessStatus;
 use super::runtime::CreateSessionOptions;
 use super::runtime::create_coding_session_with_events;
 use super::slash_commands::{SlashDispatch, dispatch_slash_command};
@@ -63,9 +63,8 @@ pub struct RunModeResult {
 }
 
 pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeResult> {
-    // Spinner on stderr only. Always torn down via `SpinnerGuard` so a residual
-    // `\r` line cannot stick after the response (the previous failure mode).
-    let mut status = RunStatus::start(bootstrap_message(&options));
+    // Lightweight ANSI wait line on stderr (no iocraft). Guaranteed teardown via Drop.
+    let status = HeadlessStatus::start(bootstrap_message(&options));
 
     status.set("Loading providers, tools, and session…");
     let session_result = create_coding_session_with_events(CreateSessionOptions {
@@ -114,9 +113,10 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
     let max_turns = options.max_turns;
     let tool_starts = Arc::new(AtomicU32::new(0));
     let tool_starts_watch = Arc::clone(&tool_starts);
+    let plain_streamed = Arc::new(AtomicBool::new(false));
+    let plain_streamed_w = Arc::clone(&plain_streamed);
     let harness_for_abort = session.harness();
 
-    // Resolve `/skill:…` and `/template-name` (same dispatch as TUI) before the turn.
     let turn_kind = match resolve_headless_turn(&session, options.prompt).await {
         Ok(kind) => kind,
         Err(err) => {
@@ -139,24 +139,43 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
         }
     }
 
-    // Event task: update spinner for tools/thinking; stream-json formats write live
-    // NDJSON. Plain mode does **not** stream tokens while the spinner is active —
-    // the final answer is printed after the spinner is cleared (clean separation).
+    // Event task: live status + streaming plain text (transcript-style, no chrome).
     let status_handle = status.handle();
     let mode_label = options.mode.footer_label().to_string();
     let model_for_events = model_label.clone();
     let stream_task = tokio::spawn(async move {
         let mut msg_started = false;
+        let mut streaming_plain = false;
         while let Some(event) = ui_rx.recv().await {
-            update_status_for_event(&status_handle, &event, &model_for_events, &mode_label);
-
             match format {
-                OutputFormat::Plain | OutputFormat::Json => {
-                    // Final text is collected from the session tree after the turn.
+                OutputFormat::Plain => match &event {
+                    AgentUiEvent::TextDelta(text) => {
+                        if !streaming_plain {
+                            status_handle.finish();
+                            streaming_plain = true;
+                        }
+                        print!("{text}");
+                        let _ = std::io::stdout().flush();
+                        plain_streamed_w.store(true, Ordering::Relaxed);
+                    }
+                    AgentUiEvent::ToolStart { name, args_summary, .. } if streaming_plain => {
+                        let detail = args_summary.trim();
+                        let line = if detail.is_empty() {
+                            format!("  · tool `{name}`")
+                        } else {
+                            format!("  · tool `{name}` · {}", truncate_chars(detail, 48))
+                        };
+                        eprintln!("{}", CliStyle::auto_stderr().paint(S_MUTED, line));
+                    }
+                    _ if !streaming_plain => {
+                        update_status_for_event(&status_handle, &event, &model_for_events, &mode_label);
+                    }
+                    _ => {}
+                },
+                OutputFormat::Json => {
+                    update_status_for_event(&status_handle, &event, &model_for_events, &mode_label);
                 }
                 OutputFormat::StreamJson => {
-                    // Clear wait spinner once machine output starts so NDJSON isn't
-                    // interleaved with a \r spinner on the same visual row in odd TTYs.
                     if matches!(
                         &event,
                         AgentUiEvent::TextDelta(_)
@@ -164,6 +183,8 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
                             | AgentUiEvent::ThinkingDelta(_)
                     ) {
                         status_handle.finish_quiet();
+                    } else {
+                        update_status_for_event(&status_handle, &event, &model_for_events, &mode_label);
                     }
                     if let Some(line) = stream_json_line(&event) {
                         println!("{line}");
@@ -173,6 +194,8 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
                 OutputFormat::StreamMessageJson => {
                     if matches!(&event, AgentUiEvent::TextDelta(_) | AgentUiEvent::ToolStart { .. }) {
                         status_handle.finish_quiet();
+                    } else {
+                        update_status_for_event(&status_handle, &event, &model_for_events, &mode_label);
                     }
                     for line in stream_message_json_lines(&event, &mut msg_started) {
                         println!("{line}");
@@ -197,10 +220,9 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
     });
 
     let prompt_result = execute_headless_input(&session, &turn_kind, options.prompt).await;
-    // Drain RunCompleted (or time out if the harness never emitted it).
     let _ = tokio::time::timeout(std::time::Duration::from_secs(5), stream_task).await;
 
-    // Hide spinner + newline so the model answer / footer never share a line with it.
+    // Ensure wait line is gone (no-op if already finished on first token).
     status.finish();
 
     let assistant_text = collect_last_assistant_text(&session).await;
@@ -243,8 +265,12 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
 
     match format {
         OutputFormat::Plain => {
-            if !assistant_text.is_empty() {
-                println!("{assistant_text}");
+            if !plain_streamed.load(Ordering::Relaxed) {
+                if !assistant_text.is_empty() {
+                    println!("{assistant_text}");
+                }
+            } else {
+                println!();
             }
         }
         OutputFormat::Json => {
@@ -288,65 +314,6 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
         session_name,
         assistant_text,
     })
-}
-
-/// Owns the headless wait spinner and guarantees it is cleared (with a newline).
-struct RunStatus {
-    spinner: CliSpinner,
-    finished: bool,
-}
-
-/// Cheap clone for the event task — shares the same underlying spinner.
-#[derive(Clone)]
-struct RunStatusHandle {
-    spinner: CliSpinner,
-}
-
-impl RunStatus {
-    fn start(message: impl Into<String>) -> Self {
-        Self {
-            spinner: CliSpinner::new(message),
-            finished: false,
-        }
-    }
-
-    fn handle(&self) -> RunStatusHandle {
-        RunStatusHandle {
-            spinner: self.spinner.clone(),
-        }
-    }
-
-    fn set(&self, message: impl Into<String>) {
-        if !self.finished {
-            self.spinner.set_message(message);
-        }
-    }
-
-    /// Clear spinner and leave a clean line for the answer / footer.
-    fn finish(&mut self) {
-        if self.finished {
-            return;
-        }
-        self.finished = true;
-        self.spinner.finish_and_clear_with_newline();
-    }
-}
-
-impl Drop for RunStatus {
-    fn drop(&mut self) {
-        self.finish();
-    }
-}
-
-impl RunStatusHandle {
-    fn set(&self, message: impl Into<String>) {
-        self.spinner.set_message(message);
-    }
-
-    /// Stop spinner without forcing an extra blank line (stream formats already write).
-    fn finish_quiet(&self) {
-        self.spinner.finish_and_clear();
-    }
 }
 
 /// How the headless turn was launched (plain prompt vs skill vs template).
@@ -481,8 +448,11 @@ fn bootstrap_message(options: &RunModeOptions<'_>) -> String {
     }
 }
 
-/// Refresh the wait spinner from agent UI events (stderr only).
-fn update_status_for_event(status: &RunStatusHandle, event: &AgentUiEvent, model: &str, mode: &str) {
+/// Refresh the wait line from agent UI events (stderr only; no-op once finished).
+fn update_status_for_event(status: &HeadlessStatus, event: &AgentUiEvent, model: &str, mode: &str) {
+    if status.is_finished() {
+        return;
+    }
     match event {
         AgentUiEvent::Status(msg) => {
             let msg = msg.trim();
@@ -533,9 +503,7 @@ fn update_status_for_event(status: &RunStatusHandle, event: &AgentUiEvent, model
                 ));
             }
         }
-        AgentUiEvent::RunCompleted { .. } => {
-            // Spinner is cleared by the main path after the turn; avoid a flash message.
-        }
+        AgentUiEvent::RunCompleted { .. } => {}
         AgentUiEvent::PlanConfirmationRequired(_) => {
             status.set("Waiting for plan confirmation…");
         }
