@@ -387,6 +387,38 @@ Tip: memory recent · memory search <q>
    · Tool `update_goal` failed · status=complete
 ```
 
+### Slash args: `[args]` hint, rich completions in the args phase
+
+The slash palette label is **not** the place to enumerate subcommands or flags.
+Commands that accept arguments render a uniform `[args]` hint (`/mcp [args]`,
+`/goal [args]`, `/compact [args]`) — verbose specs like `[auth|logout|list]` or
+`--threshold PCT --keep-recent N` are rejected as anti-patterns.
+
+- **`args_hint` / `palette_command_label()`** → always `"[args]"` for builtins
+  that take args (`builtin_with_args`), `None` for arg-less commands. Keeps the
+  list column narrow and scannable.
+- **Detailed options** live in `slash_arg_completions(name)` (e.g.
+  `MCP_ARG_COMPLETIONS`, `PROVIDER_ARG_COMPLETIONS`, `HANDOVER_ARG_COMPLETIONS`,
+  `GOAL_ARG_COMPLETIONS`). They appear in the palette's **args phase** after the
+  command name resolves, and back Tab/Enter completion.
+- **Flag-style args** (`/compact --threshold 85 --keep-recent 15000 --model …`)
+  are parsed by a dedicated helper (`parse_compact_args`) — flagged options are
+  still bundled under `[args]`, never spelled out in the palette label.
+- Keep subcommand aliases permissive (`list`/`ls`, `auth`/`login`/`connect`) and
+  document fallback (`Unimplemented("/mcp …")`) for unknown args.
+
+```text
+/mcp             MCP servers
+/mcp [args]      MCP servers        ← palette label with hint
+  auth           OAuth login for a remote MCP server   ← args phase
+  logout         Clear OAuth credentials for an MCP server
+  list           List configured MCP servers
+```
+
+Unit tests assert the contract exactly:
+`assert_eq!(mcp.args_hint.as_deref(), Some("[args]"))` and
+`assert_eq!(mcp.palette_command_label(), "/mcp [args]")`.
+
 ### Shared CLI + slash architecture
 
 ```text
@@ -403,17 +435,18 @@ parse (clap | slash tokens)
 
 ### Command UX checklist (before merge)
 
-| Check        | Pass criteria                                          |
-| ------------ | ------------------------------------------------------ |
-| Empty states | Clear message + how to proceed                         |
-| Structure    | Title, sections, tips — not raw `Debug`                |
-| Color safe   | TTY + no `NO_COLOR`; plain for pipes and slash dialogs |
-| Color + text | Status/category always readable without color          |
-| Shared path  | CLI and slash call the same formatter/execute          |
-| Help         | Subcommands, categories, examples for both surfaces    |
-| Side effects | Documented; inspect commands avoid surprise writes     |
-| Encoding     | Char-safe truncation (no `&s[..n]` on UTF-8)           |
-| Tests        | Plain content tests; optional forced-color ANSI smoke  |
+| Check        | Pass criteria                                                       |
+| ------------ | ------------------------------------------------------------------- |
+| Empty states | Clear message + how to proceed                                      |
+| Structure    | Title, sections, tips — not raw `Debug`                             |
+| Color safe   | TTY + no `NO_COLOR`; plain for pipes and slash dialogs              |
+| Color + text | Status/category always readable without color                       |
+| Shared path  | CLI and slash call the same formatter/execute                       |
+| Help         | Subcommands, categories, examples for both surfaces                 |
+| Side effects | Documented; inspect commands avoid surprise writes                  |
+| Encoding     | Char-safe truncation (no `&s[..n]` on UTF-8)                        |
+| Args hint    | Palette label uses `[args]`; subcommands in `slash_arg_completions` |
+| Tests        | Plain content tests; optional forced-color ANSI smoke               |
 
 ### CLI / slash anti-patterns
 
@@ -458,22 +491,23 @@ When implementing or fixing a **CLI / slash command report**:
 
 ## Decision guide
 
-| Need                                  | Pattern                                           |
-| ------------------------------------- | ------------------------------------------------- |
-| List/chat that fills remaining height | Flex grow + `ScrollView`                          |
-| Pin to latest message                 | `auto_scroll: true` + bottom-aligned inner column |
-| Sticky user prompt                    | Inset `ScrollView` below header + clipped overlay |
-| Label on border corner                | Absolute child + `background_color: Reset`        |
-| Periodic UI refresh                   | `use_future` + `use_state` for clock/tick         |
-| Quit app                              | `should_exit` state + `system.exit()`             |
-| Modal / overlay (future)              | Absolute full-size `View` above siblings          |
-| Keyboard-only scroll                  | `Shift+Arrow` or `PageUp`/`PageDown` on panel     |
-| Accessible mode/status                | Text label + color (not color alone)              |
-| CLI report with color                 | `anstyle` + `CliStyle::auto_stdout()`             |
-| Slash / dialog report                 | Same formatter, `plain()` style                   |
-| Pipe-safe CLI                         | No color when not a TTY or `NO_COLOR` set         |
-| Shared CLI + slash                    | One op enum + `execute_with_style`                |
-| Empty command result                  | Friendly message + next-step tip                  |
+| Need                                  | Pattern                                            |
+| ------------------------------------- | -------------------------------------------------- |
+| List/chat that fills remaining height | Flex grow + `ScrollView`                           |
+| Pin to latest message                 | `auto_scroll: true` + bottom-aligned inner column  |
+| Sticky user prompt                    | Inset `ScrollView` below header + clipped overlay  |
+| Label on border corner                | Absolute child + `background_color: Reset`         |
+| Periodic UI refresh                   | `use_future` + `use_state` for clock/tick          |
+| Quit app                              | `should_exit` state + `system.exit()`              |
+| Modal / overlay (future)              | Absolute full-size `View` above siblings           |
+| Keyboard-only scroll                  | `Shift+Arrow` or `PageUp`/`PageDown` on panel      |
+| Accessible mode/status                | Text label + color (not color alone)               |
+| CLI report with color                 | `anstyle` + `CliStyle::auto_stdout()`              |
+| Slash / dialog report                 | Same formatter, `plain()` style                    |
+| Pipe-safe CLI                         | No color when not a TTY or `NO_COLOR` set          |
+| Shared CLI + slash                    | One op enum + `execute_with_style`                 |
+| Command with subcommands/flags        | Label `[args]`; options in `slash_arg_completions` |
+| Empty command result                  | Friendly message + next-step tip                   |
 
 ## Anti-patterns
 
@@ -492,3 +526,5 @@ When implementing or fixing a **CLI / slash command report**:
 - **Always-on ANSI** in CLI without TTY / `NO_COLOR` checks
 - **ANSI in plain dialogs** that cannot render styles
 - **Divergent** CLI vs slash formatters for the same command
+- **Verbose args spec in the palette label** (`[auth|logout|list]`,
+  `--threshold PCT`) — always `[args]`; details go to arg completions
