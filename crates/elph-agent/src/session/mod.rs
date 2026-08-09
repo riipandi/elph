@@ -31,9 +31,11 @@ pub use context::default_context_entry_transform;
 pub use context::derive_session_context_state;
 pub use context::{ContextEntryTransform, CustomEntryContextMessageProjector, SessionContextBuildOptions};
 pub use durability::{DurableHarnessState, OperationKind, OperationOutcome, QueueKind, reduce_durable_state};
+pub use id::create_worker_id;
+pub use id::create_worker_msg_id;
+pub use migrations::CANONICAL_SESSION_SCHEMA_SQL;
 pub use migrations::SESSION_TREE_MIGRATIONS;
 pub use migrations::WORKERS_SCHEMA_SQL;
-pub use migrations::CANONICAL_SESSION_SCHEMA_SQL;
 pub use recovery::{RecoveryReport, load_durable_state, reconcile_session, repair_unanswered_tool_calls};
 pub use repo::InMemorySessionCreateOptions;
 pub use repo::InMemorySessionRepo;
@@ -41,8 +43,6 @@ pub use repo::SessionDirListOptions;
 pub use repo::SessionDirRepo;
 pub use repo::SessionDirRepoCreateOptions;
 pub use repo_utils::{ForkEntriesOptions, ForkPosition};
-pub use id::create_worker_id;
-pub use id::create_worker_msg_id;
 pub use repo_utils::{create_session_id, create_timestamp, get_entries_to_fork, to_session};
 pub use retention::{
     RetentionPolicy, SessionGcReport, list_session_gc_rows, run_full_session_gc, run_session_gc, set_session_pinned,

@@ -7,8 +7,8 @@ use std::time::Duration;
 use anyhow::{Context, Result};
 use elph_agent::types::AgentTool;
 use elph_agent::{
-    FileLeaseStore, MailboxStore, SessionLeaseStore, WorkerRegistry, WorkerStatus, WorkerToolContext,
-    create_worker_id, create_worker_tools,
+    FileLeaseStore, MailboxStore, SessionLeaseStore, WorkerRegistry, WorkerStatus, WorkerToolContext, create_worker_id,
+    create_worker_tools,
 };
 use parking_lot::Mutex;
 use tokio::task::JoinHandle;
@@ -113,9 +113,7 @@ impl WorkerRuntime {
                 {
                     log::warn!("worker registry heartbeat: {err:#}");
                 }
-                if refresh_files
-                    && let Err(err) = hb_files.refresh_worker(&worker_id).await
-                {
+                if refresh_files && let Err(err) = hb_files.refresh_worker(&worker_id).await {
                     log::debug!("file lease refresh: {err:#}");
                 }
                 match hb_registry.count_live(&project_key, stale_secs).await {

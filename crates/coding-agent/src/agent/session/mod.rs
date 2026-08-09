@@ -199,11 +199,7 @@ impl CodingAgentSession {
         if let Some(mut rt) = self.worker_runtime.take() {
             rt.shutdown().await;
         } else if self.session_manager.lease_worker_id().is_some() {
-            if let Err(err) = self
-                .session_manager
-                .release_session_lease(&self.session_id)
-                .await
-            {
+            if let Err(err) = self.session_manager.release_session_lease(&self.session_id).await {
                 log::warn!("release session lease: {err:#}");
             }
         }
@@ -246,10 +242,7 @@ impl CodingAgentSession {
         let already = entries.iter().any(|e| {
             if let elph_agent::SessionTreeEntry::Custom { custom_type, data, .. } = e {
                 if custom_type == "worker.inbound" {
-                    return data
-                        .as_ref()
-                        .and_then(|d| d.get("msg_id"))
-                        .and_then(|v| v.as_str())
+                    return data.as_ref().and_then(|d| d.get("msg_id")).and_then(|v| v.as_str())
                         == Some(msg.id.as_str());
                 }
             }
@@ -267,11 +260,7 @@ impl CodingAgentSession {
             "kind": msg.kind.as_str(),
             "hops": msg.hops,
         });
-        if let Err(err) = self
-            .harness
-            .append_custom_entry("worker.inbound", Some(details))
-            .await
-        {
+        if let Err(err) = self.harness.append_custom_entry("worker.inbound", Some(details)).await {
             log::warn!("append worker.inbound custom entry: {err}");
         }
 

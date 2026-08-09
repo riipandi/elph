@@ -63,10 +63,7 @@ fn worker_list_tool(ctx: Arc<WorkerToolContext>) -> AgentTool {
                     .registry
                     .list_live_peers(&ctx.project_key, &ctx.worker_id, ctx.stale_secs)
                     .await?;
-                let list: Vec<_> = peers
-                    .into_iter()
-                    .filter(|p| include_self || !p.is_self)
-                    .collect();
+                let list: Vec<_> = peers.into_iter().filter(|p| include_self || !p.is_self).collect();
                 Ok(AgentToolResult::text(serde_json::to_string_pretty(&list)?))
             })
         },
@@ -254,10 +251,7 @@ fn worker_ask_tool(ctx: Arc<WorkerToolContext>) -> AgentTool {
     )
 }
 
-async fn resolve_peer(
-    ctx: &WorkerToolContext,
-    target: &str,
-) -> Result<super::types::LiveWorker> {
+async fn resolve_peer(ctx: &WorkerToolContext, target: &str) -> Result<super::types::LiveWorker> {
     let peers = ctx
         .registry
         .list_live_peers(&ctx.project_key, &ctx.worker_id, ctx.stale_secs)

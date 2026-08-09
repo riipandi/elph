@@ -124,8 +124,7 @@ impl SessionLeaseStore {
                                 ..existing
                             }));
                         }
-                        let age =
-                            now_secs.saturating_sub(parse_iso_approx_secs(&existing.heartbeat_at).unwrap_or(0));
+                        let age = now_secs.saturating_sub(parse_iso_approx_secs(&existing.heartbeat_at).unwrap_or(0));
                         let pid_dead = !pid_alive(existing.pid);
                         let stale = age >= stale_secs as i64;
                         if !stale || !pid_dead {
@@ -317,9 +316,7 @@ mod tests {
     async fn setup() -> (tempfile::TempDir, SessionLeaseStore, String) {
         let tmp = tempfile::tempdir().expect("tempdir");
         let db = tmp.path().join("store.db");
-        ensure_database(&db, &SESSION_TREE_MIGRATIONS)
-            .await
-            .expect("migrate");
+        ensure_database(&db, &SESSION_TREE_MIGRATIONS).await.expect("migrate");
         let open = crate::datastore::open_local(&db).await.expect("open");
         let c = crate::datastore::connect(&open).await.expect("connect");
         let sid = "sess_lease_test";

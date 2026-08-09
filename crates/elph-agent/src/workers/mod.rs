@@ -14,6 +14,4 @@ pub use mailbox::MailboxStore;
 pub use path_claim::{PathClaimContext, SharedPathClaim, normalize_claim_path};
 pub use registry::WorkerRegistry;
 pub use tools::{WorkerToolContext, create_worker_tools};
-pub use types::{
-    FileLease, LiveWorker, MessageKind, MessageStatus, WorkerMessage, WorkerRecord, WorkerStatus,
-};
+pub use types::{FileLease, LiveWorker, MessageKind, MessageStatus, WorkerMessage, WorkerRecord, WorkerStatus};

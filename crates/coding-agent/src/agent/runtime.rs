@@ -88,8 +88,7 @@ pub async fn create_coding_session_with_events(
     // One worker_id for lease + registry + file claims for this process.
     let worker_id = WorkerRuntime::new_worker_id();
     let lease_stale_secs = workers_cfg.lease_stale_secs.max(1);
-    let mut session_manager =
-        SessionManager::new_with_database(options.paths, options.cwd, database.clone())?;
+    let mut session_manager = SessionManager::new_with_database(options.paths, options.cwd, database.clone())?;
     if workers_cfg.enabled {
         session_manager = session_manager.with_session_lease(worker_id.clone(), lease_stale_secs);
     }
@@ -160,12 +159,7 @@ pub async fn create_coding_session_with_events(
         .await
         {
             Ok(rt) => {
-                log::info!(
-                    "worker registered name={} id={} session={}",
-                    rt.name,
-                    rt.worker_id,
-                    session_id
-                );
+                log::info!("worker registered name={} id={} session={}", rt.name, rt.worker_id, session_id);
                 Some(rt)
             }
             Err(err) => {

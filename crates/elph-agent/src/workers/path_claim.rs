@@ -75,11 +75,7 @@ pub fn normalize_claim_path(path: &str, project_key: &str) -> String {
         .unwrap_or_else(|_| PathBuf::from(project_key));
     if let Ok(rel) = canon.strip_prefix(&project_canon) {
         let s = rel.to_string_lossy().replace('\\', "/");
-        if s.is_empty() {
-            ".".into()
-        } else {
-            s
-        }
+        if s.is_empty() { ".".into() } else { s }
     } else {
         canon.to_string_lossy().replace('\\', "/")
     }

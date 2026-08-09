@@ -145,14 +145,7 @@ impl WorkerRegistry {
                     "UPDATE workers SET heartbeat_at = ?, status = ?, context_pct = ?, pid = ?,
                         model = COALESCE(?, model)
                      WHERE worker_id = ?",
-                    turso::params![
-                        now.as_str(),
-                        status.as_str(),
-                        context_pct,
-                        pid,
-                        model,
-                        worker_id,
-                    ],
+                    turso::params![now.as_str(), status.as_str(), context_pct, pid, model, worker_id,],
                 )
                 .await?;
             if n == 0 {

@@ -6,29 +6,27 @@ Session-scoped structured work lists so the agent plans multi-step work without 
 
 Registered on coding sessions alongside goals:
 
-| Tool | Role |
-| --- | --- |
+| Tool         | Role                                              |
+| ------------ | ------------------------------------------------- |
 | `todo_write` | Create/update the list (`merge` default **true**) |
-| `todo_read` | List current todos without changing them |
+| `todo_read`  | List current todos without changing them          |
 
 ### `todo_write` input
 
 ```json
 {
-  "merge": true,
-  "todos": [
-    { "id": "todo_…", "content": "…", "status": "pending" }
-  ]
+    "merge": true,
+    "todos": [{ "id": "todo_…", "content": "…", "status": "pending" }]
 }
 ```
 
-| Field | Notes |
-| --- | --- |
-| `merge` | `true` (default): upsert by `id`. `false`: replace entire list |
-| `todos` | Array; empty + `merge: false` clears the list |
-| `id` | Optional on create; required to update. Host mints `todo_<kalid>` when omitted |
-| `content` | Actionable title; optional on merge when only changing status |
-| `status` | `pending` \| `in_progress` \| `completed` \| `cancelled` |
+| Field     | Notes                                                                          |
+| --------- | ------------------------------------------------------------------------------ |
+| `merge`   | `true` (default): upsert by `id`. `false`: replace entire list                 |
+| `todos`   | Array; empty + `merge: false` clears the list                                  |
+| `id`      | Optional on create; required to update. Host mints `todo_<kalid>` when omitted |
+| `content` | Actionable title; optional on merge when only changing status                  |
+| `status`  | `pending` \| `in_progress` \| `completed` \| `cancelled`                       |
 
 Rules enforced by the store:
 
@@ -37,22 +35,23 @@ Rules enforced by the store:
 
 ## Goals vs todos
 
-| | Goals | Todos |
-| --- | --- | --- |
-| Scope | Session objective + budgets | Step checklist for current work |
-| Tools | `create_goal`, `get_goal`, `update_goal`, `set_goal_budget` | `todo_write`, `todo_read` |
-| Blocks turns | budget / pause states | Never |
+|              | Goals                                                       | Todos                           |
+| ------------ | ----------------------------------------------------------- | ------------------------------- |
+| Scope        | Session objective + budgets                                 | Step checklist for current work |
+| Tools        | `create_goal`, `get_goal`, `update_goal`, `set_goal_budget` | `todo_write`, `todo_read`       |
+| Blocks turns | budget / pause states                                       | Never                           |
 
 ## ReAct usage
 
-System prompt (`coding_base.md`) instructs:
+System prompt (`coding_base.md` → `<operating_loop>`) biases to **See → Do → Check**, not ceremony:
 
-1. **Observe** — conversation, memory, codegraph, todos  
-2. **Plan** — for ~3+ step work, write todos early; one `in_progress`  
-3. **Act** — tools for the current step only  
-4. **Evaluate** — mark completed/cancelled before the next step  
+1. **See** — conversation + already-injected memory/codegraph/tool results  
+2. **Do** — smallest tool set that advances the request  
+3. **Check** — validation that covers your change only  
 
-Skip todos for trivial single-step asks. Prefer merge status updates over full rewrites.
+**Todos are rare, not ritual:** use `todo_write` only for true multi-step work (~4+ independent steps). Most tasks need zero todos. At most one `in_progress`; prefer status merges.
+
+**Anti-overthinking:** no long pre-read tours, no speculative parallel searches, no memory/tool rituals before every edit, no recaps of tool output.
 
 ## Persistence
 

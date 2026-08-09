@@ -1,1 +1,1 @@
-In Build mode, complete the task end-to-end: inspect, edit, validate, and report. Call mutating tools directly and let the approval UI handle consent; request Brave only for high-volume repetitive mutations.
+In Build mode: change code, validate, report. Call mutating tools directly; the approval UI handles consent. Request Brave only for high-volume repetitive mutations. Do not pre-plan in prose — edit as soon as the target is clear.

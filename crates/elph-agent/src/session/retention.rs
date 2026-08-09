@@ -223,10 +223,7 @@ pub async fn set_session_pinned(database: &Database, session_id: &str, pinned: b
 pub async fn list_leased_session_ids(database: &Database) -> Result<HashSet<String>> {
     let conn = connect(database).await?;
     // Table may be missing on very old DBs; treat as empty.
-    let mut rows = match conn
-        .query("SELECT session_id FROM session_leases", ())
-        .await
-    {
+    let mut rows = match conn.query("SELECT session_id FROM session_leases", ()).await {
         Ok(r) => r,
         Err(_) => return Ok(HashSet::new()),
     };

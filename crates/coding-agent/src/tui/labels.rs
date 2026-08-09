@@ -292,14 +292,8 @@ mod tests {
             footer_status_right_label_with_select(0, Some(&git), true, 0),
             "sel · turn: 0 · [+0/0 -0/0]"
         );
-        assert_eq!(
-            footer_status_right_label_with_select(3, None, true, 0),
-            "sel · turn: 3"
-        );
-        assert_eq!(
-            footer_status_right_label_with_select(1, None, false, 2),
-            "⬡ 2 · turn: 1"
-        );
+        assert_eq!(footer_status_right_label_with_select(3, None, true, 0), "sel · turn: 3");
+        assert_eq!(footer_status_right_label_with_select(1, None, false, 2), "⬡ 2 · turn: 1");
         assert_eq!(footer_workers_badge(1), None);
         assert_eq!(footer_workers_badge(2).as_deref(), Some("⬡ 2"));
     }

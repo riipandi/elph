@@ -92,7 +92,7 @@ pub fn build_coding_system_prompt(
     };
 
     let base_context = SystemPromptTemplateContext {
-        persona: "You are an expert, intelligent, and interactive AI agent. Complete the user's request end-to-end using the available context and tools."
+        persona: "You are a fast, decisive coding agent. Complete the user's request with the fewest effective steps — act first, explain little."
             .to_string(),
         working_directory: Some(cwd.display().to_string()),
         current_date: Some(date),
@@ -141,18 +141,20 @@ mod tests {
         )
         .expect("prompt");
 
-        assert!(prompt.contains("You are an expert, intelligent, and interactive AI agent"));
+        assert!(prompt.contains("You are a fast, decisive coding agent"));
         assert!(prompt.contains("Working directory: /tmp/project"));
         assert!(prompt.contains("<action_safety>"));
         assert!(prompt.contains("<tool_calling>"));
         assert!(prompt.contains("<execution>"));
         assert!(prompt.contains("<output>"));
+        assert!(prompt.contains("<operating_loop>"));
+        assert!(prompt.contains("Bias to action"));
         assert!(prompt.contains("<mode_context>"));
         assert!(prompt.contains("Mode: Build"));
         assert!(prompt.contains("<available_tools>"));
         assert!(prompt.contains("<tool>read_file</tool>"));
         assert!(prompt.contains("<memory_and_context>"));
-        assert!(prompt.contains("Active recall is expected"));
+        assert!(prompt.contains("Do not open a memory ritual"));
     }
 
     #[test]
@@ -196,7 +198,7 @@ mod tests {
 
         assert!(!prompt.contains("<codegraph>"));
         assert!(!prompt.contains("code_search"));
-        assert!(prompt.contains("Locate code with the narrowest tool (`grep` / targeted `read_file`)"));
+        assert!(prompt.contains("Locate with the narrowest tool (`grep` / targeted `read_file`)"));
     }
 
     #[test]
@@ -284,7 +286,7 @@ mod tests {
         .expect("prompt");
         assert!(enabled.contains("<response_style>"));
         assert!(enabled.contains("Simplified Technical English"));
-        assert!(enabled.contains("No preamble, no recap, no closing pleasantries"));
+        assert!(enabled.contains("No preamble or recap"));
 
         let disabled = build_coding_system_prompt(
             Path::new("/tmp/project"),
@@ -297,9 +299,29 @@ mod tests {
         assert!(!disabled.contains("<response_style>"));
         assert!(!disabled.contains("Simplified Technical English"));
         assert!(
-            !disabled.contains("No preamble"),
+            !disabled.contains("No preamble or recap"),
             "STE-only rule must not appear when the flag is off"
         );
+    }
+
+    #[test]
+    fn non_english_language_preference_does_not_force_english_chat_under_ste() {
+        let prompt = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["read_file".to_string()],
+            None,
+            &CodingPromptOptions::new(AgentMode::Build).with_language("indonesian"),
+        )
+        .expect("prompt");
+
+        assert!(prompt.contains("<language_preference>"));
+        assert!(prompt.contains("Use indonesian for user-facing chat prose"));
+        assert!(prompt.contains("<response_style>"));
+        assert!(prompt.contains("Write user-facing chat in indonesian"));
+        assert!(prompt.contains("Do not switch chat to English just because this section mentions STE"));
+        // Repo artifacts stay English even when chat language is not.
+        assert!(prompt.contains("use English and the same brevity rules"));
     }
 
     #[test]
@@ -447,7 +469,7 @@ mod tests {
         let project = prompt.find("<project_context>").expect("project context");
         assert!(language < mode);
         assert!(mode < project);
-        assert!(prompt.contains("Use indonesian for user-facing prose"));
+        assert!(prompt.contains("Use indonesian for user-facing chat prose"));
     }
 
     #[test]
@@ -479,10 +501,8 @@ mod tests {
         )
         .expect("prompt");
 
-        // Budget raised for lazy-MCP guidance in <tool_calling> (name_prefix
-        // activation path) plus earlier mode/memory/tool-routing expansions.
-        // The <response_style> section adds ~1KB; the budget accounts for it.
-        assert!(prompt.len() < 11_000, "static prompt is {} bytes", prompt.len());
+        // Lean ReAct prompt: keep static domain body compact even with STE + subagents.
+        assert!(prompt.len() < 10_000, "static prompt is {} bytes", prompt.len());
     }
 
     #[test]
@@ -516,7 +536,7 @@ mod tests {
         assert!(with_subagents.contains("<subagents>"));
         assert!(with_subagents.contains("Start independent subagents before waiting"));
         assert!(with_subagents.contains("exclusive write scope"));
-        assert!(with_subagents.contains("Reuse the same subagent with `followup_task`"));
+        assert!(with_subagents.contains("Reuse with `followup_task`"));
         assert!(with_subagents.contains("`send_message` only queues context without starting a turn"));
         assert!(with_subagents.contains("`wait_agent` blocks until a subagent is idle"));
         assert!(with_subagents.contains("tool results carry status only"));

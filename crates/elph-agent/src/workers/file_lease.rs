@@ -163,11 +163,8 @@ impl FileLeaseStore {
 
     pub async fn release_all_for_worker(&self, worker_id: &str) -> Result<()> {
         self.with_conn(|conn| async move {
-            conn.execute(
-                "DELETE FROM file_leases WHERE worker_id = ?",
-                turso::params![worker_id],
-            )
-            .await?;
+            conn.execute("DELETE FROM file_leases WHERE worker_id = ?", turso::params![worker_id])
+                .await?;
             Ok(())
         })
         .await
@@ -291,9 +288,7 @@ mod tests {
     async fn setup() -> (tempfile::TempDir, FileLeaseStore) {
         let tmp = tempfile::tempdir().expect("tempdir");
         let db = tmp.path().join("store.db");
-        ensure_database(&db, &SESSION_TREE_MIGRATIONS)
-            .await
-            .expect("migrate");
+        ensure_database(&db, &SESSION_TREE_MIGRATIONS).await.expect("migrate");
         (tmp, FileLeaseStore::new(db))
     }
 
