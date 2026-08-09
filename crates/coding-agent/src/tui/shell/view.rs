@@ -1688,6 +1688,12 @@ pub(crate) fn build_shell_view(
                                 // handle_slash_submit. No busy/turn state needed — the task will
                                 // emit Status events when done.
                             }
+                            SlashOutcome::BackgroundTaskQuiet => {
+                                // Like BackgroundTask, but no slash input is echoed as a user
+                                // card — the handover task delivers its own transcript events
+                                // (slim meta line / stream) and derives busy state from the
+                                // agent loop, so a read failure never strands a stale busy UI.
+                            }
                             SlashOutcome::SpawnAgentTurn | SlashOutcome::SpawnAgentTurnQuiet if is_slash => {
                                 if agent_turn_active.get() {
                                     // Queue agent slash for after the current turn (no nested spawn).

@@ -34,6 +34,15 @@ const MAX_TEXT_CHARS: usize = 2000;
 const MAX_TOOL_CHARS: usize = 300;
 /// Max message records rendered into the handoff prompt (newest-to-oldest suffix).
 const MAX_PROMPT_TURNS: usize = 40;
+/// Max bytes a full Claude transcript may consume when read for a handoff.
+/// Larger sessions are rejected with a clear message instead of slurped into
+/// memory (transcripts with huge embedded tool output can be tens of MB).
+const MAX_TRANSCRIPT_BYTES: usize = 32 * 1024 * 1024;
+/// Max bytes per JSONL record (one line). Oversized lines are counted and
+/// skipped rather than parsed in full.
+const MAX_RECORD_BYTES: usize = 4 * 1024 * 1024;
+/// Max conversational records kept from a full transcript.
+const MAX_TRANSCRIPT_RECORDS: usize = 5000;
 
 /// Light discovery read windows (see `_LIGHT_HEAD_BYTES` / `_LIGHT_TAIL_BYTES`).
 const LIGHT_HEAD_BYTES: usize = 128 * 1024;
@@ -769,14 +778,57 @@ pub fn resolve_claude_session(
 
 // ── full transcript read ───────────────────────────────────────────────────
 
-fn read_full_records(path: &Path) -> Result<(Vec<Value>, usize), String> {
-    let Ok(bytes) = fs::read(path) else {
-        return Err(format!("failed to read session {}", path.display()));
-    };
-    let text = String::from_utf8_lossy(&bytes);
-    let mut records = Vec::new();
+/// Bounded, streaming read of a Claude JSONL transcript: caps total bytes,
+/// per-line bytes, and retained record count so a pathological session cannot
+/// blow up memory or parse time. Returns `(records, malformed, oversized, truncated)`.
+fn read_full_records(path: &Path) -> Result<(Vec<Value>, usize, usize, bool), String> {
+    use std::io::{BufRead, Read};
+
+    let file = fs::File::open(path).map_err(|_| format!("failed to read session {}", path.display()))?;
+    let size = file
+        .metadata()
+        .map_err(|_| format!("failed to stat session {}", path.display()))?
+        .len() as usize;
+    if size > MAX_TRANSCRIPT_BYTES {
+        return Err(format!(
+            "session {} is {:.1} MiB (limit {} MiB); too large for a handover",
+            path.display(),
+            size as f64 / (1024.0 * 1024.0),
+            MAX_TRANSCRIPT_BYTES / (1024 * 1024)
+        ));
+    }
+
+    let mut reader = std::io::BufReader::new(file);
+    let mut records: Vec<Value> = Vec::new();
     let mut malformed = 0usize;
-    for line in text.lines() {
+    let mut oversized = 0usize;
+    let mut truncated = false;
+
+    loop {
+        if records.len() >= MAX_TRANSCRIPT_RECORDS {
+            truncated = true;
+            break;
+        }
+        // Read one line, never more than MAX_RECORD_BYTES+1 bytes so over-long
+        // lines (huge embedded tool results) are detected without full buffering.
+        let mut buf: Vec<u8> = Vec::new();
+        let read = {
+            let mut limited = reader.by_ref().take(MAX_RECORD_BYTES as u64 + 1);
+            limited.read_until(b'\n', &mut buf)
+        };
+        match read {
+            Ok(0) => break,
+            Ok(_) => {}
+            Err(_) => return Err(format!("failed to read session {}", path.display())),
+        }
+        if buf.len() > MAX_RECORD_BYTES {
+            oversized += 1;
+            let mut drain = Vec::new();
+            let mut limited = reader.by_ref().take(MAX_RECORD_BYTES as u64 + 1);
+            let _ = limited.read_until(b'\n', &mut drain);
+            continue;
+        }
+        let line = String::from_utf8_lossy(&buf);
         let line = line.trim();
         if line.is_empty() {
             continue;
@@ -786,7 +838,7 @@ fn read_full_records(path: &Path) -> Result<(Vec<Value>, usize), String> {
             _ => malformed += 1,
         }
     }
-    Ok((records, malformed))
+    Ok((records, malformed, oversized, truncated))
 }
 
 fn is_claude_boundary(record: &Value) -> bool {
@@ -1418,13 +1470,31 @@ fn millis_string_to_iso(millis: i64) -> Option<String> {
 
 /// Read a Claude Code session transcript JSONL into an inert `ClaudeHandover`.
 pub fn read_claude_session(path: &Path) -> Result<ClaudeHandover, HandoverError> {
-    let (records, malformed) = read_full_records(path).map_err(HandoverError::ReadFailed)?;
+    let (records, malformed, oversized, truncated) = read_full_records(path).map_err(HandoverError::ReadFailed)?;
     let mut warnings: Vec<HandoverWarning> = Vec::new();
     if malformed > 0 {
         add_warning(
             &mut warnings,
             "malformed_records_skipped",
             &format!("Skipped {malformed} malformed Claude transcript record(s)."),
+        );
+    }
+    if oversized > 0 {
+        add_warning(
+            &mut warnings,
+            "oversized_records_skipped",
+            &format!(
+                "Skipped {oversized} oversized Claude record(s) (>{MAX_RECORD_BYTES} bytes each); their content was not recovered."
+            ),
+        );
+    }
+    if truncated {
+        add_warning(
+            &mut warnings,
+            "transcript_truncated",
+            &format!(
+                "Transcript exceeds {MAX_TRANSCRIPT_RECORDS} records or {MAX_TRANSCRIPT_BYTES} bytes; only the recoverable head is shown."
+            ),
         );
     }
     let unknown = records

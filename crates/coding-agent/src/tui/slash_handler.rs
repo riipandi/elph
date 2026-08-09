@@ -1,12 +1,12 @@
 //! Slash command outcomes for the TUI shell.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use elph_agent::{ExtensionRegistry, PromptTemplate, Skill};
 
 use crate::agent::RETRY_CONTINUE_PROMPT;
-use crate::agent::{OverlayCommand, SlashDispatch};
+use crate::agent::{HandoverError, HandoverSession, OverlayCommand, SlashDispatch};
 use crate::agent::{
     confetti_mode_from_args, dispatch_slash_command, format_help_message, session_info_slash_message,
     session_title_for_rename, slash_unimplemented_message, system_prompt_slash_message, tools_slash_message,
@@ -132,6 +132,13 @@ pub enum SlashOutcome {
     OpenMcpAuthDialog {
         server_name: Option<String>,
     },
+    /// A background handover task was dispatched directly. Unlike
+    /// [`SlashOutcome::BackgroundTask`], the work's final user-visible text is
+    /// delivered via its own transcript events (slim handover meta line) rather
+    /// than echoing the raw slash input as a user card. The shell treats this as
+    /// a no-op; the task drives busy UI through normal stream events, so a read
+    /// failure never leaves the host stuck "busy".
+    BackgroundTaskQuiet,
 }
 
 pub struct SlashContext<'a> {
@@ -151,126 +158,178 @@ pub struct SlashContext<'a> {
 ///
 /// Syntax: `/handover <tool> [ref]` where `<tool>` is `claude` or `codex`.
 ///
-/// - `claude`: resolves the referenced Claude Code session for the current cwd,
-///   reads it as inert history, and injects a handoff prompt into the current
-///   agent session (a background turn — no `/handover` user card is echoed).
-/// - `codex`: same flow against Codex rollout transcripts (`~/.codex/sessions`).
+/// Both tools resolve the referenced session for the current cwd, read it as
+/// inert history, and inject a handoff prompt into the current agent session.
+/// The heavy file I/O + parse runs on a **background task** (never the TUI
+/// thread), so even a large transcript cannot block the render loop. Errors are
+/// surfaced via a status notice; nothing is echoed as a `/handover` user card.
 fn handle_handover_slash(ctx: SlashContext<'_>, args: &str) -> SlashOutcome {
     let mut parts = args.splitn(2, char::is_whitespace);
     let tool = parts.next().unwrap_or("").trim().to_ascii_lowercase();
     let reference = parts.next().unwrap_or("").trim().to_string();
 
-    match tool.as_str() {
-        "" => SlashOutcome::Status(
-            "Usage: /handover <claude|codex> [latest|<session-id>|<free-text>]\n\
-             Example: /handover claude latest"
-                .into(),
-        ),
-        "claude" => handle_claude_handover(ctx, &reference),
-        "codex" => handle_codex_handover(ctx, &reference),
-        other => SlashOutcome::Status(format!(
-            "Unknown handover tool `{other}` — use `/handover claude` or `/handover codex`."
-        )),
-    }
-}
-
-/// `/handover claude [ref]` — Claude Code session resume.
-fn handle_claude_handover(ctx: SlashContext<'_>, reference: &str) -> SlashOutcome {
-    use crate::agent::{
-        HandoverError, build_handoff_prompt, claude_config_dir, read_claude_session, resolve_claude_session,
+    let tool_kind = match tool.as_str() {
+        "" => {
+            return SlashOutcome::Status(
+                "Usage: /handover <claude|codex> [latest|<session-id>|<free-text>]\n\
+                 Example: /handover claude latest"
+                    .into(),
+            );
+        }
+        "claude" => HandoverTool::Claude,
+        "codex" => HandoverTool::Codex,
+        other => {
+            return SlashOutcome::Status(format!(
+                "Unknown handover tool `{other}` — use `/handover claude` or `/handover codex`."
+            ));
+        }
     };
 
     let Some(agent_session) = ctx.agent_session.as_ref() else {
         return SlashOutcome::Status("Agent session required for this command.".into());
     };
     let Some(cwd) = ctx.cwd else {
-        return SlashOutcome::Status("Working directory required for /handover claude.".into());
+        return SlashOutcome::Status(format!("Working directory required for /handover {}.", tool_kind.name()));
     };
 
-    let config_dir = match claude_config_dir() {
-        Some(dir) => dir,
-        None => {
-            return SlashOutcome::Status("Could not locate Claude config directory (expected ~/.claude).".to_string());
-        }
+    let reference_opt = if reference.is_empty() {
+        None
+    } else {
+        Some(reference.clone())
     };
-
-    let reference_opt = if reference.is_empty() { None } else { Some(reference) };
-    match resolve_claude_session(cwd, Some(&config_dir), reference_opt) {
-        Ok(session) => match read_claude_session(&session.path) {
-            Ok(handover) => {
-                if ctx.spawn_agent_work {
-                    let prompt = build_handoff_prompt(&handover, 0);
-                    let session = agent_session.clone();
-                    TurnDispatcher::spawn_turn(session, prompt, false);
+    let session = agent_session.clone();
+    let cwd = cwd.to_path_buf();
+    tokio::spawn(async move {
+        // Resolve + read + prompt-build run on a blocking pool thread, off the
+        // TUI render loop. `spawn_blocking` is a no-op dispatch when we are
+        // already inside a blocking context, which is fine here (the caller is
+        // never inside one).
+        let outcome =
+            tokio::task::spawn_blocking(move || run_handover_resolution(tool_kind, &cwd, reference_opt.as_deref()))
+                .await;
+        match outcome {
+            Ok(Ok(prompt)) => {
+                if let Err(err) = session.submit_prompt(prompt, false).await {
+                    log::warn!("handover turn failed: {err}");
                 }
-                // Quiet: the injected handoff prompt is the turn; do NOT echo a
-                // "/handover claude" user card (the handoff text carries the context).
-                SlashOutcome::SpawnAgentTurnQuiet
             }
-            Err(HandoverError::ReadFailed(message)) => {
-                SlashOutcome::Status(format!("Failed to read Claude session: {message}"))
-            }
-            Err(err) => SlashOutcome::Status(err.to_string()),
-        },
-        Err(HandoverError::Ambiguous { matches, .. }) => ambiguous_session_status("Claude", matches),
-        Err(HandoverError::NoSession(message)) => SlashOutcome::Status(message),
-        Err(err) => SlashOutcome::Status(err.to_string()),
+            Ok(Err(message)) => emit_handover_status(&session, message),
+            Err(join_err) => emit_handover_status(&session, format!("Handover task failed: {join_err}")),
+        }
+    });
+    // Quiet background dispatch: no slash card echo; busy UI is driven by the
+    // agent loop's own stream events (RunCompleted clears it), so a read failure
+    // never strands a stale "busy" chip.
+    SlashOutcome::BackgroundTaskQuiet
+}
+
+/// Which foreign tool a `/handover` refers to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum HandoverTool {
+    Claude,
+    Codex,
+}
+
+impl HandoverTool {
+    fn name(self) -> &'static str {
+        match self {
+            HandoverTool::Claude => "claude",
+            HandoverTool::Codex => "codex",
+        }
+    }
+
+    fn display(self) -> &'static str {
+        match self {
+            HandoverTool::Claude => "Claude Code",
+            HandoverTool::Codex => "Codex",
+        }
+    }
+
+    fn config_dir(self) -> Option<PathBuf> {
+        match self {
+            HandoverTool::Claude => crate::agent::claude_config_dir(),
+            HandoverTool::Codex => crate::agent::codex_config_dir(),
+        }
+    }
+
+    fn resolve(self, cwd: &Path, config_dir: &Path, reference: Option<&str>) -> Result<HandoverSession, HandoverError> {
+        match self {
+            HandoverTool::Claude => crate::agent::resolve_claude_session(cwd, Some(config_dir), reference),
+            HandoverTool::Codex => crate::agent::resolve_codex_session(cwd, Some(config_dir), reference),
+        }
+    }
+
+    fn read(self, path: &Path) -> Result<HandoverPayload, HandoverError> {
+        match self {
+            HandoverTool::Claude => crate::agent::read_claude_session(path).map(HandoverPayload::Claude),
+            HandoverTool::Codex => crate::agent::read_codex_session(path).map(HandoverPayload::Codex),
+        }
+    }
+
+    fn build_prompt(self, payload: &HandoverPayload) -> String {
+        match (self, payload) {
+            (HandoverTool::Claude, HandoverPayload::Claude(h)) => crate::agent::build_handoff_prompt(h, 0),
+            (HandoverTool::Codex, HandoverPayload::Codex(h)) => crate::agent::build_codex_handoff_prompt(h, 0),
+            _ => unreachable!("tool/payload mismatch"),
+        }
+    }
+
+    fn config_dir_label(self) -> &'static str {
+        match self {
+            HandoverTool::Claude => "~/.claude",
+            HandoverTool::Codex => "~/.codex",
+        }
     }
 }
 
-/// `/handover codex [ref]` — Codex session resume.
-fn handle_codex_handover(ctx: SlashContext<'_>, reference: &str) -> SlashOutcome {
-    use crate::agent::{
-        HandoverError, build_codex_handoff_prompt, codex_config_dir, read_codex_session, resolve_codex_session,
-    };
+/// A resolved + read + prompt-built handover payload, ready to submit.
+enum HandoverPayload {
+    Claude(crate::agent::ClaudeHandover),
+    Codex(crate::agent::CodexHandover),
+}
 
-    let Some(agent_session) = ctx.agent_session.as_ref() else {
-        return SlashOutcome::Status("Agent session required for this command.".into());
-    };
-    let Some(cwd) = ctx.cwd else {
-        return SlashOutcome::Status("Working directory required for /handover codex.".into());
-    };
+/// Run the (blocking) resolution + read + prompt-build. Returns the handoff
+/// prompt, or a user-facing error message.
+fn run_handover_resolution(tool: HandoverTool, cwd: &Path, reference: Option<&str>) -> Result<String, String> {
+    let config_dir = tool.config_dir().ok_or_else(|| {
+        format!(
+            "Could not locate {} config directory (expected {}).",
+            tool.display(),
+            tool.config_dir_label()
+        )
+    })?;
 
-    let config_dir = match codex_config_dir() {
-        Some(dir) => dir,
-        None => {
-            return SlashOutcome::Status("Could not locate Codex config directory (expected ~/.codex).".to_string());
+    let session = match tool.resolve(cwd, &config_dir, reference) {
+        Ok(session) => session,
+        Err(HandoverError::Ambiguous { matches, .. }) => {
+            return Err(ambiguous_session_message(tool.display(), matches));
         }
+        Err(err) => return Err(err.to_string()),
     };
-
-    let reference_opt = if reference.is_empty() { None } else { Some(reference) };
-    match resolve_codex_session(cwd, Some(&config_dir), reference_opt) {
-        Ok(session) => match read_codex_session(&session.path) {
-            Ok(handover) => {
-                if ctx.spawn_agent_work {
-                    let prompt = build_codex_handoff_prompt(&handover, 0);
-                    let session = agent_session.clone();
-                    TurnDispatcher::spawn_turn(session, prompt, false);
-                }
-                SlashOutcome::SpawnAgentTurnQuiet
-            }
-            Err(HandoverError::ReadFailed(message)) => {
-                SlashOutcome::Status(format!("Failed to read Codex session: {message}"))
-            }
-            Err(err) => SlashOutcome::Status(err.to_string()),
-        },
-        Err(HandoverError::Ambiguous { matches, .. }) => ambiguous_session_status("Codex", matches),
-        Err(HandoverError::NoSession(message)) => SlashOutcome::Status(message),
-        Err(err) => SlashOutcome::Status(err.to_string()),
-    }
+    let payload = tool
+        .read(&session.path)
+        .map_err(|err| format!("Failed to read {} session: {err}", tool.display()))?;
+    Ok(tool.build_prompt(&payload))
 }
 
 /// Format an ambiguous free-text reference: list candidate ids so the user can
 /// resume one by native id.
-fn ambiguous_session_status(tool: &str, matches: Vec<crate::agent::HandoverSession>) -> SlashOutcome {
+fn ambiguous_session_message(tool: &str, matches: Vec<HandoverSession>) -> String {
     let mut lines = vec![format!(
-        "Multiple {tool} sessions match, resume one by id (`/handover {} <id>`):",
-        tool.to_ascii_lowercase()
+        "Multiple {tool} sessions match, resume one by id (`/handover {tool_lower} <id>`):",
+        tool_lower = tool.to_ascii_lowercase()
     )];
     for session in matches {
         lines.push(format!("  {}  {}", session.session_id, session.title));
     }
-    SlashOutcome::Status(lines.join("\n"))
+    lines.join("\n")
+}
+
+/// Push a status notice onto the host transcript (background task error path).
+fn emit_handover_status(session: &crate::agent::CodingAgentSession, message: String) {
+    let _ = session
+        .ui_event_sender()
+        .send(crate::agent::AgentUiEvent::Status(message));
 }
 
 pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
@@ -453,6 +512,7 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
             | SlashOutcome::Unimplemented(_)
             | SlashOutcome::NewSession
             | SlashOutcome::BackgroundTask
+            | SlashOutcome::BackgroundTaskQuiet
             | SlashOutcome::OpenModelSelector { .. }
             | SlashOutcome::OpenScopedModels
             | SlashOutcome::OpenSystemPromptDialog { .. }
@@ -1043,5 +1103,18 @@ mod tests {
         assert!(slash_outcome_is_ui_only(&SlashOutcome::Status(
             "Agent session required for this command.".to_string()
         )));
+    }
+
+    #[test]
+    fn background_task_quiet_does_not_echo_and_is_ui_only() {
+        // The handover dispatch is a quiet background task: the slash input must
+        // NOT be echoed as a user card (visible feedback comes from the handoff
+        // meta line / stream events), and it must never be treated as an
+        // agent-turn spawn (busy is derived from the agent loop itself).
+        let outcome = SlashOutcome::BackgroundTaskQuiet;
+        assert!(slash_outcome_is_ui_only(&outcome));
+        assert!(!slash_echoes_prompt_in_transcript(&outcome));
+        // Contrast with the regular background task, which does echo.
+        assert!(slash_echoes_prompt_in_transcript(&SlashOutcome::BackgroundTask));
     }
 }

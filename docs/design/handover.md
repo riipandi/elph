@@ -71,6 +71,27 @@ disturbed.
 4. **Inject** — same handoff-prompt flow as Claude; the transcript shows a slim
    `Handover from Codex…` meta line.
 
+## Bounded, resilient reads
+
+Both readers apply hard caps so a pathological transcript can never stall the
+TUI or exhaust memory:
+
+- **Total transcript cap** — a session file larger than 32 MiB is rejected with
+  a clear message (`too large for a handover`) instead of being slurped whole.
+- **Per-record cap** — a JSONL line larger than 4 MiB (e.g. a multi-MB tool
+  result that would be truncated to 300 chars anyway) is counted and skipped.
+- **Record-count cap** — past 5000 conversational records the parse stops and a
+  `transcript_truncated` warning is added.
+- Oversized/unknown/malformed counts are surfaced as `## Reader warnings` in the
+  handoff prompt.
+
+`/handover` executes all file I/O + parsing on a **background task**
+(`spawn_blocking`), never on the TUI render thread. The slash input is not
+echoed as a user card; the visible feedback is the slim handover meta line plus
+the agent loop's own stream events — so a read failure cannot leave the host
+stuck in a stale "busy" state (busy is derived from the agent loop, not the
+slash dispatch).
+
 ## Safety boundary
 
 Recovered transcript content is **untrusted inert history**. The injected
@@ -108,7 +129,10 @@ Config dir overrides: `CLAUDE_CONFIG_DIR` (default `<home>/.claude`) and
 
 - **[Implemented]** Claude Code → Elph handover.
 - **[Implemented]** Codex → Elph handover (CLI/VSCode rollout transcripts).
+- **[Implemented]** Bounded reads (32 MiB transcript / 4 MiB record / 5000
+  record caps) + background dispatch (no TUI blocking, no stale-busy on error).
 - **[Gap]** Interactive picker for ambiguous/multiple sessions (currently lists
   candidate ids and asks the user to re-run with a UUID).
 - **[Gap]** Compressed `.jsonl.zst` rollouts (decompression is not wired yet).
+
 

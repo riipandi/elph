@@ -216,6 +216,74 @@ fn developer_and_control_records_are_skipped() {
 // ── full read ──────────────────────────────────────────────────────────────
 
 #[test]
+fn oversized_line_is_skipped_with_warning() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let config = tmp.path().join(".codex");
+    let p = rollout_path(&config);
+    fs::create_dir_all(p.parent().expect("parent")).expect("dirs");
+    // One line massively larger than MAX_RECORD_BYTES, then a normal user msg.
+    let huge = "x".repeat(MAX_RECORD_BYTES + 100);
+    fs::write(
+        &p,
+        format!(
+            "{}\n{} {huge}\n{}",
+            meta_record("/repo"),
+            json!({ "type": "response_item", "payload": { "type": "reasoning", "summary": [] } }),
+            user_msg("hello")
+        ),
+    )
+    .expect("write");
+    let h = read_codex_session(&p).expect("read");
+    assert!(
+        h.warnings.iter().any(|w| w.code == "oversized_records_skipped"),
+        "{:?}",
+        h.warnings
+    );
+    // The user message is still recovered.
+    assert_eq!(read_texts(&h), vec!["hello"]);
+}
+
+#[test]
+fn transcript_over_record_cap_is_truncated_with_warning() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let config = tmp.path().join(".codex");
+    let p = rollout_path(&config);
+    fs::create_dir_all(p.parent().expect("parent")).expect("dirs");
+    let mut content = format!("{}\n", meta_record("/repo"));
+    // Push well past MAX_TRANSCRIPT_RECORDS with alternating user/assistant msgs.
+    for i in 0..(super::MAX_TRANSCRIPT_RECORDS + 100) {
+        let record = if i % 2 == 0 {
+            user_msg(&format!("msg {i}"))
+        } else {
+            assistant_msg(&format!("reply {i}"))
+        };
+        content.push_str(&record.to_string());
+        content.push('\n');
+    }
+    fs::write(&p, content).expect("write");
+    let h = read_codex_session(&p).expect("read");
+    assert!(h.warnings.iter().any(|w| w.code == "transcript_truncated"), "{:?}", h.warnings);
+    assert!(h.turns.len() < super::MAX_TRANSCRIPT_RECORDS);
+}
+
+#[test]
+fn oversized_transcript_file_is_rejected_not_slurped() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let config = tmp.path().join(".codex");
+    let p = rollout_path(&config);
+    fs::create_dir_all(p.parent().expect("parent")).expect("dirs");
+    // Create a sparse file larger than MAX_TRANSCRIPT_BYTES via seek.
+    let file = fs::File::create(&p).expect("create");
+    let limit = super::MAX_TRANSCRIPT_BYTES as u64 + 4096;
+    file.set_len(limit).expect("sparse extend");
+    drop(file);
+    match read_codex_session(&p) {
+        Err(HandoverError::ReadFailed(msg)) => assert!(msg.contains("too large"), "msg: {msg}"),
+        other => panic!("expected too-large rejection, got {other:?}"),
+    }
+}
+
+#[test]
 fn reads_full_rollout_chain_with_tools() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let config = tmp.path().join(".codex");
@@ -279,7 +347,7 @@ fn unknown_records_surface_warning() {
         "/repo",
         &[
             meta_record("/repo"),
-            json!({ "type": "world_state", "payload": {} }),
+            json!({ "type": "future-record-type", "payload": {} }),
             user_msg("hi"),
         ],
     );

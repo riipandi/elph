@@ -43,6 +43,23 @@ Elph deliberately **diverges** in product design (memory, codegraph, ACP, WASM e
 
 ## Timeline
 
+### 2026-08-09 — `/handover` resilience hardening (Elph delta)
+
+**Scope:** `crates/coding-agent/` product crate. Follow-up to the Claude+Codex
+handover launch.
+
+- **Bounded reads** — both readers cap a transcript at 32 MiB total, 4 MiB per
+  JSONL record, and 5000 conversational records; oversized records are counted
+  and skipped, over-cap transcripts surface a `transcript_truncated` warning,
+  and over-size files are rejected with a clear message instead of being
+  buffered whole (previously `fs::read` slurped arbitrary-size files).
+- **Background dispatch** — `/handover` now runs resolve+read+prompt-build on a
+  `spawn_blocking` background task; the TUI render thread is never blocked. New
+  `SlashOutcome::BackgroundTaskQuiet` dispatches the handoff turn without
+  echoing the raw slash text as a user card; busy state is derived from the
+  agent loop, so a read failure cannot strand a stale "busy" chip. Error/success
+  notices flow through normal `AgentUiEvent::Status` events.
+
 ### 2026-08-09 — `/handover` Codex resume (Elph delta)
 
 **Scope:** `crates/coding-agent/` product crate. Follow-up to the `/handover`

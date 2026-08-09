@@ -480,6 +480,34 @@ fn unknown_record_types_surface_warning() {
     assert_eq!(handover.turns.len(), 1);
 }
 
+#[test]
+fn oversized_claude_record_is_skipped_with_warning() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let config = tmp.path().join(".claude");
+    let cwd = Path::new("/repo");
+    let path = config
+        .join("projects")
+        .join(slugify(cwd))
+        .join("66666666-6666-6666-6666-666666666668.jsonl");
+    fs::create_dir_all(path.parent().expect("parent")).expect("create dir");
+    let huge = "x".repeat(super::MAX_RECORD_BYTES + 100);
+    fs::write(
+        &path,
+        format!(
+            "{}\n",
+            json!({ "type": "user", "uuid": "u-big", "timestamp": "t", "message": { "role": "user", "content": huge } })
+        ),
+    )
+    .expect("write");
+    let handover = read_claude_session(&path).expect("read");
+    assert!(
+        handover.warnings.iter().any(|w| w.code == "oversized_records_skipped"),
+        "warnings: {:?}",
+        handover.warnings
+    );
+    assert!(handover.turns.is_empty());
+}
+
 // ── compaction boundaries / preserved segments ─────────────────────────────
 
 #[test]

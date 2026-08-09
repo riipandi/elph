@@ -10,7 +10,7 @@
 
 use std::collections::HashMap;
 use std::fs;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
@@ -55,6 +55,17 @@ const MAX_TEXT_CHARS: usize = 2000;
 const MAX_TOOL_CHARS: usize = 300;
 /// Max message records rendered into the handoff prompt.
 const MAX_PROMPT_TURNS: usize = 40;
+/// Max bytes a full transcript may consume when read for a handoff. Anything
+/// larger is rejected with a clear message instead of being slurped into memory
+/// (rollouts can reach tens of MB as Codex appends tool output + reasoning).
+const MAX_TRANSCRIPT_BYTES: usize = 32 * 1024 * 1024;
+/// Max bytes per JSONL record (one line). Oversized lines (e.g. a multi-MB tool
+/// result) are counted and skipped rather than parsed in full — their content
+/// would be truncated to `MAX_TOOL_CHARS` anyway.
+const MAX_RECORD_BYTES: usize = 4 * 1024 * 1024;
+/// Max conversational records kept from a full transcript. Bounded so a very
+/// long-lived session cannot grow the parse work / memory without limit.
+const MAX_TRANSCRIPT_RECORDS: usize = 5000;
 
 /// A fully read Codex session, ready to be turned into a handoff prompt.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -694,16 +705,65 @@ pub fn resolve_codex_session(
 
 // ── full transcript read ───────────────────────────────────────────────────
 
-/// Read a Codex rollout JSONL into an inert `CodexHandover`.
-pub fn read_codex_session(path: &Path) -> Result<CodexHandover, HandoverError> {
-    let Ok(bytes) = fs::read(path) else {
-        return Err(HandoverError::ReadFailed(format!("failed to read session {}", path.display())));
-    };
-    let text = String::from_utf8_lossy(&bytes);
+/// Bounded, streaming read of a Codex rollout JSONL: caps total bytes, per-line
+/// bytes, and retained record count so a pathological transcript cannot blow up
+/// memory or parse time. Returns `(records, malformed, oversized, unknown, truncated)`.
+///
+/// - `malformed` — lines that failed JSON parse.
+/// - `oversized` — lines longer than `MAX_RECORD_BYTES` (skipped, content would
+///   be truncated anyway).
+/// - `unknown`   — recognized outer shapes that are deliberately skipped.
+/// - `truncated` — true when `MAX_TRANSCRIPT_BYTES`/`MAX_TRANSCRIPT_RECORDS` was
+///   hit before EOF.
+fn read_codex_records_bounded(path: &Path) -> Result<(Vec<Value>, usize, usize, usize, bool), String> {
+    let file = fs::File::open(path).map_err(|_| format!("failed to read session {}", path.display()))?;
+    let meta = file
+        .metadata()
+        .map_err(|_| format!("failed to stat session {}", path.display()))?;
+    let size = meta.len() as usize;
+    if size > MAX_TRANSCRIPT_BYTES {
+        return Err(format!(
+            "session {} is {:.1} MiB (limit {} MiB); too large for a handover",
+            path.display(),
+            size as f64 / (1024.0 * 1024.0),
+            MAX_TRANSCRIPT_BYTES / (1024 * 1024)
+        ));
+    }
+
+    let mut reader = BufReader::new(file);
     let mut records: Vec<Value> = Vec::new();
     let mut malformed = 0usize;
+    let mut oversized = 0usize;
     let mut unknown = 0usize;
-    for line in text.lines() {
+    let mut truncated = false;
+
+    loop {
+        if records.len() >= MAX_TRANSCRIPT_RECORDS {
+            truncated = true;
+            break;
+        }
+        // Read one line, never more than MAX_RECORD_BYTES+1 bytes (detect
+        // over-long lines without buffering their whole content). `read_until`
+        // stops at `\n`, so a normal line consumes exactly its own bytes.
+        let mut buf: Vec<u8> = Vec::new();
+        let read = {
+            let mut limited = reader.by_ref().take(MAX_RECORD_BYTES as u64 + 1);
+            limited.read_until(b'\n', &mut buf)
+        };
+        match read {
+            Ok(0) => break,
+            Ok(_) => {}
+            Err(_) => return Err(format!("failed to read session {}", path.display())),
+        }
+        if buf.len() > MAX_RECORD_BYTES {
+            oversized += 1;
+            // The line is longer than the cap; drain its remaining bytes.
+            let mut drain = Vec::new();
+            let mut limited = reader.by_ref().take(MAX_RECORD_BYTES as u64 + 1);
+            let _ = limited.read_until(b'\n', &mut drain);
+            continue;
+        }
+        let line = String::from_utf8_lossy(&buf);
         let line = line.trim();
         if line.is_empty() {
             continue;
@@ -711,7 +771,10 @@ pub fn read_codex_session(path: &Path) -> Result<CodexHandover, HandoverError> {
         match serde_json::from_str::<Value>(line) {
             Ok(record) if record.is_object() => {
                 let outer = record.get("type").and_then(Value::as_str).unwrap_or("");
-                if SKIP_OUTER_TYPES.contains(&outer) || (!OUTER_TYPES.contains(&outer)) {
+                if SKIP_OUTER_TYPES.contains(&outer) {
+                    continue;
+                }
+                if !OUTER_TYPES.contains(&outer) {
                     unknown += 1;
                     continue;
                 }
@@ -721,6 +784,14 @@ pub fn read_codex_session(path: &Path) -> Result<CodexHandover, HandoverError> {
         }
     }
 
+    Ok((records, malformed, oversized, unknown, truncated))
+}
+
+/// Read a Codex rollout JSONL into an inert `CodexHandover`.
+pub fn read_codex_session(path: &Path) -> Result<CodexHandover, HandoverError> {
+    let (records, malformed, oversized, unknown, truncated) =
+        read_codex_records_bounded(path).map_err(HandoverError::ReadFailed)?;
+
     let mut warnings: Vec<HandoverWarning> = Vec::new();
     if malformed > 0 {
         add_warning(
@@ -729,11 +800,29 @@ pub fn read_codex_session(path: &Path) -> Result<CodexHandover, HandoverError> {
             &format!("Skipped {malformed} malformed Codex transcript record(s)."),
         );
     }
+    if oversized > 0 {
+        add_warning(
+            &mut warnings,
+            "oversized_records_skipped",
+            &format!(
+                "Skipped {oversized} oversized Codex record(s) (>{MAX_RECORD_BYTES} bytes each); their content was not recovered."
+            ),
+        );
+    }
     if unknown > 0 {
         add_warning(
             &mut warnings,
             "unknown_records_skipped",
             &format!("Skipped {unknown} unknown Codex record(s) without interpreting their payloads."),
+        );
+    }
+    if truncated {
+        add_warning(
+            &mut warnings,
+            "transcript_truncated",
+            &format!(
+                "Transcript exceeds {MAX_TRANSCRIPT_RECORDS} records or {MAX_TRANSCRIPT_BYTES} bytes; only the recoverable head is shown."
+            ),
         );
     }
     if records.is_empty() {
