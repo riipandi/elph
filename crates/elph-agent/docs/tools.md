@@ -216,8 +216,9 @@ Replace an exact substring in a file. `old_string` must occur exactly once.
 
 The edit is applied in memory, written to disk, then **re-read from disk and compared** to the
 intended result. A successful result therefore means the change actually persisted. The tool
-aborts (without touching the file) if `new_string` reintroduces `old_string`, or if the on-disk
-content does not match after the write.
+aborts (without touching the file) if `new_string` reintroduces `old_string`, if the file
+changed between the initial read and the write (TOCTOU — another tool or external editor
+modified it), or if the on-disk content does not match after the write.
 
 #### `write_file`
 
