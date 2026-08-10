@@ -1345,10 +1345,20 @@ pub(crate) fn build_shell_view(
                         if slash_echoes_prompt_in_transcript(&outcome) && !queue_follow_up {
                             let echo = if is_slash {
                                 // Keep leading `/` so history / skill cards restore as `/name` or `/cmd`.
-                                if slash_input.trim().starts_with('/') {
+                                // Add prefix for skills and prompt templates to distinguish them in transcript.
+                                let base = if slash_input.trim().starts_with('/') {
                                     slash_input.trim().to_string()
                                 } else {
                                     format!("/{}", slash_input.trim())
+                                };
+                                match &outcome {
+                                    SlashOutcome::SpawnAgentTurnSkill { .. } => {
+                                        format!("[skill] {}", base)
+                                    }
+                                    SlashOutcome::SpawnAgentTurnPromptTemplate { .. } => {
+                                        base // No prefix for prompt templates
+                                    }
+                                    _ => base,
                                 }
                             } else {
                                 // Normal prompt — no forced `/` prefix.
@@ -1821,7 +1831,10 @@ pub(crate) fn build_shell_view(
                                 // (slim meta line / stream) and derives busy state from the
                                 // agent loop, so a read failure never strands a stale busy UI.
                             }
-                            SlashOutcome::SpawnAgentTurn | SlashOutcome::SpawnAgentTurnQuiet if is_slash => {
+                            SlashOutcome::SpawnAgentTurn
+                            | SlashOutcome::SpawnAgentTurnSkill { .. }
+                            | SlashOutcome::SpawnAgentTurnPromptTemplate { .. }
+                            | SlashOutcome::SpawnAgentTurnQuiet if is_slash => {
                                 if agent_turn_active.get() {
                                     // The command was already dispatched by handle_slash_submit
                                     // (turn_gate queues it behind the active turn). Tell the user —
@@ -1854,7 +1867,10 @@ pub(crate) fn build_shell_view(
                                     begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
                                 }
                             }
-                            SlashOutcome::SpawnAgentTurn | SlashOutcome::SpawnAgentTurnQuiet => {
+                            SlashOutcome::SpawnAgentTurn
+                            | SlashOutcome::SpawnAgentTurnSkill { .. }
+                            | SlashOutcome::SpawnAgentTurnPromptTemplate { .. }
+                            | SlashOutcome::SpawnAgentTurnQuiet => {
                                 debug_assert!(!slash_outcome_is_ui_only(&SlashOutcome::SpawnAgentTurn));
                                 if agent_turn_active.get() {
                                     prompt_queue.write().push_follow_up_local(body.clone());

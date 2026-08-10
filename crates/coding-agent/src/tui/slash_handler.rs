@@ -76,6 +76,14 @@ pub enum SlashOutcome {
     Status(String),
     Unimplemented(String),
     SpawnAgentTurn,
+    /// Spawn agent turn from a skill (echoed as `[skill] /name` in transcript).
+    SpawnAgentTurnSkill {
+        name: String,
+    },
+    /// Spawn agent turn from a prompt template (echoed as `/name` in transcript).
+    SpawnAgentTurnPromptTemplate {
+        name: String,
+    },
     /// Like [`SlashOutcome::SpawnAgentTurn`], but the slash input is NOT echoed as a
     /// user prompt card (e.g. `/compact` — the compaction notice already communicates it).
     SpawnAgentTurnQuiet,
@@ -601,8 +609,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             TurnDispatcher::spawn_turn(session, RETRY_CONTINUE_PROMPT.to_string(), false);
             SlashOutcome::SpawnAgentTurnQuiet
         }
-        SlashDispatch::Compact { .. } | SlashDispatch::PromptTemplate { .. } => {
-            let is_compact = matches!(dispatch, SlashDispatch::Compact { .. });
+        SlashDispatch::Compact { .. } => {
             if ctx.agent_session.is_none() {
                 return SlashOutcome::Status("Agent session required for this command.".into());
             }
@@ -612,12 +619,20 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             let extension_host = ctx.extension_host.cloned();
             SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
             // `/compact` must not echo a "/compact" user prompt card — the compaction
-            // notice already communicates it. Other turn-spawning slash commands do echo.
-            if is_compact {
-                SlashOutcome::SpawnAgentTurnQuiet
-            } else {
-                SlashOutcome::SpawnAgentTurn
+            // notice already communicates it.
+            SlashOutcome::SpawnAgentTurnQuiet
+        }
+        SlashDispatch::PromptTemplate { ref name, .. } => {
+            if ctx.agent_session.is_none() {
+                return SlashOutcome::Status("Agent session required for this command.".into());
             }
+            let session = ctx.agent_session.clone().expect("checked above");
+            let paths = ctx.paths.cloned();
+            let cwd = ctx.cwd.map(|path| path.to_path_buf());
+            let extension_host = ctx.extension_host.cloned();
+            let name = name.clone();
+            SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
+            SlashOutcome::SpawnAgentTurnPromptTemplate { name }
         }
         SlashDispatch::Goal { .. } | SlashDispatch::Reload | SlashDispatch::Extension { .. } => {
             if ctx.agent_session.is_none() {
@@ -647,8 +662,9 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             let paths = ctx.paths.cloned();
             let cwd = ctx.cwd.map(|path| path.to_path_buf());
             let extension_host = ctx.extension_host.cloned();
+            let name = name.clone();
             SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
-            SlashOutcome::SpawnAgentTurn
+            SlashOutcome::SpawnAgentTurnSkill { name }
         }
     }
 }
@@ -752,7 +768,13 @@ fn open_tree_item_selector(session: Option<&Arc<crate::agent::CodingAgentSession
 
 /// Whether the slash outcome should show an agent turn indicator.
 pub fn slash_echoes_prompt_in_transcript(outcome: &SlashOutcome) -> bool {
-    matches!(outcome, SlashOutcome::SpawnAgentTurn | SlashOutcome::BackgroundTask)
+    matches!(
+        outcome,
+        SlashOutcome::SpawnAgentTurn
+            | SlashOutcome::SpawnAgentTurnSkill { .. }
+            | SlashOutcome::SpawnAgentTurnPromptTemplate { .. }
+            | SlashOutcome::BackgroundTask
+    )
 }
 
 pub fn overlay_deferred_message(overlay: &OverlayCommand) -> String {
@@ -933,6 +955,12 @@ mod tests {
             mode: crate::tui::confetti::ConfettiMode::Confetti
         }));
         assert!(slash_echoes_prompt_in_transcript(&SlashOutcome::SpawnAgentTurn));
+        assert!(slash_echoes_prompt_in_transcript(&SlashOutcome::SpawnAgentTurnSkill {
+            name: "test".into()
+        }));
+        assert!(slash_echoes_prompt_in_transcript(&SlashOutcome::SpawnAgentTurnPromptTemplate {
+            name: "test".into()
+        }));
         // `/compact` spawns a turn but must NOT echo a "/compact" user prompt card.
         assert!(!slash_echoes_prompt_in_transcript(&SlashOutcome::SpawnAgentTurnQuiet));
     }
@@ -1066,6 +1094,12 @@ mod tests {
             text: "tools".into()
         }));
         assert!(!slash_outcome_is_ui_only(&SlashOutcome::SpawnAgentTurn));
+        assert!(!slash_outcome_is_ui_only(&SlashOutcome::SpawnAgentTurnSkill {
+            name: "test".into()
+        }));
+        assert!(!slash_outcome_is_ui_only(&SlashOutcome::SpawnAgentTurnPromptTemplate {
+            name: "test".into()
+        }));
     }
 
     #[test]
@@ -1314,5 +1348,12 @@ mod tests {
         assert!(!slash_echoes_prompt_in_transcript(&outcome));
         // Contrast with the regular background task, which does echo.
         assert!(slash_echoes_prompt_in_transcript(&SlashOutcome::BackgroundTask));
+        // Skills and prompt templates do echo (with custom formatting).
+        assert!(slash_echoes_prompt_in_transcript(&SlashOutcome::SpawnAgentTurnSkill {
+            name: "test".into()
+        }));
+        assert!(slash_echoes_prompt_in_transcript(&SlashOutcome::SpawnAgentTurnPromptTemplate {
+            name: "test".into()
+        }));
     }
 }

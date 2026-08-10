@@ -3003,8 +3003,18 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 // shows a "queued" notice instead, and no raw slash text reaches the model.
                 let queue_follow_up = agent_turn_active.get();
                 if slash_echoes_prompt_in_transcript(&outcome) && !queue_follow_up {
+                    // Add prefix for skills to distinguish them in transcript.
+                    let formatted_echo = match &outcome {
+                        SlashOutcome::SpawnAgentTurnSkill { name: _ } => {
+                            format!("[skill] {}", echo)
+                        }
+                        SlashOutcome::SpawnAgentTurnPromptTemplate { name: _ } => {
+                            echo // No prefix for prompt templates
+                        }
+                        _ => echo,
+                    };
                     let mut submitted =
-                        TranscriptMessage::text(echo.clone(), TranscriptStyle::for_slash_turn_echo(&slash_input));
+                        TranscriptMessage::text(formatted_echo, TranscriptStyle::for_slash_turn_echo(&slash_input));
                     if submitted.style.is_user_input_card() {
                         submitted.submitted_at = Some(chrono::Utc::now());
                         // Sync to shared arc so the arc-to-state sync never loses this pre-echoed prompt.
@@ -3303,7 +3313,10 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             TranscriptMessage::text(message, TranscriptStyle::Meta),
                         );
                     }
-                    SlashOutcome::SpawnAgentTurn | SlashOutcome::SpawnAgentTurnQuiet => {
+                    SlashOutcome::SpawnAgentTurn
+                    | SlashOutcome::SpawnAgentTurnSkill { .. }
+                    | SlashOutcome::SpawnAgentTurnPromptTemplate { .. }
+                    | SlashOutcome::SpawnAgentTurnQuiet => {
                         if agent_turn_active.get() {
                             // The command was already dispatched by handle_slash_submit
                             // (turn_gate queues it behind the active turn). Tell the user —
