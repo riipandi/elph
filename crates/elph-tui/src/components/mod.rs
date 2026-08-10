@@ -58,8 +58,8 @@ pub use dialog_shell::{
     dialog_mode_select_options, dialog_overlay_left, dialog_overlay_top, dialog_select_body_plan,
     dialog_select_fixed_rows, dialog_shell_estimated_height, dialog_text_rows, dialog_todo_list_content_rows,
     multi_choice_key_action, multi_choice_selected_indices, multi_choice_toggle, progress_row_glyph,
-    select_list_chrome_rows, todo_panel_header_line, todo_row_line, todo_row_prefix, todo_status_glyph,
-    todo_status_word,
+    select_list_chrome_rows, todo_panel_header_line, todo_panel_should_show, todo_row_line, todo_row_prefix,
+    todo_status_glyph, todo_status_word,
 };
 pub use diff::{
     DiffLineNumberStyle, DiffMode, DiffView, DiffViewProps, EMBEDDED_DIFF_MAX_LINES, unified_diff_display_rows,

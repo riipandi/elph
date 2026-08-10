@@ -62,4 +62,14 @@ Table `session_todos` in `.elph/store.db`, cascade-deleted with the session. See
 
 ## TUI
 
-Tasks panel (pending / in progress above the prompt) is planned to bind to this store; tool results already return the full list JSON for the model and host to refresh UI.
+Live panel above the status row, driven by `TodoUpdated` UI events from `todo_write`:
+
+| Behavior | Detail |
+| -------- | ------ |
+| Chrome | Minimal round border; title inline on the top edge as `(Todos done/total)` |
+| Rows | Unfinished only (`○` pending / spinner when `in_progress`); finished hidden |
+| Hide | Entire panel disappears when every item is `completed` or `cancelled` (or the list is empty) |
+| Cap | At most 5 open rows; extra shown as `↓N more` |
+| Steer / interject | Queued steer (Ctrl+Enter) or activity `Steering` dims rows, pauses spinner emphasis, and annotates the title as `(Todos x/x · steered)` so the checklist reads as provisional until the agent rewrites it |
+
+Tool results still return the full list JSON for the model; the host mirrors that into the panel.

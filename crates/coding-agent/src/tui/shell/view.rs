@@ -880,7 +880,7 @@ pub(crate) fn build_shell_view(
                 }
                 .into()
             }))
-            #(if !todos.read().is_empty() {
+            #({
                 let items = todos.read();
                 let panel_rows: Vec<elph_tui::TodoPanelRow> = items
                     .iter()
@@ -896,17 +896,32 @@ pub(crate) fn build_shell_view(
                         }
                     })
                     .collect();
-                let panel_theme = elph_tui::UiTheme::default();
-                Some::<AnyElement<'static>>(element! {
-                    elph_tui::TodoProgressPanel(
-                        width: screen_width.saturating_sub(4),
-                        items: panel_rows,
-                        tick: todo_panel_tick.get(),
-                        max_rows: elph_tui::TODO_PANEL_DEFAULT_MAX_ROWS,
-                        theme: Some(panel_theme),
-                    )
-                }.into())
-            } else { None })
+                // Hide once every item is finished (or the list is empty).
+                if !elph_tui::todo_panel_should_show(&panel_rows) {
+                    None
+                } else {
+                    // Steering / interject (Ctrl+Enter) or a queued steer item: dim the
+                    // checklist so the old plan reads as provisional until the agent updates it.
+                    let activity = activity_label.read().clone();
+                    let steered_queued = prompt_queue.read().items().iter().any(|item| {
+                        matches!(item.kind, crate::agent::QueuedPromptKind::Steer)
+                    });
+                    let redirected = steered_queued
+                        || activity.eq_ignore_ascii_case("Steering")
+                        || activity.to_ascii_lowercase().starts_with("steering");
+                    let panel_theme = elph_tui::UiTheme::default();
+                    Some::<AnyElement<'static>>(element! {
+                        elph_tui::TodoProgressPanel(
+                            width: screen_width,
+                            items: panel_rows,
+                            tick: todo_panel_tick.get(),
+                            max_rows: elph_tui::TODO_PANEL_DEFAULT_MAX_ROWS,
+                            redirected: redirected,
+                            theme: Some(panel_theme),
+                        )
+                    }.into())
+                }
+            })
             #(user_question_view.map(|view| -> AnyElement<'static> {
                 element! {
                     UserQuestionBar(

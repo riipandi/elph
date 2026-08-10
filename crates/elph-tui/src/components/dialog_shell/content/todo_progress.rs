@@ -2,10 +2,10 @@
 //!
 //! [`DialogTodoProgressContent`] is the static dialog preset. [`TodoProgressPanel`]
 //! is the compact live panel used by the coding-agent shell above the status row:
-//! per-status glyph (`○` pending / animated spinner `◆` running / `✓` finished),
-//! a plain-language status word (never color alone), header with
-//! `Todos · done/total · ↑hidden`, configurable row cap with a `↓N more` hint,
-//! and finished rows hidden from the visible list.
+//! minimal single border with inline title `(Todos done/total)`, per-status glyph
+//! (`○` pending / animated spinner when running / `✓` finished), finished rows
+//! hidden from the list, and the whole panel hidden once every item is finished.
+//! When the user steers or interjects, rows dim so the plan reads as provisional.
 
 use super::layout::dialog_body_row_gap;
 use crate::components::status_indicator::{
@@ -23,7 +23,7 @@ pub const TODO_GLYPH_RUNNING: &str = GLYPH_RUNNING; // ◌
 pub const TODO_GLYPH_DONE: &str = GLYPH_DONE; // ✓
 
 /// Default max visible rows for [`TodoProgressPanel`] (before `↓N more`).
-pub const TODO_PANEL_DEFAULT_MAX_ROWS: usize = 6;
+pub const TODO_PANEL_DEFAULT_MAX_ROWS: usize = 5;
 
 /// Plain-language status word for a live todo row (a11y — never color alone).
 pub fn todo_status_word(finished: bool, running: bool) -> &'static str {
@@ -65,17 +65,21 @@ pub fn build_todo_panel_rows(todos: &[TodoPanelRow]) -> (Vec<TodoPanelRow>, usiz
     (visible, visible_count, done, total)
 }
 
-/// Header line: `Todos · 2/5 · ↑1`.
-pub fn todo_panel_header_line(visible_count: usize, done: usize, total: usize) -> String {
-    let hidden = total.saturating_sub(visible_count);
-    let mut line = format!("{TODO_PANEL_HEADER_PREFIX} {done}/{total}");
-    if hidden > 0 {
-        line.push_str(&format!(" · ↑{hidden}"));
-    }
-    line
+/// Whether the live panel should paint: any unfinished item remains.
+pub fn todo_panel_should_show(todos: &[TodoPanelRow]) -> bool {
+    todos.iter().any(|t| !t.finished)
 }
 
-/// Header label shown above the live todo rows.
+/// Border title: `(Todos 2/5)` or `(Todos 2/5 · steered)` when the user redirected.
+pub fn todo_panel_header_line(done: usize, total: usize, redirected: bool) -> String {
+    if redirected {
+        format!("({TODO_PANEL_HEADER_PREFIX} {done}/{total} · steered)")
+    } else {
+        format!("({TODO_PANEL_HEADER_PREFIX} {done}/{total})")
+    }
+}
+
+/// Header label fragment inside the border title (without parentheses / counts).
 pub const TODO_PANEL_HEADER_PREFIX: &str = "Todos";
 
 /// Props for [`TodoProgressPanel`].
@@ -88,6 +92,9 @@ pub struct TodoProgressPanelProps {
     pub tick: u32,
     /// Max visible rows before the `↓N more` hint (0 = show all).
     pub max_rows: usize,
+    /// User steered / interjected while this plan is still on screen — dim rows
+    /// and annotate the border title so the checklist reads as provisional.
+    pub redirected: bool,
     pub theme: Option<UiTheme>,
 }
 
@@ -98,6 +105,7 @@ impl Default for TodoProgressPanelProps {
             items: Vec::new(),
             tick: 0,
             max_rows: TODO_PANEL_DEFAULT_MAX_ROWS,
+            redirected: false,
             theme: None,
         }
     }
@@ -107,19 +115,44 @@ impl Default for TodoProgressPanelProps {
 pub fn TodoProgressPanel(props: &TodoProgressPanelProps, hooks: Hooks) -> impl Into<AnyElement<'static>> {
     let theme = resolve_ui_theme(&hooks, props.theme);
     let (visible, visible_count, done, total) = build_todo_panel_rows(&props.items);
+
+    // All finished (or empty) → render nothing (parent should also gate on this).
+    if !todo_panel_should_show(&props.items) {
+        return element! {
+            View(width: 0u16, height: 0u16, flex_shrink: 0f32)
+        };
+    }
+
     let cap = if props.max_rows == 0 {
         visible_count
     } else {
         props.max_rows.min(visible_count)
     };
     let show_more = visible_count > cap;
-    let header = todo_panel_header_line(visible_count, done, total);
-    let animate = props.tick != 0;
+    let header = todo_panel_header_line(done, total, props.redirected);
+    let animate = props.tick != 0 && !props.redirected;
     let spinner_glyph = spinner_glyph_for_tick(props.tick);
+    let border_color = if props.redirected {
+        theme.border_subtle
+    } else {
+        theme.border
+    };
+    let title_color = if props.redirected {
+        theme.text_muted
+    } else {
+        theme.text_hint
+    };
+
+    // Inner content width: border (2) + horizontal padding (2).
+    let inner_width = props.width.saturating_sub(4).max(8);
+    // Glyph + gap + label.
+    let label_max = (inner_width as usize).saturating_sub(2).max(4);
 
     let mut rows: Vec<AnyElement<'static>> = Vec::new();
     for row in visible.iter().take(cap) {
-        let color = if row.running {
+        let color = if props.redirected {
+            theme.text_muted
+        } else if row.running {
             theme.warning
         } else {
             theme.text_secondary
@@ -129,21 +162,27 @@ pub fn TodoProgressPanel(props: &TodoProgressPanelProps, hooks: Hooks) -> impl I
         } else {
             todo_status_glyph(row.running, row.finished)
         };
+        let label = truncate_todo_label(&row.label, label_max);
         rows.push(
             element! {
                 View(
                     flex_direction: FlexDirection::Row,
-                    gap: theme.gap_md,
+                    gap: 1u16,
                     align_items: AlignItems::Center,
                     flex_shrink: 0f32,
+                    width: inner_width,
                 ) {
                     View(flex_shrink: 0f32) {
                         Text(content: glyph.to_string(), color: color, wrap: TextWrap::NoWrap)
                     }
                     Text(
-                        content: row.label.clone(),
+                        content: label,
                         color: color,
-                        weight: if row.running { Weight::Bold } else { Weight::Normal },
+                        weight: if row.running && !props.redirected {
+                            Weight::Bold
+                        } else {
+                            Weight::Normal
+                        },
                         wrap: TextWrap::NoWrap,
                     )
                 }
@@ -155,7 +194,7 @@ pub fn TodoProgressPanel(props: &TodoProgressPanelProps, hooks: Hooks) -> impl I
         rows.push(
             element! {
                 Text(
-                    content: format!("  ↓{} more", visible_count.saturating_sub(cap)),
+                    content: format!("↓{} more", visible_count.saturating_sub(cap)),
                     color: theme.text_hint,
                     wrap: TextWrap::NoWrap,
                 )
@@ -169,15 +208,56 @@ pub fn TodoProgressPanel(props: &TodoProgressPanelProps, hooks: Hooks) -> impl I
             width: props.width,
             flex_shrink: 0f32,
             flex_direction: FlexDirection::Column,
+            border_style: BorderStyle::Round,
+            border_color: border_color,
+            position: Position::Relative,
+            padding_left: 1u16,
+            padding_right: 1u16,
+            padding_top: 0u16,
+            padding_bottom: 0u16,
+            margin_bottom: 0u16,
         ) {
-            View(width: props.width, flex_shrink: 0f32) {
-                Text(content: header, color: theme.text_hint, wrap: TextWrap::NoWrap)
+            View(
+                position: Position::Absolute,
+                top: 0,
+                left: 1,
+                margin_top: -1,
+                background_color: Color::Reset,
+            ) {
+                Text(
+                    content: format!(" {header} "),
+                    color: title_color,
+                    wrap: TextWrap::NoWrap,
+                )
             }
-            View(width: props.width, flex_direction: FlexDirection::Column, gap: theme.gap_md, flex_shrink: 0f32) {
+            View(
+                width: inner_width,
+                flex_direction: FlexDirection::Column,
+                gap: 0u16,
+                flex_shrink: 0f32,
+            ) {
                 #(rows)
             }
         }
     }
+}
+
+/// Char-safe truncate with ellipsis for long todo titles.
+fn truncate_todo_label(label: &str, max_chars: usize) -> String {
+    if max_chars == 0 {
+        return String::new();
+    }
+    let count = label.chars().count();
+    if count <= max_chars {
+        return label.to_string();
+    }
+    if max_chars <= 1 {
+        return "…".to_string();
+    }
+    let keep = max_chars.saturating_sub(1);
+    let mut out: String = label.chars().take(keep).collect();
+    out.push('…');
+    out
 }
 
 /// Braille spinner frame for a polled tick (wall-clock phase, skips when lagging).
@@ -317,9 +397,27 @@ mod tests {
     }
 
     #[test]
-    fn header_reports_counts_and_hidden() {
-        assert_eq!(todo_panel_header_line(2, 1, 3), "Todos 1/3 · ↑1");
-        assert_eq!(todo_panel_header_line(3, 0, 3), "Todos 0/3");
+    fn header_reports_counts_and_steered() {
+        assert_eq!(todo_panel_header_line(1, 3, false), "(Todos 1/3)");
+        assert_eq!(todo_panel_header_line(0, 3, false), "(Todos 0/3)");
+        assert_eq!(todo_panel_header_line(2, 5, true), "(Todos 2/5 · steered)");
+    }
+
+    #[test]
+    fn hide_when_all_finished_or_empty() {
+        assert!(!todo_panel_should_show(&[]));
+        let done = vec![TodoPanelRow {
+            label: "done".into(),
+            running: false,
+            finished: true,
+        }];
+        assert!(!todo_panel_should_show(&done));
+        let open = vec![TodoPanelRow {
+            label: "open".into(),
+            running: false,
+            finished: false,
+        }];
+        assert!(todo_panel_should_show(&open));
     }
 
     #[test]
@@ -334,7 +432,13 @@ mod tests {
         let (visible, visible_count, _, _) = build_todo_panel_rows(&rows);
         assert_eq!(visible_count, 8);
         assert_eq!(visible.len(), 8);
-        // cap = max_rows, not total (6 of 8 visible, 2 hidden by hint)
-        assert_eq!(visible_count.saturating_sub(TODO_PANEL_DEFAULT_MAX_ROWS), 2);
+        assert_eq!(visible_count.saturating_sub(TODO_PANEL_DEFAULT_MAX_ROWS), 3);
+    }
+
+    #[test]
+    fn truncate_label_is_char_safe() {
+        assert_eq!(truncate_todo_label("hello", 10), "hello");
+        assert_eq!(truncate_todo_label("hello world", 8), "hello w…");
+        assert_eq!(truncate_todo_label("日本語テスト", 4), "日本語…");
     }
 }
