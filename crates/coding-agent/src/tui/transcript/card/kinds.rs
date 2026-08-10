@@ -323,11 +323,12 @@ pub fn thinking_card(
         toggle,
     )];
     if show_body {
-        // Streaming: tight 20-line cap so the collapse-on-finish transition does not
-        // cause a large layout jump. Finished + expanded: full content (48 lines) so
-        // the user sees the complete reasoning when they expand a settled card.
+        // Streaming: fixed 8 wrapped-row cap (header + gap + body ≤ 10 rows) so the
+        // collapse-on-finish transition does not cause a large layout jump. Finished +
+        // expanded: full content (48 lines) so the user sees the complete reasoning
+        // when they expand a settled card.
         let body = if streaming {
-            format_thinking_stream_body_display(&message.content)
+            format_thinking_stream_body_display(&message.content, inner_width)
         } else {
             format_thinking_body_display(&message.content)
         };
@@ -935,7 +936,7 @@ pub fn thinking_response_pair_card(
                 ))
                 #(if thinking_show_body {
                     let body = if thinking.is_thinking_streaming() {
-                        format_thinking_stream_body_display(&thinking.content)
+                        format_thinking_stream_body_display(&thinking.content, inner_width)
                     } else {
                         format_thinking_body_display(&thinking.content)
                     };

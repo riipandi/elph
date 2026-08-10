@@ -559,11 +559,20 @@ impl TranscriptMessage {
     /// Process-phase cards share a one-line header shape (`● Label · 1.2s`) for measurement;
     /// the TUI paints duration on the right rail, not as an inline suffix.
     pub fn layout_text(&self) -> String {
+        // No screen context here (tests / sticky placeholders): use a representative width.
+        // Layout measurement always calls `layout_text_at` with the real inner width.
+        self.layout_text_at(80)
+    }
+
+    /// Layout text at the card's real inner wrap width — the scroll layout measures a
+    /// streaming thinking card with the same width the renderer and body cap use, so the
+    /// measured height matches the painted height exactly.
+    pub fn layout_text_at(&self, wrap_width: u16) -> String {
         if let Some(tool) = &self.tool {
             return tool.layout_text(self.style, self.duration_secs, self.detail_expanded);
         }
         match self.style {
-            TranscriptStyle::Thinking => self.process_phase_layout_text("Thinking"),
+            TranscriptStyle::Thinking => self.process_phase_layout_text("Thinking", wrap_width),
             // AI chat responses render as plain log lines — no `Response` phase header.
             TranscriptStyle::Assistant => self.content.clone(),
             _ if self.style.is_status_line() => {
@@ -614,7 +623,9 @@ impl TranscriptMessage {
     }
 
     /// Header (+ optional body) for a thinking phase (glyph matches process indicator).
-    fn process_phase_layout_text(&self, label: &str) -> String {
+    /// `wrap_width` is the card's inner paint width — the streaming body cap is measured in
+    /// wrapped rows at this exact width so measured layout matches the painted height.
+    fn process_phase_layout_text(&self, label: &str, wrap_width: u16) -> String {
         use elph_tui::{GLYPH_META_SEP, ProcessStatus, process_status_glyph, process_status_word};
         let streaming = self.duration_secs.is_none();
         let status = if streaming {
@@ -632,9 +643,9 @@ impl TranscriptMessage {
         let show_body = streaming || (self.detail_expanded && !self.content.is_empty());
         if show_body {
             let body = if streaming {
-                // Streaming thinking: 20-line cap so the collapse-on-finish transition
-                // does not cause a large layout jump.
-                format_thinking_stream_body_display(&self.content)
+                // Streaming thinking: fixed 8 wrapped-row cap (header + gap + body ≤ 10 rows)
+                // so the collapse-on-finish transition does not cause a large layout jump.
+                format_thinking_stream_body_display(&self.content, wrap_width)
             } else {
                 format_thinking_body_display(&self.content)
             };

@@ -12,7 +12,7 @@ use crate::runtime::local_env::LocalExecutionEnv;
 use crate::tools::common::{check_aborted, file_error, read_file_text, resolve_path};
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult, ToolResultContent};
-use crate::workers::SharedPathClaim;
+use crate::workers::{SharedPathClaim, file_content_fingerprint};
 
 pub fn create_edit_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     create_edit_file_tool_with_claims(env, None)
@@ -164,6 +164,27 @@ async fn execute_edit(
             "edit verification failed: the file on disk for {path} does not match the intended \
              edit. The change may not have been persisted."
         ));
+    }
+
+    // Refresh the content hash in the claim after successful edit to prevent subsequent
+    // hash mismatch errors. This is crucial for multi-edit workflows where the same file
+    // is edited multiple times in sequence.
+    if let Some(claim) = claims.as_ref() {
+        // Re-claim with the new content hash to update the lease's content fingerprint
+        let new_hash = file_content_fingerprint(&absolute);
+        let path_norm = crate::workers::normalize_claim_path(&absolute, claim.project_key());
+        let _ = claim
+            .store()
+            .try_claim(
+                claim.project_key(),
+                &path_norm,
+                claim.worker_id(),
+                claim.session_id(),
+                Some("refresh_hash"),
+                new_hash.as_deref(),
+                claim.stale_secs(),
+            )
+            .await;
     }
 
     Ok(AgentToolResult {

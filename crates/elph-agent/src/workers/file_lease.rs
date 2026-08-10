@@ -76,7 +76,8 @@ impl FileLeaseStore {
                         // `ensure_content_unchanged` still detects external writes.
                         let refresh_hash = purpose.as_deref() == Some("refresh_hash");
                         let new_hash = if refresh_hash {
-                            content_hash.clone().or(existing.content_hash.clone())
+                            // For refresh_hash, always use the provided new content_hash
+                            content_hash.clone()
                         } else {
                             existing.content_hash.clone()
                         };

@@ -67,7 +67,13 @@ pub fn render_invisible_tinted_card(chrome: &TranscriptCardChrome, message: &Tra
     if message.style.is_user_input_card() {
         return render_user_input_card(chrome, message, false);
     }
-    render_text_card(chrome, &message.layout_text(), chrome.background, chrome.background)
+    let inner_width = chrome.inner_width(message.style);
+    render_text_card(
+        chrome,
+        &message.layout_text_at(inner_width),
+        chrome.background,
+        chrome.background,
+    )
 }
 
 pub fn render_flush_card(chrome: &TranscriptCardChrome, message: &TranscriptMessage) -> AnyElement<'static> {

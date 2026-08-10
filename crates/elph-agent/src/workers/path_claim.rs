@@ -42,6 +42,18 @@ impl PathClaimContext {
         &self.worker_id
     }
 
+    pub fn session_id(&self) -> &str {
+        &self.session_id
+    }
+
+    pub fn project_key(&self) -> &str {
+        &self.project_key
+    }
+
+    pub fn stale_secs(&self) -> u64 {
+        self.stale_secs
+    }
+
     /// Claim an absolute or relative path for exclusive write by this worker.
     ///
     /// Stores a content fingerprint of the on-disk file (when present) so a later
@@ -89,7 +101,7 @@ impl PathClaimContext {
     }
 }
 
-fn file_content_fingerprint(path: &str) -> Option<String> {
+pub fn file_content_fingerprint(path: &str) -> Option<String> {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
     let bytes = std::fs::read(path).ok()?;

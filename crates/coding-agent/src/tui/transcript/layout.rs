@@ -183,7 +183,9 @@ fn message_row_count(message: &TranscriptMessage, wrap_width: u16) -> u32 {
     } else {
         // Plain-text cards (thinking body, tool output, status) paint with word-wrap; measure
         // with the same wrap so the scroll viewport matches the painted height exactly.
-        let text = message.layout_text();
+        // Thinking passes the wrap width through to the streaming body cap so the fixed
+        // 8-row streaming limit is measured at the same width the card paints at.
+        let text = message.layout_text_at(wrap_width);
         if text.trim().is_empty() {
             return 0;
         }

@@ -34,7 +34,6 @@ pub fn create_read_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
         Tool {
             name: "read_file".into(),
             constrained_sampling: None,
-
             description: format!(
                 "Read file contents. Use path for single file, paths array for batch reading multiple files, \
                  ranges for specific sections. Use offset/limit for targeted reading to avoid loading entire files. \

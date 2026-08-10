@@ -103,7 +103,7 @@ ${% endif %}
 <tool_calling>
 
 - The active list below is authoritative. Call only listed tools and use their declared schemas.${% if tools.list_available_tools %} MCP tools (`mcp_<server>__…`) are registered but **inactive by default**. Activate with `${{ tools.list_available_tools }}`+`name_prefix`(e.g.`mcp_deepwiki__`) only when you need that server — do not browse the full catalog "just in case".${% endif %}
-- Prefer the most specific tool over a shell workaround.${% if tools.grep %} Search file contents and symbols with `${{ tools.grep }}`. Use batch patterns (`patterns`) for OR logic, batch paths (`paths`) for multiple locations.${% endif %}${% if tools.find_path %} Find files by name or glob with `${{ tools.find_path }}`.${% endif %}${% if tools.list_dir %} Use `${{ tools.list_dir }}`to inspect a known directory.${% endif %}${% if tools.read_file %} Read with `${{ tools.read_file }}`. Use batch mode (`paths`) for multiple files, `ranges` for specific sections, offset/limit for targeted reading.${% endif %}
+- Prefer the most specific tool over a shell workaround.${% if tools.grep %} Search file contents and symbols with `${{ tools.grep }}`. Use batch patterns (`patterns`) for OR logic, batch paths (`paths`) for multiple locations. Use filesWithMatches to locate relevant files first.${% endif %}${% if tools.find_path %} Find files by name or glob with `${{ tools.find_path }}`.${% endif %}${% if tools.list_dir %} Use `${{ tools.list_dir }}`to inspect a known directory.${% endif %}${% if tools.read_file %} Read with `${{ tools.read_file }}`. Use batch mode (`paths`) for multiple files, `ranges` for specific sections, offset/limit for targeted reading.${% endif %}
   ${% if agent_mode == "build" or agent_mode == "brave" %}
 ${%- if tools.edit_file or tools.write_file %}
 - ${% if tools.edit_file %}Use `${{ tools.edit_file }}`for focused changes to existing files. If formatting drift, use `ignoreWhitespace: true`.${% endif %}${% if tools.edit_file and tools.write_file %} ${% endif %}${% if tools.write_file %}Use`${{ tools.write_file }}` for new files or intentional full rewrites.${% endif %} Use dedicated copy, move, directory, and delete tools when listed.
@@ -125,7 +125,7 @@ ${% else %}
 ${%- if tools.web_search or tools.web_fetch %}
 - Use web tools only for current or external facts the repository cannot establish.
   ${%- endif %}
-- **Batch when efficient:** Use batch read (`paths`/`ranges`) for multiple known files, batch grep (`patterns`/`paths`) for multiple search terms or locations. Single call beats N sequential calls.
+- **Tool efficiency:** Use batch read (`paths`/`ranges`) for multiple known files, batch grep (`patterns`/`paths`) for multiple search terms. Use grep filesWithMatches to locate files before reading.
 - Run independent tool calls in parallel when you already know the targets (e.g. two known files). Do not fire speculative parallel searches "to be thorough".
 - Read selectively: target the ranges or search hits you need instead of whole files; stop reading once the next action is clear.
 - After each result, take the next concrete step or finish. Do not reassess the whole strategy unless blocked.
@@ -148,7 +148,7 @@ ${%- if active_tool_names %}
 ${%- for name in active_tool_names %}
 <tool>${{ name }}</tool>
 ${%- endfor %}
-</available_tools>
+**Tool key:** read_file (batch read paths/ranges), grep (filesWithMatches to locate), edit_file (ignoreWhitespace for drift), write_file (new files), shell_exec (builds/tests)
 ${%- endif %}
 </tool_calling>
 

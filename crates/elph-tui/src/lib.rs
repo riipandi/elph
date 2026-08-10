@@ -47,6 +47,7 @@ pub use types::{
     TabItem,
 };
 pub use utils::format_duration_secs;
+pub use word_wrap::wrap_text_to_lines;
 
 /// Convenience re-exports for application authors.
 pub mod prelude {
