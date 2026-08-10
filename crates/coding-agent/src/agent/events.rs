@@ -13,6 +13,14 @@ pub const RETRY_CONTINUE_PROMPT: &str = "Continue: the previous response was int
      Resume from where you left off and finish the task. Do not repeat tool calls or \
      actions that already succeeded.";
 
+/// Slim sticky meta label rendered in the transcript for the retry/continue prompt.
+///
+/// Used by the live shell applier and by resume reconstruction so the recovery
+/// prompt shows as one quiet status line instead of a giant user prompt card.
+/// The label must stay identical in both paths so a live `continue` notice and a
+/// resumed one render the same.
+pub const CONTINUE_META_LABEL: &str = "Continuing tasks…";
+
 /// Lifecycle phase for subagent UI (maps to process glyphs / status colors).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SubagentUiPhase {

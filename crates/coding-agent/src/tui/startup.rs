@@ -490,6 +490,18 @@ fn reconstruct_transcript_from_llm_entries(
                     continue;
                 }
 
+                // Auto-retry / `/continue` recovery prompt — same quiet meta label the live
+                // shell applier renders (see `UserPromptCommitted` in shell/tick.rs), so a
+                // resumed session never shows the raw recovery prompt as a user card.
+                if text.trim() == crate::agent::RETRY_CONTINUE_PROMPT {
+                    let mut notice =
+                        TranscriptMessage::text(crate::agent::CONTINUE_META_LABEL.to_string(), TranscriptStyle::Meta);
+                    notice.sticky_meta = true;
+                    messages.push(notice);
+                    last_event_ms = Some(*user_ms);
+                    continue;
+                }
+
                 let mut msg = TranscriptMessage::text(text, TranscriptStyle::User);
                 msg.submitted_at = entry_ts.or_else(|| datetime_from_millis(*user_ms));
                 msg.detail_expanded = false;
@@ -1021,5 +1033,46 @@ mod tests {
         assert_eq!(tool_card.duration_secs, Some(0.4));
         assert!(tool_card.layout_text().starts_with("✓ Edit "));
         assert_eq!(tool_card.layout_text().lines().count(), 1, "collapsed card is header-only");
+    }
+    /// Recovery prompts (auto-retry / `/continue`) restore as a quiet sticky meta label,
+    /// never as a giant user prompt card — matching the live `UserPromptCommitted`
+    /// rendering in shell/tick.rs.
+    #[test]
+    fn resumed_retry_continue_prompt_renders_as_meta_label() {
+        use elph_agent::{AgentMessage, SessionTreeEntry};
+        use elph_ai::{Message, UserContent};
+
+        let entries = vec![
+            SessionTreeEntry::Message {
+                id: "u1".into(),
+                parent_id: None,
+                timestamp: "t".into(),
+                message: AgentMessage::Llm(Box::new(Message::User {
+                    content: UserContent::Text(crate::agent::RETRY_CONTINUE_PROMPT.to_string()),
+                    timestamp: 0,
+                })),
+                prompt_title: String::new(),
+                prompt_kind: String::new(),
+            },
+            SessionTreeEntry::Message {
+                id: "a1".into(),
+                parent_id: Some("u1".into()),
+                timestamp: "t".into(),
+                message: AgentMessage::Llm(Box::new(Message::Assistant(elph_ai::faux_assistant_message(
+                    Vec::new(),
+                    None,
+                )))),
+                prompt_title: String::new(),
+                prompt_kind: String::new(),
+            },
+        ];
+
+        let messages = reconstruct_transcript_from_llm_entries(&entries, "/tmp/project");
+        assert_eq!(messages.len(), 1, "recovery prompt renders as one quiet meta line");
+        let msg = &messages[0];
+        assert_eq!(msg.style, TranscriptStyle::Meta);
+        assert_eq!(msg.content, crate::agent::CONTINUE_META_LABEL);
+        assert!(msg.sticky_meta, "resumed recovery notice must stay sticky like the live label");
+        assert!(!msg.style.is_user_input_card(), "no giant user prompt card on resume");
     }
 }

@@ -828,7 +828,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 // slim sticky status label ("Continuing tasks…") instead of a user bubble card,
                 // and skip Arrow-Up history.
                 if text.trim() == RETRY_CONTINUE_PROMPT {
-                    let mut notice = TranscriptMessage::text("Continuing tasks…", TranscriptStyle::Meta);
+                    let mut notice = TranscriptMessage::text(CONTINUE_META_LABEL.to_string(), TranscriptStyle::Meta);
                     notice.sticky_meta = true;
                     {
                         let mut msgs = messages_arc_inner.write().unwrap();
@@ -865,9 +865,9 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 // harness — render as a slim meta label instead of a user bubble card.
                 if text.starts_with(CONTINUATION_PROMPT_PREFIX) || text.starts_with(BUDGET_LIMIT_PROMPT_PREFIX) {
                     let label = if text.starts_with(CONTINUATION_PROMPT_PREFIX) {
-                        "Continuing tasks…"
+                        CONTINUE_META_LABEL.to_string()
                     } else {
-                        "Goal budget limit reached"
+                        "Goal budget limit reached".to_string()
                     };
                     let mut notice = TranscriptMessage::text(label, TranscriptStyle::Meta);
                     notice.sticky_meta = true;

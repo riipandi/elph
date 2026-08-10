@@ -42,10 +42,11 @@ pub use aside::extract_worker_payload_text;
 pub use aside::spawn_aside;
 pub use conflict_notice::{CrossKindConflict, TemplateConflict, format_name_conflicts};
 pub use events::{AgentUiEvent, SubagentUiPhase, ToolApprovalChoice};
-pub use events::{ModeChangeRequest, PlanConfirmationRequest, QueuedPromptItem, QueuedPromptKind};
 pub use events::{
-    RETRY_CONTINUE_PROMPT, ToolApprovalRequest, UserQuestionOption, UserQuestionRequest, UserQuestionStep,
+    CONTINUE_META_LABEL, RETRY_CONTINUE_PROMPT, ToolApprovalRequest, UserQuestionOption, UserQuestionRequest,
+    UserQuestionStep,
 };
+pub use events::{ModeChangeRequest, PlanConfirmationRequest, QueuedPromptItem, QueuedPromptKind};
 pub use handover::{
     CODEX_HANDOVER_PROMPT_PREFIX, ClaudeHandover, CodexHandover, HANDOVER_PROMPT_PREFIX, HandoverError,
     HandoverSession, HandoverToolCall, HandoverToolResult, HandoverTurn, HandoverWarning, build_codex_handoff_prompt,
