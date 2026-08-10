@@ -625,6 +625,62 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 }
                 continue;
             }
+            // Non-interrupting inbound worker messages: same aside panel as `/aside`,
+            // never a harness steer — the user's current task keeps running.
+            if let AgentUiEvent::WorkerInboundStarted {
+                request_id,
+                from_worker,
+                message,
+            } = &event
+            {
+                *pending_aside.write() = Some(crate::tui::aside_panel::worker_inbound_loading(
+                    *request_id,
+                    from_worker,
+                    message,
+                ));
+                activity_label.set(format!("Worker {from_worker}: {message}"));
+                continue;
+            }
+            if let AgentUiEvent::WorkerInboundAnswered {
+                request_id,
+                from_worker,
+                message,
+                answer,
+            } = &event
+            {
+                if pending_aside
+                    .read()
+                    .as_ref()
+                    .is_none_or(|s| s.request_id() == *request_id)
+                {
+                    *pending_aside.write() = Some(crate::tui::aside_panel::AsidePanelState::done(
+                        *request_id,
+                        format!("{from_worker}: {message}"),
+                        answer.clone(),
+                    ));
+                }
+                continue;
+            }
+            if let AgentUiEvent::WorkerInboundFailed {
+                request_id,
+                from_worker,
+                message,
+                error,
+            } = &event
+            {
+                if pending_aside
+                    .read()
+                    .as_ref()
+                    .is_none_or(|s| s.request_id() == *request_id)
+                {
+                    *pending_aside.write() = Some(crate::tui::aside_panel::AsidePanelState::error(
+                        *request_id,
+                        format!("{from_worker}: {message}"),
+                        error.clone(),
+                    ));
+                }
+                continue;
+            }
 
             if let AgentUiEvent::ToolApprovalRequired(req) = event {
                 let tool_name = req.tool_name.clone();

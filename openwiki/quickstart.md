@@ -113,19 +113,41 @@ tracing = ["dep:fastrace", "dep:fastrace-reqwest", "fastrace/enable", "elph-ai/t
 
 Start here, then explore:
 
-- [Architecture Overview](architecture/overview.md) — crate dependency graph, agent loop phases, session persistence
+- [Architecture Overview](architecture/overview.md) — crate dependency graph, agent loop phases, session persistence, worker runtime
 - [Source Map](architecture/source-map.md) — crate-by-crate module map with file paths
 - [Agent Loop](workflows/agent-loop.md) — turn cycle: `AgentHarness::prompt()` → `run_agent_loop()` → tool execution → compaction
+- [Workers](workflows/workers.md) — multi-process worker coordination, session leases, file leases, mailbox
+- [Handover](workflows/handover.md) — foreign session import (Claude, Codex) with inert safety boundary
 - [Compaction](workflows/compaction.md) — context window management, summarization, timestamp-gated estimate
 - [Auth](workflows/auth.md) — CredentialStore, ModelsStore, OAuth providers, resolve_provider_auth
 - [Providers](domains/providers.md) — ProviderStreams trait, 30+ provider adapters, compat flags
 - [MCP](domains/mcp.md) — Model Context Protocol: transports, AES-256-GCM encryption, tool naming
-- [Tools](domains/tools.md) — AgentTool, built-in tools, feature flags
-- [Skills](domains/skills.md) — SKILL.md format, resolution, MiniJinja templates
-- [Operations](operations.md) — CLI subcommands, ELPH_ env vars, observability
-- [Testing](testing.md) — unit/integration test patterns, live provider tests
-- [Pi Port Status](integrations/pi-port.md) — upstream commit cee5ff75, crate mapping, parity gaps
+- [Tools](domains/tools.md) — AgentTool, built-in tools, shell_use, list_skills, feature flags
+- [Skills](domains/skills.md) — SKILL.md format, resolution, MiniJinja templates, list_skills tool
 - [Subagents](domains/subagents.md) — subagent output durability, TurnGuard, wait-for-output
+- [Operations](operations.md) — CLI subcommands, headless mode, ELPH_ env vars, slash commands, observability
+- [Testing](testing.md) — unit/integration test patterns, live provider tests
+- [Pi Port Status](integrations/pi-port.md) — upstream commit cee5ff75, crate mapping, parity gaps, elph-only extensions
+
+## Change Navigation (Task Routing)
+
+| Change Area / Intent                 | Relevant Page(s)                                                                | Source Entry Points & Symbols                                                                                    | Focused Tests                                                                             | Minimal Validation Command                                   |
+| ------------------------------------ | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Add/modify agent loop turn behavior  | [Agent Loop](workflows/agent-loop.md), [Architecture](architecture/overview.md) | `crates/elph-agent/src/runtime/run_loop.rs`, `prompt_ops.rs`, `loop_config.rs`, `AgentLoopConfig`                | `crates/elph-agent/tests/agent_loop.rs`, `harness.rs`                                     | `cargo test -p elph-agent --test agent_loop`                 |
+| Add/modify tool (built-in)           | [Tools](domains/tools.md)                                                       | `crates/elph-agent/src/tools/`, `mod.rs` (feature-gated registration), `types.rs` (`AgentTool`, `ToolExecuteFn`) | Inline tests in tool file, `crates/elph-agent/tests/harness.rs`                           | `cargo test -p elph-agent --lib tools`                       |
+| Add/modify MCP transport or registry | [MCP](domains/mcp.md)                                                           | `crates/elph-agent/src/tools/mcp/`, `registry/mod.rs`, `client.rs`, `config.rs`, `session.rs`                    | `crates/elph-agent/tests/mcp_deepwiki.rs`                                                 | `cargo test -p elph-agent --test mcp_deepwiki`               |
+| Add/modify LLM provider adapter      | [Providers](domains/providers.md)                                               | `crates/elph-ai/src/providers/builtin.rs`, `adapter.rs`, `crates/elph-ai/src/types/mod.rs` (`CompatFlags`)       | `crates/elph-ai/tests/e2e_live.rs`, `openai_completions_compat_gaps.rs`                   | `cargo test -p elph-ai --lib providers`                      |
+| Add/modify OAuth provider            | [Auth](workflows/auth.md)                                                       | `crates/elph-ai/src/auth/oauth/`, `helpers.rs`, `resolve.rs`, `credential_store.rs`                              | `crates/elph-ai/tests/oauth_auth.rs`                                                      | `cargo test -p elph-ai --test oauth_auth`                    |
+| Change session persistence or GC     | [Architecture](architecture/overview.md)                                        | `crates/elph-agent/src/session/`, `retention.rs`, `crates/elph-agent/src/turns/store.rs`, `todos/store.rs`       | `crates/elph-agent/tests/session.rs`, `turso_session.rs`, `storage.rs`                    | `cargo test -p elph-agent --test session`                    |
+| Modify compaction strategy           | [Compaction](workflows/compaction.md)                                           | `crates/elph-agent/src/compaction/`, `estimation.rs`, `compact.rs`, `summarization.rs`, `compaction_ops.rs`      | `crates/elph-agent/tests/compaction.rs`                                                   | `cargo test -p elph-agent --test compaction`                 |
+| Add/modify subagent feature          | [Subagents](domains/subagents.md)                                               | `crates/elph-agent/src/agent/subagent/`, `types.rs`, `control.rs`, `harness.rs`                                  | `crates/elph-agent/tests/subagent.rs`                                                     | `cargo test -p elph-agent --test subagent`                   |
+| Modify multi-worker coordination     | [Workers](workflows/workers.md)                                                 | `crates/elph-agent/src/workers/`, `crates/coding-agent/src/agent/worker_runtime.rs`                              | Inline tests in `lease.rs`, `file_lease.rs`, `crates/coding-agent/tests/workers_multi.rs` | `cargo test -p elph-agent --lib workers`                     |
+| Modify foreign session handover      | [Handover](workflows/handover.md)                                               | `crates/coding-agent/src/agent/handover/`, `mod.rs`, `codex.rs`                                                  | `crates/coding-agent/src/agent/handover/tests.rs`, `codex/tests.rs`                       | `cargo test -p coding-agent -- agent::handover`              |
+| Modify headless run mode             | [Operations](operations.md)                                                     | `crates/coding-agent/src/agent/run_mode.rs`, `headless_status.rs`, `pretty_markdown.rs`                          | Inline `#[cfg(test)]` in `run_mode.rs`                                                    | `cargo test -p coding-agent --lib agent::run_mode`           |
+| Modify skill system                  | [Skills](domains/skills.md)                                                     | `crates/elph-agent/src/skills/`, `load/`, `format.rs`, `args.rs`, `crates/elph-agent/src/tools/list_skills.rs`   | `crates/elph-agent/tests/harness.rs` (skill invocation)                                   | `cargo test -p elph-agent --lib skills`                      |
+| Change CLI or config behavior        | [Operations](operations.md)                                                     | `crates/coding-agent/src/cli/`, `platform/settings.rs`, `platform/paths.rs`                                      | `crates/coding-agent/tests/cli.rs`, `bootstrap.rs`                                        | `cargo test -p coding-agent --test cli`                      |
+| Add provider model catalog           | [Providers](domains/providers.md)                                               | `crates/elph-ai/models/`, `crates/elph-ai/src/models/catalog.rs`, `bin/generate_models/`                         | Generated model tests                                                                     | `make generate-models && cargo test -p elph-ai --lib models` |
+| Modify pi port parity                | [Pi Port](integrations/pi-port.md)                                              | `docs/porting/`, `crates/elph-ai/src/`, `crates/elph-agent/src/`                                                 | Targeted integration tests for affected crate                                             | `cargo test -p elph-agent -p elph-ai`                        |
 
 ## Backlog
 

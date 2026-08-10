@@ -205,6 +205,26 @@ impl WorkerRegistry {
             .collect())
     }
 
+    /// Resolve a worker's display name from its id, if still present in the registry.
+    pub async fn name_for_worker_id(&self, worker_id: &str) -> Option<String> {
+        self.with_conn(|conn| async move {
+            let mut rows = conn
+                .query(
+                    "SELECT name FROM workers WHERE worker_id = ? LIMIT 1",
+                    turso::params![worker_id],
+                )
+                .await?;
+            let Some(row) = rows.next().await? else {
+                return Ok(None);
+            };
+            let name: String = row.get(0)?;
+            while rows.next().await?.is_some() {}
+            Ok(Some(name))
+        })
+        .await
+        .ok()?
+    }
+
     pub async fn count_live(&self, project_key: &str, stale_secs: u64) -> Result<usize> {
         Ok(self.list_live(project_key, stale_secs).await?.len())
     }

@@ -82,7 +82,7 @@ Yes — peers communicate through the **durable mailbox** in `.elph/store.db` (n
 | `worker_send` | Fire-and-forget to a peer by **name** or session id |
 | `worker_ask` / `worker_get` / `worker_await` | Request + poll status |
 
-Inbound mail is polled, injected as `worker.inbound` (idempotent by `msg_id`), then steered into the agent. **Reply in assistant text** — do not `worker_send` to answer an inbound ask.
+Inbound mail is polled, then answered with a **one-shot, tool-free completion** (same non-interrupting path as `/aside`): the reply is written back through the durable mailbox and shown in the aside panel. Inbound messages **never steer or interrupt** the user's current agent turn — the main agent keeps working untouched. Plain-text replies from the main turn are **no longer** used to auto-complete asks (see Limitations).
 
 Compared to classic intercom: delivery is **poll-based durable SoT** (survives restart); latency ≈ `inboxPollMs` / reaper interval, not sub-ms IPC.
 
@@ -103,4 +103,4 @@ Session GC never deletes sessions that currently hold a row in `session_leases`.
 - Same machine / shared store only
 - No automatic merge of concurrent edits
 - No cross-worktree file leases (by design)
-- Ask auto-complete from assistant text on turn end is partial (host injects + steers; full ask-pair completion still uses tools/`worker_get`)
+- Inbound worker messages are answered by a separate lightweight completion (no tools, no harness turn). Multi-step coordination that requires tools must use `worker_send` / `worker_ask` from the main agent — the receiver answers in the aside panel without touching your task.

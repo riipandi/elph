@@ -156,6 +156,28 @@ pub enum AgentUiEvent {
         request_id: u64,
         error: String,
     },
+    /// Non-interrupting inbound worker message started — shell shows the aside panel
+    /// (never a harness steer, so the user's current task is not interrupted).
+    WorkerInboundStarted {
+        request_id: u64,
+        from_worker: String,
+        message: String,
+    },
+    /// Non-interrupting inbound worker message answered — panel shows the answer and
+    /// any open asks are completed. Never touches the session tree / harness turn.
+    WorkerInboundAnswered {
+        request_id: u64,
+        from_worker: String,
+        message: String,
+        answer: String,
+    },
+    /// Non-interrupting inbound worker message failed / timed out.
+    WorkerInboundFailed {
+        request_id: u64,
+        from_worker: String,
+        message: String,
+        error: String,
+    },
 }
 
 #[derive(Debug)]

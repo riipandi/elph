@@ -36,6 +36,41 @@ The `elph` binary provides 18 subcommands (from `crates/coding-agent/src/cli/mod
 
 CLI flags: `--continue/-c` (resume last session), `--resume/-r <SESSION_ID>` (resume specific session), `--version/-V` (print version).
 
+### Headless Mode (`elph run`)
+
+The `run` subcommand executes a prompt non-interactively. Headless mode lives in `crates/coding-agent/src/agent/run_mode.rs`:
+
+```sh
+elph run "write a test"                              # default output
+elph run "explain this" --output=pretty               # streaming markdown → ANSI
+elph run "debug this" --output=plain                  # raw model text only (no chrome)
+elph run "refactor" --output=json                     # structured JSON result
+elph run "status" --output=stream-json                # streaming JSON lines
+elph run "review" --output=stream-message-json        # Anthropic-style message events
+elph run --mode=plan "design the architecture"        # plan mode
+elph run --no-session "quick question"                # ephemeral (no session saved)
+elph run --max-turns=10 "complex task"                # enforce turn limit
+```
+
+`OutputFormat` enum (from `run_mode.rs`):
+
+| Format              | Description                                                             |
+| ------------------- | ----------------------------------------------------------------------- |
+| `Plain`             | Raw model text as-is (token stream, no chrome)                          |
+| `Pretty`            | Streaming CommonMark/markdown rendered to terminal via `rendown`        |
+| `Json`              | Structured JSON result                                                  |
+| `StreamJson`        | Streaming JSON lines                                                    |
+| `StreamMessageJson` | Anthropic-style `message_start`/`content_block_*`/`message_stop` events |
+
+Key functions:
+
+- `run_non_interactive()` — main entry point; creates session, spawns event stream task, resolves turn kind, executes, handles all output formats
+- `resolve_headless_turn()` — maps user input to `Prompt | Skill | PromptTemplate` using `dispatch_slash_command`
+- `HeadlessStatus` — animated braille spinner on stderr (not iocraft, in `headless_status.rs`)
+- `PrettyMarkdownSink` — wraps `rendown::StreamRenderer` for streaming markdown → ANSI (in `pretty_markdown.rs`)
+
+Headless mode supports `Skill` and `PromptTemplate` via `/skill:name [args]` and `/template-name [args]` syntax. Plain mode (`--output=plain`) suppresses all tool chrome and status; raw model output only. `max_turns` is enforced by counting `ToolStart` events.
+
 ## Environment Variables
 
 | Variable           | Purpose                              | Defined In                                                |
@@ -47,6 +82,7 @@ CLI flags: `--continue/-c` (resume last session), `--resume/-r <SESSION_ID>` (re
 | `ELPH_PROVIDER`    | Default provider override            | `agent/provider.rs`, `tui/mod.rs`                         |
 | `ELPH_MODEL`       | Default model override               | `agent/provider.rs`, `tui/mod.rs`                         |
 | `ELPH_` prefix     | Agent env prefix for extended config | `cli/mod.rs` — `AgentBuilder::env_prefix("ELPH")`         |
+| `ELPH_GITHUB_HOST` | GitHub Copilot enterprise domain     | `elph-ai/src/auth/oauth/github_copilot.rs`                |
 
 ### Model Resolution Order (commit `3c5aca0`, `5004d3e`)
 
@@ -57,6 +93,16 @@ CLI flags: `--continue/-c` (resume last session), `--resume/-r <SESSION_ID>` (re
 3. **Last-used model**: from `SessionManager.last_used_model()`, only if the model still exists in the catalog.
 4. **Settings default**: from `settings.models.default_model`.
 5. **Hardcoded fallback**: `DEFAULT_PROVIDER` / `DEFAULT_MODEL_ID`.
+
+### Settings
+
+From `crates/coding-agent/src/platform/settings.rs` and `schemas/elph-schema.json`:
+
+| Setting                | Description                                                                                             |
+| ---------------------- | ------------------------------------------------------------------------------------------------------- |
+| `density`              | Log density for transcript display (`LogDensity` enum, renamed from `narrowLogLines`, commit `895cfca`) |
+| `models.default_model` | Default provider/model for new sessions                                                                 |
+| `session.retention`    | Retention policy for session GC                                                                         |
 
 ## Config Paths
 
@@ -175,13 +221,44 @@ From `crates/elph-ai/src/session_resources.rs`:
 - `cleanup_session_resources()` — runs all registered cleanup handlers.
 - `SessionResourceCleanupRegistration` — handle for deregistration.
 
+### Per-Turn Stats
+
+The TUI shows a per-turn stats card (commit `23ba566`) with turn number, status, provider/model, token usage, cost, and wall clock time. Stats are accumulated from `TurnUsage` in `crates/elph-agent/src/turns/types.rs`. The `TurnStore` rolls up turn usage into session-level totals. Turn stats are emitted from `CodingAgentSession` events, excluding non-agent turns (commit `5911c51`).
+
+### Session Retention (GC)
+
+From `crates/elph-agent/src/session/retention.rs`:
+
+`RetentionPolicy` controls automatic session garbage collection:
+
+| Field                    | Default   | Description                          |
+| ------------------------ | --------- | ------------------------------------ |
+| `enabled`                | `true`    | Master switch                        |
+| `max_sessions_per_cwd`   | `40`      | Max sessions per working directory   |
+| `max_session_age_days`   | `30`      | Max age before deletion              |
+| `max_store_db_bytes`     | `512 MiB` | Max store file size before forced GC |
+| `protect_latest_per_cwd` | `true`    | Keep newest session per cwd          |
+| `protect_session_id`     | —         | Current session ID (never deleted)   |
+
+`run_session_gc()` plans + deletes sessions, protecting pinned, leased, and latest-per-cwd sessions. `run_full_session_gc()` extends GC with size-based expansion and orphan artifact cleanup. See [Architecture Overview](architecture/overview.md) for session persistence details.
+
 ## Source References
 
 - `crates/coding-agent/src/cli/mod.rs` — CLI subcommand definitions
 - `crates/coding-agent/src/platform/paths.rs` — `Paths` struct, `PathResolver`, env var handling
 - `crates/coding-agent/src/platform/settings.rs` — Settings loading/merging
 - `crates/coding-agent/src/platform/bootstrap.rs` — logging initialization
+- `crates/coding-agent/src/agent/run_mode.rs` — `run_non_interactive()`, `OutputFormat`, `RunModeOptions`
+- `crates/coding-agent/src/agent/headless_status.rs` — `HeadlessStatus` spinner
+- `crates/coding-agent/src/agent/pretty_markdown.rs` — `PrettyMarkdownSink`
+- `crates/coding-agent/src/agent/slash_commands.rs` — slash command definitions (`CompactOptions`, `parse_compact_args()`)
+- `crates/coding-agent/src/agent/slash_misc.rs` — `/resume`, `/tree`, `/fork`, `/clone`, `/export`, `/import`, `/workers`, `/settings`, `/trust`
+- `crates/coding-agent/src/agent/aside.rs` — `run_aside()`, `spawn_aside()`, `side_question_user_text()`
+- `crates/coding-agent/src/tui/item_selector.rs` — `PendingItemSelector`, `ItemSelectorPurpose`, `TreeFilterMode`
+- `crates/coding-agent/src/tui/item_selector_bar.rs` — `ItemSelectorBar` component
+- `crates/coding-agent/src/tui/aside_panel.rs` — `AsidePanel` component, `AsidePanelState`
 - `Makefile` — build targets
 - `crates/elph-ai/src/utils/diagnostics.rs` — diagnostic utilities
 - `crates/elph-ai/src/session_resources.rs` — session resource cleanup
 - `crates/elph-agent/src/agent/harness/prompt_ops.rs` — tracing spans
+- `crates/elph-agent/src/session/retention.rs` — `RetentionPolicy`, `run_session_gc()`

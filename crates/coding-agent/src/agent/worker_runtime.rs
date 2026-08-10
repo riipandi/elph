@@ -2,11 +2,12 @@
 //!
 //! Inbound peer prompts (`worker_send` / `worker_ask`) land in the durable mailbox.
 //! The session's inbox poller (`CodingAgentSession::start_worker_inbox_poller` +
-//! `deliver_worker_inbound`) owns delivery: it marks the mailbox message `delivered`
-//! **before** running the model, so a delivery failure can never replay/loop and the
-//! peer's ask times out instead of wedging either agent. Completion/timeout are written
-//! through the mailbox rows (see `MailboxStore`) so peers polling `worker_get` /
-//! `worker_await` unblock even when no response text is written.
+//! `answer_worker_inbound`) owns delivery: claiming marks the mailbox message
+//! `delivered` **before** running the model, so a delivery failure can never
+//! replay/loop and the peer's ask times out instead of wedging either agent.
+//! The reply is written through the mailbox rows (see `MailboxStore`) so peers
+//! polling `worker_get` / `worker_await` unblock. Answering never steers the
+//! harness or the session tree — inbound messages can't interrupt the user's task.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -261,38 +262,6 @@ impl WorkerRuntime {
         if let Some(old) = self.inbox_handle.lock().replace(handle) {
             old.abort();
         }
-    }
-
-    /// Complete open delivered inbound prompts with assistant text (ask round-trip).
-    pub async fn complete_open_asks_with_text(&self, text: &str) -> Result<usize> {
-        let open = self.mailbox.list_open_delivered_prompts(&self.session_id).await?;
-        if open.is_empty() {
-            return Ok(0);
-        }
-        let reply = text.trim();
-        if reply.is_empty() {
-            return Ok(0);
-        }
-        let mut n = 0usize;
-        for msg in open {
-            match self
-                .mailbox
-                .send_response(
-                    &self.project_key,
-                    &self.worker_id,
-                    &self.session_id,
-                    &msg.from_session_id,
-                    &msg.id,
-                    reply,
-                    None,
-                )
-                .await
-            {
-                Ok(_) => n += 1,
-                Err(err) => log::warn!("complete worker ask {}: {err:#}", msg.id),
-            }
-        }
-        Ok(n)
     }
 
     /// Stop heartbeat and release coordination rows (best-effort). Safe from `Arc` session.

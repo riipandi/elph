@@ -16,6 +16,7 @@ use std::time::Instant;
 use tokio::sync::Mutex;
 use tokio::sync::mpsc;
 
+use super::aside::extract_worker_payload_text;
 use super::events::AgentUiEvent;
 use super::events::RETRY_CONTINUE_PROMPT;
 use super::model_registry::ModelSelection;
@@ -211,46 +212,7 @@ impl CodingAgentSession {
         }
     }
 
-    /// After a turn, reply to any open inbound worker asks with the last assistant text.
-    async fn complete_open_worker_asks_after_turn(&self) {
-        let Some(rt) = self.worker_runtime.as_ref() else {
-            return;
-        };
-        let Some(text) = self.last_assistant_text_for_worker_reply().await else {
-            return;
-        };
-        match rt.complete_open_asks_with_text(&text).await {
-            Ok(n) if n > 0 => log::info!("completed {n} open worker ask(s) after turn"),
-            Ok(_) => {}
-            Err(err) => log::warn!("complete worker asks: {err:#}"),
-        }
-    }
-
-    async fn last_assistant_text_for_worker_reply(&self) -> Option<String> {
-        let entries = self.harness.session_entries().await;
-        for entry in entries.iter().rev() {
-            if let elph_agent::SessionTreeEntry::Message { message, .. } = entry
-                && message.role() == "assistant"
-                && let Some(elph_ai::Message::Assistant(a)) = message.as_llm()
-            {
-                let mut parts = Vec::new();
-                for block in &a.content {
-                    if let elph_ai::AssistantContentBlock::Text(t) = block
-                        && !t.text.trim().is_empty()
-                    {
-                        parts.push(t.text.clone());
-                    }
-                }
-                let joined = parts.join("\n").trim().to_string();
-                if !joined.is_empty() {
-                    return Some(joined);
-                }
-            }
-        }
-        None
-    }
-
-    /// Start durable mailbox inbox poller (claim → inject → steer/prompt). Call once after `Arc::new`.
+    /// Start durable mailbox inbox poller (claim → answer non-interrupting → reply). Call once after `Arc::new`.
     pub fn start_worker_inbox_poller(self: &Arc<Self>) {
         let Some(rt) = self.worker_runtime.as_ref() else {
             return;
@@ -268,7 +230,7 @@ impl CodingAgentSession {
                 }
                 match mailbox.claim_next_inbound(&session_id).await {
                     Ok(Some(msg)) => {
-                        if let Err(err) = session.deliver_worker_inbound(msg).await {
+                        if let Err(err) = session.answer_worker_inbound(msg).await {
                             log::warn!("worker inbox deliver: {err:#}");
                         }
                     }
@@ -281,40 +243,74 @@ impl CodingAgentSession {
         rt.set_inbox_handle(handle);
     }
 
-    async fn deliver_worker_inbound(&self, msg: elph_agent::WorkerMessage) -> Result<()> {
-        // Idempotency: skip inject if this msg_id already appears in the session tree.
-        let entries = self.harness.session_entries().await;
-        let already = entries.iter().any(|e| {
-            if let elph_agent::SessionTreeEntry::Custom { custom_type, data, .. } = e
-                && custom_type == "worker.inbound"
-            {
-                return data.as_ref().and_then(|d| d.get("msg_id")).and_then(|v| v.as_str()) == Some(msg.id.as_str());
-            }
-            false
-        });
-        if already {
-            log::debug!("worker inbound {} already injected — skip", msg.id);
+    /// Answer an inbound worker message without interrupting the user's task.
+    ///
+    /// Runs the same one-shot, tool-free side completion as `/aside` (snapshot of
+    /// the session context, no harness turn, nothing appended to the session tree),
+    /// shows progress in the aside panel, and replies through the durable mailbox.
+    /// Never takes `turn_gate` and never calls `queue_steer`, so a peer message
+    /// can never steal or interrupt the current agent turn.
+    async fn answer_worker_inbound(&self, msg: elph_agent::WorkerMessage) -> Result<()> {
+        let Some(rt) = self.worker_runtime.as_ref() else {
             return Ok(());
-        }
+        };
+        let (request_id, from_worker, payload) = {
+            let registry = rt.registry();
+            let from_worker = registry
+                .name_for_worker_id(&msg.from_worker_id)
+                .await
+                .unwrap_or_else(|| msg.from_worker_id.clone());
+            let payload = extract_worker_payload_text(&msg.payload);
+            (crate::agent::aside::next_worker_inbound_request_id(), from_worker, payload)
+        };
 
-        let details = serde_json::json!({
-            "msg_id": msg.id,
-            "from_worker_id": msg.from_worker_id,
-            "from_session_id": msg.from_session_id,
-            "kind": msg.kind.as_str(),
-            "hops": msg.hops,
+        let _ = self.ui_event_sender().send(AgentUiEvent::WorkerInboundStarted {
+            request_id,
+            from_worker: from_worker.clone(),
+            message: payload.clone(),
         });
-        if let Err(err) = self.harness.append_custom_entry("worker.inbound", Some(details)).await {
-            log::warn!("append worker.inbound custom entry: {err}");
+
+        let completion = crate::agent::aside::worker_inbound_side_completion(self, &from_worker, &payload).await;
+
+        let mailbox = rt.mailbox();
+        let (text, error) = match &completion {
+            Ok(text) => (text.clone(), None),
+            Err(error) => ("".into(), Some(error.clone())),
+        };
+        if let Err(err) = mailbox
+            .send_response(
+                &msg.project_key,
+                rt.worker_id.as_str(),
+                &self.session_id,
+                &msg.from_session_id,
+                &msg.id,
+                &text,
+                error.as_deref(),
+            )
+            .await
+        {
+            log::warn!("reply to worker inbound {}: {err:#}", msg.id);
         }
 
-        let text = format!(
-            "[Inbound worker message from {} · msg {}]\n\n{}\n\n\
-             Respond in normal assistant text. Do not use worker_send to reply to this message.",
-            msg.from_worker_id, msg.id, msg.payload
-        );
-        // Steer if busy; otherwise start a normal turn (queue_steer falls back when idle).
-        self.queue_steer(text).await
+        match completion {
+            Ok(answer) => {
+                let _ = self.ui_event_sender().send(AgentUiEvent::WorkerInboundAnswered {
+                    request_id,
+                    from_worker,
+                    message: payload,
+                    answer,
+                });
+            }
+            Err(error) => {
+                let _ = self.ui_event_sender().send(AgentUiEvent::WorkerInboundFailed {
+                    request_id,
+                    from_worker,
+                    message: payload,
+                    error,
+                });
+            }
+        }
+        Ok(())
     }
 
     /// Eagerly invalidate the system prompt cache synchronously so the next
@@ -1096,7 +1092,6 @@ impl CodingAgentSession {
 
     async fn finish_ui_turn(&self, started: Instant) {
         let _ = self.harness.wait_for_idle().await;
-        self.complete_open_worker_asks_after_turn().await;
         if let Err(err) = self.refresh_system_prompt_cache().await {
             log::debug!("system prompt cache refresh after turn failed: {err:#}");
         }

@@ -21,6 +21,27 @@ fn next_aside_request_id() -> AsideRequestId {
     ASIDE_REQUEST_SEQ.fetch_add(1, Ordering::Relaxed)
 }
 
+static WORKER_INBOUND_SEQ: AtomicU64 = AtomicU64::new(1);
+
+/// Monotonic request id for non-interrupting inbound worker messages (shown in the
+/// same aside panel as `/aside`).
+pub fn next_worker_inbound_request_id() -> u64 {
+    WORKER_INBOUND_SEQ.fetch_add(1, Ordering::Relaxed)
+}
+
+/// Extract the human-readable text from a worker mailbox payload (`{"text": …}`).
+/// Falls back to the raw payload when it is not JSON.
+pub fn extract_worker_payload_text(payload: &str) -> String {
+    match serde_json::from_str::<serde_json::Value>(payload) {
+        Ok(v) => v
+            .get("text")
+            .and_then(|t| t.as_str())
+            .map(str::to_string)
+            .unwrap_or_else(|| payload.to_string()),
+        Err(_) => payload.to_string(),
+    }
+}
+
 /// System-reminder wrapper for the side question (Grok `/btw` semantics).
 fn side_question_user_text(question: &str) -> String {
     format!(
@@ -40,6 +61,31 @@ fn side_question_user_text(question: &str) -> String {
          - If you don't know the answer, say so — do not offer to look it up or investigate\n\n\
          Simply answer the question with the information you have.</system-reminder>\n\n\
          {question}"
+    )
+}
+
+/// System-reminder wrapper for a **non-interrupting inbound worker message** — same
+/// one-shot semantics as `/aside`, but addressed to a peer coding agent and with
+/// the reply delivered back through the durable worker mailbox.
+pub(super) fn worker_inbound_user_text(from_worker: &str, message: &str) -> String {
+    format!(
+        "<system-reminder>This is a message from another coding agent (worker `{from_worker}`). \
+         You must answer it directly in a single response.\n\n\
+         IMPORTANT CONTEXT:\n\
+         - You are a separate, lightweight agent spawned to answer this one message\n\
+         - The main agent is NOT interrupted — it continues working independently in the background\n\
+         - You share the conversation context but are a completely separate instance\n\
+         - Do NOT reference being interrupted or what you were \"previously doing\" — that framing is incorrect\n\n\
+         CRITICAL CONSTRAINTS:\n\
+         - Do NOT call any tools; respond with plain text only\n\
+         - A tool call cannot help you: nothing runs on the user's machine and you get no turn in which to read a result\n\
+         - This is a one-off response — there will be no follow-up turns\n\
+         - You can ONLY provide information based on what you already know from the conversation context\n\
+         - Your reply is delivered verbatim to the asking worker, so keep it self-contained\n\
+         - NEVER say things like \"Let me try...\", \"I'll now...\", \"Let me check...\", or promise to take any action\n\
+         - If you don't know the answer, say so — do not offer to look it up or investigate\n\n\
+         Simply answer the message with the information you have.</system-reminder>\n\n\
+         {message}"
     )
 }
 
@@ -109,7 +155,18 @@ pub async fn run_aside(session: &CodingAgentSession, question: &str, request_id:
     }
 }
 
-async fn run_aside_inner(session: &CodingAgentSession, question: &str) -> Result<String, String> {
+/// Run a one-shot, tool-free completion against the session's conversation snapshot.
+///
+/// Shared by `/aside` (side question) and non-interrupting **inbound worker
+/// messages**: the latest system prompt + harness state are snapshotted, the
+/// trailing unpaired tool run is dropped, and the model answers without any
+/// tool access. The response is **not** appended to the session message list,
+/// so the main agent turn is never interrupted or even made aware.
+async fn side_completion(
+    session: &CodingAgentSession,
+    user_instruction: String,
+    max_tokens_override: Option<u32>,
+) -> Result<String, String> {
     let harness = session.harness();
     let branch = harness
         .session_branch_entries()
@@ -121,7 +178,7 @@ async fn run_aside_inner(session: &CodingAgentSession, question: &str) -> Result
     pop_trailing_unpaired_tool_run(&mut llm_messages);
 
     llm_messages.push(Message::User {
-        content: UserContent::Text(side_question_user_text(question)),
+        content: UserContent::Text(user_instruction),
         timestamp: now_millis(),
     });
 
@@ -132,11 +189,13 @@ async fn run_aside_inner(session: &CodingAgentSession, question: &str) -> Result
     // Best-effort: empty cache stays None (may be slow to compile mid-turn).
     let system_prompt = session.cached_system_prompt().filter(|s| !s.is_empty());
 
-    let max_tokens = if model.max_tokens > 0 {
-        model.max_tokens.clamp(256, 4096)
-    } else {
-        2048
-    };
+    let max_tokens = max_tokens_override.unwrap_or_else(|| {
+        if model.max_tokens > 0 {
+            model.max_tokens.clamp(256, 4096)
+        } else {
+            2048
+        }
+    });
 
     let mut options = SimpleStreamOptions::from_stream(StreamOptions::default());
     options.base.max_tokens = Some(max_tokens);
@@ -163,6 +222,22 @@ async fn run_aside_inner(session: &CodingAgentSession, question: &str) -> Result
         return Err("No response received".into());
     }
     Ok(text)
+}
+
+async fn run_aside_inner(session: &CodingAgentSession, question: &str) -> Result<String, String> {
+    side_completion(session, side_question_user_text(question), None).await
+}
+
+/// Answer a non-interrupting inbound worker message with a one-shot completion,
+/// then reply through the durable mailbox. Does **not** take `turn_gate`, does not
+/// steer the harness, and does not append anything to the session tree — the user's
+/// current agent task keeps running untouched.
+pub async fn worker_inbound_side_completion(
+    session: &CodingAgentSession,
+    from_worker: &str,
+    payload: &str,
+) -> Result<String, String> {
+    side_completion(session, worker_inbound_user_text(from_worker, payload), Some(4096)).await
 }
 
 /// Spawn `/aside` work without blocking the UI or the main turn.
