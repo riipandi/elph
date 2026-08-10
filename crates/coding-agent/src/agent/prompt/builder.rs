@@ -112,7 +112,7 @@ pub fn build_coding_system_prompt(
     };
 
     let base_context = SystemPromptTemplateContext {
-        persona: "You are a fast, decisive coding agent. Complete the user's request with the fewest effective steps — act first, explain little."
+        persona: "You are a fast, decisive coding agent. Complete the user's request with the fewest effective steps — act first, explain only when necessary. Never narrate your process (e.g., \"Now I need to find...\", \"Root cause identified. Let me verify...\")."
             .to_string(),
         working_directory: Some(cwd.display().to_string()),
         current_date: Some(date),
@@ -163,7 +163,7 @@ mod tests {
         )
         .expect("prompt");
 
-        assert!(prompt.contains("You are a fast, decisive coding agent"));
+        assert!(prompt.contains("Act first, think later"));
         assert!(prompt.contains("Working directory: /tmp/project"));
         assert!(prompt.contains("<action_safety>"));
         assert!(prompt.contains("<tool_calling>"));
@@ -176,7 +176,7 @@ mod tests {
         assert!(prompt.contains("<available_tools>"));
         assert!(prompt.contains("<tool>read_file</tool>"));
         assert!(prompt.contains("<memory_and_context>"));
-        assert!(prompt.contains("Do not open a memory ritual"));
+        assert!(prompt.contains("Call memory tools only when"));
     }
 
     #[test]
@@ -220,7 +220,7 @@ mod tests {
 
         assert!(!prompt.contains("<codegraph>"));
         assert!(!prompt.contains("code_search"));
-        assert!(prompt.contains("Locate with the narrowest tool (`grep` / targeted `read_file`)"));
+        assert!(prompt.contains("One narrow search"));
     }
 
     #[test]

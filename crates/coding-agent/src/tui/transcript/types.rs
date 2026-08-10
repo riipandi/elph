@@ -371,6 +371,17 @@ impl TranscriptMessage {
             && !self.markdown.as_ref().is_some_and(|md| md.stream_complete)
     }
 
+    /// A settled (finished) assistant reply that has no visible content.
+    ///
+    /// These messages are layout-ghosts: their measurement is forced to zero rows and
+    /// their position in the transcript is invisible, so they must also contribute zero
+    /// inter-message margin. This happens when a model streams only whitespace or
+    /// stripped protocol tags between tool calls — the reply card opens, settles empty,
+    /// and must not leave a phantom gap between tool rows.
+    pub fn is_settled_empty_assistant(&self) -> bool {
+        self.style == TranscriptStyle::Assistant && !self.is_assistant_streaming() && self.content.trim().is_empty()
+    }
+
     /// Display text for the empty-live-reply placeholder: a soft ellipsis row painted so a
     /// just-opened streaming response (which may start with blank / tag-only payload) shows a
     /// visible card instead of a phantom blank box. `None` when the message renders real content.
@@ -471,6 +482,13 @@ impl TranscriptMessage {
     /// [`LOG_ROW_GAP`] regardless of collapse state — density must not shrink when the
     /// previous row is collapsed (that glued expanded bodies under folded headers).
     pub fn transcript_margin_bottom(&self, next: Option<&TranscriptMessage>) -> u16 {
+        // Renderless settled-empty assistant replies are invisible: they must not
+        // contribute any spacing to either side, otherwise two collapsed tool rows
+        // get torn apart by a phantom double-row gap (models that stream whitespace
+        // between tool calls open an empty reply card that settles with no content).
+        if self.is_settled_empty_assistant() || next.is_some_and(TranscriptMessage::is_settled_empty_assistant) {
+            return 0;
+        }
         if self.is_quit_busy_notice() {
             let next_style = next.map(|m| m.style);
             return self
@@ -1401,6 +1419,40 @@ mod tests {
         assert_eq!(collapsed_success.transcript_margin_bottom(Some(&collapsed_failed)), LOG_ROW_GAP);
         assert_eq!(collapsed_success.transcript_margin_bottom(Some(&expanded)), LOG_ROW_GAP);
         set_log_density(LogDensity::Compact);
+    }
+
+    #[test]
+    fn settled_empty_assistant_is_spacing_transparent() {
+        // A model that streams whitespace between tool calls opens an assistant reply that
+        // settles empty (e.g. deepseek-v4-flash "\n\n" deltas). That ghost message is
+        // invisible in the transcript and must not add spacing on either side — otherwise
+        // two collapsed tool rows get torn apart by a phantom double-row gap.
+        let collapsed_tool =
+            TranscriptMessage::tool_call("read_file", r#"{"path":"a.rs"}"#, TranscriptStyle::ToolSuccess);
+        let mut ghost = TranscriptMessage::assistant_markdown("\n\n   ");
+        ghost.duration_secs = Some(0.3); // settled, no live stream
+        assert!(ghost.is_settled_empty_assistant());
+
+        // Ghost -> ghost: zero rows, zero margin.
+        let ghost2 = {
+            let mut g = ghost.clone();
+            g.duration_secs = Some(0.4);
+            g
+        };
+        assert_eq!(ghost.transcript_margin_bottom(Some(&ghost2)), 0);
+        // Collapsed tool -> ghost -> collapsed tool: neighbor margins are skipped, so the two
+        // tools keep their normal compact rhythm (this is the reported double-blank bug).
+        assert_eq!(ghost.transcript_margin_bottom(Some(&collapsed_tool)), 0);
+        assert_eq!(collapsed_tool.transcript_margin_bottom(Some(&ghost)), 0);
+        // The ghost must not look like a live stream (no ellipsis placeholder).
+        assert_eq!(ghost.assistant_placeholder(), None);
+        // A settled reply WITH text is still a normal process row (keeps the log rhythm).
+        let mut texted = TranscriptMessage::assistant_markdown("real answer");
+        texted.duration_secs = Some(1.0);
+        assert!(!texted.is_settled_empty_assistant());
+        set_log_density(LogDensity::Compact);
+        assert_eq!(collapsed_tool.transcript_margin_bottom(Some(&texted)), LOG_ROW_GAP);
+        assert_eq!(texted.transcript_margin_bottom(Some(&collapsed_tool)), LOG_ROW_GAP);
     }
 
     #[test]
