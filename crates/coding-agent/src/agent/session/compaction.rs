@@ -110,6 +110,8 @@ impl CodingAgentSession {
         self.notice(running.clone());
         // Surface the running label on the status row (busy indicator) so the user sees the
         // agent is actively compacting history — not frozen — while the turn is still busy.
+        // The status text must exactly match the sticky notice so the transcript applier
+        // collapses the pair into a single card (see `TranscriptEventApplier::push_status`).
         // (Intercom turns skip both — see `notice`.)
         if !self.intercom_turn_active.load(std::sync::atomic::Ordering::Relaxed) {
             let _ = self.ui_tx.send(AgentUiEvent::Status(running.clone()));

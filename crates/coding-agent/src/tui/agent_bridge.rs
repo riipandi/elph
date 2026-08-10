@@ -1107,9 +1107,16 @@ mod tests {
         assert_eq!(messages.len(), 1);
         assert!(messages[0].sticky_meta);
         // A later Status with the same label must collapse into the sticky notice
-        // instead of adding a second transcript card.
-        assert!(applier.apply(&mut messages, AgentUiEvent::Status("Compacting history with…".into())));
+        // instead of adding a second transcript card. `/compact` sends the exact
+        // same running string through both channels (see `run_compact_with_notices`).
+        assert!(applier.apply(&mut messages, AgentUiEvent::Status("Compacting history…".into())));
         assert_eq!(messages.len(), 1, "same-label Status must collapse into the sticky notice");
+        // A different-label status (e.g. progress detail) must not collapse and appends.
+        assert!(applier.apply(
+            &mut messages,
+            AgentUiEvent::Status("Compacting history with claude-sonnet…".into())
+        ));
+        assert_eq!(messages.len(), 2, "different-label Status appends a second card");
     }
 
     #[test]

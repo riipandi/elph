@@ -558,7 +558,10 @@ fn reconstruct_transcript_from_llm_entries(
                                 last_event_ms = Some(result.timestamp_ms.max(assist_ms));
                             }
 
-                            msg.detail_expanded = msg.tool.as_ref().is_some_and(|t| t.has_inline_diff());
+                            // Finished tool cards start collapsed like the live applier's
+                            // end_tool — never auto-expand on resume just because a diff
+                            // payload was restored.
+                            msg.detail_expanded = false;
                             messages.push(msg);
                         }
                         AssistantContentBlock::Text(t) => {
@@ -938,5 +941,85 @@ mod tests {
         assert_eq!(restored[0].content, "[skill] /code-review fix tests");
         assert_eq!(restored[1].style, TranscriptStyle::User);
         assert_eq!(restored[1].content, "/summarize --short");
+    }
+
+    /// Resumed edit_file cards start collapsed even though a diff payload is restored.
+    ///
+    /// Regression: the fallback reconstruction expanded tool cards whenever
+    /// `old_text`/`new_text` diff details were present, so every resumed `Edit`
+    /// row rendered its multi-line diff instead of the collapsed one-line header
+    /// the live applier shows for finished tools.
+    #[test]
+    fn reconstructed_edit_file_tool_card_starts_collapsed() {
+        use elph_agent::{AgentMessage, SessionTreeEntry};
+        use elph_ai::{AssistantContentBlock, ContentBlock, Message, StopReason, ToolCall, UserContent};
+
+        let call_id = "call-edit-1";
+        let entries = vec![
+            SessionTreeEntry::Message {
+                id: "u1".into(),
+                parent_id: None,
+                timestamp: "t".into(),
+                message: AgentMessage::Llm(Box::new(Message::User {
+                    content: UserContent::Text("fix it".into()),
+                    timestamp: 0,
+                })),
+                prompt_title: String::new(),
+                prompt_kind: String::new(),
+            },
+            SessionTreeEntry::Message {
+                id: "a1".into(),
+                parent_id: Some("u1".into()),
+                timestamp: "t".into(),
+                message: AgentMessage::Llm(Box::new(Message::Assistant(elph_ai::faux_assistant_message(
+                    vec![AssistantContentBlock::ToolCall(ToolCall::new(
+                        call_id,
+                        "edit_file",
+                        serde_json::json!({ "path": "src/main.rs" }),
+                    ))],
+                    Some(StopReason::ToolUse),
+                )))),
+                prompt_title: String::new(),
+                prompt_kind: String::new(),
+            },
+            SessionTreeEntry::Message {
+                id: "r1".into(),
+                parent_id: Some("a1".into()),
+                timestamp: "t".into(),
+                message: AgentMessage::Llm(Box::new(Message::ToolResult {
+                    tool_call_id: call_id.into(),
+                    tool_name: "edit_file".into(),
+                    content: vec![ContentBlock::Text {
+                        text: "Edited src/main.rs".into(),
+                    }],
+                    details: Some(serde_json::json!({
+                        "old_content": "fn a() {}\n",
+                        "new_content": "fn a() { 1 }\n",
+                        "file_path": "src/main.rs",
+                        "_elph_ui": { "duration_secs": 0.4 },
+                    })),
+                    added_tool_names: None,
+                    usage: None,
+                    is_error: false,
+                    timestamp: 10,
+                })),
+                prompt_title: String::new(),
+                prompt_kind: String::new(),
+            },
+        ];
+
+        let messages = reconstruct_transcript_from_llm_entries(&entries, "/tmp/project");
+        assert_eq!(messages.len(), 2, "user + tool card");
+        let tool_card = &messages[1];
+        let tool = tool_card.tool.as_ref().expect("tool card");
+        assert_eq!(tool.name, "edit_file");
+        // The diff payload is restored, but the finished tool card must stay collapsed —
+        // same as the live applier's end_tool — so resume matches the live transcript.
+        assert!(tool.has_inline_diff());
+        assert!(!tool_card.detail_expanded, "resumed edit_file must start collapsed");
+        assert!(tool_card.is_tool_collapsed());
+        assert_eq!(tool_card.duration_secs, Some(0.4));
+        assert!(tool_card.layout_text().starts_with("✓ Edit "));
+        assert_eq!(tool_card.layout_text().lines().count(), 1, "collapsed card is header-only");
     }
 }
