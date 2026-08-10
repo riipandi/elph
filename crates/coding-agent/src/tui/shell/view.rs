@@ -237,6 +237,8 @@ pub(crate) fn build_shell_view(
         let session_title = crate::agent::session_title_for_rename(agent_session.as_ref())
             .ok()
             .filter(|title| !title.trim().is_empty());
+        let submitted = count_submitted_user_prompts(&messages.read());
+        let persisted_turns = chrome.turn_count;
         record_if_active(
             ExitSnapshot {
                 session_id: session_id.clone(),
@@ -248,9 +250,16 @@ pub(crate) fn build_shell_view(
                 lines_removed,
                 usage: Default::default(),
             },
-            count_submitted_user_prompts(&messages.read()),
-            chrome.turn_count,
+            submitted,
+            persisted_turns,
         );
+        // Discard the session record when the user never produced a turn this run.
+        // Blocking on the async delete (bounded) so the record is gone before exit.
+        if !session_had_user_activity(submitted, persisted_turns) {
+            if let Some(session) = agent_session.as_ref() {
+                delete_empty_session_blocking(Arc::clone(session), &session_id);
+            }
+        }
         system.exit();
     }
 

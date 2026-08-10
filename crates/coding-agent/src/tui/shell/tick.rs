@@ -210,6 +210,12 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             *new_session_requested.write() = false;
             *resume_session_requested.write() = None;
 
+            // Capture the outgoing session id before we drop the slot — if it never
+            // produced a turn, delete the empty record so `/new` does not litter the
+            // project store with blank sessions.
+            let outgoing_session = agent_session_slot.read().clone();
+            let outgoing_id = outgoing_session.as_ref().map(|s| s.session_id().to_string());
+
             let paths_for_load = paths.read().clone();
             let cwd_for_load = cwd_for_loop.clone();
             let settings = Settings::load(&paths_for_load).ok();
@@ -252,6 +258,15 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             agent_session_slot.set(None);
             messages.set(Vec::new());
             *messages_arc_inner.write().unwrap() = Vec::new();
+
+            if let Some(id) = outgoing_id {
+                if let Some(session) = outgoing_session {
+                    let sm = session.session_manager();
+                    if let Err(err) = sm.delete_if_no_turns(&id).await {
+                        log::warn!("delete empty session on /new: {err:#}");
+                    }
+                }
+            }
         }
 
         let agent_session_for_loop = agent_session_slot.read().clone();

@@ -281,6 +281,11 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
         if options.no_session {
             let _ = session.session_manager().delete_by_id(&session_id).await;
         } else {
+            // Discard the session record when the headless run never produced a turn
+            // (e.g. prompt rejected/aborted before any agent turn persisted).
+            if let Err(e) = session.session_manager().delete_if_no_turns(&session_id).await {
+                log::warn!("delete empty session on run error: {e:#}");
+            }
             emit_turn_footer(format, &turn_meta);
         }
         return Err(err);
@@ -340,6 +345,11 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
     if options.no_session {
         let _ = session.session_manager().delete_by_id(&session_id).await;
     } else {
+        // Discard the session record when the headless run never produced a turn
+        // (e.g. prompt rejected/aborted before any agent turn persisted).
+        if let Err(e) = session.session_manager().delete_if_no_turns(&session_id).await {
+            log::warn!("delete empty session on run complete: {e:#}");
+        }
         emit_turn_footer(format, &turn_meta);
     }
 

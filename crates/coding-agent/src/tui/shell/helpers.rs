@@ -446,6 +446,32 @@ fn await_worker_shutdown(session: Option<&Arc<CodingAgentSession>>) {
     let _ = rx.recv_timeout(std::time::Duration::from_secs(2));
 }
 
+/// Blocking best-effort delete of an empty session (no turns). Used from the
+/// synchronous render path where `await` is not available. Bounded wait so the
+/// TUI exit is never blocked indefinitely.
+pub(crate) fn delete_empty_session_blocking(
+    session: Arc<crate::agent::CodingAgentSession>,
+    session_id: &str,
+) {
+    let Ok(handle) = tokio::runtime::Handle::try_current() else {
+        return;
+    };
+    let sid = session_id.to_string();
+    let (tx, rx) = std::sync::mpsc::channel();
+    handle.spawn(async move {
+        let result = session.session_manager().delete_if_no_turns(&sid).await;
+        let _ = tx.send(result);
+    });
+    match rx.recv_timeout(std::time::Duration::from_secs(2)) {
+        Ok(Ok(deleted)) if deleted => {
+            log::debug!("deleted empty session {session_id} on exit");
+        }
+        Ok(Ok(_)) => {}
+        Ok(Err(err)) => log::warn!("delete empty session on exit: {err:#}"),
+        Err(_) => log::warn!("delete empty session on exit: timed out"),
+    }
+}
+
 pub(crate) fn begin_turn_token_tracking(tracker: &mut Ref<Option<TurnTokenTracker>>, chrome: &ChromeStats) {
     tracker.set(Some(TurnTokenTracker::new(chrome.tokens_used)));
 }

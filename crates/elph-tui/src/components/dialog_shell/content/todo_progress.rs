@@ -2,7 +2,7 @@
 //!
 //! [`DialogTodoProgressContent`] is the static dialog preset. [`TodoProgressPanel`]
 //! is the compact live panel used by the coding-agent shell above the status row:
-//! minimal single border with inline title `(Todos done/total)`, per-status glyph
+//! minimal single border with inline title `Todos done/total`, per-status glyph
 //! (`○` pending / animated spinner when running / `✓` finished), finished rows
 //! hidden from the list, and the whole panel hidden once every item is finished.
 //! When the user steers or interjects, rows dim so the plan reads as provisional.
@@ -70,7 +70,7 @@ pub fn todo_panel_should_show(todos: &[TodoPanelRow]) -> bool {
     todos.iter().any(|t| !t.finished)
 }
 
-/// Border title: `(Todos 2/5)` or `(Todos 2/5 · steered)` when the user redirected.
+/// Border title: `Todos 2/5` or `Todos 2/5 · steered` when the user redirected.
 pub fn todo_panel_header_line(done: usize, total: usize, redirected: bool) -> String {
     if redirected {
         format!("({TODO_PANEL_HEADER_PREFIX} {done}/{total} · steered)")
@@ -398,9 +398,9 @@ mod tests {
 
     #[test]
     fn header_reports_counts_and_steered() {
-        assert_eq!(todo_panel_header_line(1, 3, false), "(Todos 1/3)");
-        assert_eq!(todo_panel_header_line(0, 3, false), "(Todos 0/3)");
-        assert_eq!(todo_panel_header_line(2, 5, true), "(Todos 2/5 · steered)");
+        assert_eq!(todo_panel_header_line(1, 3, false), "Todos 1/3");
+        assert_eq!(todo_panel_header_line(0, 3, false), "Todos 0/3");
+        assert_eq!(todo_panel_header_line(2, 5, true), "Todos 2/5 · steered");
     }
 
     #[test]

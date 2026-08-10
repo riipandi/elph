@@ -299,6 +299,46 @@ impl SessionManager {
         Ok(())
     }
 
+    /// Persisted turn count for a session (from `sessions.turn_count` rollup).
+    /// Returns `None` when the session row is missing.
+    pub async fn turn_count(&self, session_id: &str) -> Result<Option<u32>> {
+        let conn = open_session_conn(&self.db_path, self.database.as_ref())
+            .await
+            .context("open connection for turn_count")?;
+        let mut rows = conn
+            .query(
+                "SELECT turn_count FROM sessions WHERE id = ?",
+                turso::params![session_id],
+            )
+            .await
+            .context("query turn_count")?;
+        let row = rows.next().await.context("read turn_count row")?;
+        match row {
+            Some(r) => {
+                let count: i64 = r.get(0).context("read turn_count column")?;
+                Ok(Some(count.max(0) as u32))
+            }
+            None => Ok(None),
+        }
+    }
+
+    /// Delete the session record when it has zero turns (user never sent a prompt
+    /// that produced a persisted turn). Best-effort: no-op when the session already
+    /// has turns or is already gone. Cleans up artifact dirs on successful delete.
+    pub async fn delete_if_no_turns(&self, session_id: &str) -> Result<bool> {
+        let Some(count) = self.turn_count(session_id).await? else {
+            // Session row already gone — make sure artifact dirs are cleaned up.
+            self.remove_artifact_dirs(session_id);
+            return Ok(false);
+        };
+        if count > 0 {
+            return Ok(false);
+        }
+        log::info!("deleting empty session {session_id} (no turns)");
+        self.delete_by_id(session_id).await?;
+        Ok(true)
+    }
+
     /// Fork the given session into a new session (full branch copy by default).
     pub async fn fork_session(
         &self,
@@ -369,6 +409,35 @@ pub fn load_session_tree_jsonl(path: &Path) -> Result<Vec<elph_agent::SessionTre
         entries.push(entry);
     }
     Ok(entries)
+}
+
+/// Open a connection to the session store, running migrations when opening the
+/// file directly (shared database handles are already migrated by the host).
+async fn open_session_conn(
+    db_path: &Path,
+    database: Option<&Arc<Database>>,
+) -> Result<turso::Connection> {
+    match database {
+        Some(db) => db.connect().context("connect from shared database"),
+        None => {
+            if let Some(parent) = db_path.parent() {
+                fs::create_dir_all(parent).context("create db parent dir")?;
+            }
+            let db = elph_agent::datastore::open_local(db_path)
+                .await
+                .context("open local database")?;
+            let conn = elph_agent::datastore::connect(&db)
+                .await
+                .context("connect to database")?;
+            elph_agent::datastore::run_migrations(
+                &conn,
+                &elph_agent::session::migrations::SESSION_TREE_MIGRATIONS,
+            )
+            .await
+            .context("run session migrations")?;
+            Ok(conn)
+        }
+    }
 }
 
 /// Stable string for DB `cwd` matching (canonicalize when possible).

@@ -20,13 +20,13 @@ Registered on coding sessions alongside goals:
 }
 ```
 
-| Field     | Notes                                                                          |
-| --------- | ------------------------------------------------------------------------------ |
-| `merge`   | `true` (default): upsert by `id`. `false`: replace entire list                 |
-| `todos`   | Array; empty + `merge: false` clears the list                                  |
+| Field     | Notes                                                                                                                                                                                                                                                                                                                     |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `merge`   | `true` (default): upsert by `id`. `false`: replace entire list                                                                                                                                                                                                                                                            |
+| `todos`   | Array; empty + `merge: false` clears the list                                                                                                                                                                                                                                                                             |
 | `id`      | Optional on create; required to update. Host mints `todo_<kalid>` when omitted. Short labels (`"1"`, `"step_a"`) are accepted and mapped to a **session-scoped** PK so they never collide with other sessions (global `session_todos.id` PRIMARY KEY). Prefer returning/using the ids from tool results for later merges. |
-| `content` | Actionable title; optional on merge when only changing status                  |
-| `status`  | `pending` \| `in_progress` \| `completed` \| `cancelled`                       |
+| `content` | Actionable title; optional on merge when only changing status                                                                                                                                                                                                                                                             |
+| `status`  | `pending` \| `in_progress` \| `completed` \| `cancelled`                                                                                                                                                                                                                                                                  |
 
 Rules enforced by the store:
 
@@ -50,9 +50,9 @@ Rules enforced by the store:
 
 System prompt (`coding_base.md` → `<operating_loop>`) biases to **See → Do → Check**, not ceremony:
 
-1. **See** — conversation + already-injected memory/codegraph/tool results  
-2. **Do** — smallest tool set that advances the request  
-3. **Check** — validation that covers your change only  
+1. **See** — conversation + already-injected memory/codegraph/tool results
+2. **Do** — smallest tool set that advances the request
+3. **Check** — validation that covers your change only
 
 **Todos are rare, not ritual:** use `todo_write` only for true multi-step work (~4+ independent steps). Most tasks need zero todos. At most one `in_progress`; prefer status merges.
 
@@ -73,12 +73,12 @@ On session open (`--continue` / `--resume` / mid-session), open todos are:
 
 Live panel above the status row, driven by `TodoUpdated` UI events from `todo_write` and by rehydrate-on-open:
 
-| Behavior | Detail |
-| -------- | ------ |
-| Chrome | Minimal round border; title inline on the top edge as `(Todos done/total)` |
-| Rows | Unfinished only (`○` pending / spinner when `in_progress`); finished hidden |
-| Hide | Entire panel disappears when every item is `completed` or `cancelled` (or the list is empty) |
-| Cap | At most 5 open rows; extra shown as `↓N more` |
-| Steer / interject | Queued steer (Ctrl+Enter) or activity `Steering` dims rows, pauses spinner emphasis, and annotates the title as `(Todos x/x · steered)` so the checklist reads as provisional until the agent rewrites it |
+| Behavior          | Detail                                                                                                                                                                                                  |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Chrome            | Minimal round border; title inline on the top edge as `Todos done/total`                                                                                                                                |
+| Rows              | Unfinished only (`○` pending / spinner when `in_progress`); finished hidden                                                                                                                             |
+| Hide              | Entire panel disappears when every item is `completed` or `cancelled` (or the list is empty)                                                                                                            |
+| Cap               | At most 5 open rows; extra shown as `↓N more`                                                                                                                                                           |
+| Steer / interject | Queued steer (Ctrl+Enter) or activity `Steering` dims rows, pauses spinner emphasis, and annotates the title as `Todos x/x · steered` so the checklist reads as provisional until the agent rewrites it |
 
 Tool results still return the full list JSON for the model; the host mirrors that into the panel.

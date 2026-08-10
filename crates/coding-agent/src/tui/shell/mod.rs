@@ -23,7 +23,7 @@ use crate::agent::load_resources;
 use crate::agent::slash_commands_for_palette;
 use crate::agent::{AgentUiEvent, CodingAgentSession, ToolApprovalChoice};
 use crate::extensions::ExtensionHost;
-use crate::platform::exit_message::{ExitSnapshot, record_if_active};
+use crate::platform::exit_message::{ExitSnapshot, record_if_active, session_had_user_activity};
 use crate::platform::{Paths, Settings};
 use crate::types::{AgentMode, SlashCommand, ThinkingLevel};
 use crate::types::{is_force_quit_command, is_quit_command};

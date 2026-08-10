@@ -60,6 +60,16 @@ Canonical SQL: `elph-agent` `CANONICAL_SESSION_SCHEMA_SQL` / platform migration 
 
 Messages are flushed on each `MessageEnd` into `session_entries` (transactional with leaf). Do not rely on UI snapshot blobs.
 
+## Empty session cleanup
+
+A session that never produced a turn is discarded immediately rather than persisted:
+
+- **TUI exit** — when the user quits without ever sending a prompt (no `session_turns` row), the session record and its artifact dir are deleted.
+- **`/new` / `/resume <id>`** — when switching away from the current session, if it has zero turns, its record is deleted so the session list is not littered with blank entries.
+- **Headless (`elph run`)** — when the run finishes (or errors) without a persisted turn, the session is deleted unless `--no-session` is set (which deletes unconditionally).
+
+This is separate from retention GC and is best-effort: a session with `turn_count = 0` is considered empty and eligible for immediate removal.
+
 ## Export / import / tree (product surface)
 
 | Command | Behavior |
