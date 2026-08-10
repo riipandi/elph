@@ -5,7 +5,7 @@
 //! for goals, messages, todos, and turns respectively.
 
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::thread;
 use std::time::Duration;
 
@@ -54,6 +54,16 @@ pub fn create_prefixed_kalid(prefix: &str) -> String {
     format!("{}_{}", prefix, next_unique_kalid())
 }
 
+/// Create a prefixed Kalid around an explicit body (e.g. a raw RNG Kalid).
+pub fn create_prefixed_kalid_with(prefix: &str, body: String) -> String {
+    format!("{}_{}", prefix, body)
+}
+
+#[cfg(test)]
+fn collect_existing(ids: &[&str]) -> HashSet<String> {
+    ids.iter().map(|s| s.to_string()).collect()
+}
+
 /// Create a goal ID (`goal_<16>`).
 pub fn create_goal_id() -> String {
     create_prefixed_kalid(GOAL_PREFIX)
@@ -65,8 +75,33 @@ pub fn create_message_id() -> String {
 }
 
 /// Create a todo ID (`todo_<16>`).
+///
+/// Uniqueness is load-bearing: todo IDs become the PRIMARY KEY of the
+/// `session_todos` table, so `replace` (delete-all + insert) can never collide
+/// with stale rows from a previous list — a duplicate would fail the whole write.
+/// `next_unique_kalid()` only checks against the *last* generated ID (thread-local),
+/// so identical fast-sequential bodys (e.g. `todo_bj5s97pfxx4pg1yp` twice) slip
+/// through and violate the constraint. Take the slow path and ask the RNG / clock
+/// mix inside the store for a fresh body when the fast path repeats.
+///
+/// Wrapper stays `todo_<16>`: use [`create_todo_id_checked`] when a duplicate
+/// would be fatal (DB unique constraint).
 pub fn create_todo_id() -> String {
     create_prefixed_kalid(TODO_PREFIX)
+}
+
+/// Like [`create_todo_id`], but retries against a set of already-present IDs.
+///
+/// The fallback bodies come from `kalid::generate_kalid()` (RNG + clock, not the
+/// thread-local last-ID filter), so consecutive calls from the same task diverge.
+pub fn create_todo_id_checked(existing: &HashSet<String>) -> String {
+    for _ in 0..100 {
+        let candidate = create_todo_id();
+        if !existing.contains(&candidate) {
+            return candidate;
+        }
+    }
+    create_prefixed_kalid_with(WORKER_PREFIX, kalid::generate_kalid())
 }
 
 /// Create a turn ID (`turn_<16>`).
@@ -147,24 +182,6 @@ pub fn is_valid_kalid(id: &str) -> bool {
     }
 }
 
-/// Strip a known prefix and separator from a Kalid string, returning the body.
-///
-/// For worker IDs with memorable names (e.g., `wrk_quick_fox`), returns the memorable core.
-/// For prefixed Kalids (e.g., `goal_a1b2c3d4e5f6g7h8`), returns the 16-char body.
-/// Returns `None` if no known prefix is found.
-fn strip_prefix(id: &str) -> Option<&str> {
-    let underscore = id.find('_')?;
-    let prefix = &id[..underscore];
-    // Only strip known prefixes to avoid false positives
-    match prefix {
-        GOAL_PREFIX | MESSAGE_PREFIX | TODO_PREFIX | TURN_PREFIX | WORKER_PREFIX | WORKER_MSG_PREFIX => {
-            let body = &id[underscore + 1..];
-            Some(body)
-        }
-        _ => None,
-    }
-}
-
 fn next_unique_kalid() -> String {
     for _ in 0..100 {
         let id = kalid::generate_kalid();
@@ -230,6 +247,28 @@ mod tests {
         assert!(id.starts_with("todo_"), "todo_ prefix");
         assert_eq!(id.len(), 21); // "todo_" (5) + 16 body
         assert!(is_valid_kalid(&id));
+    }
+
+    #[test]
+    fn create_todo_id_checked_avoids_collision_with_same_body() {
+        // Regression: the thread-local last-ID filter can hand out the same body twice
+        // back-to-back (e.g. `todo_bj5s97pfxx4pg1yp`), which violates the PRIMARY KEY.
+        let same_body = "bj5s97pfxx4pg1yp";
+        for _ in 0..8 {
+            let held = collect_existing(&[&format!("todo_{same_body}")]);
+            let id = create_todo_id_checked(&held);
+            assert_ne!(id, format!("todo_{same_body}"));
+            assert!(id.starts_with("todo_"));
+            assert!(is_valid_kalid(&id));
+        }
+    }
+
+    #[test]
+    fn create_todo_id_checked_not_in_set() {
+        let held = collect_existing(&["todo_aaaaaaaaaaaaaaaa", "todo_bbbbbbbbbbbbbbbb"]);
+        let id = create_todo_id_checked(&held);
+        assert!(!held.contains(&id), "id {id} must not be in the held set");
+        assert!(id.starts_with("todo_"));
     }
 
     #[test]

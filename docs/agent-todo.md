@@ -32,6 +32,9 @@ Rules enforced by the store:
 
 - At most one `in_progress` per write (merge demotes extras if needed)
 - Duplicate ids in one call are rejected
+- Minted ids are checked against the current list so a same-row `replace`
+  (delete-all + reinsert) can never hit a PRIMARY KEY collision; the
+  inserted ids are always unique
 
 ## Goals vs todos
 

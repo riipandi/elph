@@ -9,7 +9,7 @@ use turso::Connection;
 
 use crate::datastore::{connect, with_conn};
 use crate::messages::now_iso_timestamp;
-use crate::session::id::create_todo_id;
+use crate::session::id::create_todo_id_checked;
 
 use super::types::{TodoItem, TodoStatus};
 
@@ -114,7 +114,10 @@ impl TodoStore {
             existing.into_iter().map(|t| (t.id.clone(), t)).collect();
 
         for update in updates {
-            let id = update.id.clone().unwrap_or_else(create_todo_id);
+            let id = update
+                .id
+                .clone()
+                .unwrap_or_else(|| create_todo_id_checked(&by_id.keys().cloned().collect()));
             if let Some(item) = by_id.get_mut(&id) {
                 if let Some(content) = update.content {
                     item.content = content;
@@ -225,7 +228,10 @@ fn validate_updates(updates: &[TodoUpdate]) -> Result<()> {
 }
 
 async fn insert_todo(conn: &Connection, session_id: &str, update: &TodoUpdate, position: i64, now: &str) -> Result<()> {
-    let id = update.id.clone().unwrap_or_else(create_todo_id);
+    let id = update
+        .id
+        .clone()
+        .unwrap_or_else(|| create_todo_id_checked(&HashSet::new()));
     let content = update.content.clone().unwrap_or_else(|| id.clone());
     let status = update.status.unwrap_or(TodoStatus::Pending);
     let completed_at = if matches!(status, TodoStatus::Completed | TodoStatus::Cancelled) {
