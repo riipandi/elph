@@ -878,6 +878,20 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     transcript_changed = true;
                     continue;
                 }
+                // Worker-message turn prompt (`queue_answer_worker_inbound`) — never
+                // render `<intercom>` or a peer's message as a user prompt card.
+                // Slim meta line naming the sender + a short preview instead.
+                if text.starts_with(crate::agent::WORKER_INBOUND_PROMPT_PREFIX) {
+                    let label = worker_inbound_meta_label(&text);
+                    let mut notice = TranscriptMessage::text(label, TranscriptStyle::Meta);
+                    notice.sticky_meta = true;
+                    {
+                        let mut msgs = messages_arc_inner.write().unwrap();
+                        msgs.push(notice);
+                    }
+                    transcript_changed = true;
+                    continue;
+                }
                 let mut submitted = TranscriptMessage::text(text, TranscriptStyle::User);
                 submitted.submitted_at = Some(chrono::Utc::now());
                 // Write to arc directly (no State dirty mark);

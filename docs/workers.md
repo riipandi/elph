@@ -103,14 +103,21 @@ threaded chat with its own mechanism:
 Inbound mail is polled (`inboxPollMs`), then delivered:
 
 - The message lands in the worker chat inbox and the TUI shows an unread badge.
-- When the harness is **idle**, the poller starts a **real agent turn** (full
-  context + tools) with a system-reminder that this is a peer message; the agent
-  replies with `worker_reply`.
-- When the harness is **busy**, the message only arrives in the inbox; the agent
-  answers when idle again (or the peer's `worker_ask` times out).
+- When the harness is **idle**, the poller immediately starts a **real agent
+  turn** (full context + tools) with an intercom wrapper saying this is a peer
+  message; the agent replies with `worker_reply`.
+- When the harness is **busy**, the answer turn is **enqueued as a follow-up**
+  — it runs right after the user's current task (never as a steer/interjection),
+  so the peer's `worker_ask` does not hang until timeout. If the follow-up
+  queueing fails, the ask is closed with an explicit error reply instead.
+- If the answer turn itself fails, the ask is closed with an error reply
+  (`kind = response`) so the peer's `worker_get` / `worker_await` unblocks.
 
 Inbound messages **never steer or interrupt** the user's current agent turn —
-the poller never takes the turn gate and never calls the harness steer queue.
+the poller never takes the turn gate directly and never calls the harness steer
+queue. Worker-message turns are rendered in the TUI as a slim
+`Message from worker <name> — …` meta label, never as a user prompt card
+(the `<intercom>` wrapper stays out of the transcript).
 
 Compared to classic intercom: delivery is **poll-based durable SoT** (survives
 restart); latency ≈ `inboxPollMs` / reaper interval, not sub-ms IPC.
@@ -132,6 +139,6 @@ Session GC never deletes sessions that currently hold a row in `session_leases`.
 - Same machine / shared store only
 - No automatic merge of concurrent edits
 - No cross-worktree file leases (by design)
-- Inbound worker messages become real agent turns only when the harness is idle;
-  a busy worker answers after its current task (or the ask times out). No
-  sub-second IPC wake channel — see the notify design above.
+- No sub-second IPC wake channel — delivery/presence is poll-based (see the
+  notify design above); a busy worker answers an inbound ask **after** its
+  current task (follow-up queue), not mid-turn.

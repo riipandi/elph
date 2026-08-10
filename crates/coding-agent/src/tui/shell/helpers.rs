@@ -176,6 +176,41 @@ pub(crate) fn mark_busy(ctx: &mut BusyActivation<'_>, steer: bool, activity_labe
     ctx.last_activity_label.set(label);
 }
 
+/// Slim transcript label for a worker-message turn prompt.
+///
+/// Extracts the sender name from the `<intercom> … (\`name\`) prefix and a
+/// short preview of the actual message. Never shows the raw `<intercom>`
+/// wrapper or the full peer message as a prompt card.
+pub(crate) fn worker_inbound_meta_label(prompt: &str) -> String {
+    let after = prompt
+        .strip_prefix(crate::agent::WORKER_INBOUND_PROMPT_PREFIX)
+        .unwrap_or(prompt);
+    // Sender: ` (`name`)`  right after the prefix.
+    let mut sender = String::new();
+    let after_sender = after
+        .strip_prefix(" (`")
+        .and_then(|s| {
+            let (name, tail) = s.split_once("`)\n")?;
+            sender = name.trim().to_string();
+            Some(tail)
+        })
+        .unwrap_or(after);
+    // Body: everything after the closing `</intercom>`.
+    let body = after_sender
+        .split_once("</intercom>")
+        .map(|(_, tail)| tail)
+        .unwrap_or(after_sender);
+    let body = body.trim();
+    let preview: String = body.chars().take(60).collect();
+    if sender.is_empty() {
+        format!("Message from worker… {preview}")
+    } else if preview.is_empty() {
+        format!("Message from worker {sender}")
+    } else {
+        format!("Message from worker {sender} — {preview}")
+    }
+}
+
 /// Mutable UI state for queue manager actions (grouped for clippy::too_many_arguments).
 pub(crate) struct PromptQueueActionCtx<'a> {
     pub(crate) prompt_queue: &'a mut Ref<PromptQueue>,
@@ -723,5 +758,28 @@ mod tests {
             thinking_level_from_agent(elph_agent::AgentThinkingLevel::High),
             ThinkingLevel::High
         );
+    }
+
+    #[test]
+    fn worker_inbound_label_hides_intercom_wrapper() {
+        let prompt = format!(
+            "{} (`calm-fox`)\n\
+             in this shared project. Answer it as part of your normal turn — you may use\n\
+             tools. Reply with the `worker_reply` tool so the peer receives your answer.\n\
+             If the message needs no answer, send a short acknowledgement.</intercom>\n\n\
+             Please check the auth service",
+            crate::agent::WORKER_INBOUND_PROMPT_PREFIX
+        );
+        let label = worker_inbound_meta_label(&prompt);
+        assert!(label.starts_with("Message from worker calm-fox"), "{label}");
+        assert!(label.contains("Please check the auth service"), "{label}");
+        assert!(!label.contains("<intercom>"), "{label}");
+        assert!(!label.contains("worker_reply"), "{label}");
+    }
+
+    #[test]
+    fn worker_inbound_label_falls_back_without_sender() {
+        let label = worker_inbound_meta_label("<intercom>plain");
+        assert!(label.starts_with("Message from worker…"), "{label}");
     }
 }

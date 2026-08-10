@@ -34,10 +34,10 @@ pub fn extract_worker_payload_text(payload: &str) -> String {
     }
 }
 
-/// System-reminder wrapper for the side question (Grok `/btw` semantics).
+/// Intercom wrapper for the side question (Grok `/btw` semantics).
 fn side_question_user_text(question: &str) -> String {
     format!(
-        "<system-reminder>This is a side question from the user. \
+        "<intercom>This is a side question from the user. \
          You must answer this question directly in a single response.\n\n\
          IMPORTANT CONTEXT:\n\
          - You are a separate, lightweight agent spawned to answer this one question\n\
@@ -51,10 +51,17 @@ fn side_question_user_text(question: &str) -> String {
          - You can ONLY provide information based on what you already know from the conversation context\n\
          - NEVER say things like \"Let me try...\", \"I'll now...\", \"Let me check...\", or promise to take any action\n\
          - If you don't know the answer, say so — do not offer to look it up or investigate\n\n\
-         Simply answer the question with the information you have.</system-reminder>\n\n\
+         Simply answer the question with the information you have.</intercom>\n\n\
          {question}"
     )
 }
+
+/// Prefix of the worker-message turn prompt (`queue_answer_worker_inbound`).
+///
+/// The TUI matches this exact prefix to render inbound worker messages as a slim
+/// meta line instead of a user prompt card — never show `<intercom>` or a peer's
+/// message as if the user typed it.
+pub const WORKER_INBOUND_PROMPT_PREFIX: &str = "<intercom>This is a message from another Elph worker";
 
 fn now_millis() -> i64 {
     chrono::Utc::now().timestamp_millis()

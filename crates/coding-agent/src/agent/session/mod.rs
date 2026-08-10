@@ -16,6 +16,7 @@ use std::time::Instant;
 use tokio::sync::Mutex;
 use tokio::sync::mpsc;
 
+use super::aside::WORKER_INBOUND_PROMPT_PREFIX;
 use super::aside::extract_worker_payload_text;
 use super::events::AgentUiEvent;
 use super::events::RETRY_CONTINUE_PROMPT;
@@ -340,14 +341,13 @@ impl CodingAgentSession {
 
     /// Deliver one inbound worker message — **never interrupts the user's task**.
     ///
-    /// The message lands in the worker chat inbox (TUI) and, when the harness is
-    /// idle, becomes a real agent turn that runs through the normal turn pipeline
-    /// (full context, tools, reply via `worker_reply`). While the main agent is
-    /// busy the message only arrives in the inbox; the agent answers when it is
-    /// idle again. This replaces the old one-shot aside completion: worker
-    /// messaging is now a first-class threaded channel with real answers, not a
-    /// tool-free side question. Never takes `turn_gate`, so a peer message can
-    /// never steal or interrupt the current agent turn.
+    /// The message lands in the worker chat inbox (TUI) and becomes a real agent
+    /// turn that runs through the normal turn pipeline (full context, tools, reply
+    /// via `worker_reply`). While the main agent is busy the answer turn is
+    /// **enqueued as a follow-up** so it still runs right after the user's task —
+    /// the peer's `worker_ask` does not silently time out. Never takes
+    /// `turn_gate` directly and never calls the steer queue, so a peer message
+    /// can never steal or interrupt the current agent turn.
     async fn deliver_worker_inbound(&self, msg: elph_agent::WorkerMessage) -> Result<()> {
         // Resolve display name for the sender (registry may be gone → fall back to id).
         let from_worker = if let Some(rt) = self.worker_runtime.as_ref() {
@@ -369,41 +369,61 @@ impl CodingAgentSession {
             created_at: msg.created_at.clone(),
         });
 
-        // Ask-type prompts are answered with a real turn (full context + tools) only
-        // when the harness is idle. Busy → the message just sits in the inbox; the
-        // agent answers once idle (or the peer's await times out).
+        // Answer with a real turn (full context + tools). When the harness is busy
+        // the turn is queued behind the current task via the follow-up queue, never
+        // injected as a steer — the user's turn keeps running untouched, and the
+        // peer's ask still gets answered promptly instead of hanging until timeout.
+        let prompt = self.worker_inbound_prompt(&from_worker, &text);
         if self.harness.phase().await == elph_agent::AgentHarnessPhase::Idle {
-            self.queue_answer_worker_inbound(msg).await;
+            if let Err(err) = self.run_prompt_turn(prompt).await {
+                log::warn!("worker answer turn failed: {err:#}");
+                self.reply_worker_answer_failed(&msg, &err.to_string()).await;
+            }
+        } else if let Err(err) = self.queue_follow_up(prompt).await {
+            log::warn!("worker inbound follow-up queue failed: {err:#}");
+            self.reply_worker_answer_failed(&msg, &format!("follow-up queue failed: {err:#}"))
+                .await;
         }
         Ok(())
     }
 
-    /// Queue a normal agent turn that answers an inbound worker message.
+    /// Build the turn prompt for answering an inbound worker message.
     ///
-    /// Runs `run_prompt_turn` (which takes `turn_gate`, so it serializes behind the
-    /// user's current turn if racing) with a short system-reminder wrapper that
-    /// tells the agent this is a peer message and to reply with `worker_reply`.
-    async fn queue_answer_worker_inbound(&self, msg: elph_agent::WorkerMessage) {
-        let from_worker = if let Some(rt) = self.worker_runtime.as_ref() {
-            rt.registry()
-                .name_for_worker_id(&msg.from_worker_id)
-                .await
-                .unwrap_or_else(|| msg.from_worker_id.clone())
-        } else {
-            msg.from_worker_id.clone()
-        };
-        let text = extract_worker_payload_text(&msg.payload);
-        let prompt = format!(
-            "<system-reminder>This is a message from another Elph worker (`{from_worker}`)\n\
+    /// The `WORKER_INBOUND_PROMPT_PREFIX` marker lets the TUI render this as a slim
+    /// meta line instead of a user prompt card (see `worker_inbound_meta_label`).
+    fn worker_inbound_prompt(&self, from_worker: &str, text: &str) -> String {
+        format!(
+            "{WORKER_INBOUND_PROMPT_PREFIX} (`{from_worker}`)\n\
              in this shared project. Answer it as part of your normal turn — you may use\n\
              tools. Reply with the `worker_reply` tool so the peer receives your answer.\n\
-             If the message needs no answer, send a short acknowledgement.</system-reminder>\n\n\
+             If the message needs no answer, send a short acknowledgement.</intercom>\n\n\
              {text}"
-        );
-        if let Err(err) = self.run_prompt_turn(prompt).await {
-            log::warn!("worker answer turn failed: {err:#}");
-            // Do NOT re-claim: the message was already marked delivered; a failed
-            // answer surfaces to the peer as a timeout, never a replay loop.
+        )
+    }
+
+    /// Queue a normal agent turn that answers an inbound worker message.
+    ///
+    /// Runs `run_prompt_turn` (which takes `turn_gate`, so it serializes behind
+    /// the user's current turn if racing) with a short intercom wrapper
+    /// that tells the agent this is a peer message and to reply with
+    /// `worker_reply`.
+    async fn reply_worker_answer_failed(&self, msg: &elph_agent::WorkerMessage, error: &str) {
+        log::warn!("worker answer failed for {}: {error}", msg.id);
+        // The peer's ask should not hang until timeout: surface the failure as an
+        // explicit error reply (kind `response`) so their worker_await unblocks.
+        if let Some(rt) = self.worker_runtime.as_ref() {
+            let _ = rt
+                .mailbox()
+                .send_response(
+                    &msg.project_key,
+                    rt.worker_id.as_str(),
+                    &self.session_id,
+                    &msg.from_session_id,
+                    &msg.id,
+                    "",
+                    Some(error),
+                )
+                .await;
         }
     }
 

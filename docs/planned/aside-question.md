@@ -37,9 +37,9 @@ Reference (Grok Build):
 | After dismiss   | Optional sticky transcript meta card `/aside …` (collapsed), not a user/assistant chat pair                                              |
 | Concurrent      | One active aside panel; a second `/aside` replaces/cancels prior in-flight request (request-id correlation like Grok minimal_request_id) |
 
-### Side-question system reminder (from Grok, adapted)
+### Side-question system reminder / `intercom` (from Grok, adapted)
 
-Append a user message (or system reminder) that states:
+Append a user message (or system reminder / `intercom`) that states:
 
 - Separate lightweight instance; main agent is **not** interrupted
 - Answer in **one** response; no tools; no “let me check…”
