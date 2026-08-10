@@ -24,20 +24,18 @@ pub fn create_edit_file_tool_with_claims(env: Arc<LocalExecutionEnv>, claims: Sh
         Tool {
             name: "edit_file".into(),
             constrained_sampling: None,
-            description: "Edits files by replacing specific text with new content. Provide all three arguments: \
-                 path (file to edit), old_string (exact existing text — must match the file exactly, \
-                 exactly once), new_string (replacement text). Copy old_string verbatim from a \
-                 recent read_file result; if the file may have been reformatted (e.g. cargo fmt), \
-                 re-read it first so old_string still matches. The tool verifies the write by \
-                 re-reading the file from disk, so a successful result means the change actually \
-                 persisted."
+            description: "Edits files by replacing exact text. Use when you have specific old_string from a recent read_file. \
+                 For fuzzy matching or structural changes, use write_file instead. Copy old_string verbatim from the file — \
+                 whitespace matters. If file changed on disk, re-read and retry. If old_string appears multiple times, \
+                 include more context to make it unique."
                 .into(),
             parameters: json!({
                 "type": "object",
                 "properties": {
                     "path": { "type": "string", "description": "Path to the file to edit" },
                     "old_string": { "type": "string", "description": "Text to replace (must match exactly once)" },
-                    "new_string": { "type": "string", "description": "Replacement text" }
+                    "new_string": { "type": "string", "description": "Replacement text" },
+                    "ignoreWhitespace": { "type": "boolean", "description": "Ignore whitespace differences when matching old_string (slower but more robust)" }
                 },
                 "required": ["path", "old_string", "new_string"]
             }),
@@ -73,6 +71,7 @@ async fn execute_edit(
         .and_then(|v| v.as_str())
         .filter(|s| !s.trim().is_empty())
         .ok_or_else(missing_required("new_string"))?;
+    let ignore_whitespace = args.get("ignoreWhitespace").and_then(|v| v.as_bool()).unwrap_or(false);
 
     let absolute = resolve_path(&env, path, signal.as_ref()).await?;
     if let Some(claim) = claims.as_ref() {
@@ -80,19 +79,25 @@ async fn execute_edit(
     }
     let content = read_file_text(&env, &absolute, signal.as_ref()).await?;
 
-    let occurrences: Vec<usize> = content.match_indices(old_string).map(|(i, _)| i).collect();
-    let start = match occurrences.first() {
-        Some(&index) => index,
-        None => return Err(anyhow::anyhow!(old_string_not_found_hint(&content, old_string, path))),
+    let (start, end) = if ignore_whitespace {
+        find_whitespace_ignoring_match(&content, old_string)
+            .ok_or_else(|| anyhow::anyhow!(old_string_not_found_hint(&content, old_string, path)))?
+    } else {
+        let occurrences: Vec<usize> = content.match_indices(old_string).map(|(i, _)| i).collect();
+        let start = match occurrences.first() {
+            Some(&index) => index,
+            None => return Err(anyhow::anyhow!(old_string_not_found_hint(&content, old_string, path))),
+        };
+        if occurrences.len() > 1 {
+            return Err(anyhow::anyhow!(
+                "old_string found {} times in {path}; must be unique. Include more surrounding context \
+                 (neighboring lines) in old_string so it matches exactly once.",
+                occurrences.len()
+            ));
+        }
+        (start, start + old_string.len())
     };
-    if occurrences.len() > 1 {
-        return Err(anyhow::anyhow!(
-            "old_string found {} times in {path}; must be unique. Include more surrounding context \
-             (neighboring lines) in old_string so it matches exactly once.",
-            occurrences.len()
-        ));
-    }
-    let end = start + old_string.len();
+
     let after = &content[end..];
 
     if new_string.is_empty() {
@@ -129,12 +134,18 @@ async fn execute_edit(
     let fresh = read_file_text(&env, &absolute, signal.as_ref()).await?;
     if fresh != content {
         return Err(anyhow::anyhow!(
-            "edit aborted: {path} changed since it was read. Re-read the file (read_file) and retry the edit."
+            "edit aborted: {path} changed since it was read. This can happen if another process modified the file. \
+             Re-read the file (read_file) and retry the edit with updated old_string."
         ));
     }
     // Cross-process: refuse if on-disk fingerprint no longer matches the claim snapshot.
     if let Some(claim) = claims.as_ref() {
-        claim.ensure_content_unchanged(&absolute).await?;
+        if let Err(e) = claim.ensure_content_unchanged(&absolute).await {
+            return Err(anyhow::anyhow!(
+                "edit aborted: {path} changed on disk since claim (hash mismatch). This can happen if another process modified the file. \
+                 Re-read the file (read_file) and retry the edit with updated old_string. Details: {e}"
+            ));
+        }
     }
 
     match FileSystem::write_file(env.as_ref(), &absolute, updated.as_bytes(), signal.as_ref()).await {
@@ -168,6 +179,42 @@ async fn execute_edit(
         terminate: None,
         usage: None,
     })
+}
+
+/// Find match by ignoring whitespace differences.
+/// Returns (start, end) byte offsets of the matched region in the actual content.
+fn find_whitespace_ignoring_match(content: &str, pattern: &str) -> Option<(usize, usize)> {
+    let content_normalized: String = content.chars().filter(|c| !c.is_whitespace()).collect();
+    let pattern_normalized: String = pattern.chars().filter(|c| !c.is_whitespace()).collect();
+
+    // Find the pattern in normalized content
+    let start = content_normalized.find(&pattern_normalized)?;
+    let end = start + pattern_normalized.len();
+
+    // Map back to original content positions by counting non-whitespace characters
+    let mut normalized_pos = 0;
+    let mut original_start = None;
+    let mut original_end = None;
+
+    for (byte_idx, c) in content.char_indices() {
+        if !c.is_whitespace() {
+            if normalized_pos == start && original_start.is_none() {
+                original_start = Some(byte_idx);
+            }
+            if normalized_pos == end && original_end.is_none() {
+                original_end = Some(byte_idx);
+                break;
+            }
+            normalized_pos += 1;
+        }
+    }
+
+    // If we didn't find the end in the loop, set it to the end of the string
+    if original_end.is_none() {
+        original_end = Some(content.len());
+    }
+
+    Some((original_start.unwrap_or(0), original_end.unwrap_or(content.len())))
 }
 
 /// Reasons an in-memory edit is rejected before any write.

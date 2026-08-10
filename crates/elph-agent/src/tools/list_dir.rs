@@ -28,7 +28,7 @@ pub fn create_list_dir_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
             name: "list_dir".into(),
             constrained_sampling: None,
 
-            description: "Lists files and directories in a given path, providing an overview of filesystem contents."
+            description: "List directory contents. Use to see what files/folders exist in a path. For finding files by pattern, use find_path."
                 .into(),
             parameters: json!({
                 "type": "object",

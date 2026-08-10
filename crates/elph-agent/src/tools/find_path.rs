@@ -23,9 +23,11 @@ pub fn create_find_path_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     simple_tool(
         Tool {
             name: "find_path".into(),
-                constrained_sampling: None,
+            constrained_sampling: None,
 
-            description: "Quickly finds files by matching glob patterns (like '*.rs'), returning matching file paths alphabetically.".into(),
+            description: "Find files by glob pattern. Use '*.rs' for all Rust files, '**/*.rs' for recursive search. \
+                         Faster than grep for finding file names or extensions. Use list_dir for directory contents."
+                .into(),
             parameters: json!({
                 "type": "object",
                 "properties": {

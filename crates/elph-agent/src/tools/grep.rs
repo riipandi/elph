@@ -39,9 +39,9 @@ pub fn create_grep_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
             name: "grep".into(),
             constrained_sampling: None,
 
-            description: "Search file contents with regex or literal patterns across the project. \
-                         Supports context lines (-C), file-only listing (-l), match counts (-c), \
-                         whole-word matching (-w), case-insensitive search, batch patterns, and batch paths."
+            description: "Search file contents efficiently. Use single pattern for targeted search, patterns array for OR logic. \
+                         Use filesWithMatches to find which files contain a pattern without showing matches. Use count for match counts. \
+                         Prefer literal=true for exact text matching. Batch paths to search multiple locations at once."
                 .into(),
             parameters: json!({
                 "type": "object",

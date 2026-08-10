@@ -36,9 +36,9 @@ pub fn create_read_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
             constrained_sampling: None,
 
             description: format!(
-                "Read file contents from the project. Supports single files with offset/limit, \
-                 batch reading of multiple files (paths), and multiple specific ranges (ranges). \
-                 Each file's output is truncated to {DEFAULT_MAX_LINES} lines or {}/KB.",
+                "Read file contents. Use path for single file, paths array for batch reading multiple files, \
+                 ranges for specific sections. Use offset/limit for targeted reading to avoid loading entire files. \
+                 Truncates to {DEFAULT_MAX_LINES} lines or {}/KB per file.",
                 DEFAULT_MAX_BYTES / 1024
             ),
             parameters: json!({

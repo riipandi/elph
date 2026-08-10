@@ -1,4 +1,12 @@
-//! Host-side multi-worker lifecycle: register, heartbeat, tools, shutdown.
+//! Multi-worker host lifecycle: register, heartbeat, tools, shutdown.
+//!
+//! Inbound peer prompts (`worker_send` / `worker_ask`) land in the durable mailbox.
+//! The session's inbox poller (`CodingAgentSession::start_worker_inbox_poller` +
+//! `deliver_worker_inbound`) owns delivery: it marks the mailbox message `delivered`
+//! **before** running the model, so a delivery failure can never replay/loop and the
+//! peer's ask times out instead of wedging either agent. Completion/timeout are written
+//! through the mailbox rows (see `MailboxStore`) so peers polling `worker_get` /
+//! `worker_await` unblock even when no response text is written.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};

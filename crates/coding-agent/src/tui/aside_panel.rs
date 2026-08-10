@@ -1,7 +1,12 @@
-//! Inline `/aside` side-question panel above the prompt (Grok `/btw` layout).
+//! Inline `/aside` side-question panel above the prompt (Grok `/btw` layout),
+//! reused to host non-interrupting **inbound worker messages** — see
+//! `CodingAgentSession::handle_worker_inbound`.
 //!
 //! Loading shows a spinner; Done/Error show the answer until **Esc** dismisses.
 //! On dismiss of Done, the shell may push a sticky transcript meta card.
+//! The panel is a pure UI surface: it never touches the harness turn, the
+//! session tree, or the prompt queues, so a worker message rendered here can
+//! never interrupt the user's current agent task.
 
 use elph_tui::components::progress_indicator::SpinnerLoaderView;
 use elph_tui::components::theme::UiTheme;
