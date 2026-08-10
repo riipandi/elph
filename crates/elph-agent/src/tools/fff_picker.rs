@@ -8,6 +8,8 @@ use std::time::Duration;
 
 use anyhow::Result;
 use anyhow::anyhow;
+#[cfg(feature = "tools-grep")]
+use fast_glob::glob_match;
 use fff_search::file_picker::{FFFMode, FilePicker, FilePickerOptions, FuzzySearchOptions};
 use fff_search::grep::{GrepMode, GrepResult, GrepSearchOptions};
 use fff_search::types::PaginationArgs;
@@ -38,6 +40,10 @@ pub struct GrepOutputOptions {
     /// Working directory used to render match paths relative to it (token-efficient).
     /// When `None`, absolute paths are used.
     pub cwd: Option<String>,
+    /// Optional glob pattern to filter files (e.g. `**/*.rs`). Only matches from
+    /// files whose relative path matches the glob are included.
+    #[cfg(feature = "tools-grep")]
+    pub file_glob: Option<String>,
 }
 
 impl Default for GrepOutputOptions {
@@ -46,6 +52,8 @@ impl Default for GrepOutputOptions {
             mode: GrepOutputMode::Standard,
             max_line_length: GREP_MAX_LINE_LENGTH,
             cwd: None,
+            #[cfg(feature = "tools-grep")]
+            file_glob: None,
         }
     }
 }
@@ -179,12 +187,25 @@ pub fn format_grep_output_ex(
     let mut lines = Vec::with_capacity(result.matches.len());
     let mut lines_truncated = false;
 
+    // Compile glob pattern once if provided.
+    #[cfg(feature = "tools-grep")]
+    let glob_ref = options.file_glob.as_ref();
+
+    // Helper: check if a file path matches the glob filter.
+    #[cfg(feature = "tools-grep")]
+    let file_allowed = |relative: &str| -> bool { glob_ref.map_or(true, |g| glob_match(g, relative)) };
+    #[cfg(not(feature = "tools-grep"))]
+    let file_allowed = |_: &str| -> bool { true };
+
     match options.mode {
         GrepOutputMode::Standard => {
             let mut current_file_index = None;
             for grep_match in &result.matches {
                 let file = result.files[grep_match.file_index];
                 let relative = file.relative_path(picker);
+                if !file_allowed(&relative) {
+                    continue;
+                }
                 let absolute = join_paths(&base, &relative);
                 let display = make_display_path(&absolute, &options.cwd);
 
@@ -235,6 +256,9 @@ pub fn format_grep_output_ex(
             for grep_match in &result.matches {
                 let file = result.files[grep_match.file_index];
                 let relative = file.relative_path(picker);
+                if !file_allowed(&relative) {
+                    continue;
+                }
                 let absolute = join_paths(&base, &relative);
                 seen_files.insert(make_display_path(&absolute, &options.cwd));
             }
@@ -245,6 +269,9 @@ pub fn format_grep_output_ex(
             for grep_match in &result.matches {
                 let file = result.files[grep_match.file_index];
                 let relative = file.relative_path(picker);
+                if !file_allowed(&relative) {
+                    continue;
+                }
                 let absolute = join_paths(&base, &relative);
                 *counts.entry(make_display_path(&absolute, &options.cwd)).or_insert(0) += 1;
             }

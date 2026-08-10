@@ -103,6 +103,10 @@ pub fn create_grep_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
                     "limit": {
                         "type": "number",
                         "description": "Maximum total matches to return (default: 200)"
+                    },
+                    "glob": {
+                        "type": "string",
+                        "description": "Glob filter to restrict searched files (e.g. '**/*.rs', '*.toml', 'src/**/*.rs'). Only files matching the glob are searched."
                     }
                 },
                 // No root anyOf: xAI rejects anyOf branches that only list `required`
@@ -245,6 +249,15 @@ async fn execute_grep(
     // once here; cloned per iteration because the per-target closure is `move`.
     let grep_cwd = env.cwd().replace('\\', "/").trim_end_matches('/').to_string();
 
+    // ── Parse glob filter ─────────────────────────────────────
+    let glob_pattern: Option<String> = args.get("glob").and_then(|v| v.as_str()).map(|g| {
+        if g.contains('/') {
+            g.to_string()
+        } else {
+            format!("**/{g}")
+        }
+    });
+
     // ── Execute ────────────────────────────────────────────────
     let mut all_results: Vec<String> = Vec::new();
     let mut limit_reached = false;
@@ -261,6 +274,7 @@ async fn execute_grep(
         // Clone patterns so each thread owns its copy (not moved on first iter).
         let patterns_for_thread = patterns.clone();
         let cwd_for_thread = grep_cwd.clone();
+        let glob_for_thread = glob_pattern.clone();
 
         // One picker build per target; all patterns run through it.
         let (target_results, truncated) = tokio::task::spawn_blocking(move || {
@@ -292,6 +306,7 @@ async fn execute_grep(
                     let fmt_opts = GrepOutputOptions {
                         mode: output_mode,
                         cwd: Some(cwd_for_thread.clone()),
+                        file_glob: glob_for_thread.clone(),
                         ..Default::default()
                     };
                     let (matches, lt) = format_grep_output_ex(&picker, &result, &fmt_opts);

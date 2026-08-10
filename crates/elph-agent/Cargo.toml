@@ -31,6 +31,7 @@ fastrace-reqwest = { workspace = true, optional = true }
 fff-search = { workspace = true, optional = true }
 futures.workspace = true
 getrandom.workspace = true
+fast-glob = { workspace = true, optional = true }
 governor.workspace = true
 hex.workspace = true
 hkdf.workspace = true
@@ -106,7 +107,7 @@ tools-edit = [
 tools-shell-exec = []
 tools-shell-use = ["dep:shell-use"]
 tools-find-path = ["dep:fff-search"]
-tools-grep = ["dep:fff-search"]
+tools-grep = ["dep:fff-search", "dep:fast-glob"]
 tools-list-dir = ["dep:walkdir"]
 tools-move-path = []
 tools-read-file = []

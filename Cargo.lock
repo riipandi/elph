@@ -3072,6 +3072,7 @@ dependencies = [
  "elph-ai",
  "encoding_rs",
  "failsafe",
+ "fast-glob",
  "fastrace",
  "fastrace-reqwest",
  "fff-search",
@@ -3488,6 +3489,15 @@ dependencies = [
  "bit-set 0.8.0",
  "regex-automata",
  "regex-syntax",
+]
+
+[[package]]
+name = "fast-glob"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3cc9868289ee02952b341465ce66e67adec151227afedacf9137c0adb1e53943"
+dependencies = [
+ "arrayvec",
 ]
 
 [[package]]
