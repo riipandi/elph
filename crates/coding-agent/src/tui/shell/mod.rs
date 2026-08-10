@@ -32,10 +32,11 @@ use elph_agent::{BUDGET_LIMIT_PROMPT_PREFIX, CONTINUATION_PROMPT_PREFIX};
 
 use crate::agent::rename_session_title;
 use crate::agent::session_info_slash_message;
-use crate::tui::activity::TurnTokenTracker;
+use crate::tui::activity::{TurnCompleteStats, TurnTokenTracker};
 use crate::tui::activity::{
     accumulate_session_elapsed, activity_label_for_event, format_quit_canceled_notice, format_shell_canceled_notice,
-    format_turn_canceled_notice, format_turn_complete_notice, user_shell_activity_label,
+    format_turn_canceled_notice, format_turn_complete_notice, format_turn_complete_stats_line,
+    user_shell_activity_label,
 };
 use crate::tui::agent_bridge::{PromptQueue, TranscriptEventApplier, TurnDispatcher};
 use crate::tui::chrome::{ChromeStats, Header};
@@ -349,6 +350,8 @@ pub struct MainShellProps {
     pub paths: Paths,
     pub file_picker_show_hidden: bool,
     pub allow_mode_change_while_busy: bool,
+    /// When true (default), show the dimmed per-turn stats card (tokens/model) after each completed turn.
+    pub turn_stats_enabled: bool,
     pub initial_git_footer: Option<GitFooterInfo>,
 }
 
@@ -380,6 +383,7 @@ impl Default for MainShellProps {
             paths: Paths::resolve().expect("resolve elph paths"),
             file_picker_show_hidden: false,
             allow_mode_change_while_busy: true,
+            turn_stats_enabled: true,
             initial_git_footer: None,
         }
     }
@@ -595,6 +599,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let turn_cancel_requested = hooks.use_ref(|| false);
     let pending_quit_confirm = hooks.use_ref(|| false);
     let turn_token_tracker = hooks.use_ref(|| None::<TurnTokenTracker>);
+    // Stats of the most recently completed turn (usage/model) for the dimmed transcript card.
+    let last_turn_stats = hooks.use_ref(|| None::<TurnCompleteStats>);
+    // `ui.turnStats` — show the dimmed per-turn stats card after each completed turn.
+    let turn_stats_enabled = props.turn_stats_enabled;
     // Track if an approval dialog (mode change / tool approval) set the activity label.
     // Cleared on RunCompleted to reset status when turn finishes.
     let pending_approval_label = hooks.use_ref(|| false);
@@ -803,6 +811,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         transcript_pending,
         turn_cancel_requested,
         turn_token_tracker,
+        last_turn_stats,
+        turn_stats_enabled,
         pending_approval_label,
         ui_events_slot,
         user_shell_abort,

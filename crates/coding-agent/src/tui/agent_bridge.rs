@@ -915,7 +915,15 @@ mod tests {
         let mut applier = TranscriptEventApplier::new(false, false);
         applier.apply(&mut messages, AgentUiEvent::TextDelta("Hi\n\n".into()));
         applier.apply(&mut messages, AgentUiEvent::TextDelta("Done.".into()));
-        assert!(applier.apply(&mut messages, AgentUiEvent::RunCompleted { elapsed_secs: 0.0 }));
+        assert!(applier.apply(
+            &mut messages,
+            AgentUiEvent::RunCompleted {
+                elapsed_secs: 0.0,
+                usage: None,
+                provider_id: None,
+                model_id: None
+            }
+        ));
         let markdown = messages[0].markdown.as_ref().expect("markdown buffer");
         assert!(markdown.stream_complete);
     }
@@ -1093,7 +1101,7 @@ mod tests {
         // Compaction emits the running label (with the resolved model) as both a sticky notice and a Status.
         assert!(applier.apply(
             &mut messages,
-            AgentUiEvent::TranscriptNotice("Compacting history with openai/gpt-5.6-luna…".into())
+            AgentUiEvent::TranscriptNotice("Compacting history with openai/gpt-5.6-luna".into())
         ));
         assert_eq!(messages.len(), 1);
         assert!(messages[0].sticky_meta);
@@ -1101,7 +1109,7 @@ mod tests {
         // instead of adding a second transcript card.
         assert!(applier.apply(
             &mut messages,
-            AgentUiEvent::Status("Compacting history with openai/gpt-5.6-luna…".into())
+            AgentUiEvent::Status("Compacting history with openai/gpt-5.6-luna".into())
         ));
         assert_eq!(messages.len(), 1, "same-label Status must collapse into the sticky notice");
     }
@@ -1261,7 +1269,15 @@ mod tests {
         let mut applier = TranscriptEventApplier::new(false, false);
         applier.apply(&mut messages, AgentUiEvent::TextDelta("Done".into()));
         std::thread::sleep(std::time::Duration::from_millis(120));
-        applier.apply(&mut messages, AgentUiEvent::RunCompleted { elapsed_secs: 1.0 });
+        applier.apply(
+            &mut messages,
+            AgentUiEvent::RunCompleted {
+                elapsed_secs: 1.0,
+                usage: None,
+                provider_id: None,
+                model_id: None,
+            },
+        );
         assert!(messages[0].duration_secs.is_some_and(|secs| secs > 0.0));
     }
 
@@ -1303,7 +1319,15 @@ mod tests {
         );
 
         // Settle with no real content → nothing left to display (not a phantom blank box).
-        applier.apply(&mut messages, AgentUiEvent::RunCompleted { elapsed_secs: 0.4 });
+        applier.apply(
+            &mut messages,
+            AgentUiEvent::RunCompleted {
+                elapsed_secs: 0.4,
+                usage: None,
+                provider_id: None,
+                model_id: None,
+            },
+        );
         assert!(messages[0].duration_secs.is_some());
         assert!(messages[0].content.trim().is_empty());
         assert!(

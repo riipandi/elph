@@ -1105,8 +1105,34 @@ impl CodingAgentSession {
     }
 
     async fn emit_run_completed(&self, started: Instant) {
+        // Read the latest persisted turn record (harness writes usage right before idle)
+        // so the shell can render turn-complete stats (tokens in/out/cached, model).
+        // Missing store/turn degrades gracefully to `None` fields.
+        let latest = {
+            let harness = self.harness.clone();
+            let sid = self.session_id.clone();
+            tokio::task::spawn(async move { harness.current_turn_record(&sid).await })
+                .await
+                .ok()
+                .flatten()
+        };
+        let usage = latest.as_ref().map(|r| elph_agent::TurnUsage {
+            input_tokens: r.usage.input_tokens,
+            output_tokens: r.usage.output_tokens,
+            cache_read_tokens: r.usage.cache_read_tokens,
+            cache_write_tokens: r.usage.cache_write_tokens,
+            total_tokens: r.usage.total_tokens,
+            cost: r.usage.cost,
+        });
+        let (provider_id, model_id) = latest
+            .as_ref()
+            .map(|r| (r.provider_id.clone(), r.model_id.clone()))
+            .unwrap_or((None, None));
         let _ = self.ui_tx.send(AgentUiEvent::RunCompleted {
             elapsed_secs: started.elapsed().as_secs_f64(),
+            usage,
+            provider_id,
+            model_id,
         });
     }
 

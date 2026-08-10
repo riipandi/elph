@@ -353,6 +353,10 @@ pub struct UiSettings {
     /// while the agent is busy streaming or running tools.
     #[serde(default = "default_true")]
     pub allow_mode_change_while_busy: bool,
+    /// When true (default), show a dimmed per-turn stats card (tokens in/out, cache,
+    /// provider/model) under the last assistant reply after each completed turn.
+    #[serde(default = "default_true")]
+    pub turn_stats: bool,
 }
 
 impl Default for UiSettings {
@@ -368,6 +372,7 @@ impl Default for UiSettings {
             density: default_log_density(),
             file_picker: FilePickerSettings::default(),
             allow_mode_change_while_busy: true,
+            turn_stats: true,
         }
     }
 }
@@ -1311,6 +1316,7 @@ mod tests {
         assert_eq!(decoded.default_timeout, "120s");
         assert!(decoded.simplified_technical_english);
         assert!(decoded.ui.show_thinking);
+        assert!(decoded.ui.turn_stats);
         assert_eq!(decoded.ui.theme, "auto");
         assert!(decoded.ui.themes.dark.is_empty());
         assert!(decoded.models.scoped_models.is_empty());
@@ -1387,6 +1393,7 @@ mod tests {
         assert!(!obj.contains_key("showThinking"));
         assert!(!obj.contains_key("scopedModelItems"));
         assert_eq!(json["ui"]["footerTokenDisplay"], "both");
+        assert_eq!(json["ui"]["turnStats"], true);
         assert!(json["models"]["scopedModels"].as_array().expect("arr").is_empty());
         assert_eq!(json["compaction"]["physicalPrune"], true);
     }

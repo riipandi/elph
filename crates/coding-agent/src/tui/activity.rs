@@ -241,6 +241,96 @@ pub fn format_turn_complete_notice(elapsed_secs: f64) -> String {
     format!("Turn complete · {}", format_duration_secs(elapsed_secs))
 }
 
+/// Per-turn completion stats rendered as a dimmed Meta card below the last assistant reply.
+///
+/// Populated from the harness `session_turns` record at `RunCompleted`; all fields optional
+/// so a missing store / legacy record degrades to a duration-only line.
+#[derive(Debug, Clone, Default)]
+pub struct TurnCompleteStats {
+    pub elapsed_secs: f64,
+    pub input_tokens: u64,
+    pub output_tokens: u64,
+    pub cache_read_tokens: u64,
+    pub cache_write_tokens: u64,
+    pub cost_usd: f64,
+    pub provider_id: Option<String>,
+    pub model_id: Option<String>,
+}
+
+impl TurnCompleteStats {
+    pub fn from_event(
+        elapsed_secs: f64,
+        usage: Option<&elph_agent::TurnUsage>,
+        provider_id: Option<&str>,
+        model_id: Option<&str>,
+    ) -> Self {
+        Self {
+            elapsed_secs,
+            input_tokens: usage.map(|u| u.input_tokens.max(0) as u64).unwrap_or(0),
+            output_tokens: usage.map(|u| u.output_tokens.max(0) as u64).unwrap_or(0),
+            cache_read_tokens: usage.map(|u| u.cache_read_tokens.max(0) as u64).unwrap_or(0),
+            cache_write_tokens: usage.map(|u| u.cache_write_tokens.max(0) as u64).unwrap_or(0),
+            cost_usd: usage.map(|u| u.cost).unwrap_or(0.0),
+            provider_id: provider_id.map(str::to_string),
+            model_id: model_id.map(str::to_string),
+        }
+    }
+
+    /// `provider/model` label, omitting the provider when either side is missing.
+    pub fn model_label(&self) -> Option<String> {
+        match (&self.provider_id, &self.model_id) {
+            (Some(provider), Some(model)) if !provider.is_empty() && !model.is_empty() => {
+                Some(format!("{provider}/{model}"))
+            }
+            (_, Some(model)) if !model.is_empty() => Some(model.clone()),
+            _ => None,
+        }
+    }
+
+    /// Compact token usage line: `3.1K in · 2.4K out · 1.2K cached`.
+    fn tokens_line(&self) -> String {
+        let mut parts = Vec::new();
+        if self.input_tokens > 0 {
+            parts.push(format!("{} in", crate::tui::labels::format_token_count(self.input_tokens)));
+        }
+        if self.output_tokens > 0 {
+            parts.push(format!("{} out", crate::tui::labels::format_token_count(self.output_tokens)));
+        }
+        if self.cache_read_tokens > 0 {
+            parts.push(format!(
+                "{} cached",
+                crate::tui::labels::format_token_count(self.cache_read_tokens)
+            ));
+        } else if self.cache_write_tokens > 0 {
+            parts.push(format!(
+                "{} cache write",
+                crate::tui::labels::format_token_count(self.cache_write_tokens)
+            ));
+        }
+        if self.cost_usd > 0.0 {
+            parts.push(format!("${:.4}", self.cost_usd));
+        }
+        parts.join(" · ")
+    }
+}
+
+/// Dimmed transcript line rendered under the last assistant message when a turn finishes.
+///
+/// Examples:
+/// - `turn: 1m50s · 3.1K in · 2.4K out · 1.2K cached · anthropic/claude-sonnet-4`
+/// - `turn: 12s` (no usage / model reported)
+pub fn format_turn_complete_stats_line(stats: &TurnCompleteStats) -> String {
+    let mut parts = vec![format!("turn: {}", format_duration_secs(stats.elapsed_secs))];
+    let tokens = stats.tokens_line();
+    if !tokens.is_empty() {
+        parts.push(tokens);
+    }
+    if let Some(model) = stats.model_label() {
+        parts.push(model);
+    }
+    parts.join(" · ")
+}
+
 /// Idle status notice shown briefly after the user cancels an active turn.
 pub fn format_turn_canceled_notice(elapsed_secs: f64) -> String {
     format!("Turn canceled · {}", format_duration_secs(elapsed_secs))
@@ -654,5 +744,47 @@ mod tests {
         assert!((tracker.tokens_per_sec(2.0) - 1.5).abs() < f64::EPSILON);
         tracker.sync_baseline(150);
         assert_eq!(tracker.active_tokens(), 150);
+    }
+
+    #[test]
+    fn turn_complete_stats_from_event_maps_usage() {
+        let stats = TurnCompleteStats::from_event(
+            110.0,
+            Some(&elph_agent::TurnUsage {
+                input_tokens: 3100,
+                output_tokens: 2400,
+                cache_read_tokens: 1200,
+                cache_write_tokens: 0,
+                total_tokens: 6700,
+                cost: 0.0123,
+            }),
+            Some("anthropic"),
+            Some("claude-sonnet-4"),
+        );
+        assert_eq!(stats.input_tokens, 3100);
+        assert_eq!(stats.output_tokens, 2400);
+        assert_eq!(stats.cache_read_tokens, 1200);
+        assert!(stats.input_tokens > 0 && stats.cache_read_tokens > 0);
+        assert_eq!(stats.model_label().as_deref(), Some("anthropic/claude-sonnet-4"));
+        assert_eq!(
+            format_turn_complete_stats_line(&stats),
+            "turn: 1m50s · 3K in · 2K out · 1K cached · $0.0123 · anthropic/claude-sonnet-4"
+        );
+    }
+
+    #[test]
+    fn turn_complete_stats_without_usage_is_duration_only() {
+        let stats = TurnCompleteStats::from_event(12.0, None, None, None);
+        assert_eq!((stats.input_tokens, stats.output_tokens, stats.cache_read_tokens), (0, 0, 0));
+        assert_eq!(stats.model_label(), None);
+        assert_eq!(format_turn_complete_stats_line(&stats), "turn: 12s");
+    }
+
+    #[test]
+    fn turn_complete_stats_model_label_handles_partial_ids() {
+        let stats = TurnCompleteStats::from_event(1.0, None, None, Some("gpt-5.6-luna"));
+        assert_eq!(stats.model_label().as_deref(), Some("gpt-5.6-luna"));
+        let empty = TurnCompleteStats::from_event(1.0, None, Some("openai"), None);
+        assert_eq!(empty.model_label(), None);
     }
 }

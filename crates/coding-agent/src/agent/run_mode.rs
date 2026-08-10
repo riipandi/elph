@@ -682,7 +682,7 @@ fn stream_json_line(event: &AgentUiEvent) -> Option<String> {
             "is_error": is_error,
             "output": output,
         }),
-        AgentUiEvent::RunCompleted { elapsed_secs } => json!({
+        AgentUiEvent::RunCompleted { elapsed_secs, .. } => json!({
             "type": "run_completed",
             "elapsed_secs": elapsed_secs,
         }),

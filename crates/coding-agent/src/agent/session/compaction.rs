@@ -96,10 +96,10 @@ impl CodingAgentSession {
         let model_ref = format!("{}/{}", model.provider.as_str(), model.id);
 
         let running = match source {
-            CompactSource::Manual => format!("Compacting history with {model_ref}…"),
-            CompactSource::Automatic => format!("Auto-compacting history with {model_ref}…"),
+            CompactSource::Manual => format!("Compacting history with {model_ref}"),
+            CompactSource::Automatic => format!("Auto-compacting history with {model_ref}"),
             CompactSource::ModelSwitch => {
-                format!("Compacting history for the new model’s context limit with {model_ref}…")
+                format!("Compacting history for the new model’s context limit with {model_ref}")
             }
         };
         self.notice(running.clone());

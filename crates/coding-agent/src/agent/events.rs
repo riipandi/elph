@@ -1,5 +1,7 @@
 //! Agent → TUI event bridge.
 
+use elph_agent::TurnUsage;
+
 /// Recovery prompt submitted instead of re-sending the original text when a transient
 /// stream/provider error interrupts a turn. The model resumes from the last persisted
 /// state (any tool results already in the conversation stay in context) instead of
@@ -96,6 +98,12 @@ pub enum AgentUiEvent {
     },
     RunCompleted {
         elapsed_secs: f64,
+        /// Provider-reported usage for the turn (input/output/cache), when available.
+        usage: Option<TurnUsage>,
+        /// Provider id the turn ran on (e.g. `openai`), when known.
+        provider_id: Option<String>,
+        /// Model id the turn ran on, when known.
+        model_id: Option<String>,
     },
     /// Harness steer/follow-up queue snapshot (after enqueue, drain, cancel, or abort).
     QueueUpdate {

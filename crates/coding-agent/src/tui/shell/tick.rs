@@ -101,6 +101,8 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         mut transcript_pending,
         mut turn_cancel_requested,
         mut turn_token_tracker,
+        mut last_turn_stats,
+        turn_stats_enabled,
         mut ui_events_slot,
         mut user_shell_abort,
         mut user_shell_channel,
@@ -497,9 +499,21 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     live_after_run_completed = true;
                 }
             }
-            if let AgentUiEvent::RunCompleted { elapsed_secs } = &event {
+            if let AgentUiEvent::RunCompleted {
+                elapsed_secs,
+                usage,
+                provider_id,
+                model_id,
+            } = &event
+            {
                 run_completed = true;
                 run_completed_elapsed = Some(*elapsed_secs);
+                last_turn_stats.set(Some(TurnCompleteStats::from_event(
+                    *elapsed_secs,
+                    usage.as_ref(),
+                    provider_id.as_deref(),
+                    model_id.as_deref(),
+                )));
             }
 
             match &event {
@@ -1086,6 +1100,8 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                         notifier::NotifKind::TurnCancel { elapsed_secs: elapsed },
                     );
                 }
+                // Canceled turns do not get a stats card.
+                last_turn_stats.set(None);
             } else if let Some(elapsed_secs) = run_completed_elapsed {
                 idle_status_notice.set(Some(IdleStatusNotice {
                     text: format_turn_complete_notice(elapsed_secs),
@@ -1094,6 +1110,24 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 // Desktop notification
                 if let Ok(settings) = Settings::load(&paths.read().clone()) {
                     notifier::notify(&settings.notifications, notifier::NotifKind::TurnComplete { elapsed_secs });
+                }
+                // Dimmed per-turn stats card under the last assistant reply
+                // (`ui.turnStats`, default on). Falls back to duration-only when
+                // no usage/model was reported.
+                if !live_after_run_completed
+                    && turn_stats_enabled
+                    && let Some(stats) = last_turn_stats.read().clone()
+                {
+                    let mut msg =
+                        TranscriptMessage::text(format_turn_complete_stats_line(&stats), TranscriptStyle::Meta);
+                    msg.sticky_meta = true;
+                    {
+                        let mut msgs = messages_arc_inner.write().unwrap();
+                        msgs.push(msg);
+                    }
+                    // Repaint immediately: the transcript sync already ran this tick.
+                    *messages.write() = messages_arc_inner.read().unwrap().clone();
+                    messages_revision.set(messages_revision.get().wrapping_add(1));
                 }
             }
         }

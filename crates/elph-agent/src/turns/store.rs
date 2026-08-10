@@ -249,6 +249,29 @@ impl TurnStore {
         })
         .await
     }
+
+    /// Latest turn record for a session (highest `turn_index`), when any exists.
+    pub async fn latest_turn(&self, session_id: &str) -> Result<Option<TurnRecord>> {
+        self.with_conn(|conn| async move {
+            let mut rows = conn
+                .query(
+                    &format!(
+                        "SELECT {TURN_COLUMNS} FROM session_turns
+                         WHERE session_id = ?
+                         ORDER BY turn_index DESC LIMIT 1"
+                    ),
+                    turso::params![session_id],
+                )
+                .await?;
+            let Some(row) = rows.next().await? else {
+                return Ok(None);
+            };
+            let turn = row_to_turn(&row)?;
+            while rows.next().await?.is_some() {}
+            Ok(Some(turn))
+        })
+        .await
+    }
 }
 
 async fn load_turn(conn: &Connection, turn_id: &str) -> Result<TurnRecord> {
@@ -355,5 +378,14 @@ mod tests {
         assert_eq!(turn_count, 1);
         assert_eq!(total_tokens, 16);
         assert!((total_cost - 0.01).abs() < 1e-9);
+
+        let latest = store.latest_turn("s1").await.expect("latest");
+        let latest = latest.expect("record");
+        assert_eq!(latest.id, finished.id);
+        assert_eq!(latest.usage.input_tokens, 10);
+        assert_eq!(latest.usage.cache_read_tokens, 1);
+        assert_eq!(latest.provider_id.as_deref(), Some("openai"));
+        assert_eq!(latest.model_id.as_deref(), Some("gpt"));
+        assert_eq!(store.latest_turn("no-such-session").await.expect("none"), None);
     }
 }
