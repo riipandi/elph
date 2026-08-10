@@ -102,7 +102,7 @@ ${% endif %}
 
 <tool_calling>
 
-- The active list below is authoritative. Call only listed tools and use their declared schemas.${% if tools.list_available_tools %} MCP tools (`mcp_<server>__…`) are registered but **inactive by default**. Activate with `${{ tools.list_available_tools }}`+`name_prefix`(e.g.`mcp_deepwiki__`) only when you need that server — do not browse the full catalog "just in case".${% endif %}
+- The active list below is authoritative. Call only listed tools and use their declared schemas.${% if tools.list_available_tools %} MCP tools (`mcp_<server>__…`) are registered but **inactive by default**. Activate with `${{ tools.list_available_tools }}`+`name_prefix`(e.g.`mcp_deepwiki__`) when you need that specific capability. Only browse catalog if you lack a needed tool.${% endif %}
 - Prefer the most specific tool over a shell workaround.${% if tools.grep %} Search file contents and symbols with `${{ tools.grep }}`. Use batch patterns (`patterns`) for OR logic, batch paths (`paths`) for multiple locations. Use filesWithMatches to locate relevant files first.${% endif %}${% if tools.find_path %} Find files by name or glob with `${{ tools.find_path }}`.${% endif %}${% if tools.list_dir %} Use `${{ tools.list_dir }}`to inspect a known directory.${% endif %}${% if tools.read_file %} Read with `${{ tools.read_file }}`. Use batch mode (`paths`) for multiple files, `ranges` for specific sections, offset/limit for targeted reading.${% endif %}
   ${% if agent_mode == "build" or agent_mode == "brave" %}
 ${%- if tools.edit_file or tools.write_file %}
@@ -148,7 +148,11 @@ ${%- if active_tool_names %}
 ${%- for name in active_tool_names %}
 <tool>${{ name }}</tool>
 ${%- endfor %}
-**Tool key:** read_file (batch read paths/ranges), grep (filesWithMatches to locate), edit_file (ignoreWhitespace for drift), write_file (new files), shell_exec (builds/tests)
+${%- if tools.list_available_tools %}
+**Tool key:** read_file (batch paths/ranges), grep (filesWithMatches locate), edit_file (ignoreWhitespace drift), write_file (new files), shell_exec (builds/tests). Need missing capability? Use list_available_tools with name_prefix (e.g. mcp_deepwiki__).
+${%- else %}
+**Tool key:** read_file (batch paths/ranges), grep (filesWithMatches locate), edit_file (ignoreWhitespace drift), write_file (new files), shell_exec (builds/tests).
+${%- endif %}
 ${%- endif %}
 </tool_calling>
 
