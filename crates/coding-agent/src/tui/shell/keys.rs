@@ -113,6 +113,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         mut turn_cancel_requested,
         mut turn_token_tracker,
         user_shell_abort,
+        todos: _,
         mut resume_session_requested,
         screen_width,
         ..

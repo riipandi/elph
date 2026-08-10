@@ -5,8 +5,8 @@ use anyhow::Result;
 use elph_agent::create_goal_tools_with_hook;
 use elph_agent::{
     AgentGraphStore, AgentHarness, AgentHarnessOptions, AgentHarnessStreamOptions, BuiltinToolsBuilder, GoalRuntime,
-    GoalStore, LocalExecutionEnv, QueueMode, RestoreOptions, SubagentBootstrap, SystemPrompt, TodoStore, TurnStore,
-    create_todo_tools, is_mcp_tool,
+    GoalStore, LocalExecutionEnv, QueueMode, RestoreOptions, SubagentBootstrap, SystemPrompt, TodoHook, TodoStore,
+    TurnStore, create_todo_tools_with_hook, is_mcp_tool,
 };
 use std::path::Path;
 use std::sync::Arc;
@@ -246,7 +246,14 @@ pub async fn create_coding_session_with_events(
     tools.extend(create_goal_tools_with_hook(goal_store, session_id.clone(), goal_hook));
 
     let todo_store = Arc::new(TodoStore::new(options.paths.memory_db_path()).with_database(database.clone()));
-    tools.extend(create_todo_tools(todo_store, session_id.clone()));
+    let ui_tx_for_todo = ui_tx.clone();
+    let todo_hook: TodoHook = Arc::new(move |items| {
+        let ui_tx = ui_tx_for_todo.clone();
+        Box::pin(async move {
+            let _ = ui_tx.send(crate::agent::AgentUiEvent::TodoUpdated { items });
+        })
+    });
+    tools.extend(create_todo_tools_with_hook(todo_store, session_id.clone(), Some(todo_hook)));
 
     // Clamp default thinking (new-session seed) to the resolved model catalog.
     let thinking = {

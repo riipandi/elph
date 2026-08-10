@@ -9,18 +9,30 @@ use serde_json::Value;
 use serde_json::json;
 
 use crate::todos::store::{TodoStore, TodoUpdate};
-use crate::todos::types::TodoStatus;
+use crate::todos::types::{TodoItem, TodoStatus};
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
 
+/// Optional hook after todo list changes (e.g. UI event emission).
+pub type TodoHook = Arc<dyn Fn(Vec<TodoItem>) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>;
+
 pub fn create_todo_tools(store: Arc<TodoStore>, session_id: String) -> Vec<AgentTool> {
+    create_todo_tools_with_hook(store, session_id, None)
+}
+
+/// Same as [`create_todo_tools`], with an optional hook for UI updates.
+pub fn create_todo_tools_with_hook(
+    store: Arc<TodoStore>,
+    session_id: String,
+    on_update: Option<TodoHook>,
+) -> Vec<AgentTool> {
     vec![
-        todo_write_tool(store.clone(), session_id.clone()),
+        todo_write_tool(store.clone(), session_id.clone(), on_update),
         todo_read_tool(store, session_id),
     ]
 }
 
-fn todo_write_tool(store: Arc<TodoStore>, session_id: String) -> AgentTool {
+fn todo_write_tool(store: Arc<TodoStore>, session_id: String, on_update: Option<TodoHook>) -> AgentTool {
     simple_tool(
         elph_ai::Tool {
             name: "todo_write".into(),
@@ -64,7 +76,7 @@ fn todo_write_tool(store: Arc<TodoStore>, session_id: String) -> AgentTool {
             }),
         },
         "Update todos",
-        move |_, args| todo_write_exec(store.clone(), session_id.clone(), args),
+        move |_, args| todo_write_exec(store.clone(), session_id.clone(), on_update.clone(), args),
     )
 }
 
@@ -87,6 +99,7 @@ fn todo_read_tool(store: Arc<TodoStore>, session_id: String) -> AgentTool {
 fn todo_write_exec(
     store: Arc<TodoStore>,
     session_id: String,
+    on_update: Option<TodoHook>,
     args: Value,
 ) -> Pin<Box<dyn Future<Output = Result<AgentToolResult>> + Send>> {
     Box::pin(async move {
@@ -101,6 +114,10 @@ fn todo_write_exec(
         } else {
             store.replace(&session_id, updates).await?
         };
+        // Emit UI event if hook is provided
+        if let Some(hook) = on_update {
+            hook(items.clone()).await;
+        }
         let body = serde_json::to_string_pretty(&items)?;
         Ok(AgentToolResult::text(body))
     })

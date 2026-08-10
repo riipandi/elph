@@ -1,6 +1,6 @@
 //! Agent → TUI event bridge.
 
-use elph_agent::TurnUsage;
+use elph_agent::{TodoItem, TurnUsage};
 
 /// Recovery prompt submitted instead of re-sending the original text when a transient
 /// stream/provider error interrupts a turn. The model resumes from the last persisted
@@ -177,6 +177,10 @@ pub enum AgentUiEvent {
         from_worker: String,
         message: String,
         error: String,
+    },
+    /// Todo list updated by the agent (todo_write tool call).
+    TodoUpdated {
+        items: Vec<TodoItem>,
     },
 }
 

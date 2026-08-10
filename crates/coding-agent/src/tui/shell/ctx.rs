@@ -181,4 +181,6 @@ pub(crate) struct ShellCtx {
     pub(crate) ui_events_slot: Ref<Option<Arc<Mutex<UnboundedReceiver<AgentUiEvent>>>>>,
     pub(crate) user_shell_abort: Ref<Option<CancellationToken>>,
     pub(crate) user_shell_channel: Ref<UserShellChannel>,
+    /// Current session todo list (for structured work tracking).
+    pub(crate) todos: State<Vec<elph_agent::TodoItem>>,
 }

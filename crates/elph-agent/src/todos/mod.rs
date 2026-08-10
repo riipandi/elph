@@ -5,5 +5,5 @@ mod tools;
 mod types;
 
 pub use store::{TodoStore, TodoUpdate};
-pub use tools::create_todo_tools;
+pub use tools::{TodoHook, create_todo_tools, create_todo_tools_with_hook};
 pub use types::{TodoItem, TodoStatus};

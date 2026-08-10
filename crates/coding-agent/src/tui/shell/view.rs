@@ -143,6 +143,7 @@ pub(crate) fn build_shell_view(
         mut ui_events_slot,
         mut user_shell_abort,
         user_shell_channel,
+        todos,
         ..
     } = ctx;
 
@@ -878,6 +879,33 @@ pub(crate) fn build_shell_view(
                 }
                 .into()
             }))
+            #(if !todos.read().is_empty() {
+                let items = todos.read();
+                let dialog_items: Vec<elph_tui::DialogTodoItem> = items
+                    .iter()
+                    .map(|item| {
+                        let status = match item.status {
+                            elph_agent::TodoStatus::Pending => elph_tui::DialogTodoStatus::Pending,
+                            elph_agent::TodoStatus::InProgress => elph_tui::DialogTodoStatus::Done, // Highlight active task
+                            elph_agent::TodoStatus::Completed => elph_tui::DialogTodoStatus::Done,
+                            elph_agent::TodoStatus::Cancelled => elph_tui::DialogTodoStatus::Skipped,
+                        };
+                        elph_tui::DialogTodoItem::new(item.content.clone(), status)
+                    })
+                    .collect();
+                let theme = elph_tui::UiTheme::default();
+                Some::<AnyElement<'static>>(element! {
+                    elph_tui::DialogTodoListContent(
+                        width: screen_width.saturating_sub(4),
+                        items: dialog_items,
+                        done_color: theme.success,
+                        pending_color: theme.text_secondary,
+                        skipped_color: theme.text_muted,
+                        detail_color: theme.text_hint,
+                        theme: None,
+                    )
+                }.into())
+            } else { None })
             #(user_question_view.map(|view| -> AnyElement<'static> {
                 element! {
                     UserQuestionBar(

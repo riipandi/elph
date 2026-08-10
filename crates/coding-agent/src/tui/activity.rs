@@ -122,7 +122,8 @@ pub fn activity_label_for_event(event: &AgentUiEvent, show_thinking: bool) -> Op
         | AgentUiEvent::UserPromptCommitted { .. }
         | AgentUiEvent::TranscriptNotice(_)
         | AgentUiEvent::SubagentOutput { .. }
-        | AgentUiEvent::RetryablePrompt(_) => None,
+        | AgentUiEvent::RetryablePrompt(_)
+        | AgentUiEvent::TodoUpdated { .. } => None,
         AgentUiEvent::ModeChangeRequired(req) => Some(format!("Switch to {} mode?", req.target_mode)),
     }
 }

@@ -106,6 +106,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         mut ui_events_slot,
         mut user_shell_abort,
         mut user_shell_channel,
+        mut todos,
         mut thinking_level,
         pending_subagent_output,
         ..
@@ -679,6 +680,11 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                         error.clone(),
                     ));
                 }
+                continue;
+            }
+
+            if let AgentUiEvent::TodoUpdated { items } = &event {
+                todos.set(items.clone());
                 continue;
             }
 
