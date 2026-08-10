@@ -508,12 +508,19 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             {
                 run_completed = true;
                 run_completed_elapsed = Some(*elapsed_secs);
-                last_turn_stats.set(Some(TurnCompleteStats::from_event(
-                    *elapsed_secs,
-                    usage.as_ref(),
-                    provider_id.as_deref(),
-                    model_id.as_deref(),
-                )));
+                // Only render a stats card for real agent/chat-assistant turns. System
+                // operations that spin the UI without an AI response (e.g. `/compact`
+                // "History is already up to date") carry no usage/model and are skipped.
+                if usage.is_some() || provider_id.is_some() || model_id.is_some() {
+                    last_turn_stats.set(Some(TurnCompleteStats::from_event(
+                        *elapsed_secs,
+                        usage.as_ref(),
+                        provider_id.as_deref(),
+                        model_id.as_deref(),
+                    )));
+                } else {
+                    last_turn_stats.set(None);
+                }
             }
 
             match &event {

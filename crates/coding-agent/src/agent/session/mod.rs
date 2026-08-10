@@ -9,7 +9,7 @@ use elph_agent::{AgentHarness, AgentHarnessErrorCode, FileSystem};
 use elph_agent::{GoalRuntime, McpToolRegistry, PlanConfirmationChoice, TursoSessionStorage};
 use elph_ai::{AssistantMessage, StopReason};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicI64, AtomicU32, Ordering};
 
 use parking_lot::RwLock;
 use std::time::Instant;
@@ -80,6 +80,10 @@ pub struct CodingAgentSession {
     mcp_registry: Arc<RwLock<Option<Arc<McpToolRegistry>>>>,
     /// Serializes harness turns so only one prompt/template/compact runs at a time.
     turn_gate: Arc<Mutex<()>>,
+    /// Watermark of the last `session_turns` record surfaced via `RunCompleted`; starts at
+    /// -1 so turn index 0 counts as new. System operations that spin the UI without a real
+    /// agent turn (`/compact`, ...) don't advance it, so their `RunCompleted` carries no stats.
+    last_reported_turn_index: Arc<Mutex<AtomicI64>>,
     /// Serializes agent-mode reconciliation (Tab rapid cycling).
     mode_gate: Arc<Mutex<()>>,
     /// Last successfully compiled system prompt for sync slash reads during a busy turn.
@@ -141,6 +145,7 @@ impl CodingAgentSession {
             goal_runtime,
             mcp_registry: mcp_slot,
             turn_gate: Arc::new(Mutex::new(())),
+            last_reported_turn_index: Arc::new(Mutex::new(AtomicI64::new(-1))),
             mode_gate: Arc::new(Mutex::new(())),
             system_prompt_cache: RwLock::new(None),
             title_model,
@@ -1105,9 +1110,10 @@ impl CodingAgentSession {
     }
 
     async fn emit_run_completed(&self, started: Instant) {
-        // Read the latest persisted turn record (harness writes usage right before idle)
-        // so the shell can render turn-complete stats (tokens in/out/cached, model).
-        // Missing store/turn degrades gracefully to `None` fields.
+        // Only surface a stats card for real agent/chat-assistant turns, never for
+        // system operations that only spin the UI (e.g. `/compact` with "History is
+        // already up to date") — those do not produce a `session_turns` row, so
+        // without this guard they would re-render the previous turn's record.
         let latest = {
             let harness = self.harness.clone();
             let sid = self.session_id.clone();
@@ -1116,23 +1122,44 @@ impl CodingAgentSession {
                 .ok()
                 .flatten()
         };
-        let usage = latest.as_ref().map(|r| elph_agent::TurnUsage {
-            input_tokens: r.usage.input_tokens,
-            output_tokens: r.usage.output_tokens,
-            cache_read_tokens: r.usage.cache_read_tokens,
-            cache_write_tokens: r.usage.cache_write_tokens,
-            total_tokens: r.usage.total_tokens,
-            cost: r.usage.cost,
+        // Deterministic gate: the latest record must be newer than the last surfaced one.
+        let is_new_turn = {
+            let watermark = self.last_reported_turn_index.lock().await;
+            latest
+                .as_ref()
+                .is_some_and(|r| r.turn_index > watermark.load(Ordering::SeqCst))
+        };
+        let Some(latest) = is_new_turn.then_some(latest).flatten() else {
+            // Nothing new to report — degrade to an empty RunCompleted so the shell
+            // still finalizes transcript state without emitting a stats card.
+            let _ = self.ui_tx.send(AgentUiEvent::RunCompleted {
+                elapsed_secs: started.elapsed().as_secs_f64(),
+                usage: None,
+                provider_id: None,
+                model_id: None,
+            });
+            return;
+        };
+        self.last_reported_turn_index
+            .lock()
+            .await
+            .store(latest.turn_index, Ordering::SeqCst);
+        // Read the latest persisted turn record (harness writes usage right before idle)
+        // so the shell can render turn-complete stats (tokens in/out/cached, model).
+        // Missing store/turn degrades gracefully to `None` fields.
+        let usage = Some(elph_agent::TurnUsage {
+            input_tokens: latest.usage.input_tokens,
+            output_tokens: latest.usage.output_tokens,
+            cache_read_tokens: latest.usage.cache_read_tokens,
+            cache_write_tokens: latest.usage.cache_write_tokens,
+            total_tokens: latest.usage.total_tokens,
+            cost: latest.usage.cost,
         });
-        let (provider_id, model_id) = latest
-            .as_ref()
-            .map(|r| (r.provider_id.clone(), r.model_id.clone()))
-            .unwrap_or((None, None));
         let _ = self.ui_tx.send(AgentUiEvent::RunCompleted {
             elapsed_secs: started.elapsed().as_secs_f64(),
             usage,
-            provider_id,
-            model_id,
+            provider_id: latest.provider_id,
+            model_id: latest.model_id,
         });
     }
 
@@ -1237,6 +1264,45 @@ fn resolve_title_model(setting: &str, inherit: &elph_ai::Model) -> elph_ai::Mode
 mod tests {
     use super::{fallback_session_title, resolve_title_model};
     use elph_ai::get_builtin_model;
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicI64, Ordering};
+    use tokio::sync::Mutex;
+
+    struct TurnReporter {
+        watermark: Arc<Mutex<AtomicI64>>,
+    }
+
+    impl TurnReporter {
+        fn new() -> Self {
+            Self {
+                watermark: Arc::new(Mutex::new(AtomicI64::new(-1))),
+            }
+        }
+
+        /// Mirrors the gate logic in [`CodingAgentSession::emit_run_completed`]: reports
+        /// `turn_index` only when it's a new (higher) index than the last surfaced one.
+        /// Returns the reported index, or `None` when the operation produced no new turn
+        /// (e.g. `/compact` with "History is already up to date").
+        async fn report(&self, latest_turn_index: Option<i64>) -> Option<i64> {
+            let is_new = self.watermark.lock().await.load(Ordering::SeqCst);
+            let latest = latest_turn_index.filter(|i| i > &is_new)?;
+            self.watermark.lock().await.store(latest, Ordering::SeqCst);
+            Some(latest)
+        }
+    }
+
+    #[tokio::test]
+    async fn stats_only_for_new_agent_turns() {
+        let reporter = TurnReporter::new();
+        // Real first agent turn (index 0) is reported.
+        assert_eq!(reporter.report(Some(0)).await, Some(0));
+        // System op with no new turn row (`/compact` no-op) is suppressed — even though
+        // the previous turn's record is still the "latest".
+        assert_eq!(reporter.report(Some(0)).await, None);
+        assert_eq!(reporter.report(None).await, None);
+        // A genuine follow-up turn is reported again.
+        assert_eq!(reporter.report(Some(1)).await, Some(1));
+    }
 
     #[test]
     fn title_model_inherit_uses_session_model() {

@@ -184,6 +184,10 @@ Project overrides **per nested key** (deep merge). Runtime saves write **home on
         "allowModeChangeWhileBusy": true,
         "turnStats": true
     },
+    // turnStats (default true): a dimmed stats line (duration · tokens in/out/cached ·
+    // cost · provider/model) is rendered under the assistant reply after each real
+    // agent/chat turn. System operations that produce no AI response — e.g. /compact
+    // answering "History is already up to date" — are not shown a stats card.
     "models": {
         "defaultModel": null,
         "sessionTitleModel": "inherit",
