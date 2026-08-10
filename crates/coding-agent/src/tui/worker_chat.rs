@@ -1,4 +1,4 @@
-//! Worker chat — threaded inter-worker messaging (Alt+M / `/worker`).
+//! Worker chat — threaded inter-worker messaging (Alt+M / `/intercom`).
 //!
 //! State lives in [`WorkerChatState`]. It is decoupled from the shell internals:
 //! the tick loop calls [`drain_worker_inbox_events`] for new inbox events, keys

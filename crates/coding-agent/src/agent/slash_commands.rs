@@ -71,7 +71,7 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("continue", "Resume the interrupted task"),
         builtin("resume", "Resume a different session"),
         builtin("workers", "List live multi-worker peers"),
-        builtin("worker", "Open worker chat (Alt+M)"),
+        builtin("intercom", "Open worker chat (Alt+M)"),
         builtin("reload", "Reload providers, settings, skills, templates, extensions"),
         builtin("quit", "Quit Elph"),
         builtin_with_args("memory", "Agent memory store (floppy)"),
@@ -254,7 +254,7 @@ pub enum SlashDispatch {
     },
     /// Live multi-worker peers (`/workers`).
     Workers,
-    /// Open worker chat (`/worker`, Alt+M).
+    /// Open worker chat (`/intercom`, Alt+M).
     WorkerChat,
     /// Keyboard shortcut reference (`/hotkeys`).
     Hotkeys,
@@ -605,7 +605,7 @@ pub fn slash_palette_submit_on_enter(command_name: &str) -> bool {
             | "system-prompt"
             | "feedback"
             | "workers"
-            | "worker"
+            | "intercom"
             | "hotkeys"
             | "changelog"
             | "settings"
@@ -643,7 +643,7 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
         "login" => Some(SlashDispatch::ProviderConnect { provider_id: None }),
         "logout" => Some(SlashDispatch::ProviderDisconnect { provider_id: None }),
         "workers" => Some(SlashDispatch::Workers),
-        "worker" => Some(SlashDispatch::WorkerChat),
+        "intercom" | "ic" => Some(SlashDispatch::WorkerChat),
         "hotkeys" | "keys" | "shortcuts" => Some(SlashDispatch::Hotkeys),
         "changelog" | "changes" => Some(SlashDispatch::Changelog),
         "settings" | "config" => Some(SlashDispatch::Settings),
@@ -947,6 +947,14 @@ mod tests {
         assert_eq!(
             dispatch_slash_command("/workers", None, None, None),
             Some(SlashDispatch::Workers)
+        );
+        assert_eq!(
+            dispatch_slash_command("/intercom", None, None, None),
+            Some(SlashDispatch::WorkerChat)
+        );
+        assert_eq!(
+            dispatch_slash_command("/intercom calm-fox", None, None, None),
+            Some(SlashDispatch::WorkerChat)
         );
     }
 

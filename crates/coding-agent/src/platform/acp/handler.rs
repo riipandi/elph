@@ -304,7 +304,7 @@ async fn handle_acp_slash_command(
             Ok(())
         }
         Some(SlashDispatch::WorkerChat) => Err(anyhow::anyhow!(
-            "Command '/worker' opens the TUI worker chat overlay and is not available via ACP."
+            "Command '/intercom' opens the TUI worker chat overlay and is not available via ACP."
         )),
         Some(SlashDispatch::Unimplemented(cmd)) => {
             Err(anyhow::anyhow!("Slash command '{cmd}' is not available via ACP."))

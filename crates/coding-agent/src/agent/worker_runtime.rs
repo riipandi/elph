@@ -6,11 +6,16 @@
 //! owns delivery: claiming marks the mailbox message `delivered` **before** the
 //! peer's ask can be answered, so a delivery failure can never replay/loop and
 //! the peer's ask times out instead of wedging either agent. Inbound messages
-//! never steal the current turn — while the harness is busy they only land in
-//! the worker chat inbox (TUI), and once idle the poller starts a real agent
-//! turn that answers with `worker_reply`. The reply is written through the
-//! mailbox rows (see `MailboxStore`) so peers polling
-//! `worker_get` / `worker_await` unblock.
+//! never steal the current turn — while the harness is busy the answer is
+//! enqueued as a follow-up (never a steer), and once idle the poller starts a
+//! real agent turn that answers with `worker_reply`.
+//!
+//! **Loop guard:** only *new* messages (no `parent_msg_id`) trigger an answer
+//! turn. Threaded replies (`worker_reply` / TUI chat answers) land in the inbox
+//! and resolve the asker's pending ask via the mailbox rows (see `MailboxStore`),
+//! so peers polling `worker_get` / `worker_await` unblock — but they never spawn
+//! another reply turn. Without this, two idle workers replying to each other
+//! would ping-pong forever.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};

@@ -161,7 +161,7 @@ pub enum SlashOutcome {
         preferred_value: Option<String>,
         footer_hint: String,
     },
-    /// Open the worker chat overlay (`/worker`). `peers` seeds the picker; the
+    /// Open the worker chat overlay (`/intercom`). `peers` seeds the picker; the
     /// shell loads inbox history from the live session on the same open path as Alt+M.
     OpenWorkerChat {
         peers: Vec<elph_agent::LiveWorker>,
@@ -732,17 +732,17 @@ fn open_resume_item_selector(session: Option<&Arc<crate::agent::CodingAgentSessi
     }
 }
 
-/// Open the worker chat overlay from `/worker` (loads peers + history, then the
+/// Open the worker chat overlay from `/intercom` (loads peers + history, then the
 /// shell renders `WorkerChatOverlay` with the state stored under `pending_worker_chat`).
 fn open_worker_chat_slash(session: Option<&Arc<crate::agent::CodingAgentSession>>) -> SlashOutcome {
     let Some(session) = session else {
-        return SlashOutcome::Status("Agent session required for /worker.".into());
+        return SlashOutcome::Status("Agent session required for /intercom.".into());
     };
     let session = Arc::clone(session);
     match elph_agent::try_block_on(session.tui_worker_peers()) {
         Ok(Ok(peers)) => SlashOutcome::OpenWorkerChat { peers },
-        Ok(Err(e)) => SlashOutcome::Status(format!("/worker failed: {e:#}")),
-        Err(e) => SlashOutcome::Status(format!("/worker failed: {e:#}")),
+        Ok(Err(e)) => SlashOutcome::Status(format!("/intercom failed: {e:#}")),
+        Err(e) => SlashOutcome::Status(format!("/intercom failed: {e:#}")),
     }
 }
 

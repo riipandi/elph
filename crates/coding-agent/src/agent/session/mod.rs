@@ -341,13 +341,20 @@ impl CodingAgentSession {
 
     /// Deliver one inbound worker message — **never interrupts the user's task**.
     ///
-    /// The message lands in the worker chat inbox (TUI) and becomes a real agent
-    /// turn that runs through the normal turn pipeline (full context, tools, reply
-    /// via `worker_reply`). While the main agent is busy the answer turn is
-    /// **enqueued as a follow-up** so it still runs right after the user's task —
-    /// the peer's `worker_ask` does not silently time out. Never takes
-    /// `turn_gate` directly and never calls the steer queue, so a peer message
-    /// can never steal or interrupt the current agent turn.
+    /// The message lands in the worker chat inbox (TUI) and, **only when it is a
+    /// new message (no `parent_msg_id`)**, becomes a real agent turn (full
+    /// context, tools, reply via `worker_reply`). Threaded replies — the
+    /// `worker_reply` / TUI chat answers a peer sends back — are delivered to the
+    /// inbox only: they resolve the asker's pending ask through the mailbox
+    /// (`get_response_for`), and never spawn a reply turn. Without this guard two
+    /// idle workers replying to each other would ping-pong forever (each reply is
+    /// itself a kind-`prompt` message that would trigger another answer turn).
+    ///
+    /// While the main agent is busy a new-message answer turn is **enqueued as a
+    /// follow-up** so it still runs right after the user's task — the peer's
+    /// `worker_ask` does not silently time out. Never takes `turn_gate` directly
+    /// and never calls the steer queue, so a peer message can never steal or
+    /// interrupt the current agent turn.
     async fn deliver_worker_inbound(&self, msg: elph_agent::WorkerMessage) -> Result<()> {
         // Resolve display name for the sender (registry may be gone → fall back to id).
         let from_worker = if let Some(rt) = self.worker_runtime.as_ref() {
@@ -369,10 +376,18 @@ impl CodingAgentSession {
             created_at: msg.created_at.clone(),
         });
 
-        // Answer with a real turn (full context + tools). When the harness is busy
-        // the turn is queued behind the current task via the follow-up queue, never
-        // injected as a steer — the user's turn keeps running untouched, and the
-        // peer's ask still gets answered promptly instead of hanging until timeout.
+        // Threaded reply (the answer to a message we asked / sent): inbox only.
+        // The asker's worker_get/worker_await already unblocks via the mailbox
+        // parent lookup; spawning a turn here would start an endless ping-pong.
+        if msg.parent_msg_id.is_some() {
+            return Ok(());
+        }
+
+        // New message → answer with a real turn (full context + tools). When the
+        // harness is busy the turn is queued behind the current task via the
+        // follow-up queue, never injected as a steer — the user's turn keeps
+        // running untouched, and the peer's ask still gets answered promptly
+        // instead of hanging until timeout.
         let prompt = self.worker_inbound_prompt(&from_worker, &text);
         if self.harness.phase().await == elph_agent::AgentHarnessPhase::Idle {
             if let Err(err) = self.run_prompt_turn(prompt).await {

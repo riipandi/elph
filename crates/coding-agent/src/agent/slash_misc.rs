@@ -25,7 +25,7 @@ Keyboard shortcuts
   /help              List slash commands
   /aside <question>  Side question (does not interrupt the main turn)
   /hotkeys           This list
-  /worker [peer]     Open threaded worker chat (Alt+M)
+  /intercom [peer]   Open threaded worker chat (Alt+M)
   /workers           Live multi-worker peers
   /resume [id]       Interactive session picker (or switch by id)
   /tree [id]         Interactive tree navigate (or jump by entry id)
@@ -113,7 +113,7 @@ pub async fn workers_slash_message(session: Option<&Arc<CodingAgentSession>>) ->
         "Tools: worker_list · worker_send · worker_reply · worker_ask · worker_get · worker_await · worker_pending"
             .into(),
     );
-    lines.push("Chat: Alt+M or /worker — threaded 1:1 messaging (never interrupts your turn).".into());
+    lines.push("Chat: Alt+M or /intercom — threaded 1:1 messaging (never interrupts your turn).".into());
     lines.push("Tip: peers share .elph/store.db; file claims protect parallel edits.".into());
     Ok(lines.join("\n"))
 }

@@ -486,7 +486,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
     let aside_open = pending_aside.read().is_some();
     let worker_chat_open = pending_worker_chat.read().is_some();
 
-    // ── Worker chat overlay (Alt+M / `/worker`) ─────────────────────
+    // ── Worker chat overlay (Alt+M / `/intercom`) ─────────────────────
     let worker_chat_state = pending_worker_chat.read().clone();
     let worker_chat_open = worker_chat_open || worker_chat_state.is_some();
     let worker_chat_active = worker_chat_state.as_ref().and_then(|s| s.active.clone());

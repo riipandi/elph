@@ -84,12 +84,12 @@ Peers communicate through the **durable mailbox** in `.elph/store.db` (not Unix 
 | `worker_reply` | Threaded reply to an inbound message (keeps the conversation thread). `in_reply_to` optional — omitted replies the single pending inbound ask |
 | `worker_pending` | List inbound asks still waiting for an answer (with their `msg_id`) |
 
-### Worker chat (Alt+M / `/worker`)
+### Worker chat (Alt+M / `/intercom`)
 
 Worker messaging is **not** a side question like `/aside` — it is a first-class
 threaded chat with its own mechanism:
 
-- **Alt+M** (or `/worker`) opens the **worker chat overlay**: a picker of live
+- **Alt+M** (or `/intercom`) opens the **worker chat overlay**: a picker of live
   peers, then per-peer thread history, plus a compose field. Enter sends; Esc
   goes back to the picker, then closes.
 - Messages are **threaded** (`conversation_id`): `worker_reply` from the agent,
@@ -103,15 +103,20 @@ threaded chat with its own mechanism:
 Inbound mail is polled (`inboxPollMs`), then delivered:
 
 - The message lands in the worker chat inbox and the TUI shows an unread badge.
-- When the harness is **idle**, the poller immediately starts a **real agent
-  turn** (full context + tools) with an intercom wrapper saying this is a peer
-  message; the agent replies with `worker_reply`.
+- **Only new messages** (no `parent_msg_id`) trigger an answer turn. When the
+  harness is **idle**, the poller immediately starts a **real agent turn** (full
+  context + tools) with an intercom wrapper saying this is a peer message; the
+  agent replies with `worker_reply`.
 - When the harness is **busy**, the answer turn is **enqueued as a follow-up**
   — it runs right after the user's current task (never as a steer/interjection),
   so the peer's `worker_ask` does not hang until timeout. If the follow-up
   queueing fails, the ask is closed with an explicit error reply instead.
 - If the answer turn itself fails, the ask is closed with an error reply
   (`kind = response`) so the peer's `worker_get` / `worker_await` unblocks.
+- **Threaded replies** (`worker_reply` / TUI chat answers — `parent_msg_id` set)
+  are delivered to the inbox **only**: they resolve the asker's pending ask via
+  the mailbox and never spawn another turn. This loop guard prevents two idle
+  workers from replying to each other forever.
 
 Inbound messages **never steer or interrupt** the user's current agent turn —
 the poller never takes the turn gate directly and never calls the harness steer
