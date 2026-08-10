@@ -303,26 +303,37 @@ where
             .journal_turn_finished(turn_id, operation_id, crate::session::durability::OperationOutcome::Completed)
             .await;
 
-        for message in run_result.into_iter().rev() {
+        // Accumulate provider usage across every assistant message in the turn — tool-call
+        // iterations (`StopReason::ToolUse`) and the final reply are separate API calls, each
+        // carrying their own usage (tool-call tokens included). Summing them yields the turn's
+        // true provider-reported consumption; taking only the last message under-reports.
+        let mut total_usage = TurnUsage::default();
+        for message in &run_result {
             if let Some(assistant) = message.as_llm()
                 && let Message::Assistant(assistant) = assistant
             {
-                if let (Some(store), Some(db_id)) = (&self.shared.turn_store, db_turn_id.as_deref()) {
-                    let usage = TurnUsage::from_ai_usage(&assistant.usage);
-                    if let Err(err) = store
-                        .finish_turn(
-                            db_id,
-                            TurnStatus::Completed,
-                            usage,
-                            (now_ms() - turn_started_ms).max(0),
-                            None,
-                            None,
-                            None,
-                        )
-                        .await
-                    {
-                        log::warn!("session_turns finish failed: {err:#}");
-                    }
+                total_usage += TurnUsage::from_ai_usage(&assistant.usage);
+            }
+        }
+
+        for message in run_result.into_iter().rev() {
+            if let Some(assistant) = message.as_llm()
+                && let Message::Assistant(assistant) = assistant
+                && let (Some(store), Some(db_id)) = (&self.shared.turn_store, db_turn_id.as_deref())
+            {
+                if let Err(err) = store
+                    .finish_turn(
+                        db_id,
+                        TurnStatus::Completed,
+                        total_usage.clone(),
+                        (now_ms() - turn_started_ms).max(0),
+                        None,
+                        None,
+                        None,
+                    )
+                    .await
+                {
+                    log::warn!("session_turns finish failed: {err:#}");
                 }
                 if let Some(goal_runtime) = &self.shared.goal_runtime {
                     let mode = *self.shared.collaboration_mode.lock().await;

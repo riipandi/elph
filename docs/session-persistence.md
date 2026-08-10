@@ -7,7 +7,7 @@ How Elph stores sessions, restores history on `--continue` / `--resume`, and kee
 | Concern | Where |
 | --- | --- |
 | LLM conversation + branch | `session_entries` tree (JSON payload per entry) |
-| Turn lifecycle, tokens, cost | `session_turns` + rollup columns on `sessions` |
+| Turn lifecycle, tokens, cost | `session_turns` + rollup columns on `sessions` — see [usage-accounting.md](./design/usage-accounting.md) for what each number means |
 | Structured work checklist | `session_todos` |
 | Session objective / budgets | `goals` |
 | TUI transcript cards | **Reconstructed** from the tree on resume (not a separate snapshot SoT) |

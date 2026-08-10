@@ -188,6 +188,7 @@ Project overrides **per nested key** (deep merge). Runtime saves write **home on
     // cost · provider/model) is rendered under the assistant reply after each real
     // agent/chat turn. System operations that produce no AI response — e.g. /compact
     // answering "History is already up to date" — are not shown a stats card.
+    // Semantics: docs/design/usage-accounting.md
     "models": {
         "defaultModel": null,
         "sessionTitleModel": "inherit",

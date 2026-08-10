@@ -55,6 +55,17 @@ impl TurnUsage {
     }
 }
 
+impl std::ops::AddAssign for TurnUsage {
+    fn add_assign(&mut self, rhs: Self) {
+        self.input_tokens += rhs.input_tokens;
+        self.output_tokens += rhs.output_tokens;
+        self.cache_read_tokens += rhs.cache_read_tokens;
+        self.cache_write_tokens += rhs.cache_write_tokens;
+        self.total_tokens += rhs.total_tokens;
+        self.cost += rhs.cost;
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TurnRecord {
     pub id: String,
@@ -74,4 +85,35 @@ pub struct TurnRecord {
     pub user_entry_id: Option<String>,
     pub assistant_entry_id: Option<String>,
     pub error_message: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::TurnUsage;
+
+    #[test]
+    fn add_assign_sums_all_fields() {
+        let mut acc = TurnUsage {
+            input_tokens: 100,
+            output_tokens: 50,
+            cache_read_tokens: 10,
+            cache_write_tokens: 5,
+            total_tokens: 165,
+            cost: 0.01,
+        };
+        acc += TurnUsage {
+            input_tokens: 200,
+            output_tokens: 25,
+            cache_read_tokens: 0,
+            cache_write_tokens: 40,
+            total_tokens: 265,
+            cost: 0.02,
+        };
+        assert_eq!(acc.input_tokens, 300);
+        assert_eq!(acc.output_tokens, 75);
+        assert_eq!(acc.cache_read_tokens, 10);
+        assert_eq!(acc.cache_write_tokens, 45);
+        assert_eq!(acc.total_tokens, 430);
+        assert!((acc.cost - 0.03).abs() < 1e-9);
+    }
 }
