@@ -650,3 +650,38 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod probe_tests {
+    use super::*;
+    use crate::tui::transcript::markdown::buffer::{AssistantMarkdownBuffer, stable_source_hash};
+
+    #[test]
+    fn probe_retention_stripped_message_repaint_behavior() {
+        let raw =
+            "## Heading\n\nA paragraph of text that is long enough to matter.\n\n| a | b |\n| - | - |\n| 1 | 2 |\n";
+        let mut buffer = AssistantMarkdownBuffer::new();
+        buffer.mark_stream_complete();
+        buffer.refresh_stable(raw, 80);
+        let hash = buffer.parts[0].source_hash;
+        buffer.apply_document(hash, elph_tui::parse_markdown_document(raw));
+        assert!(buffer.has_cached_documents());
+
+        let before = built_doc_cache().lock().unwrap().len();
+        let _ = build_cached_document(&buffer, raw, Color::Reset, 80);
+        let with_doc = built_doc_cache().lock().unwrap().len();
+        println!("PROBE cache entries: before={before} after_paint_with_doc={with_doc}");
+
+        // Now simulate retention releasing the document.
+        let stripped = buffer.without_documents();
+        assert!(!stripped.has_cached_documents());
+        let base = built_doc_cache().lock().unwrap().len();
+        for _ in 0..5 {
+            let _ = build_cached_document(&stripped, raw, Color::Reset, 80);
+        }
+        let after = built_doc_cache().lock().unwrap().len();
+        println!("PROBE stripped: cache_before={base} cache_after_5_paints={after}");
+        println!("PROBE stripped repaint memoized = {}", after > base);
+        let _ = stable_source_hash("x");
+    }
+}

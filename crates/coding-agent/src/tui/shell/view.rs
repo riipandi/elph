@@ -144,7 +144,6 @@ pub(crate) fn build_shell_view(
         mut user_shell_abort,
         user_shell_channel,
         todos,
-        todo_panel_tick,
         ..
     } = ctx;
 
@@ -923,7 +922,6 @@ pub(crate) fn build_shell_view(
                         elph_tui::TodoProgressPanel(
                             width: screen_width,
                             items: panel_rows,
-                            tick: todo_panel_tick.get(),
                             max_rows: elph_tui::TODO_PANEL_DEFAULT_MAX_ROWS,
                             redirected: redirected,
                             theme: Some(panel_theme),

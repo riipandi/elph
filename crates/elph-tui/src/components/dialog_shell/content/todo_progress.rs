@@ -65,9 +65,13 @@ pub fn build_todo_panel_rows(todos: &[TodoPanelRow]) -> (Vec<TodoPanelRow>, usiz
     (visible, visible_count, done, total)
 }
 
-/// Whether the live panel should paint: show as long as there is at least one item.
+/// Whether the live panel should paint: hide when empty or when every item is finished.
 pub fn todo_panel_should_show(todos: &[TodoPanelRow]) -> bool {
-    !todos.is_empty()
+    if todos.is_empty() {
+        return false;
+    }
+    // Hide once every item is finished (parent also gates on this).
+    !todos.iter().all(|t| t.finished)
 }
 
 /// Border title: `Todos 2/5` or `Todos 2/5 · steered` when the user redirected.
@@ -87,9 +91,6 @@ pub const TODO_PANEL_HEADER_PREFIX: &str = "Todos";
 pub struct TodoProgressPanelProps {
     pub width: u16,
     pub items: Vec<TodoPanelRow>,
-    /// Optional tick counter — when non-zero + a running row exists, running rows
-    /// render an animated braille spinner instead of the static `◌`.
-    pub tick: u32,
     /// Max visible rows before the `↓N more` hint (0 = show all).
     pub max_rows: usize,
     /// User steered / interjected while this plan is still on screen — dim rows
@@ -103,7 +104,6 @@ impl Default for TodoProgressPanelProps {
         Self {
             width: 40,
             items: Vec::new(),
-            tick: 0,
             max_rows: TODO_PANEL_DEFAULT_MAX_ROWS,
             redirected: false,
             theme: None,
@@ -130,8 +130,6 @@ pub fn TodoProgressPanel(props: &TodoProgressPanelProps, hooks: Hooks) -> impl I
     };
     let show_more = visible_count > cap;
     let header = todo_panel_header_line(done, total, props.redirected);
-    let animate = props.tick != 0 && !props.redirected;
-    let spinner_glyph = spinner_glyph_for_tick(props.tick);
     let border_color = if props.redirected {
         theme.border_subtle
     } else {
@@ -160,11 +158,7 @@ pub fn TodoProgressPanel(props: &TodoProgressPanelProps, hooks: Hooks) -> impl I
         } else {
             theme.text_secondary
         };
-        let glyph = if row.running && animate {
-            spinner_glyph
-        } else {
-            todo_status_glyph(row.running, row.finished)
-        };
+        let glyph = todo_status_glyph(row.running, row.finished);
         let label = truncate_todo_label(&row.label, label_max);
         rows.push(
             element! {
@@ -267,11 +261,6 @@ fn truncate_todo_label(label: &str, max_chars: usize) -> String {
     let mut out: String = label.chars().take(keep).collect();
     out.push('…');
     out
-}
-
-/// Braille spinner frame for a polled tick (wall-clock phase, skips when lagging).
-fn spinner_glyph_for_tick(tick: u32) -> &'static str {
-    crate::loader::SpinnerLoader::glyph_for_elapsed_ms((tick as u64) * 80)
 }
 
 // ---------------------------------------------------------------------------
@@ -414,16 +403,16 @@ mod tests {
     }
 
     #[test]
-    fn show_when_any_items_including_all_done() {
+    fn hide_when_all_items_finished() {
         // Empty list → hide.
         assert!(!todo_panel_should_show(&[]));
-        // All done → still show (completed items stay visible).
+        // All done → hide (panel auto-hides once every task completes).
         let done = vec![TodoPanelRow {
             label: "done".into(),
             running: false,
             finished: true,
         }];
-        assert!(todo_panel_should_show(&done));
+        assert!(!todo_panel_should_show(&done));
         // Open items → show.
         let open = vec![TodoPanelRow {
             label: "open".into(),
@@ -431,6 +420,20 @@ mod tests {
             finished: false,
         }];
         assert!(todo_panel_should_show(&open));
+        // Mix of done + running → show.
+        let mixed = vec![
+            TodoPanelRow {
+                label: "done".into(),
+                running: false,
+                finished: true,
+            },
+            TodoPanelRow {
+                label: "running".into(),
+                running: true,
+                finished: false,
+            },
+        ];
+        assert!(todo_panel_should_show(&mixed));
     }
 
     #[test]
