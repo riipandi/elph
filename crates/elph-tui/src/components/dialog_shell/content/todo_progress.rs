@@ -408,9 +408,9 @@ mod tests {
 
     #[test]
     fn header_reports_counts_and_steered() {
-        assert_eq!(todo_panel_header_line(1, 3, false), "(Todos 1/3)");
-        assert_eq!(todo_panel_header_line(0, 3, false), "(Todos 0/3)");
-        assert_eq!(todo_panel_header_line(2, 5, true), "(Todos 2/5 · steered)");
+        assert_eq!(todo_panel_header_line(1, 3, false), "Todos 1/3");
+        assert_eq!(todo_panel_header_line(0, 3, false), "Todos 0/3");
+        assert_eq!(todo_panel_header_line(2, 5, true), "Todos 2/5 · steered");
     }
 
     #[test]
