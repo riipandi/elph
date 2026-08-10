@@ -156,28 +156,25 @@ pub enum AgentUiEvent {
         request_id: u64,
         error: String,
     },
-    /// Non-interrupting inbound worker message started — shell shows the aside panel
-    /// (never a harness steer, so the user's current task is not interrupted).
-    WorkerInboundStarted {
-        request_id: u64,
+    /// A worker message was received (threaded, via worker_send/reply/ask).
+    /// The shell shows the inbox badge and stores the message for the worker chat.
+    WorkerInboxReceived {
+        msg_id: String,
         from_worker: String,
-        message: String,
+        from_worker_id: String,
+        text: String,
+        created_at: String,
     },
-    /// Non-interrupting inbound worker message answered — panel shows the answer and
-    /// any open asks are completed. Never touches the session tree / harness turn.
-    WorkerInboundAnswered {
-        request_id: u64,
-        from_worker: String,
-        message: String,
-        answer: String,
+    /// A worker message was sent by this session (worker_send/reply/ask).
+    WorkerInboxSent {
+        msg_id: String,
+        to_worker: String,
+        to_worker_id: String,
+        text: String,
+        created_at: String,
     },
-    /// Non-interrupting inbound worker message failed / timed out.
-    WorkerInboundFailed {
-        request_id: u64,
-        from_worker: String,
-        message: String,
-        error: String,
-    },
+    /// The worker inbox changed in a way the shell should re-read.
+    WorkerInboxUpdated,
     /// Todo list updated by the agent (todo_write tool call).
     TodoUpdated {
         items: Vec<TodoItem>,

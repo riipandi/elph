@@ -212,7 +212,102 @@ impl CodingAgentSession {
         }
     }
 
-    /// Start durable mailbox inbox poller (claim → answer non-interrupting → reply). Call once after `Arc::new`.
+    /// Send a **threaded** chat message to a peer worker from the TUI worker chat.
+    ///
+    /// Never routes through the agent turn — the message goes straight to the
+    /// peer's mailbox thread (`worker_reply`-style semantics). Returns the inserted
+    /// message. Must have a live worker runtime.
+    pub async fn tui_send_worker_message(
+        &self,
+        peer: &elph_agent::LiveWorker,
+        text: &str,
+        parent_msg_id: Option<&str>,
+    ) -> Result<elph_agent::WorkerMessage> {
+        let Some(rt) = self.worker_runtime.as_ref() else {
+            anyhow::bail!("worker runtime not started");
+        };
+        let message = match parent_msg_id {
+            Some(parent) => {
+                rt.mailbox()
+                    .send_reply(
+                        &rt.project_key,
+                        &rt.worker_id,
+                        &self.session_id,
+                        &peer.session_id,
+                        Some(&peer.worker_id),
+                        parent,
+                        None,
+                        text,
+                    )
+                    .await?
+            }
+            None => {
+                rt.mailbox()
+                    .send_prompt(
+                        &rt.project_key,
+                        &rt.worker_id,
+                        &self.session_id,
+                        &peer.session_id,
+                        Some(&peer.worker_id),
+                        text,
+                        0,
+                        None,
+                        None,
+                    )
+                    .await?
+            }
+        };
+        let _ = self.ui_event_sender().send(AgentUiEvent::WorkerInboxSent {
+            msg_id: message.id.clone(),
+            to_worker: peer.name.clone(),
+            to_worker_id: peer.worker_id.clone(),
+            text: text.to_string(),
+            created_at: message.created_at.clone(),
+        });
+        Ok(message)
+    }
+
+    /// All messages involving this session, oldest first (TUI worker inbox).
+    pub async fn tui_worker_inbox(&self, limit: u64) -> Result<Vec<elph_agent::WorkerMessage>> {
+        let Some(rt) = self.worker_runtime.as_ref() else {
+            return Ok(Vec::new());
+        };
+        rt.mailbox().list_inbox(&self.session_id, limit).await
+    }
+
+    /// Per-peer conversation with a given worker (either side), oldest first.
+    pub async fn tui_worker_conversation(
+        &self,
+        peer_worker_id: &str,
+        limit: u64,
+    ) -> Result<Vec<elph_agent::WorkerMessage>> {
+        let Some(rt) = self.worker_runtime.as_ref() else {
+            return Ok(Vec::new());
+        };
+        rt.mailbox()
+            .list_conversation(&self.session_id, peer_worker_id, limit)
+            .await
+    }
+
+    /// Live peer workers for the worker chat picker (excludes self).
+    pub async fn tui_worker_peers(&self) -> Result<Vec<elph_agent::LiveWorker>> {
+        let Some(rt) = self.worker_runtime.as_ref() else {
+            return Ok(Vec::new());
+        };
+        rt.registry()
+            .list_live_peers(&rt.project_key, &rt.worker_id, rt.stale_secs())
+            .await
+    }
+
+    /// Mark fire-and-forget notifies as read (badge cleanup).
+    pub async fn tui_mark_worker_notify_read(&self) -> Result<()> {
+        let Some(rt) = self.worker_runtime.as_ref() else {
+            return Ok(());
+        };
+        rt.mailbox().mark_notify_read(&self.session_id).await
+    }
+
+    /// Start durable mailbox inbox poller (claim → route to UI / agent turn). Call once after `Arc::new`.
     pub fn start_worker_inbox_poller(self: &Arc<Self>) {
         let Some(rt) = self.worker_runtime.as_ref() else {
             return;
@@ -230,7 +325,7 @@ impl CodingAgentSession {
                 }
                 match mailbox.claim_next_inbound(&session_id).await {
                     Ok(Some(msg)) => {
-                        if let Err(err) = session.answer_worker_inbound(msg).await {
+                        if let Err(err) = session.deliver_worker_inbound(msg).await {
                             log::warn!("worker inbox deliver: {err:#}");
                         }
                     }
@@ -243,74 +338,73 @@ impl CodingAgentSession {
         rt.set_inbox_handle(handle);
     }
 
-    /// Answer an inbound worker message without interrupting the user's task.
+    /// Deliver one inbound worker message — **never interrupts the user's task**.
     ///
-    /// Runs the same one-shot, tool-free side completion as `/aside` (snapshot of
-    /// the session context, no harness turn, nothing appended to the session tree),
-    /// shows progress in the aside panel, and replies through the durable mailbox.
-    /// Never takes `turn_gate` and never calls `queue_steer`, so a peer message
-    /// can never steal or interrupt the current agent turn.
-    async fn answer_worker_inbound(&self, msg: elph_agent::WorkerMessage) -> Result<()> {
-        let Some(rt) = self.worker_runtime.as_ref() else {
-            return Ok(());
-        };
-        let (request_id, from_worker, payload) = {
-            let registry = rt.registry();
-            let from_worker = registry
+    /// The message lands in the worker chat inbox (TUI) and, when the harness is
+    /// idle, becomes a real agent turn that runs through the normal turn pipeline
+    /// (full context, tools, reply via `worker_reply`). While the main agent is
+    /// busy the message only arrives in the inbox; the agent answers when it is
+    /// idle again. This replaces the old one-shot aside completion: worker
+    /// messaging is now a first-class threaded channel with real answers, not a
+    /// tool-free side question. Never takes `turn_gate`, so a peer message can
+    /// never steal or interrupt the current agent turn.
+    async fn deliver_worker_inbound(&self, msg: elph_agent::WorkerMessage) -> Result<()> {
+        // Resolve display name for the sender (registry may be gone → fall back to id).
+        let from_worker = if let Some(rt) = self.worker_runtime.as_ref() {
+            rt.registry()
                 .name_for_worker_id(&msg.from_worker_id)
                 .await
-                .unwrap_or_else(|| msg.from_worker_id.clone());
-            let payload = extract_worker_payload_text(&msg.payload);
-            (crate::agent::aside::next_worker_inbound_request_id(), from_worker, payload)
+                .unwrap_or_else(|| msg.from_worker_id.clone())
+        } else {
+            msg.from_worker_id.clone()
         };
+        let text = extract_worker_payload_text(&msg.payload);
 
-        let _ = self.ui_event_sender().send(AgentUiEvent::WorkerInboundStarted {
-            request_id,
+        // Surface to the TUI inbox + badge.
+        let _ = self.ui_event_sender().send(AgentUiEvent::WorkerInboxReceived {
+            msg_id: msg.id.clone(),
             from_worker: from_worker.clone(),
-            message: payload.clone(),
+            from_worker_id: msg.from_worker_id.clone(),
+            text: text.clone(),
+            created_at: msg.created_at.clone(),
         });
 
-        let completion = crate::agent::aside::worker_inbound_side_completion(self, &from_worker, &payload).await;
-
-        let mailbox = rt.mailbox();
-        let (text, error) = match &completion {
-            Ok(text) => (text.clone(), None),
-            Err(error) => ("".into(), Some(error.clone())),
-        };
-        if let Err(err) = mailbox
-            .send_response(
-                &msg.project_key,
-                rt.worker_id.as_str(),
-                &self.session_id,
-                &msg.from_session_id,
-                &msg.id,
-                &text,
-                error.as_deref(),
-            )
-            .await
-        {
-            log::warn!("reply to worker inbound {}: {err:#}", msg.id);
-        }
-
-        match completion {
-            Ok(answer) => {
-                let _ = self.ui_event_sender().send(AgentUiEvent::WorkerInboundAnswered {
-                    request_id,
-                    from_worker,
-                    message: payload,
-                    answer,
-                });
-            }
-            Err(error) => {
-                let _ = self.ui_event_sender().send(AgentUiEvent::WorkerInboundFailed {
-                    request_id,
-                    from_worker,
-                    message: payload,
-                    error,
-                });
-            }
+        // Ask-type prompts are answered with a real turn (full context + tools) only
+        // when the harness is idle. Busy → the message just sits in the inbox; the
+        // agent answers once idle (or the peer's await times out).
+        if self.harness.phase().await == elph_agent::AgentHarnessPhase::Idle {
+            self.queue_answer_worker_inbound(msg).await;
         }
         Ok(())
+    }
+
+    /// Queue a normal agent turn that answers an inbound worker message.
+    ///
+    /// Runs `run_prompt_turn` (which takes `turn_gate`, so it serializes behind the
+    /// user's current turn if racing) with a short system-reminder wrapper that
+    /// tells the agent this is a peer message and to reply with `worker_reply`.
+    async fn queue_answer_worker_inbound(&self, msg: elph_agent::WorkerMessage) {
+        let from_worker = if let Some(rt) = self.worker_runtime.as_ref() {
+            rt.registry()
+                .name_for_worker_id(&msg.from_worker_id)
+                .await
+                .unwrap_or_else(|| msg.from_worker_id.clone())
+        } else {
+            msg.from_worker_id.clone()
+        };
+        let text = extract_worker_payload_text(&msg.payload);
+        let prompt = format!(
+            "<system-reminder>This is a message from another Elph worker (`{from_worker}`)\n\
+             in this shared project. Answer it as part of your normal turn — you may use\n\
+             tools. Reply with the `worker_reply` tool so the peer receives your answer.\n\
+             If the message needs no answer, send a short acknowledgement.</system-reminder>\n\n\
+             {text}"
+        );
+        if let Err(err) = self.run_prompt_turn(prompt).await {
+            log::warn!("worker answer turn failed: {err:#}");
+            // Do NOT re-claim: the message was already marked delivered; a failed
+            // answer surfaces to the peer as a timeout, never a replay loop.
+        }
     }
 
     /// Eagerly invalidate the system prompt cache synchronously so the next

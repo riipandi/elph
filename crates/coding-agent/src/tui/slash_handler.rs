@@ -68,7 +68,7 @@ fn handle_memory_slash(ctx: SlashContext<'_>, args: &str) -> SlashOutcome {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SlashOutcome {
     Quit,
     NewSession,
@@ -160,6 +160,11 @@ pub enum SlashOutcome {
         items: Vec<crate::types::SelectItem>,
         preferred_value: Option<String>,
         footer_hint: String,
+    },
+    /// Open the worker chat overlay (`/worker`). `peers` seeds the picker; the
+    /// shell loads inbox history from the live session on the same open path as Alt+M.
+    OpenWorkerChat {
+        peers: Vec<elph_agent::LiveWorker>,
     },
 }
 
@@ -512,6 +517,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
                 Err(e) => SlashOutcome::Status(format!("/workers failed: {e}")),
             }
         }
+        SlashDispatch::WorkerChat => open_worker_chat_slash(ctx.agent_session.as_ref()),
         SlashDispatch::Tree { args } => {
             let Some(session) = ctx.agent_session.as_ref() else {
                 return SlashOutcome::Status("Agent session required for /tree.".into());
@@ -723,6 +729,20 @@ fn open_resume_item_selector(session: Option<&Arc<crate::agent::CodingAgentSessi
         },
         Ok(Err(message)) => SlashOutcome::Status(message),
         Err(e) => SlashOutcome::Status(format!("/resume failed: {e}")),
+    }
+}
+
+/// Open the worker chat overlay from `/worker` (loads peers + history, then the
+/// shell renders `WorkerChatOverlay` with the state stored under `pending_worker_chat`).
+fn open_worker_chat_slash(session: Option<&Arc<crate::agent::CodingAgentSession>>) -> SlashOutcome {
+    let Some(session) = session else {
+        return SlashOutcome::Status("Agent session required for /worker.".into());
+    };
+    let session = Arc::clone(session);
+    match elph_agent::try_block_on(session.tui_worker_peers()) {
+        Ok(Ok(peers)) => SlashOutcome::OpenWorkerChat { peers },
+        Ok(Err(e)) => SlashOutcome::Status(format!("/worker failed: {e:#}")),
+        Err(e) => SlashOutcome::Status(format!("/worker failed: {e:#}")),
     }
 }
 

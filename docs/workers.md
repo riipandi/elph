@@ -74,17 +74,46 @@ Claims last until process exit (heartbeat refreshed). Release on clean shutdown 
 
 ## Inter-worker messaging (pi-intercom-like)
 
-Yes — peers communicate through the **durable mailbox** in `.elph/store.db` (not Unix sockets):
+Peers communicate through the **durable mailbox** in `.elph/store.db` (not Unix sockets):
 
 | Tool | Role |
 | --- | --- |
 | `worker_list` | Live peers (memorable names + status) |
 | `worker_send` | Fire-and-forget to a peer by **name** or session id |
 | `worker_ask` / `worker_get` / `worker_await` | Request + poll status |
+| `worker_reply` | Threaded reply to an inbound message (keeps the conversation thread). `in_reply_to` optional — omitted replies the single pending inbound ask |
+| `worker_pending` | List inbound asks still waiting for an answer (with their `msg_id`) |
 
-Inbound mail is polled, then answered with a **one-shot, tool-free completion** (same non-interrupting path as `/aside`): the reply is written back through the durable mailbox and shown in the aside panel. Inbound messages **never steer or interrupt** the user's current agent turn — the main agent keeps working untouched. Plain-text replies from the main turn are **no longer** used to auto-complete asks (see Limitations).
+### Worker chat (Alt+M / `/worker`)
 
-Compared to classic intercom: delivery is **poll-based durable SoT** (survives restart); latency ≈ `inboxPollMs` / reaper interval, not sub-ms IPC.
+Worker messaging is **not** a side question like `/aside` — it is a first-class
+threaded chat with its own mechanism:
+
+- **Alt+M** (or `/worker`) opens the **worker chat overlay**: a picker of live
+  peers, then per-peer thread history, plus a compose field. Enter sends; Esc
+  goes back to the picker, then closes.
+- Messages are **threaded** (`conversation_id`): `worker_reply` from the agent,
+  and the TUI compose box, continue the same thread instead of starting a new
+  one.
+- Sending from the TUI never routes through the agent turn — the message goes
+  straight to the peer's mailbox, so it never interrupts your current task.
+
+### Inbound messages are answered by a real agent turn
+
+Inbound mail is polled (`inboxPollMs`), then delivered:
+
+- The message lands in the worker chat inbox and the TUI shows an unread badge.
+- When the harness is **idle**, the poller starts a **real agent turn** (full
+  context + tools) with a system-reminder that this is a peer message; the agent
+  replies with `worker_reply`.
+- When the harness is **busy**, the message only arrives in the inbox; the agent
+  answers when idle again (or the peer's `worker_ask` times out).
+
+Inbound messages **never steer or interrupt** the user's current agent turn —
+the poller never takes the turn gate and never calls the harness steer queue.
+
+Compared to classic intercom: delivery is **poll-based durable SoT** (survives
+restart); latency ≈ `inboxPollMs` / reaper interval, not sub-ms IPC.
 
 ### Local notify (v2 — not implemented)
 
@@ -103,4 +132,6 @@ Session GC never deletes sessions that currently hold a row in `session_leases`.
 - Same machine / shared store only
 - No automatic merge of concurrent edits
 - No cross-worktree file leases (by design)
-- Inbound worker messages are answered by a separate lightweight completion (no tools, no harness turn). Multi-step coordination that requires tools must use `worker_send` / `worker_ask` from the main agent — the receiver answers in the aside panel without touching your task.
+- Inbound worker messages become real agent turns only when the harness is idle;
+  a busy worker answers after its current task (or the ask times out). No
+  sub-second IPC wake channel — see the notify design above.

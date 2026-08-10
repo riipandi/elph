@@ -85,6 +85,8 @@ pub(crate) fn build_shell_view(
         mut pending_system_prompt,
         pending_aside,
         aside_tick,
+        mut pending_worker_chat,
+        worker_chat_selected,
         mut pending_tool_approval,
         mut pending_user_question,
         mut pre_echoed_user_prompts,
@@ -884,6 +886,59 @@ pub(crate) fn build_shell_view(
                         state: state.clone(),
                         has_focus: has_focus,
                         tick: aside_tick.get(),
+                    )
+                }
+                .into()
+            }))
+            #(pending_worker_chat.read().as_ref().map(|state| -> AnyElement<'static> {
+                let picked = worker_chat_selected.get();
+                element! {
+                    crate::tui::worker_chat::WorkerChatOverlay(
+                        screen_width: screen_width,
+                        screen_height: screen_height,
+                        state: state.clone(),
+                        picked: picked,
+                        on_esc: {
+                            let mut pending_worker_chat = pending_worker_chat;
+                            let mut worker_chat_selected = worker_chat_selected;
+                            let mut draft = draft;
+                            let mut live_draft = live_draft;
+                            let mut shell_focus = shell_focus;
+                            move |_| {
+                                // Esc: back to picker first, then close.
+                                let mut state = pending_worker_chat.write();
+                                if let Some(s) = state.as_mut() {
+                                    if s.active.is_some() {
+                                        crate::tui::worker_chat::back_to_worker_picker(s);
+                                        worker_chat_selected.set(s.selected);
+                                    } else {
+                                        drop(state);
+                                        crate::tui::worker_chat::close_worker_chat(
+                                            &mut pending_worker_chat,
+                                            &mut draft,
+                                            &mut live_draft,
+                                            &mut shell_focus,
+                                            true,
+                                        );
+                                    }
+                                }
+                            }
+                        },
+                        on_close: {
+                            let mut pending_worker_chat = pending_worker_chat;
+                            let mut draft = draft;
+                            let mut live_draft = live_draft;
+                            let mut shell_focus = shell_focus;
+                            move |_| {
+                                crate::tui::worker_chat::close_worker_chat(
+                                    &mut pending_worker_chat,
+                                    &mut draft,
+                                    &mut live_draft,
+                                    &mut shell_focus,
+                                    false,
+                                );
+                            }
+                        },
                     )
                 }
                 .into()
@@ -1870,6 +1925,18 @@ pub(crate) fn build_shell_view(
                                 &mut prompt_history,
                                 TranscriptMessage::text(overlay_deferred_message(&overlay), TranscriptStyle::Meta),
                                 );
+                            }
+                            SlashOutcome::OpenWorkerChat { peers } => {
+                                // Same open path as Alt+M: stash draft + set pending state.
+                                crate::tui::worker_chat::open_worker_chat_overlay(
+                                    &mut pending_worker_chat,
+                                    &mut draft,
+                                    &mut live_draft,
+                                    &mut shell_focus,
+                                    peers,
+                                    Vec::new(),
+                                );
+                                force_editor_clear.set(true);
                             }
                             SlashOutcome::BackgroundTask => {
                                 // Background task already dispatched by handle_slash_submit.

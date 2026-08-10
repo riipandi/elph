@@ -113,6 +113,11 @@ pub(crate) struct ShellCtx {
     pub(crate) pending_aside: Ref<Option<crate::tui::aside_panel::AsidePanelState>>,
     /// Bumped while aside is Loading so the spinner re-renders.
     pub(crate) aside_tick: State<u64>,
+    /// Worker chat overlay state (None = closed). All keys live here; the picker
+    /// selection highlights via `worker_chat_selected`.
+    pub(crate) pending_worker_chat: Ref<Option<crate::tui::worker_chat::WorkerChatState>>,
+    /// Picker highlight for the worker chat overlay.
+    pub(crate) worker_chat_selected: State<usize>,
     pub(crate) pending_tool_approval: Ref<Option<PendingToolApproval>>,
     pub(crate) pending_transcript_notice_expires: Ref<HashMap<&'static str, Instant>>,
     pub(crate) pending_user_question: Ref<Option<PendingUserQuestion>>,

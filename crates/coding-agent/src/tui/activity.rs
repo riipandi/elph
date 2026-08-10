@@ -116,9 +116,9 @@ pub fn activity_label_for_event(event: &AgentUiEvent, show_thinking: bool) -> Op
         | AgentUiEvent::AsideStarted { .. }
         | AgentUiEvent::AsideFinished { .. }
         | AgentUiEvent::AsideFailed { .. }
-        | AgentUiEvent::WorkerInboundStarted { .. }
-        | AgentUiEvent::WorkerInboundAnswered { .. }
-        | AgentUiEvent::WorkerInboundFailed { .. }
+        | AgentUiEvent::WorkerInboxReceived { .. }
+        | AgentUiEvent::WorkerInboxSent { .. }
+        | AgentUiEvent::WorkerInboxUpdated
         | AgentUiEvent::UserPromptCommitted { .. }
         | AgentUiEvent::TranscriptNotice(_)
         | AgentUiEvent::SubagentOutput { .. }

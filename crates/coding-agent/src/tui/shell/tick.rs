@@ -69,6 +69,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         mut pending_system_prompt,
         mut pending_aside,
         mut aside_tick,
+        mut pending_worker_chat,
         mut pending_tool_approval,
         mut pending_transcript_notice_expires,
         mut pending_user_question,
@@ -491,6 +492,11 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             Vec::new()
         };
 
+        // Worker inbox events land in the worker chat overlay (never the transcript).
+        if let Some(state) = pending_worker_chat.write().as_mut() {
+            crate::tui::worker_chat::drain_worker_inbox_events(state, &drained_events);
+        }
+
         for event in drained_events {
             if agent_event_keeps_busy(&event) {
                 // Stream/tool activity means a real harness turn (not bootstrap chrome).
@@ -641,62 +647,8 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 }
                 continue;
             }
-            // Non-interrupting inbound worker messages: same aside panel as `/aside`,
-            // never a harness steer — the user's current task keeps running.
-            if let AgentUiEvent::WorkerInboundStarted {
-                request_id,
-                from_worker,
-                message,
-            } = &event
-            {
-                *pending_aside.write() = Some(crate::tui::aside_panel::worker_inbound_loading(
-                    *request_id,
-                    from_worker,
-                    message,
-                ));
-                activity_label.set(format!("Worker {from_worker}: {message}"));
-                continue;
-            }
-            if let AgentUiEvent::WorkerInboundAnswered {
-                request_id,
-                from_worker,
-                message,
-                answer,
-            } = &event
-            {
-                if pending_aside
-                    .read()
-                    .as_ref()
-                    .is_none_or(|s| s.request_id() == *request_id)
-                {
-                    *pending_aside.write() = Some(crate::tui::aside_panel::AsidePanelState::done(
-                        *request_id,
-                        format!("{from_worker}: {message}"),
-                        answer.clone(),
-                    ));
-                }
-                continue;
-            }
-            if let AgentUiEvent::WorkerInboundFailed {
-                request_id,
-                from_worker,
-                message,
-                error,
-            } = &event
-            {
-                if pending_aside
-                    .read()
-                    .as_ref()
-                    .is_none_or(|s| s.request_id() == *request_id)
-                {
-                    *pending_aside.write() = Some(crate::tui::aside_panel::AsidePanelState::error(
-                        *request_id,
-                        format!("{from_worker}: {message}"),
-                        error.clone(),
-                    ));
-                }
-                continue;
-            }
+            // Workers → a chat message was pushed into the worker chat overlay, and worker
+            // turn dialogue stays out of the main transcript — nothing to do here.
 
             if let AgentUiEvent::TodoUpdated { items } = &event {
                 todos.set(items.clone());

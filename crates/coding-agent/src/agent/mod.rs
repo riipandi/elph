@@ -37,6 +37,7 @@ mod workspace_reload;
 pub use agents_load::{AgentConflict, WorkspaceAgent, WorkspaceAgents};
 pub use agents_load::{agent_dir_entries, ensure_global_agents_md};
 pub use agents_load::{format_agent_conflict_notice, load_workspace_agents};
+pub use aside::extract_worker_payload_text;
 pub use aside::spawn_aside;
 pub use conflict_notice::{CrossKindConflict, TemplateConflict, format_name_conflicts};
 pub use events::{AgentUiEvent, SubagentUiPhase, ToolApprovalChoice};

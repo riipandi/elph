@@ -65,6 +65,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         mut pending_scoped_models,
         mut pending_system_prompt,
         mut pending_aside,
+        mut pending_worker_chat,
+        mut worker_chat_selected,
         pending_tool_approval,
         mut pending_transcript_notice_expires,
         pending_user_question,
@@ -482,6 +484,203 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
     let rename_open = pending_rename.read().is_some();
     let confetti_open = pending_confetti.read().is_some();
     let aside_open = pending_aside.read().is_some();
+    let worker_chat_open = pending_worker_chat.read().is_some();
+
+    // ── Worker chat overlay (Alt+M / `/worker`) ─────────────────────
+    let worker_chat_state = pending_worker_chat.read().clone();
+    let worker_chat_open = worker_chat_open || worker_chat_state.is_some();
+    let worker_chat_active = worker_chat_state.as_ref().and_then(|s| s.active.clone());
+    let worker_chat_peers_len = worker_chat_state.as_ref().map(|s| s.peers.len()).unwrap_or(0);
+    if worker_chat_open && kind == KeyEventKind::Press {
+        if modifiers.is_empty() && code == KeyCode::Esc {
+            // Esc: back to picker first, then close.
+            let mut state = pending_worker_chat.write();
+            if let Some(s) = state.as_mut() {
+                if s.active.is_some() {
+                    crate::tui::worker_chat::back_to_worker_picker(s);
+                    worker_chat_selected.set(s.selected);
+                } else {
+                    drop(state);
+                    crate::tui::worker_chat::close_worker_chat(
+                        &mut pending_worker_chat,
+                        &mut draft,
+                        &mut live_draft,
+                        &mut shell_focus,
+                        true,
+                    );
+                }
+            }
+            return;
+        }
+        if worker_chat_active.is_none() {
+            // Picker navigation (+ select thread).
+            if modifiers.is_empty() && code == KeyCode::Up {
+                if worker_chat_peers_len > 0 {
+                    let next = worker_chat_selected.get().saturating_sub(1);
+                    worker_chat_selected.set(next);
+                    if let Some(s) = pending_worker_chat.write().as_mut() {
+                        s.selected = next;
+                    }
+                }
+                return;
+            }
+            if modifiers.is_empty() && code == KeyCode::Down {
+                if worker_chat_peers_len > 0 {
+                    let next = (worker_chat_selected.get() + 1).min(worker_chat_peers_len - 1);
+                    worker_chat_selected.set(next);
+                    if let Some(s) = pending_worker_chat.write().as_mut() {
+                        s.selected = next;
+                    }
+                }
+                return;
+            }
+            if modifiers.is_empty() && code == KeyCode::Enter {
+                let idx = worker_chat_selected.get();
+                if let Some(s) = pending_worker_chat.write().as_mut() {
+                    let _ = crate::tui::worker_chat::select_worker_thread(s, idx);
+                    worker_chat_selected.set(s.selected);
+                }
+                return;
+            }
+        } else {
+            // Thread view: compose input + Enter send (via tokio spawn so the async
+            // mailbox write never blocks the key handler).
+            if modifiers.is_empty()
+                && let KeyCode::Char(c) = code
+                && !c.is_control()
+            {
+                if let Some(s) = pending_worker_chat.write().as_mut() {
+                    crate::tui::worker_chat::worker_compose_push(s, c);
+                }
+                return;
+            }
+            if modifiers.is_empty() && code == KeyCode::Backspace {
+                if let Some(s) = pending_worker_chat.write().as_mut() {
+                    let _ = crate::tui::worker_chat::worker_compose_backspace(s);
+                }
+                return;
+            }
+            if modifiers.is_empty() && code == KeyCode::Enter {
+                let body = pending_worker_chat
+                    .read()
+                    .as_ref()
+                    .map(|s| s.compose.clone())
+                    .unwrap_or_default();
+                let body = body.trim().to_string();
+                if !body.is_empty() {
+                    let peer = pending_worker_chat
+                        .read()
+                        .as_ref()
+                        .and_then(|s| s.active.clone())
+                        .map(|(id, name)| elph_agent::LiveWorker {
+                            worker_id: id,
+                            session_id: String::new(),
+                            name: name.clone(),
+                            purpose: String::new(),
+                            model: None,
+                            status: elph_agent::WorkerStatus::Online,
+                            context_pct: None,
+                            is_self: false,
+                        });
+                    let parent = pending_worker_chat
+                        .read()
+                        .as_ref()
+                        .and_then(|s| s.thread_parent.clone());
+                    if let (Some(peer), Some(session)) = (peer, agent_session.as_ref()) {
+                        let session = Arc::clone(session);
+                        let worker_id = peer.worker_id.clone();
+                        let body_for_task = body.clone();
+                        let parent_for_task = parent.clone();
+                        tokio::spawn(async move {
+                            if let Err(err) = session
+                                .tui_send_worker_message(&peer, &body_for_task, parent_for_task.as_deref())
+                                .await
+                            {
+                                log::warn!("worker chat send failed: {err:#}");
+                            }
+                        });
+                        if let Some(s) = pending_worker_chat.write().as_mut() {
+                            crate::tui::worker_chat::worker_compose_clear(s);
+                        }
+                        push_transcript_message_synced(
+                            &mut messages,
+                            messages_arc,
+                            &mut messages_revision,
+                            &mut prompt_history,
+                            TranscriptMessage::text(format!("→ {worker_id}: {body}"), TranscriptStyle::Meta),
+                        );
+                    }
+                }
+                return;
+            }
+        }
+        // In-modal keys: swallow everything except shell global shortcuts.
+        if !shell_global_shortcut(modifiers, code) {
+            return;
+        }
+    }
+
+    // Alt+M — open worker chat (only when no other modal is open).
+    let worker_modal_blocked = pending_tool_approval.read().is_some()
+        || pending_user_question.read().is_some()
+        || pending_mode_change.read().is_some()
+        || pending_plan_confirmation.read().is_some()
+        || pending_memory_flush.read().is_some()
+        || *pending_feedback.read()
+        || pending_item_selector.read().is_some()
+        || aside_open;
+    if modifiers.contains(KeyModifiers::ALT)
+        && !modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::META)
+        && matches!(code, KeyCode::Char('m') | KeyCode::Char('M'))
+        && !worker_modal_blocked
+    {
+        let Some(session) = agent_session.clone() else {
+            // No live agent session: open an empty picker.
+            let mut state = crate::tui::worker_chat::WorkerChatState::new();
+            state.rebuild_peers(Vec::new());
+            let stashed = {
+                let current = live_draft.read().clone();
+                if current.trim().is_empty() { None } else { Some(current) }
+            };
+            if stashed.is_some() {
+                draft.set(String::new());
+                live_draft.set(String::new());
+            }
+            if let Some(text) = stashed {
+                state.compose = text;
+            }
+            pending_worker_chat.set(Some(state));
+            shell_focus.set(ShellFocus::StatusDialog);
+            return;
+        };
+        tokio::spawn(async move {
+            let peers = session.tui_worker_peers().await.unwrap_or_default();
+            let history = session
+                .tui_worker_inbox(crate::tui::worker_chat::WORKER_CHAT_INBOX_LIMIT)
+                .await
+                .unwrap_or_default();
+            // Hand to the shell: refresh or create the pending chat state.
+            // We mutate shell state directly here (we are on the keys path).
+            if let Some(pending) = pending_worker_chat.write().as_mut() {
+                // Already open? just refresh history.
+                pending.messages = history;
+                pending.rebuild_peers(peers);
+                pending.revision = pending.revision.wrapping_add(1);
+                return;
+            }
+            let mut state = crate::tui::worker_chat::WorkerChatState::new();
+            if history.len() > crate::tui::worker_chat::WORKER_CHAT_INBOX_LIMIT as usize {
+                let start = history.len() - crate::tui::worker_chat::WORKER_CHAT_INBOX_LIMIT as usize;
+                state.messages = history[start..].to_vec();
+            } else {
+                state.messages = history;
+            }
+            state.rebuild_peers(peers);
+            pending_worker_chat.set(Some(state));
+            shell_focus.set(ShellFocus::StatusDialog);
+        });
+        return;
+    }
 
     // Escape closes confetti/fireworks overlay.
     if confetti_open && modifiers.is_empty() && code == KeyCode::Esc {

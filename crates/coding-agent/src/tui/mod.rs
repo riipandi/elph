@@ -47,6 +47,7 @@ pub(crate) mod transcript;
 mod user_question;
 mod user_question_bar;
 mod user_question_option_list;
+mod worker_chat;
 
 use std::sync::Arc;
 

@@ -32,6 +32,8 @@ pub fn create_worker_tools(ctx: Arc<WorkerToolContext>) -> Vec<AgentTool> {
     vec![
         worker_list_tool(ctx.clone()),
         worker_send_tool(ctx.clone()),
+        worker_reply_tool(ctx.clone()),
+        worker_pending_tool(ctx.clone()),
         worker_get_tool(ctx.clone()),
         worker_await_tool(ctx.clone()),
         worker_ask_tool(ctx),
@@ -79,7 +81,8 @@ fn worker_send_tool(ctx: Arc<WorkerToolContext>) -> AgentTool {
             name: "worker_send".into(),
             constrained_sampling: None,
             description: "Send a fire-and-forget message to another worker by name or session id. \
-                 Do NOT use this to reply to an inbound worker message — answer in normal assistant text."
+                 The peer sees it in their worker inbox; it never interrupts their current task. \
+                 Unthreaded — prefer worker_reply to continue an existing conversation."
                 .into(),
             parameters: json!({
                 "type": "object",
@@ -134,6 +137,146 @@ fn worker_send_tool(ctx: Arc<WorkerToolContext>) -> AgentTool {
                     msg.id,
                     msg.status.as_str()
                 )))
+            })
+        },
+    )
+}
+
+/// Reply to an inbound worker message (threaded chat).
+///
+/// Unlike `worker_ask` (which blocks waiting for an answer), this is the
+/// receiver-side sugar for continuing a conversation: it sends a normal prompt
+/// back to the sender, keeps the same `conversation_id`, and returns
+/// immediately. The peer reads it from their worker inbox.
+fn worker_reply_tool(ctx: Arc<WorkerToolContext>) -> AgentTool {
+    simple_tool(
+        elph_ai::Tool {
+            name: "worker_reply".into(),
+            constrained_sampling: None,
+            description: "Reply to an inbound worker message, continuing that thread. \
+                 The reply is delivered to the sender's worker inbox; it never \
+                 interrupts their task and you do not block for an answer. \
+                 When `in_reply_to` is omitted it replies to the single unresolved \
+                 inbound ask you are currently answering; pass `in_reply_to` only \
+                 when multiple pending asks exist (list them with worker_pending). \
+                 Use when the inbound message expects an answer or follow-up."
+                .into(),
+            parameters: json!({
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "description": "Reply text"
+                    },
+                    "in_reply_to": {
+                        "type": "string",
+                        "description": "Optional msg_id of the inbound message to reply to (from worker_pending)"
+                    }
+                },
+                "required": ["message"]
+            }),
+        },
+        "Reply to worker",
+        move |_, args| {
+            let ctx = ctx.clone();
+            Box::pin(async move {
+                let message = args.get("message").and_then(|v| v.as_str()).unwrap_or("").trim();
+                if message.is_empty() {
+                    bail!("message is required");
+                }
+                let in_reply_to = args.get("in_reply_to").and_then(|v| v.as_str()).unwrap_or("").trim();
+                let parent = if in_reply_to.is_empty() {
+                    // No explicit target: fall back to the single pending inbound ask
+                    // (pi-intercom `reply` semantics — the message we are answering).
+                    let pending = ctx.mailbox.list_open_delivered_prompts(&ctx.session_id).await?;
+                    match pending.len() {
+                        0 => bail!(
+                            "no pending inbound worker message to reply to — \
+                             pass in_reply_to (msg_id) from worker_pending"
+                        ),
+                        1 => pending.into_iter().next().expect("len==1"),
+                        _ => bail!(
+                            "{} pending inbound messages — pass in_reply_to (msg_id) \
+                             from worker_pending to disambiguate",
+                            pending.len()
+                        ),
+                    }
+                } else {
+                    let Some(parent) = ctx.mailbox.get(in_reply_to).await? else {
+                        bail!(
+                            "unknown in_reply_to msg_id `{in_reply_to}` — list open asks \
+                             with worker_pending; or omit in_reply_to to answer the single \
+                             pending inbound message"
+                        );
+                    };
+                    parent
+                };
+                if parent.from_session_id == ctx.session_id {
+                    bail!("cannot reply to a message you sent yourself (msg_id {})", parent.id);
+                }
+                let msg = ctx
+                    .mailbox
+                    .send_reply(
+                        &ctx.project_key,
+                        &ctx.worker_id,
+                        &ctx.session_id,
+                        &parent.from_session_id,
+                        Some(&parent.from_worker_id),
+                        &parent.id,
+                        parent.conversation_id.as_deref(),
+                        message,
+                    )
+                    .await?;
+                let peer_name = ctx
+                    .registry
+                    .name_for_worker_id(&parent.from_worker_id)
+                    .await
+                    .unwrap_or_else(|| parent.from_worker_id.clone());
+                Ok(AgentToolResult::text(format!("worker_reply → {peer_name}\nmsg_id {}", msg.id)))
+            })
+        },
+    )
+}
+
+/// List inbound worker messages that are still waiting for a reply (delivered asks).
+fn worker_pending_tool(ctx: Arc<WorkerToolContext>) -> AgentTool {
+    simple_tool(
+        elph_ai::Tool {
+            name: "worker_pending".into(),
+            constrained_sampling: None,
+            description: "List inbound worker messages that are still waiting for an answer. \
+                 Each entry shows the sender, msg_id (use it with worker_reply), and a \
+                 preview. Use when responding to a peer later, or to check what is open."
+                .into(),
+            parameters: json!({
+                "type": "object",
+                "properties": {}
+            }),
+        },
+        "Pending worker messages",
+        move |_, args| {
+            let _ = args;
+            let ctx = ctx.clone();
+            Box::pin(async move {
+                let open = ctx.mailbox.list_open_delivered_prompts(&ctx.session_id).await?;
+                if open.is_empty() {
+                    return Ok(AgentToolResult::text("no pending inbound worker messages"));
+                }
+                let mut lines = Vec::new();
+                for msg in open {
+                    let from = ctx
+                        .registry
+                        .name_for_worker_id(&msg.from_worker_id)
+                        .await
+                        .unwrap_or_else(|| msg.from_worker_id.clone());
+                    let preview: String = extract_text(&msg.payload)
+                        .unwrap_or_else(|| msg.payload.clone())
+                        .chars()
+                        .take(100)
+                        .collect();
+                    lines.push(format!("- from {} · msg_id {} · {preview}", from, msg.id));
+                }
+                Ok(AgentToolResult::text(lines.join("\n")))
             })
         },
     )

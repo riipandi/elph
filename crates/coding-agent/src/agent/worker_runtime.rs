@@ -1,13 +1,16 @@
 //! Multi-worker host lifecycle: register, heartbeat, tools, shutdown.
 //!
-//! Inbound peer prompts (`worker_send` / `worker_ask`) land in the durable mailbox.
-//! The session's inbox poller (`CodingAgentSession::start_worker_inbox_poller` +
-//! `answer_worker_inbound`) owns delivery: claiming marks the mailbox message
-//! `delivered` **before** running the model, so a delivery failure can never
-//! replay/loop and the peer's ask times out instead of wedging either agent.
-//! The reply is written through the mailbox rows (see `MailboxStore`) so peers
-//! polling `worker_get` / `worker_await` unblock. Answering never steers the
-//! harness or the session tree — inbound messages can't interrupt the user's task.
+//! Inbound peer prompts (`worker_send` / `worker_ask`, or chat replies) land in
+//! the durable mailbox. The session's inbox poller
+//! (`CodingAgentSession::start_worker_inbox_poller` + `deliver_worker_inbound`)
+//! owns delivery: claiming marks the mailbox message `delivered` **before** the
+//! peer's ask can be answered, so a delivery failure can never replay/loop and
+//! the peer's ask times out instead of wedging either agent. Inbound messages
+//! never steal the current turn — while the harness is busy they only land in
+//! the worker chat inbox (TUI), and once idle the poller starts a real agent
+//! turn that answers with `worker_reply`. The reply is written through the
+//! mailbox rows (see `MailboxStore`) so peers polling
+//! `worker_get` / `worker_await` unblock.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};

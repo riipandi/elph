@@ -567,7 +567,7 @@ pub use tools::{echo_tool, simple_tool};
 pub use turns::{TurnRecord, TurnStatus, TurnStore, TurnUsage};
 pub use types::*;
 pub use workers::{
-    FileLeaseStore, LeaseConflict, LeaseError, LiveWorker, MailboxStore, PathClaimContext, SessionLease,
-    SessionLeaseStore, SharedPathClaim, WorkerMessage, WorkerRecord, WorkerRegistry, WorkerStatus, WorkerToolContext,
-    create_worker_tools, normalize_claim_path,
+    FileLeaseStore, LeaseConflict, LeaseError, LiveWorker, MailboxStore, MessageKind, MessageStatus, PathClaimContext,
+    SessionLease, SessionLeaseStore, SharedPathClaim, WorkerMessage, WorkerRecord, WorkerRegistry, WorkerStatus,
+    WorkerToolContext, create_worker_tools, normalize_claim_path,
 };

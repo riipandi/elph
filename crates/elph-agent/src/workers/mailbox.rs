@@ -218,14 +218,19 @@ impl MailboxStore {
             .await
     }
 
-    /// Find response for a prompt msg_id (parent).
+    /// Find the reply for a prompt msg_id (parent).
+    ///
+    /// A reply can be either a classic `response` row (`send_response`) or a
+    /// threaded chat reply (`send_reply`, kind `prompt` with `parent_msg_id` set),
+    /// so both are matched. Oldest first — the first reply (chat or response)
+    /// unblocks the asker's `worker_await`/`worker_get`.
     pub async fn get_response_for(&self, parent_msg_id: &str) -> Result<Option<WorkerMessage>> {
         self.with_conn(|conn| async move {
             let mut rows = conn
                 .query(
                     "SELECT id FROM worker_messages
-                     WHERE parent_msg_id = ? AND kind = 'response'
-                     ORDER BY created_at DESC LIMIT 1",
+                     WHERE parent_msg_id = ? AND kind IN ('response','prompt')
+                     ORDER BY created_at ASC LIMIT 1",
                     turso::params![parent_msg_id],
                 )
                 .await?;
@@ -235,6 +240,175 @@ impl MailboxStore {
             let id: String = row.get(0)?;
             while rows.next().await?.is_some() {}
             load_message(&conn, &id).await
+        })
+        .await
+    }
+
+    /// Send a **threaded chat reply** to a peer worker.
+    ///
+    /// The message is addressed back to the peer (both session and worker id) and
+    /// linked to the thread via `conversation_id` (inherited from the parent when
+    /// omitted). Kind is `Prompt` so it shows up in the peer's inbox, but — unlike
+    /// a blocking ask — it carries no implicit "await a response" contract beyond
+    /// the thread itself.
+    #[allow(clippy::too_many_arguments)] // message envelope fields
+    pub async fn send_reply(
+        &self,
+        project_key: &str,
+        from_worker_id: &str,
+        from_session_id: &str,
+        to_session_id: &str,
+        to_worker_id: Option<&str>,
+        parent_msg_id: &str,
+        conversation_id: Option<&str>,
+        text: &str,
+    ) -> Result<WorkerMessage> {
+        let id = create_worker_msg_id();
+        let now = now_iso_timestamp();
+        let payload = serde_json::json!({ "text": text }).to_string();
+        let conversation = match conversation_id {
+            Some(conv) => conv.to_string(),
+            None => self
+                .get(parent_msg_id)
+                .await?
+                .and_then(|parent| parent.conversation_id.or(Some(parent.id.clone())))
+                .unwrap_or_else(|| id.clone()),
+        };
+        self.insert_message(WorkerMessage {
+            id,
+            project_key: project_key.into(),
+            from_worker_id: from_worker_id.into(),
+            from_session_id: from_session_id.into(),
+            to_worker_id: to_worker_id.map(str::to_string),
+            to_session_id: to_session_id.into(),
+            kind: MessageKind::Prompt,
+            status: MessageStatus::Queued,
+            conversation_id: Some(conversation),
+            parent_msg_id: Some(parent_msg_id.into()),
+            hops: 0,
+            payload,
+            created_at: now,
+            delivered_at: None,
+            completed_at: None,
+            error: None,
+        })
+        .await
+    }
+
+    /// Count inbound messages this session has not processed yet: prompts/notifies
+    /// from another session still `queued` (never claimed) or `delivered` (claimed,
+    /// not yet answered / read).
+    ///
+    /// Excluded:
+    /// - replies to **my own asks** (`kind = 'response'`, or a threaded reply whose
+    ///   parent ask I sent) — they arrive only after I asked and are surfaced by
+    ///   the await tools / thread view, never as new inbox news;
+    /// - anything I sent myself.
+    pub async fn count_unread(&self, session_id: &str) -> Result<u64> {
+        self.with_conn(|conn| async move {
+            let mut rows = conn
+                .query(
+                    "SELECT COUNT(*) FROM worker_messages
+                     WHERE to_session_id = ? AND from_session_id != ?
+                       AND kind IN ('prompt','notify') AND status IN ('queued','delivered')
+                       AND parent_msg_id IS NULL",
+                    turso::params![session_id, session_id],
+                )
+                .await?;
+            let Some(row) = rows.next().await? else {
+                return Ok(0);
+            };
+            let n: i64 = row.get(0)?;
+            while rows.next().await?.is_some() {}
+            Ok(n.max(0) as u64)
+        })
+        .await
+    }
+
+    /// Mark all delivered fire-and-forget notifies as read (`complete`). Prompts
+    /// (asks) stay `delivered` until answered — they remain visible as pending.
+    pub async fn mark_notify_read(&self, to_session_id: &str) -> Result<()> {
+        let now = now_iso_timestamp();
+        self.with_conn(|conn| async move {
+            conn.execute(
+                "UPDATE worker_messages SET status = 'complete', completed_at = ?
+                 WHERE to_session_id = ? AND from_session_id != ?
+                   AND kind = 'notify' AND status = 'delivered'",
+                turso::params![now.as_str(), to_session_id, to_session_id],
+            )
+            .await?;
+            Ok(())
+        })
+        .await
+    }
+
+    /// All messages involving this session (inbound + outbound), oldest first.
+    /// `limit` caps the total returned (newest kept). Used by the TUI worker chat.
+    pub async fn list_inbox(&self, session_id: &str, limit: u64) -> Result<Vec<WorkerMessage>> {
+        self.with_conn(|conn| async move {
+            let mut rows = conn
+                .query(
+                    "SELECT id FROM worker_messages
+                     WHERE to_session_id = ? OR from_session_id = ?
+                     ORDER BY created_at DESC LIMIT ?",
+                    turso::params![session_id, session_id, limit.max(1) as i64],
+                )
+                .await?;
+            let mut ids = Vec::new();
+            while let Some(row) = rows.next().await? {
+                let id: String = row.get(0)?;
+                ids.push(id);
+            }
+            ids.reverse();
+            let mut out = Vec::with_capacity(ids.len());
+            for id in ids {
+                if let Some(msg) = load_message(&conn, &id).await? {
+                    out.push(msg);
+                }
+            }
+            Ok(out)
+        })
+        .await
+    }
+
+    /// Messages involving this session and a specific peer worker (either side),
+    /// oldest first. Ordered by thread (`conversation_id` then `created_at`) so the
+    /// TUI can render a coherent per-peer conversation.
+    pub async fn list_conversation(
+        &self,
+        session_id: &str,
+        peer_worker_id: &str,
+        limit: u64,
+    ) -> Result<Vec<WorkerMessage>> {
+        self.with_conn(|conn| async move {
+            let mut rows = conn
+                .query(
+                    "SELECT id FROM worker_messages
+                     WHERE (to_session_id = ? OR from_session_id = ?)
+                       AND (to_worker_id = ? OR from_worker_id = ?)
+                     ORDER BY created_at DESC LIMIT ?",
+                    turso::params![
+                        session_id,
+                        session_id,
+                        peer_worker_id,
+                        peer_worker_id,
+                        limit.max(1) as i64
+                    ],
+                )
+                .await?;
+            let mut ids = Vec::new();
+            while let Some(row) = rows.next().await? {
+                let id: String = row.get(0)?;
+                ids.push(id);
+            }
+            ids.reverse();
+            let mut out = Vec::with_capacity(ids.len());
+            for id in ids {
+                if let Some(msg) = load_message(&conn, &id).await? {
+                    out.push(msg);
+                }
+            }
+            Ok(out)
         })
         .await
     }
@@ -272,11 +446,11 @@ impl MailboxStore {
             let mut out = Vec::new();
             for id in ids {
                 if let Some(msg) = load_message(&conn, &id).await? {
-                    // Still open if no response row yet.
+                    // Still open if no reply row yet (response OR threaded prompt reply).
                     let mut resp = conn
                         .query(
                             "SELECT 1 FROM worker_messages
-                             WHERE parent_msg_id = ? AND kind = 'response' LIMIT 1",
+                             WHERE parent_msg_id = ? AND kind IN ('response','prompt') LIMIT 1",
                             turso::params![id.as_str()],
                         )
                         .await?;

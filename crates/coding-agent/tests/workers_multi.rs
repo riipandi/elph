@@ -170,6 +170,59 @@ async fn ask_complete_and_timeout_sweep() {
 }
 
 #[tokio::test]
+async fn threaded_reply_send_reply_completes_and_unblocks_ask() {
+    let (_tmp, db, db_path) = setup_db().await;
+    let mail = MailboxStore::new(&db_path).with_database(db.clone());
+    let wa = create_worker_id();
+    let wb = create_worker_id();
+
+    // A asks B (blocking) via worker_ask.
+    let prompt = mail
+        .send_prompt("/proj", &wa, "sess_a", "sess_b", Some(&wb), "need reply", 0, None, None)
+        .await
+        .expect("send");
+
+    // B claims it (delivered → pending list).
+    let claimed = mail.claim_next_inbound("sess_b").await.expect("claim").expect("row");
+    assert_eq!(claimed.status.as_str(), "delivered");
+    let open = mail.list_open_delivered_prompts("sess_b").await.expect("open");
+    assert_eq!(open.len(), 1);
+
+    // B answers with a **threaded chat reply** (kind `prompt`, parent set) —
+    // this is what worker_reply sends today.
+    let reply = mail
+        .send_reply("/proj", &wb, "sess_b", "sess_a", Some(&wa), &prompt.id, None, "ack now")
+        .await
+        .expect("send reply");
+    assert_eq!(reply.kind.as_str(), "prompt");
+    assert_eq!(reply.parent_msg_id.as_deref(), Some(prompt.id.as_str()));
+    assert!(reply.conversation_id.is_some());
+
+    // The ask is answered: no longer pending, and A's worker_get/worker_await unblocks.
+    let open2 = mail.list_open_delivered_prompts("sess_b").await.expect("open2");
+    assert!(open2.is_empty(), "replied ask must leave the pending list");
+
+    let resp = mail
+        .get_response_for(&prompt.id)
+        .await
+        .expect("get_response_for")
+        .expect("reply row");
+    assert_eq!(resp.id, reply.id);
+    assert!(resp.payload.contains("ack now"));
+
+    // Conversation list shows both sides of the thread.
+    let conv = mail.list_conversation("sess_a", &wb, 10).await.expect("conversation");
+    assert_eq!(conv.len(), 2);
+    assert_eq!(conv[0].id, prompt.id);
+    assert_eq!(conv[1].id, reply.id);
+
+    // count_unread: the peer's reply to A's ask is not inbound-news to A, and the
+    // inbound ask to B is no longer open (claimed + answered).
+    let unread_a = mail.count_unread("sess_a").await.expect("unread a");
+    assert_eq!(unread_a, 0);
+}
+
+#[tokio::test]
 async fn content_hash_detects_external_change() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let file = tmp.path().join("f.txt");

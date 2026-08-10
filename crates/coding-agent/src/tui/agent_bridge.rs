@@ -481,9 +481,9 @@ impl TranscriptEventApplier {
             | AgentUiEvent::AsideStarted { .. }
             | AgentUiEvent::AsideFinished { .. }
             | AgentUiEvent::AsideFailed { .. }
-            | AgentUiEvent::WorkerInboundStarted { .. }
-            | AgentUiEvent::WorkerInboundAnswered { .. }
-            | AgentUiEvent::WorkerInboundFailed { .. }
+            | AgentUiEvent::WorkerInboxReceived { .. }
+            | AgentUiEvent::WorkerInboxSent { .. }
+            | AgentUiEvent::WorkerInboxUpdated
             | AgentUiEvent::UserPromptCommitted { .. }
             | AgentUiEvent::RetryablePrompt(_)
             | AgentUiEvent::Retrying { .. }

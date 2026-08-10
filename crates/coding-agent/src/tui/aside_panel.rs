@@ -1,12 +1,9 @@
-//! Inline `/aside` side-question panel above the prompt (Grok `/btw` layout),
-//! reused to host non-interrupting **inbound worker messages** — see
-//! `CodingAgentSession::answer_worker_inbound`.
+//! Inline `/aside` side-question panel above the prompt (Grok `/btw` layout).
 //!
 //! Loading shows a spinner; Done/Error show the answer until **Esc** dismisses.
 //! On dismiss of Done, the shell may push a sticky transcript meta card.
 //! The panel is a pure UI surface: it never touches the harness turn, the
-//! session tree, or the prompt queues, so a worker message rendered here can
-//! never interrupt the user's current agent task.
+//! session tree, or the prompt queues.
 
 use elph_tui::components::progress_indicator::SpinnerLoaderView;
 use elph_tui::components::theme::UiTheme;
@@ -136,15 +133,6 @@ pub fn dismiss_aside_panel(state: AsidePanelState) -> (u64, Option<String>) {
         }
     };
     (id, notice)
-}
-
-/// Reuse the aside panel as a non-interrupting host for an **inbound worker
-/// message** (see `CodingAgentSession::answer_worker_inbound`). The panel is a
-/// pure UI surface — it never touches the harness turn, the session tree, or
-/// the prompt queues, so a worker message rendered here can never interrupt
-/// the user's current agent task.
-pub fn worker_inbound_loading(request_id: u64, from_worker: &str, message: &str) -> AsidePanelState {
-    AsidePanelState::loading(request_id, format!("{from_worker}: {message}"))
 }
 
 /// Props for [`AsidePanel`].
