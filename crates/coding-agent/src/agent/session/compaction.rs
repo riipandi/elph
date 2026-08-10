@@ -73,6 +73,11 @@ impl CodingAgentSession {
     }
 
     fn notice(&self, message: impl Into<String>) {
+        // Intercom (worker-message) turns stay silent: compaction affecting a
+        // peer-to-peer turn is internal, not user-visible transcript news.
+        if self.intercom_turn_active.load(std::sync::atomic::Ordering::Relaxed) {
+            return;
+        }
         let _ = self.ui_tx.send(AgentUiEvent::TranscriptNotice(message.into()));
     }
 
@@ -105,7 +110,10 @@ impl CodingAgentSession {
         self.notice(running.clone());
         // Surface the running label on the status row (busy indicator) so the user sees the
         // agent is actively compacting history — not frozen — while the turn is still busy.
-        let _ = self.ui_tx.send(AgentUiEvent::Status(running.clone()));
+        // (Intercom turns skip both — see `notice`.)
+        if !self.intercom_turn_active.load(std::sync::atomic::Ordering::Relaxed) {
+            let _ = self.ui_tx.send(AgentUiEvent::Status(running.clone()));
+        }
 
         let before = self.estimate_context_usage().await.ok().map(|(t, _)| t);
         let result = self
