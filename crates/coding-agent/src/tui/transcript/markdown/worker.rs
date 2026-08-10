@@ -5,6 +5,7 @@ use elph_tui::parse_markdown_document;
 
 use super::buffer::AssistantMarkdownBuffer;
 use super::buffer::stable_source_hash;
+use crate::tui::transcript::retention::MARKDOWN_DOCUMENT_WINDOW;
 use crate::tui::transcript::types::{TranscriptMessage, TranscriptStyle};
 
 /// One CPU-bound parse scheduled off the UI thread.
@@ -50,9 +51,18 @@ pub fn partition_assistant_markdown(messages: &mut [TranscriptMessage], screen_w
 }
 
 /// Collect parse jobs for stable slices that lack a cached document (newest first).
+///
+/// Bounded to the same trailing window retention keeps resident
+/// ([`MARKDOWN_DOCUMENT_WINDOW`]): parsing older rows here would refill exactly the caches
+/// retention releases each turn, so the two would fight every tick. Rows outside the window
+/// re-derive their document on paint instead.
 pub fn collect_markdown_parse_jobs(messages: &[TranscriptMessage]) -> Vec<MarkdownParseJob> {
     let mut jobs = Vec::new();
+    let parse_from = messages.len().saturating_sub(MARKDOWN_DOCUMENT_WINDOW);
     for (index, message) in messages.iter().enumerate().rev() {
+        if index < parse_from {
+            break;
+        }
         if message.style != TranscriptStyle::Assistant {
             continue;
         }

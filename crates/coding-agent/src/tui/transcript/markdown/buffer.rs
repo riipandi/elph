@@ -120,12 +120,40 @@ impl AssistantMarkdownBuffer {
     /// Drop cached parsed documents to free memory while keeping streaming state.
     ///
     /// The retained `stable_end`, `stream_complete`, `wrap_width`, and row counts let the
-    /// layout path continue to measure correctly; the worker will re-parse the document
-    /// on the next tick (the stable source is still in the message content). This is used
-    /// by the archive path to shed memory from old, no-longer-rendered assistant messages.
+    /// layout path continue to measure correctly; the worker re-parses the document when the
+    /// row scrolls back into the parse window (the stable source is still in the message
+    /// content). Used by retention to shed memory from off-screen assistant messages.
     pub fn drop_cached_documents(&mut self) {
         for part in &mut self.parts {
             part.document = None;
+        }
+    }
+
+    /// True when any stable part still holds a parsed document.
+    pub fn has_cached_documents(&self) -> bool {
+        self.parts.iter().any(|part| part.document.is_some())
+    }
+
+    /// Copy of this buffer with every parsed document released.
+    ///
+    /// Retention runs on `Arc`-shared buffers: `Arc::make_mut` would deep-clone every cached
+    /// `MarkdownDocument` (exactly the memory being reclaimed) before dropping it. Building a
+    /// document-free copy skips that spike.
+    pub fn without_documents(&self) -> Self {
+        Self {
+            stable_end: self.stable_end,
+            wrap_width: self.wrap_width,
+            stream_complete: self.stream_complete,
+            parts: self
+                .parts
+                .iter()
+                .map(|part| RenderedPart {
+                    source_end: part.source_end,
+                    source_hash: part.source_hash,
+                    row_count: part.row_count,
+                    document: None,
+                })
+                .collect(),
         }
     }
 }
@@ -190,7 +218,7 @@ mod tests {
         let row_count_before = buf.parts[0].row_count;
         assert!(row_count_before > 0);
 
-        // Drop the cached document — simulates what the archive path does for old messages.
+        // Drop the cached document — simulates what retention does for off-screen messages.
         buf.drop_cached_documents();
         assert!(buf.parts[0].document.is_none(), "document must be freed");
         // Streaming metadata is preserved so layout still measures correctly.

@@ -139,9 +139,9 @@ use crate::tui::transcript::{
     AGENT_MODE_NOTICE_TTL, EphemeralBanner, EphemeralBannerGeneration, EphemeralBannerKind,
     FILE_PICKER_HIDDEN_NOTICE_KEY, LogDensity, MODEL_SET_NOTICE_KEY, QUIT_BUSY_NOTICE_KEY, TranscriptMessage,
     TranscriptPanel, TranscriptStyle, agent_mode_banner, agent_mode_busy_banner, api_error_banner,
-    clear_ephemeral_banner, clear_ephemeral_banner_if_generation, clipboard_notice_banner, expire_ephemeral_banner,
-    file_picker_hidden_notice_text, model_set_notice_from_value, model_set_notice_text, prompt_copy_banner,
-    prompt_copy_failed_banner, publish_ephemeral_banner, quit_busy_banner, select_mode_off_banner,
+    apply_transcript_retention, clear_ephemeral_banner, clear_ephemeral_banner_if_generation, clipboard_notice_banner,
+    expire_ephemeral_banner, file_picker_hidden_notice_text, model_set_notice_from_value, model_set_notice_text,
+    prompt_copy_banner, prompt_copy_failed_banner, publish_ephemeral_banner, quit_busy_banner, select_mode_off_banner,
     select_mode_on_banner, theme_mode_banner, toggle_latest_collapsible_detail,
 };
 use crate::tui::user_question::PendingUserQuestion;
@@ -303,18 +303,6 @@ const STARTUP_TRANSCRIPT_PUBLISH_MS: u64 = 33;
 const TRANSCRIPT_PUBLISH_HEAVY_MS: u64 = 150;
 const TRANSCRIPT_PUBLISH_BURST_MS: u64 = 180;
 
-/// Max messages kept in memory before oldest are archived to SQLite.
-/// Lowered from 500 to cap peak memory — each message carries a full
-/// `AssistantMarkdownBuffer` (parsed MarkdownDocument) plus tool diff text.
-const MAX_MESSAGES_BEFORE_ARCHIVE: usize = 150;
-/// How many recent messages to keep after archival.
-/// Lowered from 200: old retained messages have their markdown cache dropped
-/// (see `drop_old_markdown_caches`), so keeping fewer live messages is enough.
-const KEEP_MESSAGES: usize = 60;
-/// How many trailing messages keep their parsed markdown cache. Older retained
-/// messages have their `AssistantMarkdownBuffer` documents dropped to free memory
-/// (the source text is still archived to SQLite and can be re-parsed on demand).
-const MARKED_MESSAGES_WITH_MARKDOWN_CACHE: usize = 20;
 const MAX_UI_EVENTS_PER_TICK: usize = 48;
 const MAX_BOOTSTRAP_EVENTS_PER_TICK: usize = 32;
 /// How long the status row shows turn elapsed after completion before returning to tips.

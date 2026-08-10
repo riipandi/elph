@@ -70,6 +70,7 @@ mod tests {
                     id: Some("todo_aaaaaaaaaaaaaaaa".into()),
                     content: Some("item".into()),
                     status: Some(elph_agent::TodoStatus::Pending),
+                    reason: None,
                 }],
             )
             .await

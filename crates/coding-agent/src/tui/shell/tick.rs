@@ -1110,42 +1110,18 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         }
 
         if run_completed {
-            // Bound in-memory transcript for live TUI. Full history is reconstructed from
-            // session_entries on resume — no separate SQLite transcript archive.
-            let should_trim = {
-                let msgs = messages_arc_inner.read().unwrap();
-                msgs.len() > MAX_MESSAGES_BEFORE_ARCHIVE
+            // Shed re-derivable memory (old parsed markdown, oversized tool diffs) while
+            // keeping every transcript row mounted. Dropping rows here used to make older
+            // scrollback disappear mid-session and only come back after a resume rebuilt
+            // it from session_entries.
+            let retention_changed = {
+                let mut msgs = messages_arc_inner.write().unwrap();
+                apply_transcript_retention(&mut msgs)
             };
-            if should_trim {
-                let keep = KEEP_MESSAGES;
-                {
-                    let mut msgs = messages_arc_inner.write().unwrap();
-                    let archive_count = msgs.len().saturating_sub(keep);
-                    if archive_count > 0 {
-                        msgs.drain(..archive_count);
-                    }
-                    // Drop parsed markdown documents and tool diff text from retained
-                    // messages beyond the cache window. This sheds the two biggest memory
-                    // consumers for old messages:
-                    //   - Parsed MarkdownDocument (styled spans + tables): 1-5 MB per message
-                    //   - Tool diff text (old_text/new_text): ~500 KB per edit_file tool
-                    // Keeps AssistantMarkdownBuffer metadata (stable_end, stream_complete,
-                    // row counts) so layout stays correct.
-                    let markdown_keep = super::MARKED_MESSAGES_WITH_MARKDOWN_CACHE;
-                    let n = msgs.len();
-                    if n > markdown_keep {
-                        for msg in msgs[..n - markdown_keep].iter_mut() {
-                            if let Some(ref mut md) = msg.markdown {
-                                std::sync::Arc::make_mut(md).drop_cached_documents();
-                            }
-                            if let Some(ref mut tool) = msg.tool {
-                                tool.strip_diff_text();
-                            }
-                        }
-                    }
-                }
-                // Re-sync the State copy so it also drops the markdown caches.
+            if retention_changed {
+                // Re-sync the State copy so it also releases the freed caches.
                 *messages.write() = messages_arc_inner.read().unwrap().clone();
+                messages_revision.set(messages_revision.get().wrapping_add(1));
             }
 
             pending_quit_confirm.set(false);

@@ -1,9 +1,12 @@
-//! Disk-backed transcript archive using Turso (local SQLite).
+//! Disk-backed transcript snapshots using Turso (local SQLite).
 //!
-//! When the in-memory transcript grows past `MAX_MESSAGES_BEFORE_ARCHIVE`, the
-//! shell archives the oldest messages here — uses the shared project database,
-//! partitioned by `session_id`. The live TUI keeps working from the in-memory
-//! `Vec<TranscriptMessage>`; this store is append-only for now.
+//! Persists the transcript so `--resume` / `--continue` restores what the user saw.
+//! Uses the shared project database, partitioned by `session_id`, with one snapshot
+//! row per session (overwrite, not append).
+//!
+//! This is **not** a memory-relief path: the live TUI keeps every row in its in-memory
+//! `Vec<TranscriptMessage>` for the whole session. Bounded memory comes from
+//! `retention.rs`, which sheds re-derivable caches without removing rows.
 
 use std::path::Path;
 
