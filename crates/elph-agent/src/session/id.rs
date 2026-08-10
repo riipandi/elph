@@ -10,6 +10,8 @@ use std::thread;
 use std::time::Duration;
 
 use kalid::Kalid;
+use memorable_ids::GenerateOptions;
+use memorable_ids::generate;
 
 use crate::session::types::SessionTreeEntry;
 
@@ -72,8 +74,28 @@ pub fn create_turn_id() -> String {
     create_prefixed_kalid(TURN_PREFIX)
 }
 
-/// Create a worker ID (`wrk_<16>`).
+/// Create a worker ID with memorable name using underscore separator.
+///
+/// Example: `wrk_quick_fox`
 pub fn create_worker_id() -> String {
+    let options = GenerateOptions {
+        components: 2,
+        separator: "_".to_string(),
+        suffix: None,
+    };
+    for _ in 0..100 {
+        let core = generate(options.clone()).expect("valid memorable id options");
+        let parts: Vec<&str> = core.split('_').collect();
+        if parts.len() == 2
+            && parts
+                .iter()
+                .all(|part| !part.is_empty() && part.chars().all(|c| c.is_ascii_alphabetic()))
+        {
+            return format!("{}_{}", WORKER_PREFIX, core);
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
+    // Fallback: use kalid if memorable_ids fails to generate valid core
     create_prefixed_kalid(WORKER_PREFIX)
 }
 
@@ -88,13 +110,47 @@ pub fn create_worker_msg_id() -> String {
 /// - Unprefixed 16-char Kalid (e.g. `a1b2c3d4e5f6g7h8`)
 /// - Prefixed Kalid with a known prefix + `_` separator + 16-char body
 ///   (e.g. `goal_a1b2c3d4e5f6g7h8`)
+/// - Worker IDs with memorable names (e.g. `wrk_quick_fox`)
 pub fn is_valid_kalid(id: &str) -> bool {
-    let body = strip_prefix(id).unwrap_or(id);
-    body.len() == 16 && Kalid::parse(body).is_ok()
+    let underscore = id.find('_');
+    if let Some(pos) = underscore {
+        let prefix = &id[..pos];
+        let body = &id[pos + 1..];
+        match prefix {
+            WORKER_PREFIX => {
+                // Worker IDs accept either 16-char body (fallback) or memorable adjective_noun
+                if body.len() == 16 && body.chars().all(|c| c.is_ascii_alphanumeric()) {
+                    return true;
+                }
+                // Check for memorable adjective_noun format
+                let parts: Vec<&str> = body.split('_').collect();
+                if parts.len() == 2
+                    && parts
+                        .iter()
+                        .all(|part| !part.is_empty() && part.chars().all(|c| c.is_ascii_alphabetic()))
+                {
+                    return true;
+                }
+                false
+            }
+            GOAL_PREFIX | MESSAGE_PREFIX | TODO_PREFIX | TURN_PREFIX | WORKER_MSG_PREFIX => {
+                body.len() == 16 && Kalid::parse(body).is_ok()
+            }
+            _ => {
+                // Unknown prefix: treat as unprefixed → must be 16-char Kalid
+                id.len() == 16 && Kalid::parse(id).is_ok()
+            }
+        }
+    } else {
+        // No prefix: must be 16-char Kalid
+        id.len() == 16 && Kalid::parse(id).is_ok()
+    }
 }
 
-/// Strip a known prefix and separator from a Kalid string, returning the 16-char body.
+/// Strip a known prefix and separator from a Kalid string, returning the body.
 ///
+/// For worker IDs with memorable names (e.g., `wrk_quick_fox`), returns the memorable core.
+/// For prefixed Kalids (e.g., `goal_a1b2c3d4e5f6g7h8`), returns the 16-char body.
 /// Returns `None` if no known prefix is found.
 fn strip_prefix(id: &str) -> Option<&str> {
     let underscore = id.find('_')?;
@@ -208,5 +264,31 @@ mod tests {
     fn rapid_prefixed_ids_produce_distinct_ids() {
         let ids: std::collections::HashSet<String> = (0..8).map(|_| create_goal_id()).collect();
         assert_eq!(ids.len(), 8);
+    }
+
+    #[test]
+    fn create_worker_id_uses_memorable_underscore_format() {
+        for _ in 0..32 {
+            let id = create_worker_id();
+            assert!(id.starts_with("wrk_"), "expected wrk_ prefix, got {id}");
+            let core = id.strip_prefix("wrk_").expect("core");
+            let parts: Vec<&str> = core.split('_').collect();
+            // Either fallback Kalid (16 chars) or memorable adjective_noun (2 parts)
+            if parts.len() == 2 {
+                assert!(parts[0].chars().all(|c| c.is_ascii_alphabetic()));
+                assert!(parts[1].chars().all(|c| c.is_ascii_alphabetic()));
+            } else {
+                // Fallback to Kalid
+                assert_eq!(core.len(), 16);
+            }
+            assert!(is_valid_kalid(&id));
+        }
+    }
+
+    #[test]
+    fn is_valid_kalid_accepts_memorable_worker_id() {
+        assert!(is_valid_kalid("wrk_quick_fox"));
+        assert!(is_valid_kalid("wrk_silent_owl"));
+        assert!(is_valid_kalid("wrk_a1b2c3d4e5f6g7h8")); // Fallback Kalid
     }
 }

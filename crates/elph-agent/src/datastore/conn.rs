@@ -17,11 +17,11 @@ use tokio::time::timeout;
 use turso::{Builder, Connection, Database};
 
 /// Max retries on a transient lock/`SQLITE_BUSY` error before giving up.
-pub const MAX_RETRIES: u32 = 10;
+pub const MAX_RETRIES: u32 = 20;
 /// Base delay (ms) for the jittered exponential backoff.
 pub const BASE_DELAY_MS: u64 = 50;
 
-const DB_OPEN_TIMEOUT_MS: u64 = 10000; // 10 seconds timeout for database open
+const DB_OPEN_TIMEOUT_MS: u64 = 30000; // 30 seconds timeout for database open (increased for multi-worker scenarios)
 
 /// Check if a Turso error message indicates a lock-related failure.
 ///

@@ -11,16 +11,14 @@ Rendered under the last assistant reply after each real agent/chat turn
 (`ui.turnStats`, default on). Source: `session_turns` row for that turn.
 
 ```
-turn: 1m50s · 3K in · 2K out · 1K cached · $0.0123 · anthropic/claude-sonnet-4
+turn: 1m50s · 3K/2K ↓↑ · 1K/0 ↓↑ cached · anthropic/claude-sonnet-4
 ```
 
 | Field                       | Meaning                                                                                                                                                                                                                                               |
 | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `1m50s`                     | Wall-clock of the turn                                                                                                                                                                                                                                |
-| `3K in`                     | **Sum of `input` across every API call in the turn** — tool-call iterations (`StopReason::ToolUse`) and the final reply are separate API calls, each with its own usage. Tool-call tokens are part of provider `usage`, so they are already included. |
-| `2K out`                    | Sum of `output` across those calls                                                                                                                                                                                                                    |
-| `1K cached`                 | Sum of `cache_read` (falls back to `cache_write` if no read)                                                                                                                                                                                          |
-| `$0.0123`                   | Sum of `cost.total` across the turn's calls                                                                                                                                                                                                           |
+| `3K/2K ↓↑`                 | **Sum of `input`/`output` across every API call in the turn** — tool-call iterations (`StopReason::ToolUse`) and the final reply are separate API calls, each with its own usage. `↓` = sent to the API, `↑` = received from it. Tool-call tokens are part of provider `usage`, so they are already included. |
+| `1K/0 ↓↑ cached`           | Sum of `cache_read`/`cache_write` across those calls                                                                                                                                                                                                  |
 | `anthropic/claude-sonnet-4` | `provider_id/model_id` recorded on the turn                                                                                                                                                                                                           |
 
 Because each API call re-sends the whole context as input, the summed `in` can
@@ -57,7 +55,8 @@ accounting and session-level reporting.
 
 | Question                                         | Surface               | Number type                                   |
 | ------------------------------------------------ | --------------------- | --------------------------------------------- |
-| "What did this one turn cost / send?"            | Stats card            | **Actual** provider usage, summed per turn    |
+| "What did this one turn send?"                   | Stats card            | **Actual** provider usage, summed per turn    |
+| "How long did this turn take?"                   | Stats card            | **Wall-clock** of the turn                    |
 | "What has the whole session spent?"              | Header `$`            | **Actual** provider usage, summed per session |
 | "How much context is used for the next request?" | Header `tokens` + `%` | **Estimate** of unique context                |
 

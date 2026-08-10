@@ -255,7 +255,6 @@ pub struct TurnCompleteStats {
     pub output_tokens: u64,
     pub cache_read_tokens: u64,
     pub cache_write_tokens: u64,
-    pub cost_usd: f64,
     pub provider_id: Option<String>,
     pub model_id: Option<String>,
 }
@@ -273,7 +272,6 @@ impl TurnCompleteStats {
             output_tokens: usage.map(|u| u.output_tokens.max(0) as u64).unwrap_or(0),
             cache_read_tokens: usage.map(|u| u.cache_read_tokens.max(0) as u64).unwrap_or(0),
             cache_write_tokens: usage.map(|u| u.cache_write_tokens.max(0) as u64).unwrap_or(0),
-            cost_usd: usage.map(|u| u.cost).unwrap_or(0.0),
             provider_id: provider_id.map(str::to_string),
             model_id: model_id.map(str::to_string),
         }
@@ -290,28 +288,24 @@ impl TurnCompleteStats {
         }
     }
 
-    /// Compact token usage line: `3.1K in · 2.4K out · 1.2K cached`.
+    /// Compact token usage line:
+    /// `3K/2K ↓↑ · 1K/0 ↓↑ cached` (input/output pair and cache read/write pair;
+    /// `↓` = sent to the API, `↑` = received from it).
     fn tokens_line(&self) -> String {
         let mut parts = Vec::new();
-        if self.input_tokens > 0 {
-            parts.push(format!("{} in", crate::tui::labels::format_token_count(self.input_tokens)));
-        }
-        if self.output_tokens > 0 {
-            parts.push(format!("{} out", crate::tui::labels::format_token_count(self.output_tokens)));
-        }
-        if self.cache_read_tokens > 0 {
+        if self.input_tokens > 0 || self.output_tokens > 0 {
             parts.push(format!(
-                "{} cached",
-                crate::tui::labels::format_token_count(self.cache_read_tokens)
-            ));
-        } else if self.cache_write_tokens > 0 {
-            parts.push(format!(
-                "{} cache write",
-                crate::tui::labels::format_token_count(self.cache_write_tokens)
+                "{}/{} ↓↑",
+                crate::tui::labels::format_token_count(self.input_tokens),
+                crate::tui::labels::format_token_count(self.output_tokens),
             ));
         }
-        if self.cost_usd > 0.0 {
-            parts.push(format!("${:.4}", self.cost_usd));
+        if self.cache_read_tokens > 0 || self.cache_write_tokens > 0 {
+            parts.push(format!(
+                "{}/{} ↓↑ cached",
+                crate::tui::labels::format_token_count(self.cache_read_tokens),
+                crate::tui::labels::format_token_count(self.cache_write_tokens),
+            ));
         }
         parts.join(" · ")
     }
@@ -771,7 +765,20 @@ mod tests {
         assert_eq!(stats.model_label().as_deref(), Some("anthropic/claude-sonnet-4"));
         assert_eq!(
             format_turn_complete_stats_line(&stats),
-            "turn: 1m50s · 3K in · 2K out · 1K cached · $0.0123 · anthropic/claude-sonnet-4"
+            "turn: 1m50s · 3K/2K ↓↑ · 1K/0 ↓↑ cached · anthropic/claude-sonnet-4"
+        );
+    }
+
+    #[test]
+    fn turn_complete_stats_cache_write_shows_read_write_pair() {
+        let stats = TurnCompleteStats::from_event(5.0, None, None, None);
+        let mut stats = stats;
+        stats.input_tokens = 500;
+        stats.output_tokens = 700;
+        stats.cache_write_tokens = 2_500;
+        assert_eq!(
+            format_turn_complete_stats_line(&stats),
+            "turn: 5s · 500/700 ↓↑ · 0/2K ↓↑ cached"
         );
     }
 

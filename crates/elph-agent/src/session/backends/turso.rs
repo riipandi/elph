@@ -160,34 +160,49 @@ impl TursoSessionStorage {
             db_path: db_path.to_string_lossy().to_string(),
         };
 
-        conn.execute(
-            "INSERT INTO sessions (
-                id, created_at, updated_at, cwd, parent_session_id,
-                provider_id, model_id, agent_mode, name, system_prompt, metadata, active_leaf_id
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)",
-            turso::params![
-                session_id.as_str(),
-                created_at.as_str(),
-                created_at.as_str(),
-                cwd.as_str(),
-                options.parent_session_id.as_deref(),
-                options.provider_id.as_deref(),
-                options.model_id.as_deref(),
-                agent_mode.as_str(),
-                options.name.as_deref(),
-                options.system_prompt.as_deref(),
-                options.metadata_json.as_deref(),
-            ],
-        )
-        .await
-        .map_err(map_storage_error)?;
+        // Wrap session creation in a transaction to ensure atomicity.
+        // If session_sequences insert fails, the entire session creation should roll back.
+        conn.execute("BEGIN IMMEDIATE", ()).await.map_err(map_storage_error)?;
+        let outcome = async {
+            conn.execute(
+                "INSERT INTO sessions (
+                    id, created_at, updated_at, cwd, parent_session_id,
+                    provider_id, model_id, agent_mode, name, system_prompt, metadata, active_leaf_id
+                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)",
+                turso::params![
+                    session_id.as_str(),
+                    created_at.as_str(),
+                    created_at.as_str(),
+                    cwd.as_str(),
+                    options.parent_session_id.as_deref(),
+                    options.provider_id.as_deref(),
+                    options.model_id.as_deref(),
+                    agent_mode.as_str(),
+                    options.name.as_deref(),
+                    options.system_prompt.as_deref(),
+                    options.metadata_json.as_deref(),
+                ],
+            )
+            .await
+            .map_err(map_storage_error)?;
 
-        conn.execute(
-            "INSERT INTO session_sequences (session_id, next_seq) VALUES (?, 0)",
-            turso::params![session_id.as_str()],
-        )
-        .await
-        .map_err(map_storage_error)?;
+            conn.execute(
+                "INSERT INTO session_sequences (session_id, next_seq) VALUES (?, 0)",
+                turso::params![session_id.as_str()],
+            )
+            .await
+            .map_err(map_storage_error)?;
+
+            Ok::<(), SessionError>(())
+        };
+
+        let result = outcome.await;
+        if result.is_ok() {
+            conn.execute("COMMIT", ()).await.map_err(map_storage_error)?;
+        } else {
+            conn.execute("ROLLBACK", ()).await.map_err(map_storage_error)?;
+        }
+        result?;
 
         Ok(Self {
             db_path,
@@ -240,10 +255,21 @@ impl TursoSessionStorage {
             .await
             .map_err(map_storage_error)?;
         let Some(row) = rows.next().await.map_err(map_storage_error)? else {
-            return Err(SessionError::new(
-                SessionErrorCode::InvalidSession,
-                format!("session_sequences missing for {}", self.session_id),
-            ));
+            // Recovery: if session_sequences row is missing (due to previous failed
+            // session creation), insert it with next_seq=0 and return 0. This handles
+            // the case where a session row exists but session_sequences was never created.
+            conn.execute(
+                "INSERT INTO session_sequences (session_id, next_seq) VALUES (?, 0)",
+                turso::params![self.session_id.as_str()],
+            )
+            .await
+            .map_err(|e| {
+                SessionError::new(
+                    SessionErrorCode::Storage,
+                    format!("failed to recover missing session_sequences for {}: {e}", self.session_id),
+                )
+            })?;
+            return Ok(0);
         };
         row.get::<i64>(0).map_err(map_storage_error)
     }
