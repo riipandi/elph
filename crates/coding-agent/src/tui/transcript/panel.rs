@@ -250,6 +250,22 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
         .last()
         .map(|layout| layout.start_row.saturating_add(layout.row_count))
         .unwrap_or(0);
+    // Include the trailing margin after the last message and the last message's own
+    // padding — together with `.start_row` these are exactly the rows **mounted** by
+    // the windowed bubble builder. Previously only the *start* of the last message was
+    // counted: when the last card collapsed, the measured content shrank and the
+    // scroll view pinned to a height *below* the real tail, clipping the bottom.
+    // The ScrollView's internally kept content height (peak) doesn't drop immediately,
+    // so the missing rows surface as a stale "can't scroll down" gap at the bottom.
+    let trailing_rows = messages
+        .last()
+        .map(|m| {
+            m.transcript_margin_bottom(None) as u32
+                + m.transcript_padding_top() as u32
+                + m.transcript_padding_bottom() as u32
+        })
+        .unwrap_or(0);
+    let layout_content_rows = layout_content_rows.saturating_add(trailing_rows);
     let layout_content_u16 = layout_content_rows.min(u16::MAX as u32) as u16;
 
     // Smart-scroll: when the user expands a collapsible card (Ctrl+O / click) while
