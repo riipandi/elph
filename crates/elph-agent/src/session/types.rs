@@ -485,6 +485,12 @@ pub trait SessionStorage: Send + Sync {
         async { None }
     }
 
+    /// Bump the session's activity timestamp (e.g. `updated_at`) without appending
+    /// a tree entry. Backends without a mutable timestamp are a no-op.
+    fn touch_timestamp<'a>(&'a mut self) -> impl Future<Output = Result<(), SessionError>> + Send + use<'a, Self> {
+        async { Ok(()) }
+    }
+
     // ---------------------------------------------------------------------------
     // Default implementations for backward compatibility
     // ---------------------------------------------------------------------------

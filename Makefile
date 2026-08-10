@@ -224,8 +224,8 @@ lint-elph-tui: ## Run clippy for elph-tui
 
 fmt: ## Format all code
 	@$(CARGO) fmt --all -- --style-edition 2024
-	@bunx --silent oxfmt crates/elph-ai/models/
-	@bunx --silent oxfmt openwiki/ schemas/
+	@pnpm dlx --silent oxfmt crates/elph-ai/models/
+	@pnpm dlx --silent oxfmt openwiki/ schemas/
 
 coverage: ## Run tests with coverage (requires cargo-llvm-cov)
 	@$(CARGO) llvm-cov nextest --no-cfg-coverage 2>&1

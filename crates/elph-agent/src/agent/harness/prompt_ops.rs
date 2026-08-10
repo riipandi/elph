@@ -383,4 +383,18 @@ where
         }
         Ok(())
     }
+
+    /// Bump the session row's `updated_at` to now without appending a tree entry.
+    ///
+    /// Keeps resume ordering and retention budgets truthful when a bound turn
+    /// performs no writes of its own.
+    pub async fn touch_session_timestamp(&self) -> HarnessOpResult<()> {
+        self.shared
+            .session
+            .lock()
+            .await
+            .touch_timestamp()
+            .await
+            .map_err(session_error)
+    }
 }

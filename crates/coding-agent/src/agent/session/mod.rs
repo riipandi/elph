@@ -611,6 +611,12 @@ impl CodingAgentSession {
             // Mid-turn interjection: enqueue only — never wait_for_idle / RunCompleted.
             return self.queue_steer(text).await;
         }
+        // Keep the session row's `updated_at` current so the resume list and
+        // retention ordering reflect real activity even when the turn appends no
+        // tree entries before the DB write path touches it.
+        if let Err(err) = self.harness.touch_session_timestamp().await {
+            log::debug!("touch session timestamp: {err:#}");
+        }
         self.run_prompt_turn(text).await
     }
 

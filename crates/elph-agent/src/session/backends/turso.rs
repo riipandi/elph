@@ -221,6 +221,24 @@ impl TursoSessionStorage {
         &self.session_id
     }
 
+    /// Bump `updated_at` on the `sessions` row (and cached metadata) to now.
+    ///
+    /// Used to keep the session visible at the top of the resume list and
+    /// protected from retention eviction even when no tree entry is appended
+    /// (e.g. opening a session with no writes during that visit).
+    pub async fn touch(&mut self) -> Result<(), SessionError> {
+        let conn = self.connection().await?;
+        let now = crate::messages::now_iso_timestamp();
+        conn.execute(
+            "UPDATE sessions SET updated_at = ? WHERE id = ?",
+            turso::params![now.as_str(), self.session_id.as_str()],
+        )
+        .await
+        .map_err(map_storage_error)?;
+        self.metadata.updated_at = now;
+        Ok(())
+    }
+
     async fn connection(&self) -> Result<turso::Connection, SessionError> {
         match &self.database {
             Some(db) => db.connect().map_err(map_storage_error),
@@ -571,6 +589,10 @@ impl SessionStorage for TursoSessionStorage {
 
     async fn get_entry(&self, id: &str) -> Option<SessionTreeEntry> {
         self.index.by_id.get(id).cloned()
+    }
+
+    async fn touch_timestamp(&mut self) -> Result<(), SessionError> {
+        self.touch().await
     }
 
     async fn find_entries(&self, entry_type: &str) -> Vec<SessionTreeEntry> {
