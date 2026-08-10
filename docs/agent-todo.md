@@ -24,17 +24,19 @@ Registered on coding sessions alongside goals:
 | --------- | ------------------------------------------------------------------------------ |
 | `merge`   | `true` (default): upsert by `id`. `false`: replace entire list                 |
 | `todos`   | Array; empty + `merge: false` clears the list                                  |
-| `id`      | Optional on create; required to update. Host mints `todo_<kalid>` when omitted |
+| `id`      | Optional on create; required to update. Host mints `todo_<kalid>` when omitted. Short labels (`"1"`, `"step_a"`) are accepted and mapped to a **session-scoped** PK so they never collide with other sessions (global `session_todos.id` PRIMARY KEY). Prefer returning/using the ids from tool results for later merges. |
 | `content` | Actionable title; optional on merge when only changing status                  |
 | `status`  | `pending` \| `in_progress` \| `completed` \| `cancelled`                       |
 
 Rules enforced by the store:
 
 - At most one `in_progress` per write (merge demotes extras if needed)
-- Duplicate ids in one call are rejected
-- Minted ids are checked against the current list so a same-row `replace`
-  (delete-all + reinsert) can never hit a PRIMARY KEY collision; the
-  inserted ids are always unique
+- Duplicate ids in one call are rejected (after session-scoping / mint)
+- Minted ids are checked against the insert batch so a same-row `replace`
+  (delete-all + reinsert) can never hit a PRIMARY KEY collision
+- Agent short ids are rewritten to `td_<session12>_<slug>` (deterministic per
+  session) so `--continue` / multi-session use cannot hit
+  `UNIQUE constraint failed: session_todos.id`
 
 ## Goals vs todos
 

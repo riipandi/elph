@@ -39,7 +39,8 @@ fn todo_write_tool(store: Arc<TodoStore>, session_id: String, on_update: Option<
             constrained_sampling: None,
             description: "Create or update the session todo list for multi-step work. \
                  Use merge=true (default) to upsert by id; merge=false replaces the whole list. \
-                 Keep at most one item in_progress. Prefer for tasks with 3+ steps; skip trivial one-offs."
+                 Keep at most one item in_progress. Prefer for tasks with 3+ steps; skip trivial one-offs. \
+                 Short ids like \"1\"/\"2\" are fine — the host scopes them per session. Prefer reusing ids from the tool result on later updates."
                 .into(),
             parameters: json!({
                 "type": "object",
@@ -57,7 +58,7 @@ fn todo_write_tool(store: Arc<TodoStore>, session_id: String, on_update: Option<
                             "properties": {
                                 "id": {
                                     "type": "string",
-                                    "description": "Stable id (optional on create; required to update)"
+                                    "description": "Stable id (optional on create; required to update). Short labels are session-scoped by the host; use ids returned by the tool for later merges."
                                 },
                                 "content": {
                                     "type": "string",
