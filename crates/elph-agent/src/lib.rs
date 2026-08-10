@@ -327,7 +327,7 @@ pub use skills::load_sourced_skills_with_options;
 pub use skills::skill_args_validation_notice;
 pub use skills::skill_requires_arguments;
 pub use todos::{
-    TodoHook, TodoItem, TodoStatus, TodoStore, TodoUpdate, create_todo_tools, create_todo_tools_with_hook,
+    TodoHook, TodoItem, TodoStatus, TodoStore, TodoUpdate, WorkTracker, create_todo_tools, create_todo_tools_with_hook,
 };
 #[cfg(any(feature = "tools-edit", feature = "tools-search"))]
 pub use tools::create_all_tools;

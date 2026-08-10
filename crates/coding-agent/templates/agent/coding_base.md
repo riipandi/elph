@@ -36,6 +36,13 @@ ${%- if tools.todo_write %}
 - Keep at most one item `in_progress` at a time
 - Skip todos for simple one-off tasks or quick fixes
 
+**Honest progress reporting (strict):**
+- Only mark `in_progress` when you are actively about to start work on that item
+- Only mark `completed` after the work is truly done AND validated (tests pass, file compiles, change confirmed)
+- Never mark `completed` before doing the work — false progress misleads the user
+- If a step fails or is blocked, keep it `in_progress` and explain the blocker; do not silently mark done
+- Validate completion with evidence (run the test, check the build, read the diff) before updating status
+
 This gives users visibility into your work and helps track multi-step tasks.
 ${%- endif %}
 </operating_loop>

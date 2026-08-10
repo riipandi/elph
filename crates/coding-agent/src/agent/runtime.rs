@@ -6,7 +6,7 @@ use elph_agent::create_goal_tools_with_hook;
 use elph_agent::{
     AgentGraphStore, AgentHarness, AgentHarnessOptions, AgentHarnessStreamOptions, BuiltinToolsBuilder, GoalRuntime,
     GoalStore, LocalExecutionEnv, QueueMode, RestoreOptions, SubagentBootstrap, SystemPrompt, TodoHook, TodoStore,
-    TurnStore, create_todo_tools_with_hook, is_mcp_tool,
+    TurnStore, WorkTracker, create_todo_tools_with_hook, is_mcp_tool,
 };
 use std::path::Path;
 use std::sync::Arc;
@@ -254,12 +254,17 @@ pub async fn create_coding_session_with_events(
             let _ = ui_tx.send(crate::agent::AgentUiEvent::TodoUpdated { items });
         })
     });
+    // Work tracker: enforces honest progress by requiring actual mutating
+    // tool calls between marking an item in_progress and marking it completed.
+    let work_tracker = Arc::new(WorkTracker::new());
+    let work_tracker_for_tools = work_tracker.clone();
     // Keep a handle for continuity brief + TUI rehydrate (tools take another Arc clone).
     let todo_store_for_prompt = Arc::clone(&todo_store);
     tools.extend(create_todo_tools_with_hook(
         Arc::clone(&todo_store),
         session_id.clone(),
         Some(todo_hook),
+        Some(work_tracker_for_tools),
     ));
 
     // Clamp default thinking (new-session seed) to the resolved model catalog.
@@ -448,6 +453,23 @@ pub async fn create_coding_session_with_events(
         log::warn!("automatic memory hooks: {err:#}");
     }
 
+    // Wire the work tracker: increment on every successful mutating tool call so
+    // `todo_write` can enforce that `completed` items actually did real work.
+    let work_tracker_for_hook = work_tracker.clone();
+    harness
+        .on_tool_result(move |event: &elph_agent::ToolResultEvent| {
+            let tracker = work_tracker_for_hook.clone();
+            let tool_name = event.tool_name.clone();
+            let is_error = event.is_error;
+            Box::pin(async move {
+                if is_mutating_tool(&tool_name) && !is_error {
+                    tracker.record_work();
+                }
+                None
+            })
+        })
+        .await;
+
     // Rehydrate todos into the TUI immediately on restore/continue so the panel
     // and model-facing state match the durable `session_todos` rows.
     match continuity_stores.todo_store.list(&session_id).await {
@@ -533,4 +555,26 @@ fn hostname_worker_name_fallback() -> String {
         .ok()
         .filter(|s| !s.trim().is_empty())
         .unwrap_or_else(|| "worker".into())
+}
+
+/// Returns `true` if the tool performs a mutating action that counts as "work".
+///
+/// Read-only tools (read_file, grep, find_path, list_dir, web_search, etc.) do
+/// not advance progress. Mutating tools (edit_file, write_file, shell_exec,
+/// delete_path, create_dir, move/copy, agent spawn, etc.) do.
+fn is_mutating_tool(tool_name: &str) -> bool {
+    matches!(
+        tool_name,
+        "edit_file"
+            | "write_file"
+            | "delete_path"
+            | "create_dir"
+            | "move_path"
+            | "copy_path"
+            | "shell_exec"
+            | "shell_use"
+            | "spawn_agent"
+            | "followup_task"
+            | "request_mode_change"
+    )
 }
