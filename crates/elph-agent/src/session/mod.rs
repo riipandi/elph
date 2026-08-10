@@ -34,6 +34,7 @@ pub use durability::{DurableHarnessState, OperationKind, OperationOutcome, Queue
 pub use id::create_worker_id;
 pub use id::create_worker_msg_id;
 pub use migrations::CANONICAL_SESSION_SCHEMA_SQL;
+pub use migrations::SESSION_SUMMARY_SCHEMA_SQL;
 pub use migrations::SESSION_TREE_MIGRATIONS;
 pub use migrations::WORKERS_SCHEMA_SQL;
 pub use recovery::{RecoveryReport, load_durable_state, reconcile_session, repair_unanswered_tool_calls};

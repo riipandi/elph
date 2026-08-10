@@ -5,8 +5,8 @@ use anyhow::Result;
 use elph_agent::create_goal_tools_with_hook;
 use elph_agent::{
     AgentGraphStore, AgentHarness, AgentHarnessOptions, AgentHarnessStreamOptions, BuiltinToolsBuilder, GoalRuntime,
-    GoalStore, LocalExecutionEnv, QueueMode, RestoreOptions, SubagentBootstrap, SystemPrompt, TodoHook, TodoStore,
-    TurnStore, WorkTracker, create_todo_tools_with_hook, is_mcp_tool,
+    GoalStore, LocalExecutionEnv, QueueMode, RestoreOptions, SessionSummaryStore, SubagentBootstrap, SystemPrompt,
+    TodoHook, TodoStore, TurnStore, WorkTracker, create_session_summary_tool, create_todo_tools_with_hook, is_mcp_tool,
 };
 use std::path::Path;
 use std::sync::Arc;
@@ -267,6 +267,12 @@ pub async fn create_coding_session_with_events(
         Some(work_tracker_for_tools),
     ));
 
+    // Session summary store: one row per session, upserted on compaction.
+    // Read on demand via the `get_session_summary` agent tool.
+    let summary_store =
+        Arc::new(SessionSummaryStore::new(options.paths.memory_db_path()).with_database(database.clone()));
+    tools.push(create_session_summary_tool(Arc::clone(&summary_store)));
+
     // Clamp default thinking (new-session seed) to the resolved model catalog.
     let thinking = {
         let raw = thinking_level_from_setting(&options.settings.models.default_thinking_level);
@@ -469,6 +475,38 @@ pub async fn create_coding_session_with_events(
             })
         })
         .await;
+
+    // Wire session_compact event: upsert the compaction summary into
+    // `session_summaries` so other sessions can recall past context.
+    // Runs best-effort — lock errors and write failures are logged, not fatal.
+    let summary_store_for_hook = Arc::clone(&summary_store);
+    let session_id_for_hook = session_id.clone();
+    harness
+        .on("session_compact", move |event| {
+            let store = Arc::clone(&summary_store_for_hook);
+            let session_id = session_id_for_hook.clone();
+            Box::pin(async move {
+                let compact = match &event {
+                    elph_agent::AgentHarnessOwnEvent::SessionCompact(e) => &e.compaction_entry,
+                    _ => return None,
+                };
+                let fields = compact.as_compaction()?;
+                let details_str = fields.details.map(|v| serde_json::to_string(v).unwrap_or_default());
+                store
+                    .upsert_best_effort(
+                        &session_id,
+                        fields.summary,
+                        fields.tokens_before as i64,
+                        1,
+                        Some(fields.first_kept_entry_id),
+                        details_str.as_deref(),
+                    )
+                    .await;
+                None
+            })
+        })
+        .await
+        .ok();
 
     // Rehydrate todos into the TUI immediately on restore/continue so the panel
     // and model-facing state match the durable `session_todos` rows.

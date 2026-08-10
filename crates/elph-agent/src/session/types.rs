@@ -271,6 +271,33 @@ impl SessionTreeEntry {
             _ => None,
         }
     }
+
+    /// Extract compaction entry fields when this entry is a compaction.
+    pub fn as_compaction(&self) -> Option<CompactionFields<'_>> {
+        match self {
+            Self::Compaction {
+                summary,
+                first_kept_entry_id,
+                tokens_before,
+                details,
+                ..
+            } => Some(CompactionFields {
+                summary,
+                first_kept_entry_id,
+                tokens_before: *tokens_before,
+                details: details.as_ref(),
+            }),
+            _ => None,
+        }
+    }
+}
+
+/// Borrowed view of a [`SessionTreeEntry::Compaction`] variant.
+pub struct CompactionFields<'a> {
+    pub summary: &'a str,
+    pub first_kept_entry_id: &'a str,
+    pub tokens_before: u64,
+    pub details: Option<&'a Value>,
 }
 
 /// Session metadata with a stable identifier.

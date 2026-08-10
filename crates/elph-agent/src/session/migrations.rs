@@ -263,11 +263,31 @@ CREATE INDEX IF NOT EXISTS idx_file_leases_heartbeat ON file_leases(heartbeat_at
 CREATE INDEX IF NOT EXISTS idx_file_leases_session ON file_leases(session_id);
 "#;
 
+/// Session summary table: one row per session, updated on compaction.
+///
+/// Additive on top of v201/v202. Stores the latest compaction summary so other
+/// sessions can reference past context without replaying full history.
+pub const SESSION_SUMMARY_SCHEMA_SQL: &str = r#"
+CREATE TABLE IF NOT EXISTS session_summaries (
+    session_id TEXT PRIMARY KEY NOT NULL,
+    summary TEXT NOT NULL,
+    tokens_before INTEGER NOT NULL DEFAULT 0,
+    compaction_count INTEGER NOT NULL DEFAULT 0,
+    first_kept_entry_id TEXT,
+    details TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+) STRICT;
+CREATE INDEX IF NOT EXISTS idx_session_summaries_updated ON session_summaries(updated_at);
+"#;
+
 /// Standalone / library migrations for Turso session backends.
 ///
 /// - **201**: hybrid tree + turns/todos/goals with FK + indexes (rebuild).
 /// - **202**: multi-worker leases, registry, mailbox, file claims.
-pub const SESSION_TREE_MIGRATIONS: [Migration; 2] = [
+/// - **203**: session summaries (one row per session, upserted on compaction).
+pub const SESSION_TREE_MIGRATIONS: [Migration; 3] = [
     Migration {
         version: 201,
         name: "elph_session_schema_v2_relational",
@@ -277,5 +297,10 @@ pub const SESSION_TREE_MIGRATIONS: [Migration; 2] = [
         version: 202,
         name: "elph_workers_v1",
         up: WORKERS_SCHEMA_SQL,
+    },
+    Migration {
+        version: 203,
+        name: "elph_session_summaries_v1",
+        up: SESSION_SUMMARY_SCHEMA_SQL,
     },
 ];

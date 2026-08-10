@@ -10,15 +10,16 @@ How Elph stores sessions, restores history on `--continue` / `--resume`, and kee
 | Turn lifecycle, tokens, cost | `session_turns` + rollup columns on `sessions` — see [usage-accounting.md](./design/usage-accounting.md) for what each number means |
 | Structured work checklist | `session_todos` |
 | Session objective / budgets | `goals` |
+| Cross-session compaction summary | `session_summaries` (one row per session, upserted on compaction) |
 | TUI transcript cards | **Reconstructed** from the tree on resume (not a separate snapshot SoT) |
 
 Project store file: `<project>/.elph/store.db` (shared with floppy memory and codegraph).
 
 Session artifacts (terminals, MCP cache): `APP_DATA/sessions/<SESSION_ID>/`.
 
-## Schema (v201)
+## Schema (v201–v203)
 
-Clean band **201** (`elph_session_schema_v2_relational`). No upgrade path from experimental pre-v201 DBs — delete `store.db` if needed.
+Clean band **201** (`elph_session_schema_v2_relational`). No upgrade path from experimental pre-v201 DBs — delete `store.db` if needed. Additive migrations **202** (workers) and **203** (session summaries) extend the schema.
 
 ### Entity relationship
 
@@ -31,6 +32,7 @@ sessions
   ├── session_entries       ON DELETE CASCADE
   ├── session_todos         ON DELETE CASCADE
   ├── goals                 ON DELETE CASCADE
+  ├── session_summaries     ON DELETE CASCADE
   └── agent_spawn_edges (parent/child) ON DELETE CASCADE
 ```
 
@@ -42,6 +44,7 @@ sessions
 | `session_entries` | `(session_id, id)` | `session_id` CASCADE; `turn_id` → `session_turns` SET NULL |
 | `session_todos` | `id` | `session_id` CASCADE |
 | `goals` | `id` | `session_id` CASCADE |
+| `session_summaries` | `session_id` | → `sessions(id)` CASCADE |
 | `agent_spawn_edges` | `(parent, child)` | both → `sessions` CASCADE |
 
 **Not FK-enforced (intentional soft links):** tree `parent_id` (append order / prune), turn `user_entry_id` / `assistant_entry_id` (may be pruned after compaction).
@@ -49,6 +52,26 @@ sessions
 **Runtime:** every connection runs `PRAGMA foreign_keys = ON` (SQLite defaults to off).
 
 Canonical SQL: `elph-agent` `CANONICAL_SESSION_SCHEMA_SQL` / platform migration v201.
+
+### Session summaries (v203)
+
+Migration **203** (`elph_session_summaries_v1`) adds the `session_summaries` table:
+
+```sql
+CREATE TABLE IF NOT EXISTS session_summaries (
+    session_id TEXT PRIMARY KEY NOT NULL,
+    summary TEXT NOT NULL,
+    tokens_before INTEGER NOT NULL DEFAULT 0,
+    compaction_count INTEGER NOT NULL DEFAULT 0,
+    first_kept_entry_id TEXT,
+    details TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+);
+```
+
+One row per session. Upserted automatically when compaction completes (manual `/compact` or auto-compaction) via the `session_compact` harness hook. The `compaction_count` auto-increments on each upsert. Other sessions can read past context via the `get_session_summary` agent tool (`session_id` argument) without replaying full history.
 
 ## Resume / continue
 

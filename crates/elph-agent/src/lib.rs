@@ -19,6 +19,7 @@ pub mod prompt;
 pub mod runtime;
 
 pub mod session;
+pub mod session_summary;
 pub mod skills;
 pub mod todos;
 pub mod turns;
@@ -306,12 +307,16 @@ pub use session::reduce_durable_state;
 pub use session::repair_unanswered_tool_calls;
 pub use session::to_session;
 pub use session::{
-    CANONICAL_SESSION_SCHEMA_SQL, EVENTS_FILE, SESSION_TREE_MIGRATIONS, SUMMARY_FILE, WORKERS_SCHEMA_SQL,
+    CANONICAL_SESSION_SCHEMA_SQL, EVENTS_FILE, SESSION_SUMMARY_SCHEMA_SQL, SESSION_TREE_MIGRATIONS, SUMMARY_FILE,
+    WORKERS_SCHEMA_SQL,
 };
 pub use session::{DurableHarnessState, OperationKind, OperationOutcome, QueueKind, RecoveryReport};
 pub use session::{
     RetentionPolicy, SessionGcReport, list_session_gc_rows, run_full_session_gc, run_session_gc, set_session_pinned,
 };
+pub use session_summary::SessionSummary;
+pub use session_summary::SessionSummaryStore;
+pub use session_summary::create_session_summary_tool;
 pub use skills::LoadSkillsResult;
 pub use skills::LoadSourcedSkillsResult;
 pub use skills::SkillDiagnostic;

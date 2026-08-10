@@ -1,12 +1,13 @@
 use elph_agent::Migration;
-use elph_agent::{CANONICAL_SESSION_SCHEMA_SQL, WORKERS_SCHEMA_SQL};
+use elph_agent::{CANONICAL_SESSION_SCHEMA_SQL, SESSION_SUMMARY_SCHEMA_SQL, WORKERS_SCHEMA_SQL};
 
 /// Platform schema migrations, applied into the shared `.elph/store.db` ledger.
 ///
-/// Version bands: floppy memory 1–99, **platform/session 201–202**, floppy codegraph 500–599.
+/// Version bands: floppy memory 1–99, **platform/session 201–203**, floppy codegraph 500–599.
 ///
 /// - v201: hybrid session tree + turns/todos/goals with FK + indexes (rebuild).
 /// - v202: multi-worker leases, registry, mailbox, file claims (additive).
+/// - v203: session summaries (one row per session, upserted on compaction).
 pub fn metadata_migrations() -> &'static [Migration] {
     &[
         Migration {
@@ -18,6 +19,11 @@ pub fn metadata_migrations() -> &'static [Migration] {
             version: 202,
             name: "elph_workers_v1",
             up: WORKERS_SCHEMA_SQL,
+        },
+        Migration {
+            version: 203,
+            name: "elph_session_summaries_v1",
+            up: SESSION_SUMMARY_SCHEMA_SQL,
         },
     ]
 }
@@ -32,11 +38,13 @@ mod tests {
     #[test]
     fn platform_migrations_include_workers() {
         let versions: Vec<_> = metadata_migrations().iter().map(|m| m.version).collect();
-        assert_eq!(versions, vec![201, 202]);
+        assert_eq!(versions, vec![201, 202, 203]);
         let w = metadata_migrations().iter().find(|m| m.version == 202).unwrap();
         assert!(w.up.contains("session_leases"));
         assert!(w.up.contains("worker_messages"));
         assert!(w.up.contains("file_leases"));
+        let s = metadata_migrations().iter().find(|m| m.version == 203).unwrap();
+        assert!(s.up.contains("session_summaries"));
     }
 
     #[tokio::test]
