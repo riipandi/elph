@@ -190,6 +190,7 @@ impl TodoStore {
                 id: Some(t.id.clone()),
                 content: Some(t.content.clone()),
                 status: Some(t.status),
+                ..Default::default()
             })
             .collect();
         self.replace(session_id, replace_items).await
@@ -206,11 +207,15 @@ impl TodoStore {
 }
 
 /// Partial update used by merge/replace.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct TodoUpdate {
     pub id: Option<String>,
     pub content: Option<String>,
     pub status: Option<TodoStatus>,
+    /// Optional reason for status change. When set on a `completed` transition,
+    /// bypasses the work-done check (e.g. analysis tasks, MCP-driven work).
+    /// Provides an audit trail for completions without local tool calls.
+    pub reason: Option<String>,
 }
 
 /// Resolve agent-facing ids into globally unique PKs before write.
@@ -394,11 +399,13 @@ mod tests {
                         id: Some("todo_aaaaaaaaaaaaaaaa".into()),
                         content: Some("first".into()),
                         status: Some(TodoStatus::Pending),
+                        ..Default::default()
                     },
                     TodoUpdate {
                         id: Some("todo_bbbbbbbbbbbbbbbb".into()),
                         content: Some("second".into()),
                         status: Some(TodoStatus::InProgress),
+                        ..Default::default()
                     },
                 ],
             )
@@ -419,6 +426,7 @@ mod tests {
                     id: Some("todo_cccccccccccccccc".into()),
                     content: Some("work".into()),
                     status: Some(TodoStatus::Pending),
+                    ..Default::default()
                 }],
             )
             .await
@@ -430,6 +438,7 @@ mod tests {
                     id: Some("todo_cccccccccccccccc".into()),
                     content: None,
                     status: Some(TodoStatus::Completed),
+                    ..Default::default()
                 }],
             )
             .await
@@ -451,11 +460,13 @@ mod tests {
                         id: Some("todo_dddddddddddddddd".into()),
                         content: Some("a".into()),
                         status: None,
+                        ..Default::default()
                     },
                     TodoUpdate {
                         id: Some("todo_dddddddddddddddd".into()),
                         content: Some("b".into()),
                         status: None,
+                        ..Default::default()
                     },
                 ],
             )
@@ -479,11 +490,13 @@ mod tests {
                         id: Some("1".into()),
                         content: Some("A1".into()),
                         status: Some(TodoStatus::InProgress),
+                        ..Default::default()
                     },
                     TodoUpdate {
                         id: Some("2".into()),
                         content: Some("A2".into()),
                         status: Some(TodoStatus::Pending),
+                        ..Default::default()
                     },
                 ],
             )
@@ -497,11 +510,13 @@ mod tests {
                         id: Some("1".into()),
                         content: Some("B1".into()),
                         status: Some(TodoStatus::InProgress),
+                        ..Default::default()
                     },
                     TodoUpdate {
                         id: Some("2".into()),
                         content: Some("B2".into()),
                         status: Some(TodoStatus::Pending),
+                        ..Default::default()
                     },
                 ],
             )
@@ -522,6 +537,7 @@ mod tests {
                     id: Some("1".into()),
                     content: None,
                     status: Some(TodoStatus::Completed),
+                    ..Default::default()
                 }],
             )
             .await
@@ -556,16 +572,19 @@ mod tests {
                         id: None,
                         content: Some("a".into()),
                         status: Some(TodoStatus::Pending),
+                        ..Default::default()
                     },
                     TodoUpdate {
                         id: None,
                         content: Some("b".into()),
                         status: Some(TodoStatus::Pending),
+                        ..Default::default()
                     },
                     TodoUpdate {
                         id: None,
                         content: Some("c".into()),
                         status: Some(TodoStatus::Pending),
+                        ..Default::default()
                     },
                 ],
             )

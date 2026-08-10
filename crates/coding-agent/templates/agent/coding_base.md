@@ -42,6 +42,7 @@ ${%- if tools.todo_write %}
 - Never mark `completed` before doing the work — false progress misleads the user
 - If a step fails or is blocked, keep it `in_progress` and explain the blocker; do not silently mark done
 - Validate completion with evidence (run the test, check the build, read the diff) before updating status
+- For tasks that don't involve local mutating tool calls (analysis, review, MCP-driven work, external API calls), pass a `reason` string explaining why the task is done — this bypasses the work requirement and provides an audit trail
 
 This gives users visibility into your work and helps track multi-step tasks.
 ${%- endif %}

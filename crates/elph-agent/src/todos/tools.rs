@@ -55,7 +55,9 @@ fn todo_write_tool(
                  Use merge=true (default) to upsert by id; merge=false replaces the whole list. \
                  Keep at most one item in_progress. Prefer for tasks with 3+ steps; skip trivial one-offs. \
                  Short ids like \"1\"/\"2\" are fine — the host scopes them per session. Prefer reusing ids from the tool result on later updates. \
-                 Status `completed` is only allowed after actual work has been done since the item was marked `in_progress`."
+                 Status `completed` requires actual work since `in_progress` (a mutating tool call). \
+                 For tasks that don't involve local tool calls (analysis, review, MCP-driven work), \
+                 pass a `reason` explaining completion to bypass the work check."
                 .into(),
             parameters: json!({
                 "type": "object",
@@ -83,6 +85,10 @@ fn todo_write_tool(
                                     "type": "string",
                                     "enum": ["pending", "in_progress", "completed", "cancelled"],
                                     "description": "Task status"
+                                },
+                                "reason": {
+                                    "type": "string",
+                                    "description": "Optional reason for the status change. Required when marking `completed` without local mutating tool calls (e.g. analysis, review, MCP-driven work). Provides audit trail for the completion."
                                 }
                             }
                         }
@@ -179,7 +185,17 @@ fn parse_todo_updates(value: Option<&Value>) -> Result<Vec<TodoUpdate>> {
             .filter(|s| !s.is_empty());
         let content = item.get("content").and_then(|v| v.as_str()).map(|s| s.to_string());
         let status = item.get("status").and_then(|v| v.as_str()).and_then(TodoStatus::parse);
-        out.push(TodoUpdate { id, content, status });
+        let reason = item
+            .get("reason")
+            .and_then(|v| v.as_str())
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+        out.push(TodoUpdate {
+            id,
+            content,
+            status,
+            reason,
+        });
     }
     Ok(out)
 }
@@ -214,11 +230,24 @@ fn enforce_work_done(
         for update in &updates {
             if update.status == Some(TodoStatus::Completed) {
                 let id = update.id.as_deref().unwrap_or("");
-                if !id.is_empty() && !tracker.has_work_since_snapshot(id) {
+                if id.is_empty() {
+                    continue;
+                }
+                // Allow bypass with a reason (analysis tasks, MCP work, etc.).
+                let has_reason = update.reason.as_deref().map(str::trim).is_some_and(|r| !r.is_empty());
+                if has_reason {
+                    log::info!(
+                        "todo '{id}' marked completed with reason: {}",
+                        update.reason.as_deref().unwrap_or("")
+                    );
+                    continue;
+                }
+                if !tracker.has_work_since_snapshot(id) {
                     bail!(
                         "Cannot mark todo '{id}' as completed: no actual work was recorded since it was marked in_progress. \
                          Do the work first (edit files, run commands, etc.), then update status. \
-                         If you already did the work, ensure the mutating tool calls succeeded before marking completed."
+                         If this task did not require local tool calls (e.g. analysis, review, MCP-driven work), \
+                         provide a `reason` explaining why it is done."
                     );
                 }
             }
