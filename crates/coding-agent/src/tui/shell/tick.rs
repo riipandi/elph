@@ -107,6 +107,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         mut user_shell_abort,
         mut user_shell_channel,
         mut todos,
+        mut todo_panel_tick,
         mut thinking_level,
         pending_subagent_output,
         ..
@@ -685,6 +686,16 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
 
             if let AgentUiEvent::TodoUpdated { items } = &event {
                 todos.set(items.clone());
+                // Re-render loop for the todo panel spinner: while a todo is
+                // in_progress the shell re-renders (this State read makes the
+                // view depend on the tick value), so the running row animates.
+                if todos
+                    .read()
+                    .iter()
+                    .any(|t| t.status == elph_agent::TodoStatus::InProgress)
+                {
+                    todo_panel_tick.set(todo_panel_tick.get().wrapping_add(1));
+                }
                 continue;
             }
 

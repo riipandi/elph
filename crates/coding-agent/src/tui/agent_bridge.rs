@@ -1103,18 +1103,12 @@ mod tests {
         let mut messages = Vec::new();
         let mut applier = TranscriptEventApplier::new(false, false);
         // Compaction emits the running label (with the resolved model) as both a sticky notice and a Status.
-        assert!(applier.apply(
-            &mut messages,
-            AgentUiEvent::TranscriptNotice("Compacting history with openai/gpt-5.6-luna".into())
-        ));
+        assert!(applier.apply(&mut messages, AgentUiEvent::TranscriptNotice("Compacting history…".into())));
         assert_eq!(messages.len(), 1);
         assert!(messages[0].sticky_meta);
         // A later Status with the same label must collapse into the sticky notice
         // instead of adding a second transcript card.
-        assert!(applier.apply(
-            &mut messages,
-            AgentUiEvent::Status("Compacting history with openai/gpt-5.6-luna".into())
-        ));
+        assert!(applier.apply(&mut messages, AgentUiEvent::Status("Compacting history with…".into())));
         assert_eq!(messages.len(), 1, "same-label Status must collapse into the sticky notice");
     }
 

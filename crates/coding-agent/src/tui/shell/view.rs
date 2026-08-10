@@ -144,6 +144,7 @@ pub(crate) fn build_shell_view(
         mut user_shell_abort,
         user_shell_channel,
         todos,
+        todo_panel_tick,
         ..
     } = ctx;
 
@@ -881,28 +882,28 @@ pub(crate) fn build_shell_view(
             }))
             #(if !todos.read().is_empty() {
                 let items = todos.read();
-                let dialog_items: Vec<elph_tui::DialogTodoItem> = items
+                let panel_rows: Vec<elph_tui::TodoPanelRow> = items
                     .iter()
                     .map(|item| {
-                        let status = match item.status {
-                            elph_agent::TodoStatus::Pending => elph_tui::DialogTodoStatus::Pending,
-                            elph_agent::TodoStatus::InProgress => elph_tui::DialogTodoStatus::Done, // Highlight active task
-                            elph_agent::TodoStatus::Completed => elph_tui::DialogTodoStatus::Done,
-                            elph_agent::TodoStatus::Cancelled => elph_tui::DialogTodoStatus::Skipped,
-                        };
-                        elph_tui::DialogTodoItem::new(item.content.clone(), status)
+                        let finished = matches!(
+                            item.status,
+                            elph_agent::TodoStatus::Completed | elph_agent::TodoStatus::Cancelled
+                        );
+                        elph_tui::TodoPanelRow {
+                            label: item.content.clone(),
+                            running: item.status == elph_agent::TodoStatus::InProgress,
+                            finished,
+                        }
                     })
                     .collect();
-                let theme = elph_tui::UiTheme::default();
+                let panel_theme = elph_tui::UiTheme::default();
                 Some::<AnyElement<'static>>(element! {
-                    elph_tui::DialogTodoListContent(
+                    elph_tui::TodoProgressPanel(
                         width: screen_width.saturating_sub(4),
-                        items: dialog_items,
-                        done_color: theme.success,
-                        pending_color: theme.text_secondary,
-                        skipped_color: theme.text_muted,
-                        detail_color: theme.text_hint,
-                        theme: None,
+                        items: panel_rows,
+                        tick: todo_panel_tick.get(),
+                        max_rows: elph_tui::TODO_PANEL_DEFAULT_MAX_ROWS,
+                        theme: Some(panel_theme),
                     )
                 }.into())
             } else { None })

@@ -817,7 +817,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         ui_events_slot,
         user_shell_abort,
         user_shell_channel,
-        todos: hooks.use_state(|| Vec::new()),
+        todos: hooks.use_state(Vec::new),
+        todo_panel_tick: hooks.use_state(|| 0u32),
     };
 
     hooks.use_future(shell_tick_loop(ctx.clone()));

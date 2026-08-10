@@ -1,6 +1,5 @@
-//! Static checklist dialog body.
+//! Read-only checklist with optional detail lines.
 
-use super::layout::dialog_body_row_gap;
 use crate::components::theme::{UiTheme, resolve_ui_theme};
 use crate::types::{DialogTodoItem, DialogTodoStatus};
 use iocraft::prelude::*;
@@ -50,7 +49,7 @@ impl Default for DialogTodoListContentProps {
 #[component]
 pub fn DialogTodoListContent(props: &DialogTodoListContentProps, hooks: Hooks) -> impl Into<AnyElement<'static>> {
     let theme = resolve_ui_theme(&hooks, props.theme);
-    let row_gap = dialog_body_row_gap(theme);
+    let row_gap = theme.dialog_row_gap();
 
     let rows: Vec<_> = props
         .items
