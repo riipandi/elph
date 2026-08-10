@@ -449,10 +449,7 @@ fn await_worker_shutdown(session: Option<&Arc<CodingAgentSession>>) {
 /// Blocking best-effort delete of an empty session (no turns). Used from the
 /// synchronous render path where `await` is not available. Bounded wait so the
 /// TUI exit is never blocked indefinitely.
-pub(crate) fn delete_empty_session_blocking(
-    session: Arc<crate::agent::CodingAgentSession>,
-    session_id: &str,
-) {
+pub(crate) fn delete_empty_session_blocking(session: Arc<crate::agent::CodingAgentSession>, session_id: &str) {
     let Ok(handle) = tokio::runtime::Handle::try_current() else {
         return;
     };

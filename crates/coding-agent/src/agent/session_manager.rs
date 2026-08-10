@@ -306,10 +306,7 @@ impl SessionManager {
             .await
             .context("open connection for turn_count")?;
         let mut rows = conn
-            .query(
-                "SELECT turn_count FROM sessions WHERE id = ?",
-                turso::params![session_id],
-            )
+            .query("SELECT turn_count FROM sessions WHERE id = ?", turso::params![session_id])
             .await
             .context("query turn_count")?;
         let row = rows.next().await.context("read turn_count row")?;
@@ -413,10 +410,7 @@ pub fn load_session_tree_jsonl(path: &Path) -> Result<Vec<elph_agent::SessionTre
 
 /// Open a connection to the session store, running migrations when opening the
 /// file directly (shared database handles are already migrated by the host).
-async fn open_session_conn(
-    db_path: &Path,
-    database: Option<&Arc<Database>>,
-) -> Result<turso::Connection> {
+async fn open_session_conn(db_path: &Path, database: Option<&Arc<Database>>) -> Result<turso::Connection> {
     match database {
         Some(db) => db.connect().context("connect from shared database"),
         None => {
@@ -429,12 +423,9 @@ async fn open_session_conn(
             let conn = elph_agent::datastore::connect(&db)
                 .await
                 .context("connect to database")?;
-            elph_agent::datastore::run_migrations(
-                &conn,
-                &elph_agent::session::migrations::SESSION_TREE_MIGRATIONS,
-            )
-            .await
-            .context("run session migrations")?;
+            elph_agent::datastore::run_migrations(&conn, &elph_agent::session::migrations::SESSION_TREE_MIGRATIONS)
+                .await
+                .context("run session migrations")?;
             Ok(conn)
         }
     }
