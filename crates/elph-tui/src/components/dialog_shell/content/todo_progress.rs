@@ -9,17 +9,17 @@
 
 use super::layout::dialog_body_row_gap;
 use crate::components::status_indicator::{
-    GLYPH_DONE, GLYPH_QUEUED, GLYPH_RUNNING, ProcessStatus, ProcessStatusRow, process_status_glyph,
+    GLYPH_DONE, GLYPH_QUEUED, ProcessStatus, ProcessStatusRow, process_status_glyph,
 };
 use crate::components::theme::{UiTheme, resolve_ui_theme};
 use crate::types::{DialogTodoProgress, DialogTodoProgressItem};
 use iocraft::prelude::*;
 
-/// Live `pending` glyph — hollow circle (not a running row).
+/// Live `pending` glyph — hollow circle.
 pub const TODO_GLYPH_PENDING: &str = GLYPH_QUEUED; // ○
-/// Live `in_progress` glyph — hollow dotted circle (spinner when `tick` animates).
-pub const TODO_GLYPH_RUNNING: &str = GLYPH_RUNNING; // ◌
-/// Live `completed` / `cancelled` glyph.
+/// Live `in_progress` glyph — half-filled circle (static, clearer than braille spinner).
+pub const TODO_GLYPH_RUNNING: &str = "\u{25D0}"; // ◐
+/// Live `completed` / `cancelled` glyph — full-filled circle.
 pub const TODO_GLYPH_DONE: &str = GLYPH_DONE; // ✓
 
 /// Default max visible rows for [`TodoProgressPanel`] (before `↓N more`).
@@ -55,19 +55,19 @@ pub struct TodoPanelRow {
     pub finished: bool,
 }
 
-/// Build display rows from the raw todo list: finished rows are hidden from the
-/// visible list, pending/in-progress stay in order. Counts are always full-list.
+/// Build display rows from the raw todo list: all items stay visible (including
+/// finished ones). Counts are always full-list.
 pub fn build_todo_panel_rows(todos: &[TodoPanelRow]) -> (Vec<TodoPanelRow>, usize, usize, usize) {
     let total = todos.len();
     let done = todos.iter().filter(|t| t.finished).count();
-    let visible: Vec<TodoPanelRow> = todos.iter().filter(|t| !t.finished).cloned().collect();
+    let visible = todos.to_vec();
     let visible_count = visible.len();
     (visible, visible_count, done, total)
 }
 
-/// Whether the live panel should paint: any unfinished item remains.
+/// Whether the live panel should paint: show as long as there is at least one item.
 pub fn todo_panel_should_show(todos: &[TodoPanelRow]) -> bool {
-    todos.iter().any(|t| !t.finished)
+    !todos.is_empty()
 }
 
 /// Border title: `Todos 2/5` or `Todos 2/5 · steered` when the user redirected.
@@ -150,7 +150,10 @@ pub fn TodoProgressPanel(props: &TodoProgressPanelProps, hooks: Hooks) -> impl I
 
     let mut rows: Vec<AnyElement<'static>> = Vec::new();
     for row in visible.iter().take(cap) {
-        let color = if props.redirected {
+        let color = if row.finished {
+            // Muted styling for completed items (iocraft has no strikethrough).
+            theme.text_muted
+        } else if props.redirected {
             theme.text_muted
         } else if row.running {
             theme.warning
@@ -191,10 +194,16 @@ pub fn TodoProgressPanel(props: &TodoProgressPanelProps, hooks: Hooks) -> impl I
         );
     }
     if show_more {
+        let hidden = visible_count.saturating_sub(cap);
+        let more_label = if done > 0 {
+            format!("… +{hidden} more ({done} done)")
+        } else {
+            format!("… +{hidden} more")
+        };
         rows.push(
             element! {
                 Text(
-                    content: format!("↓{} more", visible_count.saturating_sub(cap)),
+                    content: more_label,
                     color: theme.text_hint,
                     wrap: TextWrap::NoWrap,
                 )
@@ -356,7 +365,7 @@ mod tests {
     #[test]
     fn live_glyphs_and_words() {
         assert_eq!(todo_status_glyph(false, false), "○");
-        assert_eq!(todo_status_glyph(true, false), "◌");
+        assert_eq!(todo_status_glyph(true, false), "◐");
         assert_eq!(todo_status_glyph(false, true), "✓");
         assert_eq!(todo_status_word(false, false), "pending");
         assert_eq!(todo_status_word(false, true), "running");
@@ -364,7 +373,7 @@ mod tests {
     }
 
     #[test]
-    fn finished_rows_hidden_from_visible_list() {
+    fn all_rows_stay_visible_including_finished() {
         let rows = vec![
             TodoPanelRow {
                 label: "a".into(),
@@ -388,30 +397,34 @@ mod tests {
             },
         ];
         let (visible, visible_count, done, total) = build_todo_panel_rows(&rows);
-        assert_eq!(visible_count, 2);
-        assert_eq!(visible.len(), 2);
+        // All items stay visible (including finished ones).
+        assert_eq!(visible_count, 4);
+        assert_eq!(visible.len(), 4);
         assert_eq!(visible[0].label, "a");
-        assert_eq!(visible[1].label, "b");
+        assert_eq!(visible[2].label, "c");
         assert_eq!(done, 2);
         assert_eq!(total, 4);
     }
 
     #[test]
     fn header_reports_counts_and_steered() {
-        assert_eq!(todo_panel_header_line(1, 3, false), "Todos 1/3");
-        assert_eq!(todo_panel_header_line(0, 3, false), "Todos 0/3");
-        assert_eq!(todo_panel_header_line(2, 5, true), "Todos 2/5 · steered");
+        assert_eq!(todo_panel_header_line(1, 3, false), "(Todos 1/3)");
+        assert_eq!(todo_panel_header_line(0, 3, false), "(Todos 0/3)");
+        assert_eq!(todo_panel_header_line(2, 5, true), "(Todos 2/5 · steered)");
     }
 
     #[test]
-    fn hide_when_all_finished_or_empty() {
+    fn show_when_any_items_including_all_done() {
+        // Empty list → hide.
         assert!(!todo_panel_should_show(&[]));
+        // All done → still show (completed items stay visible).
         let done = vec![TodoPanelRow {
             label: "done".into(),
             running: false,
             finished: true,
         }];
-        assert!(!todo_panel_should_show(&done));
+        assert!(todo_panel_should_show(&done));
+        // Open items → show.
         let open = vec![TodoPanelRow {
             label: "open".into(),
             running: false,
