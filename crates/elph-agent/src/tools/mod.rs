@@ -17,6 +17,8 @@ mod grep;
 mod list_dir;
 #[cfg(feature = "tools-read-file")]
 mod read_file;
+#[cfg(any(feature = "tools-grep", feature = "tools-find-path"))]
+mod ripgrep;
 #[cfg(feature = "tools-shell-exec")]
 mod shell_exec;
 #[cfg(feature = "tools-shell-use")]

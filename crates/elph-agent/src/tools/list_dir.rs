@@ -19,7 +19,7 @@ use crate::tools::fff_picker::run_with_abort_signal;
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
 
-const DEFAULT_LIMIT: usize = 1000;
+const DEFAULT_LIMIT: usize = 200;
 
 pub fn create_list_dir_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     let env_for_tool = env.clone();
@@ -28,13 +28,13 @@ pub fn create_list_dir_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
             name: "list_dir".into(),
             constrained_sampling: None,
 
-            description: "List directory contents. Use to see what files/folders exist in a path. For finding files by pattern, use find_path."
+            description: "List immediate children of one directory (not recursive). Prefer find_path for globs and grep for content. Do not use to map an entire repository."
                 .into(),
             parameters: json!({
                 "type": "object",
                 "properties": {
-                    "path": { "type": "string", "description": "Directory path" },
-                    "limit": { "type": "number" }
+                    "path": { "type": "string", "description": "Directory path (default: working directory)" },
+                    "limit": { "type": "number", "description": "Max entries (default: 200)" }
                 }
             }),
         },

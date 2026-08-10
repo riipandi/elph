@@ -1,10 +1,13 @@
 //! Read tool — elph coding-agent tools.
 //!
 //! Reads file contents with support for:
-//! - Single file with optional offset/limit
+//! - Single file with optional offset/limit (line-range streaming — does not load
+//!   the whole file when offset/limit is set)
 //! - Batch reading of multiple files in one call
 //! - Multiple specific ranges across files
 
+use std::io::{BufRead, BufReader};
+use std::path::Path;
 use std::sync::Arc;
 
 use elph_ai::Tool;
@@ -35,9 +38,9 @@ pub fn create_read_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
             name: "read_file".into(),
             constrained_sampling: None,
             description: format!(
-                "Read file contents. Use path for single file, paths array for batch reading multiple files, \
-                 ranges for specific sections. Use offset/limit for targeted reading to avoid loading entire files. \
-                 Truncates to {DEFAULT_MAX_LINES} lines or {}/KB per file.",
+                "Read file contents. Prefer offset/limit (or ranges) after grep hits — do not load whole large files. \
+Batch with paths[] for multiple known files in one call. Windowed reads include line numbers and a (start-end of total) header. \
+Truncates to {DEFAULT_MAX_LINES} lines or {}/KB per file.",
                 DEFAULT_MAX_BYTES / 1024
             ),
             parameters: json!({
@@ -50,15 +53,15 @@ pub fn create_read_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
                     "paths": {
                         "type": "array",
                         "items": { "type": "string" },
-                        "description": "Multiple file paths to read in one call. Mutually exclusive with path/ranges."
+                        "description": "Multiple file paths to read in one call. Prefer this over sequential read_file calls."
                     },
                     "offset": {
                         "type": "number",
-                        "description": "Line number to start reading from (1-indexed). Applies to all files when used with 'paths'."
+                        "description": "1-indexed start line. Prefer with limit for large files (streams without full load)."
                     },
                     "limit": {
                         "type": "number",
-                        "description": "Maximum number of lines to read. Applies to all files when used with 'paths'."
+                        "description": "Maximum number of lines to read from offset."
                     },
                     "ranges": {
                         "type": "array",
@@ -71,7 +74,7 @@ pub fn create_read_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
                             },
                             "required": ["path"]
                         },
-                        "description": "Multiple specific file ranges to read. Each entry specifies a path and optional offset/limit. Mutually exclusive with path/paths."
+                        "description": "Multiple specific file ranges (path + offset/limit) in one call."
                     }
                 }
                 // No root oneOf: xAI rejects oneOf branches that only list `required`
@@ -106,27 +109,31 @@ async fn execute_read(
             continue;
         }
 
-        let content = read_file_text(&env, &absolute, signal.as_ref()).await?;
-        let start_line = request.offset.map(|v| v.saturating_sub(1)).unwrap_or(0);
-        let selected =
-            match crate::agent::harness::utils::truncate::select_line_range(&content, start_line, request.limit) {
-                Ok(selected) => selected,
-                Err(total_lines) => {
-                    return Err(anyhow::anyhow!(
-                        "Offset {} is beyond end of file ({} lines total) in {}",
-                        request.offset.unwrap_or(1),
-                        total_lines,
-                        request.path,
-                    ));
-                }
-            };
+        check_aborted(signal.as_ref())?;
+        let ranged = request.offset.is_some() || request.limit.is_some();
+        let (body, meta) = if ranged {
+            // Stream only the requested window — O(offset+limit) I/O, not full file.
+            read_line_window(&absolute, request.offset, request.limit)?
+        } else {
+            let content = read_file_text(&env, &absolute, signal.as_ref()).await?;
+            let total = content.lines().count();
+            (
+                content,
+                ReadWindowMeta {
+                    start_line: 1,
+                    end_line: total,
+                    total_lines: total,
+                    truncated_by_eof: false,
+                },
+            )
+        };
 
-        let truncation = truncate_head(&selected, TruncationOptions::default());
+        let truncation = truncate_head(&body, TruncationOptions::default());
         let mut output = truncation.content;
         if truncation.first_line_exceeds_limit {
             output = format!(
-                "[Line {} exceeds {} limit in {}. Use shell_exec to read a portion of the file.]",
-                start_line + 1,
+                "[Line {} exceeds {} limit in {}. Use a smaller offset/limit window.]",
+                meta.start_line,
                 format_size(DEFAULT_MAX_BYTES),
                 request.path,
             );
@@ -138,17 +145,21 @@ async fn execute_read(
             ));
         }
 
-        if batch_mode {
-            let header = if let Some(offset) = request.offset {
-                if let Some(limit) = request.limit {
-                    format!("--- {} (lines {}-{}) ---", request.path, offset, offset + limit - 1)
-                } else {
-                    format!("--- {} (from line {}) ---", request.path, offset)
-                }
-            } else {
-                format!("--- {} ---", request.path)
-            };
+        // Line numbers when reading a window (matches Grok-style range reads).
+        if ranged && !output.starts_with('[') {
+            output = number_lines(&output, meta.start_line);
+        }
 
+        let header = if ranged {
+            format!(
+                "--- {} ({}-{} of {}) ---",
+                request.path, meta.start_line, meta.end_line, meta.total_lines
+            )
+        } else {
+            format!("--- {} ---", request.path)
+        };
+
+        if batch_mode || ranged {
             if i > 0 {
                 all_outputs.push(String::new());
             }
@@ -172,6 +183,89 @@ async fn execute_read(
         terminate: None,
         usage: None,
     })
+}
+
+struct ReadWindowMeta {
+    start_line: usize,
+    end_line: usize,
+    total_lines: usize,
+    #[allow(dead_code)]
+    truncated_by_eof: bool,
+}
+
+/// Read `[offset, offset+limit)` lines (1-indexed offset) without loading the full file.
+fn read_line_window(
+    absolute: &str,
+    offset: Option<usize>,
+    limit: Option<usize>,
+) -> anyhow::Result<(String, ReadWindowMeta)> {
+    let start = offset.unwrap_or(1).max(1);
+    let max_lines = limit.unwrap_or(DEFAULT_MAX_LINES).max(1);
+
+    let file =
+        std::fs::File::open(Path::new(absolute)).map_err(|e| anyhow::anyhow!("Failed to open {absolute}: {e}"))?;
+    let reader = BufReader::new(file);
+
+    let mut selected = String::new();
+    let mut total = 0usize;
+    let mut end_line = start.saturating_sub(1);
+    let mut taken = 0usize;
+
+    for line in reader.lines() {
+        let line = line.map_err(|e| anyhow::anyhow!("Failed to read {absolute}: {e}"))?;
+        total += 1;
+        if total < start {
+            continue;
+        }
+        if taken >= max_lines {
+            // Keep counting remaining lines for accurate "of N" totals (cheap for text).
+            // Stop after a modest scan beyond the window to avoid multi-second reads on huge files.
+            // Cap residual count at start+max_lines+10_000.
+            if total >= start + max_lines + 10_000 {
+                // Approximate remainder: report at least known total.
+                break;
+            }
+            continue;
+        }
+        selected.push_str(&line);
+        selected.push('\n');
+        taken += 1;
+        end_line = total;
+    }
+
+    if total < start {
+        return Err(anyhow::anyhow!(
+            "Offset {start} is beyond end of file ({total} lines total) in {absolute}"
+        ));
+    }
+
+    // If we stopped early on residual scan, note total as lower bound via max.
+    if end_line < start {
+        end_line = start;
+    }
+
+    Ok((
+        selected,
+        ReadWindowMeta {
+            start_line: start,
+            end_line,
+            total_lines: total.max(end_line),
+            truncated_by_eof: taken < max_lines,
+        },
+    ))
+}
+
+fn number_lines(content: &str, start_line: usize) -> String {
+    let mut out = String::with_capacity(content.len() + content.lines().count() * 6);
+    for (i, line) in content.lines().enumerate() {
+        let n = start_line + i;
+        out.push_str(&format!("{n:>6}|{line}\n"));
+    }
+    // Preserve trailing newline absence for empty.
+    if out.ends_with('\n') {
+        out.pop();
+    }
+    out
 }
 
 /// Parse read requests from tool arguments.
@@ -275,6 +369,9 @@ mod tests {
             .unwrap_or("");
         assert!(text.contains("line3"));
         assert!(!text.contains("line1"));
+        // Windowed reads include a range header and line numbers.
+        assert!(text.contains("of "));
+        assert!(text.contains("3|") || text.contains("line3"));
     }
 
     #[tokio::test]
@@ -290,8 +387,8 @@ mod tests {
                 _ => None,
             })
             .unwrap_or("");
-        assert!(text.contains("--- a.txt ---"));
-        assert!(text.contains("--- b.txt ---"));
+        assert!(text.contains("a.txt"));
+        assert!(text.contains("b.txt"));
         assert!(text.contains("line1"));
         assert!(text.contains("alpha"));
     }

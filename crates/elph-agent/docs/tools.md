@@ -21,10 +21,10 @@ The `elph` binary adds two additional tools not in `elph-agent`: `diagnostics` a
 
 ```
 Read & Search Tools
-  - list_dir     : Lists files and directories in a given path, providing an overview of filesystem contents.
-  - read_file    : Reads the content of a specified file in the project, allowing access to file contents.
-  - find_path    : Quickly finds files by matching glob patterns (like `*/.ts`), returning matching file paths alphabetically.
-  - grep         : Searches file contents across the project using regular expressions, preferred for finding symbols in code without knowing exact file paths.
+  - list_dir     : Lists immediate children of one directory (not recursive). Prefer find_path/grep for discovery.
+  - read_file    : Reads file contents; supports batch `paths`/`ranges` and streaming `offset`/`limit` windows with line numbers.
+  - find_path    : Finds files by glob (`*.rs`, `**/foo.rs`) via ripgrep `--files` (gitignore-aware); falls back to fff-search.
+  - grep         : Content search via system `rg` first (fast, gitignore + glob/type at search time); fff-search fallback with cached picker.
   - diagnostics  : Gets errors and warnings for either a specific file or the entire project, useful after making edits to determine if further changes are needed.
 
 Edit Tools

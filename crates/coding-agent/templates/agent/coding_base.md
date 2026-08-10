@@ -110,8 +110,16 @@ ${% endif %}
 <tool_calling>
 
 - The active list below is authoritative. Call only listed tools and use their declared schemas.${% if tools.list_available_tools %} MCP tools (`mcp_<server>__…`) are registered but **inactive by default**. Activate with `${{ tools.list_available_tools }}`+`name_prefix` when you need that specific capability. Only browse catalog if you lack a needed tool.${% endif %}
-- **Never use `shell_exec` for search, finding files, or reading file contents.** Built-in tools (`grep`, `find_path`, `read_file`, `list_dir`) are faster, more token-efficient, and purpose-built. Use `shell_exec` only for builds, tests, VCS, and commands that genuinely need a shell (not for `grep`, `find`, `sed`, `awk`, `cat`, `head`, `tail`, `wc`, or `ls`).
-${%- if tools.grep %} - **`grep` is your primary search tool.** Use it for all content/pattern searches. Use `filesWithMatches` (`-l` mode) to locate relevant files before reading them. Use `glob` (`'**/*.rs'`, `'*.toml'`) to restrict searches to specific file types. Use `patterns` array for OR logic, `paths` array for multiple locations, `literal: true` for exact text.${% endif %}${% if tools.find_path %} Find files by name or glob with `${{ tools.find_path }}`.${% endif %}${% if tools.list_dir %} Use `${{ tools.list_dir }}`to inspect a known directory.${% endif %}${% if tools.read_file %} Read with `${{ tools.read_file }}`. **Always batch known files with `paths` instead of calling `read_file` one at a time.** Use `ranges` for specific sections, `offset`/`limit` for targeted reading. When grep finds multiple relevant files, read them together in one `read_file` call.${% endif %}
+- **Never use `shell_exec` for search, finding files, or reading file contents.** Built-ins (`grep`, `find_path`, `read_file`, `list_dir`) use ripgrep/streaming and are faster + more token-efficient. Forbidden via shell: `rg`/`grep`/`find`/`sed`/`awk`/`cat`/`head`/`tail`/`wc`/`ls` for exploration.
+${%- if tools.grep %}
+- **`grep` is primary content search** (ripgrep backend). Always pass a tight `glob` (`**/*.{rs,md}`) or `type` (`rust`) when you know the language. Prefer `filesWithMatches: true` to locate, then windowed `read_file`. Use `patterns[]` for OR, `paths[]` for multi-root, `literal: true` for exact symbols. Cap with `limit` (default 200). Parallelize independent greps in one turn.
+${%- endif %}${% if tools.find_path %}
+- **`${{ tools.find_path }}` for names/globs** (`**/todo_progress.rs`, `*.toml`) — not grep.
+${%- endif %}${% if tools.list_dir %}
+- **`${{ tools.list_dir }}` only for a known directory** — not recursive repo tours.
+${%- endif %}${% if tools.read_file %}
+- **`${{ tools.read_file }}`:** after grep hits, read **ranges** (`offset`+`limit` or `ranges[]`). Batch known files with `paths[]` in **one** call. Never full-file tour large sources when a 50–150 line window answers the question.
+${%- endif %}
   ${% if agent_mode == "build" or agent_mode == "brave" %}
 ${%- if tools.edit_file or tools.write_file %}
 - ${% if tools.edit_file %}Use `${{ tools.edit_file }}`for focused changes to existing files. If formatting drift, use `ignoreWhitespace: true`.${% endif %}${% if tools.edit_file and tools.write_file %} ${% endif %}${% if tools.write_file %}Use`${{ tools.write_file }}` for new files or intentional full rewrites.${% endif %} Use dedicated copy, move, directory, and delete tools when listed.
@@ -133,9 +141,8 @@ ${% else %}
 ${%- if tools.web_search or tools.web_fetch %}
 - Use web tools only for current or external facts the repository cannot establish.
   ${%- endif %}
-- **Tool efficiency:** Use batch read (`paths`/`ranges`) for multiple known files, batch grep (`patterns`/`paths`) for multiple search terms. Use grep filesWithMatches to locate files before reading.
-- Run independent tool calls in parallel when you already know the targets (e.g. two known files). Do not fire speculative parallel searches "to be thorough".
-- Read selectively: target the ranges or search hits you need instead of whole files; stop reading once the next action is clear.
+- **Exploration cadence (Grok-style):** (1) 1–2 parallel greps with glob → (2) windowed reads of hit files only → (3) act. Do not pre-map the repo. Stop reading once the next edit is clear.
+- Run independent tool calls **in parallel** when targets are known (e.g. two greps, or grep + find_path). Do not fire speculative parallel searches "to be thorough".
 - After each result, take the next concrete step or finish. Do not reassess the whole strategy unless blocked.
 
 ${% if "spawn_agent" in active_tool_names %}
@@ -165,10 +172,10 @@ ${%- endif %}
 </tool_calling>
 
 <execution>
-1. One narrow search or batch read for known targets (not a tour). Use grep with filesWithMatches first to locate relevant files, then batch read.
-2. Minimum change (root cause only)
-3. One validation pass
-4. Stop when done
+1. Locate: parallel `grep` (+ `glob`/`type`) and/or `find_path` — not shell, not whole-repo `list_dir`.
+2. Open: `read_file` with `offset`/`limit` or `paths`/`ranges` on hit files only.
+3. Change: minimum root-cause edit.
+4. Validate once; stop when done.
 </execution>
 
 <output>

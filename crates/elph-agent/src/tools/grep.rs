@@ -6,7 +6,10 @@
 //! - File-only mode (-l), count mode (-c)
 //! - Word regexp, case control
 //! - Batch patterns (OR) and batch paths
-//! - One picker build per unique directory — efficient for N-pattern × M-path.
+//!
+//! **Fast path:** system `rg` (same strategy as Grok Build) — respects
+//! `.gitignore`, applies `--glob` at search time, early-exits on head limit.
+//! **Fallback:** fff-search with a process-wide picker cache when `rg` is absent.
 
 use std::collections::BTreeSet;
 use std::sync::Arc;
@@ -23,10 +26,11 @@ use crate::agent::harness::utils::truncate::truncate_head;
 use crate::runtime::local_env::LocalExecutionEnv;
 use crate::tools::common::{check_aborted, resolve_path};
 use crate::tools::fff_picker::{
-    GrepOutputMode, GrepOutputOptions, build_grep_mode, build_grep_options, build_grep_query, build_picker,
+    GrepOutputMode, GrepOutputOptions, build_grep_mode, build_grep_options, build_grep_query, cached_picker,
     format_grep_output_ex, make_word_regexp, parse_grep_query, resolve_path_scope, resolve_search_base,
     run_with_abort_signal,
 };
+use crate::tools::ripgrep::{RgGrepArgs, RgOutputMode, run_rg_grep};
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
 
@@ -39,16 +43,17 @@ pub fn create_grep_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
             name: "grep".into(),
             constrained_sampling: None,
 
-            description: "Search file contents efficiently. Use single pattern for targeted search, patterns array for OR logic. \
-                         Use filesWithMatches to find which files contain a pattern without showing matches. Use count for match counts. \
-                         Prefer literal=true for exact text matching. Batch paths to search multiple locations at once."
+            description: "Search file contents with ripgrep (fast). Prefer over shell_exec for all content search. \
+Use glob ('**/*.rs', '*.{ts,tsx}') or type when sure of file kind. Use filesWithMatches to locate files before reading. \
+Use patterns[] for OR, paths[] for multiple roots, literal=true for exact text. Default limit 200 match lines. \
+Respects .gitignore. Do not use for file-name search — use find_path."
                 .into(),
             parameters: json!({
                 "type": "object",
                 "properties": {
                     "pattern": {
                         "type": "string",
-                        "description": "Single regex or literal pattern to search for. Provide pattern or patterns."
+                        "description": "Regex (default) or literal (literal=true) pattern. Escape regex metacharacters for exact symbols."
                     },
                     "patterns": {
                         "type": "array",
@@ -57,7 +62,7 @@ pub fn create_grep_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
                     },
                     "path": {
                         "type": "string",
-                        "description": "Directory or file to search (default: current directory)"
+                        "description": "Directory or file to search (default: current directory). Prefer a narrow path over repo root when known."
                     },
                     "paths": {
                         "type": "array",
@@ -78,7 +83,7 @@ pub fn create_grep_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
                     },
                     "filesWithMatches": {
                         "type": "boolean",
-                        "description": "Only list filenames with matches (like grep -l)"
+                        "description": "Only list filenames with matches (like grep -l). Prefer this to locate files before read_file."
                     },
                     "count": {
                         "type": "boolean",
@@ -102,11 +107,19 @@ pub fn create_grep_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
                     },
                     "limit": {
                         "type": "number",
-                        "description": "Maximum total matches to return (default: 200)"
+                        "description": "Maximum total match lines/entries to return (default: 200)"
                     },
                     "glob": {
                         "type": "string",
-                        "description": "Glob filter to restrict searched files (e.g. '**/*.rs', '*.toml', 'src/**/*.rs'). Only files matching the glob are searched."
+                        "description": "Glob filter applied by the searcher (e.g. '**/*.rs', '*.{ts,tsx}', 'src/**/*.rs'). Prefer over post-filtering."
+                    },
+                    "type": {
+                        "type": "string",
+                        "description": "ripgrep file type (rust, py, js, go, …). More efficient than glob for standard languages when applicable."
+                    },
+                    "multiline": {
+                        "type": "boolean",
+                        "description": "Allow patterns to span lines (rg -U --multiline-dotall)."
                     }
                 },
                 // No root anyOf: xAI rejects anyOf branches that only list `required`
@@ -224,6 +237,7 @@ async fn execute_grep(
         vec![path.to_string()]
     };
 
+    let mut absolute_paths: Vec<String> = Vec::new();
     let mut targets: Vec<SearchTarget> = Vec::new();
     let mut seen_bases: BTreeSet<String> = BTreeSet::new();
     for raw in &raw_paths {
@@ -235,6 +249,7 @@ async fn execute_grep(
         if info.kind != FileKind::File && info.kind != FileKind::Directory {
             continue;
         }
+        absolute_paths.push(absolute.clone());
         let is_file = info.kind == FileKind::File;
         let base_path = resolve_search_base(&absolute, is_file);
         if !seen_bases.insert(base_path.clone()) {
@@ -245,11 +260,10 @@ async fn execute_grep(
     }
 
     let multi_target = targets.len() > 1;
-    // Render match paths relative to the working directory (token-efficient). Computed
-    // once here; cloned per iteration because the per-target closure is `move`.
+    // Render match paths relative to the working directory (token-efficient).
     let grep_cwd = env.cwd().replace('\\', "/").trim_end_matches('/').to_string();
 
-    // ── Parse glob filter ─────────────────────────────────────
+    // ── Parse glob / type filters ─────────────────────────────
     let glob_pattern: Option<String> = args.get("glob").and_then(|v| v.as_str()).map(|g| {
         if g.contains('/') {
             g.to_string()
@@ -257,8 +271,34 @@ async fn execute_grep(
             format!("**/{g}")
         }
     });
+    let file_type = args.get("type").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let multiline = args.get("multiline").and_then(|v| v.as_bool()).unwrap_or(false);
 
-    // ── Execute ────────────────────────────────────────────────
+    // ── Fast path: system ripgrep ─────────────────────────────
+    if let Some(result) = try_ripgrep_grep(
+        &raw_patterns,
+        &absolute_paths,
+        &grep_cwd,
+        output_mode,
+        ignore_case,
+        literal,
+        word_regexp,
+        before_context,
+        after_context,
+        max_matches_per_file,
+        limit,
+        glob_pattern.as_deref(),
+        file_type.as_deref(),
+        multiline,
+        multi_pattern,
+        signal.as_ref(),
+    )
+    .await?
+    {
+        return Ok(finish_grep_output(result.lines, result.limit_reached, false, limit));
+    }
+
+    // ── Fallback: fff-search with cached picker ───────────────
     let mut all_results: Vec<String> = Vec::new();
     let mut limit_reached = false;
     let mut lines_truncated = false;
@@ -271,20 +311,17 @@ async fn execute_grep(
         let t_base = target.base_path.clone();
         let t_scope = target.path_scope.clone();
         let sig = signal.clone();
-        // Clone patterns so each thread owns its copy (not moved on first iter).
         let patterns_for_thread = patterns.clone();
         let cwd_for_thread = grep_cwd.clone();
         let glob_for_thread = glob_pattern.clone();
 
-        // One picker build per target; all patterns run through it.
         let (target_results, truncated) = tokio::task::spawn_blocking(move || {
             run_with_abort_signal(sig.as_ref(), |abort| {
-                let picker = build_picker(&t_base)?;
+                let picker = cached_picker(&t_base)?;
                 let mut out: Vec<String> = Vec::new();
                 let mut truncated = false;
 
                 for pattern in patterns_for_thread.iter() {
-                    // Borrow when no scope; allocate when scope needed.
                     let query_cow = if t_scope.is_empty() {
                         std::borrow::Cow::Borrowed(&pattern.query)
                     } else {
@@ -309,7 +346,7 @@ async fn execute_grep(
                         file_glob: glob_for_thread.clone(),
                         ..Default::default()
                     };
-                    let (matches, lt) = format_grep_output_ex(&picker, &result, &fmt_opts);
+                    let (matches, lt) = format_grep_output_ex(picker.as_ref(), &result, &fmt_opts);
                     if lt {
                         truncated = true;
                     }
@@ -350,13 +387,130 @@ async fn execute_grep(
         }
     }
 
-    // Deduplicate file paths across targets for files-with-matches
     if output_mode == GrepOutputMode::FilesWithMatches {
         let mut seen = BTreeSet::new();
         all_results.retain(|line| line.starts_with('[') || seen.insert(line.clone()));
     }
 
-    // ── Truncate and format output ─────────────────────────────
+    Ok(finish_grep_output(all_results, limit_reached, lines_truncated, limit))
+}
+
+struct FastGrepResult {
+    lines: Vec<String>,
+    limit_reached: bool,
+}
+
+/// Map agent GrepOutputMode → ripgrep mode.
+fn rg_mode(mode: GrepOutputMode) -> RgOutputMode {
+    match mode {
+        GrepOutputMode::Standard => RgOutputMode::Content,
+        GrepOutputMode::FilesWithMatches => RgOutputMode::FilesWithMatches,
+        GrepOutputMode::Count => RgOutputMode::Count,
+    }
+}
+
+/// Try system `rg`. Returns `Ok(None)` when unavailable so fff can run.
+#[allow(clippy::too_many_arguments)]
+async fn try_ripgrep_grep(
+    raw_patterns: &[String],
+    absolute_paths: &[String],
+    cwd: &str,
+    output_mode: GrepOutputMode,
+    ignore_case: bool,
+    literal: bool,
+    word_regexp: bool,
+    before_context: usize,
+    after_context: usize,
+    max_matches_per_file: Option<usize>,
+    limit: usize,
+    glob: Option<&str>,
+    file_type: Option<&str>,
+    multiline: bool,
+    multi_pattern: bool,
+    signal: Option<&CancellationToken>,
+) -> anyhow::Result<Option<FastGrepResult>> {
+    // Prefer relative search roots under cwd so rg output relativizes cleanly.
+    let paths: Vec<String> = if absolute_paths.is_empty() {
+        vec![".".into()]
+    } else {
+        absolute_paths
+            .iter()
+            .map(|p| {
+                let norm = p.replace('\\', "/");
+                norm.strip_prefix(&format!("{cwd}/"))
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| if norm == cwd { ".".into() } else { p.clone() })
+            })
+            .collect()
+    };
+
+    let mut all_lines: Vec<String> = Vec::new();
+    let mut limit_reached = false;
+
+    for (i, pattern) in raw_patterns.iter().enumerate() {
+        if all_lines.len() >= limit {
+            limit_reached = true;
+            break;
+        }
+        let remaining = limit.saturating_sub(all_results_len_for_budget(&all_lines));
+        let rg_args = RgGrepArgs {
+            pattern: pattern.clone(),
+            paths: paths.clone(),
+            glob: glob.map(str::to_string),
+            file_type: file_type.map(str::to_string),
+            mode: rg_mode(output_mode),
+            ignore_case,
+            literal,
+            word_regexp,
+            before_context,
+            after_context,
+            max_count_per_file: max_matches_per_file,
+            head_limit: remaining.max(1),
+            multiline,
+            cwd: cwd.to_string(),
+        };
+        let Some(run) = run_rg_grep(&rg_args, signal).await? else {
+            // Any pattern failing to launch rg → full fallback.
+            return Ok(None);
+        };
+        if multi_pattern && !run.lines.is_empty() {
+            if !all_lines.is_empty() {
+                all_lines.push(String::new());
+            }
+            all_lines.push(format!("[Pattern: {pattern}]"));
+        }
+        all_lines.extend(run.lines);
+        if run.limit_reached {
+            limit_reached = true;
+            break;
+        }
+        let _ = i;
+    }
+
+    if output_mode == GrepOutputMode::FilesWithMatches {
+        let mut seen = BTreeSet::new();
+        all_lines.retain(|line| line.starts_with('[') || seen.insert(line.clone()));
+    }
+
+    Ok(Some(FastGrepResult {
+        lines: all_lines,
+        limit_reached,
+    }))
+}
+
+fn all_results_len_for_budget(lines: &[String]) -> usize {
+    lines
+        .iter()
+        .filter(|l| !l.is_empty() && !l.starts_with("[Pattern:"))
+        .count()
+}
+
+fn finish_grep_output(
+    all_results: Vec<String>,
+    limit_reached: bool,
+    lines_truncated: bool,
+    limit: usize,
+) -> AgentToolResult {
     let output = all_results.join("\n");
     let truncation = truncate_head(
         &output,
@@ -375,7 +529,7 @@ async fn execute_grep(
         text.push_str("\n\n[some lines truncated for length]");
     }
 
-    Ok(AgentToolResult {
+    AgentToolResult {
         content: vec![crate::types::ToolResultContent::Text(elph_ai::TextContent::new(text))],
         details: json!({
             "matchLimitReached": limit_reached,
@@ -385,7 +539,7 @@ async fn execute_grep(
         added_tool_names: None,
         terminate: None,
         usage: None,
-    })
+    }
 }
 
 #[cfg(test)]

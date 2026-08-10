@@ -1,7 +1,9 @@
 //! Shared helpers for `fff-search` backed exploration tools.
 
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
+use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::Duration;
@@ -70,6 +72,32 @@ pub fn build_picker(base_path: &str) -> Result<FilePicker> {
     .map_err(|error| anyhow!("{error}"))?;
     picker.collect_files().map_err(|error| anyhow!("{error}"))?;
     Ok(picker)
+}
+
+/// Process-wide cache of fff pickers keyed by normalized base path.
+/// Avoids re-scanning the tree on every grep/find call when falling back
+/// from system `rg` (or when `rg` is unavailable).
+fn picker_cache() -> &'static parking_lot::Mutex<HashMap<String, Arc<FilePicker>>> {
+    static CACHE: OnceLock<parking_lot::Mutex<HashMap<String, Arc<FilePicker>>>> = OnceLock::new();
+    CACHE.get_or_init(|| parking_lot::Mutex::new(HashMap::new()))
+}
+
+/// Return a cached [`FilePicker`] for `base_path`, building it on first use.
+///
+/// Callers that only need short-lived exclusive access can clone the `Arc` and
+/// search via the shared picker; `FilePicker` grep APIs take `&self`.
+pub fn cached_picker(base_path: &str) -> Result<Arc<FilePicker>> {
+    let key = base_path.replace('\\', "/").trim_end_matches('/').to_string();
+    {
+        let cache = picker_cache().lock();
+        if let Some(hit) = cache.get(&key) {
+            return Ok(Arc::clone(hit));
+        }
+    }
+    let picker = Arc::new(build_picker(base_path)?);
+    let mut cache = picker_cache().lock();
+    // Another thread may have filled the slot; prefer the existing entry.
+    Ok(Arc::clone(cache.entry(key).or_insert_with(|| Arc::clone(&picker))))
 }
 
 pub fn grep_search_scope(absolute_path: &str, is_file: bool) -> (String, String) {
