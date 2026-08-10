@@ -21,6 +21,7 @@ mod resource_loader;
 mod run_mode;
 mod runtime;
 mod session;
+mod session_continuity;
 mod session_info_slash;
 mod session_manager;
 mod skills_load;

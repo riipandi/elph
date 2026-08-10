@@ -54,8 +54,9 @@ Canonical SQL: `elph-agent` `CANONICAL_SESSION_SCHEMA_SQL` / platform migration 
 
 1. Open session by id (`--resume`) or latest non-empty for cwd (`--continue`).
 2. `reconcile_session` + `AgentHarness::restore` (model, tools, journal).
-3. LLM context: `session.build_context()` from the active branch.
-4. TUI: `reconstruct_transcript_from_llm_entries` on that branch.
+3. LLM context: `session.build_context()` from the active branch (full prior turns + tool results after compaction transform).
+4. **Continuity brief:** each turn the dynamic system prompt appends `<session_state>` when the session has history, open todos, and/or an active goal — open checklist, goal status, last user/assistant anchors, and an explicit “do not restart finished work” rule (`session_continuity.rs`).
+5. **TUI:** `reconstruct_transcript_from_llm_entries` on that branch; durable `session_todos` are re-emitted as `TodoUpdated` on open so the live panel matches the store.
 
 Messages are flushed on each `MessageEnd` into `session_entries` (transactional with leaf). Do not rely on UI snapshot blobs.
 

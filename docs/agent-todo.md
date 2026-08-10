@@ -60,9 +60,16 @@ System prompt (`coding_base.md` → `<operating_loop>`) biases to **See → Do �
 
 Table `session_todos` in `.elph/store.db`, cascade-deleted with the session. See [session-persistence.md](./session-persistence.md).
 
+## Session restore
+
+On session open (`--continue` / `--resume` / mid-session), open todos are:
+
+1. Loaded from `session_todos` and emitted as `TodoUpdated` so the TUI panel rehydrates immediately.
+2. Injected into the system prompt as part of `<session_state>` (with goal + last-message anchors) so the model continues the checklist instead of inventing a new plan.
+
 ## TUI
 
-Live panel above the status row, driven by `TodoUpdated` UI events from `todo_write`:
+Live panel above the status row, driven by `TodoUpdated` UI events from `todo_write` and by rehydrate-on-open:
 
 | Behavior | Detail |
 | -------- | ------ |

@@ -243,6 +243,7 @@ pub async fn create_coding_session_with_events(
             }
         })
     }));
+    let goal_store_for_prompt = Arc::clone(&goal_store);
     tools.extend(create_goal_tools_with_hook(goal_store, session_id.clone(), goal_hook));
 
     let todo_store = Arc::new(TodoStore::new(options.paths.memory_db_path()).with_database(database.clone()));
@@ -253,7 +254,13 @@ pub async fn create_coding_session_with_events(
             let _ = ui_tx.send(crate::agent::AgentUiEvent::TodoUpdated { items });
         })
     });
-    tools.extend(create_todo_tools_with_hook(todo_store, session_id.clone(), Some(todo_hook)));
+    // Keep a handle for continuity brief + TUI rehydrate (tools take another Arc clone).
+    let todo_store_for_prompt = Arc::clone(&todo_store);
+    tools.extend(create_todo_tools_with_hook(
+        Arc::clone(&todo_store),
+        session_id.clone(),
+        Some(todo_hook),
+    ));
 
     // Clamp default thinking (new-session seed) to the resolved model catalog.
     let thinking = {
@@ -310,9 +317,31 @@ pub async fn create_coding_session_with_events(
     let peers_worker_id = worker_runtime.as_ref().map(|w| w.worker_id.clone());
     let peers_stale = worker_runtime.as_ref().map(|w| w.stale_secs()).unwrap_or(30);
 
+    // Session continuity: todos/goals/last anchors — re-read each turn so restore and mid-session stay aligned.
+    let continuity_stores = ContinuityStores {
+        session_id: session_id.clone(),
+        todo_store: todo_store_for_prompt,
+        goal_store: goal_store_for_prompt,
+    };
+
     let system_prompt = if let Some(override_text) = options.system_prompt_override {
-        SystemPrompt::Static(override_text.to_string())
+        // Even with a full override, append continuity so resume never loses open work.
+        let continuity_stores = continuity_stores.clone();
+        let override_text = override_text.to_string();
+        SystemPrompt::Dynamic(Arc::new(move |ctx| {
+            let base = override_text.clone();
+            let continuity_stores = continuity_stores.clone();
+            Box::pin(async move {
+                let mut prompt = base;
+                if let Some(section) = continuity_stores.build_section(ctx.session).await {
+                    prompt.push_str("\n\n");
+                    prompt.push_str(&section);
+                }
+                prompt
+            })
+        }))
     } else {
+        let continuity_stores = continuity_stores.clone();
         SystemPrompt::Dynamic(Arc::new(move |ctx| {
             let cwd = cwd.clone();
             let agents_md = agents_md.clone();
@@ -322,6 +351,7 @@ pub async fn create_coding_session_with_events(
             let peers_registry = peers_registry.clone();
             let peers_project_key = peers_project_key.clone();
             let peers_worker_id = peers_worker_id.clone();
+            let continuity_stores = continuity_stores.clone();
             Box::pin(async move {
                 prompt_options.mode = *mode_state.lock().await;
                 if let (Some(reg), Some(pk), Some(wid)) =
@@ -353,6 +383,12 @@ pub async fn create_coding_session_with_events(
                 if let Some(ref mem) = memory_section {
                     prompt.push_str("\n\n");
                     prompt.push_str(mem);
+                }
+
+                // Structured resume state (todos / goal / last anchors).
+                if let Some(section) = continuity_stores.build_section(ctx.session).await {
+                    prompt.push_str("\n\n");
+                    prompt.push_str(&section);
                 }
 
                 prompt
@@ -412,6 +448,16 @@ pub async fn create_coding_session_with_events(
         log::warn!("automatic memory hooks: {err:#}");
     }
 
+    // Rehydrate todos into the TUI immediately on restore/continue so the panel
+    // and model-facing state match the durable `session_todos` rows.
+    match continuity_stores.todo_store.list(&session_id).await {
+        Ok(items) if !items.is_empty() => {
+            let _ = ui_tx.send(crate::agent::AgentUiEvent::TodoUpdated { items });
+        }
+        Ok(_) => {}
+        Err(err) => log::warn!("todo rehydrate on open failed: {err:#}"),
+    }
+
     let harness = Arc::new(harness);
     let restored_selection = {
         let restored_model = harness.get_model().await;
@@ -441,6 +487,29 @@ pub async fn create_coding_session_with_events(
     start_mcp_notifications(&session, Arc::clone(&mcp_registry), mcp_config_warnings);
 
     Ok((session, ui_rx))
+}
+
+/// Stores used to build `<session_state>` for system prompt continuity on resume.
+#[derive(Clone)]
+struct ContinuityStores {
+    session_id: String,
+    todo_store: Arc<TodoStore>,
+    goal_store: Arc<GoalStore>,
+}
+
+impl ContinuityStores {
+    async fn build_section<S>(&self, session: elph_agent::Session<S>) -> Option<String>
+    where
+        S: elph_agent::SessionStorage + Clone + Send + Sync + 'static,
+    {
+        let branch = session.branch(None).await.unwrap_or_default();
+        let todos = self.todo_store.list(&self.session_id).await.unwrap_or_default();
+        let goal = self.goal_store.get_latest_goal(&self.session_id).await.ok().flatten();
+        let snap =
+            super::session_continuity::ContinuitySnapshot::from_parts(&self.session_id, &branch, &todos, goal.as_ref());
+        let section = snap.render();
+        if section.is_empty() { None } else { Some(section) }
+    }
 }
 
 /// Default display name for a worker: memorable-id (e.g. `calm-fox`), with hostname fallback.
