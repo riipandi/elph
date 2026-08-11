@@ -56,11 +56,22 @@ pub struct TodoPanelRow {
 }
 
 /// Build display rows from the raw todo list: all items stay visible (including
-/// finished ones). Counts are always full-list.
+/// finished ones), but **non-finished items are sorted ahead of done ones**.
+///
+/// The panel renders rows in order up to a cap, so placing pending/running
+/// items first means done items are the first to be hidden when space runs out —
+/// unfinished work stays visible while completed items get "shifted" out of view.
+/// Within each group the original order is preserved.
+///
+/// Counts are always full-list.
 pub fn build_todo_panel_rows(todos: &[TodoPanelRow]) -> (Vec<TodoPanelRow>, usize, usize, usize) {
     let total = todos.len();
     let done = todos.iter().filter(|t| t.finished).count();
-    let visible = todos.to_vec();
+    let mut visible = Vec::with_capacity(total);
+    // First: non-finished (pending / running) items, preserving order.
+    visible.extend(todos.iter().filter(|t| !t.finished).cloned());
+    // Then: finished items, preserving order.
+    visible.extend(todos.iter().filter(|t| t.finished).cloned());
     let visible_count = visible.len();
     (visible, visible_count, done, total)
 }
@@ -189,10 +200,14 @@ pub fn TodoProgressPanel(props: &TodoProgressPanelProps, hooks: Hooks) -> impl I
     }
     if show_more {
         let hidden = visible_count.saturating_sub(cap);
-        let more_label = if done > 0 {
-            format!("… +{hidden} more ({done} done)")
-        } else {
-            format!("… +{hidden} more")
+        // Unfinished items are listed first, so the hidden tail is mostly done
+        // items. Count how many of the *hidden* ones are done for an accurate hint.
+        let hidden_done = visible[cap..].iter().filter(|r| r.finished).count();
+        let hidden_active = hidden - hidden_done;
+        let more_label = match (hidden_done, hidden_active) {
+            (d, 0) if d > 0 => format!("… +{hidden} more ({d} done)"),
+            (0, a) if a > 0 => format!("… +{hidden} more ({a} active)"),
+            (d, a) => format!("… +{hidden} more ({a} active, {d} done)"),
         };
         rows.push(
             element! {
@@ -456,5 +471,46 @@ mod tests {
         assert_eq!(truncate_todo_label("hello", 10), "hello");
         assert_eq!(truncate_todo_label("hello world", 8), "hello w…");
         assert_eq!(truncate_todo_label("日本語テスト", 4), "日本語…");
+    }
+
+    #[test]
+    fn unfinished_items_sort_before_done_items() {
+        // Interleaved finished/unfinished — unfinished must come first so the
+        // panel's row cap hides done items before pending/running ones.
+        let rows = vec![
+            TodoPanelRow {
+                label: "done1".into(),
+                running: false,
+                finished: true,
+            },
+            TodoPanelRow {
+                label: "pending1".into(),
+                running: false,
+                finished: false,
+            },
+            TodoPanelRow {
+                label: "done2".into(),
+                running: false,
+                finished: true,
+            },
+            TodoPanelRow {
+                label: "running1".into(),
+                running: true,
+                finished: false,
+            },
+            TodoPanelRow {
+                label: "pending2".into(),
+                running: false,
+                finished: false,
+            },
+        ];
+        let (visible, _visible_count, done, total) = build_todo_panel_rows(&rows);
+        assert_eq!(total, 5);
+        assert_eq!(done, 2);
+        // Unfinished first (in original order), then done (in original order).
+        assert_eq!(
+            visible.iter().map(|r| r.label.as_str()).collect::<Vec<_>>(),
+            vec!["pending1", "running1", "pending2", "done1", "done2"]
+        );
     }
 }

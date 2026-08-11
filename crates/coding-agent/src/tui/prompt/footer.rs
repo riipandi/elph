@@ -1,7 +1,5 @@
 //! Status footer row under the editor: mode/model left, turn/git right.
 
-use std::time::Duration;
-
 use iocraft::prelude::*;
 
 use crate::tui::chrome::{
@@ -14,7 +12,7 @@ use crate::tui::labels::{
 };
 use crate::tui::theme::{
     FOOTER_DIM_FG, FOOTER_GIT_ADD_FG, FOOTER_GIT_DEL_FG, FOOTER_IMG_INDICATOR_FG, FOOTER_WORKERS_IDLE_FG,
-    FOOTER_WORKERS_INBOX_FG, FOOTER_WORKERS_PULSE_FG, FOOTER_WORKERS_REPLY_FG, QUIT_BUSY_NOTICE_FG, rgb_color,
+    FOOTER_WORKERS_INBOX_FG, FOOTER_WORKERS_REPLY_FG, QUIT_BUSY_NOTICE_FG, rgb_color,
 };
 use crate::types::{AgentMode, ThinkingLevel};
 
@@ -269,39 +267,9 @@ fn split_footer_status_left(mode: AgentMode, left: &str) -> FooterLeftParts {
     }
 }
 
-/// Interval (ms) at which the worker-badge pulse flash is cleared after a new message.
-const WORKER_BADGE_PULSE_MS: u64 = 600;
-
 #[component]
-pub fn Footer(props: &FooterProps, mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
+pub fn Footer(props: &FooterProps) -> impl Into<AnyElement<'static>> {
     let _chrome_revision = props.chrome_revision;
-
-    // Pulse state: flashes bright for one interval after a new inbound message arrives.
-    // `prev_pending` tracks the last-seen pending count so we detect an *increase*.
-    let mut prev_pending = hooks.use_ref(|| 0usize);
-    let mut pulse = hooks.use_state(|| false);
-
-    if props.worker_pending_count > prev_pending.get() {
-        prev_pending.set(props.worker_pending_count);
-        pulse.set(true);
-    } else if props.worker_pending_count == 0 {
-        // User opened the overlay (count cleared) — reset for the next batch of mail.
-        prev_pending.set(0);
-        pulse.set(false);
-    }
-
-    // Single long-running future that clears the pulse after each interval. Spawned once.
-    hooks.use_future({
-        let mut pulse = pulse;
-        async move {
-            loop {
-                tokio::time::sleep(Duration::from_millis(WORKER_BADGE_PULSE_MS)).await;
-                if pulse.get() {
-                    pulse.set(false);
-                }
-            }
-        }
-    });
 
     // Mode + model always win width; git/turn on the right yield when the row is tight.
     let min_left = footer_mode_model_width(props.agent_mode, &props.model_label);
@@ -347,11 +315,8 @@ pub fn Footer(props: &FooterProps, mut hooks: Hooks) -> impl Into<AnyElement<'st
     } else {
         FOOTER_DIM_FG
     };
-    // Worker badge color: bright pulse flash on new mail → green while replying →
-    // yellow with pending mail → dim when idle.
-    let workers_badge_color = if pulse.get() {
-        FOOTER_WORKERS_PULSE_FG
-    } else if props.worker_replying {
+    // Worker badge color: green while replying → yellow with pending mail → dim when idle.
+    let workers_badge_color = if props.worker_replying {
         FOOTER_WORKERS_REPLY_FG
     } else if props.worker_pending_count > 0 {
         FOOTER_WORKERS_INBOX_FG
@@ -359,7 +324,7 @@ pub fn Footer(props: &FooterProps, mut hooks: Hooks) -> impl Into<AnyElement<'st
         FOOTER_WORKERS_IDLE_FG
     };
     // Active (messaging) states use a filled hexagon; idle stays hollow.
-    let workers_active = pulse.get() || props.worker_replying || props.worker_pending_count > 0;
+    let workers_active = props.worker_replying || props.worker_pending_count > 0;
 
     element! {
         View(
