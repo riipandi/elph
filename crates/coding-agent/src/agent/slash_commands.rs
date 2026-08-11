@@ -120,11 +120,8 @@ pub fn slash_commands_for_palette(
     if let Some(templates) = prompt_templates {
         for template in templates {
             if !builtin_names.contains(&template.name) {
-                let mut cmd = SlashCommand::new(
-                    &template.name,
-                    format!("[prompt] {}", truncate_palette_description(&template.description)),
-                )
-                .with_kind(SlashCommandKind::PromptTemplate);
+                let mut cmd = SlashCommand::new(&template.name, truncate_palette_description(&template.description))
+                    .with_kind(SlashCommandKind::PromptTemplate);
                 if let Some(hint) = &template.argument_hint {
                     cmd = cmd.with_args_hint(hint);
                 }
@@ -136,9 +133,8 @@ pub fn slash_commands_for_palette(
         for skill in skills {
             let name = skill_slash_name(&skill.name);
             if !builtin_names.contains(&name) {
-                let mut cmd =
-                    SlashCommand::new(name, format!("[skill] {}", truncate_palette_description(&skill.description)))
-                        .with_kind(SlashCommandKind::Skill);
+                let mut cmd = SlashCommand::new(name, truncate_palette_description(&skill.description))
+                    .with_kind(SlashCommandKind::Skill);
                 if let Some(hint) = &skill.argument_hint {
                     cmd = cmd.with_args_hint(hint);
                 }
@@ -1025,7 +1021,9 @@ mod tests {
             .expect("skill command");
         // sample_skill() has no argument_hint → no args_hint.
         assert_eq!(skill.args_hint, None);
-        assert!(skill.description.starts_with("[skill]"));
+        // Skill description carries no `[skill]` tag — the `/skill:` prefix on
+        // completion is the unambiguous marker.
+        assert_eq!(skill.description, "Review changes");
     }
 
     #[test]

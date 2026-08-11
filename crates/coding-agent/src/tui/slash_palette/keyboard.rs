@@ -429,11 +429,14 @@ mod tests {
         use crate::types::SlashCommandKind;
 
         let commands = vec![
-            SlashCommand::new("code-review", "[skill] Review code").with_kind(SlashCommandKind::Skill),
+            SlashCommand::new("code-review", "Review code").with_kind(SlashCommandKind::Skill),
             SlashCommand::new("compact", "Compact history"),
         ];
         let filtered = super::super::model::filter_commands(&commands, "code");
-        let index = filtered.iter().position(|cmd| cmd.name == "code-review").expect("code-review");
+        let index = filtered
+            .iter()
+            .position(|cmd| cmd.name == "code-review")
+            .expect("code-review");
         let action = resolve_key_action("/code", &filtered, index, KeyCode::Tab, KeyModifiers::NONE).unwrap();
         assert_eq!(
             action,

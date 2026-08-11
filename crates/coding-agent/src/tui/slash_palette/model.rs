@@ -362,16 +362,14 @@ mod tests {
 
     #[test]
     fn complete_emits_skill_prefix_for_skill_kind() {
-        let skill = SlashCommand::new("code-review", "Review code")
-            .with_kind(SlashCommandKind::Skill);
+        let skill = SlashCommand::new("code-review", "Review code").with_kind(SlashCommandKind::Skill);
         assert_eq!(complete_command("/code", &skill), "/skill:code-review ");
         assert_eq!(complete_command("/code src/", &skill), "/skill:code-review src/");
     }
 
     #[test]
     fn palette_submit_slash_input_trims_and_preserves_skill_prefix() {
-        let skill = SlashCommand::new("code-review", "Review code")
-            .with_kind(SlashCommandKind::Skill);
+        let skill = SlashCommand::new("code-review", "Review code").with_kind(SlashCommandKind::Skill);
         assert_eq!(palette_submit_slash_input("/code", &skill), "/skill:code-review");
     }
 
