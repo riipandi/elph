@@ -52,12 +52,12 @@
     {
         "providerId": "github-copilot",
         "rustMod": "github_copilot",
-        "count": 29
+        "count": 30
     },
     {
         "providerId": "google",
         "rustMod": "google",
-        "count": 41
+        "count": 38
     },
     {
         "providerId": "google-vertex",
@@ -72,7 +72,7 @@
     {
         "providerId": "huggingface",
         "rustMod": "huggingface",
-        "count": 131
+        "count": 129
     },
     {
         "providerId": "hyper",
@@ -82,12 +82,12 @@
     {
         "providerId": "infron",
         "rustMod": "infron",
-        "count": 287
+        "count": 289
     },
     {
         "providerId": "kilo",
         "rustMod": "kilo",
-        "count": 349
+        "count": 351
     },
     {
         "providerId": "kimi-coding",
@@ -118,6 +118,11 @@
         "providerId": "moonshotai-cn",
         "rustMod": "moonshotai_cn",
         "count": 10
+    },
+    {
+        "providerId": "nara-router",
+        "rustMod": "nara_router",
+        "count": 52
     },
     {
         "providerId": "neuralwatt",
@@ -162,7 +167,7 @@
     {
         "providerId": "openrouter",
         "rustMod": "openrouter",
-        "count": 400
+        "count": 402
     },
     {
         "providerId": "qwen-token-plan",
@@ -197,7 +202,7 @@
     {
         "providerId": "wafer",
         "rustMod": "wafer",
-        "count": 9
+        "count": 8
     },
     {
         "providerId": "xai",

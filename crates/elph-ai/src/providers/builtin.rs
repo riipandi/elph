@@ -589,6 +589,12 @@ pub fn builtin_providers() -> Vec<Provider> {
             openai_completions_api,
             (vec!["MOONSHOT_API_KEY"], "Moonshot API key")
         ),
+        simple_provider!(
+            "nara-router",
+            "Nara Router",
+            openai_completions_api,
+            (vec!["NARA_API_KEY"], "Nara Router API key")
+        ),
         opencode_provider(),
         opencode_go_provider(),
         simple_provider!(

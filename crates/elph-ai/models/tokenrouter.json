@@ -973,7 +973,7 @@
         },
         "id": "google/gemma-4-26b-a4b-it",
         "input": ["image", "text", "video"],
-        "maxTokens": 16384,
+        "maxTokens": 262144,
         "name": "Gemma 4 26B A4B IT",
         "provider": "tokenrouter",
         "reasoning": true,
@@ -2221,7 +2221,7 @@
         },
         "id": "qwen/qwen3.5-397b-a17b",
         "input": ["text", "image", "video"],
-        "maxTokens": 65536,
+        "maxTokens": 262144,
         "name": "Qwen3.5 397B-A17B",
         "provider": "tokenrouter",
         "reasoning": true,
@@ -2264,16 +2264,16 @@
     "qwen/qwen3.5-flash": {
         "api": "openai-completions",
         "baseUrl": "https://api.tokenrouter.com/v1",
-        "contextWindow": 1020000,
+        "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.0058,
             "cacheWrite": 0.0,
-            "input": 0.1,
-            "output": 0.4
+            "input": 0.029,
+            "output": 0.287
         },
         "id": "qwen/qwen3.5-flash",
-        "input": ["text", "image"],
-        "maxTokens": 1020000,
+        "input": ["text"],
+        "maxTokens": 250000,
         "name": "Qwen3.5 Flash",
         "provider": "tokenrouter",
         "reasoning": true,
@@ -2656,10 +2656,10 @@
         "baseUrl": "https://api.tokenrouter.com/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.063,
+            "cacheRead": 0.06,
             "cacheWrite": 0.19,
-            "input": 0.19,
-            "output": 0.63
+            "input": 0.18,
+            "output": 0.6
         },
         "id": "tencent/hy3-preview",
         "input": ["text"],
@@ -2966,7 +2966,7 @@
     "z-ai/glm-4.6": {
         "api": "openai-completions",
         "baseUrl": "https://api.tokenrouter.com/v1",
-        "contextWindow": 202752,
+        "contextWindow": 204800,
         "cost": {
             "cacheRead": 0.11,
             "cacheWrite": 0.0,

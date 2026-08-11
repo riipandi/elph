@@ -129,32 +129,6 @@
             "xhigh": null
         }
     },
-    "MiniMax-M3": {
-        "api": "openai-completions",
-        "baseUrl": "https://pass.wafer.ai/v1",
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.07,
-            "cacheWrite": 0.0,
-            "input": 0.33,
-            "output": 1.32
-        },
-        "id": "MiniMax-M3",
-        "input": ["text", "image"],
-        "maxTokens": 128000,
-        "name": "MiniMax-M3",
-        "provider": "wafer",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": "max",
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "Qwen3.5-397B-A17B": {
         "api": "openai-completions",
         "baseUrl": "https://pass.wafer.ai/v1",

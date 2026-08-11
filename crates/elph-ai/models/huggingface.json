@@ -1078,17 +1078,17 @@
     "Qwen/Qwen3-VL-30B-A3B-Instruct": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 100000,
+        "contextWindow": 256000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.23,
-            "output": 0.92
+            "input": 0.15,
+            "output": 0.55
         },
         "id": "Qwen/Qwen3-VL-30B-A3B-Instruct",
-        "input": ["text", "image", "video"],
-        "maxTokens": 100000,
-        "name": "Qwen3 VL 30B",
+        "input": ["text", "image"],
+        "maxTokens": 32768,
+        "name": "Qwen3-VL 30B-A3B Instruct",
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -1451,32 +1451,6 @@
         "input": ["text"],
         "maxTokens": 64000,
         "name": "aisingapore/Qwen-SEA-LION-v4-32B-IT",
-        "provider": "huggingface",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "allenai/Olmo-3-7B-Instruct": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "id": "allenai/Olmo-3-7B-Instruct",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "allenai/Olmo-3-7B-Instruct",
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -2994,32 +2968,6 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "utter-project/EuroLLM-22B-Instruct-2512": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "id": "utter-project/EuroLLM-22B-Instruct-2512",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "utter-project/EuroLLM-22B-Instruct-2512",
-        "provider": "huggingface",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null

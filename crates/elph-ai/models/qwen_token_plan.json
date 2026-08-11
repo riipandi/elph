@@ -197,14 +197,14 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.2817,
+            "cacheRead": 0.28,
             "cacheWrite": 0.0,
-            "input": 1.1268,
-            "output": 3.9438
+            "input": 1.4,
+            "output": 4.4
         },
         "id": "glm-5.2",
         "input": ["text"],
-        "maxTokens": 128000,
+        "maxTokens": 131072,
         "name": "GLM-5.2",
         "provider": "qwen-token-plan",
         "reasoning": true,

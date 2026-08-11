@@ -2223,7 +2223,7 @@
         "compat": {
             "supportsStrictMode": true
         },
-        "contextWindow": 272000,
+        "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.022,
             "cacheWrite": 0.275,
@@ -2252,10 +2252,10 @@
         "compat": {
             "supportsStrictMode": true
         },
-        "contextWindow": 272000,
+        "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.55,
-            "cacheWrite": 6.88,
+            "cacheWrite": 6.875,
             "input": 5.5,
             "output": 33.0
         },
@@ -2281,7 +2281,7 @@
         "compat": {
             "supportsStrictMode": true
         },
-        "contextWindow": 272000,
+        "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.22,
             "cacheWrite": 2.75,

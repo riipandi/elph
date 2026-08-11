@@ -401,7 +401,7 @@
         },
         "id": "@cf/zai-org/glm-5.2",
         "input": ["text"],
-        "maxTokens": 262144,
+        "maxTokens": 256000,
         "name": "Glm 5.2",
         "provider": "cloudflare-workers-ai",
         "reasoning": true,

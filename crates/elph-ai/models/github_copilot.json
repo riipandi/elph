@@ -5,7 +5,7 @@
         "compat": {
             "supportsOpenAIGrammarTools": true
         },
-        "contextWindow": 264000,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.025,
             "cacheWrite": 0.0,
@@ -20,8 +20,8 @@
         },
         "id": "auto",
         "input": ["text", "image"],
-        "maxTokens": 64000,
-        "name": "Auto",
+        "maxTokens": 16384,
+        "name": "Auto Route",
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {

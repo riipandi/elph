@@ -238,6 +238,15 @@ const PROVIDERS: &[ProviderSource] = &[
         live_pricing_env: Some("MOONSHOT_API_KEY"),
     },
     ProviderSource {
+        id: "nara-router",
+        models_dev_keys: &["nara-router", "bynara"],
+        default_api: "openai-completions",
+        default_base_url: "https://router.bynara.id/v1",
+        gateway_preserve_ids: true,
+        live_pricing_base: Some("https://router.bynara.id/v1"),
+        live_pricing_env: Some("NARA_API_KEY"),
+    },
+    ProviderSource {
         id: "neuralwatt",
         models_dev_keys: &["neuralwatt"],
         default_api: "openai-completions",

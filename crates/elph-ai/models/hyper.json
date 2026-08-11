@@ -106,9 +106,9 @@
         "contextWindow": 256000,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.062,
-            "input": 0.124,
-            "output": 0.42
+            "cacheWrite": 0.058,
+            "input": 0.116,
+            "output": 0.408
         },
         "id": "gemma-4-26b-a4b-it",
         "input": ["text"],
@@ -202,9 +202,9 @@
         "contextWindow": 131072,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.089,
-            "input": 0.178,
-            "output": 0.71
+            "cacheWrite": 0.094,
+            "input": 0.188,
+            "output": 0.73
         },
         "id": "gpt-oss-120b",
         "input": ["text"],
@@ -233,9 +233,9 @@
         "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.275,
-            "input": 0.55,
-            "output": 2.89
+            "cacheWrite": 0.279,
+            "input": 0.558,
+            "output": 2.94
         },
         "id": "kimi-k2.5",
         "input": ["text"],
@@ -360,8 +360,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.3033,
-            "input": 0.6066,
-            "output": 1.0386
+            "input": 0.598,
+            "output": 0.738
         },
         "id": "llama-3.3-70b-instruct",
         "input": ["text"],
@@ -421,9 +421,9 @@
         "contextWindow": 262100,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.218,
-            "input": 0.436,
-            "output": 1.72
+            "cacheWrite": 0.24,
+            "input": 0.48,
+            "output": 1.8
         },
         "id": "minimax-m2.7",
         "input": ["text"],
@@ -485,8 +485,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.2845,
-            "input": 0.569,
-            "output": 2.135
+            "input": 0.445,
+            "output": 2.145
         },
         "id": "qwen3-coder-480b-a35b-instruct-int4-mixed-ar",
         "input": ["text"],

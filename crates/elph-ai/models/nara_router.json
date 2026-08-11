@@ -1,0 +1,1354 @@
+{
+    "agnes-2.0-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 512000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "agnes-2.0-flash",
+        "input": ["text", "image"],
+        "maxTokens": 64000,
+        "name": "agnes-2.0-flash",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "agnes-2.5-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 512000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "agnes-2.5-flash",
+        "input": ["text", "image"],
+        "maxTokens": 64000,
+        "name": "agnes-2.5-flash",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "agnes-2.5-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "agnes-2.5-pro",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "agnes-2.5-pro",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "agnes-video-v2.0": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "agnes-video-v2.0",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "agnes-video-v2.0",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": null,
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "claude-fable-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 10.0,
+            "output": 50.0
+        },
+        "id": "claude-fable-5",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "Claude Fable 5",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": null,
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "claude-opus-4.7": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5.0,
+            "output": 25.0
+        },
+        "id": "claude-opus-4.7",
+        "input": ["text", "image"],
+        "maxTokens": 32000,
+        "name": "Claude Opus 4.7",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": null,
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "claude-opus-4.8": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5.0,
+            "output": 25.0
+        },
+        "id": "claude-opus-4.8",
+        "input": ["text", "image"],
+        "maxTokens": 64000,
+        "name": "Claude Opus 4.8",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": null,
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "claude-opus-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5.0,
+            "output": 25.0
+        },
+        "id": "claude-opus-5",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "Claude Opus 5",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": null,
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "claude-sonnet-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 3.0,
+            "output": 15.0
+        },
+        "id": "claude-sonnet-5",
+        "input": ["text", "image"],
+        "maxTokens": 64000,
+        "name": "Claude Sonnet 5",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": null,
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "deepseek-v4-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0028,
+            "cacheWrite": 0.0,
+            "input": 0.14,
+            "output": 0.28
+        },
+        "id": "deepseek-v4-flash",
+        "input": ["text"],
+        "maxTokens": 384000,
+        "name": "DeepSeek V4 Flash",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "deepseek-v4-flash-alibaba": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "deepseek-v4-flash-alibaba",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "deepseek-v4-flash-alibaba",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "deepseek-v4-flash-free": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "deepseek-v4-flash-free",
+        "input": ["text"],
+        "maxTokens": 128000,
+        "name": "DeepSeek V4 Flash Free",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "deepseek-v4-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.003625,
+            "cacheWrite": 0.0,
+            "input": 0.435,
+            "output": 0.87
+        },
+        "id": "deepseek-v4-pro",
+        "input": ["text"],
+        "maxTokens": 384000,
+        "name": "DeepSeek V4 Pro",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "deepseek-v4-pro-alibaba": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "deepseek-v4-pro-alibaba",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "deepseek-v4-pro-alibaba",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "glm-5.2": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.2817,
+            "cacheWrite": 0.0,
+            "input": 1.1268,
+            "output": 3.9438
+        },
+        "id": "glm-5.2",
+        "input": ["text"],
+        "maxTokens": 128000,
+        "name": "GLM-5.2",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "glm-5.2-alibaba": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "glm-5.2-alibaba",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "glm-5.2-alibaba",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "gpt-5.4": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.25,
+            "cacheWrite": 0.0,
+            "input": 2.5,
+            "output": 15.0
+        },
+        "id": "gpt-5.4",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "gpt-5.4",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "gpt-5.5": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 0.0,
+            "input": 5.0,
+            "output": 30.0
+        },
+        "id": "gpt-5.5",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.5",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "gpt-5.6-luna": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.1,
+            "cacheWrite": 0.0,
+            "input": 1.0,
+            "output": 6.0
+        },
+        "id": "gpt-5.6-luna",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.6 Luna",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "gpt-5.6-sol": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 0.0,
+            "input": 5.0,
+            "output": 30.0
+        },
+        "id": "gpt-5.6-sol",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.6 Sol",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "gpt-5.6-terra": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.25,
+            "cacheWrite": 0.0,
+            "input": 2.5,
+            "output": 15.0
+        },
+        "id": "gpt-5.6-terra",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.6 Terra",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "grok-4.5": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 500000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 2.0,
+            "output": 6.0
+        },
+        "id": "grok-4.5",
+        "input": ["text", "image"],
+        "maxTokens": 32768,
+        "name": "Grok 4.5",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": null,
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "grok-4.5-free": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 212000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "grok-4.5-free",
+        "input": ["text", "image"],
+        "maxTokens": 64000,
+        "name": "grok-4.5-free",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": null,
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "happyhorse-1.1": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "happyhorse-1.1",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "happyhorse-1.1",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": null,
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "kimi-k2.7-code": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 262000,
+        "cost": {
+            "cacheRead": 0.160835,
+            "cacheWrite": 0.0,
+            "input": 0.95,
+            "output": 3.9995
+        },
+        "id": "kimi-k2.7-code",
+        "input": ["text", "image"],
+        "maxTokens": 32768,
+        "name": "Kimi K2.7 Code",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": null,
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "kimi-k2.7-code-alibaba": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "kimi-k2.7-code-alibaba",
+        "input": ["text", "image"],
+        "maxTokens": 64000,
+        "name": "kimi-k2.7-code-alibaba",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "kimi-k3": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.3,
+            "cacheWrite": 0.0,
+            "input": 3.0,
+            "output": 15.0
+        },
+        "id": "kimi-k3",
+        "input": ["text", "image"],
+        "maxTokens": 131072,
+        "name": "Kimi K3",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "kimi-k3-free": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "kimi-k3-free",
+        "input": ["text", "image"],
+        "maxTokens": 64000,
+        "name": "kimi-k3-free",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "laguna-s-2.1": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 262000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "laguna-s-2.1",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "laguna-s-2.1",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "ling-3.0-flash-free": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 262000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "ling-3.0-flash-free",
+        "input": ["text"],
+        "maxTokens": 32768,
+        "name": "Ling-3.0-flash Free",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": null,
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "longcat-2.0-free": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "longcat-2.0-free",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "LongCat-2.0 Free",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "mimo-v2.5": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0028,
+            "cacheWrite": 0.0,
+            "input": 0.14,
+            "output": 0.28
+        },
+        "id": "mimo-v2.5",
+        "input": ["text", "image"],
+        "maxTokens": 131072,
+        "name": "MiMo-V2.5",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": null,
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "mimo-v2.5-free": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "mimo-v2.5-free",
+        "input": ["text", "image"],
+        "maxTokens": 32000,
+        "name": "MiMo V2.5 Free",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": null,
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "mimo-v2.5-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.003,
+            "cacheWrite": 0.0,
+            "input": 0.4,
+            "output": 0.8
+        },
+        "id": "mimo-v2.5-pro",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "MiMo-V2.5-Pro",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "mimo-v2.5-pro-ultraspeed": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0108,
+            "cacheWrite": 0.0,
+            "input": 1.305,
+            "output": 2.61
+        },
+        "id": "mimo-v2.5-pro-ultraspeed",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "MiMo-V2.5-Pro-UltraSpeed",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "minimax-m3": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.099,
+            "cacheWrite": 0.0,
+            "input": 0.395,
+            "output": 1.977
+        },
+        "id": "minimax-m3",
+        "input": ["text", "image"],
+        "maxTokens": 1048576,
+        "name": "MiniMax-M3",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": null,
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "mistral-large": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 252000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "mistral-large",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "mistral-large",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": null,
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "mistral-medium-3-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 256000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "mistral-medium-3-5",
+        "input": ["text", "image"],
+        "maxTokens": 64000,
+        "name": "mistral-medium-3-5",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": null,
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "muse-spark-1.1": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.15,
+            "cacheWrite": 0.0,
+            "input": 1.25,
+            "output": 4.25
+        },
+        "id": "muse-spark-1.1",
+        "input": ["text", "image"],
+        "maxTokens": 32000,
+        "name": "Muse Spark 1.1",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": null,
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "muse-spark-1.2": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.15,
+            "cacheWrite": 0.0,
+            "input": 1.25,
+            "output": 4.25
+        },
+        "id": "muse-spark-1.2",
+        "input": ["text", "image"],
+        "maxTokens": 131072,
+        "name": "Muse Spark 1.2",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": null,
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "muse-spark-1.2-contributor": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.002,
+            "cacheWrite": 0.0,
+            "input": 0.1,
+            "output": 0.2
+        },
+        "id": "muse-spark-1.2-contributor",
+        "input": ["text", "image"],
+        "maxTokens": 131072,
+        "name": "Muse Spark 1.2 Contributor",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": null,
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "nemotron-3-ultra": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "nemotron-3-ultra",
+        "input": ["text"],
+        "maxTokens": 128000,
+        "name": "nemotron-3-ultra",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": null,
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "qwen3.7-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.002962,
+            "cacheWrite": 0.03703,
+            "input": 0.02962,
+            "output": 0.1185
+        },
+        "id": "qwen3.7-flash",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Qwen3.7 Flash",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "qwen3.7-flash-alibaba": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "qwen3.7-flash-alibaba",
+        "input": ["text", "image"],
+        "maxTokens": 64000,
+        "name": "qwen3.7-flash-alibaba",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "qwen3.7-max": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.169,
+            "cacheWrite": 2.1125,
+            "input": 1.69,
+            "output": 5.07
+        },
+        "id": "qwen3.7-max",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "Qwen3.7 Max",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": null,
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "qwen3.7-max-alibaba": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "qwen3.7-max-alibaba",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "qwen3.7-max-alibaba",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": null,
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "qwen3.7-plus": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0564,
+            "cacheWrite": 0.3525,
+            "input": 0.282,
+            "output": 1.128
+        },
+        "id": "qwen3.7-plus",
+        "input": ["text", "image"],
+        "maxTokens": 64000,
+        "name": "Qwen3.7 Plus",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "qwen3.7-plus-alibaba": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "qwen3.7-plus-alibaba",
+        "input": ["text", "image"],
+        "maxTokens": 64000,
+        "name": "qwen3.7-plus-alibaba",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "qwen3.8-max": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.25,
+            "cacheWrite": 2.5,
+            "input": 2.0,
+            "output": 6.0
+        },
+        "id": "qwen3.8-max",
+        "input": ["text", "image"],
+        "maxTokens": 131072,
+        "name": "Qwen3.8 Max",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": null,
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "qwen3.8-max-alibaba": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "qwen3.8-max-alibaba",
+        "input": ["text", "image"],
+        "maxTokens": 64000,
+        "name": "qwen3.8-max-alibaba",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": null,
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "stepfun-3.7-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 262000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "stepfun-3.7-flash",
+        "input": ["text", "image"],
+        "maxTokens": 64000,
+        "name": "stepfun-3.7-flash",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": null,
+            "max": null
+        }
+    },
+    "tencent-hy3-free": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 262000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "tencent-hy3-free",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "tencent-hy3-free",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": null,
+            "xhigh": null,
+            "max": null
+        }
+    }
+}

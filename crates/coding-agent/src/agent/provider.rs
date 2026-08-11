@@ -138,6 +138,11 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
             api_key_env_key: "MOONSHOT_API_KEY",
             default_model: "kimi-k2-0711-preview",
         }),
+        "nara-router" => Some(ProviderConfig {
+            label: "Nara Router",
+            api_key_env_key: "NARA_API_KEY",
+            default_model: "gpt-5.6-luna",
+        }),
         "neuralwatt" => Some(ProviderConfig {
             label: "Neuralwatt",
             api_key_env_key: "NEURALWATT_API_KEY",
@@ -437,6 +442,7 @@ mod tests {
             ("mistral", "Mistral", "MISTRAL_API_KEY"),
             ("moonshotai", "Moonshot AI", "MOONSHOT_API_KEY"),
             ("moonshotai-cn", "Moonshot AI (China)", "MOONSHOT_API_KEY"),
+            ("nara-router", "Nara Router", "NARA_API_KEY"),
             ("nvidia", "NVIDIA NIM", "NVIDIA_API_KEY"),
             ("ollama-cloud", "Ollama Cloud", "OLLAMA_API_KEY"),
             ("openai-codex", "OpenAI Codex", "OPENAI_CODEX_OAUTH_TOKEN"),
@@ -500,6 +506,7 @@ mod tests {
             "mistral",
             "moonshotai",
             "moonshotai-cn",
+            "nara-router",
             "neuralwatt",
             "nvidia",
             "ollama-cloud",
