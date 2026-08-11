@@ -27,7 +27,11 @@ pub fn find_stable_boundary(raw: &str, force_flush: bool) -> usize {
     while boundary > 0
         && (has_unclosed_inline_markers(&raw[..boundary]) || elph_tui::markdown_has_open_container_at(raw, boundary))
     {
-        match raw[..boundary.saturating_sub(2)].rfind("\n\n") {
+        // Step back two bytes to skip the trailing "\n\n" we already matched, but never
+        // land inside a multi-byte char (e.g. the ellipsis '…' is 3 bytes) — that would
+        // panic on the slice. Snap to the previous char boundary instead.
+        let back = raw.floor_char_boundary(boundary.saturating_sub(2));
+        match raw[..back].rfind("\n\n") {
             Some(pos) => boundary = pos + 2,
             None => {
                 boundary = 0;
@@ -341,6 +345,24 @@ mod tests {
             boundary,
             raw.len(),
             "complete multi-row table at end must be stable, got {boundary}"
+        );
+    }
+
+    #[test]
+    fn trailing_multibyte_char_with_unclosed_marker_does_not_panic() {
+        // Regression for the `crash.log-20260811` panic:
+        // "end byte index 615 is not a char boundary; it is inside '…'".
+        //
+        // A complete table at end-of-input whose final data row ends in a multi-byte
+        // char ('…') AND carries an unclosed inline marker (`**`) made the boundary
+        // land right after '…'; the step-back `boundary.saturating_sub(2)` then sliced
+        // mid-character. The fix snaps that index to the previous char boundary, so this
+        // must neither panic nor produce a non-boundary prefix.
+        let raw = "x\n| A | B |\n| --- | --- |\n| **bold | … |";
+        let boundary = find_stable_boundary(raw, false);
+        assert!(
+            raw.is_char_boundary(boundary),
+            "boundary must be a char boundary, got {boundary}"
         );
     }
 
