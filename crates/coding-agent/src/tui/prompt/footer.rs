@@ -6,9 +6,12 @@ use crate::tui::chrome::{
     chrome_footer_widths, fit_footer_status_left, fit_footer_status_right_with_workers, footer_mode_model_width,
 };
 use crate::tui::labels::GitFooterInfo;
-use crate::tui::labels::{FOOTER_IMG_INDICATOR, FOOTER_SELECT_MODE_BADGE, FOOTER_SEP, footer_mode_label};
+use crate::tui::labels::{
+    FOOTER_IMG_INDICATOR, FOOTER_SELECT_MODE_BADGE, FOOTER_SEP, FOOTER_WORKERS_BADGE_PREFIX, footer_mode_label,
+};
 use crate::tui::theme::{
-    FOOTER_DIM_FG, FOOTER_GIT_ADD_FG, FOOTER_GIT_DEL_FG, FOOTER_IMG_INDICATOR_FG, QUIT_BUSY_NOTICE_FG, rgb_color,
+    FOOTER_DIM_FG, FOOTER_GIT_ADD_FG, FOOTER_GIT_DEL_FG, FOOTER_IMG_INDICATOR_FG, FOOTER_WORKERS_IDLE_FG,
+    FOOTER_WORKERS_INBOX_FG, FOOTER_WORKERS_REPLY_FG, QUIT_BUSY_NOTICE_FG, rgb_color,
 };
 use crate::types::{AgentMode, ThinkingLevel};
 
@@ -31,6 +34,10 @@ pub struct FooterProps {
     pub worker_name: String,
     /// Bumped when chrome stats/git refresh so footer repaints eagerly.
     pub chrome_revision: u64,
+    /// Pending inbound worker messages not yet seen (>0 colors `⬡` yellow).
+    pub worker_pending_count: usize,
+    /// True while the agent is replying to / sending a response for a peer (colors `⬡` green).
+    pub worker_replying: bool,
 }
 
 /// Colored segments for the left status footer.
@@ -53,6 +60,10 @@ struct FooterRightParts {
     select_badge: String,
     /// Separator after the badge (` | `) when select mode is on.
     select_sep: String,
+    /// Worker badge (`⬡ N` or `⬡ N · name`) — colored by messaging state.
+    workers_badge: String,
+    /// Separator after the worker badge (` · `) when the badge is present.
+    workers_sep: String,
     /// Dimmed prefix (`turn: N | ` or empty).
     prefix: String,
     /// `[` — dimmed.
@@ -79,7 +90,7 @@ fn parse_git_stats_body(stats: &str) -> Option<(String, String)> {
     Some((added.to_string(), deleted.to_string()))
 }
 
-/// Split a fitted right footer line into optional `sel` / turn / git add / git del for coloring.
+/// Split a fitted right footer line into optional `sel` / workers / turn / git add / git del for coloring.
 fn split_footer_status_right(right: &str) -> FooterRightParts {
     if right.is_empty() {
         return FooterRightParts::default();
@@ -104,6 +115,31 @@ fn split_footer_status_right(right: &str) -> FooterRightParts {
         };
     }
 
+    // Extract a leading worker badge (`⬡ N` or `⬡ N · name`) so it can be colored
+    // independently of the dimmed turn/git cluster. The badge ends right before
+    // the ` · turn:` segment (the turn label is always present on the right).
+    //
+    // `rest` stays a borrow of `right` throughout; only the badge text and the
+    // final output fields are cloned (footer strings are tiny).
+    let (workers_badge, workers_sep) =
+        if rest.starts_with(FOOTER_WORKERS_BADGE_PREFIX)
+            && let Some(idx) = rest.find(&format!("{FOOTER_SEP}turn:"))
+        {
+            let (badge, _) = rest.split_at(idx);
+            (badge.to_string(), FOOTER_SEP.to_string())
+        } else {
+            (String::new(), String::new())
+        };
+
+    // Remaining text after the badge (if any). When a badge was found, skip the
+    // ` · ` separator that links it to the turn cluster.
+    let rest = if workers_badge.is_empty() {
+        rest
+    } else {
+        // `rest` started with the badge followed by ` · turn:`; drop badge + sep.
+        rest.get(workers_badge.len() + workers_sep.len()..).unwrap_or(rest)
+    };
+
     let (prefix, stats) = if let Some((turn, after_turn)) = rest.split_once(FOOTER_SEP) {
         if after_turn.starts_with('[') {
             (format!("{}{}", turn, FOOTER_SEP), after_turn)
@@ -111,6 +147,8 @@ fn split_footer_status_right(right: &str) -> FooterRightParts {
             return FooterRightParts {
                 select_badge,
                 select_sep,
+                workers_badge,
+                workers_sep,
                 plain: rest.to_string(),
                 ..FooterRightParts::default()
             };
@@ -121,6 +159,8 @@ fn split_footer_status_right(right: &str) -> FooterRightParts {
         return FooterRightParts {
             select_badge,
             select_sep,
+            workers_badge,
+            workers_sep,
             plain: rest.to_string(),
             ..FooterRightParts::default()
         };
@@ -130,6 +170,8 @@ fn split_footer_status_right(right: &str) -> FooterRightParts {
         FooterRightParts {
             select_badge,
             select_sep,
+            workers_badge,
+            workers_sep,
             prefix,
             open: "[".to_string(),
             added,
@@ -142,6 +184,8 @@ fn split_footer_status_right(right: &str) -> FooterRightParts {
         FooterRightParts {
             select_badge,
             select_sep,
+            workers_badge,
+            workers_sep,
             plain: rest.to_string(),
             ..FooterRightParts::default()
         }
@@ -270,6 +314,14 @@ pub fn Footer(props: &FooterProps) -> impl Into<AnyElement<'static>> {
     } else {
         FOOTER_DIM_FG
     };
+    // Worker badge color: green while replying/sending → yellow with pending mail → dim when idle.
+    let workers_badge_color = if props.worker_replying {
+        FOOTER_WORKERS_REPLY_FG
+    } else if props.worker_pending_count > 0 {
+        FOOTER_WORKERS_INBOX_FG
+    } else {
+        FOOTER_WORKERS_IDLE_FG
+    };
 
     element! {
         View(
@@ -348,6 +400,18 @@ pub fn Footer(props: &FooterProps) -> impl Into<AnyElement<'static>> {
                 #( (!right_parts.select_sep.is_empty()).then(|| -> AnyElement<'static> {
                     element! {
                         Text(color: FOOTER_DIM_FG, wrap: TextWrap::NoWrap, content: right_parts.select_sep.clone())
+                    }
+                    .into()
+                }))
+                #( (!right_parts.workers_badge.is_empty()).then(|| -> AnyElement<'static> {
+                    element! {
+                        Text(color: workers_badge_color, wrap: TextWrap::NoWrap, content: right_parts.workers_badge.clone())
+                    }
+                    .into()
+                }))
+                #( (!right_parts.workers_sep.is_empty()).then(|| -> AnyElement<'static> {
+                    element! {
+                        Text(color: FOOTER_DIM_FG, wrap: TextWrap::NoWrap, content: right_parts.workers_sep.clone())
                     }
                     .into()
                 }))
@@ -450,6 +514,36 @@ mod tests {
         assert_eq!(with_sel.prefix, "turn: 0 · ");
         assert_eq!(with_sel.added, "+0/0");
         assert_eq!(with_sel.deleted, "-0/0");
+    }
+
+    #[test]
+    fn split_footer_status_right_extracts_workers_badge() {
+        // Badge only, no name, no git → turn lands in `plain`.
+        let badge = split_footer_status_right("⬡ 2 · turn: 1");
+        assert_eq!(badge.workers_badge, "⬡ 2");
+        assert_eq!(badge.workers_sep, " · ");
+        assert_eq!(badge.plain, "turn: 1");
+        assert!(badge.prefix.is_empty());
+
+        // Badge with worker name + git stats.
+        let named = split_footer_status_right("⬡ 3 · calm-fox · turn: 2 · [+1/5 -0/0]");
+        assert_eq!(named.workers_badge, "⬡ 3 · calm-fox");
+        assert_eq!(named.workers_sep, " · ");
+        assert_eq!(named.prefix, "turn: 2 · ");
+        assert_eq!(named.added, "+1/5");
+        assert_eq!(named.deleted, "-0/0");
+
+        // sel precedes the badge.
+        let sel_badge = split_footer_status_right("sel · ⬡ 2 · turn: 0");
+        assert_eq!(sel_badge.select_badge, "sel");
+        assert_eq!(sel_badge.workers_badge, "⬡ 2");
+        assert_eq!(sel_badge.plain, "turn: 0");
+
+        // No badge — fields stay empty.
+        let no_badge = split_footer_status_right("turn: 5");
+        assert!(no_badge.workers_badge.is_empty());
+        assert!(no_badge.workers_sep.is_empty());
+        assert_eq!(no_badge.plain, "turn: 5");
     }
 
     #[test]

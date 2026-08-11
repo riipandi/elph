@@ -209,6 +209,12 @@ impl CodingAgentSession {
         self.worker_runtime.as_ref().map(|w| w.name.as_str())
     }
 
+    /// True while an intercom (inbound worker-message) answer turn is running —
+    /// the agent is replying to / sending a response for a peer worker.
+    pub fn is_intercom_turn_active(&self) -> bool {
+        self.intercom_turn_active.load(Ordering::Relaxed)
+    }
+
     /// Graceful multi-worker teardown (release lease, mark offline, stop heartbeat).
     /// Safe to call with only `&self` (TUI holds `Arc<CodingAgentSession>`).
     pub async fn shutdown_workers(&self) {

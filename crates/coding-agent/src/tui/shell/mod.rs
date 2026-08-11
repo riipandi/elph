@@ -503,6 +503,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let aside_tick = hooks.use_state(|| 0u64);
     let pending_worker_chat = hooks.use_ref(|| None::<crate::tui::worker_chat::WorkerChatState>);
     let worker_chat_selected = hooks.use_state(|| 0usize);
+    // Pending inbound worker messages not yet seen (overlay closed). Drives the
+    // footer `⬡` badge color: >0 → yellow. Reset when the overlay opens.
+    let worker_pending_count = hooks.use_state(|| 0usize);
     let system_prompt_scroll = hooks.use_ref_default::<ScrollViewHandle>();
     let system_prompt_scroll_tick = hooks.use_ref(|| 0u32);
     let pending_rename = hooks.use_ref(|| None::<crate::tui::rename_dialog::PendingRenameDialog>);
@@ -743,6 +746,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         aside_tick,
         pending_worker_chat,
         worker_chat_selected,
+        worker_pending_count,
         pending_tool_approval,
         pending_transcript_notice_expires,
         pending_user_question,

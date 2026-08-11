@@ -274,6 +274,23 @@ pub const FOOTER_GIT_DEL_FG: Color = Color::Rgb {
     b: 0x85,
 };
 
+/// Worker badge (`⬡`) — idle: pair workers present, no activity.
+pub const FOOTER_WORKERS_IDLE_FG: Color = FOOTER_DIM_FG;
+
+/// Worker badge (`⬡`) — pending inbound messages (yellow).
+pub const FOOTER_WORKERS_INBOX_FG: Color = Color::Rgb {
+    r: 0xff,
+    g: 0xb3,
+    b: 0x47,
+};
+
+/// Worker badge (`⬡`) — agent replying / sending a response (green).
+pub const FOOTER_WORKERS_REPLY_FG: Color = Color::Rgb {
+    r: 0x8e,
+    g: 0xd1,
+    b: 0x6a,
+};
+
 pub const PROMPT_PREFIX_FG: Color = Color::White;
 pub const PROMPT_BORDER_DEFAULT: Color = BORDER_MUTED;
 /// Shell `!` mode border — palette 2 green.

@@ -67,6 +67,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         mut pending_aside,
         mut pending_worker_chat,
         mut worker_chat_selected,
+        mut worker_pending_count,
         pending_tool_approval,
         mut pending_transcript_notice_expires,
         pending_user_question,
@@ -634,6 +635,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         && matches!(code, KeyCode::Char('m') | KeyCode::Char('M'))
         && !worker_modal_blocked
     {
+        // Opening the chat means the user now sees any queued inbound messages.
+        worker_pending_count.set(0);
         let Some(session) = agent_session.clone() else {
             // No live agent session: open an empty picker.
             let mut state = crate::tui::worker_chat::WorkerChatState::new();

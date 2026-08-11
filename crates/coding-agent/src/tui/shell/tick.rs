@@ -70,6 +70,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         mut pending_aside,
         mut aside_tick,
         mut pending_worker_chat,
+        mut worker_pending_count,
         mut pending_tool_approval,
         mut pending_transcript_notice_expires,
         mut pending_user_question,
@@ -493,8 +494,16 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         };
 
         // Worker inbox events land in the worker chat overlay (never the transcript).
+        // When the overlay is closed, still count unseen inbound messages so the
+        // footer `⬡` badge can signal pending mail (yellow).
         if let Some(state) = pending_worker_chat.write().as_mut() {
             crate::tui::worker_chat::drain_worker_inbox_events(state, &drained_events);
+        } else {
+            for event in &drained_events {
+                if matches!(event, AgentUiEvent::WorkerInboxReceived { .. }) {
+                    worker_pending_count.set(worker_pending_count.get().saturating_add(1));
+                }
+            }
         }
 
         for event in drained_events {

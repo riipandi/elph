@@ -87,6 +87,7 @@ pub(crate) fn build_shell_view(
         aside_tick,
         mut pending_worker_chat,
         worker_chat_selected,
+        mut worker_pending_count,
         mut pending_tool_approval,
         mut pending_user_question,
         mut pre_echoed_user_prompts,
@@ -1230,6 +1231,11 @@ pub(crate) fn build_shell_view(
                     .and_then(|s| s.worker_name())
                     .unwrap_or("")
                     .to_string(),
+                worker_pending_count: worker_pending_count.get(),
+                worker_replying: agent_session
+                    .as_ref()
+                    .map(|s| s.is_intercom_turn_active())
+                    .unwrap_or(false),
                 chrome_revision: chrome_ui_revision.get(),
                 draft: Some(draft),
                 live_draft: Some(live_draft),
@@ -1928,6 +1934,7 @@ pub(crate) fn build_shell_view(
                             }
                             SlashOutcome::OpenWorkerChat { peers } => {
                                 // Same open path as Alt+M: stash draft + set pending state.
+                                worker_pending_count.set(0);
                                 crate::tui::worker_chat::open_worker_chat_overlay(
                                     &mut pending_worker_chat,
                                     &mut draft,

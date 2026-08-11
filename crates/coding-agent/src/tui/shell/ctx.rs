@@ -118,6 +118,9 @@ pub(crate) struct ShellCtx {
     pub(crate) pending_worker_chat: Ref<Option<crate::tui::worker_chat::WorkerChatState>>,
     /// Picker highlight for the worker chat overlay.
     pub(crate) worker_chat_selected: State<usize>,
+    /// Pending inbound worker messages not yet seen (overlay closed). Drives the
+    /// footer `⬡` badge color: >0 → yellow. Reset when the overlay opens.
+    pub(crate) worker_pending_count: State<usize>,
     pub(crate) pending_tool_approval: Ref<Option<PendingToolApproval>>,
     pub(crate) pending_transcript_notice_expires: Ref<HashMap<&'static str, Instant>>,
     pub(crate) pending_user_question: Ref<Option<PendingUserQuestion>>,

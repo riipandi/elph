@@ -61,6 +61,10 @@ pub struct PromptChromeProps {
     pub worker_live_count: usize,
     /// This process worker memorable name (footer when multi-worker).
     pub worker_name: String,
+    /// Pending inbound worker messages not yet seen (>0 colors `⬡` yellow).
+    pub worker_pending_count: usize,
+    /// True while the agent is replying to / sending a response for a peer (colors `⬡` green).
+    pub worker_replying: bool,
 }
 
 #[component]
@@ -180,6 +184,8 @@ pub fn PromptChrome(props: &mut PromptChromeProps) -> impl Into<AnyElement<'stat
                 worker_live_count: props.worker_live_count,
                 worker_name: props.worker_name.clone(),
                 chrome_revision: props.chrome_revision,
+                worker_pending_count: props.worker_pending_count,
+                worker_replying: props.worker_replying,
             )
         }
     }
