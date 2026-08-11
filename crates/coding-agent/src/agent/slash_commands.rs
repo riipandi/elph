@@ -1,6 +1,8 @@
 //! Built-in slash command registry and dispatch.
 
-use crate::agent::{parse_skill_slash, skill_slash_name, truncate_palette_description};
+use crate::agent::{
+    MAX_PALETTE_DESCRIPTION_CHARS, parse_skill_slash, skill_slash_name, truncate_palette_description,
+};
 use crate::types::{SlashCommand, SlashCommandKind};
 use elph_agent::{ExtensionRegistry, PromptTemplate, Skill};
 
@@ -98,7 +100,7 @@ pub fn slash_commands_for_palette(
     let mut commands: Vec<SlashCommand> = builtin_slash_commands()
         .into_iter()
         .map(|cmd| {
-            let mut entry = SlashCommand::new(cmd.name, truncate_palette_description(cmd.description));
+            let mut entry = SlashCommand::new(cmd.name, truncate_palette_description(cmd.description, None));
             if let Some(hint) = cmd.args_hint {
                 entry = entry.with_args_hint(hint);
             }
@@ -113,7 +115,10 @@ pub fn slash_commands_for_palette(
     if let Some(registry) = extensions {
         for cmd in registry.commands() {
             if !builtin_names.contains(&cmd.name) {
-                commands.push(SlashCommand::new(cmd.name, truncate_palette_description(&cmd.description)));
+                commands.push(SlashCommand::new(
+                    cmd.name,
+                    truncate_palette_description(&cmd.description, None),
+                ));
             }
         }
     }
@@ -122,7 +127,7 @@ pub fn slash_commands_for_palette(
             if !builtin_names.contains(&template.name) {
                 let mut cmd = SlashCommand::new(
                     &template.name,
-                    format!("[prompt] {}", truncate_palette_description(&template.description)),
+                    format!("[prompt] {}", truncate_palette_description(&template.description, None)),
                 )
                 .with_kind(SlashCommandKind::PromptTemplate);
                 if let Some(hint) = &template.argument_hint {
@@ -137,7 +142,10 @@ pub fn slash_commands_for_palette(
             let name = skill_slash_name(&skill.name);
             if !builtin_names.contains(&name) {
                 let mut cmd =
-                    SlashCommand::new(name, format!("[skill] {}", truncate_palette_description(&skill.description)))
+                    SlashCommand::new(
+                        name,
+                        format!("[skill] {}", truncate_palette_description(&skill.description, None)),
+                    )
                         .with_kind(SlashCommandKind::Skill);
                 if let Some(hint) = &skill.argument_hint {
                     cmd = cmd.with_args_hint(hint);
@@ -304,7 +312,9 @@ pub fn format_help_message(
     let commands = slash_commands_for_palette(extensions, prompt_templates, skills);
     let mut lines = vec!["Slash commands:".to_string()];
     for cmd in commands.into_iter().filter(|cmd| !cmd.hidden) {
-        lines.push(format!("  {} — {}", cmd.palette_command_label(), cmd.description));
+        // `/help` is rendered as plain text (no box), so cap the description here.
+        let desc = truncate_palette_description(&cmd.description, Some(MAX_PALETTE_DESCRIPTION_CHARS));
+        lines.push(format!("  {} — {}", cmd.palette_command_label(), desc));
     }
     lines.join("\n")
 }

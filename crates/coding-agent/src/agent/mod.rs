@@ -74,7 +74,7 @@ pub use session::CodingAgentSession;
 pub use session_info_slash::{rename_session_title, session_info_slash_message, session_title_for_rename};
 pub use session_manager::{SessionManager, load_session_tree_jsonl};
 pub use skills_load::SkillConflict;
-pub use skills_load::{format_skill_conflict_notice, truncate_palette_description};
+pub use skills_load::{MAX_PALETTE_DESCRIPTION_CHARS, format_skill_conflict_notice, truncate_palette_description};
 pub use skills_load::{parse_skill_slash, skill_slash_name};
 pub use slash_commands::{OverlayCommand, SlashDispatch};
 pub use slash_commands::{

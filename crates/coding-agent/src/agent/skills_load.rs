@@ -112,10 +112,20 @@ pub fn skill_slash_name(skill_name: &str) -> String {
     skill_name.to_string()
 }
 
-/// Shorten a description for palette rows (first line, ellipsis).
-pub fn truncate_palette_description(description: &str) -> String {
+/// Shorten a description for palette rows.
+///
+/// `max_width` caps the line to `max_width` display columns (ellipsis suffix). Pass
+/// `None` when a later stage performs width-aware truncation using the actual
+/// terminal/box width (e.g. the TUI palette card via [`wrap_palette_description`]), so
+/// the description can use the full available space instead of a fixed column count.
+///
+/// Always collapses `description` to its first non-empty line.
+pub fn truncate_palette_description(description: &str, max_width: Option<usize>) -> String {
     let first_line = description.lines().next().unwrap_or(description).trim();
-    truncate_with_ellipsis(first_line, MAX_PALETTE_DESCRIPTION_CHARS)
+    match max_width {
+        Some(width) if width > 0 => truncate_with_ellipsis(first_line, width),
+        _ => first_line.to_string(),
+    }
 }
 
 #[cfg(test)]
@@ -150,5 +160,31 @@ mod tests {
         assert!(text.contains("debug"));
         assert!(text.contains("~/.agents/skills"));
         assert!(text.contains("~/.config/elph/skills"));
+    }
+
+    #[test]
+    fn truncate_none_keeps_full_first_line() {
+        let long = "a".repeat(200);
+        assert_eq!(
+            truncate_palette_description(&long, None),
+            long,
+            "uncapped truncation keeps the whole first line for box-aware render"
+        );
+    }
+
+    #[test]
+    fn truncate_some_caps_to_width() {
+        let desc = "Reload extensions and prompt templates from disk after editing skill definitions";
+        assert!(elph_tui::utils::display_width(desc) > MAX_PALETTE_DESCRIPTION_CHARS);
+        let out = truncate_palette_description(desc, Some(MAX_PALETTE_DESCRIPTION_CHARS));
+        assert!(elph_tui::utils::display_width(&out) <= MAX_PALETTE_DESCRIPTION_CHARS);
+        assert!(out.ends_with('…'));
+    }
+
+    #[test]
+    fn truncate_collapses_to_first_line() {
+        let desc = "First line of the doc\nSecond line that should be dropped";
+        assert_eq!(truncate_palette_description(desc, None), "First line of the doc");
+        assert_eq!(truncate_palette_description(desc, Some(10)), "First lin…");
     }
 }
