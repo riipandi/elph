@@ -23,7 +23,8 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "deepseek-ai/DeepSeek-V4-Pro": {
         "api": "openai-completions",
@@ -44,12 +45,13 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
-            "minimal": null,
-            "off": null,
+            "minimal": "minimal",
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "moonshotai/Kimi-K2.6": {
         "api": "openai-completions",
@@ -75,7 +77,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "moonshotai/Kimi-K2.7-Code": {
         "api": "openai-completions",
@@ -101,7 +104,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "moonshotai/Kimi-K3": {
         "api": "openai-completions",
@@ -122,12 +126,13 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B": {
         "api": "openai-completions",
@@ -153,7 +158,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "openai/gpt-oss-120b": {
         "api": "openai-completions",
@@ -174,12 +180,13 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
+            "minimal": "minimal",
+            "off": "off",
+            "xhigh": "xhigh"
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "thinkingmachines/inkling": {
         "api": "openai-completions",
@@ -203,9 +210,10 @@
             "max": "max",
             "medium": "medium",
             "minimal": "minimal",
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "thinkingmachines/inkling-small": {
         "api": "openai-completions",
@@ -229,9 +237,10 @@
             "max": "max",
             "medium": "medium",
             "minimal": "minimal",
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "zai-org/GLM-4.7": {
         "api": "openai-completions",
@@ -257,7 +266,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "zai-org/GLM-5.2": {
         "api": "openai-completions",
@@ -277,13 +287,14 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
+            "low": null,
+            "max": "max",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "zai-org/GLM-5.2-Fast": {
         "api": "openai-completions",
@@ -303,12 +314,13 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
+            "low": null,
+            "max": "max",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     }
 }

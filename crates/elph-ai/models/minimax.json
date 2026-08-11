@@ -23,7 +23,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "MiniMax-M2.1": {
         "api": "anthropic-messages",
@@ -49,7 +50,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "MiniMax-M2.5": {
         "api": "anthropic-messages",
@@ -75,7 +77,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "MiniMax-M2.5-highspeed": {
         "api": "anthropic-messages",
@@ -101,7 +104,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "MiniMax-M2.7": {
         "api": "anthropic-messages",
@@ -127,7 +131,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "MiniMax-M2.7-highspeed": {
         "api": "anthropic-messages",
@@ -153,7 +158,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "MiniMax-M3": {
         "api": "anthropic-messages",
@@ -179,6 +185,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     }
 }

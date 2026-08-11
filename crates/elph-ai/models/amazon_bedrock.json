@@ -23,7 +23,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "amazon.nova-lite-v1:0": {
         "api": "bedrock-converse-stream",
@@ -49,7 +50,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "amazon.nova-micro-v1:0": {
         "api": "bedrock-converse-stream",
@@ -75,7 +77,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "amazon.nova-pro-v1:0": {
         "api": "bedrock-converse-stream",
@@ -101,7 +104,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "anthropic.claude-fable-5": {
         "api": "bedrock-converse-stream",
@@ -120,14 +124,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "anthropic.claude-haiku-4-5-20251001-v1:0": {
         "api": "bedrock-converse-stream",
@@ -156,7 +161,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "anthropic.claude-opus-4-1-20250805-v1:0": {
         "api": "bedrock-converse-stream",
@@ -182,7 +188,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "anthropic.claude-opus-4-5-20251101-v1:0": {
         "api": "bedrock-converse-stream",
@@ -211,7 +218,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "anthropic.claude-opus-4-6-v1": {
         "api": "bedrock-converse-stream",
@@ -233,14 +241,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "anthropic.claude-opus-4-7": {
         "api": "bedrock-converse-stream",
@@ -259,14 +268,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "anthropic.claude-opus-4-8": {
         "api": "bedrock-converse-stream",
@@ -285,14 +295,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "anthropic.claude-opus-5": {
         "api": "bedrock-converse-stream",
@@ -318,7 +329,8 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "anthropic.claude-sonnet-4-5-20250929-v1:0": {
         "api": "bedrock-converse-stream",
@@ -347,7 +359,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "anthropic.claude-sonnet-4-6": {
         "api": "bedrock-converse-stream",
@@ -369,14 +382,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "anthropic.claude-sonnet-5": {
         "api": "bedrock-converse-stream",
@@ -398,14 +412,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "au.anthropic.claude-haiku-4-5-20251001-v1:0": {
         "api": "bedrock-converse-stream",
@@ -434,7 +449,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "au.anthropic.claude-opus-4-6-v1": {
         "api": "bedrock-converse-stream",
@@ -456,14 +472,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "au.anthropic.claude-opus-4-8": {
         "api": "bedrock-converse-stream",
@@ -482,14 +499,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "au.anthropic.claude-opus-5": {
         "api": "bedrock-converse-stream",
@@ -508,14 +526,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "au.anthropic.claude-sonnet-4-5-20250929-v1:0": {
         "api": "bedrock-converse-stream",
@@ -544,7 +563,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "au.anthropic.claude-sonnet-4-6": {
         "api": "bedrock-converse-stream",
@@ -566,14 +586,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "au.anthropic.claude-sonnet-5": {
         "api": "bedrock-converse-stream",
@@ -595,14 +616,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "deepseek.r1-v1:0": {
         "api": "bedrock-converse-stream",
@@ -628,7 +650,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "deepseek.v3-v1:0": {
         "api": "bedrock-converse-stream",
@@ -657,7 +680,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "deepseek.v3.2": {
         "api": "bedrock-converse-stream",
@@ -686,7 +710,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "eu.anthropic.claude-fable-5": {
         "api": "bedrock-converse-stream",
@@ -705,14 +730,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "eu.anthropic.claude-haiku-4-5-20251001-v1:0": {
         "api": "bedrock-converse-stream",
@@ -741,7 +767,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "eu.anthropic.claude-opus-4-5-20251101-v1:0": {
         "api": "bedrock-converse-stream",
@@ -770,7 +797,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "eu.anthropic.claude-opus-4-6-v1": {
         "api": "bedrock-converse-stream",
@@ -792,14 +820,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "eu.anthropic.claude-opus-4-7": {
         "api": "bedrock-converse-stream",
@@ -818,14 +847,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "eu.anthropic.claude-opus-4-8": {
         "api": "bedrock-converse-stream",
@@ -844,14 +874,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "eu.anthropic.claude-opus-5": {
         "api": "bedrock-converse-stream",
@@ -870,14 +901,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "eu.anthropic.claude-sonnet-4-5-20250929-v1:0": {
         "api": "bedrock-converse-stream",
@@ -906,7 +938,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "eu.anthropic.claude-sonnet-4-6": {
         "api": "bedrock-converse-stream",
@@ -928,14 +961,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "eu.anthropic.claude-sonnet-5": {
         "api": "bedrock-converse-stream",
@@ -957,14 +991,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "global.anthropic.claude-fable-5": {
         "api": "bedrock-converse-stream",
@@ -983,14 +1018,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "global.anthropic.claude-haiku-4-5-20251001-v1:0": {
         "api": "bedrock-converse-stream",
@@ -1019,7 +1055,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "global.anthropic.claude-opus-4-5-20251101-v1:0": {
         "api": "bedrock-converse-stream",
@@ -1048,7 +1085,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "global.anthropic.claude-opus-4-6-v1": {
         "api": "bedrock-converse-stream",
@@ -1070,14 +1108,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "global.anthropic.claude-opus-4-7": {
         "api": "bedrock-converse-stream",
@@ -1096,14 +1135,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "global.anthropic.claude-opus-4-8": {
         "api": "bedrock-converse-stream",
@@ -1122,14 +1162,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "global.anthropic.claude-opus-5": {
         "api": "bedrock-converse-stream",
@@ -1148,14 +1189,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "global.anthropic.claude-sonnet-4-5-20250929-v1:0": {
         "api": "bedrock-converse-stream",
@@ -1184,7 +1226,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "global.anthropic.claude-sonnet-4-6": {
         "api": "bedrock-converse-stream",
@@ -1206,14 +1249,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "global.anthropic.claude-sonnet-5": {
         "api": "bedrock-converse-stream",
@@ -1235,14 +1279,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "google.gemma-3-12b-it": {
         "api": "bedrock-converse-stream",
@@ -1268,7 +1313,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "google.gemma-3-27b-it": {
         "api": "bedrock-converse-stream",
@@ -1297,7 +1343,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "google.gemma-3-4b-it": {
         "api": "bedrock-converse-stream",
@@ -1323,7 +1370,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "jp.anthropic.claude-haiku-4-5-20251001-v1:0": {
         "api": "bedrock-converse-stream",
@@ -1352,7 +1400,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "jp.anthropic.claude-opus-4-7": {
         "api": "bedrock-converse-stream",
@@ -1371,14 +1420,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "jp.anthropic.claude-opus-4-8": {
         "api": "bedrock-converse-stream",
@@ -1397,14 +1447,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "jp.anthropic.claude-opus-5": {
         "api": "bedrock-converse-stream",
@@ -1423,14 +1474,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "jp.anthropic.claude-sonnet-4-5-20250929-v1:0": {
         "api": "bedrock-converse-stream",
@@ -1459,7 +1511,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "jp.anthropic.claude-sonnet-4-6": {
         "api": "bedrock-converse-stream",
@@ -1481,14 +1534,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "jp.anthropic.claude-sonnet-5": {
         "api": "bedrock-converse-stream",
@@ -1510,14 +1564,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "meta.llama3-1-70b-instruct-v1:0": {
         "api": "bedrock-converse-stream",
@@ -1543,7 +1598,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "meta.llama3-1-8b-instruct-v1:0": {
         "api": "bedrock-converse-stream",
@@ -1569,7 +1625,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "meta.llama3-3-70b-instruct-v1:0": {
         "api": "bedrock-converse-stream",
@@ -1595,7 +1652,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "meta.llama4-maverick-17b-instruct-v1:0": {
         "api": "bedrock-converse-stream",
@@ -1621,7 +1679,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "meta.llama4-scout-17b-instruct-v1:0": {
         "api": "bedrock-converse-stream",
@@ -1647,7 +1706,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "minimax.minimax-m2": {
         "api": "bedrock-converse-stream",
@@ -1673,7 +1733,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "minimax.minimax-m2.1": {
         "api": "bedrock-converse-stream",
@@ -1699,7 +1760,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "minimax.minimax-m2.5": {
         "api": "bedrock-converse-stream",
@@ -1725,7 +1787,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "mistral.devstral-2-123b": {
         "api": "bedrock-converse-stream",
@@ -1754,7 +1817,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "mistral.magistral-small-2509": {
         "api": "bedrock-converse-stream",
@@ -1783,7 +1847,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "mistral.ministral-3-14b-instruct": {
         "api": "bedrock-converse-stream",
@@ -1812,7 +1877,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "mistral.ministral-3-3b-instruct": {
         "api": "bedrock-converse-stream",
@@ -1841,7 +1907,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "mistral.ministral-3-8b-instruct": {
         "api": "bedrock-converse-stream",
@@ -1870,7 +1937,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "mistral.mistral-large-3-675b-instruct": {
         "api": "bedrock-converse-stream",
@@ -1899,7 +1967,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "mistral.pixtral-large-2502-v1:0": {
         "api": "bedrock-converse-stream",
@@ -1925,7 +1994,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "mistral.voxtral-mini-3b-2507": {
         "api": "bedrock-converse-stream",
@@ -1954,7 +2024,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "mistral.voxtral-small-24b-2507": {
         "api": "bedrock-converse-stream",
@@ -1983,7 +2054,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "moonshot.kimi-k2-thinking": {
         "api": "bedrock-converse-stream",
@@ -2012,7 +2084,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "moonshotai.kimi-k2.5": {
         "api": "bedrock-converse-stream",
@@ -2041,7 +2114,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "nvidia.nemotron-nano-12b-v2": {
         "api": "bedrock-converse-stream",
@@ -2070,7 +2144,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "nvidia.nemotron-nano-3-30b": {
         "api": "bedrock-converse-stream",
@@ -2099,7 +2174,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "nvidia.nemotron-nano-9b-v2": {
         "api": "bedrock-converse-stream",
@@ -2128,7 +2204,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "nvidia.nemotron-super-3-120b": {
         "api": "bedrock-converse-stream",
@@ -2157,7 +2234,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "openai.gpt-5.4": {
         "api": "bedrock-converse-stream",
@@ -2179,14 +2257,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "openai.gpt-5.5": {
         "api": "bedrock-converse-stream",
@@ -2208,14 +2287,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "openai.gpt-5.6-luna": {
         "api": "bedrock-converse-stream",
@@ -2237,14 +2317,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "openai.gpt-5.6-sol": {
         "api": "bedrock-converse-stream",
@@ -2266,14 +2347,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "openai.gpt-5.6-terra": {
         "api": "bedrock-converse-stream",
@@ -2295,14 +2377,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "openai.gpt-oss-120b": {
         "api": "bedrock-converse-stream",
@@ -2331,7 +2414,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "openai.gpt-oss-120b-1:0": {
         "api": "bedrock-converse-stream",
@@ -2360,7 +2444,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "openai.gpt-oss-20b": {
         "api": "bedrock-converse-stream",
@@ -2389,7 +2474,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "openai.gpt-oss-20b-1:0": {
         "api": "bedrock-converse-stream",
@@ -2418,7 +2504,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "openai.gpt-oss-safeguard-120b": {
         "api": "bedrock-converse-stream",
@@ -2447,7 +2534,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "openai.gpt-oss-safeguard-20b": {
         "api": "bedrock-converse-stream",
@@ -2476,7 +2564,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "qwen.qwen3-235b-a22b-2507-v1:0": {
         "api": "bedrock-converse-stream",
@@ -2505,7 +2594,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "qwen.qwen3-32b-v1:0": {
         "api": "bedrock-converse-stream",
@@ -2534,7 +2624,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "qwen.qwen3-coder-30b-a3b-v1:0": {
         "api": "bedrock-converse-stream",
@@ -2563,7 +2654,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "qwen.qwen3-coder-480b-a35b-v1:0": {
         "api": "bedrock-converse-stream",
@@ -2592,7 +2684,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "qwen.qwen3-coder-next": {
         "api": "bedrock-converse-stream",
@@ -2621,7 +2714,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "qwen.qwen3-next-80b-a3b": {
         "api": "bedrock-converse-stream",
@@ -2650,7 +2744,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "qwen.qwen3-vl-235b-a22b": {
         "api": "bedrock-converse-stream",
@@ -2679,7 +2774,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "us.anthropic.claude-fable-5": {
         "api": "bedrock-converse-stream",
@@ -2698,14 +2794,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "us.anthropic.claude-haiku-4-5-20251001-v1:0": {
         "api": "bedrock-converse-stream",
@@ -2734,7 +2831,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "us.anthropic.claude-opus-4-1-20250805-v1:0": {
         "api": "bedrock-converse-stream",
@@ -2760,7 +2858,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "us.anthropic.claude-opus-4-5-20251101-v1:0": {
         "api": "bedrock-converse-stream",
@@ -2789,7 +2888,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "us.anthropic.claude-opus-4-6-v1": {
         "api": "bedrock-converse-stream",
@@ -2811,14 +2911,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "us.anthropic.claude-opus-4-7": {
         "api": "bedrock-converse-stream",
@@ -2837,14 +2938,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "us.anthropic.claude-opus-4-8": {
         "api": "bedrock-converse-stream",
@@ -2863,14 +2965,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "us.anthropic.claude-opus-5": {
         "api": "bedrock-converse-stream",
@@ -2889,14 +2992,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "us.anthropic.claude-sonnet-4-5-20250929-v1:0": {
         "api": "bedrock-converse-stream",
@@ -2925,7 +3029,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "us.anthropic.claude-sonnet-4-6": {
         "api": "bedrock-converse-stream",
@@ -2947,14 +3052,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "us.anthropic.claude-sonnet-5": {
         "api": "bedrock-converse-stream",
@@ -2976,14 +3082,15 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "us.deepseek.r1-v1:0": {
         "api": "bedrock-converse-stream",
@@ -3009,7 +3116,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "us.meta.llama4-maverick-17b-instruct-v1:0": {
         "api": "bedrock-converse-stream",
@@ -3035,7 +3143,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "us.meta.llama4-scout-17b-instruct-v1:0": {
         "api": "bedrock-converse-stream",
@@ -3061,7 +3170,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "writer.palmyra-x4-v1:0": {
         "api": "bedrock-converse-stream",
@@ -3087,7 +3197,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "writer.palmyra-x5-v1:0": {
         "api": "bedrock-converse-stream",
@@ -3113,7 +3224,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "xai.grok-4.3": {
         "api": "bedrock-converse-stream",
@@ -3140,9 +3252,10 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "zai.glm-4.7": {
         "api": "bedrock-converse-stream",
@@ -3171,7 +3284,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "zai.glm-4.7-flash": {
         "api": "bedrock-converse-stream",
@@ -3200,7 +3314,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "zai.glm-5": {
         "api": "bedrock-converse-stream",
@@ -3229,6 +3344,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     }
 }

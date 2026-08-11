@@ -31,7 +31,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "MiniMaxAI/MiniMax-M3": {
         "api": "openai-completions",
@@ -66,7 +67,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "Qwen/Qwen2.5-7B-Instruct-Turbo": {
         "api": "openai-completions",
@@ -101,7 +103,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "Qwen/Qwen3.5-9B": {
         "api": "openai-completions",
@@ -136,7 +139,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "Qwen/Qwen3.6-Plus": {
         "api": "openai-completions",
@@ -171,7 +175,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "Qwen/Qwen3.7-Max": {
         "api": "openai-completions",
@@ -206,7 +211,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "deepseek-ai/DeepSeek-V4-Pro": {
         "api": "openai-completions",
@@ -241,7 +247,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "google/gemma-4-31B-it": {
         "api": "openai-completions",
@@ -276,7 +283,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "meta-llama/Llama-3.3-70B-Instruct-Turbo": {
         "api": "openai-completions",
@@ -311,7 +319,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "moonshotai/Kimi-K2.6": {
         "api": "openai-completions",
@@ -346,7 +355,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "moonshotai/Kimi-K2.7-Code": {
         "api": "openai-completions",
@@ -381,7 +391,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "moonshotai/Kimi-K3": {
         "api": "openai-completions",
@@ -409,14 +420,15 @@
         "provider": "together",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "nvidia/nemotron-3-ultra-550b-a55b": {
         "api": "openai-completions",
@@ -444,14 +456,15 @@
         "provider": "together",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
+            "high": "high",
             "low": null,
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "openai/gpt-oss-120b": {
         "api": "openai-completions",
@@ -486,7 +499,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "openai/gpt-oss-20b": {
         "api": "openai-completions",
@@ -521,7 +535,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "thinkingmachines/Inkling": {
         "api": "openai-completions",
@@ -556,7 +571,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "zai-org/GLM-5.2": {
         "api": "openai-completions",
@@ -591,6 +607,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     }
 }

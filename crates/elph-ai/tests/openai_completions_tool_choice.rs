@@ -169,15 +169,15 @@ fn stores_zai_glm_5_2_effort_metadata() {
             .and_then(|c| c.supports_reasoning_effort),
         Some(true)
     );
-    // Catalog maps adaptive effort including native "max" (full thinkingLevelMap keys).
+    // Catalog reflects models.dev reasoning_options: ["high", "max"]
     assert_eq!(
         model.thinking_level_map,
         Some(
             [
                 ("off".to_string(), None),
                 ("minimal".to_string(), None),
-                ("low".to_string(), Some("high".to_string())),
-                ("medium".to_string(), Some("high".to_string())),
+                ("low".to_string(), None),
+                ("medium".to_string(), None),
                 ("high".to_string(), Some("high".to_string())),
                 ("xhigh".to_string(), None),
                 ("max".to_string(), Some("max".to_string())),
@@ -200,12 +200,8 @@ fn maps_zai_glm_5_2_thinking_levels_to_reasoning_effort() {
         tools: None,
     };
 
-    for (level, expected_effort) in [
-        (ThinkingLevel::Low, "high"),
-        (ThinkingLevel::Medium, "high"),
-        (ThinkingLevel::High, "high"),
-        (ThinkingLevel::Max, "max"),
-    ] {
+    // Only high and max are natively supported; low/medium are not available
+    for (level, expected_effort) in [(ThinkingLevel::High, "high"), (ThinkingLevel::Max, "max")] {
         let options = OpenAICompletionsOptions {
             reasoning_effort: Some(reasoning_effort_for_model(&model, level)),
             ..Default::default()

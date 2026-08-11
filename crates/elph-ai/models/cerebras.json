@@ -25,9 +25,10 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": "none",
+            "off": "off",
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-oss-120b": {
         "api": "openai-completions",
@@ -57,7 +58,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "zai-glm-4.7": {
         "api": "openai-completions",
@@ -85,8 +87,9 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": "none",
+            "off": "off",
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     }
 }

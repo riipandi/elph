@@ -20,14 +20,15 @@
         "provider": "anthropic",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "claude-haiku-4-5": {
         "api": "anthropic-messages",
@@ -56,7 +57,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "provider-override"
     },
     "claude-haiku-4-5-20251001": {
         "api": "anthropic-messages",
@@ -85,7 +87,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "provider-override"
     },
     "claude-opus-4-5": {
         "api": "anthropic-messages",
@@ -107,14 +110,15 @@
         "provider": "anthropic",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": "max",
-            "medium": null,
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": "xhigh"
-        }
+            "xhigh": null
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "claude-opus-4-5-20251101": {
         "api": "anthropic-messages",
@@ -136,14 +140,15 @@
         "provider": "anthropic",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": "max",
-            "medium": null,
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": "xhigh"
-        }
+            "xhigh": null
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "claude-opus-4-6": {
         "api": "anthropic-messages",
@@ -166,14 +171,15 @@
         "provider": "anthropic",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "claude-opus-4-7": {
         "api": "anthropic-messages",
@@ -197,14 +203,15 @@
         "provider": "anthropic",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "claude-opus-4-8": {
         "api": "anthropic-messages",
@@ -228,14 +235,15 @@
         "provider": "anthropic",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "claude-opus-5": {
         "api": "anthropic-messages",
@@ -259,14 +267,15 @@
         "provider": "anthropic",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "claude-sonnet-4-5": {
         "api": "anthropic-messages",
@@ -295,7 +304,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "provider-override"
     },
     "claude-sonnet-4-5-20250929": {
         "api": "anthropic-messages",
@@ -324,7 +334,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "provider-override"
     },
     "claude-sonnet-4-6": {
         "api": "anthropic-messages",
@@ -347,14 +358,15 @@
         "provider": "anthropic",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "claude-sonnet-5": {
         "api": "anthropic-messages",
@@ -377,13 +389,14 @@
         "provider": "anthropic",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     }
 }

@@ -230,16 +230,17 @@ mod tests {
             return;
         };
         let cycle = ThinkingLevel::cycle_for_model(&model);
+        // xAI grok-4.5 supports low / medium / high (from models.dev)
         assert_eq!(
             cycle,
             vec![
                 ThinkingLevel::Off,
                 ThinkingLevel::Low,
+                ThinkingLevel::Medium,
                 ThinkingLevel::High,
-                ThinkingLevel::Max,
             ]
         );
-        // Supported: low, high, max (+ Off). medium/minimal/xhigh must not appear.
+        // Supported: low, medium, high (+ Off). minimal/xhigh/max must not appear.
         let mut level = ThinkingLevel::Off;
         let mut seen = Vec::new();
         for _ in 0..8 {
@@ -251,13 +252,13 @@ mod tests {
         }
         assert!(seen.contains(&ThinkingLevel::Low));
         assert!(seen.contains(&ThinkingLevel::High));
-        assert!(seen.contains(&ThinkingLevel::Max));
-        assert!(!seen.contains(&ThinkingLevel::Medium));
+        assert!(seen.contains(&ThinkingLevel::Medium));
+        assert!(!seen.contains(&ThinkingLevel::Max));
         assert!(!seen.contains(&ThinkingLevel::Minimal));
         assert!(!seen.contains(&ThinkingLevel::Xhigh));
-        // Stale medium snaps into the catalog cycle.
-        assert_eq!(ThinkingLevel::Medium.next_for_model(&model), ThinkingLevel::Low);
-        assert_eq!(ThinkingLevel::Medium.clamp_for_model(&model), ThinkingLevel::High);
+        // Medium is natively supported — cycles to High, clamps to itself.
+        assert_eq!(ThinkingLevel::Medium.next_for_model(&model), ThinkingLevel::High);
+        assert_eq!(ThinkingLevel::Medium.clamp_for_model(&model), ThinkingLevel::Medium);
     }
 
     #[test]

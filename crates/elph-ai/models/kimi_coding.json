@@ -30,7 +30,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "k3-256k": {
         "api": "anthropic-messages",
@@ -62,7 +63,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "kimi-for-coding": {
         "api": "anthropic-messages",
@@ -95,7 +97,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "kimi-for-coding-highspeed": {
         "api": "anthropic-messages",
@@ -127,6 +130,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     }
 }

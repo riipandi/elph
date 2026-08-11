@@ -19,14 +19,15 @@
         "provider": "openai-codex",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": "low",
-            "off": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.4": {
         "api": "openai-codex-responses",
@@ -49,14 +50,15 @@
         "provider": "openai-codex",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": "low",
-            "off": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.4-mini": {
         "api": "openai-codex-responses",
@@ -79,14 +81,15 @@
         "provider": "openai-codex",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": "low",
-            "off": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.5": {
         "api": "openai-codex-responses",
@@ -109,14 +112,15 @@
         "provider": "openai-codex",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": "low",
-            "off": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.6-luna": {
         "api": "openai-codex-responses",
@@ -139,14 +143,15 @@
         "provider": "openai-codex",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
-            "minimal": "low",
-            "off": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.6-sol": {
         "api": "openai-codex-responses",
@@ -169,14 +174,15 @@
         "provider": "openai-codex",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
-            "minimal": "low",
-            "off": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.6-terra": {
         "api": "openai-codex-responses",
@@ -199,13 +205,14 @@
         "provider": "openai-codex",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
-            "minimal": "low",
-            "off": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     }
 }

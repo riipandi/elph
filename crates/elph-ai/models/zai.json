@@ -23,7 +23,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "glm-4.5-air": {
         "api": "openai-completions",
@@ -55,7 +56,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "glm-4.5-flash": {
         "api": "openai-completions",
@@ -81,7 +83,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "glm-4.5v": {
         "api": "openai-completions",
@@ -107,7 +110,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "glm-4.6": {
         "api": "openai-completions",
@@ -133,7 +137,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "glm-4.6v": {
         "api": "openai-completions",
@@ -159,7 +164,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "glm-4.7": {
         "api": "openai-completions",
@@ -192,7 +198,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "glm-4.7-flash": {
         "api": "openai-completions",
@@ -218,7 +225,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "glm-4.7-flashx": {
         "api": "openai-completions",
@@ -244,7 +252,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "glm-5": {
         "api": "openai-completions",
@@ -270,7 +279,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "glm-5.1": {
         "api": "openai-completions",
@@ -303,7 +313,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "glm-5.2": {
         "api": "openai-completions",
@@ -330,13 +341,14 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "high",
+            "low": null,
             "max": "max",
-            "medium": "high",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "glm-5v-turbo": {
         "api": "openai-completions",
@@ -369,6 +381,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     }
 }

@@ -27,7 +27,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "mimo-v2.5": {
         "api": "openai-completions",
@@ -57,7 +58,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "mimo-v2.5-pro": {
         "api": "openai-completions",
@@ -87,6 +89,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     }
 }

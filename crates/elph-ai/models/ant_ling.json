@@ -31,7 +31,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "Ling-2.6-flash": {
         "api": "openai-completions",
@@ -65,7 +66,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "Ring-2.6-1T": {
         "api": "openai-completions",
@@ -99,6 +101,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     }
 }

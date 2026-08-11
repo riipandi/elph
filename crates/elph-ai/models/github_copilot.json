@@ -32,7 +32,8 @@
             "minimal": "low",
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "claude-fable-5": {
         "api": "openai-completions",
@@ -62,14 +63,15 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "claude-haiku-4.5": {
         "api": "anthropic-messages",
@@ -104,7 +106,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "claude-opus-4.5": {
         "api": "anthropic-messages",
@@ -136,7 +139,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "claude-opus-4.6": {
         "api": "anthropic-messages",
@@ -164,14 +168,15 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "claude-opus-4.7": {
         "api": "anthropic-messages",
@@ -200,14 +205,15 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
-            "minimal": "low",
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "claude-opus-4.8": {
         "api": "anthropic-messages",
@@ -236,14 +242,15 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
-            "minimal": "low",
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "claude-opus-5": {
         "api": "anthropic-messages",
@@ -272,14 +279,15 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
-            "minimal": "minimal",
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "claude-sonnet-4": {
         "api": "anthropic-messages",
@@ -314,7 +322,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "claude-sonnet-4.5": {
         "api": "anthropic-messages",
@@ -349,7 +358,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "claude-sonnet-4.6": {
         "api": "anthropic-messages",
@@ -377,14 +387,15 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
-            "minimal": "low",
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "claude-sonnet-5": {
         "api": "anthropic-messages",
@@ -412,14 +423,15 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gemini-2.5-pro": {
         "api": "openai-completions",
@@ -456,7 +468,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "gemini-3-flash-preview": {
         "api": "openai-completions",
@@ -493,7 +506,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "gemini-3.1-pro-preview": {
         "api": "openai-completions",
@@ -530,7 +544,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gemini-3.5-flash": {
         "api": "openai-completions",
@@ -567,7 +582,8 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-4.1": {
         "api": "openai-completions",
@@ -604,7 +620,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "gpt-5-mini": {
         "api": "openai-responses",
@@ -636,10 +653,11 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": "low",
+            "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.2": {
         "api": "openai-responses",
@@ -674,7 +692,8 @@
             "minimal": "low",
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "gpt-5.2-codex": {
         "api": "openai-responses",
@@ -709,7 +728,8 @@
             "minimal": "low",
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "gpt-5.3-codex": {
         "api": "openai-responses",
@@ -741,10 +761,11 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": "low",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.4": {
         "api": "openai-responses",
@@ -776,10 +797,11 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": "low",
-            "off": null,
+            "minimal": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.4-mini": {
         "api": "openai-responses",
@@ -811,10 +833,11 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": "low",
-            "off": null,
+            "minimal": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.4-nano": {
         "api": "openai-responses",
@@ -849,7 +872,8 @@
             "minimal": "low",
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "gpt-5.5": {
         "api": "openai-responses",
@@ -881,10 +905,11 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": "low",
-            "off": null,
+            "minimal": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.6-luna": {
         "api": "openai-responses",
@@ -916,10 +941,11 @@
             "low": "low",
             "max": "max",
             "medium": "medium",
-            "minimal": "low",
-            "off": null,
+            "minimal": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.6-sol": {
         "api": "openai-responses",
@@ -951,10 +977,11 @@
             "low": "low",
             "max": "max",
             "medium": "medium",
-            "minimal": "low",
-            "off": null,
+            "minimal": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.6-terra": {
         "api": "openai-responses",
@@ -986,10 +1013,11 @@
             "low": "low",
             "max": "max",
             "medium": "medium",
-            "minimal": "low",
-            "off": null,
+            "minimal": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "kimi-k2.7-code": {
         "api": "openai-completions",
@@ -1026,7 +1054,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "mai-code-1-flash-picker": {
         "api": "openai-responses",
@@ -1058,6 +1087,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     }
 }

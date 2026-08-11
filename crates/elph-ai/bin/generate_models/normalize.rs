@@ -6,7 +6,13 @@ use super::provider_sources::ProviderSource;
 use super::thinking_map::build_thinking_level_map;
 
 /// Convert a models.dev model object into an Elph catalog entry.
-pub fn from_models_dev(provider: &ProviderSource, model_id: &str, mdev: &Value, previous: Option<&Value>) -> Value {
+pub fn from_models_dev(
+    provider: &ProviderSource,
+    model_id: &str,
+    mdev: &Value,
+    previous: Option<&Value>,
+    live_efforts: Option<&[String]>,
+) -> Value {
     let name = mdev
         .get("name")
         .and_then(|v| v.as_str())
@@ -34,7 +40,8 @@ pub fn from_models_dev(provider: &ProviderSource, model_id: &str, mdev: &Value, 
         .filter(|s| !s.is_empty())
         .unwrap_or(provider.default_base_url)
         .to_string();
-    let thinking = build_thinking_level_map(provider.id, model_id, reasoning, Some(mdev), previous);
+    let (thinking, thinking_src) =
+        build_thinking_level_map(provider.id, model_id, reasoning, Some(mdev), previous, live_efforts);
 
     let mut entry = json!({
         "id": model_id,
@@ -48,6 +55,7 @@ pub fn from_models_dev(provider: &ProviderSource, model_id: &str, mdev: &Value, 
         "maxTokens": max_tokens,
         "cost": cost,
         "thinkingLevelMap": thinking,
+        "thinkingLevelMapSource": thinking_src.to_string(),
     });
 
     if let Some(prev) = previous {
@@ -62,7 +70,13 @@ pub fn from_models_dev(provider: &ProviderSource, model_id: &str, mdev: &Value, 
 }
 
 /// Refresh an existing Elph-only / gateway model with models.dev pricing/limits when found.
-pub fn enrich_existing(provider: &ProviderSource, model_id: &str, previous: &Value, mdev: Option<&Value>) -> Value {
+pub fn enrich_existing(
+    provider: &ProviderSource,
+    model_id: &str,
+    previous: &Value,
+    mdev: Option<&Value>,
+    live_efforts: Option<&[String]>,
+) -> Value {
     let mut entry = previous.clone();
     if !entry.is_object() {
         entry = serde_json::json!({});
@@ -108,8 +122,10 @@ pub fn enrich_existing(provider: &ProviderSource, model_id: &str, previous: &Val
         obj.insert("cost".into(), zero_cost());
     }
 
-    let thinking = build_thinking_level_map(provider.id, model_id, reasoning, mdev, Some(previous));
+    let (thinking, thinking_src) =
+        build_thinking_level_map(provider.id, model_id, reasoning, mdev, Some(previous), live_efforts);
     obj.insert("thinkingLevelMap".into(), thinking);
+    obj.insert("thinkingLevelMapSource".into(), json!(thinking_src.to_string()));
 
     // Required name fallback
     if obj.get("name").and_then(|v| v.as_str()).unwrap_or("").is_empty() {

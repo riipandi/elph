@@ -4,8 +4,8 @@ description: >-
     Refresh elph-ai chat model catalogs from models.dev (origin) with optional live
     provider pricing, resolve thinkingLevelMap from actual sources (provider API ->
     models.dev fallback), and verify provider registration. Use when the user runs
-    /update-models, asks to sync or regenerate model catalogs, update models.dev
-    data, refresh pricing, or keep provider model lists current.
+    /update-models, asks to sync or regenerate model catalogs, update pricing, or
+    keep provider model lists current.
 metadata:
     scope: project
 ---
@@ -20,8 +20,9 @@ metadata:
 ## Purpose
 
 Regenerate `crates/elph-ai/models/*.json` (+ `models/index.json`) from **models.dev** as the sole catalog origin.
-Pricing prefers live provider APIs when keys/endpoints allow, then models.dev. Every model must include a complete
+Pricing prefers live provider APIs when keys/endpoints allow, then models.dev. Every model includes a complete
 `thinkingLevelMap`, resolved from real sources — never invented or copy-pasted across models.
+Each model also carries a `thinkingLevelMapSource` field tracking where the map came from.
 
 The JSON files are the only catalog source: `crates/elph-ai/build.rs` compresses them into the binary on the next build, so there is no Rust catalog file to regenerate.
 
@@ -54,7 +55,7 @@ Useful flags:
 | `--no-live-pricing` | Skip provider `/models` pricing/capability probes             |
 | `--force`           | Bypass the models.dev cache freshness check (always re-fetch) |
 
-Each model's `thinkingLevelMap` must be resolved per the precedence in **Thinking level sourcing** below — this happens automatically inside `thinking_map.rs`, not as a separate manual step.
+Each model's `thinkingLevelMap` is resolved per the precedence in **Thinking level sourcing** below — this happens automatically inside `thinking_map.rs`, not as a separate manual step.
 
 2. **Optional full pass** (chat + image fixture path)
 
@@ -80,14 +81,14 @@ cargo check -p elph -p elph-ai
 Confirm:
 
 - `thinkingLevelMap: complete=N incomplete=0` in generator output
-- `thinkingLevelMap source breakdown: live-api=X models-dev=Y unresolved=0` (see below — `unresolved` must be 0 or explicitly reported to the user, never silently filled)
+- `thinkingLevelMap source breakdown: live-api=X models-dev=Y provider-override=Z previous=W unresolved=V` — `unresolved` must be 0 for reasoning=true models, or explicitly reported to the user (never silently filled)
 - `Verified … catalog providers are registered in builtin_providers()`
 - Spot-check `anthropic.json`, `xai.json`, a gateway (`openrouter` / `kilo` / `hyper` / `infron`) — for at least one model per file, confirm the `thinkingLevelMap` values match what the source (provider API docs/response or models.dev entry) actually reports, not a guess.
 
 5. **Summarize for the user**
 
 - Provider count / model count
-- `thinkingLevelMap` source breakdown (live-api vs models.dev vs unresolved)
+- `thinkingLevelMap` source breakdown (live-api vs models.dev vs provider-override vs previous vs unresolved)
 - Any models where thinking support could not be confirmed from any source (report explicitly — do not silently mark as `off` or duplicate a sibling model's map)
 - Any providers skipped (not on models.dev and no previous overlay)
 - Remaining zero-priced models if any
@@ -99,26 +100,39 @@ Confirm:
 across a provider or model family. Resolve per model, in this order:
 
 1. **Live provider API (primary)** — if the provider's `/models` endpoint (or a dedicated capabilities
-   endpoint) exposes reasoning/thinking-effort support for that exact model id, use it directly. Map the
+   endpoint) exposes `reasoning.supported_efforts` for that exact model id, use it directly. Map the
    provider's native levels (e.g. `low/medium/high`, `minimal/low/medium/high`, boolean `reasoning: true`) onto
    the 7-key schema; do not invent intermediate levels the provider doesn't expose — mark them `null`.
+   Supported effort aliases: `"none"` → `"off"`, `"min"` → `"minimal"`, `"default"` → `"medium"`.
 
-2. **models.dev (fallback)** — if the live API doesn't expose per-model thinking capability (most providers
-   don't), look up the **same model id** in the cached models.dev entry and use its reasoning/effort metadata
-   if present.
+2. **models.dev (secondary)** — if the live API doesn't expose per-model thinking capability (most providers
+   don't), look up the **same model id** in the cached models.dev entry and use its `reasoning_options`
+   metadata if present. Extract `effort`-type options and map their `values` array onto the 7-key schema.
 
-3. **Unresolved (no silent fill)** — if neither source has capability data for that model id:
+3. **Provider-family override (tertiary)** — when neither live API nor models.dev has data, fall back to
+   known provider defaults from official documentation:
+   - **xAI Grok**: low / high / max
+   - **Anthropic Opus/Sonnet-5/Fable**: xhigh / max (adaptive thinking)
+   - **Anthropic Haiku 4.5**: low / medium / high / max
+   - **Anthropic Sonnet 4.5 / Opus 4.5 / earlier 4.x**: low / medium / high / max
+   - **OpenAI GPT-5.x reasoning models**: off / low / medium / high / xhigh
+   - **OpenAI O-series**: low / medium / high
+   These overrides also handle gateway-prefixed model IDs (e.g. `openai/gpt-5.4` on OpenRouter) by
+   extracting the base model id after the last slash.
+
+4. **Elph overlays (preserved)** — if the previous catalog had a thinkingLevelMap with at least one
+   non-null wire value, preserve it. This protects intentional hand-authored overrides from being
+   overwritten by stale defaults.
+
+5. **Unresolved (no silent fill)** — if no source has capability data for that model id:
     - Do **not** copy the map from a "similar" model (different id) in the same family.
     - Do **not** default to all-`null` or all-`off` as if that were confirmed.
     - Emit it as `unresolved` in the generator output and surface it in the final summary so a human decides
       (e.g. via an Elph overlay override), instead of the generator quietly guessing.
 
-4. **Elph overlays always win** — if `crates/elph-ai/models/*.json` already has an intentional hand-authored
-   override for a model (documented as such), preserve it; overlays are the one case where a human, not a
-   source lookup, is authoritative.
-
 Every resolved entry should be traceable back to (a) a live API response field, (b) a specific models.dev
-field, or (c) an explicit Elph overlay — never to inference from the model name or family.
+field, (c) an explicit provider override from official docs, or (d) an explicit Elph overlay — never to
+inference from the model name or family.
 
 ## Data freshness
 
@@ -130,6 +144,9 @@ The generator keeps model data current through three layers:
     - models.dev style: `metadata.pricing.{input_per_million, output_per_million, cached_input_per_million}`
     - Hyper style: `pricing.{input, output, cache_hit, cache_create}`
     - Infron/OneRouter style: `min_prompt_price` / `min_completion_price`
+    
+    Thinking capabilities are extracted from `reasoning.supported_efforts` (array of effort strings)
+    and `reasoning.mandatory` / `reasoning.default_enabled` booleans.
 
 3. **Live model list (gateway providers)** — for `gateway_preserve_ids` providers with a live `/models` endpoint, the **live id list replaces the previous catalog ids** (source of truth). New upstream models appear automatically; removed ones drop out. When the API exposes `category_type`, only `LLM` entries are kept so image/video models never pollute the chat catalog. If no live endpoint/key is available, the previous catalog ids are preserved.
 
@@ -137,7 +154,7 @@ The generator keeps model data current through three layers:
 
 - **Origin**: models.dev only — never seed chat catalogs from pi.
 - **Pricing**: live API (when available) → models.dev → keep previous non-zero.
-- **Every model** must have `thinkingLevelMap` with keys `off|minimal|low|medium|high|xhigh|max` (null = unsupported), resolved per **Thinking level sourcing** — live API → models.dev → explicit unresolved report. Never invented, never copied from a sibling model.
+- **Every model** must have `thinkingLevelMap` with keys `off|minimal|low|medium|high|xhigh|max` (null = unsupported), resolved per **Thinking level sourcing** — live API → models.dev → provider override → preserved overlay → explicit unresolved report. Never invented, never copied from a sibling model.
 - **Do not** invent `api` / `baseUrl` from models.dev; preserve Elph factory overlays.
 - **Do not** remove Elph-only gateway providers; preserve their model ids and enrich.
 - New providers still need a factory in `src/providers/builtin.rs` (generator fails if unregistered).
@@ -151,10 +168,10 @@ The generator keeps model data current through three layers:
 | `bin/generate_models/main.rs`             | CLI                                                                                                         |
 | `bin/generate_models/models_dev.rs`       | Fetch/cache models.dev (24h TTL + fallback)                                                                 |
 | `bin/generate_models/provider_sources.rs` | Elph ↔ models.dev map + live endpoint config                                                                |
-| `bin/generate_models/normalize.rs`        | Entry merge + cost fields                                                                                   |
-| `bin/generate_models/thinking_map.rs`     | Resolves thinkingLevelMap per model: live-api → models.dev → unresolved (source-tagged, no invented values) |
-| `bin/generate_models/pricing.rs`          | Live pricing probes + live model id refresh                                                                 |
-| `bin/generate_models/chat.rs`             | Orchestration + registration check                                                                          |
+| `bin/generate_models/normalize.rs`        | Entry merge + cost fields + persist `thinkingLevelMapSource`                                                 |
+| `bin/generate_models/thinking_map.rs`     | Resolves thinkingLevelMap per model: live-api → models.dev → provider-override → preserved overlay → unresolved (source-tagged, no invented values) |
+| `bin/generate_models/pricing.rs`          | Live pricing probes + live model id refresh + thinking capability extraction                                  |
+| `bin/generate_models/chat.rs`             | Orchestration + registration check + source breakdown summary                                                 |
 | `models/*.json`                           | Catalog source (compressed into the binary)                                                                 |
 | `build.rs`                                | zstd frames + provider index for the binary                                                                 |
 | `src/models/catalog.rs`                   | Lazy loader (seed + CONFIG_DIR overlay)                                                                     |
@@ -166,3 +183,4 @@ The generator keeps model data current through three layers:
 - Run live pricing/capability probes against unpaid keys in a loop
 - Hand-edit hundreds of models when a generator fix exists
 - Fill `thinkingLevelMap` by guessing from model name/family when no source (live API, models.dev, or Elph overlay) confirms it
+- Preserve incorrect previous maps when fresh source data is available — fresh data always takes priority over stale catalog entries

@@ -23,7 +23,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "gpt-4-turbo": {
         "api": "azure-openai-responses",
@@ -49,7 +50,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "gpt-4.1": {
         "api": "azure-openai-responses",
@@ -75,7 +77,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "gpt-4.1-mini": {
         "api": "azure-openai-responses",
@@ -101,7 +104,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "gpt-4.1-nano": {
         "api": "azure-openai-responses",
@@ -127,7 +131,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "gpt-4o": {
         "api": "azure-openai-responses",
@@ -153,7 +158,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "gpt-4o-2024-05-13": {
         "api": "azure-openai-responses",
@@ -179,7 +185,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "gpt-4o-2024-08-06": {
         "api": "azure-openai-responses",
@@ -205,7 +212,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "gpt-4o-2024-11-20": {
         "api": "azure-openai-responses",
@@ -231,7 +239,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "gpt-4o-mini": {
         "api": "azure-openai-responses",
@@ -257,7 +266,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "gpt-5": {
         "api": "azure-openai-responses",
@@ -279,14 +289,15 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": null,
+            "medium": "medium",
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5-chat-latest": {
         "api": "azure-openai-responses",
@@ -315,7 +326,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "gpt-5-mini": {
         "api": "azure-openai-responses",
@@ -337,14 +349,15 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": null,
+            "medium": "medium",
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5-nano": {
         "api": "azure-openai-responses",
@@ -366,14 +379,15 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": null,
+            "medium": "medium",
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5-pro": {
         "api": "azure-openai-responses",
@@ -395,14 +409,15 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
+            "high": "high",
             "low": null,
             "max": null,
             "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.1": {
         "api": "azure-openai-responses",
@@ -424,14 +439,15 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.2": {
         "api": "azure-openai-responses",
@@ -453,14 +469,15 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.2-chat-latest": {
         "api": "azure-openai-responses",
@@ -485,11 +502,12 @@
             "high": null,
             "low": null,
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": "xhigh"
-        }
+            "xhigh": null
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.2-pro": {
         "api": "azure-openai-responses",
@@ -518,7 +536,8 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "gpt-5.3-chat-latest": {
         "api": "azure-openai-responses",
@@ -547,7 +566,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "gpt-5.3-codex": {
         "api": "azure-openai-responses",
@@ -569,14 +589,15 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.3-codex-spark": {
         "api": "azure-openai-responses",
@@ -598,14 +619,15 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.4": {
         "api": "azure-openai-responses",
@@ -627,14 +649,15 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.4-mini": {
         "api": "azure-openai-responses",
@@ -656,14 +679,15 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.4-nano": {
         "api": "azure-openai-responses",
@@ -685,14 +709,15 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.4-pro": {
         "api": "azure-openai-responses",
@@ -714,14 +739,15 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
+            "high": "high",
             "low": null,
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.5": {
         "api": "azure-openai-responses",
@@ -743,14 +769,15 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.5-pro": {
         "api": "azure-openai-responses",
@@ -772,14 +799,15 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
+            "high": "high",
             "low": null,
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.6-luna": {
         "api": "azure-openai-responses",
@@ -801,14 +829,15 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.6-sol": {
         "api": "azure-openai-responses",
@@ -830,14 +859,15 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-5.6-terra": {
         "api": "azure-openai-responses",
@@ -859,14 +889,15 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gpt-realtime-2.1": {
         "api": "azure-openai-responses",
@@ -892,7 +923,8 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": "xhigh"
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "o1": {
         "api": "azure-openai-responses",
@@ -918,7 +950,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "o1-pro": {
         "api": "azure-openai-responses",
@@ -944,7 +977,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "o3": {
         "api": "azure-openai-responses",
@@ -970,7 +1004,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "o3-mini": {
         "api": "azure-openai-responses",
@@ -996,7 +1031,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "o3-pro": {
         "api": "azure-openai-responses",
@@ -1022,7 +1058,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "o4-mini": {
         "api": "azure-openai-responses",
@@ -1048,6 +1085,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     }
 }

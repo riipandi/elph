@@ -23,7 +23,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "deep-research-preview-04-2026": {
         "api": "google-generative-ai",
@@ -49,7 +50,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "gemini-2.5-computer-use-preview-10-2025": {
         "api": "google-generative-ai",
@@ -75,7 +77,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "gemini-2.5-flash": {
         "api": "google-generative-ai",
@@ -101,7 +104,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "gemini-2.5-flash-image": {
         "api": "google-generative-ai",
@@ -127,7 +131,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "gemini-2.5-flash-lite": {
         "api": "google-generative-ai",
@@ -153,7 +158,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "gemini-2.5-flash-preview-tts": {
         "api": "google-generative-ai",
@@ -179,7 +185,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "gemini-2.5-pro": {
         "api": "google-generative-ai",
@@ -205,7 +212,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "gemini-2.5-pro-preview-tts": {
         "api": "google-generative-ai",
@@ -231,7 +239,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "gemini-3-flash-preview": {
         "api": "google-generative-ai",
@@ -250,14 +259,15 @@
         "provider": "google",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": null,
+            "medium": "medium",
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gemini-3-pro-image": {
         "api": "google-generative-ai",
@@ -283,7 +293,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gemini-3-pro-image-preview": {
         "api": "google-generative-ai",
@@ -309,7 +320,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "gemini-3.1-flash-image": {
         "api": "google-generative-ai",
@@ -335,7 +347,8 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gemini-3.1-flash-image-preview": {
         "api": "google-generative-ai",
@@ -361,7 +374,8 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gemini-3.1-flash-lite": {
         "api": "google-generative-ai",
@@ -380,14 +394,15 @@
         "provider": "google",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": null,
+            "medium": "medium",
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gemini-3.1-flash-lite-image": {
         "api": "google-generative-ai",
@@ -406,14 +421,15 @@
         "provider": "google",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
+            "high": "high",
             "low": null,
             "max": null,
             "medium": null,
-            "minimal": null,
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gemini-3.1-flash-lite-preview": {
         "api": "google-generative-ai",
@@ -432,14 +448,15 @@
         "provider": "google",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": null,
+            "medium": "medium",
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gemini-3.1-flash-live-preview": {
         "api": "google-generative-ai",
@@ -458,14 +475,15 @@
         "provider": "google",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": null,
+            "medium": "medium",
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gemini-3.1-flash-tts-preview": {
         "api": "google-generative-ai",
@@ -491,7 +509,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "gemini-3.1-pro-preview": {
         "api": "google-generative-ai",
@@ -510,14 +529,15 @@
         "provider": "google",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "HIGH",
-            "low": "LOW",
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gemini-3.1-pro-preview-customtools": {
         "api": "google-generative-ai",
@@ -536,14 +556,15 @@
         "provider": "google",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "HIGH",
-            "low": "LOW",
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gemini-3.5-flash": {
         "api": "google-generative-ai",
@@ -562,14 +583,15 @@
         "provider": "google",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": null,
+            "medium": "medium",
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gemini-3.5-flash-lite": {
         "api": "google-generative-ai",
@@ -588,14 +610,15 @@
         "provider": "google",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": null,
+            "medium": "medium",
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gemini-3.5-live-translate-preview": {
         "api": "google-generative-ai",
@@ -621,7 +644,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "gemini-3.6-flash": {
         "api": "google-generative-ai",
@@ -640,14 +664,15 @@
         "provider": "google",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": null,
+            "medium": "medium",
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gemini-embedding-001": {
         "api": "google-generative-ai",
@@ -673,7 +698,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "gemini-embedding-2": {
         "api": "google-generative-ai",
@@ -699,7 +725,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "gemini-flash-latest": {
         "api": "google-generative-ai",
@@ -718,14 +745,15 @@
         "provider": "google",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": null,
+            "medium": "medium",
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gemini-flash-lite-latest": {
         "api": "google-generative-ai",
@@ -744,14 +772,15 @@
         "provider": "google",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": null,
+            "medium": "medium",
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "models.dev"
     },
     "gemini-omni-flash-preview": {
         "api": "google-generative-ai",
@@ -777,7 +806,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "gemini-robotics-er-1.6-preview": {
         "api": "google-generative-ai",
@@ -803,7 +833,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "gemma-4-26b-a4b-it": {
         "api": "google-generative-ai",
@@ -829,7 +860,8 @@
             "minimal": "MINIMAL",
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "gemma-4-31b-it": {
         "api": "google-generative-ai",
@@ -855,7 +887,8 @@
             "minimal": "MINIMAL",
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "previous"
     },
     "lyria-3-clip-preview": {
         "api": "google-generative-ai",
@@ -881,7 +914,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "lyria-3-pro-preview": {
         "api": "google-generative-ai",
@@ -907,7 +941,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "veo-3.1-fast-generate-preview": {
         "api": "google-generative-ai",
@@ -933,7 +968,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "veo-3.1-generate-preview": {
         "api": "google-generative-ai",
@@ -959,7 +995,8 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     },
     "veo-3.1-lite-generate-preview": {
         "api": "google-generative-ai",
@@ -985,6 +1022,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
+        },
+        "thinkingLevelMapSource": "unresolved"
     }
 }
