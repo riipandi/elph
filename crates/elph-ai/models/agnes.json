@@ -23,8 +23,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "agnes-2.5-flash": {
         "api": "openai-completions",
@@ -50,8 +49,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "agnes-2.5-pro": {
         "api": "openai-completions",
@@ -77,8 +75,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "agnes-2.5-pro-alpha": {
         "api": "openai-completions",
@@ -104,7 +101,6 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     }
 }

@@ -26,8 +26,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "baai/bge-m3": {
         "api": "openai-completions",
@@ -56,8 +55,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "black-forest-labs/flux.1-dev": {
         "api": "openai-completions",
@@ -86,8 +84,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "black-forest-labs/flux_1-kontext-dev": {
         "api": "openai-completions",
@@ -116,8 +113,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "black-forest-labs/flux_1-schnell": {
         "api": "openai-completions",
@@ -146,8 +142,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "black-forest-labs/flux_2-klein-4b": {
         "api": "openai-completions",
@@ -176,8 +171,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "bytedance/seed-oss-36b-instruct": {
         "api": "openai-completions",
@@ -206,8 +200,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "deepseek-ai/deepseek-v4-flash": {
         "api": "openai-completions",
@@ -236,8 +229,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "deepseek-ai/deepseek-v4-pro": {
         "api": "openai-completions",
@@ -266,8 +258,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "google/gemma-2-2b-it": {
         "api": "openai-completions",
@@ -296,8 +287,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "google/gemma-3-12b-it": {
         "api": "openai-completions",
@@ -337,8 +327,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "google/gemma-3-4b-it": {
         "api": "openai-completions",
@@ -378,8 +367,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "google/gemma-3n-e2b-it": {
         "api": "openai-completions",
@@ -408,8 +396,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "google/gemma-3n-e4b-it": {
         "api": "openai-completions",
@@ -438,8 +425,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "google/gemma-4-31b-it": {
         "api": "openai-completions",
@@ -468,8 +454,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "google/google-paligemma": {
         "api": "openai-completions",
@@ -498,8 +483,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "meta/esm2-650m": {
         "api": "openai-completions",
@@ -528,8 +512,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "meta/esmfold": {
         "api": "openai-completions",
@@ -558,8 +541,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "meta/llama-3.1-70b-instruct": {
         "api": "openai-completions",
@@ -599,8 +581,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "meta/llama-3.1-8b-instruct": {
         "api": "openai-completions",
@@ -640,8 +621,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "meta/llama-3.2-11b-vision-instruct": {
         "api": "openai-completions",
@@ -681,8 +661,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "meta/llama-3.2-1b-instruct": {
         "api": "openai-completions",
@@ -711,8 +690,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "meta/llama-3.2-3b-instruct": {
         "api": "openai-completions",
@@ -741,8 +719,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "meta/llama-3.2-90b-vision-instruct": {
         "api": "openai-completions",
@@ -782,8 +759,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "meta/llama-3.3-70b-instruct": {
         "api": "openai-completions",
@@ -823,8 +799,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "meta/llama-4-maverick-17b-128e-instruct": {
         "api": "openai-completions",
@@ -853,8 +828,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "meta/llama-guard-4-12b": {
         "api": "openai-completions",
@@ -883,8 +857,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "microsoft/phi-4-mini-instruct": {
         "api": "openai-completions",
@@ -913,8 +886,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "microsoft/phi-4-multimodal-instruct": {
         "api": "openai-completions",
@@ -943,8 +915,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "minimaxai/minimax-m2.7": {
         "api": "openai-completions",
@@ -973,8 +944,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "minimaxai/minimax-m3": {
         "api": "openai-completions",
@@ -1014,8 +984,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "mistralai/magistral-small-2506": {
         "api": "openai-completions",
@@ -1044,8 +1013,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistralai/ministral-14b-instruct-2512": {
         "api": "openai-completions",
@@ -1074,8 +1042,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistralai/mistral-7b-instruct-v0.3": {
         "api": "openai-completions",
@@ -1115,8 +1082,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistralai/mistral-large-3-675b-instruct-2512": {
         "api": "openai-completions",
@@ -1145,8 +1111,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistralai/mistral-medium-3-instruct": {
         "api": "openai-completions",
@@ -1175,8 +1140,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistralai/mistral-medium-3.5-128b": {
         "api": "openai-completions",
@@ -1216,8 +1180,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "mistralai/mistral-nemotron": {
         "api": "openai-completions",
@@ -1246,8 +1209,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistralai/mistral-small-4-119b-2603": {
         "api": "openai-completions",
@@ -1276,8 +1238,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "mistralai/mixtral-8x22b-instruct": {
         "api": "openai-completions",
@@ -1306,8 +1267,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistralai/mixtral-8x7b-instruct": {
         "api": "openai-completions",
@@ -1336,8 +1296,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "moonshotai/kimi-k2-instruct-0905": {
         "api": "openai-completions",
@@ -1366,8 +1325,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "moonshotai/kimi-k2.6": {
         "api": "openai-completions",
@@ -1407,8 +1365,7 @@
             "minimal": "minimal",
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "nvidia/active-speaker-detection": {
         "api": "openai-completions",
@@ -1437,8 +1394,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "nvidia/bevformer": {
         "api": "openai-completions",
@@ -1467,8 +1423,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "nvidia/cosmos-predict1-5b": {
         "api": "openai-completions",
@@ -1497,8 +1452,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "nvidia/cosmos-reason2-8b": {
         "api": "openai-completions",
@@ -1538,8 +1492,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "nvidia/cosmos-transfer1-7b": {
         "api": "openai-completions",
@@ -1568,8 +1521,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "nvidia/cosmos-transfer2_5-2b": {
         "api": "openai-completions",
@@ -1598,8 +1550,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "nvidia/gliner-pii": {
         "api": "openai-completions",
@@ -1628,8 +1579,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "nvidia/llama-3.1-nemotron-70b-instruct": {
         "api": "openai-completions",
@@ -1669,8 +1619,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "nvidia/llama-3.1-nemotron-nano-8b-v1": {
         "api": "openai-completions",
@@ -1710,8 +1659,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "nvidia/llama-3.1-nemotron-nano-vl-8b-v1": {
         "api": "openai-completions",
@@ -1751,8 +1699,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "nvidia/llama-3.1-nemotron-safety-guard-8b-v3": {
         "api": "openai-completions",
@@ -1781,8 +1728,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "nvidia/llama-3.1-nemotron-ultra-253b-v1": {
         "api": "openai-completions",
@@ -1822,8 +1768,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "nvidia/llama-3.3-nemotron-super-49b-v1": {
         "api": "openai-completions",
@@ -1863,8 +1808,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "nvidia/llama-3.3-nemotron-super-49b-v1.5": {
         "api": "openai-completions",
@@ -1904,8 +1848,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "nvidia/llama-3_2-nemoretriever-300m-embed-v1": {
         "api": "openai-completions",
@@ -1934,8 +1877,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "nvidia/llama-nemotron-embed-vl-1b-v2": {
         "api": "openai-completions",
@@ -1964,8 +1906,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "nvidia/llama-nemotron-rerank-vl-1b-v2": {
         "api": "openai-completions",
@@ -1994,8 +1935,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "nvidia/magpie-tts-zeroshot": {
         "api": "openai-completions",
@@ -2024,8 +1964,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "nvidia/nemotron-3-content-safety": {
         "api": "openai-completions",
@@ -2054,8 +1993,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "nvidia/nemotron-3-nano-30b-a3b": {
         "api": "openai-completions",
@@ -2095,8 +2033,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning": {
         "api": "openai-completions",
@@ -2136,8 +2073,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "nvidia/nemotron-3-super-120b-a12b": {
         "api": "openai-completions",
@@ -2177,8 +2113,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "nvidia/nemotron-3-ultra-550b-a55b": {
         "api": "openai-completions",
@@ -2218,8 +2153,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "nvidia/nemotron-content-safety-reasoning-4b": {
         "api": "openai-completions",
@@ -2248,8 +2182,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "nvidia/nemotron-mini-4b-instruct": {
         "api": "openai-completions",
@@ -2278,8 +2211,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "nvidia/nemotron-nano-12b-v2-vl": {
         "api": "openai-completions",
@@ -2319,8 +2251,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "nvidia/nemotron-voicechat": {
         "api": "openai-completions",
@@ -2349,8 +2280,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "nvidia/nv-embed-v1": {
         "api": "openai-completions",
@@ -2379,8 +2309,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "nvidia/nv-embedcode-7b-v1": {
         "api": "openai-completions",
@@ -2409,8 +2338,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "nvidia/nvidia-nemotron-nano-9b-v2": {
         "api": "openai-completions",
@@ -2450,8 +2378,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "nvidia/rerank-qa-mistral-4b": {
         "api": "openai-completions",
@@ -2480,8 +2407,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "nvidia/riva-translate-4b-instruct-v1.1": {
         "api": "openai-completions",
@@ -2510,8 +2436,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "nvidia/sparsedrive": {
         "api": "openai-completions",
@@ -2540,8 +2465,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "nvidia/streampetr": {
         "api": "openai-completions",
@@ -2570,8 +2494,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "nvidia/studiovoice": {
         "api": "openai-completions",
@@ -2600,8 +2523,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "nvidia/synthetic-video-detector": {
         "api": "openai-completions",
@@ -2630,8 +2552,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "nvidia/usdcode": {
         "api": "openai-completions",
@@ -2660,8 +2581,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "nvidia/usdvalidate": {
         "api": "openai-completions",
@@ -2690,8 +2610,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "openai/gpt-oss-120b": {
         "api": "openai-completions",
@@ -2731,8 +2650,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-oss-20b": {
         "api": "openai-completions",
@@ -2772,8 +2690,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/whisper-large-v3": {
         "api": "openai-completions",
@@ -2802,8 +2719,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "poolside/laguna-xs-2.1": {
         "api": "openai-completions",
@@ -2843,8 +2759,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "qwen/qwen-image": {
         "api": "openai-completions",
@@ -2873,8 +2788,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "qwen/qwen-image-edit": {
         "api": "openai-completions",
@@ -2903,8 +2817,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "qwen/qwen2.5-coder-32b-instruct": {
         "api": "openai-completions",
@@ -2933,8 +2846,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "qwen/qwen3-coder-480b-a35b-instruct": {
         "api": "openai-completions",
@@ -2963,8 +2875,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "qwen/qwen3-next-80b-a3b-instruct": {
         "api": "openai-completions",
@@ -2993,8 +2904,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "qwen/qwen3.5-122b-a10b": {
         "api": "openai-completions",
@@ -3023,8 +2933,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "qwen/qwen3.5-397b-a17b": {
         "api": "openai-completions",
@@ -3053,8 +2962,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "sarvamai/sarvam-m": {
         "api": "openai-completions",
@@ -3083,8 +2991,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "stepfun-ai/step-3.5-flash": {
         "api": "openai-completions",
@@ -3113,8 +3020,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "stepfun-ai/step-3.7-flash": {
         "api": "openai-completions",
@@ -3154,8 +3060,7 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "thinkingmachines/inkling": {
         "api": "openai-completions",
@@ -3195,8 +3100,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "upstage/solar-10.7b-instruct": {
         "api": "openai-completions",
@@ -3225,8 +3129,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "z-ai/glm-5.2": {
         "api": "openai-completions",
@@ -3266,7 +3169,6 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     }
 }

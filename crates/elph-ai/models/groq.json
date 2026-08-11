@@ -26,8 +26,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "canopylabs/orpheus-arabic-saudi": {
         "api": "openai-completions",
@@ -56,8 +55,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "canopylabs/orpheus-v1-english": {
         "api": "openai-completions",
@@ -86,8 +84,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "groq/compound": {
         "api": "openai-completions",
@@ -116,8 +113,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "groq/compound-mini": {
         "api": "openai-completions",
@@ -146,8 +142,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "llama-3.1-8b-instant": {
         "api": "openai-completions",
@@ -176,8 +171,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "llama-3.3-70b-versatile": {
         "api": "openai-completions",
@@ -206,8 +200,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "meta-llama/llama-prompt-guard-2-22m": {
         "api": "openai-completions",
@@ -236,8 +229,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "meta-llama/llama-prompt-guard-2-86m": {
         "api": "openai-completions",
@@ -266,8 +258,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "openai/gpt-oss-120b": {
         "api": "openai-completions",
@@ -296,8 +287,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-oss-20b": {
         "api": "openai-completions",
@@ -326,8 +316,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-oss-safeguard-20b": {
         "api": "openai-completions",
@@ -356,8 +345,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "qwen/qwen3.6-27b": {
         "api": "openai-completions",
@@ -386,8 +374,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "whisper-large-v3": {
         "api": "openai-completions",
@@ -416,8 +403,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "whisper-large-v3-turbo": {
         "api": "openai-completions",
@@ -446,7 +432,6 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     }
 }

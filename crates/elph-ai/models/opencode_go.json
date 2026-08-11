@@ -31,8 +31,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "deepseek-v4-pro": {
         "api": "openai-completions",
@@ -66,8 +65,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "glm-5": {
         "api": "openai-completions",
@@ -94,8 +92,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "glm-5.1": {
         "api": "openai-completions",
@@ -127,8 +124,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "glm-5.2": {
         "api": "openai-completions",
@@ -160,8 +156,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "gpt-5.6-luna": {
         "api": "openai-completions",
@@ -188,8 +183,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "grok-4.5": {
         "api": "openai-responses",
@@ -219,8 +213,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "hy3": {
         "api": "openai-completions",
@@ -252,8 +245,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "hy3-preview": {
         "api": "openai-completions",
@@ -280,8 +272,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "kimi-k2.5": {
         "api": "openai-completions",
@@ -308,8 +299,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "kimi-k2.6": {
         "api": "openai-completions",
@@ -344,8 +334,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "kimi-k2.7-code": {
         "api": "openai-completions",
@@ -377,8 +366,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "kimi-k3": {
         "api": "openai-completions",
@@ -410,8 +398,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "mimo-v2-omni": {
         "api": "openai-completions",
@@ -438,8 +425,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "mimo-v2-pro": {
         "api": "openai-completions",
@@ -466,8 +452,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "mimo-v2.5": {
         "api": "openai-completions",
@@ -499,8 +484,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "mimo-v2.5-pro": {
         "api": "openai-completions",
@@ -532,8 +516,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "minimax-m2.5": {
         "api": "openai-completions",
@@ -560,8 +543,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "minimax-m2.7": {
         "api": "openai-completions",
@@ -593,8 +575,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "minimax-m3": {
         "api": "anthropic-messages",
@@ -621,8 +602,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "qwen3.5-plus": {
         "api": "openai-completions",
@@ -649,8 +629,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "qwen3.6-plus": {
         "api": "openai-completions",
@@ -683,8 +662,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "qwen3.7-max": {
         "api": "anthropic-messages",
@@ -711,8 +689,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "qwen3.7-plus": {
         "api": "anthropic-messages",
@@ -739,8 +716,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "qwen3.8-max": {
         "api": "openai-completions",
@@ -767,7 +743,6 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     }
 }

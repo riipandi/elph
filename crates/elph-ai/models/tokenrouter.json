@@ -23,8 +23,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "MiniMax-M3": {
         "api": "openai-completions",
@@ -51,8 +50,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "anthropic/claude-fable-5": {
         "api": "openai-completions",
@@ -81,8 +79,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "anthropic/claude-haiku-4.5": {
         "api": "openai-completions",
@@ -109,8 +106,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "anthropic/claude-opus-4.5": {
         "api": "openai-completions",
@@ -137,8 +133,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "anthropic/claude-opus-4.6": {
         "api": "openai-completions",
@@ -165,8 +160,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "provider-override"
+        }
     },
     "anthropic/claude-opus-4.7": {
         "api": "openai-completions",
@@ -193,8 +187,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "anthropic/claude-opus-4.7-fast": {
         "api": "openai-completions",
@@ -221,8 +214,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "anthropic/claude-opus-4.8": {
         "api": "openai-completions",
@@ -249,8 +241,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "provider-override"
+        }
     },
     "anthropic/claude-opus-4.8-fast": {
         "api": "openai-completions",
@@ -277,8 +268,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "anthropic/claude-opus-5": {
         "api": "openai-completions",
@@ -307,8 +297,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "anthropic/claude-opus-5-fast": {
         "api": "openai-completions",
@@ -335,8 +324,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "anthropic/claude-sonnet-4": {
         "api": "openai-completions",
@@ -363,8 +351,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "anthropic/claude-sonnet-4.5": {
         "api": "openai-completions",
@@ -391,8 +378,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "anthropic/claude-sonnet-4.6": {
         "api": "openai-completions",
@@ -419,8 +405,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "anthropic/claude-sonnet-5": {
         "api": "openai-completions",
@@ -449,8 +434,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "bytedance-seed/seedream-4.5": {
         "api": "openai-completions",
@@ -476,8 +460,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "bytedance-seed/seedream-5.0-lite": {
         "api": "openai-completions",
@@ -503,8 +486,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "bytedance-seed/seedream-5.0-pro": {
         "api": "openai-completions",
@@ -530,8 +512,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "claude-haiku-4-5": {
         "api": "openai-completions",
@@ -558,8 +539,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "provider-override"
+        }
     },
     "claude-opus-4-8-m-aws": {
         "api": "openai-completions",
@@ -585,8 +565,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "provider-override"
+        }
     },
     "deepseek/deepseek-v3.2": {
         "api": "openai-completions",
@@ -615,8 +594,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "deepseek/deepseek-v4-flash": {
         "api": "openai-completions",
@@ -645,8 +623,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "deepseek/deepseek-v4-flash-0731": {
         "api": "openai-completions",
@@ -675,8 +652,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "deepseek/deepseek-v4-pro": {
         "api": "openai-completions",
@@ -705,8 +681,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "dreamina-seedance-2-5-hc": {
         "api": "openai-completions",
@@ -732,8 +707,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "ex/gpt-5.4": {
         "api": "openai-completions",
@@ -760,8 +734,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "google/gemini-2.5-flash-image": {
         "api": "openai-completions",
@@ -790,8 +763,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "google/gemini-3-flash-preview": {
         "api": "openai-completions",
@@ -820,8 +792,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "google/gemini-3-pro-image-preview": {
         "api": "openai-completions",
@@ -850,8 +821,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "google/gemini-3.1-flash-image-preview": {
         "api": "openai-completions",
@@ -880,8 +850,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "google/gemini-3.1-flash-lite-image": {
         "api": "openai-completions",
@@ -910,8 +879,7 @@
             "minimal": "minimal",
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "google/gemini-3.1-pro-preview": {
         "api": "openai-completions",
@@ -940,8 +908,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "google/gemini-3.5-flash": {
         "api": "openai-completions",
@@ -970,8 +937,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "google/gemini-3.5-flash-lite": {
         "api": "openai-completions",
@@ -1000,8 +966,7 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "google/gemini-3.6-flash": {
         "api": "openai-completions",
@@ -1030,8 +995,7 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "google/gemini-embedding-2": {
         "api": "openai-completions",
@@ -1060,8 +1024,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "google/gemma-4-26b-a4b-it": {
         "api": "openai-completions",
@@ -1089,8 +1052,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "happyhorse-1.0-t2v": {
         "api": "openai-completions",
@@ -1116,8 +1078,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "kling-3.0-turbo": {
         "api": "openai-completions",
@@ -1143,8 +1104,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "kling-v2-6": {
         "api": "openai-completions",
@@ -1171,8 +1131,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "kling-v3": {
         "api": "openai-completions",
@@ -1198,8 +1157,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "kling-v3-omni": {
         "api": "openai-completions",
@@ -1225,8 +1183,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "microsoft/mai-image-2.5": {
         "api": "openai-completions",
@@ -1252,8 +1209,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "minimax/minimax-m2-her": {
         "api": "openai-completions",
@@ -1280,8 +1236,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "minimax/minimax-m2.1": {
         "api": "openai-completions",
@@ -1308,8 +1263,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "minimax/minimax-m2.1-highspeed": {
         "api": "openai-completions",
@@ -1335,8 +1289,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "minimax/minimax-m2.5": {
         "api": "openai-completions",
@@ -1363,8 +1316,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "minimax/minimax-m2.7": {
         "api": "openai-completions",
@@ -1391,8 +1343,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "minimax/minimax-m2.7-highspeed": {
         "api": "openai-completions",
@@ -1419,8 +1370,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "miromind/mirothinker-1-7-deepresearch": {
         "api": "openai-completions",
@@ -1447,8 +1397,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "miromind/mirothinker-1-7-deepresearch-mini": {
         "api": "openai-completions",
@@ -1475,8 +1424,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "mistralai/devstral-2512": {
         "api": "openai-completions",
@@ -1503,8 +1451,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistralai/mistral-medium-3-5": {
         "api": "openai-completions",
@@ -1531,8 +1478,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "mistralai/mistral-small-2603": {
         "api": "openai-completions",
@@ -1559,8 +1505,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "mistralai/voxtral-small-24b-2507": {
         "api": "openai-completions",
@@ -1587,8 +1532,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "moonshotai/kimi-k2.5": {
         "api": "openai-completions",
@@ -1617,8 +1561,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "moonshotai/kimi-k2.6": {
         "api": "openai-completions",
@@ -1647,8 +1590,7 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "moonshotai/kimi-k2.7-code": {
         "api": "openai-completions",
@@ -1677,8 +1619,7 @@
             "minimal": "minimal",
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "moonshotai/kimi-k3": {
         "api": "openai-completions",
@@ -1706,8 +1647,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "moonshotai/kimi-k3-free": {
         "api": "openai-completions",
@@ -1734,8 +1674,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free": {
         "api": "openai-completions",
@@ -1762,8 +1701,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "nvidia/nemotron-3-super-120b-a12b": {
         "api": "openai-completions",
@@ -1791,8 +1729,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-4o-mini": {
         "api": "openai-completions",
@@ -1821,8 +1758,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "openai/gpt-5": {
         "api": "openai-completions",
@@ -1851,8 +1787,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5-image": {
         "api": "openai-completions",
@@ -1879,8 +1814,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5-image-mini": {
         "api": "openai-completions",
@@ -1907,8 +1841,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5-mini": {
         "api": "openai-completions",
@@ -1937,8 +1870,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.2": {
         "api": "openai-completions",
@@ -1967,8 +1899,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.4": {
         "api": "openai-completions",
@@ -1997,8 +1928,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.4-image-2": {
         "api": "openai-completions",
@@ -2025,8 +1955,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.4-mini": {
         "api": "openai-completions",
@@ -2055,8 +1984,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.4-nano": {
         "api": "openai-completions",
@@ -2085,8 +2013,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.4-pro": {
         "api": "openai-completions",
@@ -2115,8 +2042,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.5": {
         "api": "openai-completions",
@@ -2145,8 +2071,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.5-pro": {
         "api": "openai-completions",
@@ -2175,8 +2100,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.6-luna": {
         "api": "openai-completions",
@@ -2205,8 +2129,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.6-sol": {
         "api": "openai-completions",
@@ -2235,8 +2158,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.6-terra": {
         "api": "openai-completions",
@@ -2265,8 +2187,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-audio": {
         "api": "openai-completions",
@@ -2293,8 +2214,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "openai/gpt-audio-mini": {
         "api": "openai-completions",
@@ -2321,8 +2241,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "openai/gpt-oss-120b": {
         "api": "openai-completions",
@@ -2350,8 +2269,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "qwen/qwen3-coder-next": {
         "api": "openai-completions",
@@ -2378,8 +2296,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "qwen/qwen3.5-122b-a10b": {
         "api": "openai-completions",
@@ -2406,8 +2323,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "qwen/qwen3.5-35b-a3b": {
         "api": "openai-completions",
@@ -2434,8 +2350,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "qwen/qwen3.5-397b-a17b": {
         "api": "openai-completions",
@@ -2462,8 +2377,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "qwen/qwen3.5-9b": {
         "api": "openai-completions",
@@ -2490,8 +2404,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "qwen/qwen3.5-flash": {
         "api": "openai-completions",
@@ -2518,8 +2431,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "qwen/qwen3.5-plus-02-15": {
         "api": "openai-completions",
@@ -2546,8 +2458,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "qwen/qwen3.6-plus": {
         "api": "openai-completions",
@@ -2574,8 +2485,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "qwen/qwen3.7-max": {
         "api": "openai-completions",
@@ -2602,8 +2512,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "qwen/qwen3.7-plus": {
         "api": "openai-completions",
@@ -2630,8 +2539,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "qwen/qwen3.8-max": {
         "api": "openai-completions",
@@ -2658,8 +2566,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "qwen3.5-omni-plus": {
         "api": "openai-completions",
@@ -2686,8 +2593,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "qwen3.6-flash": {
         "api": "openai-completions",
@@ -2714,8 +2620,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "sakana/fugu-ultra": {
         "api": "openai-completions",
@@ -2743,8 +2648,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "seed-2-0-code-preview-260328": {
         "api": "openai-completions",
@@ -2770,8 +2674,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "seed-2-0-lite-260428": {
         "api": "openai-completions",
@@ -2797,8 +2700,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "seed-2-0-mini-260428": {
         "api": "openai-completions",
@@ -2824,8 +2726,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "seed-2-0-pro-260328": {
         "api": "openai-completions",
@@ -2851,8 +2752,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "stepfun/step-3.5-flash": {
         "api": "openai-completions",
@@ -2881,8 +2781,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "stepfun/step-3.7-flash": {
         "api": "openai-completions",
@@ -2911,8 +2810,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "tencent/hy3-preview": {
         "api": "openai-completions",
@@ -2940,8 +2838,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "x-ai/grok-4.1-fast": {
         "api": "openai-completions",
@@ -2968,8 +2865,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "x-ai/grok-4.20-beta": {
         "api": "openai-completions",
@@ -2995,8 +2891,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "provider-override"
+        }
     },
     "x-ai/grok-4.3": {
         "api": "openai-completions",
@@ -3023,8 +2918,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "x-ai/grok-4.5": {
         "api": "openai-completions",
@@ -3051,8 +2945,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "x-ai/grok-build-0.1": {
         "api": "openai-completions",
@@ -3079,8 +2972,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "provider-override"
+        }
     },
     "xiaomi/mimo-v2-flash": {
         "api": "openai-completions",
@@ -3109,8 +3001,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "xiaomi/mimo-v2-omni": {
         "api": "openai-completions",
@@ -3139,8 +3030,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "xiaomi/mimo-v2-pro": {
         "api": "openai-completions",
@@ -3169,8 +3059,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "xiaomi/mimo-v2.5": {
         "api": "openai-completions",
@@ -3199,8 +3088,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "xiaomi/mimo-v2.5-pro": {
         "api": "openai-completions",
@@ -3229,8 +3117,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "z-ai/glm-4.5-air": {
         "api": "openai-completions",
@@ -3257,8 +3144,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "z-ai/glm-4.6": {
         "api": "openai-completions",
@@ -3285,8 +3171,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "z-ai/glm-4.6v": {
         "api": "openai-completions",
@@ -3313,8 +3198,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "z-ai/glm-4.7": {
         "api": "openai-completions",
@@ -3341,8 +3225,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "z-ai/glm-5": {
         "api": "openai-completions",
@@ -3369,8 +3252,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "z-ai/glm-5-turbo": {
         "api": "openai-completions",
@@ -3397,8 +3279,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "z-ai/glm-5.1": {
         "api": "openai-completions",
@@ -3425,8 +3306,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "z-ai/glm-5.2": {
         "api": "openai-completions",
@@ -3453,7 +3333,6 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     }
 }

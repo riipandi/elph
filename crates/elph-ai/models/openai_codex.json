@@ -27,8 +27,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "gpt-5.4": {
         "api": "openai-codex-responses",
@@ -59,8 +58,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "gpt-5.4-mini": {
         "api": "openai-codex-responses",
@@ -91,8 +89,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "gpt-5.5": {
         "api": "openai-codex-responses",
@@ -123,8 +120,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "gpt-5.6-luna": {
         "api": "openai-codex-responses",
@@ -155,8 +151,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "gpt-5.6-sol": {
         "api": "openai-codex-responses",
@@ -187,8 +182,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "gpt-5.6-terra": {
         "api": "openai-codex-responses",
@@ -219,7 +213,6 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     }
 }

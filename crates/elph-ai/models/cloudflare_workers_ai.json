@@ -30,8 +30,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "@cf/ibm-granite/granite-4.0-h-micro": {
         "api": "openai-completions",
@@ -64,8 +63,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "@cf/meta/llama-3.3-70b-instruct-fp8-fast": {
         "api": "openai-completions",
@@ -98,8 +96,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "@cf/meta/llama-4-scout-17b-16e-instruct": {
         "api": "openai-completions",
@@ -132,8 +129,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "@cf/mistralai/mistral-small-3.1-24b-instruct": {
         "api": "openai-completions",
@@ -166,8 +162,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "@cf/moonshotai/kimi-k2.6": {
         "api": "openai-completions",
@@ -200,8 +195,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "@cf/moonshotai/kimi-k2.7-code": {
         "api": "openai-completions",
@@ -234,8 +228,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "@cf/nvidia/nemotron-3-120b-a12b": {
         "api": "openai-completions",
@@ -268,8 +261,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "@cf/openai/gpt-oss-120b": {
         "api": "openai-completions",
@@ -302,8 +294,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "@cf/openai/gpt-oss-20b": {
         "api": "openai-completions",
@@ -336,8 +327,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "@cf/qwen/qwen3-30b-a3b-fp8": {
         "api": "openai-completions",
@@ -370,8 +360,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "@cf/zai-org/glm-4.7-flash": {
         "api": "openai-completions",
@@ -404,8 +393,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "@cf/zai-org/glm-5.2": {
         "api": "openai-completions",
@@ -438,7 +426,6 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     }
 }

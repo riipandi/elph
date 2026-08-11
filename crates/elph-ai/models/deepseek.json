@@ -26,8 +26,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "deepseek-reasoner": {
         "api": "openai-completions",
@@ -56,8 +55,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "deepseek-v4-flash": {
         "api": "openai-completions",
@@ -92,8 +90,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "deepseek-v4-pro": {
         "api": "openai-completions",
@@ -128,7 +125,6 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     }
 }

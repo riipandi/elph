@@ -1,44 +1,18 @@
 //! Derive full 7-key `thinkingLevelMap` for every catalog model.
 //!
 //! Source precedence (first match wins):
-//! 1. Previous complete map (preserved Elph overlay)
-//! 2. Live API `reasoning.supported_efforts` (gateway providers like OpenRouter)
-//! 3. models.dev `reasoning_options` (direct provider catalogs)
-//! 4. Provider-family override map (known defaults from official docs)
-//! 5. Unresolved — reported in generator summary, never silently guessed
+//! 1. Live API `reasoning.supported_efforts` (gateway providers like OpenRouter) — strongest signal,
+//!    checked even before the `reasoning` boolean guard.
+//! 2. models.dev `reasoning_options` (direct provider catalogs)
+//! 3. Provider-family override map (known defaults from official docs)
+//! 4. Previous complete map (preserved Elph overlay)
+//! 5. Unresolved — all values null, never silently guessed
 
 use serde_json::{Value, json};
 
 const LEVELS: &[&str] = &["off", "minimal", "low", "medium", "high", "xhigh", "max"];
 
-/// Result of thinking level resolution: the map plus its source tag.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ThinkingSource {
-    /// Preserved from previous catalog (Elph overlay).
-    Previous,
-    /// Extracted from live API `reasoning.supported_efforts`.
-    LiveApi,
-    /// Resolved from models.dev `reasoning_options`.
-    ModelsDev,
-    /// Filled by provider-family override (known defaults).
-    ProviderOverride,
-    /// No source found — all values are null, reported to user.
-    Unresolved,
-}
-
-impl std::fmt::Display for ThinkingSource {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ThinkingSource::Previous => write!(f, "previous"),
-            ThinkingSource::LiveApi => write!(f, "live-api"),
-            ThinkingSource::ModelsDev => write!(f, "models.dev"),
-            ThinkingSource::ProviderOverride => write!(f, "provider-override"),
-            ThinkingSource::Unresolved => write!(f, "unresolved"),
-        }
-    }
-}
-
-/// Build a complete thinkingLevelMap (all 7 keys present) and return its source.
+/// Build a complete thinkingLevelMap (all 7 keys present).
 pub fn build_thinking_level_map(
     provider_id: &str,
     model_id: &str,
@@ -46,30 +20,30 @@ pub fn build_thinking_level_map(
     models_dev_model: Option<&Value>,
     previous: Option<&Value>,
     live_reasoning_efforts: Option<&[String]>,
-) -> (Value, ThinkingSource) {
+) -> Value {
     // 1. Live API supported_efforts (gateway providers like OpenRouter) — strongest signal.
     //    Checked before the `!reasoning` guard so an OpenRouter `supported_efforts` array
     //    still wins even when models.dev lists the model as non-reasoning.
     if let Some(efforts) = live_reasoning_efforts {
         if let Some(map) = map_from_efforts(efforts) {
-            return (map, ThinkingSource::LiveApi);
+            return map;
         }
     }
 
     if !reasoning {
-        return (all_null_map(), ThinkingSource::Unresolved);
+        return all_null_map();
     }
 
     // 2. models.dev reasoning_options.
     if let Some(m) = models_dev_model {
         if let Some(map) = from_models_dev_reasoning(m) {
-            return (map, ThinkingSource::ModelsDev);
+            return map;
         }
     }
 
     // 3. Provider-specific known maps (authoritative from official docs).
-    if let Some((map, _)) = provider_override_map(provider_id, model_id) {
-        return (map, ThinkingSource::ProviderOverride);
+    if let Some(map) = provider_override_map(provider_id, model_id) {
+        return map;
     }
 
     // 4. Preserve previous explicit map when it has at least one non-null value.
@@ -82,11 +56,11 @@ pub fn build_thinking_level_map(
         for k in LEVELS {
             out.insert((*k).to_string(), obj.get(*k).cloned().unwrap_or(Value::Null));
         }
-        return (Value::Object(out), ThinkingSource::Previous);
+        return Value::Object(out);
     }
 
     // 5. No source found.
-    (all_null_map(), ThinkingSource::Unresolved)
+    all_null_map()
 }
 
 fn all_null_map() -> Value {
@@ -144,16 +118,14 @@ fn normalize_effort_label(s: &str) -> String {
 }
 
 /// Provider-family override maps based on official documentation.
-/// Returns (map, source) — source is always ProviderOverride.
-fn provider_override_map(provider_id: &str, model_id: &str) -> Option<(Value, &'static str)> {
+fn provider_override_map(provider_id: &str, model_id: &str) -> Option<Value> {
     // For gateway providers, extract the base model id after the last slash
     let base_id = model_id.split('/').last().unwrap_or(model_id);
     // Origin-provider overrides first (exact provider + base id pattern).
     let origin = match provider_id {
-        "xai" if base_id.contains("grok") || base_id.contains("build") => Some((
-            map_with(&[("low", Some("low")), ("high", Some("high")), ("max", Some("max"))]),
-            "provider-override",
-        )),
+        "xai" if base_id.contains("grok") || base_id.contains("build") => {
+            Some(map_with(&[("low", Some("low")), ("high", Some("high")), ("max", Some("max"))]))
+        }
         "anthropic"
             if base_id.contains("opus")
                 || base_id.contains("sonnet-5")
@@ -166,17 +138,14 @@ fn provider_override_map(provider_id: &str, model_id: &str) -> Option<(Value, &'
                 || base_id.contains("opus-5")
                 || base_id.contains("fable-5") =>
         {
-            Some((map_with(&[("xhigh", Some("xhigh")), ("max", Some("max"))]), "provider-override"))
+            Some(map_with(&[("xhigh", Some("xhigh")), ("max", Some("max"))]))
         }
-        "anthropic" if base_id.contains("haiku-4-5") || base_id.contains("haiku-4.5") => Some((
-            map_with(&[
-                ("low", Some("low")),
-                ("medium", Some("medium")),
-                ("high", Some("high")),
-                ("max", Some("max")),
-            ]),
-            "provider-override",
-        )),
+        "anthropic" if base_id.contains("haiku-4-5") || base_id.contains("haiku-4.5") => Some(map_with(&[
+            ("low", Some("low")),
+            ("medium", Some("medium")),
+            ("high", Some("high")),
+            ("max", Some("max")),
+        ])),
         "anthropic"
             if model_id.contains("sonnet-4-5")
                 || model_id.contains("sonnet-4.5")
@@ -186,35 +155,30 @@ fn provider_override_map(provider_id: &str, model_id: &str) -> Option<(Value, &'
                 || base_id.contains("opus-4 ")
                 || base_id.contains("opus-4") =>
         {
-            Some((
-                map_with(&[
-                    ("low", Some("low")),
-                    ("medium", Some("medium")),
-                    ("high", Some("high")),
-                    ("max", Some("max")),
-                ]),
-                "provider-override",
-            ))
+            Some(map_with(&[
+                ("low", Some("low")),
+                ("medium", Some("medium")),
+                ("high", Some("high")),
+                ("max", Some("max")),
+            ]))
         }
         "openai" | "openrouter" | "hyper" | "kilo" | "infron" | "tokenrouter" if is_openai_reasoning_model(base_id) => {
-            Some((
-                map_with(&[
-                    ("off", Some("off")),
-                    ("low", Some("low")),
-                    ("medium", Some("medium")),
-                    ("high", Some("high")),
-                    ("xhigh", Some("xhigh")),
-                ]),
-                "provider-override",
-            ))
+            Some(map_with(&[
+                ("off", Some("off")),
+                ("low", Some("low")),
+                ("medium", Some("medium")),
+                ("high", Some("high")),
+                ("xhigh", Some("xhigh")),
+            ]))
         }
         "openai" | "openrouter" | "hyper" | "kilo" | "infron" | "tokenrouter"
             if base_id.starts_with('o') && !base_id.starts_with("oh") =>
         {
-            Some((
-                map_with(&[("low", Some("low")), ("medium", Some("medium")), ("high", Some("high"))]),
-                "provider-override",
-            ))
+            Some(map_with(&[
+                ("low", Some("low")),
+                ("medium", Some("medium")),
+                ("high", Some("high")),
+            ]))
         }
         _ => None,
     };
@@ -224,11 +188,10 @@ fn provider_override_map(provider_id: &str, model_id: &str) -> Option<(Value, &'
     // Gateway providers (nara-router, neuralwatt, tokenrouter, …) re-host the same
     // underlying models. Fall back to a base-id family match so well-known reasoning
     // families still receive an accurate map even when hosted on a non-origin gateway.
-    let gateway = match base_id {
-        b if b.contains("grok") || b.contains("build") => Some((
-            map_with(&[("low", Some("low")), ("high", Some("high")), ("max", Some("max"))]),
-            "provider-override",
-        )),
+    match base_id {
+        b if b.contains("grok") || b.contains("build") => {
+            Some(map_with(&[("low", Some("low")), ("high", Some("high")), ("max", Some("max"))]))
+        }
         b if b.contains("opus")
             || b.contains("sonnet-5")
             || b.contains("fable")
@@ -240,17 +203,14 @@ fn provider_override_map(provider_id: &str, model_id: &str) -> Option<(Value, &'
             || b.contains("opus-5")
             || b.contains("fable-5") =>
         {
-            Some((map_with(&[("xhigh", Some("xhigh")), ("max", Some("max"))]), "provider-override"))
+            Some(map_with(&[("xhigh", Some("xhigh")), ("max", Some("max"))]))
         }
-        b if b.contains("haiku-4-5") || b.contains("haiku-4.5") => Some((
-            map_with(&[
-                ("low", Some("low")),
-                ("medium", Some("medium")),
-                ("high", Some("high")),
-                ("max", Some("max")),
-            ]),
-            "provider-override",
-        )),
+        b if b.contains("haiku-4-5") || b.contains("haiku-4.5") => Some(map_with(&[
+            ("low", Some("low")),
+            ("medium", Some("medium")),
+            ("high", Some("high")),
+            ("max", Some("max")),
+        ])),
         b if b.contains("sonnet-4-5")
             || b.contains("sonnet-4.5")
             || b.contains("opus-4-5")
@@ -259,30 +219,24 @@ fn provider_override_map(provider_id: &str, model_id: &str) -> Option<(Value, &'
             || b.contains("opus-4 ")
             || b.contains("opus-4") =>
         {
-            Some((
-                map_with(&[
-                    ("low", Some("low")),
-                    ("medium", Some("medium")),
-                    ("high", Some("high")),
-                    ("max", Some("max")),
-                ]),
-                "provider-override",
-            ))
-        }
-        b if is_openai_reasoning_model(b) => Some((
-            map_with(&[
-                ("off", Some("off")),
+            Some(map_with(&[
                 ("low", Some("low")),
                 ("medium", Some("medium")),
                 ("high", Some("high")),
-                ("xhigh", Some("xhigh")),
-            ]),
-            "provider-override",
-        )),
+                ("max", Some("max")),
+            ]))
+        }
+        b if is_openai_reasoning_model(b) => Some(map_with(&[
+            ("off", Some("off")),
+            ("low", Some("low")),
+            ("medium", Some("medium")),
+            ("high", Some("high")),
+            ("xhigh", Some("xhigh")),
+        ])),
         _ => None,
-    };
-    gateway
+    }
 }
+
 /// Check if an OpenAI model ID belongs to a reasoning-capable model family.
 fn is_openai_reasoning_model(model_id: &str) -> bool {
     let lower = model_id.to_ascii_lowercase();
@@ -326,21 +280,19 @@ mod tests {
 
     #[test]
     fn non_reasoning_all_null() {
-        let (m, src) = build_thinking_level_map("openai", "gpt-4", false, None, None, None);
+        let m = build_thinking_level_map("openai", "gpt-4", false, None, None, None);
         for k in LEVELS {
             assert!(m[k].is_null(), "{k}");
         }
-        assert_eq!(src, ThinkingSource::Unresolved);
     }
 
     #[test]
     fn xai_defaults_low_high_max() {
-        let (m, src) = build_thinking_level_map("xai", "grok-4.5", true, None, None, None);
+        let m = build_thinking_level_map("xai", "grok-4.5", true, None, None, None);
         assert_eq!(m["low"], "low");
         assert_eq!(m["high"], "high");
         assert_eq!(m["max"], "max");
         assert!(m["medium"].is_null());
-        assert_eq!(src, ThinkingSource::ProviderOverride);
     }
 
     #[test]
@@ -352,7 +304,7 @@ mod tests {
             "high".to_string(),
             "xhigh".to_string(),
         ];
-        let (m, src) = build_thinking_level_map("openai", "gpt-5.4", true, None, None, Some(&efforts));
+        let m = build_thinking_level_map("openai", "gpt-5.4", true, None, None, Some(&efforts));
         assert_eq!(m["off"], "off");
         assert_eq!(m["low"], "low");
         assert_eq!(m["medium"], "medium");
@@ -360,7 +312,6 @@ mod tests {
         assert_eq!(m["xhigh"], "xhigh");
         assert!(m["minimal"].is_null());
         assert!(m["max"].is_null());
-        assert_eq!(src, ThinkingSource::LiveApi);
     }
 
     #[test]
@@ -372,12 +323,11 @@ mod tests {
                 "values": ["medium", "high", "xhigh"]
             }]
         });
-        let (m, src) = build_thinking_level_map("openai", "gpt-5.2-pro", true, Some(&mdev), None, None);
+        let m = build_thinking_level_map("openai", "gpt-5.2-pro", true, Some(&mdev), None, None);
         assert_eq!(m["medium"], "medium");
         assert_eq!(m["high"], "high");
         assert_eq!(m["xhigh"], "xhigh");
         assert!(m["off"].is_null());
-        assert_eq!(src, ThinkingSource::ModelsDev);
     }
 
     #[test]
@@ -389,10 +339,9 @@ mod tests {
                 "high": "high", "xhigh": null, "max": "max"
             }
         });
-        let (m, src) = build_thinking_level_map("unknown-provider", "some-model", true, None, Some(&prev), None);
+        let m = build_thinking_level_map("unknown-provider", "some-model", true, None, Some(&prev), None);
         assert_eq!(m["low"], "low");
         assert_eq!(m["max"], "max");
-        assert_eq!(src, ThinkingSource::Previous);
     }
 
     #[test]
@@ -404,12 +353,11 @@ mod tests {
                 "high": "high", "xhigh": null, "max": "max"
             }
         });
-        let (m, src) = build_thinking_level_map("openai", "gpt-5.4", true, None, Some(&prev), None);
+        let m = build_thinking_level_map("openai", "gpt-5.4", true, None, Some(&prev), None);
         // Provider override gives off/low/medium/high/xhigh (no max)
         assert_eq!(m["off"], "off");
         assert_eq!(m["low"], "low");
         assert!(m["max"].is_null());
-        assert_eq!(src, ThinkingSource::ProviderOverride);
     }
 
     #[test]
@@ -425,7 +373,7 @@ mod tests {
     }
 
     #[test]
-    fn normalize_effort_label() {
+    fn normalize_effort_label_maps_aliases() {
         assert_eq!(super::normalize_effort_label("none"), "off");
         assert_eq!(super::normalize_effort_label("None"), "off");
         assert_eq!(super::normalize_effort_label("min"), "minimal");

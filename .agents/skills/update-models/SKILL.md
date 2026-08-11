@@ -2,7 +2,7 @@
 name: update-models
 description: >-
     Refresh elph-ai chat model catalogs by compiling multiple authoritative sources
-    (models.dev api/models/catalog, OpenRouter live API, ai-model-directory) with
+    (models.dev api/models/catalog, OpenRouter live API, Nara /api/pricing, ai-model-directory) with
     optional live provider pricing probes. Pricing and thinkingLevelMap are always
     filled and refreshed; OpenRouter `supported_efforts` drives thinking levels.
     Use when the user runs /update-models, asks to sync or regenerate model catalogs,
@@ -37,13 +37,19 @@ so there is no Rust catalog file to regenerate.
    for `description`, `knowledge` (cutoff), `benchmarks`, `release_date`, `weights`. No pricing.
 4. **OpenRouter `/api/v1/models`** — used both as a live provider API (item 1) and as the
    canonical source for `reasoning.supported_efforts` (thinking levels). Requires
-   `OPENROUTER_API_KEY`.
-5. **ai-model-directory** (`The-Best-Codes/ai-model-directory`, `data/all.json`) — community
-   catalog used as a **compiled fallback** for pricing and the `reasoning` flag when neither a
-   live API nor models.dev has data for a model. Public, no key required.
+   `OPENROUTER_API_KEY`. Prices are per-token strings converted to per-million.
+5. **Nara Router `/api/pricing`** (`https://router.bynara.id/api/pricing`) — Nara's `/v1/models`
+   exposes **no pricing**, so this dedicated endpoint is the authoritative source for Nara model
+   costs. Uses `official_in_usd_m` / `official_out_usd_m` (USD per million tokens, matching the
+   catalog unit). Credit-based fields (`input_credit_per_1k`, …) are intentionally ignored because
+   the credit→USD rate is not stable across models. Optional `NARA_API_KEY` is forwarded.
+6. **ai-model-directory** (`The-Best-Codes/ai-model-directory`, `data/all.json`) — community
+   catalog used as a compiled fallback for **pricing** when neither a live API nor models.dev has a
+   price for a model. It can also fill the `reasoning` boolean only when models.dev has no opinion
+   on that model. Public, no key required.
 
 Each model always carries a complete `thinkingLevelMap` (7 keys: `off|minimal|low|medium|high|xhigh|max`,
-`null` = unsupported) and a `thinkingLevelMapSource` field recording where it came from. Pricing is
+`null` = unsupported). Pricing is
 always resolved (never left zero unless every source agrees it is free).
 
 ## When to run
@@ -119,7 +125,6 @@ Confirm:
 5. **Summarize for the user**
 
 - Provider count / model count
-- `thinkingLevelMap` source breakdown (live-api vs models.dev vs provider-override vs previous vs unresolved)
 - `cost` source breakdown (live-api vs models.dev vs ai-model-directory vs previous vs none)
 - Any models where thinking support could not be confirmed from any source (report explicitly — do not silently mark as `off` or duplicate a sibling model's map)
 - Any providers skipped (not on models.dev and no previous overlay)
@@ -166,9 +171,10 @@ table applied across a provider or family. Resolve per model, in this order:
     - Emit it as `unresolved` in the generator output and surface it in the final summary so a human decides
       (e.g. via an Elph overlay override), instead of the generator quietly guessing.
 
-The `reasoning` boolean itself is upgraded to `true` when **any** compiled source (models.dev or
-ai-model-directory `features.reasoning`) reports the model reasons — so a reasoning model is never
-silently downgraded to non-reasoning.
+The `reasoning` boolean prefers models.dev as authoritative. ai-model-directory
+`features.reasoning` fills the flag in only when models.dev has no opinion on that model — preventing
+false-positive `reasoning` flags on gateway models (e.g. `gpt-4o`) that ai-model-directory mislabels
+as reasoning.
 
 Every resolved entry should be traceable back to (a) a live API response field, (b) a specific
 models.dev field, (c) an explicit provider override from official docs, or (d) an explicit Elph
@@ -197,11 +203,16 @@ The generator keeps model data current through four layers:
     Thinking capabilities are extracted from `reasoning.supported_efforts` (array of effort strings)
     and `reasoning.mandatory` / `reasoning.default_enabled` booleans.
 
-3. **ai-model-directory (compiled fallback)** — `data/all.json` is fetched (cached under
-   `models/.cache/models.dev/ai-model-directory.json`) and used only when live API + models.dev both
-   lack a price (or reasoning flag) for a model. Keyed by `provider/modelid` then bare `modelid`.
+3. **Nara Router official pricing** — `/api/pricing` is fetched (cached under
+   `models/.cache/models.dev/nara-pricing.json`) and merged into the `nara-router` live result, which
+   `resolve_cost` then picks up with top priority. Only `official_in_usd_m`/`official_out_usd_m` are
+   used; credit fields are ignored (unstable rate). Forwarded to the `live-api` cost tally.
 
-4. **Live model list (gateway providers)** — for `gateway_preserve_ids` providers with a live
+4. **ai-model-directory (compiled fallback)** — `data/all.json` is fetched (cached under
+   `models/.cache/models.dev/ai-model-directory.json`) and used only when live API + models.dev both
+   lack a price for a model. Keyed by `provider/modelid` then bare `modelid`.
+
+5. **Live model list (gateway providers)** — for `gateway_preserve_ids` providers with a live
    `/models` endpoint, the **live id list replaces the previous catalog ids** (source of truth).
    New upstream models appear automatically; removed ones drop out. When the API exposes
    `category_type`, only `LLM` entries are kept so image/video models never pollute the chat catalog.
@@ -209,7 +220,7 @@ The generator keeps model data current through four layers:
 
 ## Rules
 
-- **Origins**: models.dev (+ its three endpoints) + OpenRouter live API + ai-model-directory. Never seed chat catalogs from pi.
+- **Origins**: models.dev (+ its three endpoints) + OpenRouter live API + Nara /api/pricing + ai-model-directory. Never seed chat catalogs from pi.
 - **Pricing precedence**: live API (when available) → models.dev → ai-model-directory → keep previous non-zero. `none` (zero from all sources) is only correct for genuinely free models.
 - **Every model** must have `thinkingLevelMap` with keys `off|minimal|low|medium|high|xhigh|max` (null = unsupported), resolved per **Thinking level sourcing** — OpenRouter `supported_efforts` (live-api) → models.dev → provider override → preserved overlay → explicit unresolved report. Never invented, never copied from a sibling model.
 - **Do not** invent `api` / `baseUrl` from models.dev; preserve Elph factory overlays.
@@ -225,10 +236,10 @@ The generator keeps model data current through four layers:
 | `bin/generate_models/main.rs`             | CLI                                                                                                                                                                                                                        |
 | `bin/generate_models/models_dev.rs`       | Fetch/cache/merge models.dev `api` + `models` + `catalog` → `ModelsDevData` (api tree + rich index); 24h TTL + fallback                                                                                                    |
 | `bin/generate_models/provider_sources.rs` | Elph ↔ models.dev key map + live endpoint config                                                                                                                                                                           |
-| `bin/generate_models/normalize.rs`        | Entry merge + cost fields + `description`/`knowledgeCutoff`/`releaseDate` enrichment + persist `thinkingLevelMapSource`                                                                                                    |
+| `bin/generate_models/normalize.rs`        | Entry merge + cost fields + `description`/`knowledgeCutoff`/`releaseDate` enrichment                                                                                                    |
 | `bin/generate_models/thinking_map.rs`     | Resolves thinkingLevelMap per model: live-api (OpenRouter `supported_efforts`, checked before the `reasoning` guard) → models.dev → provider-override → preserved overlay → unresolved (source-tagged, no invented values) |
-| `bin/generate_models/pricing.rs`          | Live pricing probes (incl. OpenRouter per-token ×1e6) + live model id refresh + thinking extraction + ai-model-directory fallback (`AIModelDir`)                                                                           |
-| `bin/generate_models/chat.rs`             | Orchestration + registration check + thinking & cost source breakdowns                                                                                                                                                     |
+| `bin/generate_models/pricing.rs`          | Live pricing probes (incl. OpenRouter per-token ×1e6) + live model id refresh + thinking extraction + Nara /api/pricing + ai-model-directory fallback (`AIModelDir`)                                                                           |
+| `bin/generate_models/chat.rs`             | Orchestration + registration check + cost source breakdown                                                                                                                                                     |
 | `models/*.json`                           | Catalog source (compressed into the binary)                                                                                                                                                                                |
 | `build.rs`                                | zstd frames + provider index for the binary                                                                                                                                                                                |
 | `src/models/catalog.rs`                   | Lazy loader (seed + CONFIG_DIR overlay)                                                                                                                                                                                    |

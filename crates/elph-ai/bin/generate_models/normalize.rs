@@ -47,8 +47,7 @@ pub fn from_models_dev(
         .filter(|s| !s.is_empty())
         .unwrap_or(provider.default_base_url)
         .to_string();
-    let (thinking, thinking_src) =
-        build_thinking_level_map(provider.id, model_id, reasoning, Some(mdev), previous, live_efforts);
+    let thinking = build_thinking_level_map(provider.id, model_id, reasoning, Some(mdev), previous, live_efforts);
 
     let (description, knowledge_cutoff, release_date) = extract_meta(Some(mdev), rich);
 
@@ -64,7 +63,6 @@ pub fn from_models_dev(
         "maxTokens": max_tokens,
         "cost": cost,
         "thinkingLevelMap": thinking,
-        "thinkingLevelMapSource": thinking_src.to_string(),
         "description": description.unwrap_or_default(),
         "knowledgeCutoff": knowledge_cutoff.unwrap_or_default(),
         "releaseDate": release_date.unwrap_or_default(),
@@ -138,10 +136,8 @@ pub fn enrich_existing(
         obj.insert("cost".into(), zero_cost());
     }
 
-    let (thinking, thinking_src) =
-        build_thinking_level_map(provider.id, model_id, reasoning, mdev, Some(previous), live_efforts);
+    let thinking = build_thinking_level_map(provider.id, model_id, reasoning, mdev, Some(previous), live_efforts);
     obj.insert("thinkingLevelMap".into(), thinking);
-    obj.insert("thinkingLevelMapSource".into(), json!(thinking_src.to_string()));
 
     // Enrich with metadata-complete fields from the rich (models.json/catalog.json) index.
     let (description, knowledge_cutoff, release_date) = extract_meta(mdev, rich);

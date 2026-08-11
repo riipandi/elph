@@ -26,8 +26,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "grok-4.20-0309-reasoning": {
         "api": "openai-completions",
@@ -56,8 +55,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "provider-override"
+        }
     },
     "grok-4.20-multi-agent-0309": {
         "api": "openai-completions",
@@ -86,8 +84,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "grok-4.3": {
         "api": "openai-completions",
@@ -121,8 +118,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "grok-4.5": {
         "api": "openai-responses",
@@ -154,8 +150,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "grok-build-0.1": {
         "api": "openai-completions",
@@ -189,8 +184,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "provider-override"
+        }
     },
     "grok-imagine-image": {
         "api": "openai-completions",
@@ -219,8 +213,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "grok-imagine-image-quality": {
         "api": "openai-completions",
@@ -249,8 +242,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "grok-imagine-video": {
         "api": "openai-completions",
@@ -279,8 +271,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "grok-imagine-video-1.5": {
         "api": "openai-completions",
@@ -309,7 +300,6 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     }
 }

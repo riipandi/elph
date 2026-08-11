@@ -28,8 +28,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "gemma-4-31b": {
         "api": "openai-completions",
@@ -60,8 +59,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "glm-5.2": {
         "api": "openai-completions",
@@ -92,8 +90,7 @@
             "minimal": "minimal",
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "glm-5.2-fast": {
         "api": "openai-completions",
@@ -124,8 +121,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "glm-5.2-short": {
         "api": "openai-completions",
@@ -156,8 +152,7 @@
             "minimal": "minimal",
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "glm-5.2-short-fast": {
         "api": "openai-completions",
@@ -188,8 +183,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "kimi-k2.6": {
         "api": "openai-completions",
@@ -220,8 +214,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "kimi-k2.6-fast": {
         "api": "openai-completions",
@@ -252,8 +245,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "kimi-k2.7-code": {
         "api": "openai-completions",
@@ -284,8 +276,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "kimi-k2.7-code-fast": {
         "api": "openai-completions",
@@ -315,8 +306,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "qwen3.5-397b": {
         "api": "openai-completions",
@@ -346,8 +336,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "qwen3.5-397b-fast": {
         "api": "openai-completions",
@@ -378,8 +367,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "qwen3.6-35b": {
         "api": "openai-completions",
@@ -410,8 +398,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "qwen3.6-35b-fast": {
         "api": "openai-completions",
@@ -442,7 +429,6 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     }
 }

@@ -133,55 +133,6 @@ pub fn verified(msg: impl fmt::Display) {
     }
 }
 
-/// thinkingLevelMap source breakdown summary line.
-pub fn source_breakdown(
-    previous: usize,
-    live_api: usize,
-    models_dev: usize,
-    provider_override: usize,
-    unresolved: usize,
-) {
-    let total = previous + live_api + models_dev + provider_override + unresolved;
-    if total == 0 {
-        return;
-    }
-    let parts: Vec<String> = [
-        (live_api, "live-api"),
-        (models_dev, "models.dev"),
-        (provider_override, "provider-override"),
-        (previous, "previous"),
-    ]
-    .iter()
-    .filter(|(c, _)| *c > 0)
-    .map(|(c, s)| format!("{s}={c}"))
-    .collect();
-    let parts_str = parts.join(" ");
-    if color_enabled() {
-        if unresolved > 0 {
-            println!(
-                "  {} {}  {}",
-                paint(MAGENTA, "thinkingLevelMap source"),
-                paint(YELLOW, format!("unresolved={unresolved}")),
-                paint(MUTED, parts_str),
-            );
-        } else {
-            println!(
-                "  {} {} {}",
-                paint(MAGENTA, "thinkingLevelMap source"),
-                paint(MUTED, parts_str),
-                paint(GREEN, format!("unresolved={unresolved}")),
-            );
-        }
-    } else {
-        let unresolved_s = if unresolved > 0 {
-            format!(" unresolved={unresolved}")
-        } else {
-            String::new()
-        };
-        println!("  thinkingLevelMap source: {parts_str}{unresolved_s}");
-    }
-}
-
 /// Resolved cost source breakdown summary line.
 pub fn cost_breakdown(live_api: usize, models_dev: usize, aimd: usize, previous: usize, none: usize) {
     let total = live_api + models_dev + aimd + previous + none;

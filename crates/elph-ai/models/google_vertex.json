@@ -26,8 +26,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "provider-override"
+        }
     },
     "claude-opus-4-1@20250805": {
         "api": "google-vertex",
@@ -56,8 +55,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "provider-override"
+        }
     },
     "claude-opus-4-5@20251101": {
         "api": "google-vertex",
@@ -86,8 +84,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "claude-opus-4-6@default": {
         "api": "google-vertex",
@@ -116,8 +113,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "claude-opus-4-7@default": {
         "api": "google-vertex",
@@ -146,8 +142,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "claude-opus-4-8@default": {
         "api": "google-vertex",
@@ -176,8 +171,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "claude-opus-4@20250514": {
         "api": "google-vertex",
@@ -206,8 +200,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "provider-override"
+        }
     },
     "claude-opus-5@default": {
         "api": "google-vertex",
@@ -236,8 +229,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "claude-sonnet-4-5@20250929": {
         "api": "google-vertex",
@@ -266,8 +258,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "provider-override"
+        }
     },
     "claude-sonnet-4-6@default": {
         "api": "google-vertex",
@@ -296,8 +287,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "claude-sonnet-4@20250514": {
         "api": "google-vertex",
@@ -326,8 +316,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "claude-sonnet-5@default": {
         "api": "google-vertex",
@@ -356,8 +345,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "deepseek-ai/deepseek-v3.1-maas": {
         "api": "google-vertex",
@@ -386,8 +374,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "deepseek-ai/deepseek-v3.2-maas": {
         "api": "google-vertex",
@@ -416,8 +403,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "gemini-2.5-flash": {
         "api": "google-vertex",
@@ -446,8 +432,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "gemini-2.5-flash-image": {
         "api": "google-vertex",
@@ -476,8 +461,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "gemini-2.5-flash-lite": {
         "api": "google-vertex",
@@ -506,8 +490,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "gemini-2.5-flash-tts": {
         "api": "google-vertex",
@@ -536,8 +519,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "gemini-2.5-pro": {
         "api": "google-vertex",
@@ -566,8 +548,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "gemini-2.5-pro-tts": {
         "api": "google-vertex",
@@ -596,8 +577,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "gemini-3-flash-preview": {
         "api": "google-vertex",
@@ -626,8 +606,7 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "gemini-3-pro-image": {
         "api": "google-vertex",
@@ -656,8 +635,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "gemini-3.1-flash-image": {
         "api": "google-vertex",
@@ -686,8 +664,7 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "gemini-3.1-flash-lite": {
         "api": "google-vertex",
@@ -716,8 +693,7 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "gemini-3.1-flash-lite-preview": {
         "api": "google-vertex",
@@ -746,8 +722,7 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "gemini-3.1-pro-preview": {
         "api": "google-vertex",
@@ -776,8 +751,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "gemini-3.1-pro-preview-customtools": {
         "api": "google-vertex",
@@ -806,8 +780,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "gemini-3.5-flash": {
         "api": "google-vertex",
@@ -836,8 +809,7 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "gemini-3.5-flash-lite": {
         "api": "google-vertex",
@@ -866,8 +838,7 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "gemini-3.6-flash": {
         "api": "google-vertex",
@@ -896,8 +867,7 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "gemini-embedding-001": {
         "api": "google-vertex",
@@ -926,8 +896,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "gemini-flash-latest": {
         "api": "google-vertex",
@@ -956,8 +925,7 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "gemini-flash-lite-latest": {
         "api": "google-vertex",
@@ -986,8 +954,7 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "meta/llama-3.3-70b-instruct-maas": {
         "api": "google-vertex",
@@ -1016,8 +983,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "meta/llama-4-maverick-17b-128e-instruct-maas": {
         "api": "google-vertex",
@@ -1046,8 +1012,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "moonshotai/kimi-k2-thinking-maas": {
         "api": "google-vertex",
@@ -1076,8 +1041,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "openai/gpt-oss-120b-maas": {
         "api": "google-vertex",
@@ -1106,8 +1070,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-oss-20b-maas": {
         "api": "google-vertex",
@@ -1136,8 +1099,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "qwen/qwen3-235b-a22b-instruct-2507-maas": {
         "api": "google-vertex",
@@ -1166,8 +1128,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "zai-org/glm-4.7-maas": {
         "api": "google-vertex",
@@ -1196,8 +1157,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "zai-org/glm-5-maas": {
         "api": "google-vertex",
@@ -1226,7 +1186,6 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     }
 }

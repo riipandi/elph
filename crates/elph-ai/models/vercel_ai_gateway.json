@@ -24,8 +24,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "alibaba/qwen-3-235b": {
         "api": "anthropic-messages",
@@ -52,8 +51,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "alibaba/qwen-3-30b": {
         "api": "anthropic-messages",
@@ -80,8 +78,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "alibaba/qwen-3-32b": {
         "api": "anthropic-messages",
@@ -108,8 +105,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "alibaba/qwen-3.6-max-preview": {
         "api": "anthropic-messages",
@@ -136,8 +132,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "alibaba/qwen3-235b-a22b-thinking": {
         "api": "anthropic-messages",
@@ -164,8 +159,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "alibaba/qwen3-coder": {
         "api": "anthropic-messages",
@@ -192,8 +186,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "alibaba/qwen3-coder-30b-a3b": {
         "api": "anthropic-messages",
@@ -220,8 +213,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "alibaba/qwen3-coder-next": {
         "api": "anthropic-messages",
@@ -250,8 +242,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "alibaba/qwen3-coder-plus": {
         "api": "anthropic-messages",
@@ -280,8 +271,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "alibaba/qwen3-max": {
         "api": "anthropic-messages",
@@ -310,8 +300,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "alibaba/qwen3-max-preview": {
         "api": "anthropic-messages",
@@ -338,8 +327,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "alibaba/qwen3-max-thinking": {
         "api": "anthropic-messages",
@@ -366,8 +354,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "alibaba/qwen3-next-80b-a3b-instruct": {
         "api": "anthropic-messages",
@@ -396,8 +383,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "alibaba/qwen3-next-80b-a3b-thinking": {
         "api": "anthropic-messages",
@@ -426,8 +412,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "alibaba/qwen3-vl-235b-a22b-instruct": {
         "api": "anthropic-messages",
@@ -454,8 +439,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "alibaba/qwen3-vl-instruct": {
         "api": "anthropic-messages",
@@ -482,8 +466,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "alibaba/qwen3-vl-thinking": {
         "api": "anthropic-messages",
@@ -510,8 +493,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "alibaba/qwen3.5-flash": {
         "api": "anthropic-messages",
@@ -539,8 +521,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "alibaba/qwen3.5-plus": {
         "api": "anthropic-messages",
@@ -569,8 +550,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "alibaba/qwen3.6-27b": {
         "api": "anthropic-messages",
@@ -598,8 +578,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "alibaba/qwen3.6-plus": {
         "api": "anthropic-messages",
@@ -628,8 +607,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "alibaba/qwen3.7-max": {
         "api": "anthropic-messages",
@@ -657,8 +635,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "alibaba/qwen3.7-plus": {
         "api": "anthropic-messages",
@@ -687,8 +664,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "amazon/nova-2-lite": {
         "api": "anthropic-messages",
@@ -715,8 +691,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "amazon/nova-lite": {
         "api": "anthropic-messages",
@@ -743,8 +718,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "amazon/nova-micro": {
         "api": "anthropic-messages",
@@ -771,8 +745,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "amazon/nova-pro": {
         "api": "anthropic-messages",
@@ -799,8 +772,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "anthropic/claude-3-haiku": {
         "api": "anthropic-messages",
@@ -827,8 +799,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "anthropic/claude-fable-5": {
         "api": "anthropic-messages",
@@ -860,8 +831,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "anthropic/claude-haiku-4.5": {
         "api": "anthropic-messages",
@@ -888,8 +858,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "provider-override"
+        }
     },
     "anthropic/claude-opus-4": {
         "api": "anthropic-messages",
@@ -916,8 +885,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "provider-override"
+        }
     },
     "anthropic/claude-opus-4.1": {
         "api": "anthropic-messages",
@@ -944,8 +912,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "provider-override"
+        }
     },
     "anthropic/claude-opus-4.5": {
         "api": "anthropic-messages",
@@ -972,8 +939,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "provider-override"
+        }
     },
     "anthropic/claude-opus-4.6": {
         "api": "anthropic-messages",
@@ -1003,8 +969,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "anthropic/claude-opus-4.7": {
         "api": "anthropic-messages",
@@ -1035,8 +1000,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "anthropic/claude-opus-4.8": {
         "api": "anthropic-messages",
@@ -1067,8 +1031,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "anthropic/claude-opus-4.8-fast": {
         "api": "anthropic-messages",
@@ -1099,8 +1062,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "anthropic/claude-opus-5": {
         "api": "anthropic-messages",
@@ -1133,8 +1095,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "anthropic/claude-opus-5-fast": {
         "api": "anthropic-messages",
@@ -1165,8 +1126,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "anthropic/claude-sonnet-4": {
         "api": "anthropic-messages",
@@ -1193,8 +1153,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "anthropic/claude-sonnet-4.5": {
         "api": "anthropic-messages",
@@ -1221,8 +1180,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "provider-override"
+        }
     },
     "anthropic/claude-sonnet-4.6": {
         "api": "anthropic-messages",
@@ -1252,8 +1210,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "anthropic/claude-sonnet-5": {
         "api": "anthropic-messages",
@@ -1285,8 +1242,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "arcee-ai/trinity-large-thinking": {
         "api": "anthropic-messages",
@@ -1313,8 +1269,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "arcee-ai/trinity-mini": {
         "api": "anthropic-messages",
@@ -1341,8 +1296,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "bytedance/seed-1.6": {
         "api": "anthropic-messages",
@@ -1369,8 +1323,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "bytedance/seed-1.8": {
         "api": "anthropic-messages",
@@ -1397,8 +1350,7 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "cohere/command-a": {
         "api": "anthropic-messages",
@@ -1425,8 +1377,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "deepseek/deepseek-r1": {
         "api": "anthropic-messages",
@@ -1455,8 +1406,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "deepseek/deepseek-v3": {
         "api": "anthropic-messages",
@@ -1484,8 +1434,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "deepseek/deepseek-v3.1": {
         "api": "anthropic-messages",
@@ -1513,8 +1462,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "deepseek/deepseek-v3.1-terminus": {
         "api": "anthropic-messages",
@@ -1541,8 +1489,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "deepseek/deepseek-v3.2": {
         "api": "anthropic-messages",
@@ -1571,8 +1518,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "deepseek/deepseek-v3.2-thinking": {
         "api": "anthropic-messages",
@@ -1599,8 +1545,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "deepseek/deepseek-v4-flash": {
         "api": "anthropic-messages",
@@ -1629,8 +1574,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "deepseek/deepseek-v4-pro": {
         "api": "anthropic-messages",
@@ -1659,8 +1603,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "google/gemini-2.5-flash": {
         "api": "anthropic-messages",
@@ -1689,8 +1632,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "google/gemini-2.5-flash-lite": {
         "api": "anthropic-messages",
@@ -1719,8 +1661,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "google/gemini-2.5-pro": {
         "api": "anthropic-messages",
@@ -1749,8 +1690,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "google/gemini-3-flash": {
         "api": "anthropic-messages",
@@ -1777,8 +1717,7 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "google/gemini-3.1-flash-lite": {
         "api": "anthropic-messages",
@@ -1807,8 +1746,7 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "google/gemini-3.1-pro-preview": {
         "api": "anthropic-messages",
@@ -1837,8 +1775,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "google/gemini-3.5-flash": {
         "api": "anthropic-messages",
@@ -1867,8 +1804,7 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "google/gemini-3.5-flash-lite": {
         "api": "anthropic-messages",
@@ -1897,8 +1833,7 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "google/gemini-3.6-flash": {
         "api": "anthropic-messages",
@@ -1927,8 +1862,7 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "google/gemma-4-26b-a4b-it": {
         "api": "anthropic-messages",
@@ -1956,8 +1890,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "google/gemma-4-31b-it": {
         "api": "anthropic-messages",
@@ -1985,8 +1918,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "inception/mercury-2": {
         "api": "anthropic-messages",
@@ -2013,8 +1945,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "inception/mercury-coder-small": {
         "api": "anthropic-messages",
@@ -2041,8 +1972,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "inclusionai/ling-3.0-flash-free": {
         "api": "anthropic-messages",
@@ -2069,8 +1999,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "interfaze/interfaze-beta": {
         "api": "anthropic-messages",
@@ -2097,8 +2026,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "kwaipilot/kat-coder-air-v2.5": {
         "api": "anthropic-messages",
@@ -2125,8 +2053,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "kwaipilot/kat-coder-pro-v1": {
         "api": "anthropic-messages",
@@ -2153,8 +2080,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "kwaipilot/kat-coder-pro-v2": {
         "api": "anthropic-messages",
@@ -2181,8 +2107,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "kwaipilot/kat-coder-pro-v2.5": {
         "api": "anthropic-messages",
@@ -2209,8 +2134,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "meta/llama-3.1-70b": {
         "api": "anthropic-messages",
@@ -2237,8 +2161,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "meta/llama-3.1-8b": {
         "api": "anthropic-messages",
@@ -2265,8 +2188,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "meta/llama-3.3-70b": {
         "api": "anthropic-messages",
@@ -2293,8 +2215,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "meta/llama-4-maverick": {
         "api": "anthropic-messages",
@@ -2321,8 +2242,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "meta/llama-4-scout": {
         "api": "anthropic-messages",
@@ -2349,8 +2269,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "meta/muse-spark-1.1": {
         "api": "anthropic-messages",
@@ -2378,8 +2297,7 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "minimax/minimax-m2": {
         "api": "anthropic-messages",
@@ -2406,8 +2324,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "minimax/minimax-m2.1": {
         "api": "anthropic-messages",
@@ -2434,8 +2351,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "minimax/minimax-m2.1-lightning": {
         "api": "anthropic-messages",
@@ -2462,8 +2378,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "minimax/minimax-m2.5": {
         "api": "anthropic-messages",
@@ -2490,8 +2405,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "minimax/minimax-m2.5-highspeed": {
         "api": "anthropic-messages",
@@ -2518,8 +2432,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "minimax/minimax-m2.7": {
         "api": "anthropic-messages",
@@ -2546,8 +2459,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "minimax/minimax-m2.7-highspeed": {
         "api": "anthropic-messages",
@@ -2574,8 +2486,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "minimax/minimax-m3": {
         "api": "anthropic-messages",
@@ -2602,8 +2513,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "mistral/codestral": {
         "api": "anthropic-messages",
@@ -2630,8 +2540,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistral/devstral-2": {
         "api": "anthropic-messages",
@@ -2658,8 +2567,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistral/devstral-small-2": {
         "api": "anthropic-messages",
@@ -2686,8 +2594,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistral/magistral-medium": {
         "api": "anthropic-messages",
@@ -2714,8 +2621,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "mistral/magistral-small": {
         "api": "anthropic-messages",
@@ -2742,8 +2648,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "mistral/ministral-14b": {
         "api": "anthropic-messages",
@@ -2770,8 +2675,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistral/ministral-3b": {
         "api": "anthropic-messages",
@@ -2798,8 +2702,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistral/ministral-8b": {
         "api": "anthropic-messages",
@@ -2826,8 +2729,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistral/mistral-large-3": {
         "api": "anthropic-messages",
@@ -2854,8 +2756,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistral/mistral-medium": {
         "api": "anthropic-messages",
@@ -2882,8 +2783,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistral/mistral-medium-3.5": {
         "api": "anthropic-messages",
@@ -2910,8 +2810,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "mistral/mistral-nemo": {
         "api": "anthropic-messages",
@@ -2940,8 +2839,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistral/mistral-small": {
         "api": "anthropic-messages",
@@ -2968,8 +2866,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistral/pixtral-12b": {
         "api": "anthropic-messages",
@@ -2998,8 +2895,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "moonshotai/kimi-k2": {
         "api": "anthropic-messages",
@@ -3026,8 +2922,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "moonshotai/kimi-k2-thinking": {
         "api": "anthropic-messages",
@@ -3056,8 +2951,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "moonshotai/kimi-k2.5": {
         "api": "anthropic-messages",
@@ -3086,8 +2980,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "moonshotai/kimi-k2.6": {
         "api": "anthropic-messages",
@@ -3116,8 +3009,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "moonshotai/kimi-k2.7-code": {
         "api": "anthropic-messages",
@@ -3146,8 +3038,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "moonshotai/kimi-k2.7-code-highspeed": {
         "api": "anthropic-messages",
@@ -3176,8 +3067,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "moonshotai/kimi-k3": {
         "api": "anthropic-messages",
@@ -3205,8 +3095,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "moonshotai/kimi-k3-fast": {
         "api": "anthropic-messages",
@@ -3233,8 +3122,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "nvidia/nemotron-3-nano-30b-a3b": {
         "api": "anthropic-messages",
@@ -3262,8 +3150,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "nvidia/nemotron-3-super-120b-a12b": {
         "api": "anthropic-messages",
@@ -3291,8 +3178,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "nvidia/nemotron-3-ultra-550b-a55b": {
         "api": "anthropic-messages",
@@ -3320,8 +3206,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "nvidia/nemotron-nano-12b-v2-vl": {
         "api": "anthropic-messages",
@@ -3349,8 +3234,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "nvidia/nemotron-nano-9b-v2": {
         "api": "anthropic-messages",
@@ -3378,8 +3262,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "openai/gpt-3.5-turbo": {
         "api": "anthropic-messages",
@@ -3408,8 +3291,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "openai/gpt-4-turbo": {
         "api": "anthropic-messages",
@@ -3438,8 +3320,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "openai/gpt-4.1": {
         "api": "anthropic-messages",
@@ -3468,8 +3349,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "openai/gpt-4.1-mini": {
         "api": "anthropic-messages",
@@ -3498,8 +3378,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "openai/gpt-4.1-nano": {
         "api": "anthropic-messages",
@@ -3528,8 +3407,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "openai/gpt-4o": {
         "api": "anthropic-messages",
@@ -3558,8 +3436,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "openai/gpt-4o-mini": {
         "api": "anthropic-messages",
@@ -3588,8 +3465,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "openai/gpt-5": {
         "api": "anthropic-messages",
@@ -3618,8 +3494,7 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5-codex": {
         "api": "anthropic-messages",
@@ -3648,8 +3523,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "provider-override"
+        }
     },
     "openai/gpt-5-mini": {
         "api": "anthropic-messages",
@@ -3678,8 +3552,7 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5-nano": {
         "api": "anthropic-messages",
@@ -3708,8 +3581,7 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5-pro": {
         "api": "anthropic-messages",
@@ -3738,8 +3610,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.1-codex": {
         "api": "anthropic-messages",
@@ -3768,8 +3639,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.1-codex-max": {
         "api": "anthropic-messages",
@@ -3798,8 +3668,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.1-codex-mini": {
         "api": "anthropic-messages",
@@ -3828,8 +3697,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.1-instant": {
         "api": "anthropic-messages",
@@ -3856,8 +3724,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "provider-override"
+        }
     },
     "openai/gpt-5.1-thinking": {
         "api": "anthropic-messages",
@@ -3884,8 +3751,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.2": {
         "api": "anthropic-messages",
@@ -3914,8 +3780,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.2-codex": {
         "api": "anthropic-messages",
@@ -3944,8 +3809,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.2-pro": {
         "api": "anthropic-messages",
@@ -3974,8 +3838,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.3-chat": {
         "api": "anthropic-messages",
@@ -4002,8 +3865,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "openai/gpt-5.3-codex": {
         "api": "anthropic-messages",
@@ -4032,8 +3894,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.4": {
         "api": "anthropic-messages",
@@ -4062,8 +3923,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.4-mini": {
         "api": "anthropic-messages",
@@ -4092,8 +3952,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.4-nano": {
         "api": "anthropic-messages",
@@ -4122,8 +3981,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.4-pro": {
         "api": "anthropic-messages",
@@ -4152,8 +4010,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.5": {
         "api": "anthropic-messages",
@@ -4182,8 +4039,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.5-pro": {
         "api": "anthropic-messages",
@@ -4212,8 +4068,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.6-luna": {
         "api": "anthropic-messages",
@@ -4242,8 +4097,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.6-sol": {
         "api": "anthropic-messages",
@@ -4272,8 +4126,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-5.6-terra": {
         "api": "anthropic-messages",
@@ -4302,8 +4155,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-oss-120b": {
         "api": "anthropic-messages",
@@ -4331,8 +4183,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-oss-20b": {
         "api": "anthropic-messages",
@@ -4360,8 +4211,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/gpt-oss-safeguard-20b": {
         "api": "anthropic-messages",
@@ -4388,8 +4238,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/o1": {
         "api": "anthropic-messages",
@@ -4418,8 +4267,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/o3": {
         "api": "anthropic-messages",
@@ -4448,8 +4296,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/o3-deep-research": {
         "api": "anthropic-messages",
@@ -4478,8 +4325,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/o3-mini": {
         "api": "anthropic-messages",
@@ -4508,8 +4354,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/o3-pro": {
         "api": "anthropic-messages",
@@ -4538,8 +4383,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "openai/o4-mini": {
         "api": "anthropic-messages",
@@ -4568,8 +4412,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "poolside/laguna-s-2.1": {
         "api": "anthropic-messages",
@@ -4597,8 +4440,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "poolside/laguna-s-2.1-free": {
         "api": "anthropic-messages",
@@ -4625,8 +4467,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "sakana/fugu-ultra": {
         "api": "anthropic-messages",
@@ -4654,8 +4495,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "stepfun/step-3.5-flash": {
         "api": "anthropic-messages",
@@ -4684,8 +4524,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "stepfun/step-3.7-flash": {
         "api": "anthropic-messages",
@@ -4714,8 +4553,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "tencent/hy3": {
         "api": "anthropic-messages",
@@ -4743,8 +4581,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "thinkingmachines/inkling": {
         "api": "anthropic-messages",
@@ -4772,8 +4609,7 @@
             "minimal": "minimal",
             "off": "off",
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "xai/grok-4.1-fast-non-reasoning": {
         "api": "anthropic-messages",
@@ -4800,8 +4636,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "xai/grok-4.1-fast-reasoning": {
         "api": "anthropic-messages",
@@ -4828,8 +4663,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "provider-override"
+        }
     },
     "xai/grok-4.20-multi-agent": {
         "api": "anthropic-messages",
@@ -4856,8 +4690,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "xai/grok-4.20-multi-agent-beta": {
         "api": "anthropic-messages",
@@ -4884,8 +4717,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "xai/grok-4.20-non-reasoning": {
         "api": "anthropic-messages",
@@ -4912,8 +4744,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "xai/grok-4.20-non-reasoning-beta": {
         "api": "anthropic-messages",
@@ -4940,8 +4771,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "xai/grok-4.20-reasoning": {
         "api": "anthropic-messages",
@@ -4968,8 +4798,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "provider-override"
+        }
     },
     "xai/grok-4.20-reasoning-beta": {
         "api": "anthropic-messages",
@@ -4996,8 +4825,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "provider-override"
+        }
     },
     "xai/grok-4.3": {
         "api": "anthropic-messages",
@@ -5025,8 +4853,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "xai/grok-4.5": {
         "api": "anthropic-messages",
@@ -5054,8 +4881,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "xai/grok-build-0.1": {
         "api": "anthropic-messages",
@@ -5083,8 +4909,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "provider-override"
+        }
     },
     "xiaomi/mimo-v2.5": {
         "api": "anthropic-messages",
@@ -5113,8 +4938,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "xiaomi/mimo-v2.5-pro": {
         "api": "anthropic-messages",
@@ -5143,8 +4967,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "zai/glm-4.5": {
         "api": "anthropic-messages",
@@ -5171,8 +4994,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "zai/glm-4.5-air": {
         "api": "anthropic-messages",
@@ -5199,8 +5021,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "zai/glm-4.5v": {
         "api": "anthropic-messages",
@@ -5227,8 +5048,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "zai/glm-4.6": {
         "api": "anthropic-messages",
@@ -5255,8 +5075,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "zai/glm-4.6v": {
         "api": "anthropic-messages",
@@ -5283,8 +5102,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "zai/glm-4.6v-flash": {
         "api": "anthropic-messages",
@@ -5311,8 +5129,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "zai/glm-4.7": {
         "api": "anthropic-messages",
@@ -5339,8 +5156,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "zai/glm-4.7-flash": {
         "api": "anthropic-messages",
@@ -5367,8 +5183,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "zai/glm-4.7-flashx": {
         "api": "anthropic-messages",
@@ -5395,8 +5210,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "zai/glm-5": {
         "api": "anthropic-messages",
@@ -5423,8 +5237,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "zai/glm-5-turbo": {
         "api": "anthropic-messages",
@@ -5451,8 +5264,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "zai/glm-5.1": {
         "api": "anthropic-messages",
@@ -5479,8 +5291,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "zai/glm-5.2": {
         "api": "anthropic-messages",
@@ -5507,8 +5318,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "zai/glm-5.2-fast": {
         "api": "anthropic-messages",
@@ -5535,8 +5345,7 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "zai/glm-5v-turbo": {
         "api": "anthropic-messages",
@@ -5563,7 +5372,6 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     }
 }

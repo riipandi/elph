@@ -92,7 +92,7 @@
     {
         "providerId": "kilo",
         "rustMod": "kilo",
-        "count": 352
+        "count": 354
     },
     {
         "providerId": "kimi-coding",
@@ -172,7 +172,7 @@
     {
         "providerId": "openrouter",
         "rustMod": "openrouter",
-        "count": 403
+        "count": 405
     },
     {
         "providerId": "qwen-token-plan",

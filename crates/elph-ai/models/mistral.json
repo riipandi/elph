@@ -26,8 +26,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "devstral-2512": {
         "api": "mistral-conversations",
@@ -56,8 +55,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "devstral-latest": {
         "api": "mistral-conversations",
@@ -86,8 +84,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "devstral-medium-2507": {
         "api": "mistral-conversations",
@@ -116,8 +113,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "devstral-medium-latest": {
         "api": "mistral-conversations",
@@ -146,8 +142,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "devstral-small-2505": {
         "api": "mistral-conversations",
@@ -176,8 +171,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "devstral-small-2507": {
         "api": "mistral-conversations",
@@ -206,8 +200,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "labs-devstral-small-2512": {
         "api": "mistral-conversations",
@@ -236,8 +229,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "magistral-medium-latest": {
         "api": "mistral-conversations",
@@ -266,8 +258,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "magistral-small": {
         "api": "mistral-conversations",
@@ -296,8 +287,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "ministral-3b-latest": {
         "api": "mistral-conversations",
@@ -326,8 +316,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "ministral-8b-latest": {
         "api": "mistral-conversations",
@@ -356,8 +345,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistral-embed": {
         "api": "mistral-conversations",
@@ -386,8 +374,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistral-large-2411": {
         "api": "mistral-conversations",
@@ -416,8 +403,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistral-large-2512": {
         "api": "mistral-conversations",
@@ -446,8 +432,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistral-large-latest": {
         "api": "mistral-conversations",
@@ -476,8 +461,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistral-medium-2505": {
         "api": "mistral-conversations",
@@ -506,8 +490,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistral-medium-2508": {
         "api": "mistral-conversations",
@@ -536,8 +519,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistral-medium-2604": {
         "api": "mistral-conversations",
@@ -566,8 +548,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "mistral-medium-latest": {
         "api": "mistral-conversations",
@@ -596,8 +577,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "mistral-nemo": {
         "api": "mistral-conversations",
@@ -626,8 +606,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistral-small-2506": {
         "api": "mistral-conversations",
@@ -656,8 +635,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "mistral-small-2603": {
         "api": "mistral-conversations",
@@ -686,8 +664,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "mistral-small-latest": {
         "api": "mistral-conversations",
@@ -716,8 +693,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "open-mistral-7b": {
         "api": "mistral-conversations",
@@ -746,8 +722,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "open-mistral-nemo": {
         "api": "mistral-conversations",
@@ -776,8 +751,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "open-mixtral-8x22b": {
         "api": "mistral-conversations",
@@ -806,8 +780,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "open-mixtral-8x7b": {
         "api": "mistral-conversations",
@@ -836,8 +809,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "pixtral-12b": {
         "api": "mistral-conversations",
@@ -866,8 +838,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "pixtral-large-latest": {
         "api": "mistral-conversations",
@@ -896,8 +867,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "voxtral-mini-latest": {
         "api": "mistral-conversations",
@@ -926,8 +896,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "voxtral-mini-tts-latest": {
         "api": "mistral-conversations",
@@ -956,8 +925,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "voxtral-small-latest": {
         "api": "mistral-conversations",
@@ -986,7 +954,6 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     }
 }

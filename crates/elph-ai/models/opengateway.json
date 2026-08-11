@@ -24,8 +24,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "unresolved"
+        }
     },
     "google/gemini-3.1-flash-lite": {
         "api": "openai-completions",
@@ -54,8 +53,7 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "inclusionai/ling-3.0-flash:free": {
         "api": "openai-completions",
@@ -81,8 +79,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "mindai/macaron-v1-tall": {
         "api": "openai-completions",
@@ -108,8 +105,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "minimax/minimax-m3": {
         "api": "openai-completions",
@@ -136,8 +132,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "moonshotai/kimi-k3": {
         "api": "openai-completions",
@@ -165,8 +160,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "nvidia/nemotron-3-ultra-550b-a55b:free": {
         "api": "openai-completions",
@@ -193,8 +187,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "qwen/qwen3.7-max": {
         "api": "openai-completions",
@@ -221,8 +214,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "tencent/hy3": {
         "api": "openai-completions",
@@ -250,8 +242,7 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "xiaomi/mimo-v2.5": {
         "api": "openai-completions",
@@ -280,8 +271,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "xiaomi/mimo-v2.5-pro": {
         "api": "openai-completions",
@@ -310,8 +300,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "z-ai/glm-5.2": {
         "api": "openai-completions",
@@ -338,7 +327,6 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     }
 }

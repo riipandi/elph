@@ -32,8 +32,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "accounts/fireworks/models/deepseek-v4-flash-0731": {
         "api": "openai-completions",
@@ -62,8 +61,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "accounts/fireworks/models/deepseek-v4-pro": {
         "api": "anthropic-messages",
@@ -98,8 +96,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "accounts/fireworks/models/glm-5p2": {
         "api": "openai-completions",
@@ -132,8 +129,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "accounts/fireworks/models/gpt-oss-120b": {
         "api": "anthropic-messages",
@@ -168,8 +164,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "accounts/fireworks/models/gpt-oss-20b": {
         "api": "anthropic-messages",
@@ -204,8 +199,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "accounts/fireworks/models/kimi-k2p6": {
         "api": "anthropic-messages",
@@ -240,8 +234,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "accounts/fireworks/models/kimi-k2p7-code": {
         "api": "anthropic-messages",
@@ -276,8 +269,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "accounts/fireworks/models/kimi-k3": {
         "api": "anthropic-messages",
@@ -312,8 +304,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "accounts/fireworks/models/minimax-m2p7": {
         "api": "anthropic-messages",
@@ -348,8 +339,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "accounts/fireworks/models/minimax-m3": {
         "api": "anthropic-messages",
@@ -384,8 +374,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "accounts/fireworks/models/qwen3p7-plus": {
         "api": "anthropic-messages",
@@ -420,8 +409,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "accounts/fireworks/routers/glm-5p2-fast": {
         "api": "openai-completions",
@@ -454,8 +442,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     },
     "accounts/fireworks/routers/kimi-k2p6-fast": {
         "api": "anthropic-messages",
@@ -490,8 +477,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "accounts/fireworks/routers/kimi-k2p6-turbo": {
         "api": "anthropic-messages",
@@ -526,8 +512,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "accounts/fireworks/routers/kimi-k2p7-code-fast": {
         "api": "anthropic-messages",
@@ -562,8 +547,7 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "previous"
+        }
     },
     "accounts/fireworks/routers/kimi-k3-fast": {
         "api": "anthropic-messages",
@@ -598,7 +582,6 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        },
-        "thinkingLevelMapSource": "models.dev"
+        }
     }
 }

@@ -68,12 +68,6 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
     let mut maps_ok = 0usize;
     let mut maps_bad = 0usize;
 
-    let mut src_previous = 0usize;
-    let mut src_live_api = 0usize;
-    let mut src_models_dev = 0usize;
-    let mut src_provider_override = 0usize;
-    let mut src_unresolved = 0usize;
-
     let mut cost_live = 0usize;
     let mut cost_mdev = 0usize;
     let mut cost_aimd = 0usize;
@@ -121,14 +115,6 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
                         );
                         apply_cost(&mut entry, i, o, cr, cw);
                         tally_map(&entry, &mut maps_ok, &mut maps_bad);
-                        tally_source(
-                            &entry,
-                            &mut src_previous,
-                            &mut src_live_api,
-                            &mut src_models_dev,
-                            &mut src_provider_override,
-                            &mut src_unresolved,
-                        );
                         catalog.insert(mid.clone(), entry);
                     }
                 } else {
@@ -190,14 +176,6 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
                     );
                     apply_cost(&mut entry, i, o, cr, cw);
                     tally_map(&entry, &mut maps_ok, &mut maps_bad);
-                    tally_source(
-                        &entry,
-                        &mut src_previous,
-                        &mut src_live_api,
-                        &mut src_models_dev,
-                        &mut src_provider_override,
-                        &mut src_unresolved,
-                    );
                     catalog.insert(mid.clone(), entry);
                 }
             }
@@ -230,14 +208,6 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
                 );
                 apply_cost(&mut entry, i, o, cr, cw);
                 tally_map(&entry, &mut maps_ok, &mut maps_bad);
-                tally_source(
-                    &entry,
-                    &mut src_previous,
-                    &mut src_live_api,
-                    &mut src_models_dev,
-                    &mut src_provider_override,
-                    &mut src_unresolved,
-                );
                 catalog.insert(mid.clone(), entry);
             }
         } else {
@@ -280,14 +250,6 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
         bail!("{maps_bad} models missing complete thinkingLevelMap");
     }
 
-    term::source_breakdown(
-        src_previous,
-        src_live_api,
-        src_models_dev,
-        src_provider_override,
-        src_unresolved,
-    );
-
     term::cost_breakdown(cost_live, cost_mdev, cost_aimd, cost_prev, cost_none);
 
     verify_providers_registered(&index, &options.builtin_rs)?;
@@ -314,37 +276,6 @@ fn tally_map(entry: &Value, ok: &mut usize, bad: &mut usize) {
         *ok += 1;
     } else {
         *bad += 1;
-    }
-}
-
-fn tally_source(
-    entry: &Value,
-    previous: &mut usize,
-    live_api: &mut usize,
-    models_dev: &mut usize,
-    provider_override: &mut usize,
-    unresolved: &mut usize,
-) {
-    if let Some(src_str) = entry.get("thinkingLevelMapSource").and_then(|v| v.as_str()) {
-        match src_str {
-            "previous" => *previous += 1,
-            "live-api" => *live_api += 1,
-            "models.dev" => *models_dev += 1,
-            "provider-override" => *provider_override += 1,
-            "unresolved" => *unresolved += 1,
-            _ => {}
-        }
-        return;
-    }
-    let Some(map) = entry.get("thinkingLevelMap").and_then(|v| v.as_object()) else {
-        *unresolved += 1;
-        return;
-    };
-    let has_any = map.values().any(|v| !v.is_null());
-    if has_any {
-        *provider_override += 1;
-    } else {
-        *unresolved += 1;
     }
 }
 
