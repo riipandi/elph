@@ -170,6 +170,9 @@ use keys::handle_shell_key;
 use tick::shell_tick_loop;
 use view::build_shell_view;
 
+// Re-exported for transcript reconstruction on session resume (startup.rs).
+pub(crate) use helpers::worker_inbound_meta_label;
+
 // ── OAuth dialog events ──────────────────────────────────────────────
 
 /// Events sent from the OAuth flow to the provider connect dialog.

@@ -502,6 +502,18 @@ fn reconstruct_transcript_from_llm_entries(
                     continue;
                 }
 
+                // Worker-message turn prompt — same slim meta label the live shell
+                // applier renders (see shell/tick.rs), so a resumed session never
+                // shows the raw `<intercom>` wrapper as a user prompt card.
+                if text.starts_with(crate::agent::WORKER_INBOUND_PROMPT_PREFIX) {
+                    let label = crate::tui::shell::worker_inbound_meta_label(&text);
+                    let mut notice = TranscriptMessage::text(label, TranscriptStyle::Meta);
+                    notice.sticky_meta = true;
+                    messages.push(notice);
+                    last_event_ms = Some(*user_ms);
+                    continue;
+                }
+
                 let mut msg = TranscriptMessage::text(text, TranscriptStyle::User);
                 msg.submitted_at = entry_ts.or_else(|| datetime_from_millis(*user_ms));
                 msg.detail_expanded = false;
@@ -1073,6 +1085,68 @@ mod tests {
         assert_eq!(msg.style, TranscriptStyle::Meta);
         assert_eq!(msg.content, crate::agent::CONTINUE_META_LABEL);
         assert!(msg.sticky_meta, "resumed recovery notice must stay sticky like the live label");
+        assert!(!msg.style.is_user_input_card(), "no giant user prompt card on resume");
+    }
+
+    /// Worker-message turn prompts restore as a slim sticky meta label, never as a
+    /// giant user prompt card showing the raw `<intercom>` wrapper — matching the
+    /// live `UserPromptCommitted` rendering in shell/tick.rs.
+    #[test]
+    fn resumed_worker_inbound_prompt_renders_as_meta_label() {
+        use elph_agent::{AgentMessage, SessionTreeEntry};
+        use elph_ai::{Message, UserContent};
+
+        let prompt = format!(
+            "{} (`calm-fox`)\n\
+             in this shared project. Answer it as part of your normal turn — you may use\n\
+             tools. Reply with the `worker_reply` tool so the peer receives your answer.\n\
+             If the message needs no answer, send a short acknowledgement.</intercom>\n\n\
+             Please check the auth service",
+            crate::agent::WORKER_INBOUND_PROMPT_PREFIX
+        );
+
+        let entries = vec![
+            SessionTreeEntry::Message {
+                id: "u1".into(),
+                parent_id: None,
+                timestamp: "t".into(),
+                message: AgentMessage::Llm(Box::new(Message::User {
+                    content: UserContent::Text(prompt),
+                    timestamp: 0,
+                })),
+                prompt_title: String::new(),
+                prompt_kind: String::new(),
+            },
+            SessionTreeEntry::Message {
+                id: "a1".into(),
+                parent_id: Some("u1".into()),
+                timestamp: "t".into(),
+                message: AgentMessage::Llm(Box::new(Message::Assistant(elph_ai::faux_assistant_message(
+                    Vec::new(),
+                    None,
+                )))),
+                prompt_title: String::new(),
+                prompt_kind: String::new(),
+            },
+        ];
+
+        let messages = reconstruct_transcript_from_llm_entries(&entries, "/tmp/project");
+        assert_eq!(messages.len(), 1, "worker inbound renders as one slim meta line");
+        let msg = &messages[0];
+        assert_eq!(msg.style, TranscriptStyle::Meta);
+        assert!(msg.content.starts_with("Message from worker calm-fox"), "{}", msg.content);
+        assert!(msg.content.contains("Please check the auth service"), "{}", msg.content);
+        assert!(
+            !msg.content.contains("<intercom>"),
+            "raw wrapper must be hidden: {}",
+            msg.content
+        );
+        assert!(
+            !msg.content.contains("worker_reply"),
+            "wrapper body must be hidden: {}",
+            msg.content
+        );
+        assert!(msg.sticky_meta, "resumed worker notice must stay sticky like the live label");
         assert!(!msg.style.is_user_input_card(), "no giant user prompt card on resume");
     }
 }
