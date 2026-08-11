@@ -497,7 +497,6 @@ pub async fn create_coding_session_with_events(
                         &session_id,
                         fields.summary,
                         fields.tokens_before as i64,
-                        1,
                         Some(fields.first_kept_entry_id),
                         details_str.as_deref(),
                     )

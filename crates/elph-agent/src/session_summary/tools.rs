@@ -66,14 +66,14 @@ fn format_summary(summary: &SessionSummary) -> String {
     let details = summary.details.as_deref().unwrap_or("none");
     format!(
         "Session: {session_id}\n\
-                 Compactions: {compaction_count}\n\
-                 Tokens before last: {tokens_before}\n\
-                 First kept entry: {first_kept}\n\
-                 Updated: {updated_at}\n\
-                 Details: {details}\n\
-                 \n\
-                 --- Summary ---\n\
-                 {summary_text}",
+         Compactions: {compaction_count}\n\
+         Tokens before last: {tokens_before}\n\
+         First kept entry: {first_kept}\n\
+         Updated: {updated_at}\n\
+         Details: {details}\n\
+         \n\
+         --- Summary ---\n\
+         {summary_text}",
         session_id = summary.session_id,
         compaction_count = summary.compaction_count,
         tokens_before = summary.tokens_before,
@@ -116,10 +116,7 @@ mod tests {
         (tmp, store)
     }
 
-    fn exec_tool(
-        tool: &AgentTool,
-        args: Value,
-    ) -> std::pin::Pin<Box<dyn Future<Output = anyhow::Result<AgentToolResult>> + Send>> {
+    fn exec_tool(tool: &AgentTool, args: Value) -> Pin<Box<dyn Future<Output = Result<AgentToolResult>> + Send>> {
         let ctx = crate::types::ToolContext::new(std::sync::Arc::new(
             crate::runtime::local_env::LocalExecutionEnv::new(std::path::Path::new(".")),
         ));
@@ -142,7 +139,7 @@ mod tests {
     async fn tool_returns_summary_when_found() {
         let (_tmp, store) = setup_store().await;
         store
-            .upsert("sess_tool", "test summary", 800, 1, Some("e1"), None)
+            .upsert("sess_tool", "test summary", 800, Some("e1"), None)
             .await
             .expect("upsert");
 

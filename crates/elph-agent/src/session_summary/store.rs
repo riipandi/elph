@@ -80,14 +80,13 @@ impl SessionSummaryStore {
 
     /// Insert or replace the summary for a session. Called after compaction.
     ///
-    /// `compaction_count` is incremented from the previous value (or starts at 1
-    /// for a new row) so callers do not need to query the prior count.
+    /// `compaction_count` is auto-incremented from the previous value (or starts
+    /// at 1 for a new row) by the SQL upsert — callers do not supply it.
     pub async fn upsert(
         &self,
         session_id: &str,
         summary: &str,
         tokens_before: i64,
-        _compaction_count: i64,
         first_kept_entry_id: Option<&str>,
         details: Option<&str>,
     ) -> Result<SessionSummary> {
@@ -133,15 +132,11 @@ impl SessionSummaryStore {
 
     /// Best-effort upsert that swallows lock errors. Used from compaction hooks
     /// where a failed write should not block the compaction flow.
-    ///
-    /// `compaction_count` is auto-incremented by the SQL upsert; the argument
-    /// is kept for API symmetry but ignored.
     pub async fn upsert_best_effort(
         &self,
         session_id: &str,
         summary: &str,
         tokens_before: i64,
-        _compaction_count: i64,
         first_kept_entry_id: Option<&str>,
         details: Option<&str>,
     ) {
@@ -149,7 +144,7 @@ impl SessionSummaryStore {
             return;
         }
         match self
-            .upsert(session_id, summary, tokens_before, 0, first_kept_entry_id, details)
+            .upsert(session_id, summary, tokens_before, first_kept_entry_id, details)
             .await
         {
             Ok(_) => {}
@@ -213,9 +208,9 @@ mod tests {
     async fn upsert_inserts_and_updates() {
         let (_tmp, store) = setup_store().await;
 
-        // Insert
+        // Insert — compaction_count starts at 1
         let s1 = store
-            .upsert("sess_a", "first summary", 1000, 1, Some("entry1"), None)
+            .upsert("sess_a", "first summary", 1000, Some("entry1"), None)
             .await
             .expect("upsert 1");
         assert_eq!(s1.session_id, "sess_a");
@@ -224,14 +219,14 @@ mod tests {
         assert_eq!(s1.compaction_count, 1);
         assert_eq!(s1.first_kept_entry_id.as_deref(), Some("entry1"));
 
-        // Update (same session_id) — compaction_count auto-increments
+        // Update (same session_id) — compaction_count auto-increments to 2
         let s2 = store
-            .upsert("sess_a", "second summary", 2000, 2, Some("entry2"), Some("{}"))
+            .upsert("sess_a", "second summary", 2000, Some("entry2"), Some("{}"))
             .await
             .expect("upsert 2");
         assert_eq!(s2.summary, "second summary");
         assert_eq!(s2.tokens_before, 2000);
-        assert_eq!(s2.compaction_count, 2); // auto-incremented from 1
+        assert_eq!(s2.compaction_count, 2);
         assert_eq!(s2.first_kept_entry_id.as_deref(), Some("entry2"));
         assert_eq!(s2.details.as_deref(), Some("{}"));
 
@@ -250,7 +245,7 @@ mod tests {
     async fn delete_removes_row() {
         let (_tmp, store) = setup_store().await;
         store
-            .upsert("sess_del", "to be deleted", 500, 1, None, None)
+            .upsert("sess_del", "to be deleted", 500, None, None)
             .await
             .expect("upsert");
         assert!(store.get("sess_del").await.expect("get").is_some());
@@ -262,7 +257,7 @@ mod tests {
     #[tokio::test]
     async fn upsert_rejects_empty_summary() {
         let (_tmp, store) = setup_store().await;
-        let result = store.upsert("sess_empty", "   ", 0, 0, None, None).await;
+        let result = store.upsert("sess_empty", "   ", 0, None, None).await;
         assert!(result.is_err());
     }
 
@@ -270,12 +265,12 @@ mod tests {
     async fn upsert_best_effort_swallows_errors() {
         let (_tmp, store) = setup_store().await;
         // Empty summary — silently skipped.
-        store.upsert_best_effort("sess_bf", "   ", 0, 0, None, None).await;
+        store.upsert_best_effort("sess_bf", "   ", 0, None, None).await;
         assert!(store.get("sess_bf").await.expect("get").is_none());
 
         // Valid upsert.
         store
-            .upsert_best_effort("sess_bf", "best effort", 100, 1, None, None)
+            .upsert_best_effort("sess_bf", "best effort", 100, None, None)
             .await;
         assert!(store.get("sess_bf").await.expect("get").is_some());
     }
