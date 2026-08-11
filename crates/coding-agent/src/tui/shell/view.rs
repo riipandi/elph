@@ -1457,20 +1457,11 @@ pub(crate) fn build_shell_view(
                         if slash_echoes_prompt_in_transcript(&outcome) && !queue_follow_up {
                             let echo = if is_slash {
                                 // Keep leading `/` so history / skill cards restore as `/name` or `/cmd`.
-                                // Add prefix for skills and prompt templates to distinguish them in transcript.
-                                let base = if slash_input.trim().starts_with('/') {
+                                // Skills already carry the `/skill:` prefix from palette completion.
+                                if slash_input.trim().starts_with('/') {
                                     slash_input.trim().to_string()
                                 } else {
                                     format!("/{}", slash_input.trim())
-                                };
-                                match &outcome {
-                                    SlashOutcome::SpawnAgentTurnSkill { .. } => {
-                                        format!("[skill] {}", base)
-                                    }
-                                    SlashOutcome::SpawnAgentTurnPromptTemplate { .. } => {
-                                        base // No prefix for prompt templates
-                                    }
-                                    _ => base,
                                 }
                             } else {
                                 // Normal prompt — no forced `/` prefix.

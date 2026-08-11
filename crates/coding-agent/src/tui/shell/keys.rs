@@ -3206,16 +3206,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 // shows a "queued" notice instead, and no raw slash text reaches the model.
                 let queue_follow_up = agent_turn_active.get();
                 if slash_echoes_prompt_in_transcript(&outcome) && !queue_follow_up {
-                    // Add prefix for skills to distinguish them in transcript.
-                    let formatted_echo = match &outcome {
-                        SlashOutcome::SpawnAgentTurnSkill { name: _ } => {
-                            format!("[skill] {}", echo)
-                        }
-                        SlashOutcome::SpawnAgentTurnPromptTemplate { name: _ } => {
-                            echo // No prefix for prompt templates
-                        }
-                        _ => echo,
-                    };
+                    // Skills already carry the `/skill:` prefix from palette completion.
+                    let formatted_echo = echo;
                     let mut submitted =
                         TranscriptMessage::text(formatted_echo, TranscriptStyle::for_slash_turn_echo(&slash_input));
                     if submitted.style.is_user_input_card() {

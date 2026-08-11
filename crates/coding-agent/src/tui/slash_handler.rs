@@ -76,7 +76,7 @@ pub enum SlashOutcome {
     Status(String),
     Unimplemented(String),
     SpawnAgentTurn,
-    /// Spawn agent turn from a skill (echoed as `[skill] /name` in transcript).
+    /// Spawn agent turn from a skill (transcript echoes `/skill:name`).
     SpawnAgentTurnSkill {
         name: String,
     },

@@ -668,17 +668,14 @@ pub(crate) fn prompt_card_from_session_meta(
     if prompt_title.is_empty() {
         return None;
     }
+    // `prompt_title` already carries a leading `/`
+    // (skills include the `/skill:` prefix from prompt_ops).
     let style = if prompt_kind == "skill" {
         TranscriptStyle::SkillPrompt
     } else {
         TranscriptStyle::User
     };
-    let display = if prompt_kind == "skill" {
-        format!("[skill] {prompt_title}")
-    } else {
-        prompt_title.to_string()
-    };
-    let mut msg = TranscriptMessage::text(display, style);
+    let mut msg = TranscriptMessage::text(prompt_title.to_string(), style);
     msg.submitted_at = submitted_at;
     msg.detail_expanded = false;
     Some(msg)
@@ -940,7 +937,7 @@ mod tests {
     fn prompt_card_from_session_meta_skill_and_template() {
         let skill = prompt_card_from_session_meta("/tui-design layout", "skill", None).expect("skill");
         assert_eq!(skill.style, TranscriptStyle::SkillPrompt);
-        assert_eq!(skill.content, "[skill] /tui-design layout");
+        assert_eq!(skill.content, "/tui-design layout");
         assert!(skill.style.is_user_input_card());
 
         let template = prompt_card_from_session_meta("/review-pr 42", "template", None).expect("template");
@@ -960,9 +957,7 @@ mod tests {
         let restored = messages_from_snapshot_data(&data).expect("parse");
         assert_eq!(restored.len(), 2);
         assert_eq!(restored[0].style, TranscriptStyle::SkillPrompt);
-        // The `[skill]` display prefix is part of the card content and is
-        // preserved verbatim through the snapshot round-trip.
-        assert_eq!(restored[0].content, "[skill] /code-review fix tests");
+        assert_eq!(restored[0].content, "/code-review fix tests");
         assert_eq!(restored[1].style, TranscriptStyle::User);
         assert_eq!(restored[1].content, "/summarize --short");
     }

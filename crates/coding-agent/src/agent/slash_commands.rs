@@ -1021,8 +1021,6 @@ mod tests {
             .expect("skill command");
         // sample_skill() has no argument_hint → no args_hint.
         assert_eq!(skill.args_hint, None);
-        // Skill description carries no `[skill]` tag — the `/skill:` prefix on
-        // completion is the unambiguous marker.
         assert_eq!(skill.description, "Review changes");
     }
 
