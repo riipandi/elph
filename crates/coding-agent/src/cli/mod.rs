@@ -155,8 +155,6 @@ pub enum Commands {
     Stats(StatsArgs),
     /// Check for updates or install a specific version
     Update(UpdateArgs),
-    /// Print version information
-    Version,
     /// Manage git worktrees
     Worktree(WorktreeArgs),
 }
@@ -274,7 +272,6 @@ pub fn run(cli: &Cli) -> ExitCode {
         Commands::Session(args) => session::handle(args),
         Commands::Stats(args) => stats::handle(args),
         Commands::Update(args) => update::handle(args),
-        Commands::Version => version::handle(),
         Commands::Worktree(args) => worktree::handle(args),
     }
 }
