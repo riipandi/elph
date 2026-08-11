@@ -15,7 +15,9 @@ pub fn palette_card_width(screen_width: u16) -> u16 {
 }
 
 pub fn palette_list_width(screen_width: u16) -> u16 {
-    screen_width.saturating_sub(3).max(20)
+    // Card round border (2 columns) plus side paddings (1 each) — rows stop one column
+    // short of the right border so descriptions keep breathing room.
+    screen_width.saturating_sub(4).max(20)
 }
 
 pub fn palette_command_label_width(name: &str) -> usize {

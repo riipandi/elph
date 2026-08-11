@@ -3,6 +3,7 @@
 use elph_tui::types::SelectOption;
 use elph_tui::utils::{display_width, truncate_with_ellipsis};
 
+use crate::agent::truncate_palette_description;
 use crate::types::SlashCommand;
 
 /// Selection marker width (`❯ ` or `  `).
@@ -22,9 +23,13 @@ pub fn palette_card_width(screen_width: u16) -> u16 {
     screen_width.max(20)
 }
 
-/// List content width inside the card frame (editor inner width minus scrollbar column).
+/// List content width inside the card frame.
+///
+/// Card width minus the round border (2 columns) and both side paddings (1 each) — rows fit
+/// inside the content box, leaving the right padding column empty so text never touches the
+/// right border.
 pub fn palette_list_width(screen_width: u16) -> u16 {
-    screen_width.saturating_sub(3).max(20)
+    screen_width.saturating_sub(4).max(20)
 }
 
 /// Width of one rendered command label (`❯ /name` or `  /name`) in display columns.
@@ -41,6 +46,13 @@ pub fn palette_slash_row_label_width(command_name: &str, args_hint: Option<&str>
     width
 }
 
+/// Command column share cap — the command column never takes more than a third of the
+/// list width, so one wide label (long name + args hint) can't squeeze every description
+/// down to a sliver; the widest labels simply ellipsize instead.
+pub fn command_column_cap(list_width: u16) -> usize {
+    (list_width as usize / 3).max(CMD_COLUMN_MIN_CHARS)
+}
+
 /// Command column width derived from the widest visible command name.
 pub fn palette_command_column_width(options: &[SelectOption], list_width: u16) -> u16 {
     let mut max_label = CMD_COLUMN_MIN_CHARS;
@@ -51,7 +63,7 @@ pub fn palette_command_column_width(options: &[SelectOption], list_width: u16) -
     let max_allowed = list_width
         .saturating_sub(CMD_DESC_GAP_COLS + MIN_DESC_COLUMN_CHARS)
         .max(1) as usize;
-    max_label.min(max_allowed).max(1) as u16
+    max_label.min(max_allowed).min(command_column_cap(list_width)).max(1) as u16
 }
 
 /// Command column width when args hints render in a separate dimmed segment.
@@ -65,10 +77,14 @@ pub fn palette_command_column_width_for_commands(commands: &[SlashCommand], list
     let max_allowed = list_width
         .saturating_sub(CMD_DESC_GAP_COLS + MIN_DESC_COLUMN_CHARS)
         .max(1) as usize;
-    max_label.min(max_allowed).max(1) as u16
+    max_label.min(max_allowed).min(command_column_cap(list_width)).max(1) as u16
 }
 
-/// Description column width in terminal cells.
+/// Description column width in terminal cells: list width minus the aligned command column.
+///
+/// Every row shares the same column so descriptions start at the same x — the pad between
+/// name and description stays uniform — while the description still spans the full remaining
+/// width down to the box edge.
 pub fn palette_desc_width(list_width: u16, command_column_width: u16) -> usize {
     list_width
         .saturating_sub(command_column_width + CMD_DESC_GAP_COLS)
@@ -136,12 +152,14 @@ pub fn truncate_command_label(
     }
 }
 
-/// Truncate description to a single line fitting the description column width.
+/// Truncate description to a single line fitting `width` display columns.
+///
+/// Delegates to [`truncate_palette_description`] so the palette render shares the same
+/// width-aware truncation (first line + ellipsis) as the rest of the app.
 ///
 /// Always returns a single-element vec so callers that expect `Vec<String>` continue to work.
-pub fn wrap_palette_description(description: &str, list_width: u16, command_column_width: u16) -> Vec<String> {
-    let width = palette_desc_width(list_width, command_column_width);
-    vec![truncate_with_ellipsis(description, width)]
+pub fn wrap_palette_description(description: &str, width: usize) -> Vec<String> {
+    vec![truncate_palette_description(description, Some(width))]
 }
 
 /// Sum of terminal rows for a slice of options (capped at `viewport_cap`).
@@ -164,8 +182,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn list_width_reserves_scrollbar_column() {
-        assert_eq!(palette_list_width(80), 77);
+    fn list_width_reserves_border_and_padding() {
+        assert_eq!(palette_list_width(80), 76);
         assert_eq!(palette_card_width(80), 80);
     }
 
@@ -193,15 +211,50 @@ mod tests {
     }
 
     #[test]
+    fn command_column_cap_keeps_description_share() {
+        // One very wide label (long name + hint) must not push the command column past a
+        // third of the list width — descriptions keep the rest of the row.
+        let commands =
+            vec![SlashCommand::new("rust-verify-harden", "Audit Rust changes").with_args_hint("[fix|audit]")];
+        let list_width = 81u16;
+        let cmd_col = palette_command_column_width_for_commands(&commands, list_width);
+        assert_eq!(cmd_col as usize, command_column_cap(list_width), "cap engages on wide labels");
+        let desc_col = palette_desc_width(list_width, cmd_col);
+        assert_eq!(
+            desc_col,
+            list_width as usize - command_column_cap(list_width) - CMD_DESC_GAP_COLS as usize,
+            "description gets everything the capped command column leaves"
+        );
+        assert!(desc_col * 2 >= list_width as usize, "description keeps at least half the row");
+    }
+
+    #[test]
     fn description_truncated_to_single_line() {
         let desc = "Reload extensions and prompt templates from disk";
-        let cmd_col = palette_command_column_width(&[], 40);
-        let lines = wrap_palette_description(desc, 40, cmd_col);
+        let width = palette_desc_width(40, palette_command_column_width(&[], 40));
+        let lines = wrap_palette_description(desc, width);
         assert_eq!(lines.len(), 1, "description is truncated to a single line");
         assert!(
-            display_width(&lines[0]) <= palette_desc_width(40, cmd_col),
+            display_width(&lines[0]) <= width,
             "truncated description fits within desc_width"
         );
+    }
+
+    #[test]
+    fn descriptions_share_one_aligned_column() {
+        let list_width = 81u16;
+        let cmd_col = palette_command_column_width(
+            &[
+                SelectOption::new("/abc", "Short name"),
+                SelectOption::new("/rust-verify-harden", "Long name"),
+            ],
+            list_width,
+        );
+        // The aligned column grows to fit the longest label…
+        assert!(cmd_col as usize >= palette_command_label_width("/rust-verify-harden"));
+        // …and every row gets the same description width, so descriptions line up at one x.
+        let desc = palette_desc_width(list_width, cmd_col);
+        assert_eq!(desc, list_width as usize - cmd_col as usize - CMD_DESC_GAP_COLS as usize);
     }
 
     #[test]

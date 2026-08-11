@@ -9,7 +9,7 @@ use super::super::model::SlashPaletteSnapshot;
 use super::super::model::{list_viewport_cap, palette_window_start};
 use super::super::row_layout::CMD_DESC_GAP_COLS;
 use super::super::row_layout::{
-    ROW_PREFIX_CHARS, truncate_command_label, visible_terminal_rows, wrap_palette_description,
+    ROW_PREFIX_CHARS, palette_desc_width, truncate_command_label, visible_terminal_rows, wrap_palette_description,
 };
 use super::chrome::PaletteCardChrome;
 
@@ -36,10 +36,10 @@ fn palette_command_row(
     let row_surface = dialog_row_surface(theme, selected);
 
     let cmd_col = chrome.command_column_width;
-    let desc_width = chrome.list_width.saturating_sub(cmd_col + CMD_DESC_GAP_COLS).max(1);
+    let desc_width = palette_desc_width(chrome.list_width, cmd_col);
     let content_max = (cmd_col as usize).saturating_sub(ROW_PREFIX_CHARS);
     let (display_name, display_hint) = truncate_command_label(command_name, args_hint, content_max);
-    let desc_text = wrap_palette_description(description, chrome.list_width, cmd_col).join("");
+    let desc_text = wrap_palette_description(description, desc_width).join("");
 
     let mut name_segments: Vec<AnyElement<'static>> = Vec::new();
     name_segments.push(
@@ -101,7 +101,7 @@ fn palette_command_row(
                 #(name_segments)
             }
             View(
-                width: desc_width,
+                width: desc_width as u16,
                 height: 1u16,
                 align_items: AlignItems::FlexStart,
                 overflow: Overflow::Hidden,

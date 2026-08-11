@@ -107,7 +107,7 @@ mod tests {
         let snapshot = SlashPaletteSnapshot::hidden();
         let chrome = PaletteCardChrome::from_snapshot(80, AgentMode::Build, &snapshot);
         assert_eq!(chrome.card_width, 80);
-        assert_eq!(chrome.list_width, 77);
+        assert_eq!(chrome.list_width, 76);
         assert!(chrome.list_width <= chrome.card_width);
     }
 }

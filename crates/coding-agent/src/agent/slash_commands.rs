@@ -1,8 +1,6 @@
 //! Built-in slash command registry and dispatch.
 
-use crate::agent::{
-    MAX_PALETTE_DESCRIPTION_CHARS, parse_skill_slash, skill_slash_name, truncate_palette_description,
-};
+use crate::agent::{MAX_PALETTE_DESCRIPTION_CHARS, parse_skill_slash, skill_slash_name, truncate_palette_description};
 use crate::types::{SlashCommand, SlashCommandKind};
 use elph_agent::{ExtensionRegistry, PromptTemplate, Skill};
 
@@ -141,12 +139,11 @@ pub fn slash_commands_for_palette(
         for skill in skills {
             let name = skill_slash_name(&skill.name);
             if !builtin_names.contains(&name) {
-                let mut cmd =
-                    SlashCommand::new(
-                        name,
-                        format!("[skill] {}", truncate_palette_description(&skill.description, None)),
-                    )
-                        .with_kind(SlashCommandKind::Skill);
+                let mut cmd = SlashCommand::new(
+                    name,
+                    format!("[skill] {}", truncate_palette_description(&skill.description, None)),
+                )
+                .with_kind(SlashCommandKind::Skill);
                 if let Some(hint) = &skill.argument_hint {
                     cmd = cmd.with_args_hint(hint);
                 }
