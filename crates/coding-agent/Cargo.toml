@@ -26,6 +26,10 @@ path = "src/main.rs"
 # on macOS aarch64.
 metal = ["floppy/metal"]
 
+[build-dependencies]
+hex.workspace = true
+sha2.workspace = true
+
 [dependencies]
 agent-client-protocol.workspace = true
 anstyle.workspace = true
@@ -35,7 +39,14 @@ chrono.workspace = true
 clap.workspace = true
 clap_complete.workspace = true
 crossterm.workspace = true
-elph-agent = { workspace = true, features = ["tracing", "builtin-tools", "mcp", "prompt-templates", "extensions", "tools-shell-use"] }
+elph-agent = { workspace = true, features = [
+  "tracing",
+  "builtin-tools",
+  "mcp",
+  "prompt-templates",
+  "extensions",
+  "tools-shell-use",
+] }
 elph-ai = { workspace = true, features = ["tracing"] }
 elph-tui = { workspace = true }
 floppy = { workspace = true, features = ["full"] }

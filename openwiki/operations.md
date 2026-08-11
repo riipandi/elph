@@ -152,15 +152,15 @@ Key targets from `/Makefile`:
 
 The Makefile supports three build profiles (commit `b315e28`, `3c5aca0`):
 
-| Profile | Binary name | Description                         |
-| ------- | ----------- | ----------------------------------- |
-| debug   | `elph-dev`  | Fast compilation, day-to-day use    |
-| release | `elph-next` | Optimized, for staging              |
-| dist    | `elph`      | Release-optimized, for distribution |
+| Profile | Binary name   | Description                         |
+| ------- | ------------- | ----------------------------------- |
+| debug   | `elph-debug`  | Fast compilation, day-to-day use    |
+| release | `elph-canary` | Optimized, for staging              |
+| dist    | `elph`        | Release-optimized, for distribution |
 
 ```sh
-make install                       # debug → elph-dev
-make install RELEASE=1             # release → elph-next
+make install                       # debug → elph-debug
+make install RELEASE=1             # release → elph-canary
 make install PROFILE=dist          # dist → elph
 make install -- --release          # alt: release (GNU make end-of-options)
 make install -- --dist             # alt: dist

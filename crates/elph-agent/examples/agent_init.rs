@@ -21,7 +21,7 @@ fn main() {
     // ── 1. AgentBuilder: compose init settings ──
     println!("=== AgentBuilder ===");
 
-    let init: AgentInit = AgentBuilder::new("0.1.0-dev")
+    let init: AgentInit = AgentBuilder::new("0.1.0-debug")
         .env_prefix("MYAPP")
         .app_name("myapp")
         .logs_dir(PathBuf::from("/tmp/myapp-logs"))

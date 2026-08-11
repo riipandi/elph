@@ -1,10 +1,10 @@
 .DEFAULT_GOAL := help
 
-ELPH_BIN   := elph
-CARGO      := $$(which cargo)
-CROSS      := $$(which cross)
-UNAME_S    := $(shell uname -s)
-UNAME_M    := $(shell uname -m)
+APP_BIN  := elph
+CARGO    := $$(which cargo)
+CROSS    := $$(which cross)
+UNAME_S  := $(shell uname -s)
+UNAME_M  := $(shell uname -m)
 
 # On Apple Silicon macOS, default to Metal GPU acceleration for local embeddings
 # (codegraph + memory). The `metal` feature only compiles there; other platforms
@@ -17,11 +17,11 @@ endif
 ELPH_METAL_FEATURE ?=
 
 _ELPH_PKGS   := elph elph-agent elph-ai
-ELPH_VERSION  := $(shell grep '^version' crates/coding-agent/Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')
-BUILD_HASH    := $(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
-APP_BINS      := $(ELPH_BIN)
-INSTALL_DIR   := $(HOME)/.local/bin
-APP           ?= elph
+ELPH_VERSION := $(shell grep '^version' crates/coding-agent/Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')
+BUILD_HASH   := $(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
+APP_BINS     := $(APP_BIN)
+INSTALL_DIR  := $(HOME)/.local/bin
+APP          ?= elph
 
 # ─── Compiler cache ───────────────────────────────────────────────────────────
 # Use sccache when installed AND its daemon is responsive; otherwise disable it
@@ -112,7 +112,7 @@ endif
 BUILD_DIR := ./target/$(BUILD_PROFILE)
 
 .PHONY: build build-elph install run watch test test-elph test-elph-tui check-elph check-elph-tui generate-models prepare
-.PHONY: lint lint-elph lint-elph-tui build-elph-tui-examples fmt clean check coverage help stats
+.PHONY: lint lint-elph lint-elph-tui fmt clean check coverage help stats
 .PHONY: cross cross-pull release release-linux release-macos release-windows
 .PHONY: bump bump-elph bump-libs publish publish-dry-run version
 
@@ -126,9 +126,9 @@ build: build-elph ## Build elph binary (debug default; RELEASE=1 or -- --release
 
 build-elph: ## Build elph binary (debug default; RELEASE=1 or -- --release)
 	@_rustc_display=$$(if [ -n "$$RUSTC_WRAPPER" ]; then echo "$$RUSTC_WRAPPER"; else echo "rustc"; fi); \
-	echo "Building $(ELPH_BIN) v$(ELPH_VERSION) ($(BUILD_HASH)) [$$_rustc_display] ($(BUILD_PROFILE))"
+	echo "Building $(APP_BIN) v$(ELPH_VERSION) ($(BUILD_HASH)) [$$_rustc_display] ($(BUILD_PROFILE))"
 	@_start=$$(python3 -c "import time; print(int(time.time()*1000))"); \
-	$(CARGO) build $(CARGO_BUILD_FLAGS) $(ELPH_METAL_FEATURE) --bin $(ELPH_BIN) 2>&1; \
+	$(CARGO) build $(CARGO_BUILD_FLAGS) $(ELPH_METAL_FEATURE) --bin $(APP_BIN) 2>&1; \
 	_end=$$(python3 -c "import time; print(int(time.time()*1000))"); \
 	_elapsed=$$(( _end - _start )); \
 	echo ""; \
@@ -148,15 +148,15 @@ build-elph: ## Build elph binary (debug default; RELEASE=1 or -- --release)
 	done; \
 	printf "Build time:  %d.%03ds\n" $$(( _elapsed / 1000 )) $$(( _elapsed % 1000 ))
 
-install: build ## Install elph (debug -> elph-dev; release -> elph-next; dist -> elph)
+install: build ## Install elph (debug -> elph-debug; release -> elph-canary; dist -> elph)
 	@mkdir -p $(INSTALL_DIR) && echo
 	@for bin in $(APP_BINS); do \
 	  if [ "$(BUILD_PROFILE)" = "dist" ]; then \
 	    _suffix=""; \
 	  else if [ "$(BUILD_PROFILE)" = "release" ]; then \
-	    _suffix="-next"; \
+	    _suffix="-canary"; \
 	  else \
-	    _suffix="-dev"; \
+	    _suffix="-debug"; \
 	  fi; fi; \
       rm -f "$(INSTALL_DIR)/$$bin$${_suffix}"; \
 	  cp "$(BUILD_DIR)/$$bin" "$(INSTALL_DIR)/$$bin$${_suffix}"; \
@@ -166,13 +166,13 @@ install: build ## Install elph (debug -> elph-dev; release -> elph-next; dist ->
 run: ## Run elph coding agent
 	@_args='$(or $(_RESIDUAL_),$(ARGS))'; \
 	if [ -n "$$_args" ]; then \
-		$(CARGO) run -q -p $(ELPH_BIN) -- $$_args; \
+		$(CARGO) run -q -p $(APP_BIN) -- $$_args; \
 	else \
-		$(CARGO) run -q -p $(ELPH_BIN); \
+		$(CARGO) run -q -p $(APP_BIN); \
 	fi
 
 watch: ## Run elph with hot reload (requires watchexec)
-	@-$(CARGO) watch -c -- cargo run --bin $(ELPH_BIN) $(or $(_RESIDUAL_),$(ARGS)) 2>&1
+	@-$(CARGO) watch -c -- cargo run --bin $(APP_BIN) $(or $(_RESIDUAL_),$(ARGS)) 2>&1
 
 test: ## Run all workspace tests
 	@$(CARGO) nextest run --no-fail-fast $(or $(_RESIDUAL_),$(ARGS))
@@ -190,9 +190,6 @@ check-elph: ## Check elph and its workspace deps compile
 
 check-elph-tui: ## Check elph-tui compiles (lib, tests, examples)
 	@$(CARGO) check -p elph-tui --all-targets 2>&1
-
-build-elph-tui-examples: ## Build all elph-tui examples
-	@$(CARGO) build -p elph-tui --examples 2>&1
 
 generate-models: ## Regenerate elph-ai model catalogs (pi packages/ai; ARGS=--skip-scripts)
 	@$(CARGO) run -p elph-ai --bin generate-models -- all $(ARGS)
@@ -375,12 +372,12 @@ publish-dry-run: ## Dry-run publish checks (elph-ai first)
 help: ## Show this help
 	@printf '\033[33mUsage:\033[0m make \033[36m<target>\033[0m\n'
 	@awk -F ':.*## ' '/^[a-zA-Z_-]+:.*## / {printf " \033[36m%-18s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
-	@printf ' \033[33mBuild profile (build / install):\033[0m\n'
-	@printf ' \033[36mmake install\033[0m                  debug -> elph-dev\n'
-	@printf ' \033[36mmake install RELEASE=1\033[0m        release -> elph-next\n'
-	@printf ' \033[36mmake install PROFILE=dist\033[0m      dist -> elph\n'
-	@printf ' \033[36mmake install -- --release\033[0m     release (GNU make end-of-options)\n'
-	@printf ' \033[36mmake install -- --dist\033[0m        dist (GNU make end-of-options)\n'
+	@printf '\033[33mBuild profile (build / install):\033[0m\n'
+	@printf ' \033[36mmake install\033[0m                      debug -> elph-debug\n'
+	@printf ' \033[36mmake install RELEASE=1\033[0m            release -> elph-canary\n'
+	@printf ' \033[36mmake install PROFILE=dist\033[0m         dist -> elph\n'
+	@printf ' \033[36mmake install -- --release\033[0m         release (GNU make end-of-options)\n'
+	@printf ' \033[36mmake install -- --dist\033[0m            dist (GNU make end-of-options)\n'
 	@printf ' \033[36mmake install -- --features metal\033[0m  enable metal feature (GPU)\n'
-	@printf ' \033[36mmake build PROFILE=release\033[0m    same as RELEASE=1\n'
-	@printf ' note: \033[36mmake install --release\033[0m  is invalid (make option parse)\n'
+	@printf ' \033[36mmake build PROFILE=release\033[0m        same as RELEASE=1\n'
+	@printf '\033[33mNote: \033[36mmake install --release\033[0m is invalid (make option parse)\n'

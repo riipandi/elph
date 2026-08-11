@@ -44,24 +44,24 @@ Output directory: `target/release/`.
 
 ### Other common targets
 
-| Target         | Behavior                                                                   |
-| -------------- | -------------------------------------------------------------------------- |
-| `make check`   | `cargo check --workspace`                                                  |
-| `make test`    | `cargo nextest run`                                                        |
-| `make lint`    | `cargo clippy --workspace -D warnings`                                     |
-| `make fmt`     | `cargo fmt` (edition 2024 style)                                           |
-| `make run`     | `cargo run --bin elph`                                                     |
-| `make watch`   | `cargo watch` + `cargo run --bin elph`                                     |
-| `make install` | Copy debug → `~/.local/bin/elph-dev` or release → `~/.local/bin/elph-next` |
-| `make help`    | List all targets                                                           |
+| Target         | Behavior                                                                       |
+| -------------- | ------------------------------------------------------------------------------ |
+| `make check`   | `cargo check --workspace`                                                      |
+| `make test`    | `cargo nextest run`                                                            |
+| `make lint`    | `cargo clippy --workspace -D warnings`                                         |
+| `make fmt`     | `cargo fmt` (edition 2024 style)                                               |
+| `make run`     | `cargo run --bin elph`                                                         |
+| `make watch`   | `cargo watch` + `cargo run --bin elph`                                         |
+| `make install` | Copy debug → `~/.local/bin/elph-debug` or release → `~/.local/bin/elph-canary` |
+| `make help`    | List all targets                                                               |
 
 ### Installed binaries
 
-| Binary path              | Channel             | Typical source                   |
-| ------------------------ | ------------------- | -------------------------------- |
-| `~/.local/bin/elph`      | production / stable | Release installers               |
-| `~/.local/bin/elph-next` | next (beta)         | `make install` (release profile) |
-| `~/.local/bin/elph-dev`  | dev (unstable)      | `make install` (debug profile)   |
+| Binary path                | Channel             | Typical source                   |
+| -------------------------- | ------------------- | -------------------------------- |
+| `~/.local/bin/elph`        | production / stable | Release installers               |
+| `~/.local/bin/elph-canary` | next (beta)         | `make install` (release profile) |
+| `~/.local/bin/elph-debug`  | dev (unstable)      | `make install` (debug profile)   |
 
 All share the same config/data layout (`CONFIG_DIR` / `APP_DATA`); override with `ELPH_HOME` / `ELPH_DATA_DIR` when testing channels side by side.
 

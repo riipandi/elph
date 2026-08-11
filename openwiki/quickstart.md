@@ -55,7 +55,7 @@ templates/agent/    # MiniJinja system prompt templates (coding_base.md, mode_*.
 | `make cross`           | Cross-compile one platform (`CROSS_TARGET=<triple>`)                                                           |
 | `make cross-pull`      | Pull cross-compilation Docker images                                                                           |
 | `make release`         | Host-aware release build                                                                                       |
-| `make install`         | Install to `~/.local/bin/` (debug → `elph-dev`, release → `elph-next`, dist → `elph`)                          |
+| `make install`         | Install to `~/.local/bin/` (debug → `elph-debug`, release → `elph-canary`, dist → `elph`)                      |
 | `make prepare`         | Prepare workspace for development                                                                              |
 | `make clean`           | Clean build artifacts                                                                                          |
 | `make stats`           | Show sccache stats and line counts                                                                             |
