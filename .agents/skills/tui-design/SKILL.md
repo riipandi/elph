@@ -419,6 +419,39 @@ Unit tests assert the contract exactly:
 `assert_eq!(mcp.args_hint.as_deref(), Some("[args]"))` and
 `assert_eq!(mcp.palette_command_label(), "/mcp [args]")`.
 
+### Slash palette row layout: aligned columns, full-width descriptions
+
+Palette rows are a **two-column row inside the card's content box**: the command column
+(name + optional `[args]` hint) is **aligned** — every row reserves the same width — and
+the description column takes the **full remaining width**, truncating to fit the terminal
+instead of wrapping.
+
+- **Content box = `screen_width − 4`** (`palette_list_width`): the card is border-box with
+  a round border (2 columns) plus 1 column of side padding each. Rows size to `list_width`,
+  never the full screen width, or text touches the right border.
+- **Command column = widest visible label** (`palette_command_column_width[_for_commands]`):
+  `ROW_PREFIX_CHARS (2) + name + optional hint`, floored at `CMD_COLUMN_MIN_CHARS (14)` and
+  capped so every description keeps at least `MIN_DESC_COLUMN_CHARS (12)`. A cap of **⅓ of
+  the list width** (`command_column_cap`) stops one monster label (long name + verbose hint)
+  from squeezing every description — the wide labels ellipsize instead.
+- **Description column = `list_width − cmd_col − gap (2)`** (`palette_desc_width`) — the
+  same value for every row, so all descriptions start at the same x and the pad between
+  name and description stays uniform. Do **not** size descriptions per-row by each row's
+  own label; descriptions then start at ragged positions.
+- **Truncation** is width-aware and delegates to one shared point:
+  `wrap_palette_description(desc, width)` → `truncate_palette_description(desc, Some(width))`
+  (first line + ellipsis). Names use `truncate_command_label(name, hint, cmd_col − 2)`.
+- The `[args]` hint discipline (previous section) keeps `cmd_col` narrow, which is what
+  lets descriptions reach the box edge at full terminal width.
+
+```text
+╭─ 03 Commands ─────────────────────────────────────────────────────────────────────╮
+│ ❯ /identify [args]     Initial question to identify the model information         │
+│   /aside [args]        Ask a side question without interrupting                   │
+│   /tui-design          Guide terminal UI development with iocraft components fl…  │
+╰───────────────────────────────────────────────────────────────────────────────────╯
+```
+
 ### Shared CLI + slash architecture
 
 ```text
