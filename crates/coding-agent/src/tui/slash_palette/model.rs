@@ -5,6 +5,7 @@ use elph_tui::types::SelectOption;
 use crate::agent::SlashArgCompletion;
 use crate::agent::slash_arg_completions;
 use crate::types::SlashCommand;
+use crate::types::SlashCommandKind;
 
 pub use super::fuzzy::filter_commands;
 
@@ -193,18 +194,22 @@ pub fn clamp_index(index: usize, len: usize) -> usize {
 }
 
 /// Slash input to dispatch when Enter confirms an overlay command in the palette.
-pub fn palette_submit_slash_input(draft: &str, command_name: &str) -> String {
-    complete_command(draft, command_name).trim_end().to_string()
+pub fn palette_submit_slash_input(draft: &str, command: &SlashCommand) -> String {
+    complete_command(draft, command).trim_end().to_string()
 }
 
-pub fn complete_command(draft: &str, command_name: &str) -> String {
+pub fn complete_command(draft: &str, command: &SlashCommand) -> String {
     let trimmed = draft.trim_start();
     let body = trimmed.trim_start_matches('/').trim_start();
     let args = body.split_once(' ').map(|(_, args)| args.trim()).unwrap_or("");
+    let prefix = match command.kind {
+        SlashCommandKind::Skill => "skill:",
+        _ => "",
+    };
     if args.is_empty() {
-        format!("/{command_name} ")
+        format!("/{prefix}{} ", command.name)
     } else {
-        format!("/{command_name} {args}")
+        format!("/{prefix}{} {}", command.name, args)
     }
 }
 
@@ -221,12 +226,6 @@ pub fn complete_slash_arg(draft: &str, command_name: &str, arg_value: &str) -> S
     } else {
         format!("/{command_name} {arg_value} ")
     }
-}
-
-pub fn selected_command_name(filtered: &[SlashCommand], index: usize) -> Option<&str> {
-    filtered
-        .get(clamp_index(index, filtered.len()))
-        .map(|cmd| cmd.name.as_str())
 }
 
 pub fn selected_arg_value(options: &[SelectOption], index: usize) -> Option<&str> {
@@ -354,8 +353,26 @@ mod tests {
 
     #[test]
     fn complete_replaces_command_and_preserves_args() {
-        assert_eq!(complete_command("/mod", "model"), "/model ");
-        assert_eq!(complete_command("/go pause", "goal"), "/goal pause");
+        assert_eq!(complete_command("/mod", &SlashCommand::new("model", "Select model")), "/model ");
+        assert_eq!(
+            complete_command("/go pause", &SlashCommand::new("goal", "Manage goals")),
+            "/goal pause"
+        );
+    }
+
+    #[test]
+    fn complete_emits_skill_prefix_for_skill_kind() {
+        let skill = SlashCommand::new("code-review", "Review code")
+            .with_kind(SlashCommandKind::Skill);
+        assert_eq!(complete_command("/code", &skill), "/skill:code-review ");
+        assert_eq!(complete_command("/code src/", &skill), "/skill:code-review src/");
+    }
+
+    #[test]
+    fn palette_submit_slash_input_trims_and_preserves_skill_prefix() {
+        let skill = SlashCommand::new("code-review", "Review code")
+            .with_kind(SlashCommandKind::Skill);
+        assert_eq!(palette_submit_slash_input("/code", &skill), "/skill:code-review");
     }
 
     #[test]
