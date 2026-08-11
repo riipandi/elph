@@ -2,6 +2,7 @@
 
 use elph_agent::WebSearchEngine;
 use elph_tui::components::UiTheme;
+use elph_tui::utils::truncate_with_ellipsis;
 use elph_tui::wrapped_text_row_count;
 use iocraft::prelude::*;
 use serde_json::Value;
@@ -176,7 +177,7 @@ fn collapse_whitespace(text: &str) -> String {
 }
 
 /// Max display width for collapsed path / target segments.
-const COLLAPSED_TARGET_MAX_CHARS: usize = 44;
+const COLLAPSED_TARGET_MAX_WIDTH: usize = 44;
 /// Approval / summary path budget (slightly wider than collapsed headers).
 const SUMMARY_PATH_MAX_CHARS: usize = 52;
 
@@ -471,11 +472,11 @@ fn web_search_engine_label(params: &[ToolParam]) -> String {
     }
 }
 
-fn collapsed_tool_target(tool_name: &str, params: &[ToolParam], args_raw: &str, max_detail_chars: usize) -> String {
+fn collapsed_tool_target(tool_name: &str, params: &[ToolParam], args_raw: &str, max_detail_width: usize) -> String {
     match tool_base_name(tool_name) {
         "read_file" | "edit_file" | "write_file" | "list_dir" | "delete_path" | "create_dir" => {
             find_param(params, &["path", "file"])
-                .map(|path| abbreviate_path(path, max_detail_chars))
+                .map(|path| abbreviate_path(path, max_detail_width))
                 .unwrap_or_default()
         }
         "shell_exec" => find_param(params, &["command", "cmd"])
@@ -541,10 +542,10 @@ fn collapsed_tool_target(tool_name: &str, params: &[ToolParam], args_raw: &str, 
             } else {
                 format!("{engine} · {query}")
             };
-            truncate_chars(&combined, max_detail_chars)
+            truncate_chars(&combined, max_detail_width)
         }
         "web_fetch" => find_param(params, &["url", "uri"])
-            .map(|url| truncate_chars(url, max_detail_chars))
+            .map(|url| truncate_chars(url, max_detail_width))
             .unwrap_or_default(),
         "wait_agent" => find_param(params, &["agent_id", "agent", "id"])
             .map(short_agent_display)
@@ -561,43 +562,43 @@ fn collapsed_tool_target(tool_name: &str, params: &[ToolParam], args_raw: &str, 
             }
         }
         "spawn_agent" => find_param(params, &["task_name", "prompt", "task", "message", "goal"])
-            .map(|text| truncate_chars(&collapse_whitespace(text), max_detail_chars))
+            .map(|text| truncate_chars(&collapse_whitespace(text), max_detail_width))
             .unwrap_or_default(),
         "ask_user" | "ask_user_question" => {
             // Parse raw JSON directly to extract question text (bypasses array flattening)
             if let Ok(Value::Object(map)) = serde_json::from_str::<Value>(args_raw) {
                 // Try "question" field first
                 if let Some(q) = map.get("question").and_then(|v| v.as_str()) {
-                    truncate_chars(&collapse_whitespace(q), max_detail_chars)
+                    truncate_chars(&collapse_whitespace(q), max_detail_width)
                 } else if let Some(Value::Array(items)) = map.get("questions")
                     && let Some(first) = items.first()
                     && let Some(q) = first.get("question").and_then(|v| v.as_str())
                 {
                     // Try "questions" array (first entry's question).
-                    truncate_chars(&collapse_whitespace(q), max_detail_chars)
+                    truncate_chars(&collapse_whitespace(q), max_detail_width)
                 } else {
                     String::new()
                 }
             } else {
                 // Fallback: use params
                 find_param(params, &["question", "questions"])
-                    .map(|text| truncate_chars(&collapse_whitespace(text), max_detail_chars))
+                    .map(|text| truncate_chars(&collapse_whitespace(text), max_detail_width))
                     .unwrap_or_default()
             }
         }
         _ => {
             // Prefer a known summary path; otherwise first scalar value.
             if let Some(summary) = summarize_known_tool(tool_name, params) {
-                truncate_chars(&summary, max_detail_chars)
+                truncate_chars(&summary, max_detail_width)
             } else {
                 params
                     .first()
                     .map(|param| {
                         let value = param.value.as_str();
                         if value.contains('/') || value.contains('\\') {
-                            abbreviate_path(value, max_detail_chars)
+                            abbreviate_path(value, max_detail_width)
                         } else {
-                            truncate_chars(value, max_detail_chars)
+                            truncate_chars(value, max_detail_width)
                         }
                     })
                     .unwrap_or_default()
@@ -626,19 +627,20 @@ pub fn format_collapsed_tool_parts(tool_name: &str, args_raw: &str) -> (String, 
 
 /// Like [`format_collapsed_tool_parts`], but keeps the original path for clickable headers.
 pub fn format_collapsed_tool_parts_linked(tool_name: &str, args_raw: &str) -> CollapsedToolParts {
-    format_collapsed_tool_parts_linked_w(tool_name, args_raw, COLLAPSED_TARGET_MAX_CHARS)
+    format_collapsed_tool_parts_linked_w(tool_name, args_raw, COLLAPSED_TARGET_MAX_WIDTH)
 }
 
-/// Like [`format_collapsed_tool_parts_linked`], but truncates the detail to `max_detail_chars`
-/// so the caller can size it to the available terminal width instead of a fixed cap.
+/// Like [`format_collapsed_tool_parts_linked`], but truncates the detail to
+/// `max_detail_width` display columns so the caller can size it to the available
+/// terminal width instead of a fixed cap.
 pub fn format_collapsed_tool_parts_linked_w(
     tool_name: &str,
     args_raw: &str,
-    max_detail_chars: usize,
+    max_detail_width: usize,
 ) -> CollapsedToolParts {
     let verb = tool_display_verb(tool_name);
     let params = parse_tool_params(args_raw);
-    let (detail, detail_href) = collapsed_tool_target_linked(tool_name, &params, args_raw, max_detail_chars);
+    let (detail, detail_href) = collapsed_tool_target_linked(tool_name, &params, args_raw, max_detail_width);
     // Collapsed headers are single-row in the transcript (compact density packs them flush):
     // fold any newlines / tabs that made it into the label from AI-generated argument values
     // (e.g. `"query": "a\nb"`) into single spaces, then trim. Without this a "collapsed" card
@@ -648,7 +650,10 @@ pub fn format_collapsed_tool_parts_linked_w(
     let display = {
         let mut value = detail.clone();
         value = collapse_whitespace(&value);
-        truncate_chars(&value, max_detail_chars)
+        // Width-aware final pass: the per-tool summarizers above are coarse char pre-caps,
+        // but the returned detail must fit `max_detail_width` display columns regardless of
+        // wide Unicode (CJK runs double width) — same ellipsis truncation as the transcript.
+        truncate_with_ellipsis(&value, max_detail_width)
     };
     CollapsedToolParts {
         verb,
@@ -661,13 +666,13 @@ fn collapsed_tool_target_linked(
     tool_name: &str,
     params: &[ToolParam],
     args_raw: &str,
-    max_detail_chars: usize,
+    max_detail_width: usize,
 ) -> (String, Option<String>) {
     match tool_base_name(tool_name) {
         "read_file" | "edit_file" | "write_file" | "list_dir" | "delete_path" | "create_dir" => {
             match find_param(params, &["path", "file"]) {
                 Some(path) => {
-                    let display = abbreviate_path(path, max_detail_chars);
+                    let display = abbreviate_path(path, max_detail_width);
                     // OSC 8 target: collapse whitespace so a stray newline in the raw argument
                     // (some models emit them) cannot inject a control break into the escape.
                     let href = elph_tui::components::markdown::path_to_file_url(&collapse_whitespace(path));
@@ -678,7 +683,7 @@ fn collapsed_tool_target_linked(
         }
         "web_fetch" => match find_param(params, &["url", "uri"]) {
             Some(url) => {
-                let display = truncate_chars(url, max_detail_chars);
+                let display = truncate_chars(url, max_detail_width);
                 // Prefer the original URL as the OSC 8 target (even when the label is truncated),
                 // but fold any whitespace/newlines out so the escape stays on one line.
                 let href = is_openable_web_url(url).then(|| collapse_whitespace(url));
@@ -686,7 +691,7 @@ fn collapsed_tool_target_linked(
             }
             None => (String::new(), None),
         },
-        _ => (collapsed_tool_target(tool_name, params, args_raw, max_detail_chars), None),
+        _ => (collapsed_tool_target(tool_name, params, args_raw, max_detail_width), None),
     }
 }
 
@@ -1295,6 +1300,7 @@ pub fn ToolParamsView(props: &ToolParamsViewProps, hooks: Hooks) -> impl Into<An
 #[cfg(test)]
 mod tests {
     use super::*;
+    use elph_tui::utils::display_width;
 
     #[test]
     fn parse_object_into_keyed_rows() {
@@ -1494,7 +1500,7 @@ mod tests {
             let label = format_collapsed_tool_label(tool, raw_args);
             assert!(!label.contains('\n'), "{tool} label leaked a newline: {label:?}");
             assert_eq!(label, expected, "{tool}");
-            let parts = format_collapsed_tool_parts_linked_w(tool, raw_args, COLLAPSED_TARGET_MAX_CHARS);
+            let parts = format_collapsed_tool_parts_linked_w(tool, raw_args, COLLAPSED_TARGET_MAX_WIDTH);
             assert!(
                 !parts.detail.contains('\n'),
                 "{tool} detail leaked a newline: {:?}",
@@ -1524,7 +1530,7 @@ mod tests {
         let url = "https://example.com/very/long/path/that/will/be/truncated/for/display/page";
         let parts = format_collapsed_tool_parts_linked("web_fetch", &format!(r#"{{"url":"{url}"}}"#));
         assert_eq!(parts.verb, "WebFetch");
-        assert!(parts.detail.chars().count() <= COLLAPSED_TARGET_MAX_CHARS);
+        assert!(parts.detail.chars().count() <= COLLAPSED_TARGET_MAX_WIDTH);
         assert_eq!(parts.detail_href.as_deref(), Some(url));
     }
 
@@ -1582,6 +1588,22 @@ mod tests {
     fn collapsed_parts_linked_w_keeps_short_detail_intact() {
         let parts = format_collapsed_tool_parts_linked_w("web_fetch", r#"{"url":"https://example.com/x"}"#, 200);
         assert_eq!(parts.detail, "https://example.com/x");
+    }
+
+    #[test]
+    fn collapsed_parts_truncate_by_display_width_not_chars() {
+        // Wide CJK characters are 2 display columns each; a char-count budget would let
+        // the detail overrun the row. The final pass must guarantee the display width.
+        let url = format!("https://example.com/{}/{}.rs", "長いパス".repeat(20), "main");
+        let parts = format_collapsed_tool_parts_linked_w("web_fetch", &format!(r#"{{"url":"{url}"}}"#), 20);
+        assert!(
+            display_width(&parts.detail) <= 20,
+            "detail {}w, budget 20",
+            display_width(&parts.detail)
+        );
+        assert!(parts.detail.ends_with('…'), "{}", parts.detail);
+        // Original URL is preserved for the OSC 8 click target.
+        assert_eq!(parts.detail_href.as_deref(), Some(url.as_str()));
     }
 
     #[test]
