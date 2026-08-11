@@ -329,10 +329,14 @@ pub async fn create_coding_session_with_events(
     let peers_stale = worker_runtime.as_ref().map(|w| w.stale_secs()).unwrap_or(30);
 
     // Session continuity: todos/goals/last anchors — re-read each turn so restore and mid-session stay aligned.
+    // Suppressed for brand-new sessions so the agent never inherits prior session state
+    // unless the user explicitly resumes/continues via `--resume`, `--continue`, or `/resume`.
+    let is_new_session = options.resume_id.is_none() || options.create_if_missing;
     let continuity_stores = ContinuityStores {
         session_id: session_id.clone(),
         todo_store: todo_store_for_prompt,
         goal_store: goal_store_for_prompt,
+        is_new_session,
     };
 
     let system_prompt = if let Some(override_text) = options.system_prompt_override {
@@ -554,6 +558,8 @@ struct ContinuityStores {
     session_id: String,
     todo_store: Arc<TodoStore>,
     goal_store: Arc<GoalStore>,
+    /// When true, the session is brand-new — suppress the continuity brief entirely.
+    is_new_session: bool,
 }
 
 impl ContinuityStores {
@@ -561,6 +567,10 @@ impl ContinuityStores {
     where
         S: elph_agent::SessionStorage + Clone + Send + Sync + 'static,
     {
+        // New sessions must never receive prior session state. Only resume/continue do.
+        if self.is_new_session {
+            return None;
+        }
         let branch = session.branch(None).await.unwrap_or_default();
         let todos = self.todo_store.list(&self.session_id).await.unwrap_or_default();
         let goal = self.goal_store.get_latest_goal(&self.session_id).await.ok().flatten();
