@@ -263,7 +263,7 @@ pub async fn create_coding_session_with_events(
     tools.extend(create_todo_tools_with_hook(
         Arc::clone(&todo_store),
         session_id.clone(),
-        Some(todo_hook),
+        Some(todo_hook.clone()),
         Some(work_tracker_for_tools),
     ));
 
@@ -479,6 +479,20 @@ pub async fn create_coding_session_with_events(
             })
         })
         .await;
+
+    // Post-turn todo hardening: close stale todos after a successful turn.
+    // Best-effort — hook setup failures are logged, not fatal.
+    if let Err(err) = crate::agent::todo_hooks::register_todo_auto_close_hook(
+        &harness,
+        Arc::clone(&todo_store),
+        session_id.clone(),
+        Arc::clone(&work_tracker),
+        todo_hook.clone(),
+    )
+    .await
+    {
+        log::warn!("todo auto-close hook: {err:#}");
+    }
 
     // Wire session_compact event: upsert the compaction summary into
     // `session_summaries` so other sessions can recall past context.

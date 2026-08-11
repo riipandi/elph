@@ -28,6 +28,7 @@ mod skills_load;
 mod slash_commands;
 mod slash_misc;
 mod system_prompt_slash;
+mod todo_hooks;
 mod tool_policy;
 mod tools_catalog;
 mod tools_slash;

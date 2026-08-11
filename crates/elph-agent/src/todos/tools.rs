@@ -1,5 +1,6 @@
 //! Todo management tools for the agent harness.
 
+use std::collections::HashSet;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -8,7 +9,7 @@ use anyhow::{Result, bail};
 use serde_json::Value;
 use serde_json::json;
 
-use crate::todos::store::{TodoStore, TodoUpdate};
+use crate::todos::store::{TodoStore, TodoUpdate, resolve_todo_id};
 use crate::todos::tracker::WorkTracker;
 use crate::todos::types::{TodoItem, TodoStatus};
 use crate::tools::simple_tool;
@@ -202,37 +203,59 @@ fn parse_todo_updates(value: Option<&Value>) -> Result<Vec<TodoUpdate>> {
 
 /// Enforce that `completed` transitions are backed by actual work.
 ///
-/// For each update that sets status to `completed`, verify the work tracker
-/// has recorded work since the item was marked `in_progress`. For each update
-/// that sets status to `in_progress`, snapshot the current work counter so we
-/// can verify completion later.
+/// Snapshots the work counter when an item is marked `in_progress` — and when
+/// a brand-new item enters the plan — so completion can prove work happened
+/// after the item was created. Models routinely skip the `in_progress` step
+/// and mark done items `completed` at the very end; without the creation
+/// baseline those writes would be rejected even though real work occurred.
 ///
 /// Rejects the whole write if any `completed` item lacks proof of work.
 fn enforce_work_done(
-    _store: &TodoStore,
-    _session_id: &str,
+    store: &TodoStore,
+    session_id: &str,
     updates: &[TodoUpdate],
     tracker: &WorkTracker,
 ) -> Pin<Box<dyn Future<Output = Result<()>> + Send>> {
+    let store = store.clone();
+    let session_id = session_id.to_string();
     let tracker = tracker.clone();
     let updates = updates.to_vec();
     Box::pin(async move {
-        // First, handle in_progress snapshots (no validation needed).
+        // Snapshots are keyed by the resolved store PK (agent short ids like
+        // "1" map to `td_<session>_<slug>`), so the post-turn auto-close hook —
+        // which reads real `TodoItem.id`s — sees the same keys.
+        let existing = store.list(&session_id).await?;
+        let existing_ids: HashSet<String> = existing.into_iter().map(|t| t.id).collect();
+
+        // Baseline the counter for items that do not exist yet. Creation and
+        // in_progress both refresh the baseline to "now".
         for update in &updates {
-            if update.status == Some(TodoStatus::InProgress) {
-                if let Some(id) = &update.id {
-                    tracker.snapshot_in_progress(id);
+            if update.status != Some(TodoStatus::InProgress)
+                && let Some(id) = update.id.as_deref()
+            {
+                let resolved = resolve_todo_id(&session_id, Some(id), &HashSet::new());
+                if !existing_ids.contains(&resolved) {
+                    tracker.snapshot_in_progress(&resolved);
                 }
             }
         }
 
-        // Then, validate completed items have done real work.
+        // Then, handle in_progress snapshots (no validation needed).
+        for update in &updates {
+            if update.status == Some(TodoStatus::InProgress)
+                && let Some(id) = update.id.as_deref()
+            {
+                tracker.snapshot_in_progress(&resolve_todo_id(&session_id, Some(id), &HashSet::new()));
+            }
+        }
+
+        // Finally, validate completed items have done real work.
         for update in &updates {
             if update.status == Some(TodoStatus::Completed) {
-                let id = update.id.as_deref().unwrap_or("");
-                if id.is_empty() {
+                let Some(id) = update.id.as_deref() else {
                     continue;
-                }
+                };
+                let resolved = resolve_todo_id(&session_id, Some(id), &HashSet::new());
                 // Allow bypass with a reason (analysis tasks, MCP work, etc.).
                 let has_reason = update.reason.as_deref().map(str::trim).is_some_and(|r| !r.is_empty());
                 if has_reason {
@@ -242,7 +265,7 @@ fn enforce_work_done(
                     );
                     continue;
                 }
-                if !tracker.has_work_since_snapshot(id) {
+                if !tracker.has_work_since_snapshot(&resolved) {
                     bail!(
                         "Cannot mark todo '{id}' as completed: no actual work was recorded since it was marked in_progress. \
                          Do the work first (edit files, run commands, etc.), then update status. \
@@ -255,4 +278,125 @@ fn enforce_work_done(
 
         Ok(())
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::datastore::ensure_database;
+    use crate::session::migrations::SESSION_TREE_MIGRATIONS;
+
+    async fn setup() -> (tempfile::TempDir, TodoStore, String) {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let db = tmp.path().join("store.db");
+        ensure_database(&db, &SESSION_TREE_MIGRATIONS).await.expect("migrate");
+        let conn = crate::datastore::open_local(&db).await.expect("open");
+        let c = crate::datastore::connect(&conn).await.expect("connect");
+        let sid = "sess_enforce_ws";
+        c.execute(
+            "INSERT INTO sessions (id, created_at, updated_at, cwd) VALUES (?, ?, ?, ?)",
+            turso::params![sid, "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z", "/tmp"],
+        )
+        .await
+        .expect("session");
+        (tmp, TodoStore::new(db), sid.to_string())
+    }
+
+    fn update(id: &str, status: TodoStatus) -> TodoUpdate {
+        TodoUpdate {
+            id: Some(id.into()),
+            status: Some(status),
+            ..Default::default()
+        }
+    }
+
+    #[tokio::test]
+    async fn completion_passes_when_created_then_worked_on() {
+        let (_tmp, store, sid) = setup().await;
+        let tracker = WorkTracker::new();
+
+        // Creation write (item "1" does not exist yet): baseline snapshot taken.
+        enforce_work_done(&store, &sid, &[update("1", TodoStatus::Pending)], &tracker)
+            .await
+            .expect("create accepted");
+        store
+            .merge(&sid, vec![update("1", TodoStatus::Pending)])
+            .await
+            .expect("persist");
+        let items = store.list(&sid).await.expect("list");
+        let pk = items[0].id.clone();
+        assert!(pk.starts_with("td_"), "short id scoped to PK: {pk}");
+
+        // Real work happens, then the model completes the item in a later write.
+        tracker.record_work();
+        enforce_work_done(&store, &sid, &[update("1", TodoStatus::Completed)], &tracker)
+            .await
+            .expect("completion accepted");
+        store
+            .merge(&sid, vec![update("1", TodoStatus::Completed)])
+            .await
+            .expect("persist");
+        assert_eq!(store.list(&sid).await.expect("list")[0].status, TodoStatus::Completed);
+
+        // The same snapshot proves work for the post-turn auto-close hook too.
+        assert!(tracker.has_work_since_snapshot(&pk));
+    }
+
+    #[tokio::test]
+    async fn completion_without_any_work_after_creation_is_rejected() {
+        let (_tmp, store, sid) = setup().await;
+        let tracker = WorkTracker::new();
+
+        enforce_work_done(&store, &sid, &[update("1", TodoStatus::Pending)], &tracker)
+            .await
+            .expect("create accepted");
+        // No work recorded -> completing must be rejected.
+        let err = enforce_work_done(&store, &sid, &[update("1", TodoStatus::Completed)], &tracker)
+            .await
+            .expect_err("no work");
+        assert!(err.to_string().contains("no actual work"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn create_and_complete_in_same_call_is_rejected() {
+        let (_tmp, store, sid) = setup().await;
+        let tracker = WorkTracker::new();
+        // The baseline is taken inside the same call, so work-after-creation
+        // cannot be proven — the model must do the work first, then complete.
+        let err = enforce_work_done(&store, &sid, &[update("2", TodoStatus::Completed)], &tracker)
+            .await
+            .expect_err("no work");
+        assert!(err.to_string().contains("no actual work"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn in_progress_snapshot_still_refreshes_baseline() {
+        let (_tmp, store, sid) = setup().await;
+        let tracker = WorkTracker::new();
+
+        // Created earlier (baseline at 0), some pre-work happened.
+        enforce_work_done(&store, &sid, &[update("1", TodoStatus::Pending)], &tracker)
+            .await
+            .expect("create");
+        store
+            .merge(&sid, vec![update("1", TodoStatus::Pending)])
+            .await
+            .expect("persist");
+        tracker.record_work();
+
+        // Mark in_progress now: baseline refreshes, so pre-existing work no
+        // longer counts — real work must follow the in_progress transition.
+        enforce_work_done(&store, &sid, &[update("1", TodoStatus::InProgress)], &tracker)
+            .await
+            .expect("in_progress");
+        let err = enforce_work_done(&store, &sid, &[update("1", TodoStatus::Completed)], &tracker)
+            .await
+            .expect_err("no work since in_progress");
+        assert!(err.to_string().contains("no actual work"), "{err}");
+
+        tracker.record_work();
+        enforce_work_done(&store, &sid, &[update("1", TodoStatus::Completed)], &tracker)
+            .await
+            .expect("work after in_progress");
+    }
 }

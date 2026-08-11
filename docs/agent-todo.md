@@ -38,6 +38,30 @@ Rules enforced by the store:
   session) so `--continue` / multi-session use cannot hit
   `UNIQUE constraint failed: session_todos.id`
 
+### Honest progress
+
+`todo_write` rejects `completed` transitions that cannot prove real work:
+
+- Marking an item `in_progress` snapshots the mutating-work counter; completing
+  it requires the counter to advance after that snapshot.
+- Items that enter the plan without `in_progress` get a creation baseline, so a
+  model that skips the `in_progress` step can still complete items — as long as
+  work happened after they were created. Create-and-complete in one call with no
+  prior work is still rejected.
+- A non-empty `reason` on a `completed` transition bypasses the check (analysis,
+  review, MCP-driven work).
+
+### Auto-close after a turn
+
+Safety net for models that finish work but never update statuses. After every
+turn whose final answer signals completion — a text-only final message carrying
+a completion marker, no continuation marker (`not done`, `continuing`, …), on a
+non-error turn — the harness closes the still-open todos it
+can prove (work recorded since the item entered the plan, or mutating tool calls
+during the turn). Tool-call cycles, errored/aborted turns, and mid-work answers
+never trigger auto-close. Closed items emit `TodoUpdated` like a normal
+`todo_write`.
+
 ## Goals vs todos
 
 |              | Goals                                                       | Todos                           |
