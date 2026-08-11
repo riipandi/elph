@@ -65,10 +65,14 @@ jobs:
           sharedKey: release-linux
           installNextest: "false"
 
+      - name: Configure sccache (namespace)
+        run: nsc cache sccache setup --cache_name default >> "$GITHUB_ENV"
+
       - name: Build Linux release
         run: cargo build --release --bin ${{ inputs.app }}
         env:
           APP: ${{ inputs.app }}
+          RUSTC_WRAPPER: sccache
 
       - name: Package binary
         shell: bash
@@ -114,10 +118,14 @@ jobs:
           sharedKey: release-macos
           installNextest: "false"
 
+      - name: Configure sccache (namespace)
+        run: nsc cache sccache setup --cache_name default >> "$GITHUB_ENV"
+
       - name: Build macOS release
         run: make release-macos
         env:
           APP: ${{ inputs.app }}
+          RUSTC_WRAPPER: sccache
 
       - name: Show sccache statistics
         if: always()
@@ -154,9 +162,14 @@ jobs:
           sharedKey: release-windows
           installNextest: "false"
 
+      - name: Configure sccache (namespace)
+        run: nsc cache sccache setup --cache_name default >> "$GITHUB_ENV"
+
       - name: Build Windows release
         shell: bash
         run: cargo build --release --bin ${{ inputs.app }}
+        env:
+          RUSTC_WRAPPER: sccache
 
       - name: Package binary
         shell: bash

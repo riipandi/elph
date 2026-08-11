@@ -102,14 +102,23 @@ impl PathClaimContext {
 }
 
 pub fn file_content_fingerprint(path: &str) -> Option<String> {
+    let bytes = std::fs::read(path).ok()?;
+    Some(content_hash(&bytes))
+}
+
+/// Pure content hash over arbitrary bytes. Deterministic and allocation-free.
+///
+/// Used by `read_file` (bytes already in memory) and `edit_file` (expected-hash
+/// consistency check) so both tools agree on the same fingerprint without
+/// re-reading from disk.
+pub fn content_hash(bytes: &[u8]) -> String {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
-    let bytes = std::fs::read(path).ok()?;
     let mut h = DefaultHasher::new();
     bytes.hash(&mut h);
     // Include length to reduce trivial collisions on short files.
     bytes.len().hash(&mut h);
-    Some(format!("{:016x}", h.finish()))
+    format!("{:016x}", h.finish())
 }
 
 /// Project-relative path key when under `project_key`, else absolute string.

@@ -22,6 +22,7 @@ use crate::runtime::local_env::LocalExecutionEnv;
 use crate::tools::common::{check_aborted, is_probably_image, read_file_text, resolve_path};
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
+use crate::workers::content_hash;
 
 /// A single file read request (path + optional range).
 #[derive(Debug, Clone)]
@@ -100,6 +101,7 @@ async fn execute_read(
     let requests = parse_read_requests(&args)?;
 
     let mut all_outputs: Vec<String> = Vec::new();
+    let mut all_hashes: Vec<Value> = Vec::new();
     let batch_mode = requests.len() > 1;
 
     for (i, request) in requests.iter().enumerate() {
@@ -127,6 +129,14 @@ async fn execute_read(
                 },
             )
         };
+
+        // Content hash from bytes already in memory — free, no extra disk I/O.
+        // Enables edit_file to skip a TOCTOU re-read when the hash still matches.
+        let hash = content_hash(body.as_bytes());
+        all_hashes.push(json!({
+            "path": request.path,
+            "content_hash": hash,
+        }));
 
         let truncation = truncate_head(&body, TruncationOptions::default());
         let mut output = truncation.content;
@@ -178,6 +188,7 @@ async fn execute_read(
         ))],
         details: json!({
             "file_count": requests.len(),
+            "files": all_hashes,
         }),
         added_tool_names: None,
         terminate: None,
@@ -468,5 +479,50 @@ mod tests {
     fn parse_ranges_empty_errors() {
         let args = json!({"ranges": []});
         assert!(parse_read_requests(&args).is_err());
+    }
+
+    #[tokio::test]
+    async fn read_result_includes_content_hash() {
+        let (env, dir) = setup_env();
+        let args = json!({"path": "a.txt"});
+        let result = execute_read(env, args, None).await.expect("read failed");
+
+        let files = result
+            .details
+            .get("files")
+            .and_then(|v| v.as_array())
+            .expect("files array");
+        assert_eq!(files.len(), 1, "one file");
+        let hash = files[0]
+            .get("content_hash")
+            .and_then(|v| v.as_str())
+            .expect("content_hash");
+        assert!(!hash.is_empty(), "hash must not be empty");
+
+        // Verify: the hash matches content_hash of the file content.
+        let content = std::fs::read_to_string(dir.path().join("a.txt")).expect("read file");
+        let expected = crate::workers::content_hash(content.as_bytes());
+        assert_eq!(hash, &expected, "read hash must match file content hash");
+    }
+
+    #[tokio::test]
+    async fn read_batch_includes_per_file_hashes() {
+        let (env, _dir) = setup_env();
+        let args = json!({"paths": ["a.txt", "b.txt"]});
+        let result = execute_read(env, args, None).await.expect("read failed");
+
+        let files = result
+            .details
+            .get("files")
+            .and_then(|v| v.as_array())
+            .expect("files array");
+        assert_eq!(files.len(), 2, "two files");
+        for entry in files {
+            let hash = entry
+                .get("content_hash")
+                .and_then(|v| v.as_str())
+                .expect("content_hash per file");
+            assert!(!hash.is_empty(), "hash must not be empty");
+        }
     }
 }

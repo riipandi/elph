@@ -47,6 +47,9 @@ jobs:
           sharedKey: ${{ inputs.sharedKeyPrefix }}-${{ inputs.app }}-${{ matrix.os }}
           saveCache: ${{ github.ref == 'refs/heads/main' }}
 
+      - name: Configure sccache (namespace)
+        run: nsc cache sccache setup --cache_name default >> "$GITHUB_ENV"
+
       - name: Check formatting
         run: cargo fmt --all --check
 
@@ -63,6 +66,8 @@ jobs:
       - name: Build release binary
         if: inputs.mode == 'full'
         run: make build-${{ inputs.app }}
+        env:
+          RUSTC_WRAPPER: sccache
 
       - name: Show sccache statistics
         if: always()

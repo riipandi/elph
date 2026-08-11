@@ -77,9 +77,9 @@ pub fn todo_panel_should_show(todos: &[TodoPanelRow]) -> bool {
 /// Border title: `Todos 2/5` or `Todos 2/5 · steered` when the user redirected.
 pub fn todo_panel_header_line(done: usize, total: usize, redirected: bool) -> String {
     if redirected {
-        format!("({TODO_PANEL_HEADER_PREFIX} {done}/{total} · steered)")
+        format!("{TODO_PANEL_HEADER_PREFIX} {done}/{total} · steered")
     } else {
-        format!("({TODO_PANEL_HEADER_PREFIX} {done}/{total})")
+        format!("{TODO_PANEL_HEADER_PREFIX} {done}/{total}")
     }
 }
 

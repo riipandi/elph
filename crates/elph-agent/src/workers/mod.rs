@@ -14,7 +14,7 @@ pub use pid::pid_alive;
 pub use file_lease::FileLeaseStore;
 pub use lease::{LeaseConflict, LeaseError, SessionLease, SessionLeaseStore};
 pub use mailbox::MailboxStore;
-pub use path_claim::{PathClaimContext, SharedPathClaim, file_content_fingerprint, normalize_claim_path};
+pub use path_claim::{PathClaimContext, SharedPathClaim, content_hash, file_content_fingerprint, normalize_claim_path};
 pub use registry::WorkerRegistry;
 pub use tools::{WorkerToolContext, create_worker_tools};
 pub use types::{FileLease, LiveWorker, MessageKind, MessageStatus, WorkerMessage, WorkerRecord, WorkerStatus};

@@ -12,7 +12,7 @@ use crate::runtime::local_env::LocalExecutionEnv;
 use crate::tools::common::{check_aborted, file_error, read_file_text, resolve_path};
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult, ToolResultContent};
-use crate::workers::{SharedPathClaim, file_content_fingerprint};
+use crate::workers::{SharedPathClaim, content_hash, file_content_fingerprint};
 
 pub fn create_edit_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     create_edit_file_tool_with_claims(env, None)
@@ -35,7 +35,8 @@ pub fn create_edit_file_tool_with_claims(env: Arc<LocalExecutionEnv>, claims: Sh
                     "path": { "type": "string", "description": "Path to the file to edit" },
                     "old_string": { "type": "string", "description": "Text to replace (must match exactly once)" },
                     "new_string": { "type": "string", "description": "Replacement text" },
-                    "ignoreWhitespace": { "type": "boolean", "description": "Ignore whitespace differences when matching old_string (slower but more robust)" }
+                    "ignoreWhitespace": { "type": "boolean", "description": "Ignore whitespace differences when matching old_string (slower but more robust)" },
+                    "expected_hash": { "type": "string", "description": "Content hash from a recent read_file result (details.files[].content_hash). When provided, edit_file skips a redundant re-read of the file when the hash still matches — pass it to avoid TOCTOU failures and reduce disk I/O." }
                 },
                 "required": ["path", "old_string", "new_string"]
             }),
@@ -72,6 +73,11 @@ async fn execute_edit(
         .filter(|s| !s.trim().is_empty())
         .ok_or_else(missing_required("new_string"))?;
     let ignore_whitespace = args.get("ignoreWhitespace").and_then(|v| v.as_bool()).unwrap_or(false);
+    let expected_hash = args
+        .get("expected_hash")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.trim().is_empty())
+        .map(str::to_string);
 
     let absolute = resolve_path(&env, path, signal.as_ref()).await?;
     if let Some(claim) = claims.as_ref() {
@@ -126,17 +132,33 @@ async fn execute_edit(
         ));
     }
 
-    // Resilience (TOCTOU guard): re-read the file immediately before writing. The initial
-    // read may be stale if the file changed in the meantime (another tool, an external
-    // editor, a concurrent turn). Without this we could silently overwrite an external
-    // change with content derived from stale bytes. If the file changed anywhere since the
-    // initial read, abort and let the model re-read and retry rather than guessing.
-    let fresh = read_file_text(&env, &absolute, signal.as_ref()).await?;
-    if fresh != content {
-        return Err(anyhow::anyhow!(
-            "edit aborted: {path} changed since it was read. This can happen if another process modified the file. \
-             Re-read the file (read_file) and retry the edit with updated old_string."
-        ));
+    // Resilience (TOCTOU guard): detect external file changes before writing.
+    //
+    // Fast path: when `expected_hash` is provided (from read_file's content_hash),
+    // compare it against the hash of the content we already read. If they match,
+    // the file has not changed — skip the redundant re-read entirely (saves one
+    // full disk read per edit on the happy path).
+    //
+    // Slow path (no expected_hash): re-read the file and do a full content
+    // comparison. This is the legacy behavior for callers that don't pass a hash.
+    if let Some(expected) = &expected_hash {
+        let actual = content_hash(content.as_bytes());
+        if actual != *expected {
+            return Err(anyhow::anyhow!(
+                "edit aborted: {path} changed since it was read (hash mismatch). \
+                 This can happen if another process modified the file. \
+                 Re-read the file (read_file) and retry the edit with updated old_string."
+            ));
+        }
+    } else {
+        // Legacy TOCTOU: re-read and full content comparison.
+        let fresh = read_file_text(&env, &absolute, signal.as_ref()).await?;
+        if fresh != content {
+            return Err(anyhow::anyhow!(
+                "edit aborted: {path} changed since it was read. This can happen if another process modified the file. \
+                 Re-read the file (read_file) and retry the edit with updated old_string."
+            ));
+        }
     }
     // Cross-process: refuse if on-disk fingerprint no longer matches the claim snapshot.
     if let Some(claim) = claims.as_ref() {
@@ -195,6 +217,7 @@ async fn execute_edit(
             "old_content": content,
             "new_content": updated,
             "file_path": absolute,
+            "content_hash": content_hash(updated.as_bytes()),
         }),
         added_tool_names: None,
         terminate: None,
@@ -688,5 +711,116 @@ mod tests {
         assert!(result.is_ok(), "valid edit failed: {result:?}");
         let written = read_file_text(&env, "c.txt", None).await.expect("read back");
         assert_eq!(written, "yyy\n");
+    }
+
+    #[tokio::test]
+    async fn edit_succeeds_with_matching_expected_hash() {
+        let temp = TempDir::new().expect("temp dir");
+        let env = std::sync::Arc::new(LocalExecutionEnv::new(temp.path()));
+        FileSystem::write_file(env.as_ref(), "h.txt", b"hello world\n".as_slice(), None)
+            .await
+            .expect("seed file");
+
+        // Compute the hash from the content we read (simulates read_file's hash).
+        let content = read_file_text(&env, "h.txt", None).await.expect("read");
+        let hash = crate::workers::content_hash(content.as_bytes());
+
+        let result = execute_edit(
+            env.clone(),
+            serde_json::json!({
+                "path": "h.txt",
+                "old_string": "hello",
+                "new_string": "hi",
+                "expected_hash": hash,
+            }),
+            None,
+            None,
+        )
+        .await;
+        assert!(result.is_ok(), "edit with matching hash must succeed: {result:?}");
+        let written = read_file_text(&env, "h.txt", None).await.expect("read back");
+        assert_eq!(written, "hi world\n");
+    }
+
+    #[tokio::test]
+    async fn edit_aborts_when_expected_hash_mismatches() {
+        let temp = TempDir::new().expect("temp dir");
+        let env = std::sync::Arc::new(LocalExecutionEnv::new(temp.path()));
+        FileSystem::write_file(env.as_ref(), "h.txt", b"hello world\n".as_slice(), None)
+            .await
+            .expect("seed file");
+
+        // Simulate a stale hash (file changed since read).
+        let stale_hash = "0000000000000000".to_string();
+
+        let result = execute_edit(
+            env.clone(),
+            serde_json::json!({
+                "path": "h.txt",
+                "old_string": "hello",
+                "new_string": "hi",
+                "expected_hash": stale_hash,
+            }),
+            None,
+            None,
+        )
+        .await;
+        assert!(result.is_err(), "edit with mismatched hash must fail");
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("hash mismatch"), "error must mention hash mismatch: {err}");
+        // File must be unchanged.
+        let written = read_file_text(&env, "h.txt", None).await.expect("read back");
+        assert_eq!(written, "hello world\n");
+    }
+
+    #[tokio::test]
+    async fn edit_without_expected_hash_falls_back_to_reread() {
+        // Legacy path: no expected_hash → re-read + full content comparison.
+        // File unchanged between read and edit → succeeds.
+        let temp = TempDir::new().expect("temp dir");
+        let env = std::sync::Arc::new(LocalExecutionEnv::new(temp.path()));
+        FileSystem::write_file(env.as_ref(), "h.txt", b"hello world\n".as_slice(), None)
+            .await
+            .expect("seed file");
+
+        let result = execute_edit(
+            env.clone(),
+            serde_json::json!({ "path": "h.txt", "old_string": "hello", "new_string": "hi" }),
+            None,
+            None,
+        )
+        .await;
+        assert!(result.is_ok(), "edit without hash must succeed when file unchanged: {result:?}");
+    }
+
+    #[tokio::test]
+    async fn edit_result_includes_content_hash() {
+        let temp = TempDir::new().expect("temp dir");
+        let env = std::sync::Arc::new(LocalExecutionEnv::new(temp.path()));
+        FileSystem::write_file(env.as_ref(), "h.txt", b"hello\n".as_slice(), None)
+            .await
+            .expect("seed file");
+
+        let result = execute_edit(
+            env.clone(),
+            serde_json::json!({ "path": "h.txt", "old_string": "hello", "new_string": "hi" }),
+            None,
+            None,
+        )
+        .await
+        .expect("edit");
+
+        // The result details must contain a content_hash for the updated content.
+        let hash = result
+            .details
+            .get("content_hash")
+            .and_then(|v| v.as_str())
+            .expect("content_hash");
+        assert!(!hash.is_empty(), "hash must not be empty");
+
+        // Verify: the hash matches content_hash of the written file.
+        let written = read_file_text(&env, "h.txt", None).await.expect("read back");
+        let expected_hash = crate::workers::content_hash(written.as_bytes());
+        assert_eq!(hash, &expected_hash, "result hash must match written file hash");
     }
 }

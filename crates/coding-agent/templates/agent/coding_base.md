@@ -133,6 +133,9 @@ ${%- endif %}
   ${% if agent_mode == "build" or agent_mode == "brave" %}
 ${%- if tools.edit_file or tools.write_file %}
 - ${% if tools.edit_file %}Use `${{ tools.edit_file }}` for focused changes to existing files. If formatting drift, use `ignoreWhitespace: true`.${% endif %}${% if tools.edit_file and tools.write_file %} ${% endif %}${% if tools.write_file %}Use `${{ tools.write_file }}` for new files or intentional full rewrites.${% endif %} Use dedicated copy, move, directory, and delete tools when listed.
+${%- if tools.edit_file %}${%- if tools.read_file %}
+- **Hash sync:** `${{ tools.read_file }}` returns `content_hash` in `details.files[]`. Pass it as `expected_hash` to `${{ tools.edit_file }}` to skip a redundant re-read and avoid TOCTOU failures on concurrent edits.
+${%- endif %}${%- endif %}
   ${%- endif %}
   ${%- if tools.shell_exec %}
 - Reserve `${{ tools.shell_exec }}` for builds, tests, VCS, and commands that need a shell — not for file I/O or chatting.
