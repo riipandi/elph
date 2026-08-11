@@ -24,12 +24,25 @@ INSTALL_DIR   := $(HOME)/.local/bin
 APP           ?= elph
 
 # ─── Compiler cache ───────────────────────────────────────────────────────────
-# Use sccache when installed; otherwise leave RUSTC_WRAPPER unset (normal rustc).
-SCCACHE_BIN := $(shell command -v sccache 2>/dev/null)
-ifneq ($(SCCACHE_BIN),)
-  export AWS_PROFILE := r2-sccache
-  export RUSTC_WRAPPER := sccache
-  export SCCACHE_DIRECT := true
+# Use sccache when installed AND its daemon is responsive; otherwise disable it
+# for this build. A stale daemon socket/lock (e.g. after a crashed build) causes
+# "Timed out waiting for server startup" — --start-server recovers when it can.
+# Override: SCCACHE_DISABLE=1 make build  (skip sccache entirely).
+ifneq ($(SCCACHE_DISABLE),1)
+  SCCACHE_BIN := $(shell command -v sccache 2>/dev/null)
+  ifneq ($(SCCACHE_BIN),)
+    # Probe daemon health via --show-stats (no storage re-init). --start-server
+    # fails if remote cache (S3/R2) credentials are unreachable, even when the
+    # local daemon is already running fine.
+    SCCACHE_OK := $(shell "$(SCCACHE_BIN)" --show-stats >/dev/null 2>&1 && echo 1 || echo 0)
+  endif
+endif
+ifneq ($(SCCACHE_OK),)
+  ifeq ($(SCCACHE_OK),1)
+    export AWS_PROFILE := r2-sccache
+    export RUSTC_WRAPPER := sccache
+    export SCCACHE_DIRECT := true
+  endif
 endif
 
 # Single-platform override: make cross CROSS_TARGET=aarch64-unknown-linux-musl
@@ -112,7 +125,8 @@ check: ## Check code compiles (fast, no codegen)
 build: build-elph ## Build elph binary (debug default; RELEASE=1 or -- --release)
 
 build-elph: ## Build elph binary (debug default; RELEASE=1 or -- --release)
-	@echo "Building $(ELPH_BIN) v$(ELPH_VERSION) ($(BUILD_HASH)) [$(BUILD_PROFILE)] ($$RUSTC_WRAPPER)"
+	@_rustc_display=$$(if [ -n "$$RUSTC_WRAPPER" ]; then echo "$$RUSTC_WRAPPER"; else echo "rustc"; fi); \
+	echo "Building $(ELPH_BIN) v$(ELPH_VERSION) ($(BUILD_HASH)) [$$_rustc_display] ($(BUILD_PROFILE))"
 	@_start=$$(python3 -c "import time; print(int(time.time()*1000))"); \
 	$(CARGO) build $(CARGO_BUILD_FLAGS) $(ELPH_METAL_FEATURE) --bin $(ELPH_BIN) 2>&1; \
 	_end=$$(python3 -c "import time; print(int(time.time()*1000))"); \
