@@ -291,6 +291,13 @@ pub const FOOTER_WORKERS_REPLY_FG: Color = Color::Rgb {
     b: 0x6a,
 };
 
+/// Worker badge (`⬡`) — brief pulse flash when a new message arrives (bright white).
+pub const FOOTER_WORKERS_PULSE_FG: Color = Color::Rgb {
+    r: 0xff,
+    g: 0xff,
+    b: 0xff,
+};
+
 pub const PROMPT_PREFIX_FG: Color = Color::White;
 pub const PROMPT_BORDER_DEFAULT: Color = BORDER_MUTED;
 /// Shell `!` mode border — palette 2 green.

@@ -98,6 +98,9 @@ pub const FOOTER_IMG_INDICATOR: &str = "◐";
 /// Multi-worker footer badge when live workers ≥ 2 (`⬡ N`).
 pub const FOOTER_WORKERS_BADGE_PREFIX: &str = "⬡";
 
+/// Filled hexagon used for the active (messaging) worker badge state.
+pub const FOOTER_WORKERS_BADGE_PREFIX_ACTIVE: &str = "⬢";
+
 /// Format the workers badge (`⬡ N` or `⬡ N · name`) or empty when count &lt; 2.
 #[cfg(test)]
 pub fn footer_workers_badge(live_count: usize) -> Option<String> {
