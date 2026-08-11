@@ -16,13 +16,13 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "agnes-2.5-flash": {
@@ -42,13 +42,13 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "agnes-2.5-pro": {
@@ -68,13 +68,13 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "agnes-video-v2.0": {
@@ -94,13 +94,13 @@
         "provider": "nara-router",
         "reasoning": false,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
             "high": null,
-            "xhigh": null,
-            "max": null
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "claude-fable-5": {
@@ -120,19 +120,19 @@
         "provider": "nara-router",
         "reasoning": false,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
             "high": null,
-            "xhigh": null,
-            "max": null
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "claude-opus-4.7": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
@@ -140,25 +140,25 @@
             "output": 25.0
         },
         "id": "claude-opus-4.7",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 32000,
         "name": "Claude Opus 4.7",
         "provider": "nara-router",
         "reasoning": false,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
             "high": null,
-            "xhigh": null,
-            "max": null
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "claude-opus-4.8": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
@@ -166,19 +166,19 @@
             "output": 25.0
         },
         "id": "claude-opus-4.8",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Opus 4.8",
         "provider": "nara-router",
         "reasoning": false,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
             "high": null,
-            "xhigh": null,
-            "max": null
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "claude-opus-5": {
@@ -192,19 +192,19 @@
             "output": 25.0
         },
         "id": "claude-opus-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 5",
         "provider": "nara-router",
         "reasoning": false,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
             "high": null,
-            "xhigh": null,
-            "max": null
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "claude-sonnet-5": {
@@ -224,13 +224,13 @@
         "provider": "nara-router",
         "reasoning": false,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
             "high": null,
-            "xhigh": null,
-            "max": null
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "deepseek-v4-flash": {
@@ -250,13 +250,13 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "deepseek-v4-flash-alibaba": {
@@ -276,19 +276,45 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "deepseek-v4-flash-bynara": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "deepseek-v4-flash-bynara",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "deepseek-v4-flash-bynara",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "deepseek-v4-flash-free": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -302,13 +328,13 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "deepseek-v4-pro": {
@@ -328,13 +354,13 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "deepseek-v4-pro-alibaba": {
@@ -354,13 +380,13 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "glm-5.2": {
@@ -380,13 +406,13 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "glm-5.2-alibaba": {
@@ -406,19 +432,19 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "gpt-5.4": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.25,
             "cacheWrite": 0.0,
@@ -426,19 +452,19 @@
             "output": 15.0
         },
         "id": "gpt-5.4",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "gpt-5.4",
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "gpt-5.5": {
@@ -458,13 +484,13 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "gpt-5.6-luna": {
@@ -484,13 +510,13 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "gpt-5.6-sol": {
@@ -510,13 +536,13 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "gpt-5.6-terra": {
@@ -536,13 +562,13 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "grok-4.5": {
@@ -562,13 +588,13 @@
         "provider": "nara-router",
         "reasoning": false,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
             "high": null,
-            "xhigh": null,
-            "max": null
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "grok-4.5-free": {
@@ -588,13 +614,13 @@
         "provider": "nara-router",
         "reasoning": false,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
             "high": null,
-            "xhigh": null,
-            "max": null
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "happyhorse-1.1": {
@@ -614,19 +640,19 @@
         "provider": "nara-router",
         "reasoning": false,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
             "high": null,
-            "xhigh": null,
-            "max": null
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "kimi-k2.7-code": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 262000,
+        "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.160835,
             "cacheWrite": 0.0,
@@ -634,19 +660,19 @@
             "output": 3.9995
         },
         "id": "kimi-k2.7-code",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 32768,
         "name": "Kimi K2.7 Code",
         "provider": "nara-router",
         "reasoning": false,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
             "high": null,
-            "xhigh": null,
-            "max": null
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "kimi-k2.7-code-alibaba": {
@@ -666,19 +692,19 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "kimi-k3": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.3,
             "cacheWrite": 0.0,
@@ -686,19 +712,19 @@
             "output": 15.0
         },
         "id": "kimi-k3",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 131072,
         "name": "Kimi K3",
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "kimi-k3-free": {
@@ -718,13 +744,13 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "laguna-s-2.1": {
@@ -744,19 +770,19 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "ling-3.0-flash-free": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 262000,
+        "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -770,13 +796,13 @@
         "provider": "nara-router",
         "reasoning": false,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
             "high": null,
-            "xhigh": null,
-            "max": null
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "longcat-2.0-free": {
@@ -796,13 +822,13 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "mimo-v2.5": {
@@ -816,25 +842,25 @@
             "output": 0.28
         },
         "id": "mimo-v2.5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "audio", "video"],
         "maxTokens": 131072,
         "name": "MiMo-V2.5",
         "provider": "nara-router",
         "reasoning": false,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
             "high": null,
-            "xhigh": null,
-            "max": null
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "mimo-v2.5-free": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -842,25 +868,25 @@
             "output": 0.0
         },
         "id": "mimo-v2.5-free",
-        "input": ["text", "image"],
+        "input": ["text", "image", "audio", "video"],
         "maxTokens": 32000,
         "name": "MiMo V2.5 Free",
         "provider": "nara-router",
         "reasoning": false,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
             "high": null,
-            "xhigh": null,
-            "max": null
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "mimo-v2.5-pro": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.003,
             "cacheWrite": 0.0,
@@ -874,19 +900,19 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "mimo-v2.5-pro-ultraspeed": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.0108,
             "cacheWrite": 0.0,
@@ -900,19 +926,19 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "minimax-m3": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.099,
             "cacheWrite": 0.0,
@@ -926,13 +952,13 @@
         "provider": "nara-router",
         "reasoning": false,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
             "high": null,
-            "xhigh": null,
-            "max": null
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "mistral-large": {
@@ -952,13 +978,13 @@
         "provider": "nara-router",
         "reasoning": false,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
             "high": null,
-            "xhigh": null,
-            "max": null
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "mistral-medium-3-5": {
@@ -978,13 +1004,13 @@
         "provider": "nara-router",
         "reasoning": false,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
             "high": null,
-            "xhigh": null,
-            "max": null
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "muse-spark-1.1": {
@@ -998,25 +1024,25 @@
             "output": 4.25
         },
         "id": "muse-spark-1.1",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 32000,
         "name": "Muse Spark 1.1",
         "provider": "nara-router",
         "reasoning": false,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
             "high": null,
-            "xhigh": null,
-            "max": null
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "muse-spark-1.2": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.15,
             "cacheWrite": 0.0,
@@ -1024,25 +1050,25 @@
             "output": 4.25
         },
         "id": "muse-spark-1.2",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video", "pdf", "audio"],
         "maxTokens": 131072,
         "name": "Muse Spark 1.2",
         "provider": "nara-router",
         "reasoning": false,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
             "high": null,
-            "xhigh": null,
-            "max": null
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "muse-spark-1.2-contributor": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.002,
             "cacheWrite": 0.0,
@@ -1050,25 +1076,25 @@
             "output": 0.2
         },
         "id": "muse-spark-1.2-contributor",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video", "pdf", "audio"],
         "maxTokens": 131072,
         "name": "Muse Spark 1.2 Contributor",
         "provider": "nara-router",
         "reasoning": false,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
             "high": null,
-            "xhigh": null,
-            "max": null
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "nemotron-3-ultra": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -1082,13 +1108,13 @@
         "provider": "nara-router",
         "reasoning": false,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
             "high": null,
-            "xhigh": null,
-            "max": null
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "qwen3.7-flash": {
@@ -1102,19 +1128,19 @@
             "output": 0.1185
         },
         "id": "qwen3.7-flash",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 65536,
         "name": "Qwen3.7 Flash",
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "qwen3.7-flash-alibaba": {
@@ -1134,19 +1160,19 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "qwen3.7-max": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 991000,
         "cost": {
             "cacheRead": 0.169,
             "cacheWrite": 2.1125,
@@ -1160,13 +1186,13 @@
         "provider": "nara-router",
         "reasoning": false,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
             "high": null,
-            "xhigh": null,
-            "max": null
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "qwen3.7-max-alibaba": {
@@ -1186,19 +1212,19 @@
         "provider": "nara-router",
         "reasoning": false,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
             "high": null,
-            "xhigh": null,
-            "max": null
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "qwen3.7-plus": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 991000,
         "cost": {
             "cacheRead": 0.0564,
             "cacheWrite": 0.3525,
@@ -1206,19 +1232,19 @@
             "output": 1.128
         },
         "id": "qwen3.7-plus",
-        "input": ["text", "image"],
+        "input": ["text"],
         "maxTokens": 64000,
         "name": "Qwen3.7 Plus",
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "qwen3.7-plus-alibaba": {
@@ -1238,13 +1264,13 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "qwen3.8-max": {
@@ -1258,19 +1284,19 @@
             "output": 6.0
         },
         "id": "qwen3.8-max",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video", "pdf"],
         "maxTokens": 131072,
         "name": "Qwen3.8 Max",
         "provider": "nara-router",
         "reasoning": false,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
             "high": null,
-            "xhigh": null,
-            "max": null
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "qwen3.8-max-alibaba": {
@@ -1290,13 +1316,13 @@
         "provider": "nara-router",
         "reasoning": false,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
             "high": null,
-            "xhigh": null,
-            "max": null
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "stepfun-3.7-flash": {
@@ -1316,13 +1342,13 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
             "high": "high",
-            "xhigh": null,
-            "max": null
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "tencent-hy3-free": {
@@ -1342,13 +1368,13 @@
         "provider": "nara-router",
         "reasoning": false,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
             "high": null,
-            "xhigh": null,
-            "max": null
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     }
 }

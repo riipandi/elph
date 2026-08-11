@@ -569,6 +569,32 @@
             "xhigh": null
         }
     },
+    "nemotron-3.5-lightning-free": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "nemotron-3.5-lightning-free",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "nemotron-3.5-lightning-free",
+        "provider": "opencode",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "north-mini-code-free": {
         "api": "openai-completions",
         "baseUrl": "https://opencode.ai/zen/v1",

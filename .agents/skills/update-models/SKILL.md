@@ -41,9 +41,9 @@ The JSON files are the only catalog source: `crates/elph-ai/build.rs` compresses
 1. **Generate chat catalogs**
 
 ```sh
-cargo run -p elph-ai --bin generate-models -- chat
+cargo run -p elph-ai --bin generate-models -- chat && make fmt
 # or
-make generate-models ARGS="chat"
+make generate-models ARGS="chat" && make fmt
 ```
 
 Useful flags:
@@ -54,9 +54,7 @@ Useful flags:
 | `--no-live-pricing` | Skip provider `/models` pricing/capability probes             |
 | `--force`           | Bypass the models.dev cache freshness check (always re-fetch) |
 
-Each model's `thinkingLevelMap` must be resolved per the precedence in
-**Thinking level sourcing** below — this happens automatically inside `thinking_map.rs`,
-not as a separate manual step.
+Each model's `thinkingLevelMap` must be resolved per the precedence in **Thinking level sourcing** below — this happens automatically inside `thinking_map.rs`, not as a separate manual step.
 
 2. **Optional full pass** (chat + image fixture path)
 

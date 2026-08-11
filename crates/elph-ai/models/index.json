@@ -92,7 +92,7 @@
     {
         "providerId": "kilo",
         "rustMod": "kilo",
-        "count": 351
+        "count": 352
     },
     {
         "providerId": "kimi-coding",
@@ -127,7 +127,7 @@
     {
         "providerId": "nara-router",
         "rustMod": "nara_router",
-        "count": 52
+        "count": 53
     },
     {
         "providerId": "neuralwatt",
@@ -157,7 +157,7 @@
     {
         "providerId": "opencode",
         "rustMod": "opencode",
-        "count": 21
+        "count": 22
     },
     {
         "providerId": "opencode-go",
@@ -172,7 +172,7 @@
     {
         "providerId": "openrouter",
         "rustMod": "openrouter",
-        "count": 402
+        "count": 403
     },
     {
         "providerId": "qwen-token-plan",

@@ -5120,6 +5120,32 @@
             "xhigh": null
         }
     },
+    "nvidia/nemotron-3.5-lightning:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.kilo.ai/api/gateway",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "nvidia/nemotron-3.5-lightning:free",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Nemotron 3.5 Lightning (free)",
+        "provider": "kilo",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "openai/gpt-3.5-turbo": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",

@@ -4699,10 +4699,10 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.16,
+            "cacheRead": 0.0976,
             "cacheWrite": 0.0,
-            "input": 0.95,
-            "output": 4.0
+            "input": 0.5795,
+            "output": 2.44
         },
         "id": "moonshotai/kimi-k2.6",
         "input": ["text", "image"],
@@ -5279,6 +5279,32 @@
             "low": "low",
             "max": null,
             "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "nvidia/nemotron-3.5-lightning:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "nvidia/nemotron-3.5-lightning:free",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Nemotron 3.5 Lightning (free)",
+        "provider": "openrouter",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -10855,10 +10881,10 @@
         },
         "contextWindow": 204800,
         "cost": {
-            "cacheRead": 0.11,
+            "cacheRead": 0.1,
             "cacheWrite": 0.0,
-            "input": 0.55,
-            "output": 2.2
+            "input": 0.5,
+            "output": 2.0
         },
         "id": "z-ai/glm-4.6",
         "input": ["text"],
@@ -11035,10 +11061,10 @@
         },
         "contextWindow": 204800,
         "cost": {
-            "cacheRead": 0.26,
+            "cacheRead": 0.1768,
             "cacheWrite": 0.0,
-            "input": 1.4,
-            "output": 4.4
+            "input": 0.952,
+            "output": 2.992
         },
         "id": "z-ai/glm-5.1",
         "input": ["text"],
@@ -11065,14 +11091,14 @@
         },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.14,
+            "cacheRead": 0.091,
             "cacheWrite": 0.0,
-            "input": 0.76,
-            "output": 2.42
+            "input": 0.49,
+            "output": 1.54
         },
         "id": "z-ai/glm-5.2",
         "input": ["text"],
-        "maxTokens": 262144,
+        "maxTokens": 131072,
         "name": "GLM-5.2",
         "provider": "openrouter",
         "reasoning": true,
@@ -11271,10 +11297,10 @@
         "baseUrl": "https://openrouter.ai/api/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.0252,
+            "cacheRead": 0.01596,
             "cacheWrite": 0.0,
-            "input": 0.079996,
-            "output": 0.252
+            "input": 0.0798,
+            "output": 0.1596
         },
         "id": "~deepseek/deepseek-v4-flash-latest",
         "input": ["text"],

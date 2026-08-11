@@ -2377,6 +2377,32 @@
             "xhigh": null
         }
     },
+    "moonshotai/Kimi-K2-Thinking": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.15,
+            "cacheWrite": 0.0,
+            "input": 0.6,
+            "output": 2.5
+        },
+        "id": "moonshotai/Kimi-K2-Thinking",
+        "input": ["text"],
+        "maxTokens": 262144,
+        "name": "Kimi-K2-Thinking",
+        "provider": "huggingface",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "moonshotai/Kimi-K2.5": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
@@ -3398,32 +3424,6 @@
         "input": ["text"],
         "maxTokens": 131072,
         "name": "GLM-5.1",
-        "provider": "huggingface",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "zai-org/GLM-5.1-FP8": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 202752,
-        "cost": {
-            "cacheRead": 0.182,
-            "cacheWrite": 0.0,
-            "input": 1.4,
-            "output": 4.4
-        },
-        "id": "zai-org/GLM-5.1-FP8",
-        "input": ["text"],
-        "maxTokens": 131072,
-        "name": "GLM 5.1",
         "provider": "huggingface",
         "reasoning": true,
         "thinkingLevelMap": {
