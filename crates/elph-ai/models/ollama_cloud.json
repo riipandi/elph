@@ -9,6 +9,7 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
         "id": "deepseek-v4-flash:0731",
         "input": ["text"],
         "maxTokens": 1048576,
@@ -63,6 +64,7 @@
             "input": 0.435,
             "output": 0.87
         },
+        "description": "Flagship DeepSeek model for coding, reasoning, and agentic work",
         "id": "deepseek-v4-pro",
         "input": ["text"],
         "maxTokens": 1048576,
@@ -90,6 +92,7 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "gemma4:31b",
         "input": ["text", "image"],
         "maxTokens": 262144,
@@ -117,6 +120,7 @@
             "input": 0.86,
             "output": 3.5
         },
+        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "glm-5.1",
         "input": ["text"],
         "maxTokens": 131072,
@@ -144,6 +148,7 @@
             "input": 1.1268,
             "output": 3.9438
         },
+        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "glm-5.2",
         "input": ["text"],
         "maxTokens": 131072,
@@ -171,6 +176,7 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Open-weight GPT model for self-hosted reasoning and instruction-following workloads",
         "id": "gpt-oss:120b",
         "input": ["text"],
         "maxTokens": 32768,
@@ -198,6 +204,7 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Open-weight GPT model for self-hosted reasoning and instruction-following workloads",
         "id": "gpt-oss:20b",
         "input": ["text"],
         "maxTokens": 32768,
@@ -225,6 +232,7 @@
             "input": 0.95,
             "output": 4.0
         },
+        "description": "Kimi multimodal agent model for visual understanding, coding, and planning",
         "id": "kimi-k2.6",
         "input": ["text", "image"],
         "maxTokens": 262144,
@@ -252,6 +260,7 @@
             "input": 0.95,
             "output": 3.9995
         },
+        "description": "Coding-focused Kimi model, stronger on long-horizon repo work with less overthinking",
         "id": "kimi-k2.7-code",
         "input": ["text", "image"],
         "maxTokens": 262144,
@@ -279,6 +288,7 @@
             "input": 3.0,
             "output": 15.0
         },
+        "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
         "id": "kimi-k3",
         "input": ["text", "image"],
         "maxTokens": 131072,
@@ -306,6 +316,7 @@
             "input": 0.3,
             "output": 1.2
         },
+        "description": "MiniMax model for chat, coding, office work, and agentic tasks",
         "id": "minimax-m2.7",
         "input": ["text"],
         "maxTokens": 196608,
@@ -333,6 +344,7 @@
             "input": 0.395,
             "output": 1.977
         },
+        "description": "MiniMax multimodal coding model for long-context reasoning and agent tasks",
         "id": "minimax-m3",
         "input": ["text", "image", "video"],
         "maxTokens": 131072,
@@ -360,6 +372,7 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Flagship Mistral model for advanced reasoning, coding, and multilingual work",
         "id": "mistral-large-3:675b",
         "input": ["text", "image"],
         "maxTokens": 262144,
@@ -387,6 +400,7 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Small Nemotron 3 MoE for efficient coding, math, and long-context agents",
         "id": "nemotron-3-nano:30b",
         "input": ["text"],
         "maxTokens": 131072,
@@ -414,6 +428,7 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Nemotron middle tier for collaborative agents and high-volume reasoning workloads",
         "id": "nemotron-3-super",
         "input": ["text"],
         "maxTokens": 65536,
@@ -441,6 +456,7 @@
             "input": 0.1,
             "output": 0.1
         },
+        "description": "Largest Nemotron 3 model for maximum open-weight reasoning and agent accuracy",
         "id": "nemotron-3-ultra",
         "input": ["text"],
         "maxTokens": 128000,
@@ -468,6 +484,7 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen3.5:397b",
         "input": ["text", "image"],
         "maxTokens": 65536,

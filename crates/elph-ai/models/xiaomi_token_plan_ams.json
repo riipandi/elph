@@ -13,6 +13,7 @@
             "input": 0.435,
             "output": 0.87
         },
+        "description": "Earlier MiMo Pro model for multimodal agents, reasoning, and code tasks",
         "id": "mimo-v2-pro",
         "input": ["text"],
         "maxTokens": 131072,
@@ -44,6 +45,7 @@
             "input": 0.14,
             "output": 0.28
         },
+        "description": "Open MiMo model for multimodal coding agents and long-context automation",
         "id": "mimo-v2.5",
         "input": ["text", "image", "audio", "video"],
         "maxTokens": 131072,
@@ -75,6 +77,7 @@
             "input": 0.435,
             "output": 0.87
         },
+        "description": "Stronger MiMo Pro tier for multimodal reasoning and coding-agent execution",
         "id": "mimo-v2.5-pro",
         "input": ["text"],
         "maxTokens": 131072,

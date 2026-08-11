@@ -14,6 +14,7 @@
             "input": 0.3,
             "output": 1.2
         },
+        "description": "MiniMax model for chat, coding, office work, and agentic tasks",
         "id": "MiniMax-M2.5",
         "input": ["text"],
         "maxTokens": 131072,
@@ -46,22 +47,23 @@
             "input": 0.29,
             "output": 0.43
         },
+        "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek-v3.2",
         "input": ["text"],
         "maxTokens": 8192,
         "name": "deepseek-v3.2",
         "provider": "qwen-token-plan",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "unresolved"
     },
     "deepseek-v4-flash": {
         "api": "openai-completions",
@@ -79,6 +81,7 @@
             "input": 0.14,
             "output": 0.28
         },
+        "description": "Fast DeepSeek V4 lane for economical reasoning, coding, and long-context work",
         "id": "deepseek-v4-flash",
         "input": ["text"],
         "maxTokens": 384000,
@@ -112,6 +115,7 @@
             "input": 0.435,
             "output": 0.87
         },
+        "description": "Open MoE flagship with million-token context for coding and long agent runs",
         "id": "deepseek-v4-pro",
         "input": ["text"],
         "maxTokens": 384000,
@@ -144,6 +148,7 @@
             "input": 0.6,
             "output": 2.6
         },
+        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "glm-5",
         "input": ["text"],
         "maxTokens": 131072,
@@ -176,6 +181,7 @@
             "input": 0.86,
             "output": 3.5
         },
+        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "glm-5.1",
         "input": ["text"],
         "maxTokens": 131072,
@@ -208,6 +214,7 @@
             "input": 1.4,
             "output": 4.4
         },
+        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "glm-5.2",
         "input": ["text"],
         "maxTokens": 131072,
@@ -240,6 +247,7 @@
             "input": 0.6,
             "output": 3.0
         },
+        "description": "Kimi multimodal agent model for visual understanding, coding, and planning",
         "id": "kimi-k2.5",
         "input": ["text", "image", "video"],
         "maxTokens": 32768,
@@ -272,6 +280,7 @@
             "input": 0.95,
             "output": 4.0
         },
+        "description": "Kimi multimodal agent model for visual understanding, coding, and planning",
         "id": "kimi-k2.6",
         "input": ["text", "image", "video"],
         "maxTokens": 32768,
@@ -304,6 +313,7 @@
             "input": 0.95,
             "output": 3.9995
         },
+        "description": "Coding-focused Kimi model, stronger on long-horizon repo work with less overthinking",
         "id": "kimi-k2.7-code",
         "input": ["text", "image", "video"],
         "maxTokens": 32768,
@@ -336,6 +346,7 @@
             "input": 0.1875,
             "output": 1.125
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen3.6-flash",
         "input": ["text", "image", "video"],
         "maxTokens": 65536,
@@ -368,6 +379,7 @@
             "input": 0.5,
             "output": 3.0
         },
+        "description": "Earlier Qwen multimodal workhorse for million-token agent and document tasks",
         "id": "qwen3.6-plus",
         "input": ["text", "image", "video"],
         "maxTokens": 65536,
@@ -400,6 +412,7 @@
             "input": 2.5,
             "output": 7.5
         },
+        "description": "Qwen frontier model tuned for agent frameworks, coding assistants, and long tasks",
         "id": "qwen3.7-max",
         "input": ["text"],
         "maxTokens": 65536,
@@ -432,6 +445,7 @@
             "input": 0.5,
             "output": 3.0
         },
+        "description": "Multimodal Qwen workhorse for long-context agents, visual inputs, and coding",
         "id": "qwen3.7-plus",
         "input": ["text", "image", "video"],
         "maxTokens": 65536,
@@ -461,9 +475,10 @@
         "cost": {
             "cacheRead": 0.15,
             "cacheWrite": 2.0,
-            "input": 1.5,
-            "output": 5.0
+            "input": 0.338,
+            "output": 1.014
         },
+        "description": "Preview Qwen flagship for million-token multimodal reasoning and long-horizon agentic workflows",
         "id": "qwen3.8-max-preview",
         "input": ["text", "image", "video"],
         "maxTokens": 131072,

@@ -240,6 +240,7 @@ stats: ## Show sccache stats and code line count
 
 clean: ## Clean build artifacts and caches
 	@find crates -type f -name '*_gen.rs' -delete
+	@rm -fr crates/elph-ai/models/.cache
 	@$(CARGO) clean
 
 # ─── Misc ───────────────────────────────────────────────────────────────────

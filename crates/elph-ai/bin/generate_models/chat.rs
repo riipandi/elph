@@ -10,7 +10,9 @@ use serde_json::Value;
 
 use super::models_dev::{default_cache_dir, find_model, find_model_fuzzy, load_models_dev, models_for_provider_keys};
 use super::normalize::{enrich_existing, from_models_dev};
-use super::pricing::{apply_cost, fetch_all_live_data, resolve_cost};
+use super::pricing::{
+    aimd_reasoning, apply_cost, fetch_ai_model_directory, fetch_all_live_data, fetch_nara_pricing, resolve_cost,
+};
 use super::provider_sources::all_provider_sources;
 use super::term;
 
@@ -49,7 +51,17 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
     fs::create_dir_all(&options.models_dir).context("create models output directory")?;
     let cache_dir = default_cache_dir(&options.models_dir);
     let models_dev = load_models_dev(&cache_dir, options.offline, options.force)?;
-    let live = fetch_all_live_data(options.no_live_pricing);
+    let mut live = fetch_all_live_data(options.no_live_pricing);
+    let aimd = fetch_ai_model_directory(&cache_dir, options.offline);
+    // Nara's /v1/models exposes no pricing; merge the official /api/pricing catalog
+    // (USD per million tokens) into the live map so resolve_cost picks it up first.
+    let nara_pricing = fetch_nara_pricing(&cache_dir, options.offline);
+    if !nara_pricing.is_empty() {
+        let nara_result = live.entry("nara-router".to_string()).or_default();
+        for (id, prices) in nara_pricing {
+            nara_result.pricing.insert(id, prices);
+        }
+    }
 
     let mut index: Vec<CatalogIndexEntry> = Vec::new();
     let mut total_models = 0usize;
@@ -61,6 +73,12 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
     let mut src_models_dev = 0usize;
     let mut src_provider_override = 0usize;
     let mut src_unresolved = 0usize;
+
+    let mut cost_live = 0usize;
+    let mut cost_mdev = 0usize;
+    let mut cost_aimd = 0usize;
+    let mut cost_prev = 0usize;
+    let mut cost_none = 0usize;
 
     term::header("providers");
     for src in all_provider_sources() {
@@ -89,8 +107,18 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
                 if let Some((_, mdev_models)) = models_for_provider_keys(&models_dev, src.models_dev_keys) {
                     for (mid, mdev) in mdev_models {
                         let _live_map: HashMap<String, super::pricing::PriceTriple> = HashMap::new();
-                        let mut entry = from_models_dev(src, mid, mdev, None, None);
-                        let (i, o, cr, cw, _) = resolve_cost(src, mid, &models_dev, &live, None);
+                        let rich = models_dev.rich_model(src.id, mid);
+                        let aimd_reasoning = aimd_reasoning(&aimd, src.id, mid);
+                        let mut entry = from_models_dev(src, mid, mdev, None, None, rich, aimd_reasoning);
+                        let (i, o, cr, cw, csrc) = resolve_cost(src, mid, &models_dev, &live, &aimd, None);
+                        tally_cost(
+                            csrc,
+                            &mut cost_live,
+                            &mut cost_mdev,
+                            &mut cost_aimd,
+                            &mut cost_prev,
+                            &mut cost_none,
+                        );
                         apply_cost(&mut entry, i, o, cr, cw);
                         tally_map(&entry, &mut maps_ok, &mut maps_bad);
                         tally_source(
@@ -118,14 +146,48 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
                     let _live_map: HashMap<String, super::pricing::PriceTriple> =
                         live.get(src.id).map(|r| r.pricing.clone()).unwrap_or_default();
 
+                    let rich = models_dev.rich_model(src.id, &mid);
+                    let aimd_reasoning = aimd_reasoning(&aimd, src.id, &mid);
                     let mut entry = if let Some(m) = find_model(&models_dev, src.models_dev_keys, &mid) {
-                        enrich_existing(src, &mid, prev_ref, Some(m), live_efforts.as_ref().map(|v| v.as_slice()))
+                        enrich_existing(
+                            src,
+                            &mid,
+                            prev_ref,
+                            Some(m),
+                            live_efforts.as_ref().map(|v| v.as_slice()),
+                            rich,
+                            aimd_reasoning,
+                        )
                     } else if let Some((_, m)) = find_model_fuzzy(&models_dev, &mid) {
-                        enrich_existing(src, &mid, prev_ref, Some(&m), live_efforts.as_ref().map(|v| v.as_slice()))
+                        enrich_existing(
+                            src,
+                            &mid,
+                            prev_ref,
+                            Some(&m),
+                            live_efforts.as_ref().map(|v| v.as_slice()),
+                            rich,
+                            aimd_reasoning,
+                        )
                     } else {
-                        enrich_existing(src, &mid, prev_ref, None, live_efforts.as_ref().map(|v| v.as_slice()))
+                        enrich_existing(
+                            src,
+                            &mid,
+                            prev_ref,
+                            None,
+                            live_efforts.as_ref().map(|v| v.as_slice()),
+                            rich,
+                            aimd_reasoning,
+                        )
                     };
-                    let (i, o, cr, cw, _) = resolve_cost(src, &mid, &models_dev, &live, entry.get("cost"));
+                    let (i, o, cr, cw, csrc) = resolve_cost(src, &mid, &models_dev, &live, &aimd, entry.get("cost"));
+                    tally_cost(
+                        csrc,
+                        &mut cost_live,
+                        &mut cost_mdev,
+                        &mut cost_aimd,
+                        &mut cost_prev,
+                        &mut cost_none,
+                    );
                     apply_cost(&mut entry, i, o, cr, cw);
                     tally_map(&entry, &mut maps_ok, &mut maps_bad);
                     tally_source(
@@ -146,8 +208,26 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
             for (mid, mdev) in mdev_models {
                 let prev = prev_map.and_then(|m| m.get(mid));
                 let live_efforts = live_efforts_for(&live, src.id, mid);
-                let mut entry = from_models_dev(src, mid, mdev, prev, live_efforts.as_ref().map(|v| v.as_slice()));
-                let (i, o, cr, cw, _) = resolve_cost(src, mid, &models_dev, &live, entry.get("cost"));
+                let rich = models_dev.rich_model(src.id, mid);
+                let aimd_reasoning = aimd_reasoning(&aimd, src.id, mid);
+                let mut entry = from_models_dev(
+                    src,
+                    mid,
+                    mdev,
+                    prev,
+                    live_efforts.as_ref().map(|v| v.as_slice()),
+                    rich,
+                    aimd_reasoning,
+                );
+                let (i, o, cr, cw, csrc) = resolve_cost(src, mid, &models_dev, &live, &aimd, entry.get("cost"));
+                tally_cost(
+                    csrc,
+                    &mut cost_live,
+                    &mut cost_mdev,
+                    &mut cost_aimd,
+                    &mut cost_prev,
+                    &mut cost_none,
+                );
                 apply_cost(&mut entry, i, o, cr, cw);
                 tally_map(&entry, &mut maps_ok, &mut maps_bad);
                 tally_source(
@@ -208,6 +288,8 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
         src_unresolved,
     );
 
+    term::cost_breakdown(cost_live, cost_mdev, cost_aimd, cost_prev, cost_none);
+
     verify_providers_registered(&index, &options.builtin_rs)?;
 
     Ok(())
@@ -263,6 +345,17 @@ fn tally_source(
         *provider_override += 1;
     } else {
         *unresolved += 1;
+    }
+}
+
+/// Tally a resolved cost source tag into the running counters.
+fn tally_cost(src: &str, live: &mut usize, mdev: &mut usize, aimd: &mut usize, previous: &mut usize, none: &mut usize) {
+    match src {
+        "live-api" => *live += 1,
+        "models.dev" => *mdev += 1,
+        "ai-model-directory" => *aimd += 1,
+        "previous" => *previous += 1,
+        _ => *none += 1,
     }
 }
 

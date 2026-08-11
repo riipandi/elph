@@ -9,12 +9,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "abacusai/dracarys-llama-3.1-70b-instruct",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 8192,
         "name": "dracarys-llama-3.1-70b-instruct",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -36,12 +39,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Flagship model for demanding analysis, coding, and production agent workflows",
         "id": "baai/bge-m3",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 1024,
         "name": "BGE M3",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -63,12 +69,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Image model for prompt-driven generation, editing, and visual design workflows",
         "id": "black-forest-labs/flux.1-dev",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 0,
         "name": "FLUX.1-dev",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -90,12 +99,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Image model for prompt-driven generation, editing, and visual design workflows",
         "id": "black-forest-labs/flux_1-kontext-dev",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 40960,
         "name": "FLUX.1-Kontext-dev",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -117,12 +129,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Image model for prompt-driven generation, editing, and visual design workflows",
         "id": "black-forest-labs/flux_1-schnell",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 0,
         "name": "FLUX.1-schnell",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -144,12 +159,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Image model for prompt-driven generation, editing, and visual design workflows",
         "id": "black-forest-labs/flux_2-klein-4b",
         "input": ["image", "text"],
+        "knowledgeCutoff": "",
         "maxTokens": 40960,
         "name": "FLUX.2 Klein 4B",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -171,12 +189,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Tool-capable chat model for instruction following and agentic application workflows",
         "id": "bytedance/seed-oss-36b-instruct",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 262000,
         "name": "ByteDance-Seed/Seed-OSS-36B-Instruct",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -198,12 +219,15 @@
             "input": 0.14,
             "output": 0.28
         },
+        "description": "Fast DeepSeek V4 lane for economical reasoning, coding, and long-context work",
         "id": "deepseek-ai/deepseek-v4-flash",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 393216,
         "name": "DeepSeek V4 Flash",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
@@ -225,12 +249,15 @@
             "input": 0.435,
             "output": 0.87
         },
+        "description": "Open MoE flagship with million-token context for coding and long agent runs",
         "id": "deepseek-ai/deepseek-v4-pro",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 393216,
         "name": "DeepSeek V4 Pro",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
@@ -249,15 +276,18 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.021,
+            "output": 0.063
         },
+        "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-2-2b-it",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 4096,
         "name": "Gemma 2 2b It",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -287,15 +317,18 @@
             "input": 0.05,
             "output": 0.15
         },
+        "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "google/gemma-3-12b-it",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 16384,
         "name": "Gemma 3 12B IT",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -325,15 +358,18 @@
             "input": 0.05,
             "output": 0.1
         },
+        "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "google/gemma-3-4b-it",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 16384,
         "name": "Gemma 3 4B IT",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -355,12 +391,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-3n-e2b-it",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 4096,
         "name": "Gemma 3n E2b It",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -382,12 +421,15 @@
             "input": 0.06,
             "output": 0.12
         },
+        "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-3n-e4b-it",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 4096,
         "name": "Gemma 3n E4b It",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -409,12 +451,15 @@
             "input": 0.14,
             "output": 0.4
         },
+        "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-4-31b-it",
         "input": ["text", "image", "video"],
+        "knowledgeCutoff": "",
         "maxTokens": 16384,
         "name": "Gemma-4-31B-IT",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "2026-04-02",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -436,12 +481,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Gemini multimodal model for text, image, audio, video, and document tasks",
         "id": "google/google-paligemma",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 8192,
         "name": "paligemma",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -463,12 +511,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "meta/esm2-650m",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 8192,
         "name": "esm2-650m",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -490,12 +541,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "meta/esmfold",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 8192,
         "name": "esmfold",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -525,15 +579,18 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "meta/llama-3.1-70b-instruct",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 4096,
         "name": "Llama 3.1 70b Instruct",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -563,15 +620,18 @@
             "input": 0.025,
             "output": 0.025
         },
+        "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "meta/llama-3.1-8b-instruct",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 4096,
         "name": "Llama 3.1 8B Instruct",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -601,15 +661,18 @@
             "input": 0.055,
             "output": 0.055
         },
+        "description": "Open Llama multimodal model for image understanding and text reasoning",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "meta/llama-3.2-11b-vision-instruct",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 4096,
         "name": "Llama 3.2 11b Vision Instruct",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -631,12 +694,15 @@
             "input": 0.01,
             "output": 0.01
         },
+        "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "meta/llama-3.2-1b-instruct",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 4096,
         "name": "Llama 3.2 1b Instruct",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -658,12 +724,15 @@
             "input": 0.02,
             "output": 0.02
         },
+        "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "meta/llama-3.2-3b-instruct",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 32000,
         "name": "Llama 3.2 3B Instruct",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -693,15 +762,18 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Open Llama multimodal model for image understanding and text reasoning",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "meta/llama-3.2-90b-vision-instruct",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 8192,
         "name": "Llama-3.2-90B-Vision-Instruct",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -731,15 +803,18 @@
             "input": 0.22,
             "output": 0.5
         },
+        "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "meta/llama-3.3-70b-instruct",
         "input": ["text"],
+        "knowledgeCutoff": "2023-12",
         "maxTokens": 4096,
         "name": "Llama 3.3 70b Instruct",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "2024-12-06",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -761,12 +836,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Open multimodal Llama model for strong reasoning and fast responses",
         "id": "meta/llama-4-maverick-17b-128e-instruct",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 4096,
         "name": "Llama 4 Maverick 17b 128e Instruct",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -788,12 +866,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Safety model for policy screening, moderation, and risk-aware routing workflows",
         "id": "meta/llama-guard-4-12b",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 16384,
         "name": "Llama Guard 4 12B",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -815,12 +896,15 @@
             "input": 0.08,
             "output": 0.35
         },
+        "description": "Efficient model for low-latency assistance, extraction, and routine automation",
         "id": "microsoft/phi-4-mini-instruct",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 8192,
         "name": "Phi-4-Mini",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -842,12 +926,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "General-purpose chat model for instruction following, writing, and analysis",
         "id": "microsoft/phi-4-multimodal-instruct",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 16384,
         "name": "Phi 4 Multimodal",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -869,12 +956,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "MiniMax model for chat, coding, office work, and agentic tasks",
         "id": "minimaxai/minimax-m2.7",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 131072,
         "name": "MiniMax-M2.7",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -904,15 +994,18 @@
             "input": 0.28,
             "output": 1.1
         },
+        "description": "MiniMax multimodal model for long-context coding, perception, and agent planning",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "minimaxai/minimax-m3",
         "input": ["text", "image", "video"],
+        "knowledgeCutoff": "",
         "maxTokens": 16384,
         "name": "MiniMax-M3",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -934,12 +1027,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Mistral reasoning model for transparent analysis, math, and complex decisions",
         "id": "mistralai/magistral-small-2506",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 32768,
         "name": "Magistral Small 2506",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -961,12 +1057,15 @@
             "input": 0.1,
             "output": 0.4
         },
+        "description": "Compact Mistral VLM for chat and instruction-based workloads",
         "id": "mistralai/ministral-14b-instruct-2512",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 16384,
         "name": "Ministral 3 14B Instruct 2512",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -996,15 +1095,18 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Mistral model for multilingual chat, reasoning, and tool-assisted workflows",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "mistralai/mistral-7b-instruct-v0.3",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 65536,
         "name": "Mistral-7B-Instruct-v0.3",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1026,12 +1128,15 @@
             "input": 1.0,
             "output": 3.0
         },
+        "description": "Flagship Mistral model for advanced reasoning, coding, and multilingual work",
         "id": "mistralai/mistral-large-3-675b-instruct-2512",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 262144,
         "name": "Mistral Large 3 675B Instruct 2512",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1053,12 +1158,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Mistral model for multilingual chat, reasoning, and tool-assisted workflows",
         "id": "mistralai/mistral-medium-3-instruct",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 32768,
         "name": "Mistral Medium 3",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1088,15 +1196,18 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Balanced Mistral model for enterprise assistants, multilingual work, and tools",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "mistralai/mistral-medium-3.5-128b",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 32768,
         "name": "Mistral Medium 3.5",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
@@ -1118,12 +1229,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Mistral model for multilingual chat, reasoning, and tool-assisted workflows",
         "id": "mistralai/mistral-nemotron",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 8192,
         "name": "mistral-nemotron",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1145,12 +1259,15 @@
             "input": 0.4,
             "output": 1.4
         },
+        "description": "Efficient Mistral model for fast chat, extraction, and production assistants",
         "id": "mistralai/mistral-small-4-119b-2603",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 8192,
         "name": "mistral-small-4-119b-2603",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
@@ -1172,12 +1289,15 @@
             "input": 2.0,
             "output": 6.0
         },
+        "description": "Mistral model for multilingual chat, reasoning, and tool-assisted workflows",
         "id": "mistralai/mixtral-8x22b-instruct",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 13108,
         "name": "Mistral: Mixtral 8x22B Instruct",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1199,12 +1319,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Mistral model for multilingual chat, reasoning, and tool-assisted workflows",
         "id": "mistralai/mixtral-8x7b-instruct",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 16384,
         "name": "Mistral: Mixtral 8x7B Instruct",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1226,12 +1349,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Kimi model for long-context chat, coding, and agentic reasoning",
         "id": "moonshotai/kimi-k2-instruct-0905",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 262144,
         "name": "Kimi K2 0905",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1261,15 +1387,18 @@
             "input": 0.95,
             "output": 4.0
         },
+        "description": "Kimi multimodal agent model for visual understanding, coding, and planning",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "moonshotai/kimi-k2.6",
         "input": ["text", "image", "video"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 262144,
         "name": "Kimi K2.6",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "2026-04-21",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1291,12 +1420,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Nemotron multimodal model for visual reasoning and agentic AI workflows",
         "id": "nvidia/active-speaker-detection",
         "input": ["video"],
+        "knowledgeCutoff": "",
         "maxTokens": 4096,
         "name": "Active Speaker Detection",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1318,12 +1450,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Nemotron multimodal model for visual reasoning and agentic AI workflows",
         "id": "nvidia/bevformer",
         "input": ["video"],
+        "knowledgeCutoff": "",
         "maxTokens": 8192,
         "name": "bevformer",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1345,12 +1480,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Video model for prompt-guided generation, editing, and motion workflows",
         "id": "nvidia/cosmos-predict1-5b",
         "input": ["text", "image", "video"],
+        "knowledgeCutoff": "",
         "maxTokens": 4096,
         "name": "cosmos-predict1-5b",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1380,15 +1518,18 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Vision language model for physical-world understanding with structured reasoning on video and images",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "nvidia/cosmos-reason2-8b",
         "input": ["text", "image", "video"],
+        "knowledgeCutoff": "",
         "maxTokens": 16384,
         "name": "Cosmos Reason2 8B",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1410,12 +1551,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Video model for prompt-guided generation, editing, and motion workflows",
         "id": "nvidia/cosmos-transfer1-7b",
         "input": ["text", "image", "video"],
+        "knowledgeCutoff": "",
         "maxTokens": 4096,
         "name": "cosmos-transfer1-7b",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1437,12 +1581,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Video model for prompt-guided generation, editing, and motion workflows",
         "id": "nvidia/cosmos-transfer2_5-2b",
         "input": ["text", "image", "video"],
+        "knowledgeCutoff": "",
         "maxTokens": 4096,
         "name": "cosmos-transfer2.5-2b",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1464,12 +1611,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Nemotron model for efficient reasoning, coding, and specialized AI agents",
         "id": "nvidia/gliner-pii",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 4096,
         "name": "gliner-pii",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1499,15 +1649,18 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Nemotron model for efficient reasoning, coding, and specialized AI agents",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "nvidia/llama-3.1-nemotron-70b-instruct",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 8192,
         "name": "Llama 3.1 Nemotron 70B Instruct",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "2025-04-15",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1537,15 +1690,18 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Nemotron model for efficient reasoning, coding, and specialized AI agents",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "nvidia/llama-3.1-nemotron-nano-8b-v1",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 16384,
         "name": "Llama 3.1 Nemotron Nano 8B v1",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1575,15 +1731,18 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Nemotron multimodal model for visual reasoning and agentic AI workflows",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "nvidia/llama-3.1-nemotron-nano-vl-8b-v1",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 16384,
         "name": "Llama 3.1 Nemotron Nano VL 8B v1",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1605,12 +1764,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Safety model for policy screening, moderation, and risk-aware routing workflows",
         "id": "nvidia/llama-3.1-nemotron-safety-guard-8b-v3",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 4096,
         "name": "llama-3.1-nemotron-safety-guard-8b-v3",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "2025-10-28",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1640,15 +1802,18 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Flagship Nemotron model for high-throughput reasoning and complex agents",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "nvidia/llama-3.1-nemotron-ultra-253b-v1",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 16384,
         "name": "Llama 3.1 Nemotron Ultra 253B",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1678,15 +1843,18 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Nemotron model for efficient reasoning, coding, and specialized AI agents",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "nvidia/llama-3.3-nemotron-super-49b-v1",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 65536,
         "name": "Llama 3.3 Nemotron Super 49B v1",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "2025-04-07",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1716,15 +1884,18 @@
             "input": 0.1,
             "output": 0.4
         },
+        "description": "Nemotron model for efficient reasoning, coding, and specialized AI agents",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "nvidia/llama-3.3-nemotron-super-49b-v1.5",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 65536,
         "name": "Llama 3.3 Nemotron Super 49B v1.5",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "2025-07-25",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1746,12 +1917,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Embedding model for semantic search, retrieval, clustering, and ranking pipelines",
         "id": "nvidia/llama-3_2-nemoretriever-300m-embed-v1",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 2048,
         "name": "llama-3_2-nemoretriever-300m-embed-v1",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1770,15 +1944,18 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
+            "input": 0.01,
             "output": 0.0
         },
+        "description": "Embedding model for semantic search, retrieval, clustering, and ranking pipelines",
         "id": "nvidia/llama-nemotron-embed-vl-1b-v2",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 2048,
         "name": "llama-nemotron-embed-vl-1b-v2",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "2026-02-10",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1800,12 +1977,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Reranking model for improving retrieval quality in search and recommendation systems",
         "id": "nvidia/llama-nemotron-rerank-vl-1b-v2",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 4096,
         "name": "llama-nemotron-rerank-vl-1b-v2",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "2026-03-31",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1827,12 +2007,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Speech generation model for controllable voice, narration, and audio delivery",
         "id": "nvidia/magpie-tts-zeroshot",
         "input": ["text", "audio"],
+        "knowledgeCutoff": "",
         "maxTokens": 4096,
         "name": "magpie-tts-zeroshot",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1854,12 +2037,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Safety model for policy screening, moderation, and risk-aware routing workflows",
         "id": "nvidia/nemotron-3-content-safety",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 4096,
         "name": "nemotron-3-content-safety",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "2026-04-16",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1889,15 +2075,18 @@
             "input": 0.05,
             "output": 0.2
         },
+        "description": "Small Nemotron 3 MoE for efficient coding, math, and long-context agents",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "nvidia/nemotron-3-nano-30b-a3b",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 131072,
         "name": "nemotron-3-nano-30b-a3b",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "2025-12-15",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1927,15 +2116,18 @@
             "input": 0.105,
             "output": 0.42
         },
+        "description": "Open Nemotron omni model combining reasoning with text, vision, and audio",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
         "input": ["text", "image", "video", "audio"],
+        "knowledgeCutoff": "",
         "maxTokens": 65536,
         "name": "Nemotron 3 Nano Omni",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "2026-04-28",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1965,15 +2157,18 @@
             "input": 0.2,
             "output": 0.8
         },
+        "description": "Nemotron middle tier for collaborative agents and high-volume reasoning workloads",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "nvidia/nemotron-3-super-120b-a12b",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 262144,
         "name": "Nemotron 3 Super",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "2026-03-11",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2003,15 +2198,18 @@
             "input": 0.5,
             "output": 2.5
         },
+        "description": "Largest Nemotron 3 model for maximum open-weight reasoning and agent accuracy",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "nvidia/nemotron-3-ultra-550b-a55b",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 65536,
         "name": "Nemotron 3 Ultra 550B A55B",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "2026-06-04",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2033,12 +2231,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Safety model for policy screening, moderation, and risk-aware routing workflows",
         "id": "nvidia/nemotron-content-safety-reasoning-4b",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 4096,
         "name": "nemotron-content-safety-reasoning-4b",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "2026-01-22",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2060,12 +2261,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Compact Nemotron model for efficient reasoning and deployable AI agents",
         "id": "nvidia/nemotron-mini-4b-instruct",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 8192,
         "name": "nemotron-mini-4b-instruct",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "2024-08-21",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -2092,18 +2296,21 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.2,
-            "output": 0.6
+            "input": 0.21,
+            "output": 0.63
         },
+        "description": "Nemotron multimodal model for visual reasoning and agentic AI workflows",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "nvidia/nemotron-nano-12b-v2-vl",
         "input": ["text", "image", "video"],
+        "knowledgeCutoff": "",
         "maxTokens": 128000,
         "name": "Nemotron Nano 12B v2 VL",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "2025-10-28",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2125,12 +2332,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Nemotron multimodal model for visual reasoning and agentic AI workflows",
         "id": "nvidia/nemotron-voicechat",
         "input": ["text", "audio"],
+        "knowledgeCutoff": "",
         "maxTokens": 8192,
         "name": "nemotron-voicechat",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "2026-03-16",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -2152,12 +2362,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Embedding model for semantic search, retrieval, clustering, and ranking pipelines",
         "id": "nvidia/nv-embed-v1",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 2048,
         "name": "nv-embed-v1",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -2179,12 +2392,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Nemotron model for efficient reasoning, coding, and specialized AI agents",
         "id": "nvidia/nv-embedcode-7b-v1",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 2048,
         "name": "nv-embedcode-7b-v1",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -2214,15 +2430,18 @@
             "input": 0.17,
             "output": 0.68
         },
+        "description": "Compact Nemotron model for efficient reasoning and deployable AI agents",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "nvidia/nvidia-nemotron-nano-9b-v2",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 131072,
         "name": "nvidia-nemotron-nano-9b-v2",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2244,12 +2463,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Reranking model for improving retrieval quality in search and recommendation systems",
         "id": "nvidia/rerank-qa-mistral-4b",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 4096,
         "name": "rerank-qa-mistral-4b",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -2271,12 +2493,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Translation model for multilingual conversion, localization, and cross-language workflows",
         "id": "nvidia/riva-translate-4b-instruct-v1.1",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 4096,
         "name": "riva-translate-4b-instruct-v1_1",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -2298,12 +2523,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Nemotron multimodal model for visual reasoning and agentic AI workflows",
         "id": "nvidia/sparsedrive",
         "input": ["video"],
+        "knowledgeCutoff": "",
         "maxTokens": 8192,
         "name": "sparsedrive",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -2325,12 +2553,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Nemotron multimodal model for visual reasoning and agentic AI workflows",
         "id": "nvidia/streampetr",
         "input": ["video"],
+        "knowledgeCutoff": "",
         "maxTokens": 8192,
         "name": "streampetr",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -2352,12 +2583,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Nemotron model for efficient reasoning, coding, and specialized AI agents",
         "id": "nvidia/studiovoice",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 8192,
         "name": "studiovoice",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -2379,12 +2613,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Video model for prompt-guided generation, editing, and motion workflows",
         "id": "nvidia/synthetic-video-detector",
         "input": ["video"],
+        "knowledgeCutoff": "",
         "maxTokens": 4096,
         "name": "synthetic-video-detector",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -2406,12 +2643,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Nemotron model for efficient reasoning, coding, and specialized AI agents",
         "id": "nvidia/usdcode",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 4096,
         "name": "usdcode",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -2433,12 +2673,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Nemotron model for efficient reasoning, coding, and specialized AI agents",
         "id": "nvidia/usdvalidate",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 4096,
         "name": "usdvalidate",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -2468,15 +2711,18 @@
             "input": 0.08,
             "output": 0.44
         },
+        "description": "Open GPT reasoning model for self-hosted agents and controllable deployments",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "openai/gpt-oss-120b",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 8192,
         "name": "GPT-OSS-120B",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "2025-08-05",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2506,15 +2752,18 @@
             "input": 0.03,
             "output": 0.14
         },
+        "description": "Open-weight GPT model for self-hosted reasoning and instruction-following workloads",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "openai/gpt-oss-20b",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 32768,
         "name": "GPT OSS 20B",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "2025-08-05",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2536,12 +2785,15 @@
             "input": 0.0023,
             "output": 0.0023
         },
+        "description": "Speech transcription model for accurate audio-to-text and captioning workflows",
         "id": "openai/whisper-large-v3",
         "input": ["audio"],
+        "knowledgeCutoff": "",
         "maxTokens": 4096,
         "name": "Whisper Large v3",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "2024-10-01",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -2571,15 +2823,18 @@
             "input": 0.1,
             "output": 0.2
         },
+        "description": "Agentic coding model from Poolside in the XS size class for local deployment",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "poolside/laguna-xs-2.1",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 16384,
         "name": "Laguna XS 2.1",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "2026-07-02",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2601,12 +2856,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Image model for prompt-driven generation, editing, and visual design workflows",
         "id": "qwen/qwen-image",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 0,
         "name": "Qwen Image",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -2628,12 +2886,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Image model for prompt-driven generation, editing, and visual design workflows",
         "id": "qwen/qwen-image-edit",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 0,
         "name": "Qwen Image Edit",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -2652,15 +2913,18 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.693,
+            "output": 1.05
         },
+        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
         "id": "qwen/qwen2.5-coder-32b-instruct",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 4096,
         "name": "Qwen2.5 Coder 32b Instruct",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -2682,12 +2946,15 @@
             "input": 0.29,
             "output": 1.2
         },
+        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
         "id": "qwen/qwen3-coder-480b-a35b-instruct",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 66536,
         "name": "Qwen3 Coder 480B A35B Instruct",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -2709,12 +2976,15 @@
             "input": 0.15,
             "output": 1.5
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "qwen/qwen3-next-80b-a3b-instruct",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 16384,
         "name": "Qwen3-Next-80B-A3B-Instruct",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -2736,12 +3006,15 @@
             "input": 0.26,
             "output": 2.08
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-122b-a10b",
         "input": ["text", "image", "video", "audio"],
+        "knowledgeCutoff": "",
         "maxTokens": 65536,
         "name": "Qwen3.5 122B-A10B",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2763,12 +3036,15 @@
             "input": 0.39,
             "output": 2.34
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-397b-a17b",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 8192,
         "name": "Qwen3.5-397B-A17B",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2790,12 +3066,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Efficient Indian-language reasoning model for chat, coding, and multilingual work",
         "id": "sarvamai/sarvam-m",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 8192,
         "name": "sarvam-m",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -2817,12 +3096,15 @@
             "input": 0.1,
             "output": 0.3
         },
+        "description": "StepFun flash model for efficient multimodal reasoning, coding, and tool use",
         "id": "stepfun-ai/step-3.5-flash",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 16384,
         "name": "Step 3.5 Flash",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2852,15 +3134,18 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "StepFun flash model for efficient multimodal reasoning, coding, and tool use",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "stepfun-ai/step-3.7-flash",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 16384,
         "name": "Step 3.7 Flash",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2890,15 +3175,18 @@
             "input": 1.0,
             "output": 4.05
         },
+        "description": "Multimodal MoE reasoning model (975B total, 41B active) for text, image, and audio",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "thinkingmachines/inkling",
         "input": ["text", "image", "audio"],
+        "knowledgeCutoff": "",
         "maxTokens": 16384,
         "name": "Inkling",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "2026-07-15",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2920,12 +3208,15 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Open-weight instruction model for adaptable chat and self-hosted production workloads",
         "id": "upstage/solar-10.7b-instruct",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 8192,
         "name": "solar-10.7b-instruct",
         "provider": "nvidia",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -2955,15 +3246,18 @@
             "input": 1.05,
             "output": 4.4
         },
+        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "headers": {
             "NVCF-POLL-SECONDS": "3600"
         },
         "id": "z-ai/glm-5.2",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 131072,
         "name": "GLM-5.2",
         "provider": "nvidia",
         "reasoning": true,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",

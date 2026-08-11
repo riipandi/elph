@@ -13,15 +13,18 @@
             "input": 3.0,
             "output": 15.0
         },
+        "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
         "headers": {
             "User-Agent": "KimiCLI/1.5"
         },
         "id": "k3",
         "input": ["text", "image", "video"],
+        "knowledgeCutoff": "",
         "maxTokens": 131072,
         "name": "Kimi K3",
         "provider": "kimi-coding",
         "reasoning": true,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -46,15 +49,18 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "256K-context version of Kimi K3, reducing token consumption for shorter coding sessions",
         "headers": {
             "User-Agent": "KimiCLI/1.5"
         },
         "id": "k3-256k",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 131072,
         "name": "Kimi K3-256K",
         "provider": "kimi-coding",
         "reasoning": true,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -80,15 +86,18 @@
             "input": 0.95,
             "output": 4.0
         },
+        "description": "Coding-focused Kimi model, stronger on long-horizon repo work with less overthinking",
         "headers": {
             "User-Agent": "KimiCLI/1.5"
         },
         "id": "kimi-for-coding",
         "input": ["text", "image", "video"],
+        "knowledgeCutoff": "",
         "maxTokens": 32768,
         "name": "Kimi K2.7 Code",
         "provider": "kimi-coding",
         "reasoning": true,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -113,15 +122,18 @@
             "input": 1.9,
             "output": 8.0
         },
+        "description": "Lower-latency Kimi Code variant for interactive edits and coding-agent loops",
         "headers": {
             "User-Agent": "KimiCLI/1.5"
         },
         "id": "kimi-for-coding-highspeed",
         "input": ["text", "image", "video"],
+        "knowledgeCutoff": "",
         "maxTokens": 32768,
         "name": "Kimi For Coding HighSpeed",
         "provider": "kimi-coding",
         "reasoning": true,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",

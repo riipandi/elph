@@ -15,6 +15,7 @@
             "input": 0.1,
             "output": 0.3
         },
+        "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "@cf/google/gemma-4-26b-a4b-it",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -48,6 +49,7 @@
             "input": 0.017,
             "output": 0.112
         },
+        "description": "Efficient model for low-latency assistance, extraction, and routine automation",
         "id": "@cf/ibm-granite/granite-4.0-h-micro",
         "input": ["text"],
         "maxTokens": 131000,
@@ -81,6 +83,7 @@
             "input": 0.293,
             "output": 2.253
         },
+        "description": "Popular open Llama workhorse for multilingual chat, coding, and self-hosting",
         "id": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
         "input": ["text"],
         "maxTokens": 24000,
@@ -114,6 +117,7 @@
             "input": 0.27,
             "output": 0.85
         },
+        "description": "Open Llama with long-context vision for efficient multimodal agents",
         "id": "@cf/meta/llama-4-scout-17b-16e-instruct",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -147,6 +151,7 @@
             "input": 0.351,
             "output": 0.555
         },
+        "description": "Efficient Mistral model for fast chat, extraction, and production assistants",
         "id": "@cf/mistralai/mistral-small-3.1-24b-instruct",
         "input": ["text"],
         "maxTokens": 128000,
@@ -180,6 +185,7 @@
             "input": 0.95,
             "output": 4.0
         },
+        "description": "Multimodal Kimi workhorse for agent loops, coding tasks, and visual context",
         "id": "@cf/moonshotai/kimi-k2.6",
         "input": ["text", "image"],
         "maxTokens": 256000,
@@ -213,6 +219,7 @@
             "input": 0.95,
             "output": 4.0
         },
+        "description": "Coding-focused Kimi model, stronger on long-horizon repo work with less overthinking",
         "id": "@cf/moonshotai/kimi-k2.7-code",
         "input": ["text", "image"],
         "maxTokens": 262144,
@@ -246,6 +253,7 @@
             "input": 0.5,
             "output": 1.5
         },
+        "description": "Nemotron middle tier for collaborative agents and high-volume reasoning workloads",
         "id": "@cf/nvidia/nemotron-3-120b-a12b",
         "input": ["text"],
         "maxTokens": 256000,
@@ -279,6 +287,7 @@
             "input": 0.35,
             "output": 0.75
         },
+        "description": "Open GPT reasoning model for self-hosted agents and controllable deployments",
         "id": "@cf/openai/gpt-oss-120b",
         "input": ["text"],
         "maxTokens": 16384,
@@ -312,6 +321,7 @@
             "input": 0.2,
             "output": 0.3
         },
+        "description": "Open-weight GPT model for self-hosted reasoning and instruction-following workloads",
         "id": "@cf/openai/gpt-oss-20b",
         "input": ["text"],
         "maxTokens": 16384,
@@ -345,6 +355,7 @@
             "input": 0.0509,
             "output": 0.335
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "@cf/qwen/qwen3-30b-a3b-fp8",
         "input": ["text"],
         "maxTokens": 32768,
@@ -378,6 +389,7 @@
             "input": 0.0605,
             "output": 0.4
         },
+        "description": "Efficient GLM model for fast reasoning, coding, and agent workflows",
         "id": "@cf/zai-org/glm-4.7-flash",
         "input": ["text"],
         "maxTokens": 131072,
@@ -411,6 +423,7 @@
             "input": 1.4,
             "output": 4.4
         },
+        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "@cf/zai-org/glm-5.2",
         "input": ["text"],
         "maxTokens": 256000,

@@ -7,7 +7,7 @@
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 0.0,
-            "output": 0.0
+            "output": 0.56
         },
         "id": "MiniMax-Hailuo-2.3",
         "input": ["text"],
@@ -36,6 +36,7 @@
             "input": 0.3,
             "output": 1.2
         },
+        "description": "MiniMax multimodal model for long-context coding, perception, and agent planning",
         "id": "MiniMax-M3",
         "input": ["text", "image", "video"],
         "maxTokens": 128000,
@@ -63,12 +64,15 @@
             "input": 10.0,
             "output": 50.0
         },
+        "description": "Claude model for creative writing, analysis, and controlled agent workflows",
         "id": "anthropic/claude-fable-5",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-01-31",
         "maxTokens": 128000,
         "name": "Claude Fable 5",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-06-09",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -90,22 +94,23 @@
             "input": 1.0,
             "output": 5.0
         },
+        "description": "Fast Claude model for responsive assistance, classification, and lightweight agents",
         "id": "anthropic/claude-haiku-4.5",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Haiku 4.5 (latest)",
         "provider": "tokenrouter",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
+            "high": "high",
             "low": null,
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         },
-        "thinkingLevelMapSource": "unresolved"
+        "thinkingLevelMapSource": "models.dev"
     },
     "anthropic/claude-opus-4.5": {
         "api": "openai-completions",
@@ -117,6 +122,7 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
         "id": "anthropic/claude-opus-4.5",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
@@ -144,6 +150,7 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "High-end Claude for difficult coding, planning, and slower expert reasoning",
         "id": "anthropic/claude-opus-4.6",
         "input": ["text"],
         "maxTokens": 128000,
@@ -151,15 +158,15 @@
         "provider": "tokenrouter",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "anthropic/claude-opus-4.7": {
         "api": "openai-completions",
@@ -171,6 +178,7 @@
             "input": 4.5,
             "output": 22.5
         },
+        "description": "Stronger Opus tier for advanced software work and high-stakes reasoning",
         "id": "anthropic/claude-opus-4.7",
         "input": ["text"],
         "maxTokens": 128000,
@@ -198,6 +206,7 @@
             "input": 30.0,
             "output": 150.0
         },
+        "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
         "id": "anthropic/claude-opus-4.7-fast",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -225,6 +234,7 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "Top Claude Opus tier for the hardest reasoning, coding, and long-horizon agents",
         "id": "anthropic/claude-opus-4.8",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -232,15 +242,15 @@
         "provider": "tokenrouter",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "anthropic/claude-opus-4.8-fast": {
         "api": "openai-completions",
@@ -252,6 +262,7 @@
             "input": 10.0,
             "output": 50.0
         },
+        "description": "Fast-mode variant of [Opus 4.8](/anthropic/claude-opus-4.8) - identical capabilities with higher output speed at 2x pricing relative to regular Opus 4.8. Learn more in Anthropic's docs: https://platform.claude.com/docs/en/build-with-claude/fast-mode",
         "id": "anthropic/claude-opus-4.8-fast",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -279,12 +290,15 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "Strongest Claude Opus model for coding, agents, and professional work",
         "id": "anthropic/claude-opus-5",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-05",
         "maxTokens": 128000,
         "name": "Claude Opus 5",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-07-24",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -306,6 +320,7 @@
             "input": 10.0,
             "output": 50.0
         },
+        "description": "Fast-mode variant of [Opus 5](/anthropic/claude-opus-5) - identical capabilities with higher output speed at 2x pricing relative to regular Opus 5. Learn more in Anthropic's docs: https://platform.claude.com/docs/en/build-with-claude/fast-mode",
         "id": "anthropic/claude-opus-5-fast",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -333,6 +348,7 @@
             "input": 3.0,
             "output": 15.0
         },
+        "description": "Balanced Claude model for coding, analysis, agent workflows, and cost control",
         "id": "anthropic/claude-sonnet-4",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
@@ -360,6 +376,7 @@
             "input": 3.0,
             "output": 15.0
         },
+        "description": "Balanced Claude model for coding, analysis, agent workflows, and cost control",
         "id": "anthropic/claude-sonnet-4.5",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
@@ -387,6 +404,7 @@
             "input": 3.0,
             "output": 15.0
         },
+        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
         "id": "anthropic/claude-sonnet-4.6",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
@@ -414,12 +432,15 @@
             "input": 2.0,
             "output": 10.0
         },
+        "description": "Everyday Claude agent model for coding, planning, browsing, and general work",
         "id": "anthropic/claude-sonnet-5",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-01-31",
         "maxTokens": 128000,
         "name": "Claude Sonnet 5",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-06-30",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -439,7 +460,7 @@
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 0.0,
-            "output": 0.0
+            "output": 0.08
         },
         "id": "bytedance-seed/seedream-4.5",
         "input": ["text"],
@@ -466,7 +487,7 @@
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 0.0,
-            "output": 0.0
+            "output": 0.07
         },
         "id": "bytedance-seed/seedream-5.0-lite",
         "input": ["text"],
@@ -493,7 +514,7 @@
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 0.0,
-            "output": 0.0
+            "output": 0.18
         },
         "id": "bytedance-seed/seedream-5.0-pro",
         "input": ["text"],
@@ -522,22 +543,23 @@
             "input": 1.0,
             "output": 5.0
         },
+        "description": "Fast Claude model for responsive assistance, classification, and lightweight agents",
         "id": "claude-haiku-4-5",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "claude-haiku-4-5",
         "provider": "tokenrouter",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
         },
-        "thinkingLevelMapSource": "unresolved"
+        "thinkingLevelMapSource": "provider-override"
     },
     "claude-opus-4-8-m-aws": {
         "api": "openai-completions",
@@ -546,8 +568,8 @@
         "cost": {
             "cacheRead": 0,
             "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "claude-opus-4-8-m-aws",
         "input": ["text"],
@@ -556,15 +578,15 @@
         "provider": "tokenrouter",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "deepseek/deepseek-v3.2": {
         "api": "openai-completions",
@@ -576,12 +598,15 @@
             "input": 0.269,
             "output": 0.4
         },
+        "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek/deepseek-v3.2",
         "input": ["text"],
+        "knowledgeCutoff": "2024-07",
         "maxTokens": 65536,
         "name": "DeepSeek V3.2",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2025-12-01",
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
@@ -603,12 +628,15 @@
             "input": 0.14,
             "output": 0.28
         },
+        "description": "Fast DeepSeek model for efficient chat, coding help, and agent loops",
         "id": "deepseek/deepseek-v4-flash",
         "input": ["text"],
+        "knowledgeCutoff": "2025-05",
         "maxTokens": 1048576,
         "name": "DeepSeek V4 Flash",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-04-24",
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
@@ -630,12 +658,15 @@
             "input": 0.14,
             "output": 0.28
         },
+        "description": "Fast DeepSeek model for efficient chat, coding help, and agent loops",
         "id": "deepseek/deepseek-v4-flash-0731",
         "input": ["text"],
+        "knowledgeCutoff": "2025-05",
         "maxTokens": 1048576,
         "name": "DeepSeek V4 Flash 0731",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-07-31",
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
@@ -654,15 +685,18 @@
         "cost": {
             "cacheRead": 0.135,
             "cacheWrite": 0.47,
-            "input": 1.6,
-            "output": 3.2
+            "input": 0.435,
+            "output": 0.87
         },
+        "description": "Open MoE flagship with million-token context for coding and long agent runs",
         "id": "deepseek/deepseek-v4-pro",
         "input": ["text"],
+        "knowledgeCutoff": "2025-05",
         "maxTokens": 384000,
         "name": "DeepSeek V4 Pro",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-04-24",
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
@@ -681,8 +715,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 10.7,
+            "output": 10.7
         },
         "id": "dreamina-seedance-2-5-hc",
         "input": ["text"],
@@ -711,6 +745,7 @@
             "input": 2.5,
             "output": 15.0
         },
+        "description": "Frontier GPT model for professional reasoning, coding, and multimodal work",
         "id": "ex/gpt-5.4",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -738,12 +773,15 @@
             "input": 0.3,
             "output": 2.5
         },
+        "description": "Image model for prompt-driven generation, editing, and visual design workflows",
         "id": "google/gemini-2.5-flash-image",
         "input": ["image", "text", "pdf"],
+        "knowledgeCutoff": "2024-06",
         "maxTokens": 8192,
         "name": "Nano Banana",
         "provider": "tokenrouter",
         "reasoning": false,
+        "releaseDate": "2025-08-26",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -765,12 +803,15 @@
             "input": 0.5,
             "output": 3.0
         },
+        "description": "New Gemini flash lane bringing frontier-style multimodal reasoning to cheaper runs",
         "id": "google/gemini-3-flash-preview",
         "input": ["text", "image", "video", "audio", "pdf"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 65536,
         "name": "Gemini 3 Flash Preview",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2025-12-17",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -792,12 +833,15 @@
             "input": 2.0,
             "output": 12.0
         },
+        "description": "Nano Banana Pro for higher-fidelity image generation and design-heavy edits",
         "id": "google/gemini-3-pro-image-preview",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 32768,
         "name": "Nano Banana Pro",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2025-11-20",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -819,12 +863,15 @@
             "input": 0.5,
             "output": 3.0
         },
+        "description": "Image model for prompt-driven generation, editing, and visual design workflows",
         "id": "google/gemini-3.1-flash-image-preview",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 65536,
         "name": "Nano Banana 2",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-02-26",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -846,12 +893,15 @@
             "input": 0.25,
             "output": 1.5
         },
+        "description": "Nano Banana 2 Lite (Gemini 3.1 Flash Lite Image) is Google's fastest, most cost-efficient Gemini image model, built for high-velocity developer pipelines and rapid-fire visual exploration. It delivers text-to-image generation...",
         "id": "google/gemini-3.1-flash-lite-image",
         "input": ["image", "text", "pdf"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 65536,
         "name": "Nano Banana 2 Lite",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-06-30",
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
@@ -873,12 +923,15 @@
             "input": 2.0,
             "output": 12.0
         },
+        "description": "Reasoning-first Gemini preview for agentic coding and complex problem solving",
         "id": "google/gemini-3.1-pro-preview",
         "input": ["text", "image", "video", "audio", "pdf"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 65536,
         "name": "Gemini 3.1 Pro Preview",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-02-19",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -900,12 +953,15 @@
             "input": 1.5,
             "output": 9.0
         },
+        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
         "id": "google/gemini-3.5-flash",
         "input": ["text", "image", "video", "audio", "pdf"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 65536,
         "name": "Gemini 3.5 Flash",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-05-19",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -927,12 +983,15 @@
             "input": 0.3,
             "output": 2.5
         },
+        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
         "id": "google/gemini-3.5-flash-lite",
         "input": ["text", "image", "video", "audio", "pdf"],
+        "knowledgeCutoff": "2026-03",
         "maxTokens": 65536,
         "name": "Gemini 3.5 Flash Lite",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-07-21",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -954,12 +1013,15 @@
             "input": 1.5,
             "output": 7.5
         },
+        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
         "id": "google/gemini-3.6-flash",
         "input": ["text", "image", "video", "audio", "pdf"],
+        "knowledgeCutoff": "2026-03",
         "maxTokens": 65536,
         "name": "Gemini 3.6 Flash",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-07-21",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -978,15 +1040,18 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 1.0,
+            "output": 6.0
         },
+        "description": "Embedding model for semantic search, retrieval, clustering, and ranking pipelines",
         "id": "google/gemini-embedding-2",
         "input": ["text"],
+        "knowledgeCutoff": "2025-11",
         "maxTokens": 0,
         "name": "Gemini Embedding 2",
         "provider": "tokenrouter",
         "reasoning": false,
+        "releaseDate": "2026-04-22",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1008,12 +1073,14 @@
             "input": 0.07,
             "output": 0.34
         },
+        "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-4-26b-a4b-it",
         "input": ["image", "text", "video"],
         "maxTokens": 262144,
         "name": "Gemma 4 26B A4B IT",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-04-02",
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
@@ -1033,7 +1100,7 @@
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 0.0,
-            "output": 0.0
+            "output": 2.0
         },
         "id": "happyhorse-1.0-t2v",
         "input": ["text"],
@@ -1059,8 +1126,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 2.1,
+            "output": 2.1
         },
         "id": "kling-3.0-turbo",
         "input": ["text"],
@@ -1087,8 +1154,9 @@
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 0.0,
-            "output": 0.0
+            "output": 3.36
         },
+        "description": "Video model for prompt-guided generation, editing, and motion workflows",
         "id": "kling-v2-6",
         "input": ["text", "image", "video"],
         "maxTokens": 99999999,
@@ -1114,7 +1182,7 @@
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 0.0,
-            "output": 0.0
+            "output": 3.36
         },
         "id": "kling-v3",
         "input": ["text"],
@@ -1141,7 +1209,7 @@
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 0.0,
-            "output": 0.0
+            "output": 12.6
         },
         "id": "kling-v3-omni",
         "input": ["text"],
@@ -1167,8 +1235,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 5.0,
+            "output": 47.0
         },
         "id": "microsoft/mai-image-2.5",
         "input": ["text"],
@@ -1197,22 +1265,23 @@
             "input": 0.3,
             "output": 1.2
         },
+        "description": "MiniMax model for chat, coding, office work, and agentic tasks",
         "id": "minimax/minimax-m2-her",
         "input": ["text"],
         "maxTokens": 2048,
         "name": "MiniMax: MiniMax M2-her",
         "provider": "tokenrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "unresolved"
     },
     "minimax/minimax-m2.1": {
         "api": "openai-completions",
@@ -1224,6 +1293,7 @@
             "input": 0.3,
             "output": 1.2
         },
+        "description": "MiniMax model for chat, coding, office work, and agentic tasks",
         "id": "minimax/minimax-m2.1",
         "input": ["text"],
         "maxTokens": 131072,
@@ -1248,8 +1318,8 @@
         "cost": {
             "cacheRead": 0,
             "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "input": 0.6,
+            "output": 2.4
         },
         "id": "minimax/minimax-m2.1-highspeed",
         "input": ["text"],
@@ -1278,6 +1348,7 @@
             "input": 0.3,
             "output": 1.2
         },
+        "description": "Prior MiniMax coding model for agent workflows, office edits, and automation",
         "id": "minimax/minimax-m2.5",
         "input": ["text"],
         "maxTokens": 195000,
@@ -1305,6 +1376,7 @@
             "input": 0.33,
             "output": 1.32
         },
+        "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
         "id": "minimax/minimax-m2.7",
         "input": ["text"],
         "maxTokens": 131072,
@@ -1332,6 +1404,7 @@
             "input": 0.6,
             "output": 2.4
         },
+        "description": "Low-latency M2.7 variant for interactive coding plans and agent loops",
         "id": "minimax/minimax-m2.7-highspeed",
         "input": ["text"],
         "maxTokens": 131072,
@@ -1359,6 +1432,7 @@
             "input": 4.0,
             "output": 25.0
         },
+        "description": "Research model for long-horizon investigation, synthesis, and analytical reports",
         "id": "miromind/mirothinker-1-7-deepresearch",
         "input": ["text"],
         "maxTokens": 16384,
@@ -1386,6 +1460,7 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "Research model for long-horizon investigation, synthesis, and analytical reports",
         "id": "miromind/mirothinker-1-7-deepresearch-mini",
         "input": ["text"],
         "maxTokens": 16384,
@@ -1413,22 +1488,23 @@
             "input": 0.4,
             "output": 2.0
         },
+        "description": "Mistral's coding-agent model for repository work, terminal tasks, and software fixes",
         "id": "mistralai/devstral-2512",
         "input": ["text"],
         "maxTokens": 262144,
         "name": "Devstral 2",
         "provider": "tokenrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "unresolved"
     },
     "mistralai/mistral-medium-3-5": {
         "api": "openai-completions",
@@ -1440,6 +1516,7 @@
             "input": 1.5,
             "output": 7.5
         },
+        "description": "Mistral model for multilingual chat, reasoning, and tool-assisted workflows",
         "id": "mistralai/mistral-medium-3-5",
         "input": ["text", "image", "pdf"],
         "maxTokens": 262144,
@@ -1467,6 +1544,7 @@
             "input": 0.15,
             "output": 0.6
         },
+        "description": "Efficient Mistral model for fast chat, extraction, and production assistants",
         "id": "mistralai/mistral-small-2603",
         "input": ["text", "image"],
         "maxTokens": 262144,
@@ -1494,6 +1572,7 @@
             "input": 0.1,
             "output": 0.3
         },
+        "description": "Efficient Mistral model for fast chat, extraction, and production assistants",
         "id": "mistralai/voxtral-small-24b-2507",
         "input": ["text", "audio", "pdf"],
         "maxTokens": 6400,
@@ -1521,12 +1600,15 @@
             "input": 0.6,
             "output": 3.0
         },
+        "description": "Earlier Kimi frontier model for long-context agents, coding, and multimodal work",
         "id": "moonshotai/kimi-k2.5",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 256000,
         "name": "Kimi K2.5",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-01",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1548,12 +1630,15 @@
             "input": 0.95,
             "output": 4.0
         },
+        "description": "Multimodal Kimi workhorse for agent loops, coding tasks, and visual context",
         "id": "moonshotai/kimi-k2.6",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 262144,
         "name": "Kimi K2.6",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-04-21",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1575,12 +1660,15 @@
             "input": 0.75,
             "output": 3.5
         },
+        "description": "Coding-focused Kimi model, stronger on long-horizon repo work with less overthinking",
         "id": "moonshotai/kimi-k2.7-code",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 262144,
         "name": "Kimi K2.7 Code",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-06-12",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1602,12 +1690,14 @@
             "input": 3.0,
             "output": 12.5
         },
+        "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
         "id": "moonshotai/kimi-k3",
         "input": ["text", "image", "pdf"],
         "maxTokens": 131072,
         "name": "Kimi K3",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-07-16",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1629,6 +1719,7 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
         "id": "moonshotai/kimi-k3-free",
         "input": ["text", "image", "video"],
         "maxTokens": 131072,
@@ -1656,6 +1747,7 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Open Nemotron omni model combining reasoning with text, vision, and audio",
         "id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
         "input": ["text", "image", "video", "audio"],
         "maxTokens": 65536,
@@ -1683,12 +1775,14 @@
             "input": 0.085,
             "output": 0.4
         },
+        "description": "Nemotron middle tier for collaborative agents and high-volume reasoning workloads",
         "id": "nvidia/nemotron-3-super-120b-a12b",
         "input": ["text"],
         "maxTokens": 16384,
         "name": "Nemotron 3 Super 120B A12B",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-03-11",
         "thinkingLevelMap": {
             "high": null,
             "low": "low",
@@ -1710,12 +1804,15 @@
             "input": 0.15,
             "output": 0.6
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "openai/gpt-4o-mini",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2023-09",
         "maxTokens": 16384,
         "name": "GPT-4o mini",
         "provider": "tokenrouter",
         "reasoning": false,
+        "releaseDate": "2024-07-18",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1737,12 +1834,15 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "Original GPT-5 workhorse for reasoning, coding, writing, and tool workflows",
         "id": "openai/gpt-5",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-09-30",
         "maxTokens": 128000,
         "name": "GPT-5",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2025-08-07",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1764,6 +1864,7 @@
             "input": 10.0,
             "output": 10.0
         },
+        "description": "Image model for prompt-driven generation, editing, and visual design workflows",
         "id": "openai/gpt-5-image",
         "input": ["image", "text", "pdf"],
         "maxTokens": 128000,
@@ -1791,6 +1892,7 @@
             "input": 2.5,
             "output": 2.0
         },
+        "description": "Image model for prompt-driven generation, editing, and visual design workflows",
         "id": "openai/gpt-5-image-mini",
         "input": ["pdf", "image", "text"],
         "maxTokens": 128000,
@@ -1818,12 +1920,15 @@
             "input": 0.25,
             "output": 2.0
         },
+        "description": "Small GPT-5 for responsive agents, coding help, and everyday automation",
         "id": "openai/gpt-5-mini",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-05-30",
         "maxTokens": 128000,
         "name": "GPT-5 Mini",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2025-08-07",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1845,12 +1950,15 @@
             "input": 1.75,
             "output": 14.0
         },
+        "description": "Reliable GPT generation for broad coding, writing, and tool-assisted product work",
         "id": "openai/gpt-5.2",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 128000,
         "name": "GPT-5.2",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2025-12-11",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1872,12 +1980,15 @@
             "input": 2.5,
             "output": 15.0
         },
+        "description": "Agent-ready GPT for coding and computer-use workflows at a lower cost",
         "id": "openai/gpt-5.4",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 128000,
         "name": "GPT-5.4",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-03-05",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1899,6 +2010,7 @@
             "input": 8.0,
             "output": 15.0
         },
+        "description": "Image model for prompt-driven generation, editing, and visual design workflows",
         "id": "openai/gpt-5.4-image-2",
         "input": ["image", "text", "pdf"],
         "maxTokens": 128000,
@@ -1926,12 +2038,15 @@
             "input": 0.75,
             "output": 4.5
         },
+        "description": "Strong small GPT for coding subagents, quick tool use, and high-volume work",
         "id": "openai/gpt-5.4-mini",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 128000,
         "name": "GPT-5.4 mini",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-03-17",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1953,12 +2068,15 @@
             "input": 0.2,
             "output": 1.25
         },
+        "description": "Cheapest GPT-5.4 lane for simple routing, extraction, and bulk automation",
         "id": "openai/gpt-5.4-nano",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 128000,
         "name": "GPT-5.4 nano",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-03-17",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1980,12 +2098,15 @@
             "input": 30.0,
             "output": 180.0
         },
+        "description": "More exact GPT-5.4 tier for demanding professional reasoning and agent tasks",
         "id": "openai/gpt-5.4-pro",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 128000,
         "name": "GPT-5.4 Pro",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-03-05",
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
@@ -2007,12 +2128,15 @@
             "input": 5.0,
             "output": 30.0
         },
+        "description": "Default frontier GPT for coding, computer use, research, and knowledge work",
         "id": "openai/gpt-5.5",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-12-01",
         "maxTokens": 128000,
         "name": "GPT-5.5",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-04-23",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2034,12 +2158,15 @@
             "input": 30.0,
             "output": 180.0
         },
+        "description": "Highest-accuracy GPT-5.5 tier for slower, precision-heavy reasoning and coding",
         "id": "openai/gpt-5.5-pro",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2025-12-01",
         "maxTokens": 128000,
         "name": "GPT-5.5 Pro",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-04-23",
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
@@ -2061,12 +2188,15 @@
             "input": 1.0,
             "output": 6.0
         },
+        "description": "Cost-efficient GPT-5.6 model for fast, high-volume workloads",
         "id": "openai/gpt-5.6-luna",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-02-16",
         "maxTokens": 128000,
         "name": "GPT-5.6 Luna",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-07-09",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2088,12 +2218,15 @@
             "input": 5.0,
             "output": 30.0
         },
+        "description": "Frontier GPT-5.6 model for complex professional work, coding, and agentic workflows",
         "id": "openai/gpt-5.6-sol",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-02-16",
         "maxTokens": 128000,
         "name": "GPT-5.6 Sol",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-07-09",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2115,12 +2248,15 @@
             "input": 2.5,
             "output": 15.0
         },
+        "description": "Balanced GPT-5.6 model for capable, cost-efficient everyday work",
         "id": "openai/gpt-5.6-terra",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-02-16",
         "maxTokens": 128000,
         "name": "GPT-5.6 Terra",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-07-09",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2142,6 +2278,7 @@
             "input": 2.5,
             "output": 10.0
         },
+        "description": "Speech generation model for controllable voice, narration, and audio delivery",
         "id": "openai/gpt-audio",
         "input": ["text", "audio", "pdf"],
         "maxTokens": 16384,
@@ -2169,6 +2306,7 @@
             "input": 0.6,
             "output": 2.4
         },
+        "description": "Speech generation model for controllable voice, narration, and audio delivery",
         "id": "openai/gpt-audio-mini",
         "input": ["text", "audio", "pdf"],
         "maxTokens": 16384,
@@ -2196,12 +2334,14 @@
             "input": 0.08,
             "output": 0.44
         },
+        "description": "Open GPT reasoning model for self-hosted agents and controllable deployments",
         "id": "openai/gpt-oss-120b",
         "input": ["text"],
         "maxTokens": 16384,
         "name": "GPT OSS 120B",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2025-08-05",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2223,22 +2363,23 @@
             "input": 0.2,
             "output": 1.5
         },
+        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
         "id": "qwen/qwen3-coder-next",
         "input": ["text"],
         "maxTokens": 65536,
         "name": "qwen/qwen3-coder-next",
         "provider": "tokenrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "unresolved"
     },
     "qwen/qwen3.5-122b-a10b": {
         "api": "openai-completions",
@@ -2250,6 +2391,7 @@
             "input": 0.26,
             "output": 2.08
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-122b-a10b",
         "input": ["text", "image", "video"],
         "maxTokens": 81920,
@@ -2277,6 +2419,7 @@
             "input": 0.1625,
             "output": 1.3
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-35b-a3b",
         "input": ["text", "image", "video"],
         "maxTokens": 262144,
@@ -2304,6 +2447,7 @@
             "input": 0.39,
             "output": 2.34
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-397b-a17b",
         "input": ["text", "image", "video"],
         "maxTokens": 262144,
@@ -2331,6 +2475,7 @@
             "input": 0.1,
             "output": 0.15
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-9b",
         "input": ["text", "image", "video"],
         "maxTokens": 262144,
@@ -2358,6 +2503,7 @@
             "input": 0.029,
             "output": 0.287
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-flash",
         "input": ["text"],
         "maxTokens": 250000,
@@ -2385,6 +2531,7 @@
             "input": 0.26,
             "output": 1.56
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-plus-02-15",
         "input": ["text", "image", "video"],
         "maxTokens": 65536,
@@ -2412,6 +2559,7 @@
             "input": 0.32,
             "output": 1.88
         },
+        "description": "Earlier Qwen multimodal workhorse for million-token agent and document tasks",
         "id": "qwen/qwen3.6-plus",
         "input": ["text", "image", "video"],
         "maxTokens": 65536,
@@ -2439,6 +2587,7 @@
             "input": 1.504,
             "output": 4.504
         },
+        "description": "Qwen frontier model tuned for agent frameworks, coding assistants, and long tasks",
         "id": "qwen/qwen3.7-max",
         "input": ["text"],
         "maxTokens": 65536,
@@ -2466,6 +2615,7 @@
             "input": 0.288,
             "output": 1.125
         },
+        "description": "Multimodal Qwen workhorse for long-context agents, visual inputs, and coding",
         "id": "qwen/qwen3.7-plus",
         "input": ["text", "image", "video"],
         "maxTokens": 64000,
@@ -2493,6 +2643,7 @@
             "input": 1.88,
             "output": 5.63
         },
+        "description": "2.4-trillion-parameter MoE flagship for coding, professional work, multimodal understanding, and long-horizon agentic workflows",
         "id": "qwen/qwen3.8-max",
         "input": ["text", "image", "video"],
         "maxTokens": 131072,
@@ -2517,9 +2668,10 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 1.0,
+            "output": 5.7143
         },
+        "description": "Omni-modal model for text, vision, audio, and multimodal agent tasks",
         "id": "qwen3.5-omni-plus",
         "input": ["text", "image", "video", "audio"],
         "maxTokens": 65536,
@@ -2547,6 +2699,7 @@
             "input": 0.17,
             "output": 1.01
         },
+        "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
         "id": "qwen3.6-flash",
         "input": ["text", "image", "video"],
         "maxTokens": 64000,
@@ -2574,12 +2727,14 @@
             "input": 5.0,
             "output": 30.0
         },
+        "description": "Fugu Ultra is the higher-performance model in Sakana AI's Fugu family. Rather than a single monolithic model, Fugu is a learned multi-agent orchestration system: a language model trained to route...",
         "id": "sakana/fugu-ultra",
         "input": ["text", "image"],
         "maxTokens": 128000,
         "name": "Fugu Ultra",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-06-15",
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
@@ -2598,8 +2753,8 @@
         "cost": {
             "cacheRead": 0,
             "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "input": 1.0,
+            "output": 6.0
         },
         "id": "seed-2-0-code-preview-260328",
         "input": ["text"],
@@ -2625,8 +2780,8 @@
         "cost": {
             "cacheRead": 0,
             "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "input": 0.5,
+            "output": 4.0
         },
         "id": "seed-2-0-lite-260428",
         "input": ["text"],
@@ -2652,8 +2807,8 @@
         "cost": {
             "cacheRead": 0,
             "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "input": 0.2,
+            "output": 0.8
         },
         "id": "seed-2-0-mini-260428",
         "input": ["text"],
@@ -2679,8 +2834,8 @@
         "cost": {
             "cacheRead": 0,
             "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "input": 1.0,
+            "output": 6.0
         },
         "id": "seed-2-0-pro-260328",
         "input": ["text"],
@@ -2709,12 +2864,15 @@
             "input": 0.1,
             "output": 0.3
         },
+        "description": "StepFun flash model for efficient multimodal reasoning, coding, and tool use",
         "id": "stepfun/step-3.5-flash",
         "input": ["text"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 65536,
         "name": "Step 3.5 Flash",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-01-29",
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
@@ -2736,12 +2894,15 @@
             "input": 0.19,
             "output": 1.14
         },
+        "description": "StepFun flash model for efficient multimodal reasoning, coding, and tool use",
         "id": "stepfun/step-3.7-flash",
         "input": ["text", "image", "video"],
+        "knowledgeCutoff": "2026-03-01",
         "maxTokens": 262144,
         "name": "Step 3.7 Flash",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-05-29",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2763,12 +2924,14 @@
             "input": 0.18,
             "output": 0.6
         },
+        "description": "Tencent Hy reasoning model for coding, instruction following, and agent tasks",
         "id": "tencent/hy3-preview",
         "input": ["text"],
         "maxTokens": 262144,
         "name": "Hy3 preview",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-04-20",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2790,22 +2953,23 @@
             "input": 0.2,
             "output": 0.5
         },
+        "description": "xAI's fast agentic tool-calling model with a 2M context window; non-reasoning variant for low-latency responses",
         "id": "x-ai/grok-4.1-fast",
         "input": ["text", "image"],
         "maxTokens": 30000,
         "name": "Grok 4.1 Fast",
         "provider": "tokenrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "unresolved"
     },
     "x-ai/grok-4.20-beta": {
         "api": "openai-completions",
@@ -2814,8 +2978,8 @@
         "cost": {
             "cacheRead": 0,
             "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "input": 2.0,
+            "output": 6.0
         },
         "id": "x-ai/grok-4.20-beta",
         "input": ["text", "image"],
@@ -2826,13 +2990,13 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "x-ai/grok-4.3": {
         "api": "openai-completions",
@@ -2844,6 +3008,7 @@
             "input": 1.25,
             "output": 2.5
         },
+        "description": "xAI's default Grok for chat, coding, agentic tools, and lower hallucination risk",
         "id": "x-ai/grok-4.3",
         "input": ["text", "image"],
         "maxTokens": 1000000,
@@ -2871,6 +3036,7 @@
             "input": 2.0,
             "output": 6.0
         },
+        "description": "xAI's latest Grok for chat, coding, agentic tools, and lower hallucination risk",
         "id": "x-ai/grok-4.5",
         "input": ["text", "image"],
         "maxTokens": 500000,
@@ -2898,6 +3064,7 @@
             "input": 1.0,
             "output": 2.0
         },
+        "description": "Fast Grok coding model tuned for agentic engineering and iterative edits",
         "id": "x-ai/grok-build-0.1",
         "input": ["text", "image"],
         "maxTokens": 256000,
@@ -2907,13 +3074,13 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "xiaomi/mimo-v2-flash": {
         "api": "openai-completions",
@@ -2925,12 +3092,15 @@
             "input": 0.1,
             "output": 0.3
         },
+        "description": "MiMo flash model for fast multimodal assistance and agent workflows",
         "id": "xiaomi/mimo-v2-flash",
         "input": ["text"],
+        "knowledgeCutoff": "2024-12-01",
         "maxTokens": 256000,
         "name": "Xiaomi/Mimo-V2-Flash",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2025-12-16",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2952,12 +3122,15 @@
             "input": 0.4,
             "output": 2.0
         },
+        "description": "MiMo omni model for text, image, video, audio, and agents",
         "id": "xiaomi/mimo-v2-omni",
         "input": ["text", "image", "audio", "video", "pdf"],
+        "knowledgeCutoff": "2024-12",
         "maxTokens": 265000,
         "name": "MiMo V2 Omni",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-03-18",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2979,12 +3152,15 @@
             "input": 1.0,
             "output": 3.0
         },
+        "description": "Earlier MiMo Pro model for multimodal agents, reasoning, and code tasks",
         "id": "xiaomi/mimo-v2-pro",
         "input": ["text"],
+        "knowledgeCutoff": "2024-12",
         "maxTokens": 256000,
         "name": "MiMo V2 Pro",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-03-18",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3006,12 +3182,15 @@
             "input": 0.4,
             "output": 2.0
         },
+        "description": "MiMo omni model for text, image, video, audio, and agents",
         "id": "xiaomi/mimo-v2.5",
         "input": ["text", "image", "audio", "video"],
+        "knowledgeCutoff": "2024-12",
         "maxTokens": 131072,
         "name": "MiMo-V2.5",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-04-22",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3033,12 +3212,15 @@
             "input": 0.47,
             "output": 0.94
         },
+        "description": "Stronger MiMo Pro tier for multimodal reasoning and coding-agent execution",
         "id": "xiaomi/mimo-v2.5-pro",
         "input": ["text"],
+        "knowledgeCutoff": "2024-12",
         "maxTokens": 128000,
         "name": "MiMo-V2.5-Pro",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-04-22",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3060,6 +3242,7 @@
             "input": 0.13,
             "output": 0.85
         },
+        "description": "Efficient GLM model for fast reasoning, coding, and agent workflows",
         "id": "z-ai/glm-4.5-air",
         "input": ["text"],
         "maxTokens": 98304,
@@ -3087,6 +3270,7 @@
             "input": 0.55,
             "output": 2.2
         },
+        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "z-ai/glm-4.6",
         "input": ["text"],
         "maxTokens": 131072,
@@ -3114,6 +3298,7 @@
             "input": 0.3,
             "output": 0.9
         },
+        "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
         "id": "z-ai/glm-4.6v",
         "input": ["text", "image", "video"],
         "maxTokens": 32768,
@@ -3141,6 +3326,7 @@
             "input": 0.47,
             "output": 2.16
         },
+        "description": "Mature GLM model for dependable coding, reasoning, and structured agent tasks",
         "id": "z-ai/glm-4.7",
         "input": ["text"],
         "maxTokens": 128000,
@@ -3168,6 +3354,7 @@
             "input": 0.6,
             "output": 3.0
         },
+        "description": "General GLM flagship for coding, analysis, and tool-heavy engineering workflows",
         "id": "z-ai/glm-5",
         "input": ["text"],
         "maxTokens": 128000,
@@ -3195,6 +3382,7 @@
             "input": 0.9,
             "output": 3.7
         },
+        "description": "Faster GLM-5 lane for coding agents that need lower latency",
         "id": "z-ai/glm-5-turbo",
         "input": ["text"],
         "maxTokens": 128000,
@@ -3222,6 +3410,7 @@
             "input": 1.0,
             "output": 3.8
         },
+        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
         "id": "z-ai/glm-5.1",
         "input": ["text"],
         "maxTokens": 128000,
@@ -3249,6 +3438,7 @@
             "input": 1.05,
             "output": 4.4
         },
+        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "z-ai/glm-5.2",
         "input": ["text"],
         "maxTokens": 202752,

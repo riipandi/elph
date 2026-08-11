@@ -12,6 +12,7 @@
             "input": 0.8,
             "output": 4.0
         },
+        "description": "Legacy model retained for compatibility with older integrations",
         "id": "claude-3-5-haiku",
         "input": ["text", "image", "pdf"],
         "maxTokens": 8192,
@@ -72,6 +73,7 @@
             "input": 15.0,
             "output": 75.0
         },
+        "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
         "id": "claude-3-opus",
         "input": ["text", "image"],
         "maxTokens": 4096,
@@ -132,6 +134,7 @@
             "input": 0.7999999999999999,
             "output": 4.0
         },
+        "description": "Fast Claude model for responsive assistance, classification, and lightweight agents",
         "id": "claude-3.5-haiku",
         "input": ["text", "image"],
         "maxTokens": 8192,
@@ -162,12 +165,13 @@
             "input": 3.0,
             "output": 15.0
         },
+        "description": "Balanced Claude model for coding, analysis, agent workflows, and cost control",
         "id": "claude-3.5-sonnet",
         "input": ["text", "image"],
         "maxTokens": 8200,
         "name": "Claude 3.5 Sonnet",
         "provider": "cloudflare-ai-gateway",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -193,6 +197,7 @@
             "input": 10.0,
             "output": 50.0
         },
+        "description": "Claude model for creative writing, analysis, and controlled agent workflows",
         "id": "claude-fable-5",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -208,7 +213,7 @@
             "off": null,
             "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "claude-haiku-4-5": {
         "api": "anthropic-messages",
@@ -223,6 +228,7 @@
             "input": 1.0,
             "output": 5.0
         },
+        "description": "Fast Claude model for responsive assistance, classification, and lightweight agents",
         "id": "claude-haiku-4-5",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
@@ -232,13 +238,13 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "claude-opus-4": {
         "api": "anthropic-messages",
@@ -253,6 +259,7 @@
             "input": 15.0,
             "output": 75.0
         },
+        "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
         "id": "claude-opus-4",
         "input": ["text", "image"],
         "maxTokens": 32000,
@@ -260,15 +267,15 @@
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "claude-opus-4-1": {
         "api": "anthropic-messages",
@@ -283,6 +290,7 @@
             "input": 15.0,
             "output": 75.0
         },
+        "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
         "id": "claude-opus-4-1",
         "input": ["text", "image", "pdf"],
         "maxTokens": 32000,
@@ -290,15 +298,15 @@
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "claude-opus-4-5": {
         "api": "anthropic-messages",
@@ -313,6 +321,7 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
         "id": "claude-opus-4-5",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
@@ -344,6 +353,7 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
         "id": "claude-opus-4-6",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -376,6 +386,7 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
         "id": "claude-opus-4-7",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -408,6 +419,7 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "Top Claude Opus tier for the hardest reasoning, coding, and long-horizon agents",
         "id": "claude-opus-4-8",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -423,7 +435,7 @@
             "off": null,
             "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "claude-opus-5": {
         "api": "anthropic-messages",
@@ -440,6 +452,7 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "Strongest Claude Opus model for coding, agents, and professional work",
         "id": "claude-opus-5",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -470,6 +483,7 @@
             "input": 2.898,
             "output": 14.493
         },
+        "description": "Balanced Claude model for coding, analysis, agent workflows, and cost control",
         "id": "claude-sonnet-4",
         "input": ["text", "image"],
         "maxTokens": 200000,
@@ -500,6 +514,7 @@
             "input": 3.0,
             "output": 15.0
         },
+        "description": "Balanced Claude model for coding, analysis, agent workflows, and cost control",
         "id": "claude-sonnet-4-5",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
@@ -509,13 +524,13 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "claude-sonnet-4-6": {
         "api": "anthropic-messages",
@@ -531,6 +546,7 @@
             "input": 3.0,
             "output": 15.0
         },
+        "description": "Balanced Claude model for coding, analysis, agent workflows, and cost control",
         "id": "claude-sonnet-4-6",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
@@ -544,9 +560,9 @@
             "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "claude-sonnet-5": {
         "api": "anthropic-messages",
@@ -562,6 +578,7 @@
             "input": 3.0,
             "output": 15.0
         },
+        "description": "Everyday Claude agent model for coding, planning, browsing, and general work",
         "id": "claude-sonnet-5",
         "input": ["text", "image"],
         "maxTokens": 64000,
@@ -577,7 +594,7 @@
             "off": null,
             "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "gpt-4": {
         "api": "openai-responses",
@@ -589,6 +606,7 @@
             "input": 30.0,
             "output": 60.0
         },
+        "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "gpt-4",
         "input": ["text"],
         "maxTokens": 8192,
@@ -616,6 +634,7 @@
             "input": 10.0,
             "output": 30.0
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "gpt-4-turbo",
         "input": ["text", "image"],
         "maxTokens": 4096,
@@ -643,6 +662,7 @@
             "input": 2.5,
             "output": 10.0
         },
+        "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "gpt-4o",
         "input": ["text", "image", "pdf"],
         "maxTokens": 16384,
@@ -670,6 +690,7 @@
             "input": 0.15,
             "output": 0.6
         },
+        "description": "Small omni GPT for cheap multimodal assistance and production-scale traffic",
         "id": "gpt-4o-mini",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -700,6 +721,7 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "gpt-5.1",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -730,6 +752,7 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "Codex GPT for repository edits, code review, and practical software agents",
         "id": "gpt-5.1-codex",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -742,10 +765,10 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "gpt-5.2": {
         "api": "openai-responses",
@@ -760,6 +783,7 @@
             "input": 1.75,
             "output": 14.0
         },
+        "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "gpt-5.2",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -790,6 +814,7 @@
             "input": 1.75,
             "output": 14.0
         },
+        "description": "Code-specialist GPT for repository edits, reviews, and long-running software agents",
         "id": "gpt-5.2-codex",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -802,10 +827,10 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "gpt-5.3-codex": {
         "api": "openai-responses",
@@ -820,6 +845,7 @@
             "input": 1.75,
             "output": 14.0
         },
+        "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
         "id": "gpt-5.3-codex",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -832,10 +858,10 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "gpt-5.4": {
         "api": "openai-responses",
@@ -850,6 +876,7 @@
             "input": 2.5,
             "output": 15.0
         },
+        "description": "Frontier GPT model for professional reasoning, coding, and multimodal work",
         "id": "gpt-5.4",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -880,6 +907,7 @@
             "input": 5.0,
             "output": 30.0
         },
+        "description": "Default frontier GPT for coding, computer use, research, and knowledge work",
         "id": "gpt-5.5",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -892,10 +920,10 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "gpt-5.6-luna": {
         "api": "openai-responses",
@@ -910,6 +938,7 @@
             "input": 1.0,
             "output": 6.0
         },
+        "description": "Cost-efficient GPT-5.6 model for fast, high-volume workloads",
         "id": "gpt-5.6-luna",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -919,13 +948,13 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
+            "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "gpt-5.6-sol": {
         "api": "openai-responses",
@@ -940,6 +969,7 @@
             "input": 5.0,
             "output": 30.0
         },
+        "description": "Frontier GPT-5.6 model for complex professional work, coding, and agentic workflows",
         "id": "gpt-5.6-sol",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -949,13 +979,13 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
+            "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "gpt-5.6-terra": {
         "api": "openai-responses",
@@ -970,6 +1000,7 @@
             "input": 2.5,
             "output": 15.0
         },
+        "description": "Balanced GPT-5.6 model for capable, cost-efficient everyday work",
         "id": "gpt-5.6-terra",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -979,13 +1010,13 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
+            "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "o1": {
         "api": "openai-responses",
@@ -997,6 +1028,7 @@
             "input": 15.0,
             "output": 60.0
         },
+        "description": "O-series reasoning model for hard analysis, math, coding, and planning",
         "id": "o1",
         "input": ["text", "image"],
         "maxTokens": 100000,
@@ -1024,6 +1056,7 @@
             "input": 2.0,
             "output": 8.0
         },
+        "description": "Deliberate o-series reasoner for hard math, coding, and multi-step analysis",
         "id": "o3",
         "input": ["text", "image"],
         "maxTokens": 100000,
@@ -1051,6 +1084,7 @@
             "input": 1.1,
             "output": 4.4
         },
+        "description": "Smaller o-series reasoner for economical coding, math, and planning tasks",
         "id": "o3-mini",
         "input": ["text"],
         "maxTokens": 100000,
@@ -1063,10 +1097,10 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "o3-pro": {
         "api": "openai-responses",
@@ -1078,6 +1112,7 @@
             "input": 20.0,
             "output": 40.0
         },
+        "description": "High-effort o3 tier for difficult technical reasoning and careful answers",
         "id": "o3-pro",
         "input": ["text", "image"],
         "maxTokens": 100000,
@@ -1090,10 +1125,10 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "o4-mini": {
         "api": "openai-responses",
@@ -1105,6 +1140,7 @@
             "input": 1.1,
             "output": 4.4
         },
+        "description": "Fast o-series model for compact reasoning, coding, and tool use",
         "id": "o4-mini",
         "input": ["text", "image"],
         "maxTokens": 100000,
@@ -1141,6 +1177,7 @@
             "input": 0.6,
             "output": 3.0
         },
+        "description": "Kimi multimodal agent model for visual understanding, coding, and planning",
         "id": "workers-ai/@cf/moonshotai/kimi-k2.5",
         "input": ["text", "image"],
         "maxTokens": 256000,
@@ -1177,6 +1214,7 @@
             "input": 0.95,
             "output": 4.0
         },
+        "description": "Kimi multimodal agent model for visual understanding, coding, and planning",
         "id": "workers-ai/@cf/moonshotai/kimi-k2.6",
         "input": ["text", "image"],
         "maxTokens": 256000,
@@ -1213,6 +1251,7 @@
             "input": 0.5,
             "output": 1.5
         },
+        "description": "Nemotron middle tier for collaborative agents and high-volume reasoning workloads",
         "id": "workers-ai/@cf/nvidia/nemotron-3-120b-a12b",
         "input": ["text"],
         "maxTokens": 256000,
@@ -1249,6 +1288,7 @@
             "input": 0.06,
             "output": 0.4
         },
+        "description": "Efficient GLM model for fast reasoning, coding, and agent workflows",
         "id": "workers-ai/@cf/zai-org/glm-4.7-flash",
         "input": ["text"],
         "maxTokens": 131072,
@@ -1285,6 +1325,7 @@
             "input": 1.4,
             "output": 4.4
         },
+        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "workers-ai/@cf/zai-org/glm-5.2",
         "input": ["text"],
         "maxTokens": 262144,

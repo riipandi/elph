@@ -77,7 +77,7 @@
     {
         "providerId": "huggingface",
         "rustMod": "huggingface",
-        "count": 128
+        "count": 129
     },
     {
         "providerId": "hyper",

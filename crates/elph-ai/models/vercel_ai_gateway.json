@@ -9,6 +9,7 @@
             "input": 0.12,
             "output": 0.24
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "alibaba/qwen-3-14b",
         "input": ["text"],
         "maxTokens": 16384,
@@ -36,6 +37,7 @@
             "input": 0.22,
             "output": 0.88
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "alibaba/qwen-3-235b",
         "input": ["text"],
         "maxTokens": 16384,
@@ -63,6 +65,7 @@
             "input": 0.12,
             "output": 0.5
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "alibaba/qwen-3-30b",
         "input": ["text"],
         "maxTokens": 16384,
@@ -90,6 +93,7 @@
             "input": 0.16,
             "output": 0.64
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "alibaba/qwen-3-32b",
         "input": ["text"],
         "maxTokens": 8192,
@@ -117,6 +121,7 @@
             "input": 1.3,
             "output": 7.8
         },
+        "description": "Flagship Qwen model for complex reasoning, coding, and agentic workflows",
         "id": "alibaba/qwen-3.6-max-preview",
         "input": ["text"],
         "maxTokens": 64000,
@@ -144,6 +149,7 @@
             "input": 0.4,
             "output": 4.0
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "alibaba/qwen3-235b-a22b-thinking",
         "input": ["text", "image", "pdf"],
         "maxTokens": 32768,
@@ -171,12 +177,13 @@
             "input": 1.5,
             "output": 7.5
         },
+        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
         "id": "alibaba/qwen3-coder",
         "input": ["text"],
         "maxTokens": 65536,
         "name": "Qwen3 Coder 480B A35B Instruct",
         "provider": "vercel-ai-gateway",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -198,12 +205,13 @@
             "input": 0.15,
             "output": 0.6
         },
+        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
         "id": "alibaba/qwen3-coder-30b-a3b",
         "input": ["text"],
         "maxTokens": 8192,
         "name": "Qwen 3 Coder 30B A3B Instruct",
         "provider": "vercel-ai-gateway",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -225,12 +233,15 @@
             "input": 0.5,
             "output": 1.2
         },
+        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
         "id": "alibaba/qwen3-coder-next",
         "input": ["text"],
+        "knowledgeCutoff": "2025-09",
         "maxTokens": 256000,
         "name": "Qwen3 Coder Next",
         "provider": "vercel-ai-gateway",
-        "reasoning": false,
+        "reasoning": true,
+        "releaseDate": "2026-02-03",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -252,12 +263,15 @@
             "input": 1.0,
             "output": 5.0
         },
+        "description": "Hosted Qwen coder for software agents, repo edits, and long-context code",
         "id": "alibaba/qwen3-coder-plus",
         "input": ["text"],
+        "knowledgeCutoff": "2025-04",
         "maxTokens": 65536,
         "name": "Qwen3 Coder Plus",
         "provider": "vercel-ai-gateway",
         "reasoning": false,
+        "releaseDate": "2025-07-23",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -279,12 +293,15 @@
             "input": 1.2,
             "output": 6.0
         },
+        "description": "Flagship Qwen3 model for coding agents, complex reasoning, and tool use",
         "id": "alibaba/qwen3-max",
         "input": ["text"],
+        "knowledgeCutoff": "2025-04",
         "maxTokens": 32768,
         "name": "Qwen3 Max",
         "provider": "vercel-ai-gateway",
         "reasoning": false,
+        "releaseDate": "2025-09-23",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -306,6 +323,7 @@
             "input": 1.2,
             "output": 6.0
         },
+        "description": "Flagship Qwen model for complex reasoning, coding, and agentic workflows",
         "id": "alibaba/qwen3-max-preview",
         "input": ["text"],
         "maxTokens": 32768,
@@ -333,6 +351,7 @@
             "input": 1.2,
             "output": 6.0
         },
+        "description": "Qwen reasoning model for deliberate problem solving, math, and coding",
         "id": "alibaba/qwen3-max-thinking",
         "input": ["text"],
         "maxTokens": 65536,
@@ -360,12 +379,15 @@
             "input": 0.15,
             "output": 1.2
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "alibaba/qwen3-next-80b-a3b-instruct",
         "input": ["text"],
+        "knowledgeCutoff": "2025-04",
         "maxTokens": 32768,
         "name": "Qwen3 Next 80B A3B Instruct",
         "provider": "vercel-ai-gateway",
         "reasoning": false,
+        "releaseDate": "2025-09",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -387,12 +409,15 @@
             "input": 0.15,
             "output": 1.2
         },
+        "description": "Efficient Qwen thinking model for local reasoning, math, and coding agents",
         "id": "alibaba/qwen3-next-80b-a3b-thinking",
         "input": ["text"],
+        "knowledgeCutoff": "2025-04",
         "maxTokens": 32768,
         "name": "Qwen3 Next 80B A3B Thinking",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2025-09",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -414,6 +439,7 @@
             "input": 0.4,
             "output": 1.6
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "alibaba/qwen3-vl-235b-a22b-instruct",
         "input": ["text", "image"],
         "maxTokens": 129024,
@@ -441,6 +467,7 @@
             "input": 0.4,
             "output": 1.6
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "alibaba/qwen3-vl-instruct",
         "input": ["text", "image"],
         "maxTokens": 129024,
@@ -468,6 +495,7 @@
             "input": 0.4,
             "output": 4.0
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "alibaba/qwen3-vl-thinking",
         "input": ["text", "image", "pdf"],
         "maxTokens": 32768,
@@ -495,12 +523,14 @@
             "input": 0.1,
             "output": 0.4
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "alibaba/qwen3.5-flash",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Qwen 3.5 Flash",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-02-23",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -522,12 +552,15 @@
             "input": 0.4,
             "output": 2.4
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "alibaba/qwen3.5-plus",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-04",
         "maxTokens": 64000,
         "name": "Qwen 3.5 Plus",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-02-16",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -549,12 +582,14 @@
             "input": 0.6,
             "output": 3.6
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "alibaba/qwen3.6-27b",
         "input": ["text", "image", "pdf"],
         "maxTokens": 256000,
         "name": "Qwen 3.6 27B",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-04-22",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -576,12 +611,15 @@
             "input": 0.5,
             "output": 3.0
         },
+        "description": "Earlier Qwen multimodal workhorse for million-token agent and document tasks",
         "id": "alibaba/qwen3.6-plus",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-04",
         "maxTokens": 64000,
         "name": "Qwen 3.6 Plus",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-04-02",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -603,12 +641,14 @@
             "input": 2.5,
             "output": 7.5
         },
+        "description": "Qwen frontier model tuned for agent frameworks, coding assistants, and long tasks",
         "id": "alibaba/qwen3.7-max",
         "input": ["text"],
         "maxTokens": 64000,
         "name": "Qwen 3.7 Max",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-05-21",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -630,12 +670,15 @@
             "input": 0.4,
             "output": 1.6
         },
+        "description": "Multimodal Qwen workhorse for long-context agents, visual inputs, and coding",
         "id": "alibaba/qwen3.7-plus",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-04",
         "maxTokens": 64000,
         "name": "Qwen 3.7 Plus",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-06-02",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -657,6 +700,7 @@
             "input": 0.3,
             "output": 2.5
         },
+        "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
         "id": "amazon/nova-2-lite",
         "input": ["text", "image", "pdf"],
         "maxTokens": 1000000,
@@ -684,6 +728,7 @@
             "input": 0.06,
             "output": 0.24
         },
+        "description": "Efficient model for low-latency assistance, extraction, and routine automation",
         "id": "amazon/nova-lite",
         "input": ["text", "image", "video"],
         "maxTokens": 8192,
@@ -711,6 +756,7 @@
             "input": 0.035,
             "output": 0.14
         },
+        "description": "Efficient model for low-latency assistance, extraction, and routine automation",
         "id": "amazon/nova-micro",
         "input": ["text"],
         "maxTokens": 8192,
@@ -738,6 +784,7 @@
             "input": 0.8,
             "output": 3.2
         },
+        "description": "Flagship model for demanding analysis, coding, and production agent workflows",
         "id": "amazon/nova-pro",
         "input": ["text", "image", "video"],
         "maxTokens": 8192,
@@ -765,6 +812,7 @@
             "input": 0.25,
             "output": 1.25
         },
+        "description": "Legacy model retained for compatibility with older integrations",
         "id": "anthropic/claude-3-haiku",
         "input": ["text", "image"],
         "maxTokens": 4096,
@@ -795,12 +843,15 @@
             "input": 10.0,
             "output": 50.0
         },
+        "description": "Claude model for creative writing, analysis, and controlled agent workflows",
         "id": "anthropic/claude-fable-5",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-01-31",
         "maxTokens": 128000,
         "name": "Claude Fable 5",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-06-09",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -822,6 +873,7 @@
             "input": 1.0,
             "output": 5.0
         },
+        "description": "Fast Claude lane for lightweight agents, office tasks, and responsive chat",
         "id": "anthropic/claude-haiku-4.5",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
@@ -831,13 +883,13 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "anthropic/claude-opus-4": {
         "api": "anthropic-messages",
@@ -849,6 +901,7 @@
             "input": 15.0,
             "output": 75.0
         },
+        "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
         "id": "anthropic/claude-opus-4",
         "input": ["text", "image", "pdf"],
         "maxTokens": 8192,
@@ -856,15 +909,15 @@
         "provider": "vercel-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "anthropic/claude-opus-4.1": {
         "api": "anthropic-messages",
@@ -876,6 +929,7 @@
             "input": 15.0,
             "output": 75.0
         },
+        "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
         "id": "anthropic/claude-opus-4.1",
         "input": ["text", "image", "pdf"],
         "maxTokens": 32000,
@@ -883,15 +937,15 @@
         "provider": "vercel-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "anthropic/claude-opus-4.5": {
         "api": "anthropic-messages",
@@ -903,6 +957,7 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
         "id": "anthropic/claude-opus-4.5",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
@@ -910,15 +965,15 @@
         "provider": "vercel-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "anthropic/claude-opus-4.6": {
         "api": "anthropic-messages",
@@ -933,6 +988,7 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "High-end Claude for difficult coding, planning, and slower expert reasoning",
         "id": "anthropic/claude-opus-4.6",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -964,6 +1020,7 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "Stronger Opus tier for advanced software work and high-stakes reasoning",
         "id": "anthropic/claude-opus-4.7",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -995,6 +1052,7 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "Top Claude Opus tier for the hardest reasoning, coding, and long-horizon agents",
         "id": "anthropic/claude-opus-4.8",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -1026,6 +1084,7 @@
             "input": 10.0,
             "output": 50.0
         },
+        "description": "Top Claude Opus tier for the hardest reasoning, coding, and long-horizon agents",
         "id": "anthropic/claude-opus-4.8-fast",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -1057,12 +1116,15 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
         "id": "anthropic/claude-opus-5",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-05",
         "maxTokens": 128000,
         "name": "Claude Opus 5",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-07-24",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1088,6 +1150,7 @@
             "input": 10.0,
             "output": 50.0
         },
+        "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
         "id": "anthropic/claude-opus-5-fast",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -1115,6 +1178,7 @@
             "input": 3.0,
             "output": 15.0
         },
+        "description": "Balanced Claude model for coding, analysis, agent workflows, and cost control",
         "id": "anthropic/claude-sonnet-4",
         "input": ["text", "image", "pdf"],
         "maxTokens": 8192,
@@ -1142,6 +1206,7 @@
             "input": 3.0,
             "output": 15.0
         },
+        "description": "Balanced Claude model for coding, analysis, agent workflows, and cost control",
         "id": "anthropic/claude-sonnet-4.5",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
@@ -1151,13 +1216,13 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "anthropic/claude-sonnet-4.6": {
         "api": "anthropic-messages",
@@ -1172,6 +1237,7 @@
             "input": 3.0,
             "output": 15.0
         },
+        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
         "id": "anthropic/claude-sonnet-4.6",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -1202,12 +1268,15 @@
             "input": 2.0,
             "output": 10.0
         },
+        "description": "Everyday Claude agent model for coding, planning, browsing, and general work",
         "id": "anthropic/claude-sonnet-5",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-01-31",
         "maxTokens": 128000,
         "name": "Claude Sonnet 5",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-06-30",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1229,6 +1298,7 @@
             "input": 0.25,
             "output": 0.8999999999999999
         },
+        "description": "Flagship model for demanding analysis, coding, and production agent workflows",
         "id": "arcee-ai/trinity-large-thinking",
         "input": ["text"],
         "maxTokens": 80000,
@@ -1256,6 +1326,7 @@
             "input": 0.045,
             "output": 0.15
         },
+        "description": "Efficient model for low-latency assistance, extraction, and routine automation",
         "id": "arcee-ai/trinity-mini",
         "input": ["text"],
         "maxTokens": 131072,
@@ -1283,6 +1354,7 @@
             "input": 0.25,
             "output": 2.0
         },
+        "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
         "id": "bytedance/seed-1.6",
         "input": ["text", "image"],
         "maxTokens": 32000,
@@ -1310,6 +1382,7 @@
             "input": 0.25,
             "output": 2.0
         },
+        "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
         "id": "bytedance/seed-1.8",
         "input": ["text", "image"],
         "maxTokens": 64000,
@@ -1337,6 +1410,7 @@
             "input": 2.5,
             "output": 10.0
         },
+        "description": "Cohere command model for multilingual enterprise agents, tools, and chat",
         "id": "cohere/command-a",
         "input": ["text"],
         "maxTokens": 8000,
@@ -1364,12 +1438,15 @@
             "input": 1.35,
             "output": 5.4
         },
+        "description": "DeepSeek reasoning model for multi-step analysis, math, coding, and tools",
         "id": "deepseek/deepseek-r1",
         "input": ["text"],
+        "knowledgeCutoff": "2024-07",
         "maxTokens": 32768,
         "name": "DeepSeek-R1",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2025-01-20",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1391,12 +1468,14 @@
             "input": 0.27,
             "output": 1.12
         },
+        "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek/deepseek-v3",
         "input": ["text"],
         "maxTokens": 163840,
         "name": "DeepSeek V3 0324",
         "provider": "vercel-ai-gateway",
         "reasoning": false,
+        "releaseDate": "2024-12-26",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1418,12 +1497,14 @@
             "input": 0.25,
             "output": 0.95
         },
+        "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek/deepseek-v3.1",
         "input": ["text"],
         "maxTokens": 128000,
         "name": "DeepSeek-V3.1",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2025-08-21",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1445,6 +1526,7 @@
             "input": 0.27,
             "output": 1.0
         },
+        "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek/deepseek-v3.1-terminus",
         "input": ["text"],
         "maxTokens": 65536,
@@ -1472,12 +1554,15 @@
             "input": 0.28,
             "output": 0.42
         },
+        "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek/deepseek-v3.2",
         "input": ["text"],
+        "knowledgeCutoff": "2024-07",
         "maxTokens": 8000,
         "name": "DeepSeek V3.2",
         "provider": "vercel-ai-gateway",
         "reasoning": false,
+        "releaseDate": "2025-12-01",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1499,6 +1584,7 @@
             "input": 0.62,
             "output": 1.85
         },
+        "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek/deepseek-v3.2-thinking",
         "input": ["text"],
         "maxTokens": 8000,
@@ -1526,12 +1612,15 @@
             "input": 0.2,
             "output": 0.4
         },
+        "description": "Fast DeepSeek V4 lane for economical reasoning, coding, and long-context work",
         "id": "deepseek/deepseek-v4-flash",
         "input": ["text"],
+        "knowledgeCutoff": "2025-05",
         "maxTokens": 384000,
         "name": "DeepSeek V4 Flash",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-04-24",
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
@@ -1553,12 +1642,15 @@
             "input": 1.74,
             "output": 3.48
         },
+        "description": "Open MoE flagship with million-token context for coding and long agent runs",
         "id": "deepseek/deepseek-v4-pro",
         "input": ["text"],
+        "knowledgeCutoff": "2025-05",
         "maxTokens": 1048600,
         "name": "DeepSeek V4 Pro",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-04-24",
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
@@ -1580,12 +1672,15 @@
             "input": 0.3,
             "output": 2.5
         },
+        "description": "Fast Gemini workhorse for multimodal apps where latency and price matter",
         "id": "google/gemini-2.5-flash",
         "input": ["text", "image", "audio", "video", "pdf"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 65536,
         "name": "Gemini 2.5 Flash",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2025-06-17",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1607,12 +1702,15 @@
             "input": 0.1,
             "output": 0.4
         },
+        "description": "Lean Gemini 2.5 lane for cheap multimodal traffic and quick agents",
         "id": "google/gemini-2.5-flash-lite",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 65536,
         "name": "Gemini 2.5 Flash Lite",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2025-06-17",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1634,12 +1732,15 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "Google's proven reasoning model for coding, math, and multimodal analysis",
         "id": "google/gemini-2.5-pro",
         "input": ["text", "image", "audio", "video", "pdf"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 65536,
         "name": "Gemini 2.5 Pro",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2025-06-17",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1661,6 +1762,7 @@
             "input": 0.5,
             "output": 3.0
         },
+        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
         "id": "google/gemini-3-flash",
         "input": ["text", "image", "pdf"],
         "maxTokens": 65000,
@@ -1688,12 +1790,15 @@
             "input": 0.25,
             "output": 1.5
         },
+        "description": "Low-latency Gemini model for high-volume multimodal and agent workloads",
         "id": "google/gemini-3.1-flash-lite",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 65000,
         "name": "Gemini 3.1 Flash Lite",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-05-07",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1715,12 +1820,15 @@
             "input": 2.0,
             "output": 12.0
         },
+        "description": "Reasoning-first Gemini preview for agentic coding and complex problem solving",
         "id": "google/gemini-3.1-pro-preview",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 64000,
         "name": "Gemini 3.1 Pro Preview",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-02-19",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1742,12 +1850,15 @@
             "input": 1.5,
             "output": 9.0
         },
+        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
         "id": "google/gemini-3.5-flash",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 64000,
         "name": "Gemini 3.5 Flash",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-05-19",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1769,12 +1880,15 @@
             "input": 0.3,
             "output": 2.5
         },
+        "description": "Low-latency Gemini model for high-volume multimodal and agent workloads",
         "id": "google/gemini-3.5-flash-lite",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-03",
         "maxTokens": 65000,
         "name": "Gemini 3.5 Flash Lite",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-07-21",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1796,12 +1910,15 @@
             "input": 1.5,
             "output": 7.5
         },
+        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
         "id": "google/gemini-3.6-flash",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-03",
         "maxTokens": 64000,
         "name": "Gemini 3.6 Flash",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-07-21",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1823,12 +1940,14 @@
             "input": 0.15,
             "output": 0.6
         },
+        "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-4-26b-a4b-it",
         "input": ["text", "image", "pdf"],
         "maxTokens": 131072,
         "name": "Gemma 4 26B A4B IT",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-04-02",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1850,22 +1969,24 @@
             "input": 0.14,
             "output": 0.4
         },
+        "description": "Largest Gemma 4 instruction model for open, self-hosted chat and reasoning",
         "id": "google/gemma-4-31b-it",
         "input": ["text", "image", "pdf"],
         "maxTokens": 131072,
         "name": "Gemma 4 31B IT",
         "provider": "vercel-ai-gateway",
-        "reasoning": true,
+        "reasoning": false,
+        "releaseDate": "2026-04-02",
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "unresolved"
     },
     "inception/mercury-2": {
         "api": "anthropic-messages",
@@ -1877,6 +1998,7 @@
             "input": 0.25,
             "output": 0.75
         },
+        "description": "Reasoning model for deliberate analysis, multi-step problem solving, and tool use",
         "id": "inception/mercury-2",
         "input": ["text"],
         "maxTokens": 128000,
@@ -1904,6 +2026,7 @@
             "input": 0.25,
             "output": 1.0
         },
+        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
         "id": "inception/mercury-coder-small",
         "input": ["text"],
         "maxTokens": 16384,
@@ -1931,6 +2054,7 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Efficient model for low-latency assistance, extraction, and routine automation",
         "id": "inclusionai/ling-3.0-flash-free",
         "input": ["text"],
         "maxTokens": 32768,
@@ -1958,6 +2082,7 @@
             "input": 1.5,
             "output": 3.5
         },
+        "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
         "id": "interfaze/interfaze-beta",
         "input": ["text", "image", "pdf"],
         "maxTokens": 32000,
@@ -1985,6 +2110,7 @@
             "input": 0.15,
             "output": 0.6
         },
+        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
         "id": "kwaipilot/kat-coder-air-v2.5",
         "input": ["text", "image"],
         "maxTokens": 80000,
@@ -2012,12 +2138,13 @@
             "input": 0.3,
             "output": 1.2
         },
+        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
         "id": "kwaipilot/kat-coder-pro-v1",
         "input": ["text"],
         "maxTokens": 32000,
         "name": "KAT-Coder-Pro V1",
         "provider": "vercel-ai-gateway",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -2039,6 +2166,7 @@
             "input": 0.3,
             "output": 1.2
         },
+        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
         "id": "kwaipilot/kat-coder-pro-v2",
         "input": ["text"],
         "maxTokens": 256000,
@@ -2066,6 +2194,7 @@
             "input": 0.74,
             "output": 2.96
         },
+        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
         "id": "kwaipilot/kat-coder-pro-v2.5",
         "input": ["text", "image"],
         "maxTokens": 80000,
@@ -2093,6 +2222,7 @@
             "input": 0.72,
             "output": 0.72
         },
+        "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "meta/llama-3.1-70b",
         "input": ["text"],
         "maxTokens": 8192,
@@ -2120,6 +2250,7 @@
             "input": 0.22,
             "output": 0.22
         },
+        "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "meta/llama-3.1-8b",
         "input": ["text"],
         "maxTokens": 8192,
@@ -2144,9 +2275,10 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.72,
-            "output": 0.72
+            "input": 1039813.227,
+            "output": 1039813.227
         },
+        "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "meta/llama-3.3-70b",
         "input": ["text"],
         "maxTokens": 4096,
@@ -2174,6 +2306,7 @@
             "input": 0.24,
             "output": 0.97
         },
+        "description": "Open multimodal Llama model for strong reasoning and fast responses",
         "id": "meta/llama-4-maverick",
         "input": ["text", "image"],
         "maxTokens": 4096,
@@ -2201,6 +2334,7 @@
             "input": 0.17,
             "output": 0.66
         },
+        "description": "Open multimodal Llama model for long-context analysis and efficient agents",
         "id": "meta/llama-4-scout",
         "input": ["text", "image"],
         "maxTokens": 4096,
@@ -2228,12 +2362,14 @@
             "input": 1.25,
             "output": 4.25
         },
+        "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "meta/muse-spark-1.1",
         "input": ["text", "image", "pdf"],
         "maxTokens": 1048576,
         "name": "Muse Spark 1.1",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-04-08",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2255,6 +2391,7 @@
             "input": 0.3,
             "output": 1.2
         },
+        "description": "Efficient open MiniMax model built for coding agents and tool-heavy workflows",
         "id": "minimax/minimax-m2",
         "input": ["text"],
         "maxTokens": 205000,
@@ -2282,6 +2419,7 @@
             "input": 0.3,
             "output": 1.2
         },
+        "description": "Earlier MiniMax agent model for practical coding and productivity tasks",
         "id": "minimax/minimax-m2.1",
         "input": ["text"],
         "maxTokens": 131072,
@@ -2309,6 +2447,7 @@
             "input": 0.3,
             "output": 2.4
         },
+        "description": "High-speed MiniMax model for low-latency coding and agent workflows",
         "id": "minimax/minimax-m2.1-lightning",
         "input": ["text"],
         "maxTokens": 131072,
@@ -2336,6 +2475,7 @@
             "input": 0.3,
             "output": 1.2
         },
+        "description": "Prior MiniMax coding model for agent workflows, office edits, and automation",
         "id": "minimax/minimax-m2.5",
         "input": ["text"],
         "maxTokens": 131000,
@@ -2363,6 +2503,7 @@
             "input": 0.6,
             "output": 2.4
         },
+        "description": "High-speed MiniMax model for low-latency coding and agent workflows",
         "id": "minimax/minimax-m2.5-highspeed",
         "input": ["text"],
         "maxTokens": 131000,
@@ -2390,6 +2531,7 @@
             "input": 0.3,
             "output": 1.2
         },
+        "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
         "id": "minimax/minimax-m2.7",
         "input": ["text"],
         "maxTokens": 131000,
@@ -2417,6 +2559,7 @@
             "input": 0.6,
             "output": 2.4
         },
+        "description": "Low-latency M2.7 variant for interactive coding plans and agent loops",
         "id": "minimax/minimax-m2.7-highspeed",
         "input": ["text"],
         "maxTokens": 131100,
@@ -2444,6 +2587,7 @@
             "input": 0.3,
             "output": 1.2
         },
+        "description": "MiniMax multimodal model for long-context coding, perception, and agent planning",
         "id": "minimax/minimax-m3",
         "input": ["text", "image", "pdf"],
         "maxTokens": 1000000,
@@ -2471,6 +2615,7 @@
             "input": 0.3,
             "output": 0.9
         },
+        "description": "Mistral code model for completions, refactors, and developer IDE workflows",
         "id": "mistral/codestral",
         "input": ["text"],
         "maxTokens": 4096,
@@ -2498,6 +2643,7 @@
             "input": 0.4,
             "output": 2.0
         },
+        "description": "Mistral coding agent model for repository tasks and software engineering workflows",
         "id": "mistral/devstral-2",
         "input": ["text"],
         "maxTokens": 256000,
@@ -2525,6 +2671,7 @@
             "input": 0.1,
             "output": 0.3
         },
+        "description": "Mistral coding agent model for repository tasks and software engineering workflows",
         "id": "mistral/devstral-small-2",
         "input": ["text", "image"],
         "maxTokens": 256000,
@@ -2552,6 +2699,7 @@
             "input": 2.0,
             "output": 5.0
         },
+        "description": "Mistral reasoning model for transparent analysis, math, and complex decisions",
         "id": "mistral/magistral-medium",
         "input": ["text"],
         "maxTokens": 16384,
@@ -2579,6 +2727,7 @@
             "input": 0.5,
             "output": 1.5
         },
+        "description": "Mistral reasoning model for transparent analysis, math, and complex decisions",
         "id": "mistral/magistral-small",
         "input": ["text"],
         "maxTokens": 128000,
@@ -2606,6 +2755,7 @@
             "input": 0.2,
             "output": 0.2
         },
+        "description": "Compact Mistral model for edge, latency-sensitive, and cost-efficient workloads",
         "id": "mistral/ministral-14b",
         "input": ["text", "image", "pdf"],
         "maxTokens": 256000,
@@ -2633,6 +2783,7 @@
             "input": 0.04,
             "output": 0.04
         },
+        "description": "Compact Mistral model for edge, latency-sensitive, and cost-efficient workloads",
         "id": "mistral/ministral-3b",
         "input": ["text"],
         "maxTokens": 128000,
@@ -2660,6 +2811,7 @@
             "input": 0.1,
             "output": 0.1
         },
+        "description": "Compact Mistral model for edge, latency-sensitive, and cost-efficient workloads",
         "id": "mistral/ministral-8b",
         "input": ["text"],
         "maxTokens": 128000,
@@ -2687,6 +2839,7 @@
             "input": 0.5,
             "output": 1.5
         },
+        "description": "Flagship Mistral model for advanced reasoning, coding, and multilingual work",
         "id": "mistral/mistral-large-3",
         "input": ["text", "image"],
         "maxTokens": 256000,
@@ -2714,6 +2867,7 @@
             "input": 0.4,
             "output": 2.0
         },
+        "description": "Mistral model for multilingual chat, reasoning, and tool-assisted workflows",
         "id": "mistral/mistral-medium",
         "input": ["text", "image"],
         "maxTokens": 64000,
@@ -2741,6 +2895,7 @@
             "input": 1.5,
             "output": 7.5
         },
+        "description": "Mistral model for multilingual chat, reasoning, and tool-assisted workflows",
         "id": "mistral/mistral-medium-3.5",
         "input": ["text", "image"],
         "maxTokens": 256000,
@@ -2768,12 +2923,15 @@
             "input": 0.15,
             "output": 0.15
         },
+        "description": "Mistral model for multilingual chat, reasoning, and tool-assisted workflows",
         "id": "mistral/mistral-nemo",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-07",
         "maxTokens": 128000,
         "name": "Mistral Nemo",
         "provider": "vercel-ai-gateway",
         "reasoning": false,
+        "releaseDate": "2024-07-01",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -2795,6 +2953,7 @@
             "input": 0.1,
             "output": 0.3
         },
+        "description": "Efficient Mistral model for fast chat, extraction, and production assistants",
         "id": "mistral/mistral-small",
         "input": ["text", "image"],
         "maxTokens": 4000,
@@ -2822,12 +2981,15 @@
             "input": 0.15,
             "output": 0.15
         },
+        "description": "Mistral vision-language model for image understanding and multimodal chat",
         "id": "mistral/pixtral-12b",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-09",
         "maxTokens": 128000,
         "name": "Pixtral 12B",
         "provider": "vercel-ai-gateway",
         "reasoning": false,
+        "releaseDate": "2024-09-01",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -2849,6 +3011,7 @@
             "input": 0.57,
             "output": 2.3
         },
+        "description": "Kimi model for long-context chat, coding, and agentic reasoning",
         "id": "moonshotai/kimi-k2",
         "input": ["text"],
         "maxTokens": 131072,
@@ -2876,12 +3039,15 @@
             "input": 0.47,
             "output": 2.0
         },
+        "description": "Thinking Kimi model for slower research passes, planning, and hard technical questions",
         "id": "moonshotai/kimi-k2-thinking",
         "input": ["text"],
+        "knowledgeCutoff": "2024-08",
         "maxTokens": 216144,
         "name": "Kimi K2 Thinking",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2025-11-06",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2903,12 +3069,15 @@
             "input": 0.6,
             "output": 3.0
         },
+        "description": "Earlier Kimi frontier model for long-context agents, coding, and multimodal work",
         "id": "moonshotai/kimi-k2.5",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 262114,
         "name": "Kimi K2.5",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-01",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2930,12 +3099,15 @@
             "input": 0.95,
             "output": 4.0
         },
+        "description": "Multimodal Kimi workhorse for agent loops, coding tasks, and visual context",
         "id": "moonshotai/kimi-k2.6",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 262000,
         "name": "Kimi K2.6",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-04-21",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2957,12 +3129,15 @@
             "input": 0.95,
             "output": 4.0
         },
+        "description": "Coding-focused Kimi model, stronger on long-horizon repo work with less overthinking",
         "id": "moonshotai/kimi-k2.7-code",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 32768,
         "name": "Kimi K2.7 Code",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-06-12",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2984,12 +3159,15 @@
             "input": 1.9,
             "output": 8.0
         },
+        "description": "Lower-latency Kimi Code variant for interactive edits and coding-agent loops",
         "id": "moonshotai/kimi-k2.7-code-highspeed",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 32768,
         "name": "Kimi K2.7 Code High Speed",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-06-12",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3011,12 +3189,14 @@
             "input": 3.0,
             "output": 15.0
         },
+        "description": "Kimi multimodal agent model for visual understanding, coding, and planning",
         "id": "moonshotai/kimi-k3",
         "input": ["text", "image", "pdf"],
         "maxTokens": 131072,
         "name": "Kimi K3",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-07-16",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3038,6 +3218,7 @@
             "input": 4.5,
             "output": 22.5
         },
+        "description": "Kimi multimodal agent model for visual understanding, coding, and planning",
         "id": "moonshotai/kimi-k3-fast",
         "input": ["text", "image", "pdf"],
         "maxTokens": 131072,
@@ -3065,12 +3246,14 @@
             "input": 0.05,
             "output": 0.24
         },
+        "description": "Small Nemotron 3 MoE for efficient coding, math, and long-context agents",
         "id": "nvidia/nemotron-3-nano-30b-a3b",
         "input": ["text"],
         "maxTokens": 262144,
         "name": "Nemotron 3 Nano 30B A3B",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2025-12-15",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3092,12 +3275,14 @@
             "input": 0.15,
             "output": 0.65
         },
+        "description": "Nemotron middle tier for collaborative agents and high-volume reasoning workloads",
         "id": "nvidia/nemotron-3-super-120b-a12b",
         "input": ["text"],
         "maxTokens": 32000,
         "name": "NVIDIA Nemotron 3 Super 120B A12B",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-03-11",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3119,12 +3304,14 @@
             "input": 0.6,
             "output": 2.4
         },
+        "description": "Largest Nemotron 3 model for maximum open-weight reasoning and agent accuracy",
         "id": "nvidia/nemotron-3-ultra-550b-a55b",
         "input": ["text"],
         "maxTokens": 65000,
         "name": "Nemotron 3 Ultra",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-06-04",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3146,12 +3333,14 @@
             "input": 0.2,
             "output": 0.6
         },
+        "description": "Nemotron multimodal model for visual reasoning and agentic AI workflows",
         "id": "nvidia/nemotron-nano-12b-v2-vl",
         "input": ["text", "image"],
         "maxTokens": 131072,
         "name": "Nvidia Nemotron Nano 12B V2 VL",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2025-10-28",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3173,12 +3362,14 @@
             "input": 0.06,
             "output": 0.23
         },
+        "description": "Compact Nemotron model for efficient reasoning and deployable AI agents",
         "id": "nvidia/nemotron-nano-9b-v2",
         "input": ["text"],
         "maxTokens": 131072,
         "name": "Nvidia Nemotron Nano 9B V2",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2025-08-18",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3200,12 +3391,15 @@
             "input": 0.5,
             "output": 1.5
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "openai/gpt-3.5-turbo",
         "input": ["text"],
+        "knowledgeCutoff": "2021-09-01",
         "maxTokens": 4096,
         "name": "GPT-3.5 Turbo",
         "provider": "vercel-ai-gateway",
         "reasoning": false,
+        "releaseDate": "2023-03-01",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -3227,12 +3421,15 @@
             "input": 10.0,
             "output": 30.0
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "openai/gpt-4-turbo",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2023-12",
         "maxTokens": 4096,
         "name": "GPT-4 Turbo",
         "provider": "vercel-ai-gateway",
         "reasoning": false,
+        "releaseDate": "2023-11-06",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -3254,12 +3451,15 @@
             "input": 2.0,
             "output": 8.0
         },
+        "description": "Long-lived GPT workhorse for coding, instruction following, and production apps",
         "id": "openai/gpt-4.1",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2024-04",
         "maxTokens": 32768,
         "name": "GPT-4.1",
         "provider": "vercel-ai-gateway",
         "reasoning": false,
+        "releaseDate": "2025-04-14",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -3281,12 +3481,15 @@
             "input": 0.4,
             "output": 1.6
         },
+        "description": "Affordable GPT-4.1 lane for fast coding help and structured extraction",
         "id": "openai/gpt-4.1-mini",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2024-04",
         "maxTokens": 32768,
         "name": "GPT-4.1 mini",
         "provider": "vercel-ai-gateway",
         "reasoning": false,
+        "releaseDate": "2025-04-14",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -3308,12 +3511,15 @@
             "input": 0.1,
             "output": 0.4
         },
+        "description": "Tiny GPT-4.1 option for classification, routing, and very high-volume tasks",
         "id": "openai/gpt-4.1-nano",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-04",
         "maxTokens": 32768,
         "name": "GPT-4.1 nano",
         "provider": "vercel-ai-gateway",
         "reasoning": false,
+        "releaseDate": "2025-04-14",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -3335,12 +3541,15 @@
             "input": 2.5,
             "output": 10.0
         },
+        "description": "Omni-era GPT for multimodal chat, practical coding, and general assistants",
         "id": "openai/gpt-4o",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2023-09",
         "maxTokens": 16384,
         "name": "GPT-4o",
         "provider": "vercel-ai-gateway",
         "reasoning": false,
+        "releaseDate": "2024-05-13",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -3362,12 +3571,15 @@
             "input": 0.15,
             "output": 0.6
         },
+        "description": "Small omni GPT for cheap multimodal assistance and production-scale traffic",
         "id": "openai/gpt-4o-mini",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2023-09",
         "maxTokens": 16384,
         "name": "GPT-4o mini",
         "provider": "vercel-ai-gateway",
         "reasoning": false,
+        "releaseDate": "2024-07-18",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -3389,12 +3601,15 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "Original GPT-5 workhorse for reasoning, coding, writing, and tool workflows",
         "id": "openai/gpt-5",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-09-30",
         "maxTokens": 128000,
         "name": "GPT-5",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2025-08-07",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3416,22 +3631,25 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
         "id": "openai/gpt-5-codex",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2024-09-30",
         "maxTokens": 128000,
         "name": "GPT-5-Codex",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2025-09-15",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "openai/gpt-5-mini": {
         "api": "anthropic-messages",
@@ -3443,12 +3661,15 @@
             "input": 0.25,
             "output": 2.0
         },
+        "description": "Small GPT-5 for responsive agents, coding help, and everyday automation",
         "id": "openai/gpt-5-mini",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-05-30",
         "maxTokens": 128000,
         "name": "GPT-5 Mini",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2025-08-07",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3470,12 +3691,15 @@
             "input": 0.05,
             "output": 0.4
         },
+        "description": "Tiny GPT-5 lane for routing, extraction, classification, and bulk jobs",
         "id": "openai/gpt-5-nano",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-05-30",
         "maxTokens": 128000,
         "name": "GPT-5 Nano",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2025-08-07",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3497,12 +3721,15 @@
             "input": 15.0,
             "output": 120.0
         },
+        "description": "Higher-accuracy GPT-5 tier for tough analysis, coding reviews, and planning",
         "id": "openai/gpt-5-pro",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2024-09-30",
         "maxTokens": 272000,
         "name": "GPT-5 pro",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2025-10-06",
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
@@ -3524,12 +3751,15 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "Codex GPT for repository edits, code review, and practical software agents",
         "id": "openai/gpt-5.1-codex",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2024-09-30",
         "maxTokens": 128000,
         "name": "GPT-5.1-Codex",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2025-11-13",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3551,12 +3781,15 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
         "id": "openai/gpt-5.1-codex-max",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2024-09-30",
         "maxTokens": 128000,
         "name": "GPT 5.1 Codex Max",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2025-11-13",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3578,12 +3811,15 @@
             "input": 0.25,
             "output": 2.0
         },
+        "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
         "id": "openai/gpt-5.1-codex-mini",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2024-09-30",
         "maxTokens": 128000,
         "name": "GPT-5.1 Codex mini",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2025-11-13",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3605,22 +3841,23 @@
             "input": 1.1,
             "output": 9.0
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "openai/gpt-5.1-instant",
         "input": ["text", "image"],
         "maxTokens": 16384,
         "name": "GPT-5.1-Instant",
         "provider": "vercel-ai-gateway",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "unresolved"
+        "thinkingLevelMapSource": "provider-override"
     },
     "openai/gpt-5.1-thinking": {
         "api": "anthropic-messages",
@@ -3632,6 +3869,7 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "Image model for prompt-driven generation, editing, and visual design workflows",
         "id": "openai/gpt-5.1-thinking",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -3659,12 +3897,15 @@
             "input": 1.75,
             "output": 14.0
         },
+        "description": "Reliable GPT generation for broad coding, writing, and tool-assisted product work",
         "id": "openai/gpt-5.2",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 128000,
         "name": "GPT-5.2",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2025-12-11",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3686,12 +3927,15 @@
             "input": 1.75,
             "output": 14.0
         },
+        "description": "Code-specialist GPT for repository edits, reviews, and long-running software agents",
         "id": "openai/gpt-5.2-codex",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 128000,
         "name": "GPT-5.2-Codex",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2025-12-11",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3713,12 +3957,15 @@
             "input": 21.0,
             "output": 168.0
         },
+        "description": "Higher-accuracy GPT-5.2 variant for tougher reasoning and review workflows",
         "id": "openai/gpt-5.2-pro",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 128000,
         "name": "GPT 5.2 ",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2025-12-11",
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
@@ -3740,6 +3987,7 @@
             "input": 1.75,
             "output": 14.0
         },
+        "description": "Chat-tuned GPT model for conversational assistance, writing, and tool workflows",
         "id": "openai/gpt-5.3-chat",
         "input": ["text"],
         "maxTokens": 16380,
@@ -3767,12 +4015,15 @@
             "input": 1.75,
             "output": 14.0
         },
+        "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
         "id": "openai/gpt-5.3-codex",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 128000,
         "name": "GPT 5.3 Codex",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-02-05",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3794,12 +4045,15 @@
             "input": 2.5,
             "output": 15.0
         },
+        "description": "Agent-ready GPT for coding and computer-use workflows at a lower cost",
         "id": "openai/gpt-5.4",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 128000,
         "name": "GPT 5.4",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-03-05",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3821,12 +4075,15 @@
             "input": 0.75,
             "output": 4.5
         },
+        "description": "Strong small GPT for coding subagents, quick tool use, and high-volume work",
         "id": "openai/gpt-5.4-mini",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 128000,
         "name": "GPT 5.4 Mini",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-03-17",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3848,12 +4105,15 @@
             "input": 0.2,
             "output": 1.25
         },
+        "description": "Cheapest GPT-5.4 lane for simple routing, extraction, and bulk automation",
         "id": "openai/gpt-5.4-nano",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 128000,
         "name": "GPT 5.4 Nano",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-03-17",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3875,12 +4135,15 @@
             "input": 30.0,
             "output": 180.0
         },
+        "description": "More exact GPT-5.4 tier for demanding professional reasoning and agent tasks",
         "id": "openai/gpt-5.4-pro",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 128000,
         "name": "GPT 5.4 Pro",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-03-05",
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
@@ -3902,12 +4165,15 @@
             "input": 5.0,
             "output": 30.0
         },
+        "description": "Default frontier GPT for coding, computer use, research, and knowledge work",
         "id": "openai/gpt-5.5",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-12-01",
         "maxTokens": 128000,
         "name": "GPT 5.5",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-04-23",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3929,12 +4195,15 @@
             "input": 30.0,
             "output": 180.0
         },
+        "description": "Highest-accuracy GPT-5.5 tier for slower, precision-heavy reasoning and coding",
         "id": "openai/gpt-5.5-pro",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-12-01",
         "maxTokens": 128000,
         "name": "GPT 5.5 Pro",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-04-23",
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
@@ -3956,12 +4225,15 @@
             "input": 0.2,
             "output": 1.2
         },
+        "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "openai/gpt-5.6-luna",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-02-16",
         "maxTokens": 128000,
         "name": "GPT 5.6 Luna",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-07-09",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3983,12 +4255,15 @@
             "input": 5.0,
             "output": 30.0
         },
+        "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "openai/gpt-5.6-sol",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-02-16",
         "maxTokens": 128000,
         "name": "GPT 5.6 Sol",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-07-09",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4010,12 +4285,15 @@
             "input": 2.0,
             "output": 12.0
         },
+        "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "openai/gpt-5.6-terra",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-02-16",
         "maxTokens": 128000,
         "name": "GPT 5.6 Terra",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-07-09",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4037,12 +4315,14 @@
             "input": 0.1,
             "output": 0.5
         },
+        "description": "Open GPT reasoning model for self-hosted agents and controllable deployments",
         "id": "openai/gpt-oss-120b",
         "input": ["text"],
         "maxTokens": 131072,
         "name": "GPT OSS 120B",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2025-08-05",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4064,12 +4344,14 @@
             "input": 0.05,
             "output": 0.2
         },
+        "description": "Open-weight GPT model for self-hosted reasoning and instruction-following workloads",
         "id": "openai/gpt-oss-20b",
         "input": ["text"],
         "maxTokens": 8192,
         "name": "GPT OSS 20B",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2025-08-05",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4091,6 +4373,7 @@
             "input": 0.075,
             "output": 0.3
         },
+        "description": "Safety model for policy screening, moderation, and risk-aware routing workflows",
         "id": "openai/gpt-oss-safeguard-20b",
         "input": ["text"],
         "maxTokens": 65536,
@@ -4118,12 +4401,15 @@
             "input": 15.0,
             "output": 60.0
         },
+        "description": "O-series reasoning model for hard analysis, math, coding, and planning",
         "id": "openai/o1",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2023-09",
         "maxTokens": 100000,
         "name": "o1",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2024-12-05",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4145,12 +4431,15 @@
             "input": 2.0,
             "output": 8.0
         },
+        "description": "Deliberate o-series reasoner for hard math, coding, and multi-step analysis",
         "id": "openai/o3",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2024-05",
         "maxTokens": 100000,
         "name": "o3",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2025-04-16",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4172,12 +4461,15 @@
             "input": 10.0,
             "output": 40.0
         },
+        "description": "Research model for long-horizon investigation, synthesis, and analytical reports",
         "id": "openai/o3-deep-research",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2024-05",
         "maxTokens": 100000,
         "name": "o3-deep-research",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2024-06-26",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -4199,12 +4491,15 @@
             "input": 1.1,
             "output": 4.4
         },
+        "description": "Smaller o-series reasoner for economical coding, math, and planning tasks",
         "id": "openai/o3-mini",
         "input": ["text"],
+        "knowledgeCutoff": "2024-05",
         "maxTokens": 100000,
         "name": "o3-mini",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2024-12-20",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4226,12 +4521,15 @@
             "input": 20.0,
             "output": 80.0
         },
+        "description": "High-effort o3 tier for difficult technical reasoning and careful answers",
         "id": "openai/o3-pro",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2024-05",
         "maxTokens": 100000,
         "name": "o3 Pro",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2025-06-10",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4253,12 +4551,15 @@
             "input": 1.1,
             "output": 4.4
         },
+        "description": "Fast o-series model for compact reasoning, coding, and tool use",
         "id": "openai/o4-mini",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-05",
         "maxTokens": 100000,
         "name": "o4-mini",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2025-04-16",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4280,12 +4581,14 @@
             "input": 0.1,
             "output": 0.2
         },
+        "description": "Agentic coding model from Poolside in the XS size class for local deployment",
         "id": "poolside/laguna-s-2.1",
         "input": ["text"],
         "maxTokens": 131072,
         "name": "Laguna S 2.1",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-07-21",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4307,6 +4610,7 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Free provider route for experiments, demos, and cost-sensitive chat workloads",
         "id": "poolside/laguna-s-2.1-free",
         "input": ["text"],
         "maxTokens": 32768,
@@ -4334,12 +4638,14 @@
             "input": 5.0,
             "output": 30.0
         },
+        "description": "Quality-first multi-agent model for hard research, analysis, and competitions",
         "id": "sakana/fugu-ultra",
         "input": ["text", "image"],
         "maxTokens": 1000000,
         "name": "Fugu Ultra",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-06-15",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4361,12 +4667,15 @@
             "input": 0.09,
             "output": 0.3
         },
+        "description": "StepFun flash lane for quick multimodal reasoning and coding assistance",
         "id": "stepfun/step-3.5-flash",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 262114,
         "name": "StepFun 3.5 Flash",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-01-29",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4388,12 +4697,15 @@
             "input": 0.2,
             "output": 1.15
         },
+        "description": "Newer StepFun flash model for faster agents, coding, and multimodal prompts",
         "id": "stepfun/step-3.7-flash",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2026-03-01",
         "maxTokens": 256000,
         "name": "Step 3.7 Flash",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-05-29",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4415,12 +4727,14 @@
             "input": 0.14,
             "output": 0.58
         },
+        "description": "Tencent Hy reasoning model for coding, instruction following, and agent tasks",
         "id": "tencent/hy3",
         "input": ["text"],
         "maxTokens": 262144,
         "name": "Hy3",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-07-06",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4442,12 +4756,14 @@
             "input": 1.0,
             "output": 4.05
         },
+        "description": "Multimodal MoE reasoning model (975B total, 41B active) for text, image, and audio",
         "id": "thinkingmachines/inkling",
         "input": ["text", "image", "pdf"],
         "maxTokens": 256000,
         "name": "Inkling",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-07-15",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4469,6 +4785,7 @@
             "input": 0.2,
             "output": 0.5
         },
+        "description": "Fast Grok model for responsive chat, reasoning, and tool-assisted work",
         "id": "xai/grok-4.1-fast-non-reasoning",
         "input": ["text", "image", "pdf"],
         "maxTokens": 1000000,
@@ -4496,6 +4813,7 @@
             "input": 0.2,
             "output": 0.5
         },
+        "description": "Fast Grok model for responsive chat, reasoning, and tool-assisted work",
         "id": "xai/grok-4.1-fast-reasoning",
         "input": ["text", "image", "pdf"],
         "maxTokens": 1000000,
@@ -4505,13 +4823,13 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "xai/grok-4.20-multi-agent": {
         "api": "anthropic-messages",
@@ -4523,6 +4841,7 @@
             "input": 1.25,
             "output": 2.5
         },
+        "description": "Grok model for agentic tool use, reasoning, coding, and live assistance",
         "id": "xai/grok-4.20-multi-agent",
         "input": ["text", "image", "pdf"],
         "maxTokens": 2000000,
@@ -4550,6 +4869,7 @@
             "input": 1.25,
             "output": 2.5
         },
+        "description": "Grok model for agentic tool use, reasoning, coding, and live assistance",
         "id": "xai/grok-4.20-multi-agent-beta",
         "input": ["text", "image", "pdf"],
         "maxTokens": 2000000,
@@ -4577,6 +4897,7 @@
             "input": 1.25,
             "output": 2.5
         },
+        "description": "Grok model for agentic tool use, reasoning, coding, and live assistance",
         "id": "xai/grok-4.20-non-reasoning",
         "input": ["text", "image", "pdf"],
         "maxTokens": 2000000,
@@ -4604,6 +4925,7 @@
             "input": 1.25,
             "output": 2.5
         },
+        "description": "Grok model for agentic tool use, reasoning, coding, and live assistance",
         "id": "xai/grok-4.20-non-reasoning-beta",
         "input": ["text", "image", "pdf"],
         "maxTokens": 2000000,
@@ -4631,6 +4953,7 @@
             "input": 1.25,
             "output": 2.5
         },
+        "description": "Grok model for agentic tool use, reasoning, coding, and live assistance",
         "id": "xai/grok-4.20-reasoning",
         "input": ["text", "image", "pdf"],
         "maxTokens": 2000000,
@@ -4640,13 +4963,13 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "xai/grok-4.20-reasoning-beta": {
         "api": "anthropic-messages",
@@ -4658,6 +4981,7 @@
             "input": 1.25,
             "output": 2.5
         },
+        "description": "Grok model for agentic tool use, reasoning, coding, and live assistance",
         "id": "xai/grok-4.20-reasoning-beta",
         "input": ["text", "image", "pdf"],
         "maxTokens": 2000000,
@@ -4667,13 +4991,13 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "xai/grok-4.3": {
         "api": "anthropic-messages",
@@ -4685,12 +5009,14 @@
             "input": 1.25,
             "output": 2.5
         },
+        "description": "xAI's default Grok for chat, coding, agentic tools, and lower hallucination risk",
         "id": "xai/grok-4.3",
         "input": ["text", "image", "pdf"],
         "maxTokens": 1000000,
         "name": "Grok 4.3",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-04-17",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4712,12 +5038,14 @@
             "input": 2.0,
             "output": 6.0
         },
+        "description": "Grok model for agentic tool use, reasoning, coding, and live assistance",
         "id": "xai/grok-4.5",
         "input": ["text", "image", "pdf"],
         "maxTokens": 500000,
         "name": "Grok 4.5",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-07-08",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4739,22 +5067,24 @@
             "input": 1.0,
             "output": 2.0
         },
+        "description": "Fast Grok coding model tuned for agentic engineering and iterative edits",
         "id": "xai/grok-build-0.1",
         "input": ["text", "image"],
         "maxTokens": 256000,
         "name": "Grok Build 0.1",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-04-16",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "xiaomi/mimo-v2.5": {
         "api": "anthropic-messages",
@@ -4766,12 +5096,15 @@
             "input": 0.14,
             "output": 0.28
         },
+        "description": "Open MiMo model for multimodal coding agents and long-context automation",
         "id": "xiaomi/mimo-v2.5",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2024-12",
         "maxTokens": 131100,
         "name": "MiMo M2.5",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-04-22",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4793,12 +5126,15 @@
             "input": 0.435,
             "output": 0.87
         },
+        "description": "Stronger MiMo Pro tier for multimodal reasoning and coding-agent execution",
         "id": "xiaomi/mimo-v2.5-pro",
         "input": ["text"],
+        "knowledgeCutoff": "2024-12",
         "maxTokens": 131000,
         "name": "MiMo V2.5 Pro",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-04-22",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4820,6 +5156,7 @@
             "input": 0.6,
             "output": 2.2
         },
+        "description": "Hybrid-reasoning GLM release that made the 4.5 line broadly useful",
         "id": "zai/glm-4.5",
         "input": ["text"],
         "maxTokens": 96000,
@@ -4847,6 +5184,7 @@
             "input": 0.2,
             "output": 1.1
         },
+        "description": "Lighter GLM-4.5 variant for fast coding assistance and cheaper agents",
         "id": "zai/glm-4.5-air",
         "input": ["text"],
         "maxTokens": 96000,
@@ -4874,6 +5212,7 @@
             "input": 0.6,
             "output": 1.8
         },
+        "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
         "id": "zai/glm-4.5v",
         "input": ["text", "image"],
         "maxTokens": 16000,
@@ -4901,6 +5240,7 @@
             "input": 0.6,
             "output": 2.2
         },
+        "description": "Late GLM-4 workhorse for coding agents, reasoning, and structured tasks",
         "id": "zai/glm-4.6",
         "input": ["text"],
         "maxTokens": 96000,
@@ -4928,6 +5268,7 @@
             "input": 0.3,
             "output": 0.9
         },
+        "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
         "id": "zai/glm-4.6v",
         "input": ["text", "image", "pdf"],
         "maxTokens": 24000,
@@ -4955,6 +5296,7 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
         "id": "zai/glm-4.6v-flash",
         "input": ["text", "image", "pdf"],
         "maxTokens": 24000,
@@ -4982,6 +5324,7 @@
             "input": 0.6,
             "output": 2.2
         },
+        "description": "Mature GLM model for dependable coding, reasoning, and structured agent tasks",
         "id": "zai/glm-4.7",
         "input": ["text"],
         "maxTokens": 120000,
@@ -5009,6 +5352,7 @@
             "input": 0.07,
             "output": 0.4
         },
+        "description": "Budget GLM lane for fast coding help, routing, and everyday automation",
         "id": "zai/glm-4.7-flash",
         "input": ["text"],
         "maxTokens": 131000,
@@ -5036,6 +5380,7 @@
             "input": 0.06,
             "output": 0.4
         },
+        "description": "Efficient GLM model for fast reasoning, coding, and agent workflows",
         "id": "zai/glm-4.7-flashx",
         "input": ["text"],
         "maxTokens": 128000,
@@ -5063,6 +5408,7 @@
             "input": 1.0,
             "output": 3.2
         },
+        "description": "General GLM flagship for coding, analysis, and tool-heavy engineering workflows",
         "id": "zai/glm-5",
         "input": ["text"],
         "maxTokens": 131100,
@@ -5090,6 +5436,7 @@
             "input": 1.2,
             "output": 4.0
         },
+        "description": "Faster GLM-5 lane for coding agents that need lower latency",
         "id": "zai/glm-5-turbo",
         "input": ["text"],
         "maxTokens": 131100,
@@ -5117,6 +5464,7 @@
             "input": 1.4,
             "output": 4.4
         },
+        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
         "id": "zai/glm-5.1",
         "input": ["text"],
         "maxTokens": 64000,
@@ -5144,6 +5492,7 @@
             "input": 1.1,
             "output": 3.851
         },
+        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "zai/glm-5.2",
         "input": ["text"],
         "maxTokens": 128000,
@@ -5171,6 +5520,7 @@
             "input": 2.1,
             "output": 6.6
         },
+        "description": "Efficient GLM model for fast reasoning, coding, and agent workflows",
         "id": "zai/glm-5.2-fast",
         "input": ["text"],
         "maxTokens": 128000,
@@ -5198,6 +5548,7 @@
             "input": 1.2,
             "output": 4.0
         },
+        "description": "Fast GLM vision model for screenshots, documents, and multimodal agent tasks",
         "id": "zai/glm-5v-turbo",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,

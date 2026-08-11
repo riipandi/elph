@@ -12,13 +12,20 @@ pub fn from_models_dev(
     mdev: &Value,
     previous: Option<&Value>,
     live_efforts: Option<&[String]>,
+    rich: Option<&Value>,
+    aimd_reasoning: Option<bool>,
 ) -> Value {
     let name = mdev
         .get("name")
         .and_then(|v| v.as_str())
         .unwrap_or(model_id)
         .to_string();
-    let reasoning = mdev.get("reasoning").and_then(|v| v.as_bool()).unwrap_or(false);
+    // models.dev is authoritative for the reasoning flag; ai-model-directory only
+    // fills it when models.dev has no opinion (models not listed on models.dev).
+    let reasoning = mdev
+        .get("reasoning")
+        .and_then(|v| v.as_bool())
+        .unwrap_or_else(|| aimd_reasoning.unwrap_or(false));
     let context = mdev
         .pointer("/limit/context")
         .and_then(|v| v.as_u64())
@@ -43,6 +50,8 @@ pub fn from_models_dev(
     let (thinking, thinking_src) =
         build_thinking_level_map(provider.id, model_id, reasoning, Some(mdev), previous, live_efforts);
 
+    let (description, knowledge_cutoff, release_date) = extract_meta(Some(mdev), rich);
+
     let mut entry = json!({
         "id": model_id,
         "name": name,
@@ -56,6 +65,9 @@ pub fn from_models_dev(
         "cost": cost,
         "thinkingLevelMap": thinking,
         "thinkingLevelMapSource": thinking_src.to_string(),
+        "description": description.unwrap_or_default(),
+        "knowledgeCutoff": knowledge_cutoff.unwrap_or_default(),
+        "releaseDate": release_date.unwrap_or_default(),
     });
 
     if let Some(prev) = previous {
@@ -76,6 +88,8 @@ pub fn enrich_existing(
     previous: &Value,
     mdev: Option<&Value>,
     live_efforts: Option<&[String]>,
+    rich: Option<&Value>,
+    aimd_reasoning: Option<bool>,
 ) -> Value {
     let mut entry = previous.clone();
     if !entry.is_object() {
@@ -93,10 +107,12 @@ pub fn enrich_existing(
         obj.insert("baseUrl".into(), json!(provider.default_base_url));
     }
 
-    let reasoning = obj
-        .get("reasoning")
-        .and_then(|v| v.as_bool())
-        .or_else(|| mdev.and_then(|m| m.get("reasoning").and_then(|v| v.as_bool())))
+    // models.dev is authoritative for the reasoning flag; ai-model-directory only
+    // fills it when models.dev (and the previous catalog) have no opinion.
+    let mdev_reasoning = mdev.and_then(|m| m.get("reasoning").and_then(|v| v.as_bool()));
+    let reasoning = mdev_reasoning
+        .or_else(|| obj.get("reasoning").and_then(|v| v.as_bool()))
+        .or(aimd_reasoning)
         .unwrap_or(false);
     obj.insert("reasoning".into(), json!(reasoning));
 
@@ -126,6 +142,18 @@ pub fn enrich_existing(
         build_thinking_level_map(provider.id, model_id, reasoning, mdev, Some(previous), live_efforts);
     obj.insert("thinkingLevelMap".into(), thinking);
     obj.insert("thinkingLevelMapSource".into(), json!(thinking_src.to_string()));
+
+    // Enrich with metadata-complete fields from the rich (models.json/catalog.json) index.
+    let (description, knowledge_cutoff, release_date) = extract_meta(mdev, rich);
+    if let Some(d) = description {
+        obj.insert("description".into(), json!(d));
+    }
+    if let Some(k) = knowledge_cutoff {
+        obj.insert("knowledgeCutoff".into(), json!(k));
+    }
+    if let Some(r) = release_date {
+        obj.insert("releaseDate".into(), json!(r));
+    }
 
     // Required name fallback
     if obj.get("name").and_then(|v| v.as_str()).unwrap_or("").is_empty() {
@@ -223,4 +251,23 @@ fn fill_zero_from(dest: &mut Map<String, Value>, src: &Value) {
             dest.insert(key.into(), json!(v));
         }
     }
+}
+
+/// Pull human-readable metadata from the merged models.dev sources.
+///
+/// `description` comes from the api.json model (or the rich index when missing);
+/// `knowledgeCutoff` and `releaseDate` come from the rich index (`knowledge`,
+/// `release_date`), which `api.json` omits.
+fn extract_meta(mdev: Option<&Value>, rich: Option<&Value>) -> (Option<String>, Option<String>, Option<String>) {
+    let description = mdev
+        .and_then(|m| m.get("description").and_then(|v| v.as_str()))
+        .or_else(|| rich.and_then(|m| m.get("description").and_then(|v| v.as_str())))
+        .map(str::to_string);
+    let knowledge_cutoff = rich
+        .and_then(|m| m.get("knowledge").and_then(|v| v.as_str()))
+        .map(str::to_string);
+    let release_date = rich
+        .and_then(|m| m.get("release_date").and_then(|v| v.as_str()))
+        .map(str::to_string);
+    (description, knowledge_cutoff, release_date)
 }

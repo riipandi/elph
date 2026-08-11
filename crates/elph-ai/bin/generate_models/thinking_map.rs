@@ -47,15 +47,17 @@ pub fn build_thinking_level_map(
     previous: Option<&Value>,
     live_reasoning_efforts: Option<&[String]>,
 ) -> (Value, ThinkingSource) {
-    if !reasoning {
-        return (all_null_map(), ThinkingSource::Unresolved);
-    }
-
-    // 1. Live API supported_efforts (gateway providers like OpenRouter).
+    // 1. Live API supported_efforts (gateway providers like OpenRouter) — strongest signal.
+    //    Checked before the `!reasoning` guard so an OpenRouter `supported_efforts` array
+    //    still wins even when models.dev lists the model as non-reasoning.
     if let Some(efforts) = live_reasoning_efforts {
         if let Some(map) = map_from_efforts(efforts) {
             return (map, ThinkingSource::LiveApi);
         }
+    }
+
+    if !reasoning {
+        return (all_null_map(), ThinkingSource::Unresolved);
     }
 
     // 2. models.dev reasoning_options.
@@ -146,13 +148,12 @@ fn normalize_effort_label(s: &str) -> String {
 fn provider_override_map(provider_id: &str, model_id: &str) -> Option<(Value, &'static str)> {
     // For gateway providers, extract the base model id after the last slash
     let base_id = model_id.split('/').last().unwrap_or(model_id);
-    match provider_id {
-        // xAI Grok: low / high / max (official docs)
+    // Origin-provider overrides first (exact provider + base id pattern).
+    let origin = match provider_id {
         "xai" if base_id.contains("grok") || base_id.contains("build") => Some((
             map_with(&[("low", Some("low")), ("high", Some("high")), ("max", Some("max"))]),
             "provider-override",
         )),
-        // Anthropic: Opus/Sonnet-5/Fable use xhigh+max (adaptive thinking)
         "anthropic"
             if base_id.contains("opus")
                 || base_id.contains("sonnet-5")
@@ -167,7 +168,6 @@ fn provider_override_map(provider_id: &str, model_id: &str) -> Option<(Value, &'
         {
             Some((map_with(&[("xhigh", Some("xhigh")), ("max", Some("max"))]), "provider-override"))
         }
-        // Anthropic Haiku 4.5: low/medium/high/max
         "anthropic" if base_id.contains("haiku-4-5") || base_id.contains("haiku-4.5") => Some((
             map_with(&[
                 ("low", Some("low")),
@@ -177,7 +177,6 @@ fn provider_override_map(provider_id: &str, model_id: &str) -> Option<(Value, &'
             ]),
             "provider-override",
         )),
-        // Anthropic Sonnet 4.5 / Opus 4.5 / earlier 4.x: low/medium/high/max
         "anthropic"
             if model_id.contains("sonnet-4-5")
                 || model_id.contains("sonnet-4.5")
@@ -197,7 +196,6 @@ fn provider_override_map(provider_id: &str, model_id: &str) -> Option<(Value, &'
                 "provider-override",
             ))
         }
-        // OpenAI GPT-5.x reasoning models: off/low/medium/high/xhigh (per models.dev)
         "openai" | "openrouter" | "hyper" | "kilo" | "infron" | "tokenrouter" if is_openai_reasoning_model(base_id) => {
             Some((
                 map_with(&[
@@ -210,7 +208,6 @@ fn provider_override_map(provider_id: &str, model_id: &str) -> Option<(Value, &'
                 "provider-override",
             ))
         }
-        // O1 / O-series: low/medium/high
         "openai" | "openrouter" | "hyper" | "kilo" | "infron" | "tokenrouter"
             if base_id.starts_with('o') && !base_id.starts_with("oh") =>
         {
@@ -220,9 +217,72 @@ fn provider_override_map(provider_id: &str, model_id: &str) -> Option<(Value, &'
             ))
         }
         _ => None,
+    };
+    if origin.is_some() {
+        return origin;
     }
+    // Gateway providers (nara-router, neuralwatt, tokenrouter, …) re-host the same
+    // underlying models. Fall back to a base-id family match so well-known reasoning
+    // families still receive an accurate map even when hosted on a non-origin gateway.
+    let gateway = match base_id {
+        b if b.contains("grok") || b.contains("build") => Some((
+            map_with(&[("low", Some("low")), ("high", Some("high")), ("max", Some("max"))]),
+            "provider-override",
+        )),
+        b if b.contains("opus")
+            || b.contains("sonnet-5")
+            || b.contains("fable")
+            || b.contains("sonnet-4-6")
+            || b.contains("opus-4-6")
+            || b.contains("opus-4.6")
+            || b.contains("opus-4.7")
+            || b.contains("opus-4.8")
+            || b.contains("opus-5")
+            || b.contains("fable-5") =>
+        {
+            Some((map_with(&[("xhigh", Some("xhigh")), ("max", Some("max"))]), "provider-override"))
+        }
+        b if b.contains("haiku-4-5") || b.contains("haiku-4.5") => Some((
+            map_with(&[
+                ("low", Some("low")),
+                ("medium", Some("medium")),
+                ("high", Some("high")),
+                ("max", Some("max")),
+            ]),
+            "provider-override",
+        )),
+        b if b.contains("sonnet-4-5")
+            || b.contains("sonnet-4.5")
+            || b.contains("opus-4-5")
+            || b.contains("opus-4.5")
+            || b.contains("opus-4.1")
+            || b.contains("opus-4 ")
+            || b.contains("opus-4") =>
+        {
+            Some((
+                map_with(&[
+                    ("low", Some("low")),
+                    ("medium", Some("medium")),
+                    ("high", Some("high")),
+                    ("max", Some("max")),
+                ]),
+                "provider-override",
+            ))
+        }
+        b if is_openai_reasoning_model(b) => Some((
+            map_with(&[
+                ("off", Some("off")),
+                ("low", Some("low")),
+                ("medium", Some("medium")),
+                ("high", Some("high")),
+                ("xhigh", Some("xhigh")),
+            ]),
+            "provider-override",
+        )),
+        _ => None,
+    };
+    gateway
 }
-
 /// Check if an OpenAI model ID belongs to a reasoning-capable model family.
 fn is_openai_reasoning_model(model_id: &str) -> bool {
     let lower = model_id.to_ascii_lowercase();

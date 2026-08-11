@@ -117,22 +117,23 @@
             "input": 10.0,
             "output": 50.0
         },
+        "description": "Claude model for creative writing, analysis, and controlled agent workflows",
         "id": "claude-fable-5",
         "input": ["text", "image"],
         "maxTokens": 128000,
         "name": "Claude Fable 5",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
-            "max": null,
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "unresolved"
+        "thinkingLevelMapSource": "provider-override"
     },
     "claude-opus-4.7": {
         "api": "openai-completions",
@@ -144,22 +145,23 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "Stronger Opus tier for advanced software work and high-stakes reasoning",
         "id": "claude-opus-4.7",
         "input": ["text", "image", "pdf"],
         "maxTokens": 32000,
         "name": "Claude Opus 4.7",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "unresolved"
+        "thinkingLevelMapSource": "models.dev"
     },
     "claude-opus-4.8": {
         "api": "openai-completions",
@@ -171,22 +173,23 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "Top Claude Opus tier for the hardest reasoning, coding, and long-horizon agents",
         "id": "claude-opus-4.8",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Opus 4.8",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "unresolved"
+        "thinkingLevelMapSource": "models.dev"
     },
     "claude-opus-5": {
         "api": "openai-completions",
@@ -198,22 +201,23 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "Strongest Claude Opus model for coding, agents, and professional work",
         "id": "claude-opus-5",
         "input": ["text", "image"],
         "maxTokens": 128000,
         "name": "Claude Opus 5",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "unresolved"
+        "thinkingLevelMapSource": "models.dev"
     },
     "claude-sonnet-5": {
         "api": "openai-completions",
@@ -222,25 +226,26 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 3.0,
-            "output": 15.0
+            "input": 2.0,
+            "output": 10.0
         },
+        "description": "Everyday Claude agent model for coding, planning, browsing, and general work",
         "id": "claude-sonnet-5",
         "input": ["text", "image"],
         "maxTokens": 64000,
         "name": "Claude Sonnet 5",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
-            "max": null,
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "unresolved"
+        "thinkingLevelMapSource": "provider-override"
     },
     "deepseek-v4-flash": {
         "api": "openai-completions",
@@ -252,6 +257,7 @@
             "input": 0.14,
             "output": 0.28
         },
+        "description": "Fast DeepSeek V4 lane for economical reasoning, coding, and long-context work",
         "id": "deepseek-v4-flash",
         "input": ["text"],
         "maxTokens": 384000,
@@ -276,8 +282,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.14,
+            "output": 0.28
         },
         "id": "deepseek-v4-flash-alibaba",
         "input": ["text"],
@@ -333,6 +339,7 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
         "id": "deepseek-v4-flash-free",
         "input": ["text"],
         "maxTokens": 128000,
@@ -360,6 +367,7 @@
             "input": 0.435,
             "output": 0.87
         },
+        "description": "Open MoE flagship with million-token context for coding and long agent runs",
         "id": "deepseek-v4-pro",
         "input": ["text"],
         "maxTokens": 384000,
@@ -384,8 +392,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.435,
+            "output": 0.87
         },
         "id": "deepseek-v4-pro-alibaba",
         "input": ["text"],
@@ -411,9 +419,10 @@
         "cost": {
             "cacheRead": 0.2817,
             "cacheWrite": 0.0,
-            "input": 1.1268,
-            "output": 3.9438
+            "input": 1.4,
+            "output": 4.4
         },
+        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "glm-5.2",
         "input": ["text"],
         "maxTokens": 128000,
@@ -438,8 +447,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 1.4,
+            "output": 4.4
         },
         "id": "glm-5.2-alibaba",
         "input": ["text"],
@@ -468,6 +477,7 @@
             "input": 2.5,
             "output": 15.0
         },
+        "description": "Frontier GPT model for professional reasoning, coding, and multimodal work",
         "id": "gpt-5.4",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -495,6 +505,7 @@
             "input": 5.0,
             "output": 30.0
         },
+        "description": "Default frontier GPT for coding, computer use, research, and knowledge work",
         "id": "gpt-5.5",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -507,10 +518,10 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "gpt-5.6-luna": {
         "api": "openai-completions",
@@ -522,6 +533,7 @@
             "input": 1.0,
             "output": 6.0
         },
+        "description": "Cost-efficient GPT-5.6 model for fast, high-volume workloads",
         "id": "gpt-5.6-luna",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -534,10 +546,10 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "gpt-5.6-sol": {
         "api": "openai-completions",
@@ -549,6 +561,7 @@
             "input": 5.0,
             "output": 30.0
         },
+        "description": "Frontier GPT-5.6 model for complex professional work, coding, and agentic workflows",
         "id": "gpt-5.6-sol",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -561,10 +574,10 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "gpt-5.6-terra": {
         "api": "openai-completions",
@@ -576,6 +589,7 @@
             "input": 2.5,
             "output": 15.0
         },
+        "description": "Balanced GPT-5.6 model for capable, cost-efficient everyday work",
         "id": "gpt-5.6-terra",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -588,10 +602,10 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "grok-4.5": {
         "api": "openai-completions",
@@ -603,22 +617,23 @@
             "input": 2.0,
             "output": 6.0
         },
+        "description": "xAI's latest Grok for chat, coding, agentic tools, and lower hallucination risk",
         "id": "grok-4.5",
         "input": ["text", "image"],
         "maxTokens": 32768,
         "name": "Grok 4.5",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
         },
-        "thinkingLevelMapSource": "unresolved"
+        "thinkingLevelMapSource": "provider-override"
     },
     "grok-4.5-free": {
         "api": "openai-completions",
@@ -681,15 +696,16 @@
         "cost": {
             "cacheRead": 0.160835,
             "cacheWrite": 0.0,
-            "input": 0.95,
-            "output": 3.9995
+            "input": 0.73,
+            "output": 3.5
         },
+        "description": "Coding-focused Kimi model, stronger on long-horizon repo work with less overthinking",
         "id": "kimi-k2.7-code",
         "input": ["text", "image", "video"],
         "maxTokens": 32768,
         "name": "Kimi K2.7 Code",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -708,8 +724,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.73,
+            "output": 3.5
         },
         "id": "kimi-k2.7-code-alibaba",
         "input": ["text", "image"],
@@ -738,6 +754,7 @@
             "input": 3.0,
             "output": 15.0
         },
+        "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
         "id": "kimi-k3",
         "input": ["text", "image", "video"],
         "maxTokens": 131072,
@@ -789,8 +806,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.1,
+            "output": 0.2
         },
         "id": "laguna-s-2.1",
         "input": ["text"],
@@ -819,22 +836,23 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Efficient model for low-latency assistance, extraction, and routine automation",
         "id": "ling-3.0-flash-free",
         "input": ["text"],
         "maxTokens": 32768,
         "name": "Ling-3.0-flash Free",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
         },
-        "thinkingLevelMapSource": "unresolved"
+        "thinkingLevelMapSource": "models.dev"
     },
     "longcat-2.0-free": {
         "api": "openai-completions",
@@ -846,6 +864,7 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Meituan LongCat-2.0, a reasoning model with tool calling and a 1M-token context window",
         "id": "longcat-2.0-free",
         "input": ["text"],
         "maxTokens": 131072,
@@ -873,12 +892,13 @@
             "input": 0.14,
             "output": 0.28
         },
+        "description": "Open MiMo model for multimodal coding agents and long-context automation",
         "id": "mimo-v2.5",
         "input": ["text", "image", "audio", "video"],
         "maxTokens": 131072,
         "name": "MiMo-V2.5",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -900,12 +920,13 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "MiMo omni model for text, image, video, audio, and agents",
         "id": "mimo-v2.5-free",
         "input": ["text", "image", "audio", "video"],
         "maxTokens": 32000,
         "name": "MiMo V2.5 Free",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -924,9 +945,10 @@
         "cost": {
             "cacheRead": 0.003,
             "cacheWrite": 0.0,
-            "input": 0.4,
-            "output": 0.8
+            "input": 0.435,
+            "output": 0.87
         },
+        "description": "Stronger MiMo Pro tier for multimodal reasoning and coding-agent execution",
         "id": "mimo-v2.5-pro",
         "input": ["text"],
         "maxTokens": 131072,
@@ -954,6 +976,7 @@
             "input": 1.305,
             "output": 2.61
         },
+        "description": "MiMo pro model for strong multimodal reasoning and agent execution",
         "id": "mimo-v2.5-pro-ultraspeed",
         "input": ["text"],
         "maxTokens": 131072,
@@ -978,15 +1001,16 @@
         "cost": {
             "cacheRead": 0.099,
             "cacheWrite": 0.0,
-            "input": 0.395,
-            "output": 1.977
+            "input": 0.3,
+            "output": 1.2
         },
+        "description": "MiniMax multimodal model for long-context coding, perception, and agent planning",
         "id": "minimax-m3",
         "input": ["text", "image"],
         "maxTokens": 1048576,
         "name": "MiniMax-M3",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1005,8 +1029,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 2.0,
+            "output": 6.0
         },
         "id": "mistral-large",
         "input": ["text"],
@@ -1032,8 +1056,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 1.5,
+            "output": 7.5
         },
         "id": "mistral-medium-3-5",
         "input": ["text", "image"],
@@ -1062,12 +1086,13 @@
             "input": 1.25,
             "output": 4.25
         },
+        "description": "Muse Spark is a natively multimodal reasoning model with support for tool-use, visual chain of thought, and multi-agent orchestration.",
         "id": "muse-spark-1.1",
         "input": ["text", "image", "video"],
         "maxTokens": 32000,
         "name": "Muse Spark 1.1",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1089,22 +1114,23 @@
             "input": 1.25,
             "output": 4.25
         },
+        "description": "Muse Spark 1.2 is a coding-focused update to Muse Spark 1.1 with improvements in code generation, complex debugging, codebase understanding, and end-to-end developer workflows.",
         "id": "muse-spark-1.2",
         "input": ["text", "image", "video", "pdf", "audio"],
         "maxTokens": 131072,
         "name": "Muse Spark 1.2",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": null,
+            "medium": "medium",
+            "minimal": "minimal",
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "unresolved"
+        "thinkingLevelMapSource": "models.dev"
     },
     "muse-spark-1.2-contributor": {
         "api": "openai-completions",
@@ -1116,22 +1142,23 @@
             "input": 0.1,
             "output": 0.2
         },
+        "description": "Muse Spark 1.2 is a coding-focused update to Muse Spark 1.1 with improvements in code generation, complex debugging, codebase understanding, and end-to-end developer workflows.",
         "id": "muse-spark-1.2-contributor",
         "input": ["text", "image", "video", "pdf", "audio"],
         "maxTokens": 131072,
         "name": "Muse Spark 1.2 Contributor",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": null,
+            "medium": "medium",
+            "minimal": "minimal",
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "unresolved"
+        "thinkingLevelMapSource": "models.dev"
     },
     "nemotron-3-ultra": {
         "api": "openai-completions",
@@ -1140,15 +1167,16 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.5,
+            "output": 2.2
         },
+        "description": "Largest Nemotron 3 model for maximum open-weight reasoning and agent accuracy",
         "id": "nemotron-3-ultra",
         "input": ["text"],
         "maxTokens": 128000,
         "name": "nemotron-3-ultra",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1167,9 +1195,10 @@
         "cost": {
             "cacheRead": 0.002962,
             "cacheWrite": 0.03703,
-            "input": 0.02962,
-            "output": 0.1185
+            "input": 0.03,
+            "output": 0.13
         },
+        "description": "Lightweight multimodal Qwen model for high-throughput text, image, and video tasks",
         "id": "qwen3.7-flash",
         "input": ["text", "image", "video"],
         "maxTokens": 65536,
@@ -1194,8 +1223,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.03,
+            "output": 0.13
         },
         "id": "qwen3.7-flash-alibaba",
         "input": ["text", "image"],
@@ -1221,15 +1250,16 @@
         "cost": {
             "cacheRead": 0.169,
             "cacheWrite": 2.1125,
-            "input": 1.69,
-            "output": 5.07
+            "input": 1.475,
+            "output": 4.425
         },
+        "description": "Qwen frontier model tuned for agent frameworks, coding assistants, and long tasks",
         "id": "qwen3.7-max",
         "input": ["text"],
         "maxTokens": 64000,
         "name": "Qwen3.7 Max",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1248,8 +1278,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 1.475,
+            "output": 4.425
         },
         "id": "qwen3.7-max-alibaba",
         "input": ["text"],
@@ -1275,9 +1305,10 @@
         "cost": {
             "cacheRead": 0.0564,
             "cacheWrite": 0.3525,
-            "input": 0.282,
-            "output": 1.128
+            "input": 0.4,
+            "output": 1.6
         },
+        "description": "Multimodal Qwen workhorse for long-context agents, visual inputs, and coding",
         "id": "qwen3.7-plus",
         "input": ["text"],
         "maxTokens": 64000,
@@ -1302,8 +1333,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.4,
+            "output": 1.6
         },
         "id": "qwen3.7-plus-alibaba",
         "input": ["text", "image"],
@@ -1332,22 +1363,23 @@
             "input": 1.69,
             "output": 5.07
         },
+        "description": "2.4-trillion-parameter MoE flagship for coding, professional work, multimodal understanding, and long-horizon agentic workflows",
         "id": "qwen3.8-max",
         "input": ["text"],
         "maxTokens": 128000,
         "name": "Qwen3.8 Max",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
-            "low": null,
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "unresolved"
+        "thinkingLevelMapSource": "models.dev"
     },
     "qwen3.8-max-alibaba": {
         "api": "openai-completions",

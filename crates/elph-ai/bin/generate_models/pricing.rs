@@ -3,10 +3,13 @@
 
 use std::collections::HashMap;
 use std::env;
+use std::fs;
+use std::path::Path;
+use std::time::Duration;
 
 use serde_json::Value;
 
-use super::models_dev::{ModelsDevRoot, find_model, find_model_fuzzy};
+use super::models_dev::{ModelsDevData, find_model, find_model_fuzzy};
 use super::provider_sources::{ProviderSource, all_provider_sources};
 use super::term;
 
@@ -165,14 +168,18 @@ fn fetch_live_provider_data(src: &ProviderSource, base_url: &str) -> LiveProbeRe
             } else if let Some(pricing_obj) = cents_pricing(entry) {
                 pricing_obj
             } else if let Some(pricing_obj) = entry.get("pricing") {
-                let i = pricing_obj.get("input").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                let o = pricing_obj.get("output").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                let c = pricing_obj
-                    .get("cache_hit")
-                    .or_else(|| pricing_obj.get("cache_read"))
-                    .and_then(|v| v.as_f64())
-                    .unwrap_or(0.0);
-                (i, o, c)
+                // OpenRouter shape: per-token strings keyed prompt/completion/input_cache_read.
+                if pricing_obj.get("prompt").is_some() || pricing_obj.get("completion").is_some() {
+                    let i = num_or_str(pricing_obj.get("prompt")) * 1_000_000.0;
+                    let o = num_or_str(pricing_obj.get("completion")) * 1_000_000.0;
+                    let c = num_or_str(pricing_obj.get("input_cache_read")) * 1_000_000.0;
+                    (i, o, c)
+                } else {
+                    let i = num_or_str(pricing_obj.get("input"));
+                    let o = num_or_str(pricing_obj.get("output"));
+                    let c = num_or_str(pricing_obj.get("cache_hit").or_else(|| pricing_obj.get("cache_read")));
+                    (i, o, c)
+                }
             } else {
                 let i = entry.get("min_prompt_price").and_then(|v| v.as_f64()).unwrap_or(0.0);
                 let o = entry
@@ -244,8 +251,9 @@ fn cents_pricing(entry: &Value) -> Option<PriceTriple> {
 pub fn resolve_cost(
     provider: &ProviderSource,
     model_id: &str,
-    models_dev: &ModelsDevRoot,
+    models_dev: &ModelsDevData,
     live: &HashMap<String, LiveProbeResult>,
+    aimd: &AIModelDir,
     previous_cost: Option<&Value>,
 ) -> (f64, f64, f64, f64, &'static str) {
     if let Some(map) = live.get(provider.id)
@@ -268,6 +276,22 @@ pub fn resolve_cost(
         && let Some((i, o, cr, cw)) = cost_from_mdev(&m)
     {
         return (i, o, cr, cw, "models.dev");
+    }
+
+    // Compiled multi-source fallback (ai-model-directory): keyed by
+    // `provider/modelid`, then by bare model id.
+    let aimd_cr = previous_cost
+        .and_then(|p| p.get("cacheRead").and_then(|v| v.as_f64()))
+        .unwrap_or(0.0);
+    let aimd_cw = previous_cost
+        .and_then(|p| p.get("cacheWrite").and_then(|v| v.as_f64()))
+        .unwrap_or(0.0);
+    if let Some(e) = aimd
+        .get(&format!("{}/{}", provider.id, model_id))
+        .or_else(|| aimd.get(model_id))
+        && (e.input > 0.0 || e.output > 0.0)
+    {
+        return (e.input, e.output, aimd_cr, aimd_cw, "ai-model-directory");
     }
 
     if let Some(c) = previous_cost {
@@ -329,6 +353,205 @@ fn set_if_positive(c: &mut serde_json::Map<String, Value>, key: &str, new: f64) 
     if new > 0.0 {
         c.insert(key.into(), serde_json::json!(new));
     }
+}
+
+/// Parse either a JSON number or a numeric string into an `f64` (defaults to 0).
+/// OpenRouter returns prices as strings (`"0.00000095"`), others as numbers.
+fn num_or_str(v: Option<&Value>) -> f64 {
+    match v {
+        Some(Value::Number(n)) => n.as_f64().unwrap_or(0.0),
+        Some(Value::String(s)) => s.parse::<f64>().unwrap_or(0.0),
+        _ => 0.0,
+    }
+}
+
+/// ----------------------------------------------------------------------------
+/// ai-model-directory (The-Best-Codes) — community-curated, multi-provider catalog
+/// used as a secondary (compiled) pricing source when neither a live provider API
+/// nor models.dev exposes a price for a model.
+/// ----------------------------------------------------------------------------
+
+pub const AIMD_URL: &str = "https://raw.githubusercontent.com/The-Best-Codes/ai-model-directory/main/data/all.json";
+
+/// One ai-model-directory pricing entry (per-million USD, matching its schema).
+#[derive(Clone)]
+pub struct AIModelDirEntry {
+    pub input: f64,
+    pub output: f64,
+    pub reasoning: bool,
+}
+
+/// `provider/modelid` and bare `modelid` → entry.
+pub type AIModelDir = HashMap<String, AIModelDirEntry>;
+
+/// Fetch and parse the ai-model-directory catalog.
+///
+/// Network is skipped in `offline` mode (cached snapshot reused). On any failure
+/// the cached snapshot is used when present; otherwise an empty map (caller falls
+/// through to the previous catalog price).
+pub fn fetch_ai_model_directory(cache_dir: &Path, offline: bool) -> AIModelDir {
+    let path = cache_dir.join("ai-model-directory.json");
+    let text = if offline {
+        match fs::read_to_string(&path) {
+            Ok(t) => t,
+            Err(_) => {
+                term::note("ai-model-directory: no offline cache — skipping");
+                return AIModelDir::new();
+            }
+        }
+    } else {
+        match reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(60))
+            .build()
+            .ok()
+            .and_then(|c| c.get(AIMD_URL).send().ok())
+        {
+            Some(resp) if resp.status().is_success() => match resp.text() {
+                Ok(t) => {
+                    let _ = fs::write(&path, &t);
+                    t
+                }
+                Err(_) => match fs::read_to_string(&path) {
+                    Ok(t) => t,
+                    Err(_) => return AIModelDir::new(),
+                },
+            },
+            _ => match fs::read_to_string(&path) {
+                Ok(t) => {
+                    term::warn("ai-model-directory fetch failed — using cache");
+                    t
+                }
+                Err(_) => return AIModelDir::new(),
+            },
+        }
+    };
+    parse_aimd(&text)
+}
+
+fn parse_aimd(text: &str) -> AIModelDir {
+    let Ok(json) = serde_json::from_str::<Value>(text) else {
+        return AIModelDir::new();
+    };
+    let mut out = AIModelDir::new();
+    if let Some(providers) = json.as_object() {
+        for (pkey, prov) in providers {
+            if let Some(models) = prov.get("models").and_then(|m| m.as_object()) {
+                for (mid, m) in models {
+                    let pricing = m.get("pricing");
+                    let input = pricing
+                        .and_then(|p| p.get("input"))
+                        .and_then(|v| v.as_f64())
+                        .unwrap_or(0.0);
+                    let output = pricing
+                        .and_then(|p| p.get("output"))
+                        .and_then(|v| v.as_f64())
+                        .unwrap_or(0.0);
+                    let reasoning = m
+                        .get("features")
+                        .and_then(|f| f.get("reasoning"))
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false);
+                    if input > 0.0 || output > 0.0 {
+                        let entry = AIModelDirEntry {
+                            input,
+                            output,
+                            reasoning,
+                        };
+                        out.insert(format!("{pkey}/{mid}"), entry.clone());
+                        out.entry(mid.clone()).or_insert(entry);
+                    }
+                }
+            }
+        }
+    }
+    term::note(format!("ai-model-directory: {} priced entries loaded", out.len()));
+    out
+}
+
+/// Whether ai-model-directory flags a model as a reasoning model.
+/// Looked up by `provider/modelid`, then by bare model id.
+pub fn aimd_reasoning(aimd: &AIModelDir, provider_id: &str, model_id: &str) -> Option<bool> {
+    aimd.get(&format!("{provider_id}/{model_id}"))
+        .or_else(|| aimd.get(model_id))
+        .map(|e| e.reasoning)
+}
+
+/// ----------------------------------------------------------------------------
+/// Nara Router official pricing (https://router.bynara.id/api/pricing).
+///
+/// Nara's `/v1/models` does not expose any pricing, so this dedicated endpoint
+/// is the authoritative source for per-model costs. Prices are returned as
+/// `official_in_usd_m` / `official_out_usd_m` in USD per million tokens — the
+/// exact catalog unit — so no conversion is applied. Credit-based fields are
+/// intentionally ignored: the credit→USD rate is not stable across models.
+/// ----------------------------------------------------------------------------
+
+pub const NARA_PRICING_URL: &str = "https://router.bynara.id/api/pricing";
+
+/// Nara pricing result: model alias/id -> (input, output, cache_read) USD per million.
+pub type NaraPricing = HashMap<String, PriceTriple>;
+
+/// Fetch and parse Nara's official pricing catalog.
+///
+/// The endpoint is public; an optional `NARA_API_KEY` is forwarded when present.
+/// In `offline` mode the cached snapshot is reused, and an empty map is returned
+/// when no cache exists (caller falls through to the normal pricing chain).
+pub fn fetch_nara_pricing(cache_dir: &Path, offline: bool) -> NaraPricing {
+    let path = cache_dir.join("nara-pricing.json");
+    let text = if offline {
+        match fs::read_to_string(&path) {
+            Ok(t) => t,
+            Err(_) => {
+                term::note("Nara pricing: no offline cache — skipping");
+                return NaraPricing::new();
+            }
+        }
+    } else {
+        match reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()
+            .ok()
+            .and_then(|c| {
+                let mut req = c.get(NARA_PRICING_URL);
+                if let Ok(key) = env::var("NARA_API_KEY") {
+                    req = req.bearer_auth(key);
+                }
+                req.send().ok()
+            }) {
+            Some(resp) if resp.status().is_success() => match resp.text() {
+                Ok(t) => {
+                    let _ = fs::write(&path, &t);
+                    t
+                }
+                Err(_) => fs::read_to_string(&path).unwrap_or_default(),
+            },
+            _ => fs::read_to_string(&path).unwrap_or_default(),
+        }
+    };
+    parse_nara_pricing(&text)
+}
+
+fn parse_nara_pricing(text: &str) -> NaraPricing {
+    let Ok(json) = serde_json::from_str::<Value>(text) else {
+        return NaraPricing::new();
+    };
+    let Some(data) = json.get("data").and_then(|d| d.as_array()) else {
+        return NaraPricing::new();
+    };
+    let mut out = NaraPricing::new();
+    for entry in data {
+        let Some(alias) = entry.get("alias").and_then(|v| v.as_str()) else {
+            continue;
+        };
+        // Only USD fields — the catalog unit is USD per million tokens.
+        let input = entry.get("official_in_usd_m").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let output = entry.get("official_out_usd_m").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        if input > 0.0 || output > 0.0 {
+            out.insert(alias.to_string(), (input, output, 0.0));
+        }
+    }
+    term::note(format!("Nara official pricing: {} models loaded (USD/million)", out.len()));
+    out
 }
 
 #[cfg(test)]

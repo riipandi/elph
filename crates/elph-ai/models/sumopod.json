@@ -13,22 +13,23 @@
             "input": 0.6,
             "output": 4.8
         },
+        "description": "High-speed MiniMax model for low-latency coding and agent workflows",
         "id": "MiniMax-M2.7-highspeed",
         "input": ["text"],
         "maxTokens": 131072,
         "name": "MiniMax-M2.7-highspeed",
         "provider": "sumopod",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "unresolved"
     },
     "MiniMax-M3": {
         "api": "openai-completions",
@@ -44,6 +45,7 @@
             "input": 0.3,
             "output": 1.2
         },
+        "description": "MiniMax multimodal model for long-context coding, perception, and agent planning",
         "id": "MiniMax-M3",
         "input": ["text", "image", "video"],
         "maxTokens": 128000,
@@ -75,6 +77,7 @@
             "input": 10.0,
             "output": 50.0
         },
+        "description": "Claude model for creative writing, analysis, and controlled agent workflows",
         "id": "claude-fable-5",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -82,15 +85,15 @@
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": "max",
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "claude-haiku-4-5": {
         "api": "openai-completions",
@@ -106,22 +109,23 @@
             "input": 1.0,
             "output": 5.0
         },
+        "description": "Fast Claude model for responsive assistance, classification, and lightweight agents",
         "id": "claude-haiku-4-5",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "claude-haiku-4-5",
         "provider": "sumopod",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
         },
-        "thinkingLevelMapSource": "unresolved"
+        "thinkingLevelMapSource": "provider-override"
     },
     "claude-opus-4-7": {
         "api": "openai-completions",
@@ -137,6 +141,7 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
         "id": "claude-opus-4-7",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -168,6 +173,7 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "Top Claude Opus tier for the hardest reasoning, coding, and long-horizon agents",
         "id": "claude-opus-4-8",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -175,15 +181,15 @@
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": "max",
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "claude-sonnet-4-6": {
         "api": "openai-completions",
@@ -199,6 +205,7 @@
             "input": 3.0,
             "output": 15.0
         },
+        "description": "Balanced Claude model for coding, analysis, agent workflows, and cost control",
         "id": "claude-sonnet-4-6",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
@@ -206,15 +213,15 @@
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": "max",
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "claude-sonnet-5": {
         "api": "openai-completions",
@@ -230,6 +237,7 @@
             "input": 3.0,
             "output": 15.0
         },
+        "description": "Everyday Claude agent model for coding, planning, browsing, and general work",
         "id": "claude-sonnet-5",
         "input": ["text", "image"],
         "maxTokens": 64000,
@@ -237,15 +245,15 @@
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": "max",
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "deepseek-v4-flash": {
         "api": "openai-completions",
@@ -261,6 +269,7 @@
             "input": 0.14,
             "output": 0.28
         },
+        "description": "Fast DeepSeek V4 lane for economical reasoning, coding, and long-context work",
         "id": "deepseek-v4-flash",
         "input": ["text"],
         "maxTokens": 384000,
@@ -292,6 +301,7 @@
             "input": 0.435,
             "output": 0.87
         },
+        "description": "Open MoE flagship with million-token context for coding and long agent runs",
         "id": "deepseek-v4-pro",
         "input": ["text"],
         "maxTokens": 384000,
@@ -323,22 +333,23 @@
             "input": 0.5,
             "output": 3.0
         },
+        "description": "New Gemini flash lane bringing frontier-style multimodal reasoning to cheaper runs",
         "id": "gemini/gemini-3-flash-preview",
         "input": ["text", "image", "video", "audio"],
         "maxTokens": 65536,
         "name": "Gemini 3 Flash Preview",
         "provider": "sumopod",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": null,
+            "medium": "medium",
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
         },
-        "thinkingLevelMapSource": "unresolved"
+        "thinkingLevelMapSource": "models.dev"
     },
     "gemini/gemini-3.1-flash-lite": {
         "api": "openai-completions",
@@ -354,12 +365,13 @@
             "input": 0.25,
             "output": 1.5
         },
+        "description": "Low-latency Gemini model for high-volume multimodal and agent workloads",
         "id": "gemini/gemini-3.1-flash-lite",
         "input": ["text", "image", "audio"],
         "maxTokens": 65536,
         "name": "Gemini 3.1 Flash Lite",
         "provider": "sumopod",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -385,22 +397,23 @@
             "input": 2.0,
             "output": 12.0
         },
+        "description": "Reasoning-first Gemini preview for agentic coding and complex problem solving",
         "id": "gemini/gemini-3.1-pro-preview",
         "input": ["text", "image", "audio", "video"],
         "maxTokens": 65536,
         "name": "Gemini 3.1 Pro Preview",
         "provider": "sumopod",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
         },
-        "thinkingLevelMapSource": "unresolved"
+        "thinkingLevelMapSource": "models.dev"
     },
     "gemini/gemini-3.5-flash": {
         "api": "openai-completions",
@@ -416,22 +429,23 @@
             "input": 1.5,
             "output": 9.0
         },
+        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
         "id": "gemini/gemini-3.5-flash",
         "input": ["text", "image", "audio", "video"],
         "maxTokens": 65536,
         "name": "Gemini 3.5 Flash",
         "provider": "sumopod",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": null,
+            "medium": "medium",
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
         },
-        "thinkingLevelMapSource": "unresolved"
+        "thinkingLevelMapSource": "models.dev"
     },
     "gemini/gemini-embedding-001": {
         "api": "openai-completions",
@@ -447,6 +461,7 @@
             "input": 0.15,
             "output": 0.0
         },
+        "description": "Embedding model for semantic search, retrieval, clustering, and ranking pipelines",
         "id": "gemini/gemini-embedding-001",
         "input": ["text"],
         "maxTokens": 1,
@@ -478,6 +493,7 @@
             "input": 0.6,
             "output": 2.6
         },
+        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "glm-5",
         "input": ["text"],
         "maxTokens": 131072,
@@ -509,6 +525,7 @@
             "input": 0.72,
             "output": 3.2
         },
+        "description": "Efficient GLM model for fast reasoning, coding, and agent workflows",
         "id": "glm-5-turbo",
         "input": ["text"],
         "maxTokens": 131072,
@@ -540,6 +557,7 @@
             "input": 0.86,
             "output": 3.5
         },
+        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "glm-5.1",
         "input": ["text"],
         "maxTokens": 131072,
@@ -571,6 +589,7 @@
             "input": 1.1268,
             "output": 3.9438
         },
+        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "glm-5.2",
         "input": ["text"],
         "maxTokens": 128000,
@@ -602,6 +621,7 @@
             "input": 0.72,
             "output": 3.2
         },
+        "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
         "id": "glm-5v-turbo",
         "input": ["text", "image", "video", "audio", "pdf"],
         "maxTokens": 131072,
@@ -633,6 +653,7 @@
             "input": 2.0,
             "output": 8.0
         },
+        "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "gpt-4.1",
         "input": ["text", "image", "pdf"],
         "maxTokens": 32768,
@@ -664,6 +685,7 @@
             "input": 0.4,
             "output": 1.6
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "gpt-4.1-mini",
         "input": ["text", "image", "pdf"],
         "maxTokens": 32768,
@@ -695,6 +717,7 @@
             "input": 0.1,
             "output": 0.4
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "gpt-4.1-nano",
         "input": ["text", "image"],
         "maxTokens": 32768,
@@ -726,6 +749,7 @@
             "input": 2.5,
             "output": 10.0
         },
+        "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "gpt-4o",
         "input": ["text", "image", "pdf"],
         "maxTokens": 16384,
@@ -757,6 +781,7 @@
             "input": 0.15,
             "output": 0.6
         },
+        "description": "Small omni GPT for cheap multimodal assistance and production-scale traffic",
         "id": "gpt-4o-mini",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -788,6 +813,7 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "gpt-5",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -819,6 +845,7 @@
             "input": 0.25,
             "output": 2.0
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "gpt-5-mini",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -850,6 +877,7 @@
             "input": 0.05,
             "output": 0.4
         },
+        "description": "Tiny GPT-5 lane for routing, extraction, classification, and bulk jobs",
         "id": "gpt-5-nano",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -861,11 +889,11 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": "minimal",
-            "off": null,
-            "xhigh": null
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "gpt-5.4": {
         "api": "openai-completions",
@@ -881,6 +909,7 @@
             "input": 2.5,
             "output": 15.0
         },
+        "description": "Frontier GPT model for professional reasoning, coding, and multimodal work",
         "id": "gpt-5.4",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -912,6 +941,7 @@
             "input": 0.75,
             "output": 4.5
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "gpt-5.4-mini",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -943,6 +973,7 @@
             "input": 0.2,
             "output": 1.25
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "gpt-5.4-nano",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -974,6 +1005,7 @@
             "input": 0.14,
             "output": 0.58
         },
+        "description": "Tencent Hy reasoning model for coding, instruction following, and agent tasks",
         "id": "hy3",
         "input": ["text"],
         "maxTokens": 64000,
@@ -1005,6 +1037,7 @@
             "input": 0.95,
             "output": 4.0
         },
+        "description": "Kimi multimodal agent model for visual understanding, coding, and planning",
         "id": "kimi-k2.6",
         "input": ["text", "image", "video"],
         "maxTokens": 32768,
@@ -1033,8 +1066,8 @@
         "cost": {
             "cacheRead": 0.19,
             "cacheWrite": 0,
-            "input": 0.95,
-            "output": 4.0
+            "input": 0.85,
+            "output": 3.7
         },
         "id": "kimi-k2.7",
         "input": ["text", "image"],
@@ -1067,6 +1100,7 @@
             "input": 3.0,
             "output": 15.0
         },
+        "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
         "id": "kimi-k3",
         "input": ["text", "image", "video"],
         "maxTokens": 131072,
@@ -1098,6 +1132,7 @@
             "input": 0.14,
             "output": 0.28
         },
+        "description": "Open MiMo model for multimodal coding agents and long-context automation",
         "id": "mimo-v2.5",
         "input": ["text", "image", "audio", "video"],
         "maxTokens": 131072,
@@ -1129,6 +1164,7 @@
             "input": 0.4,
             "output": 0.8
         },
+        "description": "Stronger MiMo Pro tier for multimodal reasoning and coding-agent execution",
         "id": "mimo-v2.5-pro",
         "input": ["text"],
         "maxTokens": 131072,
@@ -1160,6 +1196,7 @@
             "input": 0.17,
             "output": 1.01
         },
+        "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
         "id": "qwen3.6-flash",
         "input": ["text", "image", "video"],
         "maxTokens": 64000,
@@ -1191,6 +1228,7 @@
             "input": 0.28,
             "output": 1.69
         },
+        "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
         "id": "qwen3.6-plus",
         "input": ["text", "image", "video"],
         "maxTokens": 64000,
@@ -1222,6 +1260,7 @@
             "input": 1.69,
             "output": 5.07
         },
+        "description": "Qwen frontier model tuned for agent frameworks, coding assistants, and long tasks",
         "id": "qwen3.7-max",
         "input": ["text"],
         "maxTokens": 64000,
@@ -1253,6 +1292,7 @@
             "input": 0.282,
             "output": 1.128
         },
+        "description": "Multimodal Qwen workhorse for long-context agents, visual inputs, and coding",
         "id": "qwen3.7-plus",
         "input": ["text"],
         "maxTokens": 64000,
@@ -1281,9 +1321,10 @@
         "cost": {
             "cacheRead": 0.15,
             "cacheWrite": 2.0,
-            "input": 1.5,
-            "output": 5.0
+            "input": 0.338,
+            "output": 1.014
         },
+        "description": "Preview Qwen flagship for million-token multimodal reasoning and long-horizon agentic workflows",
         "id": "qwen3.8-max-preview",
         "input": ["text", "image", "video"],
         "maxTokens": 131072,
@@ -1312,8 +1353,8 @@
         "cost": {
             "cacheRead": 0.1,
             "cacheWrite": 0,
-            "input": 0.5,
-            "output": 3.0
+            "input": 0.4,
+            "output": 2.4
         },
         "id": "seed-2-0-code",
         "input": ["text"],
@@ -1343,8 +1384,8 @@
         "cost": {
             "cacheRead": 0.05,
             "cacheWrite": 0,
-            "input": 0.25,
-            "output": 2.0
+            "input": 0.31,
+            "output": 2.5
         },
         "id": "seed-2-0-lite",
         "input": ["text"],
@@ -1374,8 +1415,8 @@
         "cost": {
             "cacheRead": 0.02,
             "cacheWrite": 0,
-            "input": 0.1,
-            "output": 0.4
+            "input": 0.12,
+            "output": 0.5
         },
         "id": "seed-2-0-mini",
         "input": ["text"],
@@ -1405,8 +1446,8 @@
         "cost": {
             "cacheRead": 0.1,
             "cacheWrite": 0,
-            "input": 0.5,
-            "output": 3.0
+            "input": 0.63,
+            "output": 3.79
         },
         "id": "seed-2-0-pro",
         "input": ["text"],
@@ -1439,6 +1480,7 @@
             "input": 0.13,
             "output": 0.0
         },
+        "description": "Embedding model for semantic search, retrieval, clustering, and ranking pipelines",
         "id": "text-embedding-3-large",
         "input": ["text"],
         "maxTokens": 3072,
@@ -1470,6 +1512,7 @@
             "input": 0.02,
             "output": 0.0
         },
+        "description": "Embedding model for semantic search, retrieval, clustering, and ranking pipelines",
         "id": "text-embedding-3-small",
         "input": ["text"],
         "maxTokens": 1536,

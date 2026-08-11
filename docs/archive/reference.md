@@ -11,3 +11,4 @@
 - https://github.com/jacobaraujo7/remote_pi
 - https://github.com/nativesoil/handover
 - https://docs.turso.tech/agentfs/sdk/rust
+- https://github.com/Opencode-DCP/opencode-dynamic-context-pruning

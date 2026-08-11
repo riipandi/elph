@@ -988,7 +988,14 @@ export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
 
 ### Regenerating Model Catalogs
 
-Chat model catalogs are generated from **[models.dev](https://models.dev)** (`api.json`) as the **origin** source of truth. Pricing prefers live provider APIs when available, then models.dev. Every model entry includes a full `thinkingLevelMap` (7 keys: `off`…`max`). Image fixtures may still use an optional local pi clone.
+Chat model catalogs are compiled from several authoritative sources with a fixed precedence:
+**[models.dev](https://models.dev)** (`api.json` for cost/limits, `models.json` + `catalog.json` for
+`description`/`knowledgeCutoff`/`releaseDate`), **live provider APIs** (OpenAI-compatible `/models`,
+including **OpenRouter** `reasoning.supported_efforts` for thinking levels), and the
+**[ai-model-directory](https://github.com/The-Best-Codes/ai-model-directory)** as a compiled fallback for
+pricing and the `reasoning` flag. Pricing prefers live API → models.dev → ai-model-directory → previous
+non-zero; `thinkingLevelMap` (7 keys: `off`…`max`) is always filled and refreshed from the strongest source
+(OpenRouter `supported_efforts` wins for reasoning models). Image fixtures may still use an optional local pi clone.
 
 ```sh
 # Rebuild chat catalogs from models.dev
@@ -1010,7 +1017,7 @@ Subcommands:
 
 | Command      | Source                         | Output                                          |
 | ------------ | ------------------------------ | ----------------------------------------------- |
-| `chat`       | models.dev + Elph overlays     | `models/*.json` + `models/index.json`           |
+| `chat`       | models.dev (api/models/catalog) + OpenRouter live API + ai-model-directory + Elph overlays | `models/*.json` + `models/index.json`           |
 | `enrich`     | same as chat (pricing refresh) | rewritten catalogs                              |
 | `image`      | optional pi image scripts      | `models/images/*.json` + `src/images/models.rs` |
 | `test-image` | local fixture                  | `tests/data/red-circle.png`                     |

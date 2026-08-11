@@ -14,6 +14,7 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Reasoning model for deliberate analysis, multi-step problem solving, and tool use",
         "id": "big-pickle",
         "input": ["text"],
         "maxTokens": 32000,
@@ -41,6 +42,7 @@
             "input": 1.0,
             "output": 5.0
         },
+        "description": "Fast Claude model for responsive assistance, classification, and lightweight agents",
         "id": "claude-haiku-4-5",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
@@ -50,13 +52,13 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
         },
-        "thinkingLevelMapSource": "previous"
+        "thinkingLevelMapSource": "provider-override"
     },
     "claude-opus-5": {
         "api": "anthropic-messages",
@@ -72,6 +74,7 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "Strongest Claude Opus model for coding, agents, and professional work",
         "id": "claude-opus-5",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -102,6 +105,7 @@
             "input": 2.0,
             "output": 10.0
         },
+        "description": "Everyday Claude agent model for coding, planning, browsing, and general work",
         "id": "claude-sonnet-5",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -136,6 +140,7 @@
             "input": 0.14,
             "output": 0.28
         },
+        "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
         "id": "deepseek-v4-flash",
         "input": ["text"],
         "maxTokens": 384000,
@@ -169,6 +174,7 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
         "id": "deepseek-v4-flash-free",
         "input": ["text"],
         "maxTokens": 128000,
@@ -203,6 +209,7 @@
             "input": 1.74,
             "output": 3.84
         },
+        "description": "Open MoE flagship with million-token context for coding and long agent runs",
         "id": "deepseek-v4-pro",
         "input": ["text"],
         "maxTokens": 384000,
@@ -230,6 +237,7 @@
             "input": 1.5,
             "output": 7.5
         },
+        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
         "id": "gemini-3.6-flash",
         "input": ["text", "image", "video", "audio", "pdf"],
         "maxTokens": 65536,
@@ -262,6 +270,7 @@
             "input": 1.4,
             "output": 4.4
         },
+        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "glm-5.1",
         "input": ["text"],
         "maxTokens": 131072,
@@ -294,6 +303,7 @@
             "input": 1.4,
             "output": 4.4
         },
+        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "glm-5.2",
         "input": ["text"],
         "maxTokens": 131072,
@@ -325,6 +335,7 @@
             "input": 0.2,
             "output": 1.2
         },
+        "description": "Cost-efficient GPT-5.6 model for fast, high-volume workloads",
         "id": "gpt-5.6-luna",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -357,6 +368,7 @@
             "input": 0.95,
             "output": 4.0
         },
+        "description": "Coding-focused Kimi model, stronger on long-horizon repo work with less overthinking",
         "id": "kimi-k2.7-code",
         "input": ["text", "image", "video"],
         "maxTokens": 262144,
@@ -389,6 +401,7 @@
             "input": 3.0,
             "output": 15.0
         },
+        "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
         "id": "kimi-k3",
         "input": ["text", "image", "video"],
         "maxTokens": 131072,
@@ -421,6 +434,7 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Agentic coding model from Poolside in the XS size class for local deployment",
         "id": "laguna-s-2.1-free",
         "input": ["text"],
         "maxTokens": 32000,
@@ -453,6 +467,7 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Efficient model for low-latency assistance, extraction, and routine automation",
         "id": "ling-3.0-flash-free",
         "input": ["text"],
         "maxTokens": 32768,
@@ -480,6 +495,7 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Compact MoE model for responsive agents, instruction following, and multi-turn conversations",
         "id": "ling-3.0-tiny-free",
         "input": ["text"],
         "maxTokens": 32768,
@@ -507,6 +523,7 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Meituan LongCat-2.0, a reasoning model with tool calling and a 1M-token context window",
         "id": "longcat-2.0-free",
         "input": ["text"],
         "maxTokens": 131072,
@@ -539,6 +556,7 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "MiMo omni model for text, image, video, audio, and agents",
         "id": "mimo-v2.5-free",
         "input": ["text", "image", "audio", "video"],
         "maxTokens": 32000,
@@ -571,6 +589,7 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Largest Nemotron 3 model for maximum open-weight reasoning and agent accuracy",
         "id": "nemotron-3-ultra-free",
         "input": ["text"],
         "maxTokens": 128000,
@@ -630,6 +649,7 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Cohere coding model for practical software engineering and agentic edits",
         "id": "north-mini-code-free",
         "input": ["text"],
         "maxTokens": 64000,
@@ -657,6 +677,7 @@
             "input": 0.5,
             "output": 3.0
         },
+        "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
         "id": "qwen3.6-plus",
         "input": ["text", "image", "video"],
         "maxTokens": 65536,
