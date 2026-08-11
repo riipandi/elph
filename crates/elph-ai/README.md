@@ -381,6 +381,7 @@ Built-in providers resolve these environment variables:
 | Ant Ling                               | `ANT_LING_API_KEY`                                                                                                                                                     |
 | Azure OpenAI                           | `AZURE_OPENAI_API_KEY` + `AZURE_OPENAI_BASE_URL` or `AZURE_OPENAI_RESOURCE_NAME`. Optional: `AZURE_OPENAI_API_VERSION`, `AZURE_OPENAI_DEPLOYMENT_NAME_MAP`             |
 | Anthropic                              | `ANTHROPIC_API_KEY` or `ANTHROPIC_OAUTH_TOKEN`                                                                                                                         |
+| Agnes                                  | `AGNES_API_KEY`                                                                                                                                                       |
 | DeepSeek                               | `DEEPSEEK_API_KEY`                                                                                                                                                     |
 | NVIDIA NIM                             | `NVIDIA_API_KEY`                                                                                                                                                       |
 | Google                                 | `GEMINI_API_KEY`                                                                                                                                                       |

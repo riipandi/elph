@@ -502,6 +502,12 @@ pub fn builtin_providers() -> Vec<Provider> {
         ),
         anthropic_provider(),
         simple_provider!(
+            "agnes",
+            "Agnes",
+            openai_completions_api,
+            (vec!["AGNES_API_KEY"], "Agnes API key")
+        ),
+        simple_provider!(
             "azure-openai-responses",
             "Azure OpenAI",
             azure_openai_responses_api,

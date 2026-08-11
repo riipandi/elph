@@ -52,6 +52,7 @@ pub fn detect_compat(model: &Model) -> ResolvedOpenAICompletionsCompat {
             | "huggingface"
             | "vercel-ai-gateway"
             | "wafer"
+            | "agnes"
             | "nara-router"
     ) || base_url.contains("tokenrouter.com")
         || base_url.contains("api.kilo.ai")
@@ -61,6 +62,7 @@ pub fn detect_compat(model: &Model) -> ResolvedOpenAICompletionsCompat {
         || base_url.contains("huggingface.co")
         || base_url.contains("ai-gateway.vercel.sh")
         || base_url.contains("pass.wafer.ai")
+        || base_url.contains("apihub.agnes-ai.com")
         || base_url.contains("router.bynara.id");
 
     // Vendor routes on gateways (id like `moonshotai/kimi-k3-free`).

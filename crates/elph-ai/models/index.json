@@ -1,5 +1,10 @@
 [
     {
+        "providerId": "agnes",
+        "rustMod": "agnes",
+        "count": 4
+    },
+    {
         "providerId": "amazon-bedrock",
         "rustMod": "amazon_bedrock",
         "count": 116

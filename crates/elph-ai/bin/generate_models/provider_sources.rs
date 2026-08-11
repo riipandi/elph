@@ -31,6 +31,15 @@ const PROVIDERS: &[ProviderSource] = &[
         live_pricing_env: None,
     },
     ProviderSource {
+        id: "agnes",
+        models_dev_keys: &["agnes-ai"],
+        default_api: "openai-completions",
+        default_base_url: "https://apihub.agnes-ai.com/v1",
+        gateway_preserve_ids: true,
+        live_pricing_base: None,
+        live_pricing_env: None,
+    },
+    ProviderSource {
         id: "ant-ling",
         models_dev_keys: &["ant-ling"],
         default_api: "openai-completions",

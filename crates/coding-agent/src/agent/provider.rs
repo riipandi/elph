@@ -38,6 +38,11 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
             api_key_env_key: "ANTHROPIC_API_KEY",
             default_model: "claude-sonnet-4-6",
         }),
+        "agnes" => Some(ProviderConfig {
+            label: "Agnes",
+            api_key_env_key: "AGNES_API_KEY",
+            default_model: "agnes-2.5-flash",
+        }),
         "azure-openai-responses" => Some(ProviderConfig {
             label: "Azure OpenAI",
             api_key_env_key: "AZURE_OPENAI_API_KEY",
@@ -398,6 +403,22 @@ mod tests {
         assert_eq!(cfg.label, "Wafer");
         assert_eq!(cfg.api_key_env_key, "WAFER_API_KEY");
         assert!(elph_ai::get_builtin_model("wafer", cfg.default_model).is_some());
+    }
+
+    #[test]
+    fn agnes_is_a_known_provider() {
+        let cfg = provider_config("agnes").expect("agnes config");
+        assert_eq!(cfg.label, "Agnes");
+        assert_eq!(cfg.api_key_env_key, "AGNES_API_KEY");
+        assert!(elph_ai::get_builtin_model("agnes", cfg.default_model).is_some());
+    }
+
+    #[test]
+    fn resolve_agnes_from_settings() {
+        let (provider, model) =
+            resolve_provider_and_model(None, None, Some("agnes"), Some("agnes-2.5-pro")).expect("resolve agnes");
+        assert_eq!(provider, "agnes");
+        assert_eq!(model, "agnes-2.5-pro");
     }
 
     #[test]

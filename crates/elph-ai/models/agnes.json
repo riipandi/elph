@@ -1,0 +1,106 @@
+{
+    "agnes-2.0-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://apihub.agnes-ai.com/v1",
+        "contextWindow": 256000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "agnes-2.0-flash",
+        "input": ["text", "image"],
+        "maxTokens": 64000,
+        "name": "Agnes 2.0 Flash",
+        "provider": "agnes",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "agnes-2.5-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://apihub.agnes-ai.com/v1",
+        "contextWindow": 512000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "agnes-2.5-flash",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Agnes 2.5 Flash",
+        "provider": "agnes",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "agnes-2.5-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://apihub.agnes-ai.com/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0038,
+            "cacheWrite": 0.0,
+            "input": 0.45,
+            "output": 0.9
+        },
+        "id": "agnes-2.5-pro",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Agnes 2.5 Pro",
+        "provider": "agnes",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "agnes-2.5-pro-alpha": {
+        "api": "openai-completions",
+        "baseUrl": "https://apihub.agnes-ai.com/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "agnes-2.5-pro-alpha",
+        "input": ["text", "image", "video"],
+        "maxTokens": 65536,
+        "name": "Agnes 2.5 Pro Alpha",
+        "provider": "agnes",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    }
+}
