@@ -151,7 +151,7 @@ ${% endif %}
   ${%- if tools.edit_file or tools.write_file %}
 - ${% if tools.edit_file %}Use `${{ tools.edit_file }}` for focused changes to existing files. If formatting drift, use `ignoreWhitespace: true`.${% endif %}${% if tools.edit_file and tools.write_file %} ${% endif %}${% if tools.write_file %}Use `${{ tools.write_file }}` for new files or intentional full rewrites.${% endif %} Use dedicated copy, move, directory, and delete tools when listed.
   ${%- if tools.edit_file %}${%- if tools.read_file %}
-- **Hash sync:** `${{ tools.read_file }}` returns `content_hash` in `details.files[]`. Pass it as `expected_hash` to `${{ tools.edit_file }}` to skip a redundant re-read and avoid TOCTOU failures on concurrent edits.
+- **Hash sync:** `${{ tools.read_file }}` returns `content_hash` only for complete file reads. Pass it as `expected_hash` to `${{ tools.edit_file }}` only when the read omitted `offset`, `limit`, and `ranges`; otherwise omit `expected_hash`. Never use placeholder hashes.
   ${%- endif %}${%- endif %}
   ${%- endif %}
   ${%- if tools.shell_exec %}

@@ -149,13 +149,14 @@ async fn execute_read(
             )
         };
 
-        // Content hash from bytes already in memory — free, no extra disk I/O.
-        // Enables edit_file to skip a TOCTOU re-read when the hash still matches.
-        let hash = content_hash(body.as_bytes());
-        all_hashes.push(json!({
-            "path": request.path,
-            "content_hash": hash,
-        }));
+        // A ranged read hashes only its returned window. Only expose hashes for
+        // complete reads so edit_file.expected_hash always covers the full file.
+        if !ranged {
+            all_hashes.push(json!({
+                "path": request.path,
+                "content_hash": content_hash(body.as_bytes()),
+            }));
+        }
 
         let truncation = truncate_head(&body, TruncationOptions::default());
         let mut output = truncation.content;
