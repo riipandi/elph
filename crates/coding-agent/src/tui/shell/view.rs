@@ -308,6 +308,7 @@ pub(crate) fn build_shell_view(
     let provider_disconnect_open = pending_provider_disconnect.read().is_some();
     let provider_api_key_open = pending_provider_api_key.read().is_some();
     let queue_manager_is_open = queue_manager_open.get();
+    let aside_open = pending_aside.read().is_some();
     let status_dialog_open = pending_tool_approval.read().is_some()
         || pending_mode_change.read().is_some()
         || pending_plan_confirmation.read().is_some()
@@ -324,12 +325,15 @@ pub(crate) fn build_shell_view(
         || mcp_auth_open
         || provider_disconnect_open
         || provider_api_key_open
-        || queue_manager_is_open;
+        || queue_manager_is_open
+        || aside_open;
     // Lightweight confirmations float below the status row and never need the wheel:
     // tool approval, plan confirmation, mode change, memory flush, feedback, and
     // provider disconnect. The transcript stays mouse-scrollable while any of them is
-    // open. Only full modals (user question, pickers, system prompt, provider auth
-    // flows, queue manager, confetti, …) lock the wheel to keep their own content still.
+    // open. Surfaces that own their own scroll (the `/aside` panel, which is
+    // keyboard-scrollable, plus full modals: user question, pickers, system prompt,
+    // provider auth flows, queue manager, confetti, …) lock the wheel so scrolling
+    // them does not fight the transcript underneath.
     let transcript_wheel_blocked = status_dialog_open
         && (user_question_open
             || model_selector_open
@@ -341,7 +345,8 @@ pub(crate) fn build_shell_view(
             || provider_connect_open
             || mcp_auth_open
             || provider_api_key_open
-            || queue_manager_is_open);
+            || queue_manager_is_open
+            || aside_open);
     let prompt_focused =
         !status_dialog_open && matches!(shell_focus.get(), ShellFocus::Prompt | ShellFocus::StatusDialog);
     let transcript_focused = !status_dialog_open && shell_focus.get() == ShellFocus::Transcript;
@@ -893,12 +898,13 @@ pub(crate) fn build_shell_view(
                 },
             )
             #(pending_aside.read().as_ref().map(|state| -> AnyElement<'static> {
+                // The aside panel owns focus while it shows an answer so its keyboard
+                // scroll does not conflict with the transcript underneath (the wheel is
+                // locked via `transcript_wheel_blocked` while the panel is open).
                 let has_focus = matches!(
                     state,
                     crate::tui::aside_panel::AsidePanelState::Done { .. }
-                ) && state.max_scroll_offset(
-                    crate::tui::inline_dialog::inline_body_width(screen_width) as usize,
-                ) > 0;
+                );
                 element! {
                     crate::tui::aside_panel::AsidePanel(
                         screen_width: screen_width,
