@@ -84,27 +84,29 @@ impl AstGrepLang {
 /// vs a simple text pattern.
 ///
 /// AST patterns typically contain:
-/// - Code-like structure (function calls, variable assignments)
-/// - Metavariables ($VAR, $MATCH, etc.)
-/// - Language-specific syntax
+/// - Metavariables ($VAR, $MATCH, etc.) - most reliable indicator
+/// - Code-like structure with metavariables (e.g., 'fn $NAME($ARGS)')
+/// - Language-specific syntax with metavariables
+///
+/// Note: Operators alone (==, &&, ||) are NOT considered AST patterns
+/// to avoid false positives for text search.
 pub fn is_ast_pattern(pattern: &str) -> bool {
-    // Check for common AST pattern indicators
+    // Metavariables are the most reliable AST pattern indicator
     let has_metavar = pattern.contains('$') && 
         (pattern.contains("$MATCH") || pattern.contains("$VAR") || 
          pattern.contains("$PATTERN") || pattern.contains("$EXPR") ||
          (pattern.chars().any(|c| c.is_uppercase()) && pattern.contains('$')));
     
-    let has_code_structure = pattern.contains('(') && pattern.contains(')') ||
+    // Code structure with metavariables is also strong indicator
+    let has_code_structure_with_metavar = has_metavar && (
+        pattern.contains('(') && pattern.contains(')') ||
         pattern.contains('{') && pattern.contains('}') ||
         pattern.contains('=') && !pattern.contains("==") && !pattern.contains("!=") ||
         pattern.contains("fn ") || pattern.contains("function ") ||
-        pattern.contains("class ") || pattern.contains("def ");
+        pattern.contains("class ") || pattern.contains("def ")
+    );
     
-    let has_operators = pattern.contains("==") || pattern.contains("!=") ||
-        pattern.contains("&&") || pattern.contains("||") ||
-        pattern.contains("->") || pattern.contains("=>");
-    
-    has_metavar || has_code_structure || has_operators
+    has_metavar || has_code_structure_with_metavar
 }
 
 /// Result of an AST search operation
@@ -120,10 +122,35 @@ fn search_file_ast(
     pattern: &str,
     lang: SupportLang,
 ) -> Result<Vec<String>> {
+    const MAX_FILE_SIZE: u64 = 100 * 1024 * 1024; // 100MB
+    
+    // Check file size first
+    let file_size = std::fs::metadata(file_path)
+        .map(|m| m.len())
+        .unwrap_or(0);
+    
+    if file_size > MAX_FILE_SIZE {
+        log::debug!("Skipping large file in AST search: {} ({} bytes)", file_path.display(), file_size);
+        return Ok(vec![]);
+    }
+    
     let content = std::fs::read_to_string(file_path)
         .map_err(|e| anyhow::anyhow!("Failed to read {}: {}", file_path.display(), e))?;
     
-    let sg_pattern = Pattern::new(pattern, lang);
+    // Compile pattern - Pattern::new may panic on invalid patterns
+    // Use catch_unwind to handle potential panics gracefully
+    let sg_pattern = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        Pattern::new(pattern, lang)
+    }));
+    
+    let sg_pattern = match sg_pattern {
+        Ok(p) => p,
+        Err(_) => {
+            log::debug!("Invalid AST pattern caused panic: {}", pattern);
+            return Err(anyhow::anyhow!("Invalid AST pattern: syntax error"));
+        }
+    };
+    
     let parsed = ast_grep_core::AstGrep::new(content, lang);
     let root = parsed.root();
     
@@ -237,24 +264,33 @@ mod tests {
 
     #[test]
     fn test_ast_pattern_detection() {
-        // Metavariable patterns
+        // Metavariable patterns - these ARE AST patterns
         assert!(is_ast_pattern("fn $NAME($ARGS)"));
         assert!(is_ast_pattern("let $X = $Y"));
         assert!(is_ast_pattern("$VAR = $EXPR"));
+        assert!(is_ast_pattern("$MATCH"));
+        assert!(is_ast_pattern("$PATTERN"));
         
-        // Code structure patterns
-        assert!(is_ast_pattern("function test()"));
-        assert!(is_ast_pattern("class MyClass"));
-        assert!(is_ast_pattern("def example()"));
+        // Code structure with metavariables - these ARE AST patterns
+        assert!(is_ast_pattern("function $NAME()"));
+        assert!(is_ast_pattern("class $NAME"));
+        assert!(is_ast_pattern("def $NAME()"));
         
-        // Operator patterns
-        assert!(is_ast_pattern("x == y"));
-        assert!(is_ast_pattern("a && b"));
+        // Operators WITHOUT metavariables - these are NOT AST patterns (text search)
+        assert!(!is_ast_pattern("x == y"));
+        assert!(!is_ast_pattern("a && b"));
+        assert!(!is_ast_pattern("x != y"));
+        assert!(!is_ast_pattern("a || b"));
         
         // Simple text patterns (not AST)
         assert!(!is_ast_pattern("hello"));
         assert!(!is_ast_pattern("test_function"));
         assert!(!is_ast_pattern("variable_name"));
+        
+        // Code structure WITHOUT metavariables - these are NOT AST patterns
+        assert!(!is_ast_pattern("function test()"));
+        assert!(!is_ast_pattern("class MyClass"));
+        assert!(!is_ast_pattern("def example()"));
     }
 
     #[test]

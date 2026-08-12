@@ -24,7 +24,7 @@ Read & Search Tools
   - list_dir     : Lists immediate children of one directory (not recursive). Prefer find_path/grep for discovery.
   - read_file    : Reads file contents; supports batch `paths`/`ranges` and streaming `offset`/`limit` windows with line numbers. Includes content hash for edit_file TOCTOU protection.
   - find_path    : Finds files by glob (`*.rs`, `**/foo.rs`) via fff-search (gitignore-aware).
-  - grep         : Content search with AST-aware pattern matching for structural code search (via ast-grep) and text-based search (via fff-search). Automatically detects AST patterns (e.g., 'fn $NAME($ARGS)', 'let $X = $Y') for semantic code matching.
+  - grep         : Content search with AST-aware pattern matching for structural code search (via ast-grep) and text-based search (via fff-search). Automatically detects AST patterns with metavariables (e.g., 'fn $NAME($ARGS)', 'let $X = $Y', '$VAR = $EXPR') for semantic code matching.
   - diagnostics  : Gets errors and warnings for either a specific file or the entire project, useful after making edits to determine if further changes are needed.
 
 Edit Tools
@@ -176,11 +176,11 @@ Read a text or image file. Text output is truncated to 2000 lines or 50 KB (whic
 
 #### `grep`
 
-Search file contents with AST-aware and text-based search. Automatically detects AST patterns for structural code search (via ast-grep) and falls back to text-based search (via fff-search).
+Search file contents with AST-aware and text-based search. Automatically detects AST patterns with metavariables for structural code search (via ast-grep) and falls back to text-based search (via fff-search).
 
 | Parameter    | Type    | Required | Default | Description                              |
 | ------------ | ------- | -------- | ------- | ---------------------------------------- |
-| `pattern`    | string  | yes      | —       | Search pattern. Automatically detected as AST pattern for code-like structures (e.g., 'fn $NAME($ARGS)', 'let $X = $Y'), otherwise treated as regex/literal text. |
+| `pattern`    | string  | yes      | —       | Search pattern. AST patterns with metavariables (e.g., 'fn $NAME($ARGS)', 'let $X = $Y', '$VAR = $EXPR') are detected automatically for structural code matching. Otherwise treated as regex/literal text. |
 | `path`       | string  | no       | `.`     | Directory or file to search              |
 | `literal`    | boolean | no       | `false` | Treat `pattern` as literal text, not regex (disables AST pattern detection) |
 | `ignoreCase` | boolean | no       | `false` | Case-insensitive match                   |
@@ -190,7 +190,7 @@ Search file contents with AST-aware and text-based search. Automatically detects
 
 Output format: `path:line:content`, one match per line. Paths are rendered relative to the working directory when possible (absolute otherwise), so results stay token-efficient while remaining actionable. Long lines are truncated to 500 characters. Overall output is capped at 50 KB.
 
-AST patterns provide structural code matching that is more accurate than text-based search for code-like patterns. The tool automatically detects when a pattern is likely an AST pattern (contains metavariables like `$VAR`, code structure like `fn $NAME($ARGS)`, or operators like `==`, `&&`). Use `literal: true` to force text-based search.
+AST patterns provide structural code matching that is more accurate than text-based search for code-like patterns. The tool automatically detects AST patterns when they contain metavariables like `$VAR`, `$NAME`, or `$EXPR` (e.g., 'fn $NAME($ARGS)', 'let $X = $Y'). Simple code structure without metavariables (e.g., 'function test()') or operators alone (e.g., 'x == y') are treated as text search to avoid false positives. Use `literal: true` to force text-based search.
 
 #### `find_path`
 
