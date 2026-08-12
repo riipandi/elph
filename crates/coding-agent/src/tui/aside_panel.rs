@@ -241,11 +241,13 @@ pub fn AsidePanel(props: &AsidePanelProps, hooks: Hooks) -> impl Into<AnyElement
                 let can_up = offset > 0;
                 let can_down = offset < max_off;
                 let up_color = if can_up { theme.text_secondary } else { theme.text_muted };
-                let down_color = if can_down { theme.text_secondary } else { theme.text_muted };
+                let down_color = if can_down {
+                    theme.text_secondary
+                } else {
+                    theme.text_muted
+                };
                 let pos = scroll_indicator_label(offset as u32, max_body as u32, total as u32);
-                right.push(
-                    element! { Text(content: "↑".to_string(), color: up_color, wrap: TextWrap::NoWrap) }.into(),
-                );
+                right.push(element! { Text(content: "↑".to_string(), color: up_color, wrap: TextWrap::NoWrap) }.into());
                 right.push(
                     element! { Text(content: " ".to_string(), color: theme.text_muted, wrap: TextWrap::NoWrap) }.into(),
                 );
@@ -253,7 +255,8 @@ pub fn AsidePanel(props: &AsidePanelProps, hooks: Hooks) -> impl Into<AnyElement
                     element! { Text(content: "↓".to_string(), color: down_color, wrap: TextWrap::NoWrap) }.into(),
                 );
                 right.push(
-                    element! { Text(content: format!("  {pos}"), color: theme.text_muted, wrap: TextWrap::NoWrap) }.into(),
+                    element! { Text(content: format!("  {pos}"), color: theme.text_muted, wrap: TextWrap::NoWrap) }
+                        .into(),
                 );
             }
             // One blank row separates the answer from the footer line so they don't touch.

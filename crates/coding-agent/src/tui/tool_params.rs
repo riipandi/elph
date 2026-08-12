@@ -1361,10 +1361,10 @@ mod tests {
         // The path ends with the relative suffix.
         assert!(short.ends_with("/src/main.rs"), "{short}");
         // Uses `~` prefix for home-relative paths.
-        if let Ok(home) = std::env::var("HOME") {
-            if cwd_str.starts_with(&home) {
-                assert!(short.starts_with("~/"), "{short}");
-            }
+        if let Ok(home) = std::env::var("HOME")
+            && cwd_str.starts_with(&home)
+        {
+            assert!(short.starts_with("~/"), "{short}");
         }
     }
 

@@ -11,10 +11,6 @@
 //! fast. The retry logic in [`conn::open_local`] absorbs brief contention from
 //! `WAL` + `busy_timeout` readers (e.g. `sqlite3` reads), but cannot override
 //! an external tool holding an exclusive lock.
-//!
-//! The `turso` crate is pinned at `0.7.2` because `experimental_multiprocess_wal`
-//! is experimental and the `.db-tshm` shared-memory format may change between
-//! versions.
 
 mod conn;
 mod lazy;

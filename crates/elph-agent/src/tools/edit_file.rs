@@ -158,22 +158,22 @@ async fn execute_edit(
     // comparisons use the single content buffer from read_file_text, eliminating the
     // race window where two independent reads observe different file states.
     let content_fingerprint = content_hash(content.as_bytes());
-    if let Some(expected) = &expected_hash {
-        if content_fingerprint != *expected {
-            return Err(anyhow::anyhow!(
-                "edit aborted: {path} changed since it was read (hash mismatch). \
-                 This can happen if another process modified the file. \
-                 Re-read the file (read_file) and retry the edit with updated old_string."
-            ));
-        }
+    if let Some(expected) = &expected_hash
+        && content_fingerprint != *expected
+    {
+        return Err(anyhow::anyhow!(
+            "edit aborted: {path} changed since it was read (hash mismatch). \
+             This can happen if another process modified the file. \
+             Re-read the file (read_file) and retry the edit with updated old_string."
+        ));
     }
-    if let Some(ref stored) = stored_claim_hash {
-        if content_fingerprint != *stored {
-            return Err(anyhow::anyhow!(
-                "edit aborted: {path} changed on disk since claim (hash mismatch). This can happen if another process modified the file. \
-                 Re-read the file (read_file) and retry the edit with updated old_string."
-            ));
-        }
+    if let Some(ref stored) = stored_claim_hash
+        && content_fingerprint != *stored
+    {
+        return Err(anyhow::anyhow!(
+            "edit aborted: {path} changed on disk since claim (hash mismatch). This can happen if another process modified the file. \
+             Re-read the file (read_file) and retry the edit with updated old_string."
+        ));
     }
 
     match FileSystem::write_file(env.as_ref(), &absolute, updated.as_bytes(), signal.as_ref()).await {
