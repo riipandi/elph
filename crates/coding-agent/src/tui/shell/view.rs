@@ -325,10 +325,11 @@ pub(crate) fn build_shell_view(
         || provider_disconnect_open
         || provider_api_key_open
         || queue_manager_is_open;
-    // Plan confirmation / tool approval float below the status row and never need the
-    // wheel, so the transcript stays mouse-scrollable while they are open. Only full
-    // modals (user question, pickers, system prompt, provider flows, queue manager, …)
-    // lock the wheel to keep their own content still.
+    // Lightweight confirmations float below the status row and never need the wheel:
+    // tool approval, plan confirmation, mode change, memory flush, feedback, and
+    // provider disconnect. The transcript stays mouse-scrollable while any of them is
+    // open. Only full modals (user question, pickers, system prompt, provider auth
+    // flows, queue manager, confetti, …) lock the wheel to keep their own content still.
     let transcript_wheel_blocked = status_dialog_open
         && (user_question_open
             || model_selector_open
@@ -339,12 +340,8 @@ pub(crate) fn build_shell_view(
             || confetti_open
             || provider_connect_open
             || mcp_auth_open
-            || provider_disconnect_open
             || provider_api_key_open
-            || queue_manager_is_open
-            || pending_mode_change.read().is_some()
-            || pending_memory_flush.read().is_some()
-            || *pending_feedback.read());
+            || queue_manager_is_open);
     let prompt_focused =
         !status_dialog_open && matches!(shell_focus.get(), ShellFocus::Prompt | ShellFocus::StatusDialog);
     let transcript_focused = !status_dialog_open && shell_focus.get() == ShellFocus::Transcript;
