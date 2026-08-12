@@ -10,6 +10,39 @@ pub enum PromptRenderError {
     Render(String),
 }
 
+/// Sanitize a compiled system prompt: trim trailing whitespace, collapse
+/// consecutive blank lines to at most one, and strip leading/trailing blanks.
+pub fn sanitize_system_prompt(prompt: &str) -> String {
+    let lines: Vec<&str> = prompt
+        .lines()
+        .map(|line| line.trim_end())
+        .collect();
+
+    let mut out: Vec<&str> = Vec::with_capacity(lines.len());
+    let mut blank_run = 0usize;
+
+    for line in &lines {
+        if line.is_empty() {
+            blank_run += 1;
+            if blank_run <= 1 {
+                out.push(line);
+            }
+        } else {
+            blank_run = 0;
+            out.push(line);
+        }
+    }
+
+    while out.first().map_or(false, |s| s.is_empty()) {
+        out.remove(0);
+    }
+    while out.last().map_or(false, |s| s.is_empty()) {
+        out.pop();
+    }
+
+    out.join("\n")
+}
+
 /// Render the generic base template (`persona` + optional session env blocks).
 ///
 /// Mirrors the previous `templates/base.md` MiniJinja template:
@@ -47,5 +80,59 @@ pub fn render_base_template(ctx: &SystemPromptTemplateContext) -> String {
         out.push_str("\n\n");
         out.push_str(ctx.skills_section.trim());
     }
-    out
+    sanitize_system_prompt(&out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sanitize_system_prompt_removes_trailing_whitespace() {
+        let input = "Line 1  \nLine 2\n\n  \nLine 3  ";
+        let output = sanitize_system_prompt(input);
+        assert_eq!(output, "Line 1\nLine 2\n\nLine 3");
+    }
+
+    #[test]
+    fn sanitize_system_prompt_collapses_excessive_blank_lines() {
+        let input = "Line 1\n\n\n\n\nLine 2";
+        let output = sanitize_system_prompt(input);
+        assert_eq!(output, "Line 1\n\nLine 2");
+    }
+
+    #[test]
+    fn sanitize_system_prompt_collapses_to_single_blank_line() {
+        let input = "Line 1\n\n\nLine 2";
+        let output = sanitize_system_prompt(input);
+        assert_eq!(output, "Line 1\n\nLine 2");
+    }
+
+    #[test]
+    fn sanitize_system_prompt_trims_leading_and_trailing_blanks() {
+        let input = "\n\n\nLine 1\nLine 2\n\n\n";
+        let output = sanitize_system_prompt(input);
+        assert_eq!(output, "Line 1\nLine 2");
+    }
+
+    #[test]
+    fn sanitize_system_prompt_handles_empty_string() {
+        let input = "";
+        let output = sanitize_system_prompt(input);
+        assert_eq!(output, "");
+    }
+
+    #[test]
+    fn sanitize_system_prompt_handles_blank_only() {
+        let input = "\n\n\n";
+        let output = sanitize_system_prompt(input);
+        assert_eq!(output, "");
+    }
+
+    #[test]
+    fn sanitize_system_prompt_handles_single_line() {
+        let input = "Single line  ";
+        let output = sanitize_system_prompt(input);
+        assert_eq!(output, "Single line");
+    }
 }

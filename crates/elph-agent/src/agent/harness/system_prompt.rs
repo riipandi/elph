@@ -86,9 +86,8 @@ fn format_skills_ref<'a>(skills: impl Iterator<Item = &'a Skill>) -> String {
         return String::new();
     }
 
-    let mut lines = vec![
-        "Use a matching skill; read its full file first and resolve relative references from the skill directory."
-            .to_string(),
+    let mut lines: Vec<String> = vec![
+        "Use a matching skill; read its full file first and resolve relative references from the skill directory.".to_string(),
         String::new(),
         "<available_skills>".to_string(),
     ];
@@ -103,7 +102,13 @@ fn format_skills_ref<'a>(skills: impl Iterator<Item = &'a Skill>) -> String {
     }
 
     lines.push("</available_skills>".to_string());
-    lines.join("\n")
+    
+    // Sanitize: trim trailing whitespace from each line, preserve intentional blank lines
+    lines
+        .iter()
+        .map(|line| line.trim_end())
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// Filter skills for the current working directory, then format the
