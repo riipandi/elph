@@ -130,9 +130,42 @@ lean when the user opts out.
 ## Caller-side consistency (`format_skills_for_context`)
 
 The single combined entry point `format_skills_for_context(skills, cwd)` (filter
-
 - XML render) is exported (`elph_agent`) and used by the coding-agent prompt
-  builder. Other hosts using `PromptAssemblyMode::Full` append `skills_section`
-  verbatim, so they should call `format_skills_for_context` (or pre-filter with
-  `filter_skills_for_context`) before setting `skills_section` — the builder itself
-  keeps rendering exactly what it receives.
+builder. Other hosts using `PromptAssemblyMode::Full` append `skills_section`
+verbatim, so they should call `format_skills_for_context` (or pre-filter with
+`filter_skills_for_context`) before setting `skills_section` — the builder itself
+keeps rendering exactly what it receives.
+
+## Serialized Schema Formats
+
+Both skill and tool catalogs use compact XML with attributes for metadata and
+nested `<property>` elements for parameter schemas. Full reference:
+[`docs/skill-tool-schema.md`](../skill-tool-schema.md).
+
+### Skill advertisement (`<available_skills>`)
+
+```xml
+<available_skills>
+  <skill name="rust-verify-harden" location="/repo/.agents/skills/rust-verify-harden/SKILL.md">Verify build quality gates...</skill>
+</available_skills>
+```
+
+Fields: `name` (attribute), `location` (attribute = `file_path`), description (text).
+No child `<name>`, `<description>`, or `<location>` elements.
+
+### Tool catalog (`<available_tools>`)
+
+```xml
+<available_tools>
+  <tool name="read_file" description="Read file contents from disk.">
+    <property name="path" type="string" required="true">File path</property>
+    <property name="offset" type="number"/>
+  </tool>
+  <tool name="grep" description="Search files with ripgrep.">
+    <property name="pattern" type="string" required="true"/>
+    <property name="glob" type="array of string" description="Restrict to matching files."/>
+  </tool>
+</available_tools>
+```
+
+Property descriptions are **element text** for leaf properties and **`description` attribute** for object/array-of-object properties that have nested children. This avoids duplication. Empty-parameter tools omit `<property>` entirely.

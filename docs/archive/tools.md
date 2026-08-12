@@ -113,6 +113,29 @@ Plan mode is a **collaboration mode**, not a pair of tools. The host application
 | ---------------------- | ---------------------------------------------------------- |
 | `list_available_tools` | Lists all available tools with descriptions and parameters |
 
+### `<available_tools>` XML schema
+
+`list_available_tools` returns a compact XML catalog. Tools with no parameters omit
+the `<property>` block entirely; tools with parameters list each property as a
+child element. Full schema reference: [`docs/skill-tool-schema.md`](../skill-tool-schema.md).
+
+```xml
+<available_tools>
+  <tool name="read_file" description="Read file contents from disk.">
+    <property name="path" type="string" required="true">File path (absolute or relative to cwd)</property>
+    <property name="offset" type="number"/>
+    <property name="limit" type="number"/>
+  </tool>
+  <tool name="grep" description="Search files with ripgrep.">
+    <property name="pattern" type="string" required="true"/>
+    <property name="glob" type="array of string" description="Restrict search to matching files."/>
+  </tool>
+  <tool name="spawn_agent" description="Spawn a subagent in an isolated context."/>
+</available_tools>
+```
+
+Property description placement rule: **element text** for leaf properties, **`description` attribute** when the property has nested `<property>` children (object/array-of-object schemas). This prevents duplication.
+
 ## Provider API exposure
 
 Only a catalog subset is sent to the model. Exposure requires:

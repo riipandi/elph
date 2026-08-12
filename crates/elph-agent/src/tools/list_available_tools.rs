@@ -24,21 +24,17 @@ struct ToolCatalog {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct ToolEntry {
+    #[serde(rename = "@name")]
     name: String,
+    #[serde(rename = "@description", skip_serializing_if = "String::is_empty")]
     description: String,
-    #[serde(rename = "parameters", skip_serializing_if = "Option::is_none")]
-    parameters: Option<Parameters>,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-struct Parameters {
-    #[serde(rename = "property")]
+    #[serde(rename = "property", default, skip_serializing_if = "Vec::is_empty")]
     properties: Vec<Property>,
 }
 
 /// One `<property>` element. Schema metadata lives in attributes; the description
-/// is element text on leaf properties or a `<description>` child when the property
-/// recurses into nested `<property>` elements (object-shaped schemas).
+/// is element text on leaf properties or an attribute when the property recurses
+/// into nested `<property>` elements (object-shaped schemas).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct Property {
     #[serde(rename = "@name")]
@@ -49,10 +45,10 @@ struct Property {
     enum_values: Option<String>,
     #[serde(rename = "@required", skip_serializing_if = "is_false", default)]
     required: bool,
+    #[serde(rename = "@description", skip_serializing_if = "Option::is_none")]
+    description: Option<String>,
     #[serde(rename = "$text", skip_serializing_if = "Option::is_none")]
     text: Option<String>,
-    #[serde(rename = "description", skip_serializing_if = "Option::is_none")]
-    description: Option<String>,
     #[serde(rename = "property", skip_serializing_if = "Option::is_none")]
     children: Option<Vec<Property>>,
 }
@@ -173,8 +169,8 @@ fn property_from_schema(name: &str, schema: &Value, required: bool) -> Property 
     }
 
     // Leaf properties carry the description as element text; object-shaped
-    // properties carry it as a `<description>` child next to nested `<property>`s.
-    let (text, child_description) = if children.is_some() {
+    // properties carry it as a `description` attribute next to nested `<property>`s.
+    let (text, attr_description) = if children.is_some() {
         (None, description)
     } else {
         (description, None)
@@ -186,7 +182,7 @@ fn property_from_schema(name: &str, schema: &Value, required: bool) -> Property 
         enum_values,
         required,
         text,
-        description: child_description,
+        description: attr_description,
         children,
     }
 }
@@ -206,19 +202,17 @@ fn format_tool_catalog(tools: &[AgentTool]) -> String {
         tools: tools
             .iter()
             .map(|tool| {
-                let mut parameters = None;
+                let mut properties = None;
                 if let Some(params) = tool.tool.parameters.as_object()
-                    && let Some(properties) = params.get("properties").and_then(Value::as_object)
-                    && !properties.is_empty()
+                    && let Some(props) = params.get("properties").and_then(Value::as_object)
+                    && !props.is_empty()
                 {
-                    parameters = Some(Parameters {
-                        properties: render_properties(&tool.tool.parameters, properties),
-                    });
+                    properties = Some(render_properties(&tool.tool.parameters, props));
                 }
                 ToolEntry {
                     name: xml_clean(&tool.tool.name),
                     description: xml_clean(&tool.tool.description),
-                    parameters,
+                    properties: properties.unwrap_or_default(),
                 }
             })
             .collect(),
@@ -358,10 +352,10 @@ mod tests {
         let text = output_text(&meta, json!({}));
         assert!(text.starts_with("<available_tools>"), "{text}");
         assert!(text.ends_with("</available_tools>"), "{text}");
-        assert!(text.contains("<name>read_file</name>"));
-        assert!(text.contains("<name>mcp_github__list_issues</name>"));
-        assert!(text.contains("<name>mcp_browser__click</name>"));
-        assert!(text.contains("<name>spawn_agent</name>"));
+        assert!(text.contains("<tool name=\"read_file\""));
+        assert!(text.contains("<tool name=\"mcp_github__list_issues\""));
+        assert!(text.contains("<tool name=\"mcp_browser__click\""));
+        assert!(text.contains("<tool name=\"spawn_agent\""));
     }
 
     #[test]
@@ -372,11 +366,11 @@ mod tests {
             crate::tools::types::ToolResultContent::Text(t) => t.text.clone(),
             _ => panic!("expected text"),
         };
-        assert!(text.contains("<name>mcp_github__list_issues</name>"));
-        assert!(text.contains("<name>mcp_github__get_issue</name>"));
-        assert!(!text.contains("<name>read_file</name>"));
-        assert!(!text.contains("<name>mcp_browser__navigate</name>"));
-        assert!(!text.contains("<name>spawn_agent</name>"));
+        assert!(text.contains("<tool name=\"mcp_github__list_issues\""));
+        assert!(text.contains("<tool name=\"mcp_github__get_issue\""));
+        assert!(!text.contains("<tool name=\"read_file\""));
+        assert!(!text.contains("<tool name=\"mcp_browser__navigate\""));
+        assert!(!text.contains("<tool name=\"spawn_agent\""));
         // With a prefix, the matched tool names are advertised so the harness
         // can lazily activate them for the next turn.
         let added = result.added_tool_names.expect("advertised");
@@ -399,9 +393,9 @@ mod tests {
     fn name_prefix_empty_behaves_like_no_arg() {
         let meta = create_list_available_tools(&snapshot_tools());
         let text = output_text(&meta, json!({"name_prefix": ""}));
-        assert!(text.contains("<name>read_file</name>"));
-        assert!(text.contains("<name>mcp_browser__click</name>"));
-        assert!(text.contains("<name>spawn_agent</name>"));
+        assert!(text.contains("<tool name=\"read_file\""));
+        assert!(text.contains("<tool name=\"mcp_browser__click\""));
+        assert!(text.contains("<tool name=\"spawn_agent\""));
     }
 
     #[test]
@@ -444,9 +438,10 @@ mod tests {
             text.contains("<property name=\"engine\" type=\"string\" enum=\"auto|ddg|exa\">Search engine</property>")
         );
         assert!(text.contains("<property name=\"extract\" type=\"array of string\" enum=\"links|images|text\">Which data to return</property>"));
-        // Nested object (array items) recursion, with its own `required` list.
-        assert!(text.contains("<property name=\"ranges\" type=\"array of object\">"));
-        assert!(text.contains("<description>Per-range settings</description>"));
+        // Nested object (array items) recursion: description becomes attribute.
+        assert!(
+            text.contains("<property name=\"ranges\" type=\"array of object\" description=\"Per-range settings\">")
+        );
         assert!(text.contains("<property name=\"path\" type=\"string\" required=\"true\"/>"));
         assert!(text.contains("<property name=\"offset\" type=\"number\"/>"));
     }
@@ -470,8 +465,8 @@ mod tests {
     fn tools_without_properties_omit_parameters() {
         let meta = create_list_available_tools(&[tool("bare")]);
         let text = output_text(&meta, json!({}));
-        assert!(text.contains("<name>bare</name>"));
-        assert!(!text.contains("<parameters>"));
+        assert!(text.contains("<tool name=\"bare\""));
+        assert!(!text.contains("<property"));
     }
 
     /// The XML catalog round-trips through quick-xml's Deserialize support.
@@ -507,8 +502,8 @@ mod tests {
         let decoded: ToolCatalog = quick_xml::de::from_str(&text).expect("deserialize catalog");
         assert_eq!(decoded.tools.len(), 3);
         assert_eq!(decoded.tools[0].name, "bare");
-        assert!(decoded.tools[0].parameters.is_none());
-        let sample = decoded.tools[1].parameters.as_ref().expect("parameters");
+        assert!(decoded.tools[0].properties.is_empty());
+        let sample = &decoded.tools[1];
         assert_eq!(sample.properties.len(), 3);
         assert_eq!(sample.properties[0].name, "path");
         assert_eq!(sample.properties[0].type_name, "string");
@@ -570,12 +565,15 @@ mod tests {
         // The NUL character must not make it into output (xml_clean strips it):
         // quick-xml passes control characters through raw, so we sanitize first.
         assert!(text.contains("<property name=\"x\" type=\"string\">baddesc</property>"));
-        assert!(text.contains("type=\"object\"><property name=\"b\" type=\"array of object\">"));
-        assert!(text.contains("<property name=\"c\" type=\"object\"><property name=\"d\" type=\"string\"/>"));
+        // Nested object chain: each level gets description attr + nested properties.
+        assert!(text.contains("<property name=\"a\" type=\"object\""));
+        assert!(text.contains("type=\"object\"><property name=\"b\" type=\"array of object\""));
+        assert!(text.contains("<property name=\"c\" type=\"object\""));
+        assert!(text.contains("<property name=\"d\" type=\"string\"/>"));
 
         // The whole catalog stays well-formed and structurally parseable.
         let decoded: ToolCatalog = quick_xml::de::from_str(&text).expect("deserialize catalog");
-        let exotic = decoded.tools[0].parameters.as_ref().expect("parameters");
+        let exotic = &decoded.tools[0];
         let named = |name: &str| {
             exotic
                 .properties

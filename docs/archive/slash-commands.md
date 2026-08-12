@@ -95,6 +95,12 @@ On submit:
 - Expanded content appears in a collapsible detail block
 - Expanded text is sent as the agent turn
 
+## Skills
+
+Skills are loaded from SKILL.md files in `~/.agents/skills/`, `~/.elph/skills/`, and `<project>/.agents/skills/` (or `.elph/skills/`). Each skill becomes an auto-completed slash command by its raw name — no prefix required. Legacy `/skill:name` dispatch still works.
+
+A skill's full content (frontmatter + body) is injected as the turn prompt via [`format_skill_invocation`](../../crates/elph-agent/src/skills/format.rs). See [`docs/skill-tool-schema.md`](../skill-tool-schema.md) for the XML format.
+
 ## Input prefixes (not slash commands)
 
 | Prefix    | Prompt char | Behavior                    |
@@ -146,3 +152,4 @@ Paths: `<workDir>/.elph/metadata/<sess_id>/` — see [configuration.md](./config
 - [prompt-templates.md](./prompt-templates.md)
 - [tui.md](./tui.md)
 - [tools.md](./tools.md)
+- [skill-tool-schema.md](../skill-tool-schema.md) — XML schema for skill/tool catalogs
