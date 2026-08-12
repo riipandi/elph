@@ -1,7 +1,6 @@
 //! Find tool — elph coding-agent tools.
 //!
-//! Fast path: `rg --files --glob` (gitignore-aware, no full tree index).
-//! Fallback: cached fff-search glob.
+//! Uses fff-search with cached picker for gitignore-aware file discovery.
 
 use std::sync::Arc;
 
@@ -16,7 +15,6 @@ use crate::agent::harness::utils::truncate::truncate_head;
 use crate::runtime::local_env::LocalExecutionEnv;
 use crate::tools::common::{check_aborted, resolve_path};
 use crate::tools::fff_picker::{build_find_glob_pattern, build_find_options, cached_picker, run_with_abort_signal};
-use crate::tools::ripgrep::run_rg_files;
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
 
@@ -70,12 +68,7 @@ async fn execute_find_path(
     let base = resolve_path(&env, path, signal.as_ref()).await?;
     let glob_pattern = build_find_glob_pattern(pattern);
 
-    // Fast path: rg --files
-    if let Some(run) = run_rg_files(&base, &glob_pattern, limit, signal.as_ref()).await? {
-        return Ok(finish_find(run.lines, run.limit_reached, limit));
-    }
-
-    // Fallback: cached fff picker
+    // Use cached fff picker for file discovery
     let signal_for_blocking = signal.clone();
     let base_for_thread = base.clone();
     let glob_for_thread = glob_pattern.clone();

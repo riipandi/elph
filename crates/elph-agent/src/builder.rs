@@ -127,7 +127,6 @@ impl BuiltinToolsBuilder {
     }
 
     pub fn build(self) -> Vec<AgentTool> {
-        let claims = self.path_claims.clone();
         let mut tools = vec![
             #[cfg(feature = "tools-read-file")]
             crate::tools::create_read_file_tool(self.env.clone()),
@@ -136,17 +135,17 @@ impl BuiltinToolsBuilder {
             #[cfg(feature = "tools-shell-use")]
             crate::tools::create_shell_use_tool(self.env.clone()),
             #[cfg(feature = "tools-edit-file")]
-            crate::tools::create_edit_file_tool_with_claims(self.env.clone(), claims.clone()),
+            crate::tools::create_edit_file_tool_with_claims(self.env.clone(), self.path_claims.clone()),
             #[cfg(feature = "tools-write-file")]
-            crate::tools::create_write_file_tool_with_claims(self.env.clone(), claims.clone()),
+            crate::tools::create_write_file_tool_with_claims(self.env.clone(), self.path_claims.clone()),
             #[cfg(feature = "tools-create-dir")]
-            crate::tools::create_create_dir_tool_with_claims(self.env.clone(), claims.clone()),
+            crate::tools::create_create_dir_tool_with_claims(self.env.clone(), self.path_claims.clone()),
             #[cfg(feature = "tools-copy-path")]
-            crate::tools::create_copy_path_tool_with_claims(self.env.clone(), claims.clone()),
+            crate::tools::create_copy_path_tool_with_claims(self.env.clone(), self.path_claims.clone()),
             #[cfg(feature = "tools-delete-path")]
-            crate::tools::create_delete_path_tool_with_claims(self.env.clone(), claims.clone()),
+            crate::tools::create_delete_path_tool_with_claims(self.env.clone(), self.path_claims.clone()),
             #[cfg(feature = "tools-move-path")]
-            crate::tools::create_move_path_tool_with_claims(self.env.clone(), claims),
+            crate::tools::create_move_path_tool_with_claims(self.env.clone(), self.path_claims.clone()),
             #[cfg(feature = "tools-grep")]
             crate::tools::create_grep_tool(self.env.clone()),
             #[cfg(feature = "tools-find-path")]

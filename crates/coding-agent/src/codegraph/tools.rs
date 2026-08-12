@@ -67,7 +67,7 @@ fn create_search_tool(paths: Arc<Paths>, database: Option<Arc<Database>>) -> Age
             constrained_sampling: None,
             description: "Semantic + keyword search over the project code index. \
                           Returns path, line range, and snippet so you can open only the relevant region \
-                          instead of scanning the whole repo. Prefer this before broad ripgrep/glob. \
+                          instead of scanning the whole repo. Prefer this before broad grep/glob. \
                           If the index is empty, tell the user to run `elph codegraph build`."
                 .into(),
             parameters: json!({

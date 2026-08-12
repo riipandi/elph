@@ -5,6 +5,7 @@
 //!   the whole file when offset/limit is set)
 //! - Batch reading of multiple files in one call
 //! - Multiple specific ranges across files
+//! - Large file handling with automatic truncation and size limits
 
 use std::io::{BufRead, BufReader};
 use std::path::Path;
@@ -23,6 +24,9 @@ use crate::tools::common::{check_aborted, is_probably_image, read_file_text, res
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
 use crate::workers::content_hash;
+
+/// Maximum file size we'll attempt to read (100MB)
+const MAX_FILE_SIZE: u64 = 100 * 1024 * 1024;
 
 /// A single file read request (path + optional range).
 #[derive(Debug, Clone)]
@@ -112,6 +116,22 @@ async fn execute_read(
         }
 
         check_aborted(signal.as_ref())?;
+        
+        // Check file size before reading to handle large files
+        let file_size = std::fs::metadata(&absolute)
+            .map(|m| m.len())
+            .unwrap_or(0);
+        
+        if file_size > MAX_FILE_SIZE {
+            all_outputs.push(format!(
+                "[{}] File too large to read ({} bytes > {} bytes). Use offset/limit to read specific ranges.",
+                request.path,
+                format_size(file_size),
+                format_size(MAX_FILE_SIZE)
+            ));
+            continue;
+        }
+
         let ranged = request.offset.is_some() || request.limit.is_some();
         let (body, meta) = if ranged {
             // Stream only the requested window — O(offset+limit) I/O, not full file.

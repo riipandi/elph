@@ -22,9 +22,9 @@ The `elph` binary adds two additional tools not in `elph-agent`: `diagnostics` a
 ```
 Read & Search Tools
   - list_dir     : Lists immediate children of one directory (not recursive). Prefer find_path/grep for discovery.
-  - read_file    : Reads file contents; supports batch `paths`/`ranges` and streaming `offset`/`limit` windows with line numbers.
-  - find_path    : Finds files by glob (`*.rs`, `**/foo.rs`) via ripgrep `--files` (gitignore-aware); falls back to fff-search.
-  - grep         : Content search via system `rg` first (fast, gitignore + glob/type at search time); fff-search fallback with cached picker.
+  - read_file    : Reads file contents; supports batch `paths`/`ranges` and streaming `offset`/`limit` windows with line numbers. Includes content hash for edit_file TOCTOU protection.
+  - find_path    : Finds files by glob (`*.rs`, `**/foo.rs`) via fff-search (gitignore-aware).
+  - grep         : Content search with AST-aware pattern matching for structural code search (via ast-grep) and text-based search (via fff-search). Automatically detects AST patterns (e.g., 'fn $NAME($ARGS)', 'let $X = $Y') for semantic code matching.
   - diagnostics  : Gets errors and warnings for either a specific file or the entire project, useful after making edits to determine if further changes are needed.
 
 Edit Tools
@@ -176,21 +176,21 @@ Read a text or image file. Text output is truncated to 2000 lines or 50 KB (whic
 
 #### `grep`
 
-Search file contents under a directory or single file. Powered by `fff-search` in `FFFMode::Ai`.
+Search file contents with AST-aware and text-based search. Automatically detects AST patterns for structural code search (via ast-grep) and falls back to text-based search (via fff-search).
 
 | Parameter    | Type    | Required | Default | Description                              |
 | ------------ | ------- | -------- | ------- | ---------------------------------------- |
-| `pattern`    | string  | yes      | —       | Regex or literal search pattern          |
+| `pattern`    | string  | yes      | —       | Search pattern. Automatically detected as AST pattern for code-like structures (e.g., 'fn $NAME($ARGS)', 'let $X = $Y'), otherwise treated as regex/literal text. |
 | `path`       | string  | no       | `.`     | Directory or file to search              |
-| `literal`    | boolean | no       | `false` | Treat `pattern` as plain text, not regex |
+| `literal`    | boolean | no       | `false` | Treat `pattern` as literal text, not regex (disables AST pattern detection) |
 | `ignoreCase` | boolean | no       | `false` | Case-insensitive match                   |
-| `limit`      | number  | no       | `100`   | Maximum matches                          |
+| `limit`      | number  | no       | `200`   | Maximum matches                                 |
+|| `type`       | string  | no       | —       | File type hint for AST pattern detection (rust, py, js, ts, go, java, c, cpp, cs, elixir) |
+|| `glob`       | string  | no       | —       | Glob filter (e.g., '**/*.rs', '*.{ts,tsx}')      |
 
 Output format: `path:line:content`, one match per line. Paths are rendered relative to the working directory when possible (absolute otherwise), so results stay token-efficient while remaining actionable. Long lines are truncated to 500 characters. Overall output is capped at 50 KB.
 
-When `path` points to a file, the search is scoped to that file via `AiGrepConfig` path constraints. When `path` is a directory, the picker indexes from that root.
-
-`literal: true` uses plain-text mode. With `ignoreCase: true`, the pattern is escaped and searched as a case-insensitive regex.
+AST patterns provide structural code matching that is more accurate than text-based search for code-like patterns. The tool automatically detects when a pattern is likely an AST pattern (contains metavariables like `$VAR`, code structure like `fn $NAME($ARGS)`, or operators like `==`, `&&`). Use `literal: true` to force text-based search.
 
 #### `find_path`
 
