@@ -516,11 +516,31 @@ mod tests {
     fn cap_hides_finished_items_from_tail() {
         // When items exceed the cap, finished items are removed from the tail.
         let rows = vec![
-            TodoPanelRow { label: "a".into(), running: false, finished: false },
-            TodoPanelRow { label: "b".into(), running: false, finished: true },
-            TodoPanelRow { label: "c".into(), running: false, finished: false },
-            TodoPanelRow { label: "d".into(), running: false, finished: true },
-            TodoPanelRow { label: "e".into(), running: false, finished: false },
+            TodoPanelRow {
+                label: "a".into(),
+                running: false,
+                finished: false,
+            },
+            TodoPanelRow {
+                label: "b".into(),
+                running: false,
+                finished: true,
+            },
+            TodoPanelRow {
+                label: "c".into(),
+                running: false,
+                finished: false,
+            },
+            TodoPanelRow {
+                label: "d".into(),
+                running: false,
+                finished: true,
+            },
+            TodoPanelRow {
+                label: "e".into(),
+                running: false,
+                finished: false,
+            },
         ];
         // Simulate the panel's cap logic: cap=4, 5 items → hide 1 finished from tail.
         let (visible, _done, _total) = build_todo_panel_rows(&rows);

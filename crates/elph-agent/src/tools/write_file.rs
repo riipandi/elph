@@ -12,7 +12,7 @@ use crate::runtime::local_env::LocalExecutionEnv;
 use crate::tools::common::{check_aborted, ensure_parent_dir, file_error, resolve_path};
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
-use crate::workers::SharedPathClaim;
+use crate::workers::{SharedPathClaim, content_hash};
 
 pub fn create_write_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     create_write_file_tool_with_claims(env, None)
@@ -72,19 +72,40 @@ async fn execute_write(
     };
 
     match FileSystem::write_file(env.as_ref(), &absolute, content.as_bytes(), signal.as_ref()).await {
-        HarnessResult::Ok(()) => Ok(AgentToolResult {
-            content: vec![crate::types::ToolResultContent::Text(elph_ai::TextContent::new(
-                format!("Wrote {} bytes to {path}", content.len()),
-            ))],
-            details: json!({
-                "old_content": old_content,
-                "new_content": content,
-                "file_path": absolute,
-            }),
-            added_tool_names: None,
-            terminate: None,
-            usage: None,
-        }),
-        HarnessResult::Err(error) => Err(file_error(error)),
+        HarnessResult::Ok(()) => {}
+        HarnessResult::Err(error) => return Err(file_error(error)),
     }
+
+    // Refresh the content hash in the claim after successful write so that a
+    // subsequent edit_file on the same path won't hit a spurious hash mismatch.
+    if let Some(claim) = claims.as_ref() {
+        let new_hash = content_hash(content.as_bytes());
+        let path_norm = crate::workers::normalize_claim_path(&absolute, claim.project_key());
+        let _ = claim
+            .store()
+            .try_claim(
+                claim.project_key(),
+                &path_norm,
+                claim.worker_id(),
+                claim.session_id(),
+                Some("refresh_hash"),
+                Some(&new_hash),
+                claim.stale_secs(),
+            )
+            .await;
+    }
+
+    Ok(AgentToolResult {
+        content: vec![crate::types::ToolResultContent::Text(elph_ai::TextContent::new(
+            format!("Wrote {} bytes to {path}", content.len()),
+        ))],
+        details: json!({
+            "old_content": old_content,
+            "new_content": content,
+            "file_path": absolute,
+        }),
+        added_tool_names: None,
+        terminate: None,
+        usage: None,
+    })
 }

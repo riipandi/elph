@@ -75,6 +75,20 @@ impl PathClaimContext {
         Ok(())
     }
 
+    /// Return the content-hash stored in the lease for `path`, if this worker owns it.
+    ///
+    /// Use this to compare against an already-read content buffer **without re-reading
+    /// the file**, closing the TOCTOU window that `ensure_content_unchanged` had.
+    pub async fn get_stored_content_hash(&self, path: &str) -> Option<String> {
+        let path_norm = normalize_claim_path(path, &self.project_key);
+        let leases = self.store.list_project(&self.project_key).await.ok()?;
+        let lease = leases.into_iter().find(|l| l.path_norm == path_norm)?;
+        if lease.worker_id != self.worker_id {
+            return None;
+        }
+        lease.content_hash
+    }
+
     /// Fail if another process changed the file since this worker claimed it.
     pub async fn ensure_content_unchanged(&self, path: &str) -> Result<()> {
         let path_norm = normalize_claim_path(path, &self.project_key);

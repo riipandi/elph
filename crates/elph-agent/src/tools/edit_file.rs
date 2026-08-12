@@ -12,7 +12,7 @@ use crate::runtime::local_env::LocalExecutionEnv;
 use crate::tools::common::{check_aborted, file_error, read_file_text, resolve_path};
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult, ToolResultContent};
-use crate::workers::{SharedPathClaim, content_hash, file_content_fingerprint};
+use crate::workers::{SharedPathClaim, content_hash};
 
 /// Maximum file size we'll attempt to edit (100MB)
 const MAX_FILE_SIZE: u64 = 100 * 1024 * 1024;
@@ -83,9 +83,15 @@ async fn execute_edit(
         .map(str::to_string);
 
     let absolute = resolve_path(&env, path, signal.as_ref()).await?;
-    if let Some(claim) = claims.as_ref() {
+
+    // Capture the claim's stored content hash *before* reading the file so we can
+    // compare against it after reading — one comparison, no re-read, no TOCTOU gap.
+    let stored_claim_hash: Option<String> = if let Some(claim) = claims.as_ref() {
         claim.claim(&absolute, "edit_file").await?;
-    }
+        claim.get_stored_content_hash(&absolute).await
+    } else {
+        None
+    };
 
     // Check file size before editing to handle large files
     let file_size = std::fs::metadata(&absolute).map(|m| m.len()).unwrap_or(0);
@@ -147,42 +153,27 @@ async fn execute_edit(
         ));
     }
 
-    // Resilience (TOCTOU guard): detect external file changes before writing.
-    //
-    // Fast path: when `expected_hash` is provided (from read_file's content_hash),
-    // compare it against the hash of the content we already read. If they match,
-    // the file has not changed — skip the redundant re-read entirely (saves one
-    // full disk read per edit on the happy path).
-    //
-    // Slow path (no expected_hash): re-read the file and do a full content
-    // comparison. This is the legacy behavior for callers that don't pass a hash.
+    // TOCTOU + cross-process guard: compare the content we already have against both
+    // the caller's expected_hash and the claim's stored hash. No re-reads — all
+    // comparisons use the single content buffer from read_file_text, eliminating the
+    // race window where two independent reads observe different file states.
+    let content_fingerprint = content_hash(content.as_bytes());
     if let Some(expected) = &expected_hash {
-        let actual = content_hash(content.as_bytes());
-        if actual != *expected {
+        if content_fingerprint != *expected {
             return Err(anyhow::anyhow!(
                 "edit aborted: {path} changed since it was read (hash mismatch). \
                  This can happen if another process modified the file. \
                  Re-read the file (read_file) and retry the edit with updated old_string."
             ));
         }
-    } else {
-        // Legacy TOCTOU: re-read and full content comparison.
-        let fresh = read_file_text(&env, &absolute, signal.as_ref()).await?;
-        if fresh != content {
+    }
+    if let Some(ref stored) = stored_claim_hash {
+        if content_fingerprint != *stored {
             return Err(anyhow::anyhow!(
-                "edit aborted: {path} changed since it was read. This can happen if another process modified the file. \
+                "edit aborted: {path} changed on disk since claim (hash mismatch). This can happen if another process modified the file. \
                  Re-read the file (read_file) and retry the edit with updated old_string."
             ));
         }
-    }
-    // Cross-process: refuse if on-disk fingerprint no longer matches the claim snapshot.
-    if let Some(claim) = claims.as_ref()
-        && let Err(e) = claim.ensure_content_unchanged(&absolute).await
-    {
-        return Err(anyhow::anyhow!(
-            "edit aborted: {path} changed on disk since claim (hash mismatch). This can happen if another process modified the file. \
-             Re-read the file (read_file) and retry the edit with updated old_string. Details: {e}"
-        ));
     }
 
     match FileSystem::write_file(env.as_ref(), &absolute, updated.as_bytes(), signal.as_ref()).await {
@@ -207,8 +198,7 @@ async fn execute_edit(
     // hash mismatch errors. This is crucial for multi-edit workflows where the same file
     // is edited multiple times in sequence.
     if let Some(claim) = claims.as_ref() {
-        // Re-claim with the new content hash to update the lease's content fingerprint
-        let new_hash = file_content_fingerprint(&absolute);
+        let new_hash = content_hash(updated.as_bytes());
         let path_norm = crate::workers::normalize_claim_path(&absolute, claim.project_key());
         let _ = claim
             .store()
@@ -218,7 +208,7 @@ async fn execute_edit(
                 claim.worker_id(),
                 claim.session_id(),
                 Some("refresh_hash"),
-                new_hash.as_deref(),
+                Some(&new_hash),
                 claim.stale_secs(),
             )
             .await;
@@ -837,5 +827,217 @@ mod tests {
         let written = read_file_text(&env, "h.txt", None).await.expect("read back");
         let expected_hash = crate::workers::content_hash(written.as_bytes());
         assert_eq!(hash, &expected_hash, "result hash must match written file hash");
+    }
+
+    /// Regression: sequential edits on the same file with claims must not hit
+    /// spurious hash mismatch. The first edit refreshes the claim hash; the
+    /// second edit reads the same content and compares against the refreshed hash.
+    #[tokio::test]
+    async fn sequential_edits_with_claims_succeed() {
+        use crate::datastore::ensure_database;
+        use crate::session::migrations::SESSION_TREE_MIGRATIONS;
+        use crate::workers::FileLeaseStore;
+        use crate::workers::PathClaimContext;
+
+        let temp = TempDir::new().expect("temp dir");
+        let db_path = temp.path().join("claims.db");
+        ensure_database(&db_path, &SESSION_TREE_MIGRATIONS)
+            .await
+            .expect("migrate");
+        let store = FileLeaseStore::new(&db_path);
+        let project = temp.path().display().to_string();
+        let claims = Some(std::sync::Arc::new(PathClaimContext::new(
+            store,
+            &project,
+            "test_worker",
+            "test_session",
+            30,
+        )));
+
+        let env = std::sync::Arc::new(LocalExecutionEnv::new(temp.path()));
+        FileSystem::write_file(
+            env.as_ref(),
+            "a.txt",
+            b"line1
+line2
+"
+            .as_slice(),
+            None,
+        )
+        .await
+        .expect("seed");
+
+        // Edit 1: replace "line1" with "LINE1"
+        let r1 = execute_edit(
+            env.clone(),
+            serde_json::json!({ "path": "a.txt", "old_string": "line1", "new_string": "LINE1" }),
+            None,
+            claims.clone(),
+        )
+        .await;
+        assert!(r1.is_ok(), "first edit must succeed: {r1:?}");
+
+        // Edit 2: replace "line2" with "LINE2" — must NOT fail with hash mismatch.
+        let r2 = execute_edit(
+            env.clone(),
+            serde_json::json!({ "path": "a.txt", "old_string": "line2", "new_string": "LINE2" }),
+            None,
+            claims.clone(),
+        )
+        .await;
+        assert!(r2.is_ok(), "second sequential edit must succeed: {r2:?}");
+
+        let written = read_file_text(&env, "a.txt", None).await.expect("read back");
+        assert_eq!(
+            written,
+            "LINE1
+LINE2
+"
+        );
+    }
+
+    /// Regression: external modification between claim and edit must be caught
+    /// by comparing content against the stored claim hash (no re-read needed).
+    #[tokio::test]
+    async fn external_change_between_claim_and_edit_detected() {
+        use crate::datastore::ensure_database;
+        use crate::session::migrations::SESSION_TREE_MIGRATIONS;
+        use crate::workers::FileLeaseStore;
+        use crate::workers::PathClaimContext;
+
+        let temp = TempDir::new().expect("temp dir");
+        let db_path = temp.path().join("claims.db");
+        ensure_database(&db_path, &SESSION_TREE_MIGRATIONS)
+            .await
+            .expect("migrate");
+        let store = FileLeaseStore::new(&db_path);
+        let project = temp.path().display().to_string();
+        let claims = Some(std::sync::Arc::new(PathClaimContext::new(
+            store,
+            &project,
+            "test_worker",
+            "test_session",
+            30,
+        )));
+
+        let env = std::sync::Arc::new(LocalExecutionEnv::new(temp.path()));
+        FileSystem::write_file(
+            env.as_ref(),
+            "b.txt",
+            b"original
+"
+            .as_slice(),
+            None,
+        )
+        .await
+        .expect("seed");
+
+        // Claim the path first (simulates the agent claiming before editing).
+        let abs = resolve_path(&env, "b.txt", None).await.unwrap();
+        claims.as_ref().unwrap().claim(&abs, "edit_file").await.unwrap();
+
+        // External process modifies the file — but keeps "original" so old_string still matches.
+        // This is the dangerous case: the edit would proceed with stale content if we
+        // only checked old_string presence.
+        std::fs::write(
+            temp.path().join("b.txt"),
+            b"original
+extra line from formatter
+",
+        )
+        .unwrap();
+
+        // Now try to edit — the content hash won't match the claim's stored hash.
+        let result = execute_edit(
+            env.clone(),
+            serde_json::json!({ "path": "b.txt", "old_string": "original", "new_string": "new" }),
+            None,
+            claims.clone(),
+        )
+        .await;
+        assert!(result.is_err(), "external change must be detected");
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("hash mismatch"), "error must mention hash mismatch: {err}");
+    }
+
+    /// Regression: write_file followed by edit_file on same path must not fail
+    /// with hash mismatch because write_file refreshes the claim hash.
+    #[tokio::test]
+    async fn write_then_edit_with_claims_succeeds() {
+        use crate::datastore::ensure_database;
+        use crate::session::migrations::SESSION_TREE_MIGRATIONS;
+        use crate::workers::FileLeaseStore;
+        use crate::workers::PathClaimContext;
+
+        let temp = TempDir::new().expect("temp dir");
+        let db_path = temp.path().join("claims.db");
+        ensure_database(&db_path, &SESSION_TREE_MIGRATIONS)
+            .await
+            .expect("migrate");
+        let store = FileLeaseStore::new(&db_path);
+        let project = temp.path().display().to_string();
+        let claims = Some(std::sync::Arc::new(PathClaimContext::new(
+            store,
+            &project,
+            "test_worker",
+            "test_session",
+            30,
+        )));
+
+        let env = std::sync::Arc::new(LocalExecutionEnv::new(temp.path()));
+
+        // First, write a file via write_file (with claims) — simulates the tool.
+        let abs = resolve_path(&env, "c.txt", None).await.unwrap();
+        if let Some(ref c) = claims {
+            c.claim(&abs, "write_file").await.unwrap();
+        }
+        FileSystem::write_file(
+            env.as_ref(),
+            "c.txt",
+            b"hello world
+"
+            .as_slice(),
+            None,
+        )
+        .await
+        .expect("seed");
+
+        // Refresh hash as write_file would after writing.
+        {
+            let new_hash = crate::workers::content_hash(
+                b"hello world
+",
+            );
+            let c = claims.as_ref().unwrap();
+            let path_norm = crate::workers::normalize_claim_path(&abs, c.project_key());
+            let _ = c
+                .store()
+                .try_claim(
+                    c.project_key(),
+                    &path_norm,
+                    c.worker_id(),
+                    c.session_id(),
+                    Some("refresh_hash"),
+                    Some(&new_hash),
+                    c.stale_secs(),
+                )
+                .await;
+        }
+
+        // Now edit the same file — must succeed because the claim hash was refreshed.
+        let result = execute_edit(
+            env.clone(),
+            serde_json::json!({ "path": "c.txt", "old_string": "hello", "new_string": "hi" }),
+            None,
+            claims.clone(),
+        )
+        .await;
+        assert!(result.is_ok(), "edit after write must succeed: {result:?}");
+        let written = read_file_text(&env, "c.txt", None).await.expect("read back");
+        assert_eq!(
+            written,
+            "hi world
+"
+        );
     }
 }
