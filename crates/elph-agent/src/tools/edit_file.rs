@@ -39,7 +39,7 @@ pub fn create_edit_file_tool_with_claims(env: Arc<LocalExecutionEnv>, claims: Sh
                     "old_string": { "type": "string", "description": "Text to replace (must match exactly once)" },
                     "new_string": { "type": "string", "description": "Replacement text" },
                     "ignoreWhitespace": { "type": "boolean", "description": "Ignore whitespace differences when matching old_string (slower but more robust)" },
-                    "expected_hash": { "type": "string", "description": "Content hash from a recent read_file result (details.files[].content_hash). When provided, edit_file skips a redundant re-read of the file when the hash still matches — pass it to avoid TOCTOU failures and reduce disk I/O." }
+                    "expected_hash": { "type": "string", "description": "Optional content hash from read_file details.files[].content_hash. Pass the exact returned value (a 16-character hexadecimal string); a `sha256:` prefix is also accepted. Do not use placeholder values." }
                 },
                 "required": ["path", "old_string", "new_string"]
             }),
@@ -79,8 +79,11 @@ async fn execute_edit(
     let expected_hash = args
         .get("expected_hash")
         .and_then(|v| v.as_str())
-        .filter(|s| !s.trim().is_empty())
-        .map(str::to_string);
+        .map(str::trim)
+        .filter(|s| {
+            !s.is_empty() && !s.eq_ignore_ascii_case("sha256:placeholder") && !s.eq_ignore_ascii_case("placeholder")
+        })
+        .map(normalize_expected_hash);
 
     let absolute = resolve_path(&env, path, signal.as_ref()).await?;
 
@@ -316,6 +319,15 @@ fn verify_guard(
         });
     }
     Ok(())
+}
+
+fn normalize_expected_hash(value: &str) -> String {
+    value
+        .strip_prefix("sha256:")
+        .or_else(|| value.strip_prefix("SHA256:"))
+        .unwrap_or(value)
+        .trim()
+        .to_string()
 }
 
 /// Clear "missing argument" error that tells the model exactly what edit_file needs.
@@ -716,6 +728,33 @@ mod tests {
         assert!(result.is_ok(), "valid edit failed: {result:?}");
         let written = read_file_text(&env, "c.txt", None).await.expect("read back");
         assert_eq!(written, "yyy\n");
+    }
+
+    #[test]
+    fn expected_hash_normalization_accepts_sha256_prefix() {
+        assert_eq!(normalize_expected_hash("sha256:abc123"), "abc123");
+        assert_eq!(normalize_expected_hash("ABC123"), "ABC123");
+    }
+
+    #[test]
+    fn placeholder_expected_hash_is_ignored() {
+        let args = serde_json::json!({
+            "path": "file.txt",
+            "old_string": "old",
+            "new_string": "new",
+            "expected_hash": "sha256:placeholder"
+        });
+        let value = args
+            .get("expected_hash")
+            .and_then(|v| v.as_str())
+            .map(str::trim)
+            .filter(|s| {
+                !s.trim().is_empty()
+                    && !s.eq_ignore_ascii_case("sha256:placeholder")
+                    && !s.eq_ignore_ascii_case("placeholder")
+            })
+            .map(normalize_expected_hash);
+        assert!(value.is_none());
     }
 
     #[tokio::test]
