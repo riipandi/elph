@@ -138,7 +138,7 @@ impl TursoSessionRepo {
 
 async fn open_migrated(db_path: &Path, database: Option<&Arc<Database>>) -> Result<turso::Connection, SessionError> {
     match database {
-        Some(db) => db.connect().map_err(map_err),
+        Some(db) => crate::datastore::connect(db).await.map_err(map_err),
         None => {
             if let Some(parent) = db_path.parent() {
                 std::fs::create_dir_all(parent).map_err(map_err)?;

@@ -250,9 +250,10 @@ async fn apply_connection_pragmas(conn: &Connection) -> Result<()> {
 
 /// Execute a closure within a transaction with automatic retry on conflicts.
 ///
-/// Uses `BEGIN CONCURRENT` to allow parallel writes under multiprocess WAL.
-/// If a conflict occurs, the transaction is rolled back and retried with exponential backoff.
-/// Note: This requires experimental_multiprocess_wal to be enabled (already set in multiprocess_wal()).
+/// Uses `BEGIN IMMEDIATE` — acquires the write lock upfront, preventing
+/// `SQLITE_BUSY` on the first write statement. Multiprocess WAL + `busy_timeout`
+/// (5s) handles concurrent contention; this retry loop catches any remaining
+/// transient `database is locked` failures.
 pub async fn with_mvcc_transaction<F, T, Fut>(conn: &Connection, f: F) -> Result<T>
 where
     F: Fn() -> Fut,
@@ -262,10 +263,9 @@ where
     let mut attempt = 0u32;
 
     loop {
-        // Begin transaction with concurrent write support
-        conn.execute("BEGIN CONCURRENT", ())
+        conn.execute("BEGIN IMMEDIATE", ())
             .await
-            .context("BEGIN CONCURRENT failed")?;
+            .context("BEGIN IMMEDIATE failed")?;
 
         match f().await {
             Ok(result) => {

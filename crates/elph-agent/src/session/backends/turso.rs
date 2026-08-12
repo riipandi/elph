@@ -11,6 +11,11 @@ use crate::datastore::migrations::run as run_migrations;
 use crate::datastore::with_mvcc_transaction;
 use crate::session::id::{generate_entry_id, generate_session_id};
 use crate::session::migrations::SESSION_TREE_MIGRATIONS;
+
+/// Get a properly configured connection (with busy_timeout + foreign_keys pragmas).
+async fn connect_configured(db: &turso::Database) -> Result<turso::Connection, SessionError> {
+    crate::datastore::connect(db).await.map_err(map_storage_error)
+}
 use crate::session::storage_utils::{
     append_to_index, build_index, compute_statistics, create_leaf_entry, find_entries, get_entries_cursor,
     get_path_to_root, get_path_to_root_or_compaction,
@@ -65,10 +70,10 @@ impl TursoSessionStorage {
         let db_path = db_path.as_ref().to_path_buf();
         let session_id = session_id.into();
         let conn = match &database {
-            Some(db) => db.connect().map_err(map_storage_error)?,
+            Some(db) => connect_configured(db).await?,
             None => {
                 let db = open_db(&db_path).await?;
-                db.connect().map_err(map_storage_error)?
+                connect_configured(&db).await?
             }
         };
         let metadata = load_metadata(&conn, &session_id, &db_path).await?;
@@ -139,10 +144,10 @@ impl TursoSessionStorage {
         }
         let session_id = options.session_id.unwrap_or_else(generate_session_id);
         let conn = match &database {
-            Some(db) => db.connect().map_err(map_storage_error)?,
+            Some(db) => connect_configured(db).await?,
             None => {
                 let db = open_db(&db_path).await?;
-                db.connect().map_err(map_storage_error)?
+                connect_configured(&db).await?
             }
         };
         let created_at = crate::messages::now_iso_timestamp();
@@ -236,10 +241,10 @@ impl TursoSessionStorage {
 
     async fn connection(&self) -> Result<turso::Connection, SessionError> {
         match &self.database {
-            Some(db) => db.connect().map_err(map_storage_error),
+            Some(db) => connect_configured(db).await,
             None => {
                 let db = open_db(&self.db_path).await?;
-                db.connect().map_err(map_storage_error)
+                connect_configured(&db).await
             }
         }
     }
