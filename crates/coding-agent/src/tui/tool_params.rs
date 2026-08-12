@@ -276,7 +276,7 @@ pub fn abbreviate_path(path: &str, max_chars: usize) -> String {
 
     // Shared truncation: `.../parent/file.rs` (preserves file extension).
     // Paths under CWD already use `~/Developer/...` style via normalize_display_path.
-    let (_prefix, segments) = split_display_path(&normalized);
+    let segments = split_display_path(&normalized);
     if segments.len() <= 1 {
         return truncate_filename(&normalized, max_chars);
     }
@@ -348,28 +348,14 @@ fn replace_home_with_tilde(path: &str) -> String {
     path.to_string()
 }
 
-/// Split into optional leading marker (`~` or absolute root) and path segments.
-fn split_display_path(path: &str) -> (PathPrefix, Vec<&str>) {
+/// Split a display path into non-empty segments (skipping the leading `~` or `/`).
+fn split_display_path(path: &str) -> Vec<&str> {
     if path == "~" {
-        return (PathPrefix::Home, Vec::new());
+        return Vec::new();
     }
-    if let Some(rest) = path.strip_prefix("~/") {
-        let segments: Vec<&str> = rest.split('/').filter(|s| !s.is_empty()).collect();
-        return (PathPrefix::Home, segments);
-    }
-    if path.starts_with('/') {
-        let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
-        return (PathPrefix::Root, segments);
-    }
-    let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
-    (PathPrefix::Relative, segments)
-}
-
-#[derive(Clone, Copy)]
-enum PathPrefix {
-    Home,
-    Root,
-    Relative,
+    let rest = path.strip_prefix("~/").or_else(|| path.strip_prefix('/'));
+    let body = rest.unwrap_or(path);
+    body.split('/').filter(|s| !s.is_empty()).collect()
 }
 
 /// Truncate a file name, keeping the extension when possible (`very-long-name….rs`).
@@ -646,7 +632,7 @@ fn is_openable_web_url(s: &str) -> bool {
     s.starts_with("https://") || s.starts_with("http://")
 }
 
-/// Collapsed transcript header: `Edit /U/a/D/crates/coding-agent/src/main.rs` (verb + concise target).
+/// Collapsed transcript header: `Edit ~/Developer/elph/crates/coding-agent/src/main.rs` (verb + concise target).
 pub fn format_collapsed_tool_label(tool_name: &str, args_raw: &str) -> String {
     let (verb, target) = format_collapsed_tool_parts(tool_name, args_raw);
     if target.is_empty() {
