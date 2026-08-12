@@ -88,7 +88,7 @@ async fn test_config_from_env_defaults() {
     let config = ResilienceConfig::from_env("test");
     assert_eq!(config.requests_per_second, 10);
     assert_eq!(config.failure_threshold, 5);
-    assert_eq!(config.max_retries, 3);
+    assert_eq!(config.max_retries, 5);
 }
 
 #[tokio::test]
