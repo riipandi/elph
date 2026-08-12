@@ -55,25 +55,15 @@ pub struct TodoPanelRow {
     pub finished: bool,
 }
 
-/// Build display rows from the raw todo list: all items stay visible (including
-/// finished ones), but **non-finished items are sorted ahead of done ones**.
+/// Build display rows from the raw todo list: all items stay in their original
+/// order (including finished ones). Counts are always full-list.
 ///
-/// The panel renders rows in order up to a cap, so placing pending/running
-/// items first means done items are the first to be hidden when space runs out —
-/// unfinished work stays visible while completed items get "shifted" out of view.
-/// Within each group the original order is preserved.
-///
-/// Counts are always full-list.
-pub fn build_todo_panel_rows(todos: &[TodoPanelRow]) -> (Vec<TodoPanelRow>, usize, usize, usize) {
+/// The panel renderer applies the row cap and hides finished items from the tail
+/// when the list exceeds available space.
+pub fn build_todo_panel_rows(todos: &[TodoPanelRow]) -> (Vec<TodoPanelRow>, usize, usize) {
     let total = todos.len();
     let done = todos.iter().filter(|t| t.finished).count();
-    let mut visible = Vec::with_capacity(total);
-    // First: non-finished (pending / running) items, preserving order.
-    visible.extend(todos.iter().filter(|t| !t.finished).cloned());
-    // Then: finished items, preserving order.
-    visible.extend(todos.iter().filter(|t| t.finished).cloned());
-    let visible_count = visible.len();
-    (visible, visible_count, done, total)
+    (todos.to_vec(), done, total)
 }
 
 /// Whether the live panel should paint: hide when empty or when every item is finished.
@@ -125,7 +115,7 @@ impl Default for TodoProgressPanelProps {
 #[component]
 pub fn TodoProgressPanel(props: &TodoProgressPanelProps, hooks: Hooks) -> impl Into<AnyElement<'static>> {
     let theme = resolve_ui_theme(&hooks, props.theme);
-    let (visible, visible_count, done, total) = build_todo_panel_rows(&props.items);
+    let (visible, done, total) = build_todo_panel_rows(&props.items);
 
     // All finished (or empty) → render nothing (parent should also gate on this).
     if !todo_panel_should_show(&props.items) {
@@ -135,11 +125,26 @@ pub fn TodoProgressPanel(props: &TodoProgressPanelProps, hooks: Hooks) -> impl I
     }
 
     let cap = if props.max_rows == 0 {
-        visible_count
+        visible.len()
     } else {
-        props.max_rows.min(visible_count)
+        props.max_rows.min(visible.len())
     };
-    let show_more = visible_count > cap;
+    // When items exceed the cap, hide finished items from the tail one by one
+    // while preserving original order. Stop when within cap or no more finished
+    // items can be removed.
+    let mut hidden_done_count = 0usize;
+    let mut display: Vec<&TodoPanelRow> = visible.iter().collect();
+    while display.len() > cap {
+        match display.iter().rposition(|r| r.finished) {
+            Some(idx) => {
+                display.remove(idx);
+                hidden_done_count += 1;
+            }
+            None => break,
+        }
+    }
+    let hidden_count = visible.len().saturating_sub(display.len());
+    let show_more = hidden_count > 0;
     let header = todo_panel_header_line(done, total, props.redirected);
     let border_color = if props.redirected {
         theme.border_subtle
@@ -158,7 +163,7 @@ pub fn TodoProgressPanel(props: &TodoProgressPanelProps, hooks: Hooks) -> impl I
     let label_max = (inner_width as usize).saturating_sub(2).max(4);
 
     let mut rows: Vec<AnyElement<'static>> = Vec::new();
-    for row in visible.iter().take(cap) {
+    for row in display.iter() {
         let color = if row.finished {
             // Muted styling for completed items (iocraft has no strikethrough).
             theme.text_muted
@@ -199,15 +204,11 @@ pub fn TodoProgressPanel(props: &TodoProgressPanelProps, hooks: Hooks) -> impl I
         );
     }
     if show_more {
-        let hidden = visible_count.saturating_sub(cap);
-        // Unfinished items are listed first, so the hidden tail is mostly done
-        // items. Count how many of the *hidden* ones are done for an accurate hint.
-        let hidden_done = visible[cap..].iter().filter(|r| r.finished).count();
-        let hidden_active = hidden - hidden_done;
-        let more_label = match (hidden_done, hidden_active) {
-            (d, 0) if d > 0 => format!("… +{hidden} more ({d} done)"),
-            (0, a) if a > 0 => format!("… +{hidden} more ({a} active)"),
-            (d, a) => format!("… +{hidden} more ({a} active, {d} done)"),
+        let hidden_active = hidden_count.saturating_sub(hidden_done_count);
+        let more_label = match (hidden_done_count, hidden_active) {
+            (d, 0) if d > 0 => format!("... +{hidden_count} more ({d} done)"),
+            (0, a) if a > 0 => format!("... +{hidden_count} more ({a} active)"),
+            (d, a) => format!("... +{hidden_count} more ({a} active, {d} done)"),
         };
         rows.push(
             element! {
@@ -400,9 +401,8 @@ mod tests {
                 finished: true,
             },
         ];
-        let (visible, visible_count, done, total) = build_todo_panel_rows(&rows);
-        // All items stay visible (including finished ones).
-        assert_eq!(visible_count, 4);
+        let (visible, done, total) = build_todo_panel_rows(&rows);
+        // All items stay in original order (including finished ones).
         assert_eq!(visible.len(), 4);
         assert_eq!(visible[0].label, "a");
         assert_eq!(visible[2].label, "c");
@@ -460,10 +460,9 @@ mod tests {
                 finished: false,
             })
             .collect();
-        let (visible, visible_count, _, _) = build_todo_panel_rows(&rows);
-        assert_eq!(visible_count, 8);
+        let (visible, _, _) = build_todo_panel_rows(&rows);
         assert_eq!(visible.len(), 8);
-        assert_eq!(visible_count.saturating_sub(TODO_PANEL_DEFAULT_MAX_ROWS), 3);
+        assert_eq!(visible.len().saturating_sub(TODO_PANEL_DEFAULT_MAX_ROWS), 3);
     }
 
     #[test]
@@ -474,9 +473,8 @@ mod tests {
     }
 
     #[test]
-    fn unfinished_items_sort_before_done_items() {
-        // Interleaved finished/unfinished — unfinished must come first so the
-        // panel's row cap hides done items before pending/running ones.
+    fn items_preserve_original_order() {
+        // Items stay in their original order — no reordering.
         let rows = vec![
             TodoPanelRow {
                 label: "done1".into(),
@@ -504,13 +502,45 @@ mod tests {
                 finished: false,
             },
         ];
-        let (visible, _visible_count, done, total) = build_todo_panel_rows(&rows);
+        let (visible, done, total) = build_todo_panel_rows(&rows);
         assert_eq!(total, 5);
         assert_eq!(done, 2);
-        // Unfinished first (in original order), then done (in original order).
+        // Original order preserved.
         assert_eq!(
             visible.iter().map(|r| r.label.as_str()).collect::<Vec<_>>(),
-            vec!["pending1", "running1", "pending2", "done1", "done2"]
+            vec!["done1", "pending1", "done2", "running1", "pending2"]
+        );
+    }
+
+    #[test]
+    fn cap_hides_finished_items_from_tail() {
+        // When items exceed the cap, finished items are removed from the tail.
+        let rows = vec![
+            TodoPanelRow { label: "a".into(), running: false, finished: false },
+            TodoPanelRow { label: "b".into(), running: false, finished: true },
+            TodoPanelRow { label: "c".into(), running: false, finished: false },
+            TodoPanelRow { label: "d".into(), running: false, finished: true },
+            TodoPanelRow { label: "e".into(), running: false, finished: false },
+        ];
+        // Simulate the panel's cap logic: cap=4, 5 items → hide 1 finished from tail.
+        let (visible, _done, _total) = build_todo_panel_rows(&rows);
+        let cap = 4;
+        let mut display: Vec<&TodoPanelRow> = visible.iter().collect();
+        let mut hidden_done = 0usize;
+        while display.len() > cap {
+            if let Some(idx) = display.iter().rposition(|r| r.finished) {
+                display.remove(idx);
+                hidden_done += 1;
+            } else {
+                break;
+            }
+        }
+        assert_eq!(display.len(), 4);
+        assert_eq!(hidden_done, 1);
+        // Last finished item ("d") removed; order preserved.
+        assert_eq!(
+            display.iter().map(|r| r.label.as_str()).collect::<Vec<_>>(),
+            vec!["a", "b", "c", "e"]
         );
     }
 }
