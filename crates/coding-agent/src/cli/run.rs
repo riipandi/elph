@@ -89,7 +89,7 @@ pub struct RunArgs {
     #[arg(short, long = "file", value_name = "FILE")]
     pub files: Vec<String>,
 
-    /// Max retry attempts for provider API calls (default: 3)
+    /// Max retry attempts for provider API calls (default: 5)
     #[arg(long = "max-retries", value_name = "N")]
     pub max_retries: Option<u32>,
 

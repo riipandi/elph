@@ -124,7 +124,7 @@ async fn run_openai_completions(
         &options.base.signal,
         &client,
         req,
-        options.base.max_retries.unwrap_or(3),
+        options.base.max_retries.unwrap_or(5), // Increased from 3 to 5 for better transport error handling
     )
     .await?;
     invoke_on_response_from_reqwest(options.base.on_response.as_ref(), &response, model).await;

@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use anyhow::anyhow;
+use rand::RngExt;
 use reqwest::Client;
 use serde_json::Value;
 
@@ -294,8 +295,11 @@ pub async fn send_with_resilience_retry(
     let mut last_err: Option<anyhow::Error> = None;
     for attempt in 0..=max_retries {
         if attempt > 0 {
-            // Exponential backoff: 500ms, 1s, 2s, 4s, ...
-            let delay = Duration::from_millis(500 * 2u64.pow(attempt.saturating_sub(1)));
+            // Exponential backoff with jitter: 500ms, 1s, 2s, 4s, ...
+            let base_delay = Duration::from_millis(500 * 2u64.pow(attempt.saturating_sub(1)));
+            // Add jitter (±12.5%) to avoid thundering herd
+            let jitter = rand::rng().random_range(0..=base_delay.as_millis() as u64 / 8);
+            let delay = base_delay + Duration::from_millis(jitter);
             tokio::time::sleep(delay).await;
             log::debug!("resilience: retrying {provider_id} (attempt {attempt}/{max_retries})");
         }

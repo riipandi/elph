@@ -140,7 +140,7 @@ async fn run_generate(
         &options.signal,
         &client,
         req,
-        options.max_retries.unwrap_or(3),
+        options.max_retries.unwrap_or(5), // Increased from 3 to 5 for better transport error handling
     )
     .await?;
     invoke_on_response_from_reqwest(
