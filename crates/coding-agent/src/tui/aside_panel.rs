@@ -6,7 +6,7 @@
 //! session tree, or the prompt queues.
 
 use elph_tui::components::progress_indicator::SpinnerLoaderView;
-use elph_tui::components::scroll_bar::VerticalScrollbar;
+use elph_tui::components::scroll_bar::scroll_indicator_label;
 use elph_tui::components::theme::UiTheme;
 use elph_tui::word_wrap::wrap_text_to_lines;
 use iocraft::prelude::*;
@@ -210,24 +210,17 @@ pub fn AsidePanel(props: &AsidePanelProps, hooks: Hooks) -> impl Into<AnyElement
         AsidePanelState::Done {
             answer, scroll_offset, ..
         } => {
-            // Reserve one column for the scrollbar so it doesn't overflow the shell.
-            let body_w: u16 = inner.saturating_sub(1).max(1);
-            let lines = wrap_text_to_lines(answer, body_w as usize);
-            let total = lines.len().max(1);
             let max_body = ASIDE_MAX_BODY_LINES;
+            let lines = wrap_text_to_lines(answer, inner as usize);
+            let total = lines.len().max(1);
             let max_off = total.saturating_sub(max_body);
             let offset = (*scroll_offset).min(max_off);
             let end = (offset + max_body).min(total);
-            let scrollable = total > max_body;
             let mut rows: Vec<AnyElement<'static>> = Vec::new();
             for line in lines.into_iter().skip(offset).take(end.saturating_sub(offset)) {
                 rows.push(
                     element! {
-                        Text(
-                            content: line,
-                            color: theme.text_primary,
-                            wrap: TextWrap::NoWrap,
-                        )
+                        Text(content: line, color: theme.text_primary, wrap: TextWrap::NoWrap)
                     }
                     .into(),
                 );
@@ -240,53 +233,40 @@ pub fn AsidePanel(props: &AsidePanelProps, hooks: Hooks) -> impl Into<AnyElement
                     .into(),
                 );
             }
-            let text_body = element! {
-                View(width: body_w, flex_direction: FlexDirection::Column, flex_shrink: 0f32) {
+            // Scroll indicator: ↑/↓ arrows that dim at the edges (can't scroll further).
+            // Rendered as a body line so it stays perfectly aligned with the text column.
+            if total > max_body {
+                let can_up = offset > 0;
+                let can_down = offset < max_off;
+                let up_color = if can_up { theme.text_secondary } else { theme.text_muted };
+                let down_color = if can_down { theme.text_secondary } else { theme.text_muted };
+                let pos = scroll_indicator_label(offset as u32, max_body as u32, total as u32);
+                rows.push(
+                    element! {
+                        View(width: inner, flex_direction: FlexDirection::Row, flex_shrink: 0f32) {
+                            Text(content: "↑".to_string(), color: up_color, wrap: TextWrap::NoWrap)
+                            Text(content: " ".to_string(), color: theme.text_muted, wrap: TextWrap::NoWrap)
+                            Text(content: "↓".to_string(), color: down_color, wrap: TextWrap::NoWrap)
+                            Text(content: format!("  {pos}"), color: theme.text_muted, wrap: TextWrap::NoWrap)
+                        }
+                    }
+                    .into(),
+                );
+            }
+            element! {
+                View(width: inner, flex_direction: FlexDirection::Column, flex_shrink: 0f32) {
                     #(rows)
                 }
-            };
-            if scrollable {
-                element! {
-                    View(width: inner, flex_direction: FlexDirection::Row, flex_shrink: 0f32) {
-                        #(text_body)
-                        VerticalScrollbar(
-                            viewport_height: max_body as u16,
-                            content_height: total.min(u16::MAX as usize) as u16,
-                            scroll_offset: offset.min(u16::MAX as usize) as u16,
-                            track_height: Some(max_body as u16),
-                            theme: Some(theme),
-                        )
-                    }
-                }
-                .into()
-            } else {
-                text_body.into()
             }
+            .into()
         }
     };
     let footer = match &props.state {
         AsidePanelState::Loading { .. } | AsidePanelState::Error { .. } => Some("[Esc] dismiss".to_string()),
-        AsidePanelState::Done {
-            answer, scroll_offset, ..
-        } => {
-            // Match the body's reserved scrollbar column so the position label is exact.
-            let body_w: u16 = inner.saturating_sub(1).max(1);
-            let lines = wrap_text_to_lines(answer, body_w as usize);
-            let total = lines.len().max(1);
-            let max_body = ASIDE_MAX_BODY_LINES;
-            if total > max_body {
-                let max_off = total.saturating_sub(max_body);
-                let offset = (*scroll_offset).min(max_off);
-                let end = (offset + max_body).min(total);
-                let pos = offset + 1;
-                if props.has_focus {
-                    Some(format!("{pos}-{end}/{total}  ↑↓  [Esc]"))
-                } else {
-                    Some(format!("{pos}-{end}/{total}  [Esc]"))
-                }
-            } else {
-                Some("[Esc] dismiss".to_string())
-            }
+        AsidePanelState::Done { .. } => {
+            // The scrollable case already shows the ↑/↓ position indicator inside the
+            // body; keep the footer minimal so it isn't duplicated.
+            Some("[Esc] dismiss".to_string())
         }
     };
 
