@@ -92,20 +92,23 @@ impl AstGrepLang {
 /// to avoid false positives for text search.
 pub fn is_ast_pattern(pattern: &str) -> bool {
     // Metavariables are the most reliable AST pattern indicator
-    let has_metavar = pattern.contains('$') && 
-        (pattern.contains("$MATCH") || pattern.contains("$VAR") || 
-         pattern.contains("$PATTERN") || pattern.contains("$EXPR") ||
-         (pattern.chars().any(|c| c.is_uppercase()) && pattern.contains('$')));
-    
+    let has_metavar = pattern.contains('$')
+        && (pattern.contains("$MATCH")
+            || pattern.contains("$VAR")
+            || pattern.contains("$PATTERN")
+            || pattern.contains("$EXPR")
+            || (pattern.chars().any(|c| c.is_uppercase()) && pattern.contains('$')));
+
     // Code structure with metavariables is also strong indicator
-    let has_code_structure_with_metavar = has_metavar && (
-        pattern.contains('(') && pattern.contains(')') ||
-        pattern.contains('{') && pattern.contains('}') ||
-        pattern.contains('=') && !pattern.contains("==") && !pattern.contains("!=") ||
-        pattern.contains("fn ") || pattern.contains("function ") ||
-        pattern.contains("class ") || pattern.contains("def ")
-    );
-    
+    let has_code_structure_with_metavar = has_metavar
+        && (pattern.contains('(') && pattern.contains(')')
+            || pattern.contains('{') && pattern.contains('}')
+            || pattern.contains('=') && !pattern.contains("==") && !pattern.contains("!=")
+            || pattern.contains("fn ")
+            || pattern.contains("function ")
+            || pattern.contains("class ")
+            || pattern.contains("def "));
+
     has_metavar || has_code_structure_with_metavar
 }
 
@@ -117,32 +120,28 @@ pub struct AstSearchResult {
 
 /// Search a single file using AST pattern matching
 #[cfg(feature = "tools-grep")]
-fn search_file_ast(
-    file_path: &Path,
-    pattern: &str,
-    lang: SupportLang,
-) -> Result<Vec<String>> {
+fn search_file_ast(file_path: &Path, pattern: &str, lang: SupportLang) -> Result<Vec<String>> {
     const MAX_FILE_SIZE: u64 = 100 * 1024 * 1024; // 100MB
-    
+
     // Check file size first
-    let file_size = std::fs::metadata(file_path)
-        .map(|m| m.len())
-        .unwrap_or(0);
-    
+    let file_size = std::fs::metadata(file_path).map(|m| m.len()).unwrap_or(0);
+
     if file_size > MAX_FILE_SIZE {
-        log::debug!("Skipping large file in AST search: {} ({} bytes)", file_path.display(), file_size);
+        log::debug!(
+            "Skipping large file in AST search: {} ({} bytes)",
+            file_path.display(),
+            file_size
+        );
         return Ok(vec![]);
     }
-    
+
     let content = std::fs::read_to_string(file_path)
         .map_err(|e| anyhow::anyhow!("Failed to read {}: {}", file_path.display(), e))?;
-    
+
     // Compile pattern - Pattern::new may panic on invalid patterns
     // Use catch_unwind to handle potential panics gracefully
-    let sg_pattern = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        Pattern::new(pattern, lang)
-    }));
-    
+    let sg_pattern = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| Pattern::new(pattern, lang)));
+
     let sg_pattern = match sg_pattern {
         Ok(p) => p,
         Err(_) => {
@@ -150,24 +149,20 @@ fn search_file_ast(
             return Err(anyhow::anyhow!("Invalid AST pattern: syntax error"));
         }
     };
-    
+
     let parsed = ast_grep_core::AstGrep::new(content, lang);
     let root = parsed.root();
-    
+
     let matches = root.find_all(sg_pattern);
     let mut results = Vec::new();
-    
+
     for m in matches {
         let pos = m.start_pos();
         let line = pos.line() + 1; // 1-indexed
         let text = m.text();
-        results.push(format!("{}:{}:{}", 
-            file_path.display(), 
-            line, 
-            text.trim()
-        ));
+        results.push(format!("{}:{}:{}", file_path.display(), line, text.trim()));
     }
-    
+
     Ok(results)
 }
 
@@ -181,33 +176,34 @@ pub fn search_ast(
 ) -> Result<AstSearchResult> {
     let mut all_matches = Vec::new();
     let mut limit_reached = false;
-    
+
     for path in paths {
         if all_matches.len() >= limit {
             limit_reached = true;
             break;
         }
-        
+
         let path_obj = Path::new(path);
         if !path_obj.is_file() {
             continue;
         }
-        
+
         // Detect language from file extension if not provided
         let lang = lang_hint.or_else(|| {
-            path_obj.extension()
+            path_obj
+                .extension()
                 .and_then(|ext| ext.to_str())
                 .and_then(AstGrepLang::from_extension)
         });
-        
+
         let Some(lang) = lang else {
             // Skip files with unsupported extensions
             log::debug!("Skipping file with unsupported extension: {}", path);
             continue;
         };
-        
+
         let support_lang = lang.to_support_lang();
-        
+
         match search_file_ast(path_obj, pattern, support_lang) {
             Ok(mut matches) => {
                 if all_matches.len() + matches.len() > limit {
@@ -223,7 +219,7 @@ pub fn search_ast(
             }
         }
     }
-    
+
     Ok(AstSearchResult {
         matches: all_matches,
         limit_reached,
@@ -270,23 +266,23 @@ mod tests {
         assert!(is_ast_pattern("$VAR = $EXPR"));
         assert!(is_ast_pattern("$MATCH"));
         assert!(is_ast_pattern("$PATTERN"));
-        
+
         // Code structure with metavariables - these ARE AST patterns
         assert!(is_ast_pattern("function $NAME()"));
         assert!(is_ast_pattern("class $NAME"));
         assert!(is_ast_pattern("def $NAME()"));
-        
+
         // Operators WITHOUT metavariables - these are NOT AST patterns (text search)
         assert!(!is_ast_pattern("x == y"));
         assert!(!is_ast_pattern("a && b"));
         assert!(!is_ast_pattern("x != y"));
         assert!(!is_ast_pattern("a || b"));
-        
+
         // Simple text patterns (not AST)
         assert!(!is_ast_pattern("hello"));
         assert!(!is_ast_pattern("test_function"));
         assert!(!is_ast_pattern("variable_name"));
-        
+
         // Code structure WITHOUT metavariables - these are NOT AST patterns
         assert!(!is_ast_pattern("function test()"));
         assert!(!is_ast_pattern("class MyClass"));
@@ -305,21 +301,16 @@ mod tests {
     #[test]
     fn test_ast_search_rust_file() {
         use std::fs;
-        
+
         let temp_dir = std::env::temp_dir();
         let test_file = temp_dir.join("test_ast_search.rs");
         fs::write(&test_file, "fn main() {\n    let x = 1;\n    println!(\"{}\");\n}\n").expect("write");
-        
-        let result = search_ast(
-            &[test_file.display().to_string()],
-            "let $X = $Y",
-            Some(AstGrepLang::Rust),
-            10,
-        );
-        
+
+        let result = search_ast(&[test_file.display().to_string()], "let $X = $Y", Some(AstGrepLang::Rust), 10);
+
         // Clean up
         let _ = fs::remove_file(&test_file);
-        
+
         assert!(result.is_ok());
         let search_result = result.unwrap();
         assert!(!search_result.matches.is_empty());
@@ -330,21 +321,16 @@ mod tests {
     #[test]
     fn test_ast_search_no_matches() {
         use std::fs;
-        
+
         let temp_dir = std::env::temp_dir();
         let test_file = temp_dir.join("test_ast_no_match.rs");
         fs::write(&test_file, "fn main() {\n    let x = 1;\n}\n").expect("write");
-        
-        let result = search_ast(
-            &[test_file.display().to_string()],
-            "class $NAME",
-            Some(AstGrepLang::Rust),
-            10,
-        );
-        
+
+        let result = search_ast(&[test_file.display().to_string()], "class $NAME", Some(AstGrepLang::Rust), 10);
+
         // Clean up
         let _ = fs::remove_file(&test_file);
-        
+
         assert!(result.is_ok());
         let search_result = result.unwrap();
         assert!(search_result.matches.is_empty());

@@ -34,6 +34,15 @@ pub fn is_lock_err(msg: &str) -> bool {
     lower.contains("locked") || lower.contains("locking") || lower.contains("busy")
 }
 
+/// Check if a Turso error message indicates an MVCC conflict.
+///
+/// MVCC conflicts occur when two concurrent transactions modify the same data.
+/// These errors are retryable with `BEGIN CONCURRENT`.
+pub fn is_mvcc_conflict_err(msg: &str) -> bool {
+    let lower = msg.to_ascii_lowercase();
+    lower.contains("conflict") || lower.contains("busy snapshot")
+}
+
 /// Check if a Turso error message indicates a corrupt / truncated WAL sidecar.
 pub fn is_wal_io_err(msg: &str) -> bool {
     let lower = msg.to_ascii_lowercase();
@@ -87,7 +96,7 @@ pub fn cleanup_stale_shared_memory(path: &Path) -> Result<()> {
     tshm_path.push_str("-tshm");
 
     if database_in_use(&db_path_str) {
-        log::debug!("Database is currently in use, skipping shared-memory cleanup");
+        log::warn!("Database is currently in use by another Elph instance, skipping shared-memory cleanup");
         return Ok(());
     }
 
@@ -107,6 +116,7 @@ pub fn cleanup_stale_shared_memory(path: &Path) -> Result<()> {
 /// Remove broken WAL sidecars: `-wal` under 32 bytes (cannot hold a valid WAL
 /// header) and `-shm`/`-tshm` when the database is not in use.
 pub fn clear_broken_wal_sidecars(db_path: &str) {
+    log::warn!("Attempting to recover corrupted WAL database files for: {}", db_path);
     for suffix in ["-wal", "-shm", "-tshm"] {
         let sidecar = format!("{db_path}{suffix}");
         let p = std::path::Path::new(&sidecar);
@@ -126,7 +136,10 @@ pub fn clear_broken_wal_sidecars(db_path: &str) {
             !database_in_use(db_path)
         };
         if should_remove {
-            let _ = std::fs::remove_file(p);
+            match std::fs::remove_file(p) {
+                Ok(_) => log::info!("Removed corrupted WAL sidecar file: {}", sidecar),
+                Err(e) => log::warn!("Failed to remove corrupted WAL sidecar file {}: {}", sidecar, e),
+            }
         }
     }
 }
@@ -153,23 +166,31 @@ pub async fn open_local_internal(
         match build {
             Ok(db) => {
                 if attempt > 0 {
-                    log::info!("Database opened successfully after {attempt} retry attempts");
+                    log::info!("Database opened successfully after {attempt} retry attempts (database was busy)");
                 }
                 return Ok(db);
             }
             Err(e) => {
                 let msg = e.to_string();
                 if recover_wal && !cleared_wal && is_wal_io_err(&msg) {
+                    log::warn!("Detected corrupted WAL file during database open, attempting recovery...");
                     clear_broken_wal_sidecars(&path.to_string_lossy());
                     cleared_wal = true;
                     attempt = 0;
                     continue;
                 }
                 if attempt >= MAX_RETRIES || !is_lock_err(&msg) {
-                    log::error!("Failed to open database after {attempt} attempts: {msg}");
+                    log::error!(
+                        "Failed to open database after {attempt} attempts (database path: {}): {msg}",
+                        path.display()
+                    );
                     return Err(e).with_context(|| format!("open_local: {}", path.display()));
                 }
-                log::warn!("Database open attempt {} failed with lock error: {msg}", attempt + 1);
+                log::warn!(
+                    "Database is busy (another Elph instance may be open) - retry attempt {}/{}: {msg}",
+                    attempt + 1,
+                    MAX_RETRIES
+                );
             }
         }
         tokio::time::sleep(Duration::from_millis(jitter_delay(attempt))).await;
@@ -186,11 +207,12 @@ async fn connect_retry(db: &Database) -> Result<Connection> {
             Ok(conn) => return Ok(conn),
             Err(e) => {
                 if attempt >= MAX_RETRIES || !is_lock_err(&e.to_string()) {
-                    return Err(e).context("connect: connection failed");
+                    return Err(e).context("connect: database connection failed (database may be locked or corrupted)");
                 }
                 log::warn!(
-                    "Database connection attempt {} failed with lock error, retrying...",
-                    attempt + 1
+                    "Database is busy (connection failed, retrying...) - attempt {}/{}: {e}",
+                    attempt + 1,
+                    MAX_RETRIES
                 );
             }
         }
@@ -218,10 +240,62 @@ async fn set_foreign_keys(conn: &Connection) -> Result<()> {
 }
 
 /// Apply per-connection session pragmas (busy timeout + foreign keys).
+/// Note: MVCC journal mode is not compatible with experimental_multiprocess_wal.
+/// For multi-process concurrent writes, we rely on multiprocess WAL + BEGIN CONCURRENT.
 async fn apply_connection_pragmas(conn: &Connection) -> Result<()> {
     set_busy_timeout(conn).await?;
     set_foreign_keys(conn).await?;
     Ok(())
+}
+
+/// Execute a closure within a transaction with automatic retry on conflicts.
+///
+/// Uses `BEGIN CONCURRENT` to allow parallel writes under multiprocess WAL.
+/// If a conflict occurs, the transaction is rolled back and retried with exponential backoff.
+/// Note: This requires experimental_multiprocess_wal to be enabled (already set in multiprocess_wal()).
+pub async fn with_mvcc_transaction<F, T, Fut>(conn: &Connection, f: F) -> Result<T>
+where
+    F: Fn() -> Fut,
+    Fut: std::future::Future<Output = Result<T>>,
+{
+    const MAX_RETRIES: u32 = 10;
+    let mut attempt = 0u32;
+
+    loop {
+        // Begin transaction with concurrent write support
+        conn.execute("BEGIN CONCURRENT", ())
+            .await
+            .context("BEGIN CONCURRENT failed")?;
+
+        match f().await {
+            Ok(result) => {
+                // Commit the transaction
+                conn.execute("COMMIT", ()).await.context("COMMIT failed")?;
+                return Ok(result);
+            }
+            Err(e) => {
+                // Rollback on error
+                let _ = conn.execute("ROLLBACK", ()).await;
+
+                let msg = e.to_string();
+                // Retry on MVCC conflicts or lock errors
+                if attempt < MAX_RETRIES && (is_mvcc_conflict_err(&msg) || is_lock_err(&msg)) {
+                    log::warn!(
+                        "Transaction conflict (attempt {}/{}), retrying: {}",
+                        attempt + 1,
+                        MAX_RETRIES,
+                        msg
+                    );
+                    tokio::time::sleep(Duration::from_millis(jitter_delay(attempt))).await;
+                    attempt += 1;
+                    continue;
+                }
+
+                // Non-retryable error or max retries exceeded
+                return Err(e);
+            }
+        }
+    }
 }
 
 /// Connect to an open `Database` and set connection pragmas (propagating any error).
@@ -274,7 +348,12 @@ pub async fn open_local(path: &Path) -> Result<Database> {
         open_local_internal(path, multiprocess_wal, false),
     )
     .await
-    .map_err(|_| anyhow::anyhow!("database open timeout after {}ms", DB_OPEN_TIMEOUT_MS))?
+    .map_err(|_| {
+        anyhow::anyhow!(
+            "database open timeout after {}ms (database may be busy or locked)",
+            DB_OPEN_TIMEOUT_MS
+        )
+    })?
 }
 
 /// Open a local Turso database with a caller-supplied builder configuration.
@@ -292,7 +371,12 @@ pub async fn open_local_with(
         open_local_internal(path, configure, recover_wal),
     )
     .await
-    .map_err(|_| anyhow::anyhow!("database open timeout after {}ms", DB_OPEN_TIMEOUT_MS))?
+    .map_err(|_| {
+        anyhow::anyhow!(
+            "database open timeout after {}ms (database may be busy or locked)",
+            DB_OPEN_TIMEOUT_MS
+        )
+    })?
 }
 
 /// Connect to an open Database, retrying on lock errors.
@@ -399,6 +483,15 @@ mod tests {
         assert!(is_lock_err("database is busy"));
         assert!(!is_lock_err("syntax error"));
         assert!(!is_lock_err("no such table"));
+    }
+
+    #[test]
+    fn is_mvcc_conflict_err_detects_conflicts() {
+        assert!(is_mvcc_conflict_err("conflict"));
+        assert!(is_mvcc_conflict_err("Busy snapshot"));
+        assert!(is_mvcc_conflict_err("transaction conflict"));
+        assert!(!is_mvcc_conflict_err("syntax error"));
+        assert!(!is_mvcc_conflict_err("no such table"));
     }
 
     #[tokio::test]

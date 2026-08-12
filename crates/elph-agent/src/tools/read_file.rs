@@ -116,12 +116,10 @@ async fn execute_read(
         }
 
         check_aborted(signal.as_ref())?;
-        
+
         // Check file size before reading to handle large files
-        let file_size = std::fs::metadata(&absolute)
-            .map(|m| m.len())
-            .unwrap_or(0);
-        
+        let file_size = std::fs::metadata(&absolute).map(|m| m.len()).unwrap_or(0);
+
         if file_size > MAX_FILE_SIZE {
             all_outputs.push(format!(
                 "[{}] File too large to read ({} bytes > {} bytes). Use offset/limit to read specific ranges.",

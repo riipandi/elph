@@ -24,7 +24,7 @@ use crate::agent::harness::utils::truncate::DEFAULT_MAX_BYTES;
 use crate::agent::harness::utils::truncate::TruncationOptions;
 use crate::agent::harness::utils::truncate::truncate_head;
 use crate::runtime::local_env::LocalExecutionEnv;
-use crate::tools::ast_grep_helper::{is_ast_pattern, search_ast, AstGrepLang, AstSearchResult};
+use crate::tools::ast_grep_helper::{AstGrepLang, AstSearchResult, is_ast_pattern, search_ast};
 use crate::tools::common::{check_aborted, resolve_path};
 use crate::tools::fff_picker::{
     GrepOutputMode, GrepOutputOptions, build_grep_mode, build_grep_options, build_grep_query, cached_picker,
@@ -251,7 +251,7 @@ async fn execute_grep(
         if info.kind != FileKind::File && info.kind != FileKind::Directory {
             continue;
         }
-        
+
         // Check file size for large file handling
         if info.kind == FileKind::File {
             if let Ok(metadata) = std::fs::metadata(&absolute) {
@@ -261,7 +261,7 @@ async fn execute_grep(
                 }
             }
         }
-        
+
         absolute_paths.push(absolute.clone());
         let is_file = info.kind == FileKind::File;
         let base_path = resolve_search_base(&absolute, is_file);
@@ -294,20 +294,21 @@ async fn execute_grep(
         let pattern = &raw_patterns[0];
         if is_ast_pattern(pattern) {
             let lang_hint = file_type.as_deref().and_then(AstGrepLang::from_type_name);
-            
+
             // Filter paths by glob if provided
             let search_paths = if let Some(ref glob) = glob_pattern {
                 filter_paths_by_glob(&absolute_paths, glob)
             } else {
                 absolute_paths.clone()
             };
-            
+
             match search_ast(&search_paths, pattern, lang_hint, limit) {
                 Ok(AstSearchResult { matches, limit_reached }) => {
                     if !matches.is_empty() {
                         if output_mode == GrepOutputMode::FilesWithMatches {
                             let mut seen = BTreeSet::new();
-                            let files_only: Vec<String> = matches.into_iter()
+                            let files_only: Vec<String> = matches
+                                .into_iter()
                                 .filter_map(|line| {
                                     let path = line.split(':').next().map(|s| s.to_string());
                                     path.and_then(|p| if seen.insert(p.clone()) { Some(p) } else { None })
@@ -430,10 +431,7 @@ fn filter_paths_by_glob(paths: &[String], glob: &str) -> Vec<String> {
     #[cfg(feature = "tools-grep")]
     {
         use fast_glob::glob_match;
-        paths.iter()
-            .filter(|path| glob_match(glob, path))
-            .cloned()
-            .collect()
+        paths.iter().filter(|path| glob_match(glob, path)).cloned().collect()
     }
     #[cfg(not(feature = "tools-grep"))]
     {

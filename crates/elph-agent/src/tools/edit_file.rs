@@ -86,19 +86,18 @@ async fn execute_edit(
     if let Some(claim) = claims.as_ref() {
         claim.claim(&absolute, "edit_file").await?;
     }
-    
+
     // Check file size before editing to handle large files
-    let file_size = std::fs::metadata(&absolute)
-        .map(|m| m.len())
-        .unwrap_or(0);
-    
+    let file_size = std::fs::metadata(&absolute).map(|m| m.len()).unwrap_or(0);
+
     if file_size > MAX_FILE_SIZE {
         return Err(anyhow::anyhow!(
             "File too large to edit ({} bytes > {} bytes). Use write_file for complete rewrites or split the file.",
-            file_size, MAX_FILE_SIZE
+            file_size,
+            MAX_FILE_SIZE
         ));
     }
-    
+
     let content = read_file_text(&env, &absolute, signal.as_ref()).await?;
 
     let (start, end) = if ignore_whitespace {

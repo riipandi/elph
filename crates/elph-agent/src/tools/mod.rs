@@ -3,6 +3,8 @@
 mod common;
 pub mod types;
 
+#[cfg(feature = "tools-grep")]
+mod ast_grep_helper;
 #[cfg(feature = "tools-collaboration")]
 mod collaboration;
 #[cfg(feature = "tools-edit-file")]
@@ -11,8 +13,6 @@ mod edit_file;
 pub mod fff_picker;
 #[cfg(feature = "tools-find-path")]
 mod find_path;
-#[cfg(feature = "tools-grep")]
-mod ast_grep_helper;
 #[cfg(feature = "tools-grep")]
 mod grep;
 #[cfg(feature = "tools-list-dir")]

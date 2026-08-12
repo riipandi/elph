@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::datastore::migrations::run as run_migrations;
+use crate::datastore::with_mvcc_transaction;
 use crate::session::id::{generate_entry_id, generate_session_id};
 use crate::session::migrations::SESSION_TREE_MIGRATIONS;
 use crate::session::storage_utils::{
@@ -160,10 +161,10 @@ impl TursoSessionStorage {
             db_path: db_path.to_string_lossy().to_string(),
         };
 
-        // Wrap session creation in a transaction to ensure atomicity.
+        // Wrap session creation in an MVCC transaction to ensure atomicity.
         // If session_sequences insert fails, the entire session creation should roll back.
-        conn.execute("BEGIN IMMEDIATE", ()).await.map_err(map_storage_error)?;
-        let outcome = async {
+        // MVCC allows multiple instances to create sessions concurrently with conflict detection.
+        with_mvcc_transaction(&conn, || async {
             conn.execute(
                 "INSERT INTO sessions (
                     id, created_at, updated_at, cwd, parent_session_id,
@@ -193,16 +194,10 @@ impl TursoSessionStorage {
             .await
             .map_err(map_storage_error)?;
 
-            Ok::<(), SessionError>(())
-        };
-
-        let result = outcome.await;
-        if result.is_ok() {
-            conn.execute("COMMIT", ()).await.map_err(map_storage_error)?;
-        } else {
-            conn.execute("ROLLBACK", ()).await.map_err(map_storage_error)?;
-        }
-        result?;
+            Ok::<(), anyhow::Error>(())
+        })
+        .await
+        .map_err(map_storage_error)?;
 
         Ok(Self {
             db_path,
@@ -332,29 +327,19 @@ impl TursoSessionStorage {
     }
 
     /// Open one connection and persist `entry` + the new `leaf_id` inside a single
-    /// `BEGIN IMMEDIATE` … `COMMIT` transaction, rolling back on error. Using one
-    /// connection per call (instead of one per write) avoids re-opening the
-    /// multiprocess-WAL database on every append and removes the sequence-allocation
-    /// race under concurrent, multi-process writers.
+    /// MVCC transaction with automatic retry on conflicts. Using one connection
+    /// per call (instead of one per write) avoids re-opening the multiprocess-WAL
+    /// database on every append and removes the sequence-allocation race under
+    /// concurrent, multi-process writers.
     async fn persist_txn(&self, entry: &SessionTreeEntry, leaf_id: Option<&str>) -> Result<(), SessionError> {
         let conn = self.connection().await?;
-        conn.execute("BEGIN IMMEDIATE", ()).await.map_err(map_storage_error)?;
-        let outcome = async {
+        with_mvcc_transaction(&conn, || async {
             self.persist_entry(&conn, entry).await?;
             self.persist_leaf_id(&conn, leaf_id).await?;
-            Ok::<(), SessionError>(())
-        }
-        .await;
-        match outcome {
-            Ok(()) => {
-                conn.execute("COMMIT", ()).await.map_err(map_storage_error)?;
-                Ok(())
-            }
-            Err(error) => {
-                let _ = conn.execute("ROLLBACK", ()).await;
-                Err(error)
-            }
-        }
+            Ok::<(), anyhow::Error>(())
+        })
+        .await
+        .map_err(map_storage_error)
     }
 }
 
@@ -491,7 +476,7 @@ fn maybe_heal_stale_leaves(index: SessionIndex) -> Result<(SessionIndex, Vec<Str
     Ok((healed, stale_ids))
 }
 
-/// Delete the given stale `Leaf` rows from `session_entries` in one transaction.
+/// Delete the given stale `Leaf` rows from `session_entries` in one MVCC transaction.
 ///
 /// Called only after `maybe_heal_stale_leaves` decided to heal (>= threshold).
 /// Best-effort but transactional: if the delete fails the open still succeeds
@@ -504,10 +489,7 @@ async fn persist_heal_stale_leaves(
     if stale_ids.is_empty() {
         return Ok(());
     }
-    conn.execute("BEGIN IMMEDIATE", ())
-        .await
-        .map_err(|e| SessionError::new(SessionErrorCode::Storage, format!("heal begin: {e}")))?;
-    let outcome = async {
+    with_mvcc_transaction(conn, || async {
         for id in stale_ids {
             conn.execute(
                 "DELETE FROM session_entries WHERE session_id = ? AND id = ?",
@@ -516,21 +498,10 @@ async fn persist_heal_stale_leaves(
             .await
             .map_err(|e| SessionError::new(SessionErrorCode::Storage, format!("heal delete {id}: {e}")))?;
         }
-        Ok::<(), SessionError>(())
-    }
-    .await;
-    match outcome {
-        Ok(()) => {
-            conn.execute("COMMIT", ())
-                .await
-                .map_err(|e| SessionError::new(SessionErrorCode::Storage, format!("heal commit: {e}")))?;
-            Ok(())
-        }
-        Err(error) => {
-            let _ = conn.execute("ROLLBACK", ()).await;
-            Err(error)
-        }
-    }
+        Ok::<(), anyhow::Error>(())
+    })
+    .await
+    .map_err(map_storage_error)
 }
 
 fn map_storage_error(error: impl std::fmt::Display) -> SessionError {
@@ -661,8 +632,7 @@ impl SessionStorage for TursoSessionStorage {
         }
 
         let conn = self.connection().await?;
-        conn.execute("BEGIN IMMEDIATE", ()).await.map_err(map_storage_error)?;
-        let outcome = async {
+        let deleted = with_mvcc_transaction(&conn, || async {
             let mut deleted = 0usize;
             let mut freed_bytes: i64 = 0;
             for id in &to_delete {
@@ -704,36 +674,29 @@ impl SessionStorage for TursoSessionStorage {
             )
             .await
             .map_err(map_storage_error)?;
-            Ok::<usize, SessionError>(deleted)
-        }
-        .await;
-        match outcome {
-            Ok(n) => {
-                conn.execute("COMMIT", ()).await.map_err(map_storage_error)?;
-                // Rebuild in-memory index from survivors.
-                let remaining: Vec<SessionTreeEntry> = self
-                    .index
-                    .entries
-                    .iter()
-                    .filter(|e| keep.contains(e.id()))
-                    .cloned()
-                    .collect();
-                let leaf = self.index.leaf_id.clone().filter(|id| keep.contains(id.as_str()));
-                self.index = build_index(remaining, leaf)?;
-                let conn = self.connection().await?;
-                self.persist_leaf_id(&conn, self.index.leaf_id.as_deref()).await?;
-                log::info!(
-                    "session {}: physical_prune deleted {n} entries (kept {})",
-                    self.session_id,
-                    keep_ids.len()
-                );
-                Ok(n)
-            }
-            Err(err) => {
-                let _ = conn.execute("ROLLBACK", ()).await;
-                Err(err)
-            }
-        }
+            Ok::<usize, anyhow::Error>(deleted)
+        })
+        .await
+        .map_err(map_storage_error)?;
+
+        // Rebuild in-memory index from survivors.
+        let remaining: Vec<SessionTreeEntry> = self
+            .index
+            .entries
+            .iter()
+            .filter(|e| keep.contains(e.id()))
+            .cloned()
+            .collect();
+        let leaf = self.index.leaf_id.clone().filter(|id| keep.contains(id.as_str()));
+        self.index = build_index(remaining, leaf)?;
+        let conn = self.connection().await?;
+        self.persist_leaf_id(&conn, self.index.leaf_id.as_deref()).await?;
+        log::info!(
+            "session {}: physical_prune deleted {deleted} entries (kept {})",
+            self.session_id,
+            keep_ids.len()
+        );
+        Ok(deleted)
     }
 }
 
