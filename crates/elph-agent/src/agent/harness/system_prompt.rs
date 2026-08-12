@@ -95,7 +95,7 @@ fn format_skills_ref<'a>(skills: impl Iterator<Item = &'a Skill>) -> String {
 
     for skill in collected {
         lines.push(format!(
-            "  <skill name=\"{}\" path=\"{}\">{}</skill>",
+            "  <skill name=\"{}\" location=\"{}\">{}</skill>",
             escape_xml(&skill.name),
             escape_xml(&skill.file_path),
             escape_xml(&skill.description)
@@ -162,7 +162,7 @@ mod tests {
         let output = format_skills_ref(skills.iter());
         assert!(output.contains("<available_skills>"));
         assert!(output.contains(
-            "<skill name=\"test-skill\" path=\"/r/.agents/skills/test-skill/SKILL.md\">test-skill description</skill>"
+            "<skill name=\"test-skill\" location=\"/r/.agents/skills/test-skill/SKILL.md\">test-skill description</skill>"
         ));
         assert!(output.contains("</available_skills>"));
     }

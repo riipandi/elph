@@ -15,7 +15,11 @@ use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
 
 fn escape_xml(value: &str) -> String {
-    value.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
 }
 
 /// Build the `<available_skills>`-style XML block (same shape the system prompt uses).
@@ -23,7 +27,7 @@ pub fn format_skill_catalog(skills: &[Skill]) -> String {
     let mut out = String::from("<available_skills>\n");
     for skill in skills {
         out.push_str(&format!(
-            "  <skill name=\"{}\" path=\"{}\">{}</skill>\n",
+            "  <skill name=\"{}\" location=\"{}\">{}</skill>\n",
             escape_xml(&skill.name),
             escape_xml(&skill.file_path),
             escape_xml(&skill.description)
