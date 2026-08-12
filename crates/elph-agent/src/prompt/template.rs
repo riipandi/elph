@@ -13,10 +13,7 @@ pub enum PromptRenderError {
 /// Sanitize a compiled system prompt: trim trailing whitespace, collapse
 /// consecutive blank lines to at most one, and strip leading/trailing blanks.
 pub fn sanitize_system_prompt(prompt: &str) -> String {
-    let lines: Vec<&str> = prompt
-        .lines()
-        .map(|line| line.trim_end())
-        .collect();
+    let lines: Vec<&str> = prompt.lines().map(|line| line.trim_end()).collect();
 
     let mut out: Vec<&str> = Vec::with_capacity(lines.len());
     let mut blank_run = 0usize;

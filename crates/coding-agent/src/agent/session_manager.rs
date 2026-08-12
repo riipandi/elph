@@ -412,7 +412,9 @@ pub fn load_session_tree_jsonl(path: &Path) -> Result<Vec<elph_agent::SessionTre
 /// file directly (shared database handles are already migrated by the host).
 async fn open_session_conn(db_path: &Path, database: Option<&Arc<Database>>) -> Result<turso::Connection> {
     match database {
-        Some(db) => elph_agent::datastore::connect(db).await.context("connect from shared database"),
+        Some(db) => elph_agent::datastore::connect(db)
+            .await
+            .context("connect from shared database"),
         None => {
             if let Some(parent) = db_path.parent() {
                 fs::create_dir_all(parent).context("create db parent dir")?;
