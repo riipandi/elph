@@ -701,7 +701,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
     if aside_open && kind == KeyEventKind::Press && modifiers.is_empty() {
         use crate::tui::aside_panel::dismiss_aside_panel;
         use crate::tui::inline_dialog::inline_body_width;
-        let content_w = inline_body_width(screen_width) as usize;
+        // Reserve one column for the scrollbar, matching the panel's body wrap width.
+        let content_w = inline_body_width(screen_width).saturating_sub(1) as usize;
         if code == KeyCode::Esc {
             if let Some(state) = pending_aside.write().take() {
                 let (_id, notice) = dismiss_aside_panel(state);
