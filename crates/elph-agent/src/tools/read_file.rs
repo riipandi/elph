@@ -79,7 +79,8 @@ Truncates to {DEFAULT_MAX_LINES} lines or {}/KB per file.",
                             },
                             "required": ["path"]
                         },
-                        "description": "Multiple specific file ranges (path + offset/limit) in one call."
+                        "minItems": 1,
+                        "description": "Multiple specific file ranges (path + offset/limit) in one call. Omit this field when unused; do not send an empty array."
                     }
                 }
                 // No root oneOf: xAI rejects oneOf branches that only list `required`
@@ -299,11 +300,12 @@ fn number_lines(content: &str, start_line: usize) -> String {
 
 /// Parse read requests from tool arguments.
 fn parse_read_requests(args: &Value) -> anyhow::Result<Vec<ReadRequest>> {
-    // Ranges take priority: multiple specific paths with individual offsets
-    if let Some(ranges) = args.get("ranges").and_then(|v| v.as_array()) {
-        if ranges.is_empty() {
-            return Err(anyhow::anyhow!("'ranges' must contain at least one entry"));
-        }
+    // Ranges take priority when they contain entries. Some providers emit an
+    // empty optional array; treat that as omitted so a valid path/paths selector
+    // can still be used instead of returning a confusing validation error.
+    if let Some(ranges) = args.get("ranges").and_then(|v| v.as_array())
+        && !ranges.is_empty()
+    {
         let mut requests = Vec::with_capacity(ranges.len());
         for range in ranges {
             let path = range
@@ -319,10 +321,9 @@ fn parse_read_requests(args: &Value) -> anyhow::Result<Vec<ReadRequest>> {
     }
 
     // Batch paths: multiple files with shared offset/limit
-    if let Some(paths) = args.get("paths").and_then(|v| v.as_array()) {
-        if paths.is_empty() {
-            return Err(anyhow::anyhow!("'paths' must contain at least one path"));
-        }
+    if let Some(paths) = args.get("paths").and_then(|v| v.as_array())
+        && !paths.is_empty()
+    {
         let offset = args.get("offset").and_then(|v| v.as_u64()).map(|v| v as usize);
         let limit = args.get("limit").and_then(|v| v.as_u64()).map(|v| v as usize);
         let requests: Vec<ReadRequest> = paths
@@ -344,7 +345,14 @@ fn parse_read_requests(args: &Value) -> anyhow::Result<Vec<ReadRequest>> {
     let path = args
         .get("path")
         .and_then(|v| v.as_str())
-        .ok_or_else(|| anyhow::anyhow!("Missing required argument: 'path', 'paths', or 'ranges'"))?
+        .filter(|path| !path.trim().is_empty())
+        .ok_or_else(|| {
+            if args.get("ranges").is_some_and(Value::is_array) || args.get("paths").is_some_and(Value::is_array) {
+                anyhow::anyhow!("Provide a non-empty 'path', 'paths', or 'ranges' selector; omit empty arrays")
+            } else {
+                anyhow::anyhow!("Missing required argument: 'path', 'paths', or 'ranges'")
+            }
+        })?
         .to_string();
     let offset = args.get("offset").and_then(|v| v.as_u64()).map(|v| v as usize);
     let limit = args.get("limit").and_then(|v| v.as_u64()).map(|v| v as usize);
@@ -496,7 +504,16 @@ mod tests {
     #[test]
     fn parse_ranges_empty_errors() {
         let args = json!({"ranges": []});
-        assert!(parse_read_requests(&args).is_err());
+        let error = parse_read_requests(&args).expect_err("empty selector must fail");
+        assert!(error.to_string().contains("non-empty"));
+    }
+
+    #[test]
+    fn parse_empty_ranges_falls_back_to_path() {
+        let args = json!({"ranges": [], "path": "main.rs"});
+        let requests = parse_read_requests(&args).expect("path fallback");
+        assert_eq!(requests.len(), 1);
+        assert_eq!(requests[0].path, "main.rs");
     }
 
     #[tokio::test]
