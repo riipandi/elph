@@ -253,13 +253,12 @@ async fn execute_grep(
         }
 
         // Check file size for large file handling
-        if info.kind == FileKind::File {
-            if let Ok(metadata) = std::fs::metadata(&absolute) {
-                if metadata.len() > MAX_FILE_SIZE {
-                    log::debug!("Skipping large file in grep: {} ({} bytes)", absolute, metadata.len());
-                    continue;
-                }
-            }
+        if info.kind == FileKind::File
+            && let Ok(metadata) = std::fs::metadata(&absolute)
+            && metadata.len() > MAX_FILE_SIZE
+        {
+            log::debug!("Skipping large file in grep: {} ({} bytes)", absolute, metadata.len());
+            continue;
         }
 
         absolute_paths.push(absolute.clone());
@@ -309,10 +308,8 @@ async fn execute_grep(
                             let mut seen = BTreeSet::new();
                             let files_only: Vec<String> = matches
                                 .into_iter()
-                                .filter_map(|line| {
-                                    let path = line.split(':').next().map(|s| s.to_string());
-                                    path.and_then(|p| if seen.insert(p.clone()) { Some(p) } else { None })
-                                })
+                                .filter_map(|line| line.split(':').next().map(|s| s.to_string()))
+                                .filter(|p| seen.insert(p.clone()))
                                 .collect();
                             return Ok(finish_grep_output(files_only, limit_reached, false, limit));
                         }

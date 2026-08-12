@@ -257,10 +257,10 @@ pub(crate) fn build_shell_view(
         );
         // Discard the session record when the user never produced a turn this run.
         // Blocking on the async delete (bounded) so the record is gone before exit.
-        if !session_had_user_activity(submitted, persisted_turns) {
-            if let Some(session) = agent_session.as_ref() {
-                delete_empty_session_blocking(Arc::clone(session), &session_id);
-            }
+        if !session_had_user_activity(submitted, persisted_turns)
+            && let Some(session) = agent_session.as_ref()
+        {
+            delete_empty_session_blocking(Arc::clone(session), &session_id);
         }
         system.exit();
     }

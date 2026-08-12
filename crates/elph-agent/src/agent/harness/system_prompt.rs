@@ -158,7 +158,7 @@ mod tests {
 
     #[test]
     fn format_skills_output_matches_expected_format() {
-        let skills = vec![skill("test-skill", "/r/.agents/skills/test-skill/SKILL.md", None)];
+        let skills = [skill("test-skill", "/r/.agents/skills/test-skill/SKILL.md", None)];
         let output = format_skills_ref(skills.iter());
         assert!(output.contains("<available_skills>"));
         assert!(output.contains(

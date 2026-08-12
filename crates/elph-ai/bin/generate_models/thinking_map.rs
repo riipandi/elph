@@ -24,10 +24,10 @@ pub fn build_thinking_level_map(
     // 1. Live API supported_efforts (gateway providers like OpenRouter) — strongest signal.
     //    Checked before the `!reasoning` guard so an OpenRouter `supported_efforts` array
     //    still wins even when models.dev lists the model as non-reasoning.
-    if let Some(efforts) = live_reasoning_efforts {
-        if let Some(map) = map_from_efforts(efforts) {
-            return map;
-        }
+    if let Some(efforts) = live_reasoning_efforts
+        && let Some(map) = map_from_efforts(efforts)
+    {
+        return map;
     }
 
     if !reasoning {
@@ -35,10 +35,10 @@ pub fn build_thinking_level_map(
     }
 
     // 2. models.dev reasoning_options.
-    if let Some(m) = models_dev_model {
-        if let Some(map) = from_models_dev_reasoning(m) {
-            return map;
-        }
+    if let Some(m) = models_dev_model
+        && let Some(map) = from_models_dev_reasoning(m)
+    {
+        return map;
     }
 
     // 3. Provider-specific known maps (authoritative from official docs).
@@ -120,7 +120,7 @@ fn normalize_effort_label(s: &str) -> String {
 /// Provider-family override maps based on official documentation.
 fn provider_override_map(provider_id: &str, model_id: &str) -> Option<Value> {
     // For gateway providers, extract the base model id after the last slash
-    let base_id = model_id.split('/').last().unwrap_or(model_id);
+    let base_id = model_id.split('/').next_back().unwrap_or(model_id);
     // Origin-provider overrides first (exact provider + base id pattern).
     let origin = match provider_id {
         "xai" if base_id.contains("grok") || base_id.contains("build") => {

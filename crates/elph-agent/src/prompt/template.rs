@@ -30,10 +30,10 @@ pub fn sanitize_system_prompt(prompt: &str) -> String {
         }
     }
 
-    while out.first().map_or(false, |s| s.is_empty()) {
+    while out.first().is_some_and(|s| s.is_empty()) {
         out.remove(0);
     }
-    while out.last().map_or(false, |s| s.is_empty()) {
+    while out.last().is_some_and(|s| s.is_empty()) {
         out.pop();
     }
 

@@ -1,5 +1,6 @@
 # References
 
+- https://rubriclabs.com/blog/what-is-an-agent-harness
 - https://github.com/jvoltci/stream-md
 - https://github.com/siinghd/brookmd
 - https://crates.io/crates/mdstitch

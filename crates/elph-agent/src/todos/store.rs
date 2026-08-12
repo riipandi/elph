@@ -504,7 +504,7 @@ mod tests {
             .expect("session A");
         let b = store
             .merge(
-                &sid_b,
+                sid_b,
                 vec![
                     TodoUpdate {
                         id: Some("1".into()),

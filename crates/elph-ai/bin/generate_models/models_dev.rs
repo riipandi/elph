@@ -2,11 +2,11 @@
 //!
 //! Three endpoints are fetched and merged into one index:
 //! - `api.json`      — nested `provider → {models}`; authoritative for `cost`,
-//!                     `reasoning_options`, `modalities`, `limit`.
+//!   `reasoning_options`, `modalities`, `limit`.
 //! - `models.json`   — flat `provider/modelid → model`; authoritative for `description`,
-//!                     `knowledge` (cutoff), `benchmarks`, `release_date`, `weights`.
+//!   `knowledge` (cutoff), `benchmarks`, `release_date`, `weights`.
 //! - `catalog.json`  — same as `models.json` wrapped in `{ "models", "providers" }`;
-//!                     used to back-fill the rich index (wins on conflict).
+//!   used to back-fill the rich index (wins on conflict).
 //!
 //! The nested `api` tree stays the source of truth for cost/limits; the `rich`
 //! tree adds the human-readable metadata that `api.json` omits.

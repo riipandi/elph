@@ -260,12 +260,12 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             messages.set(Vec::new());
             *messages_arc_inner.write().unwrap() = Vec::new();
 
-            if let Some(id) = outgoing_id {
-                if let Some(session) = outgoing_session {
-                    let sm = session.session_manager();
-                    if let Err(err) = sm.delete_if_no_turns(&id).await {
-                        log::warn!("delete empty session on /new: {err:#}");
-                    }
+            if let Some(id) = outgoing_id
+                && let Some(session) = outgoing_session
+            {
+                let sm = session.session_manager();
+                if let Err(err) = sm.delete_if_no_turns(&id).await {
+                    log::warn!("delete empty session on /new: {err:#}");
                 }
             }
         }

@@ -221,7 +221,7 @@ pub fn format_grep_output_ex(
 
     // Helper: check if a file path matches the glob filter.
     #[cfg(feature = "tools-grep")]
-    let file_allowed = |relative: &str| -> bool { glob_ref.map_or(true, |g| glob_match(g, relative)) };
+    let file_allowed = |relative: &str| -> bool { glob_ref.is_none_or(|g| glob_match(g, relative)) };
     #[cfg(not(feature = "tools-grep"))]
     let file_allowed = |_: &str| -> bool { true };
 

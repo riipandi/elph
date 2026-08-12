@@ -176,13 +176,13 @@ async fn execute_edit(
         }
     }
     // Cross-process: refuse if on-disk fingerprint no longer matches the claim snapshot.
-    if let Some(claim) = claims.as_ref() {
-        if let Err(e) = claim.ensure_content_unchanged(&absolute).await {
-            return Err(anyhow::anyhow!(
-                "edit aborted: {path} changed on disk since claim (hash mismatch). This can happen if another process modified the file. \
-                 Re-read the file (read_file) and retry the edit with updated old_string. Details: {e}"
-            ));
-        }
+    if let Some(claim) = claims.as_ref()
+        && let Err(e) = claim.ensure_content_unchanged(&absolute).await
+    {
+        return Err(anyhow::anyhow!(
+            "edit aborted: {path} changed on disk since claim (hash mismatch). This can happen if another process modified the file. \
+             Re-read the file (read_file) and retry the edit with updated old_string. Details: {e}"
+        ));
     }
 
     match FileSystem::write_file(env.as_ref(), &absolute, updated.as_bytes(), signal.as_ref()).await {

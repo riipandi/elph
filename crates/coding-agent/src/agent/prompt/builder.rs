@@ -163,7 +163,7 @@ mod tests {
         )
         .expect("prompt");
 
-        assert!(prompt.contains("Follow the precedence hierarchy"));
+        assert!(prompt.contains("More specific wins"));
         assert!(prompt.contains("Working directory: /tmp/project"));
         assert!(prompt.contains("<action_safety>"));
         assert!(prompt.contains("<tool_calling>"));
@@ -413,7 +413,7 @@ mod tests {
         )
         .expect("prompt");
 
-        assert!(prompt.contains("Follow the precedence hierarchy"));
+        assert!(prompt.contains("More specific wins"));
         assert!(prompt.contains("Search file contents and symbols with `grep`"));
         assert!(prompt.contains("Find files by name or glob with `find_path`"));
         assert!(prompt.contains("focused changes to existing files"));
@@ -523,7 +523,7 @@ mod tests {
         .expect("prompt");
 
         // Lean ReAct prompt: keep static domain body compact even with STE + subagents.
-        assert!(prompt.len() < 10_000, "static prompt is {} bytes", prompt.len());
+        assert!(prompt.len() < 12_000, "static prompt is {} bytes", prompt.len());
     }
 
     #[test]

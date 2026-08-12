@@ -19,6 +19,7 @@ pub type PriceTriple = (f64, f64, f64); // input, output, cache_read
 #[derive(Default, Clone, serde::Deserialize)]
 pub struct LiveThinking {
     /// Whether the model supports reasoning/thinking.
+    #[allow(dead_code)]
     pub reasoning: bool,
     /// Ordered list of supported effort levels (e.g. ["low", "medium", "high"]).
     /// Empty vec means reasoning=true but no discrete effort levels.
@@ -59,6 +60,7 @@ pub fn fetch_all_live_data(skip: bool) -> HashMap<String, LiveProbeResult> {
 }
 
 /// Also available: pricing-only probe (for backward compat).
+#[allow(dead_code)]
 pub fn fetch_all_live_pricing(skip: bool) -> HashMap<String, HashMap<String, PriceTriple>> {
     let all = fetch_all_live_data(skip);
     all.into_iter().map(|(k, v)| (k, v.pricing)).collect()
@@ -305,6 +307,7 @@ pub fn resolve_cost(
 }
 
 /// Get live thinking capabilities for a model from the probe result.
+#[allow(dead_code)]
 pub fn live_thinking<'a>(
     live: &'a HashMap<String, LiveProbeResult>,
     provider_id: &str,
@@ -370,7 +373,6 @@ fn num_or_str(v: Option<&Value>) -> f64 {
 /// used as a secondary (compiled) pricing source when neither a live provider API
 /// nor models.dev exposes a price for a model.
 /// ----------------------------------------------------------------------------
-
 pub const AIMD_URL: &str = "https://raw.githubusercontent.com/The-Best-Codes/ai-model-directory/main/data/all.json";
 
 /// One ai-model-directory pricing entry (per-million USD, matching its schema).
@@ -485,7 +487,6 @@ pub fn aimd_reasoning(aimd: &AIModelDir, provider_id: &str, model_id: &str) -> O
 /// exact catalog unit — so no conversion is applied. Credit-based fields are
 /// intentionally ignored: the credit→USD rate is not stable across models.
 /// ----------------------------------------------------------------------------
-
 pub const NARA_PRICING_URL: &str = "https://router.bynara.id/api/pricing";
 
 /// Nara pricing result: model alias/id -> (input, output, cache_read) USD per million.
