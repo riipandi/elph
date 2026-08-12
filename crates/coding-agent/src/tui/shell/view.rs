@@ -325,6 +325,26 @@ pub(crate) fn build_shell_view(
         || provider_disconnect_open
         || provider_api_key_open
         || queue_manager_is_open;
+    // Plan confirmation / tool approval float below the status row and never need the
+    // wheel, so the transcript stays mouse-scrollable while they are open. Only full
+    // modals (user question, pickers, system prompt, provider flows, queue manager, …)
+    // lock the wheel to keep their own content still.
+    let transcript_wheel_blocked = status_dialog_open
+        && (user_question_open
+            || model_selector_open
+            || scoped_models_open
+            || system_prompt_open
+            || rename_open
+            || item_selector_open
+            || confetti_open
+            || provider_connect_open
+            || mcp_auth_open
+            || provider_disconnect_open
+            || provider_api_key_open
+            || queue_manager_is_open
+            || pending_mode_change.read().is_some()
+            || pending_memory_flush.read().is_some()
+            || *pending_feedback.read());
     let prompt_focused =
         !status_dialog_open && matches!(shell_focus.get(), ShellFocus::Prompt | ShellFocus::StatusDialog);
     let transcript_focused = !status_dialog_open && shell_focus.get() == ShellFocus::Transcript;
@@ -851,8 +871,9 @@ pub(crate) fn build_shell_view(
                 messages_revision: Some(messages_revision),
                 sticky_scroll: sticky_scroll,
                 has_focus: transcript_focused,
-                // Modal dialogs own the wheel; keep the transcript still underneath.
-                mouse_scroll: Some(!status_dialog_open),
+                // Plan confirmation / tool approval don't capture the wheel; keep the
+                // transcript scrollable underneath them. Other modals lock it.
+                mouse_scroll: Some(!transcript_wheel_blocked),
                 text_select_mode: select_mode.get() || shift_held.get(),
                 streaming_active: Some(busy.get()),
                 messages_arc: Some(messages_arc.read().clone()),
