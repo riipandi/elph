@@ -20,6 +20,8 @@ aes-gcm.workspace = true
 anyhow.workspace = true
 astral-tl.workspace = true
 async-trait.workspace = true
+ast-grep-core = { workspace = true, optional = true }
+ast-grep-language = { workspace = true, optional = true }
 backon.workspace = true
 base64.workspace = true
 bytes.workspace = true
@@ -107,7 +109,7 @@ tools-edit = [
 tools-shell-exec = []
 tools-shell-use = ["dep:shell-use"]
 tools-find-path = ["dep:fff-search"]
-tools-grep = ["dep:fff-search", "dep:fast-glob"]
+tools-grep = ["dep:fff-search", "dep:fast-glob", "dep:ast-grep-core", "dep:ast-grep-language"]
 tools-list-dir = ["dep:walkdir"]
 tools-move-path = []
 tools-read-file = []

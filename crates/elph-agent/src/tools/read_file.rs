@@ -126,8 +126,8 @@ async fn execute_read(
             all_outputs.push(format!(
                 "[{}] File too large to read ({} bytes > {} bytes). Use offset/limit to read specific ranges.",
                 request.path,
-                format_size(file_size),
-                format_size(MAX_FILE_SIZE)
+                format_size(file_size as usize),
+                format_size(MAX_FILE_SIZE as usize)
             ));
             continue;
         }

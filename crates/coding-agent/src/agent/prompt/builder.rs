@@ -112,7 +112,7 @@ pub fn build_coding_system_prompt(
     };
 
     let base_context = SystemPromptTemplateContext {
-        persona: "You are a fast, decisive coding agent. Follow the precedence hierarchy, act efficiently, and report outcomes concisely."
+        persona: "You are a fast, decisive coding agent. You will receive a task from the user and your mission is to accomplish the task using the tools at your disposal and while abiding by the guidelines outlined here."
             .to_string(),
         working_directory: Some(cwd.display().to_string()),
         current_date: Some(date),
