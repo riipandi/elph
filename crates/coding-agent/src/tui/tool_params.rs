@@ -257,19 +257,13 @@ fn title_case_snake(name: &str) -> String {
         .join(" ")
 }
 
-/// Display path: abbreviated leading components inside the project directory,
-/// full path everywhere else.
+/// Display path: full path with `~` for home directory, truncated via
+/// `.../parent/file` when over budget. Consistent across all tools.
 ///
-/// Inside the project directory, leading path components are abbreviated to
-/// their first character so the project context is clear with minimal space:
-///
-/// - `/Users/me/elph/crates/coding-agent/src/tui/shell/mod.rs`
-///   → `/U/m/e/crates/coding-agent/src/tui/shell/mod.rs`
-///
-/// Outside the project directory the path is shown in full with `~` for home:
-///
-/// - `/Users/me/dev/crates/coding-agent/src/main.rs` → `~/dev/crates/coding-agent/src/main.rs`
+/// - `/Users/me/Developer/elph/crates/coding-agent/src/main.rs`
+///   → `~/Developer/elph/crates/coding-agent/src/main.rs`
 /// - `/opt/vendor/lib.rs` → `/opt/vendor/lib.rs`
+/// - Long paths → `.../parent/file.rs`
 pub fn abbreviate_path(path: &str, max_chars: usize) -> String {
     let max_chars = max_chars.max(12);
     let normalized = normalize_display_path(path);
@@ -280,21 +274,8 @@ pub fn abbreviate_path(path: &str, max_chars: usize) -> String {
         return normalized;
     }
 
-    // For absolute paths under the project directory: abbreviate leading
-    // path components (first letter each) + full path from project dir onward.
-    let trimmed = path.trim();
-    if trimmed.starts_with('/')
-        && let Some(abbr) = try_abbreviate_project_path(trimmed)
-    {
-        if char_len(&abbr) <= max_chars {
-            return abbr;
-        }
-        // Still too long even after abbreviation: truncate from the end
-        // while preserving the abbreviated project prefix.
-        return truncate_chars(&abbr, max_chars);
-    }
-
-    // Fallback: existing logic for paths outside the project directory.
+    // Shared truncation: `.../parent/file.rs` (preserves file extension).
+    // Paths under CWD already use `~/Developer/...` style via normalize_display_path.
     let (_prefix, segments) = split_display_path(&normalized);
     if segments.len() <= 1 {
         return truncate_filename(&normalized, max_chars);
@@ -309,43 +290,6 @@ pub fn abbreviate_path(path: &str, max_chars: usize) -> String {
     let file_budget = max_chars.saturating_sub(char_len(parent) + 4).max(6);
     let short_file = truncate_filename(file, file_budget);
     format!("…/{parent}/{short_file}")
-}
-
-/// Abbreviate an absolute path under the current project directory.
-///
-/// Each leading path component before the project directory is reduced to
-/// its first character; the project directory name and everything after it
-/// are shown in full.
-///
-/// Returns `None` when the path is not under the current working directory.
-fn try_abbreviate_project_path(path: &str) -> Option<String> {
-    let cwd = std::env::current_dir().ok()?;
-    let cwd_str = cwd.to_string_lossy();
-    let cwd_str: &str = cwd_str.as_ref();
-
-    if !path.starts_with(cwd_str) {
-        return None;
-    }
-
-    let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
-    let cwd_segments: Vec<&str> = cwd_str.split('/').filter(|s| !s.is_empty()).collect();
-    let project_name = cwd_segments.last()?;
-
-    // Find where the project directory name appears in the path.
-    let project_idx = segments.iter().position(|s| *s == *project_name)?;
-
-    let mut result = String::new();
-    for (i, seg) in segments.iter().enumerate() {
-        result.push('/');
-        if i < project_idx {
-            // Abbreviate to first character.
-            result.push(seg.chars().next()?);
-        } else {
-            // Show full component from the project directory onward.
-            result.push_str(seg);
-        }
-    }
-    Some(result)
 }
 
 fn shorten_path(path: &str) -> String {
@@ -498,7 +442,7 @@ fn collapsed_tool_target(tool_name: &str, params: &[ToolParam], args_raw: &str, 
         }
         "grep" => {
             let pattern = find_param(params, &["pattern", "query"]).map(|p| truncate_chars(p, 24));
-            let path = find_param(params, &["path", "glob", "file"]).map(|p| abbreviate_path(p, 28));
+            let path = find_param(params, &["path", "glob", "file"]).map(|p| abbreviate_path(p, max_detail_width));
             match (pattern, path) {
                 (Some(pattern), Some(path)) => format!("{pattern} in {path}"),
                 (Some(pattern), None) => pattern,
@@ -508,7 +452,7 @@ fn collapsed_tool_target(tool_name: &str, params: &[ToolParam], args_raw: &str, 
         }
         "find_path" => {
             let pattern = find_param(params, &["pattern", "glob", "query"]).map(|p| truncate_chars(p, 24));
-            let root = find_param(params, &["path", "root", "directory"]).map(|p| abbreviate_path(p, 28));
+            let root = find_param(params, &["path", "root", "directory"]).map(|p| abbreviate_path(p, max_detail_width));
             match (pattern, root) {
                 (Some(pattern), Some(root)) => format!("{pattern} in {root}"),
                 (Some(pattern), None) => pattern,
@@ -517,11 +461,12 @@ fn collapsed_tool_target(tool_name: &str, params: &[ToolParam], args_raw: &str, 
             }
         }
         "copy_path" | "move_path" => {
+            let half = max_detail_width.saturating_sub(3).max(8) / 2;
             let from = find_param(params, &["from", "source", "src", "path"])
-                .map(|p| abbreviate_path(p, 18))
+                .map(|p| abbreviate_path(p, half))
                 .unwrap_or_default();
             let to = find_param(params, &["to", "destination", "dest", "target"])
-                .map(|p| abbreviate_path(p, 18))
+                .map(|p| abbreviate_path(p, half))
                 .unwrap_or_default();
             if from.is_empty() && to.is_empty() {
                 String::new()
@@ -1418,8 +1363,7 @@ mod tests {
 
     #[test]
     fn abbreviate_path_project_relative() {
-        // When the path is under CWD, leading components are abbreviated to
-        // their first letter and the project directory name is shown in full.
+        // Paths under CWD use `~/...` style with the project directory name visible.
         let cwd = std::env::current_dir().unwrap();
         let cwd_str = cwd.to_string_lossy().to_string();
         // Create a path that is definitely under CWD.
@@ -1428,14 +1372,14 @@ mod tests {
         // The result should contain the full project directory name.
         let project_name = cwd.file_name().unwrap().to_string_lossy().to_string();
         assert!(short.contains(&project_name), "{short}");
-        // Leading components should be single-letter abbreviations.
+        // The path ends with the relative suffix.
         assert!(short.ends_with("/src/main.rs"), "{short}");
-        // The abbreviated prefix should be shorter than the original CWD prefix.
-        let prefix = short.trim_end_matches("/src/main.rs");
-        assert!(
-            prefix.len() < cwd_str.len(),
-            "abbreviated prefix '{prefix}' should be shorter than CWD '{cwd_str}'"
-        );
+        // Uses `~` prefix for home-relative paths.
+        if let Ok(home) = std::env::var("HOME") {
+            if cwd_str.starts_with(&home) {
+                assert!(short.starts_with("~/"), "{short}");
+            }
+        }
     }
 
     #[test]
