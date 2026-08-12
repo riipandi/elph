@@ -22,11 +22,12 @@ fn escape_xml(value: &str) -> String {
 pub fn format_skill_catalog(skills: &[Skill]) -> String {
     let mut out = String::from("<available_skills>\n");
     for skill in skills {
-        out.push_str("  <skill>\n");
-        out.push_str(&format!("    <name>{}</name>\n", escape_xml(&skill.name)));
-        out.push_str(&format!("    <description>{}</description>\n", escape_xml(&skill.description)));
-        out.push_str(&format!("    <location>{}</location>\n", escape_xml(&skill.file_path)));
-        out.push_str("  </skill>\n");
+        out.push_str(&format!(
+            "  <skill name=\"{}\" path=\"{}\">{}</skill>\n",
+            escape_xml(&skill.name),
+            escape_xml(&skill.file_path),
+            escape_xml(&skill.description)
+        ));
     }
     out.push_str("</available_skills>");
     out
@@ -149,10 +150,9 @@ mod tests {
             ],
             json!({}),
         );
-        assert!(text.contains("<skill>"));
-        assert!(text.contains("<name>a</name>"));
-        assert!(text.contains("<name>b</name>"));
-        assert!(text.contains("<name>c</name>"));
+        assert!(text.contains("<skill name=\"a\""));
+        assert!(text.contains("<skill name=\"b\""));
+        assert!(text.contains("<skill name=\"c\""));
     }
 
     #[test]
@@ -165,9 +165,9 @@ mod tests {
             ],
             json!({ "relevance": "project" }),
         );
-        assert!(text.contains("<name>a</name>"));
-        assert!(!text.contains("<name>b</name>"));
-        assert!(!text.contains("<name>c</name>"));
+        assert!(text.contains("<skill name=\"a\""));
+        assert!(!text.contains("<skill name=\"b\""));
+        assert!(!text.contains("<skill name=\"c\""));
     }
 
     #[test]
@@ -180,15 +180,15 @@ mod tests {
             ],
             json!({ "relevance": "global" }),
         );
-        assert!(!text.contains("<name>a</name>"));
-        assert!(text.contains("<name>b</name>"));
-        assert!(text.contains("<name>c</name>"));
+        assert!(!text.contains("<skill name=\"a\""));
+        assert!(text.contains("<skill name=\"b\""));
+        assert!(text.contains("<skill name=\"c\""));
     }
 
     #[test]
     fn disabled_skills_are_hidden() {
         let text = run(vec![skill("hidden", None, true), skill("visible", None, false)], json!({}));
-        assert!(!text.contains("<name>hidden</name>"));
-        assert!(text.contains("<name>visible</name>"));
+        assert!(!text.contains("<skill name=\"hidden\""));
+        assert!(text.contains("<skill name=\"visible\""));
     }
 }

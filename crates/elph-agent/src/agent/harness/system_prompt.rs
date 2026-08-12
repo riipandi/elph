@@ -94,11 +94,12 @@ fn format_skills_ref<'a>(skills: impl Iterator<Item = &'a Skill>) -> String {
     ];
 
     for skill in collected {
-        lines.push("  <skill>".to_string());
-        lines.push(format!("    <name>{}</name>", escape_xml(&skill.name)));
-        lines.push(format!("    <description>{}</description>", escape_xml(&skill.description)));
-        lines.push(format!("    <location>{}</location>", escape_xml(&skill.file_path)));
-        lines.push("  </skill>".to_string());
+        lines.push(format!(
+            "  <skill name=\"{}\" path=\"{}\">{}</skill>",
+            escape_xml(&skill.name),
+            escape_xml(&skill.file_path),
+            escape_xml(&skill.description)
+        ));
     }
 
     lines.push("</available_skills>".to_string());
@@ -151,6 +152,17 @@ mod tests {
     #[test]
     fn escapes_xml_entities() {
         assert_eq!(escape_xml("a&b<c>\"d'"), "a&amp;b&lt;c&gt;&quot;d&apos;");
+    }
+
+    #[test]
+    fn format_skills_output_matches_expected_format() {
+        let skills = vec![skill("test-skill", "/r/.agents/skills/test-skill/SKILL.md", None)];
+        let output = format_skills_ref(skills.iter());
+        assert!(output.contains("<available_skills>"));
+        assert!(output.contains(
+            "<skill name=\"test-skill\" path=\"/r/.agents/skills/test-skill/SKILL.md\">test-skill description</skill>"
+        ));
+        assert!(output.contains("</available_skills>"));
     }
 
     #[test]

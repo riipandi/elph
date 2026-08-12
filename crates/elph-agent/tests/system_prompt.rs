@@ -54,16 +54,8 @@ fn format_skills_for_system_prompt_orders_visible_skills() {
 Use a matching skill; read its full file first and resolve relative references from the skill directory.
 
 <available_skills>
-  <skill>
-    <name>visible</name>
-    <description>Use &lt;this&gt; &amp; that</description>
-    <location>/skills/visible/SKILL.md</location>
-  </skill>
-  <skill>
-    <name>second</name>
-    <description>Second skill</description>
-    <location>/skills/second/SKILL.md</location>
-  </skill>
+  <skill name=\"visible\" path=\"/skills/visible/SKILL.md\">Use &lt;this&gt; &amp; that</skill>
+  <skill name=\"second\" path=\"/skills/second/SKILL.md\">Second skill</skill>
 </available_skills>";
     assert_eq!(formatted, expected);
 }
@@ -89,6 +81,6 @@ fn format_skills_for_system_prompt_escapes_xml_fields() {
     }]);
 
     assert!(formatted.contains(
-        "<name>a&amp;b</name>\n    <description>Quote &quot;double&quot; and &apos;single&apos;</description>\n    <location>/skills/&lt;bad&gt;&amp;&quot;quote&quot;/SKILL.md</location>"
+        "<skill name=\"a&amp;b\" path=\"/skills/&lt;bad&gt;&amp;&quot;quote&quot;/SKILL.md\">Quote &quot;double&quot; and &apos;single&apos;</skill>"
     ));
 }
