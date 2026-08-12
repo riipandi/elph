@@ -319,19 +319,19 @@ where
         for message in run_result.into_iter().rev() {
             if let Some(assistant) = message.as_llm()
                 && let Message::Assistant(assistant) = assistant
-                && let (Some(store), Some(db_id)) = (&self.shared.turn_store, db_turn_id.as_deref())
             {
-                if let Err(err) = store
-                    .finish_turn(
-                        db_id,
-                        TurnStatus::Completed,
-                        total_usage.clone(),
-                        (now_ms() - turn_started_ms).max(0),
-                        None,
-                        None,
-                        None,
-                    )
-                    .await
+                if let (Some(store), Some(db_id)) = (&self.shared.turn_store, db_turn_id.as_deref())
+                    && let Err(err) = store
+                        .finish_turn(
+                            db_id,
+                            TurnStatus::Completed,
+                            total_usage.clone(),
+                            (now_ms() - turn_started_ms).max(0),
+                            None,
+                            None,
+                            None,
+                        )
+                        .await
                 {
                     log::warn!("session_turns finish failed: {err:#}");
                 }
