@@ -6,8 +6,8 @@ Elph can run **multiple processes on the same project** as peer workers. Each pr
 
 | Concept | Meaning |
 | --- | --- |
-| **Worker** | One OS process ≈ one coding session |
-| **Subagent** | In-process child of a session (not a peer worker) |
+| **Worker** | One OS process ≈ one coding session (parallel instance of the same agent working on the same project) |
+| **Subagent** | In-process child of a session (separate delegated AI agent with its own context window for independent tasks - different projects, different domains) |
 | **SoT** | SQLite tables only — notify / TUI never authority |
 
 ## What is durable
