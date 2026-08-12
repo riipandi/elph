@@ -204,6 +204,7 @@ ${%- if active_tool_names %}
 ${%- for name in active_tool_names %}
 <tool>${{ name }}</tool>
 ${%- endfor %}
+</available_tools>
 ${%- if tools.list_available_tools %}
 **Tool key:** read_file (batch paths/ranges), grep (filesWithMatches locate), edit_file (ignoreWhitespace drift), write_file (new files), shell_exec (builds/tests). Need missing capability? Use list_available_tools with name_prefix.
 ${%- else %}
