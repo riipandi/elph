@@ -233,26 +233,44 @@ pub fn AsidePanel(props: &AsidePanelProps, hooks: Hooks) -> impl Into<AnyElement
                     .into(),
                 );
             }
-            // Scroll indicator: ↑/↓ arrows that dim at the edges (can't scroll further).
-            // Rendered as a body line so it stays perfectly aligned with the text column.
+            // Bottom line: [Esc] on the left, ↑/↓ position indicator on the right
+            // (dimmed at the edges). Both share one line so the arrows sit at the
+            // bottom-right, aligned with [Esc], and never clip the text column.
+            let mut right: Vec<AnyElement<'static>> = Vec::new();
             if total > max_body {
                 let can_up = offset > 0;
                 let can_down = offset < max_off;
                 let up_color = if can_up { theme.text_secondary } else { theme.text_muted };
                 let down_color = if can_down { theme.text_secondary } else { theme.text_muted };
                 let pos = scroll_indicator_label(offset as u32, max_body as u32, total as u32);
-                rows.push(
-                    element! {
-                        View(width: inner, flex_direction: FlexDirection::Row, flex_shrink: 0f32) {
-                            Text(content: "↑".to_string(), color: up_color, wrap: TextWrap::NoWrap)
-                            Text(content: " ".to_string(), color: theme.text_muted, wrap: TextWrap::NoWrap)
-                            Text(content: "↓".to_string(), color: down_color, wrap: TextWrap::NoWrap)
-                            Text(content: format!("  {pos}"), color: theme.text_muted, wrap: TextWrap::NoWrap)
-                        }
-                    }
-                    .into(),
+                right.push(
+                    element! { Text(content: "↑".to_string(), color: up_color, wrap: TextWrap::NoWrap) }.into(),
+                );
+                right.push(
+                    element! { Text(content: " ".to_string(), color: theme.text_muted, wrap: TextWrap::NoWrap) }.into(),
+                );
+                right.push(
+                    element! { Text(content: "↓".to_string(), color: down_color, wrap: TextWrap::NoWrap) }.into(),
+                );
+                right.push(
+                    element! { Text(content: format!("  {pos}"), color: theme.text_muted, wrap: TextWrap::NoWrap) }.into(),
                 );
             }
+            // One blank row separates the answer from the footer line so they don't touch.
+            rows.push(
+                element! { Text(content: String::new(), color: theme.text_muted, wrap: TextWrap::NoWrap) }.into(),
+            );
+            rows.push(
+                element! {
+                    View(width: inner, flex_direction: FlexDirection::Row, justify_content: JustifyContent::SpaceBetween, flex_shrink: 0f32) {
+                        Text(content: "[Esc] dismiss".to_string(), color: theme.text_muted, wrap: TextWrap::NoWrap)
+                        View(flex_direction: FlexDirection::Row, flex_shrink: 0f32) {
+                            #(right)
+                        }
+                    }
+                }
+                .into(),
+            );
             element! {
                 View(width: inner, flex_direction: FlexDirection::Column, flex_shrink: 0f32) {
                     #(rows)
@@ -264,9 +282,9 @@ pub fn AsidePanel(props: &AsidePanelProps, hooks: Hooks) -> impl Into<AnyElement
     let footer = match &props.state {
         AsidePanelState::Loading { .. } | AsidePanelState::Error { .. } => Some("[Esc] dismiss".to_string()),
         AsidePanelState::Done { .. } => {
-            // The scrollable case already shows the ↑/↓ position indicator inside the
-            // body; keep the footer minimal so it isn't duplicated.
-            Some("[Esc] dismiss".to_string())
+            // The scrollable case already shows [Esc] + the ↑/↓ position indicator on
+            // one combined body line, so the footer is left empty to avoid duplication.
+            None
         }
     };
 

@@ -1,6 +1,7 @@
 //! Terminal key handler (extracted from the MainShell `use_terminal_events` closure).
 
 use super::*;
+use iocraft::MouseEventKind;
 
 /// Handles terminal key events (extracted from the MainShell `use_terminal_events` closure).
 pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
@@ -129,6 +130,39 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
     let mut messages_revision = messages_revision;
     // Copy for terminal-events closure so pre-echo paths can sync to the shared arc.
     let mut messages_arc = messages_arc;
+
+    // Mouse wheel over the `/aside` panel scrolls its answer. The transcript wheel
+    // is locked while the panel is open, so the wheel can't also scroll the
+    // transcript underneath it (the aside owns the wheel while open).
+    if let TerminalEvent::FullscreenMouse(m) = &event {
+        if matches!(m.kind, MouseEventKind::ScrollUp | MouseEventKind::ScrollDown) {
+            use crate::tui::inline_dialog::inline_body_width;
+            let content_w = inline_body_width(screen_width) as usize;
+            let up = matches!(m.kind, MouseEventKind::ScrollUp);
+            // Read-only pass: how far can the answer scroll?
+            let max_off = {
+                let guard = pending_aside.read();
+                match &*guard {
+                    Some(s) => s.max_scroll_offset(content_w),
+                    None => 0,
+                }
+            };
+            if max_off > 0 {
+                let mut guard = pending_aside.write();
+                if let Some(st) = guard.as_mut() {
+                    if up {
+                        st.scroll_up(3);
+                    } else {
+                        st.scroll_down(3, max_off);
+                    }
+                }
+            }
+        }
+        // Other mouse events (clicks, drags, moves) are handled by their own
+        // component hooks (transcript text-select, subagent click, …); don't consume.
+        return;
+    }
+
     let TerminalEvent::Key(KeyEvent {
         code, kind, modifiers, ..
     }) = event
