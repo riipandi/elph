@@ -20,8 +20,8 @@ pub fn create_ask_user_tool(ui_tx: mpsc::UnboundedSender<AgentUiEvent>) -> Agent
     elph_agent::simple_tool(
         Tool {
             name: "ask_user_question".into(),
-                constrained_sampling: None,
-            description: "Ask the user one or more questions to gather structured input. Use `questions` for multi-step flows. Each step may offer numbered choices, multi-select (`allow_multiple`), and/or an inline custom text field (`allow_custom`). Returns a plain string for a single simple answer, or JSON for multi-step / multi-select results.".into(),
+            constrained_sampling: None,
+            description: "Ask the user one or more questions to gather structured input. Use `questions` for multi-step flows. Each step may offer numbered choices, multi-select (`allow_multiple`), and/or an inline custom text field (`allow_custom`). Whenever you provide single- or multi-select choices, always set `allow_custom: true` so the user can provide an answer not covered by the listed choices. Returns a plain string for a single simple answer, or JSON for multi-step / multi-select results.".into(),
             parameters: json!({
                 "type": "object",
                 "properties": {
@@ -65,7 +65,7 @@ pub fn create_ask_user_tool(ui_tx: mpsc::UnboundedSender<AgentUiEvent>) -> Agent
                                 },
                                 "allow_custom": {
                                     "type": "boolean",
-                                    "description": "Show an inline text field below choices for a custom answer"
+                                    "description": "Show an inline text field below choices for a custom answer. Always set this to true when `options` is provided so the user can answer with an option not listed."
                                 },
                                 "custom_label": {
                                     "type": "string",
@@ -116,7 +116,7 @@ pub fn create_ask_user_tool(ui_tx: mpsc::UnboundedSender<AgentUiEvent>) -> Agent
                     },
                     "allow_custom": {
                         "type": "boolean",
-                        "description": "Legacy single-step inline custom input flag"
+                        "description": "Legacy single-step inline custom input flag. Set to true whenever `options` is provided so the user can provide another answer."
                     },
                     "custom_label": {
                         "type": "string",
