@@ -6,7 +6,7 @@ The project uses Turso `0.8.0-pre.4` with `experimental_multiprocess_wal(true)` 
 
 ### High-risk findings
 
-- The open/configuration layer no longer deletes sidecars or performs automatic WAL recovery. Corruption/open errors are returned to the caller for explicit operational handling.
+- `TranscriptCache` no longer checkpoints/truncates WAL on every open. Checkpointing remains Turso-managed for multiprocess access.
 - WAL recovery can delete a short `-wal` file while another process may still be initializing or writing it. The generic `unable to open database file` error is also too broad to justify sidecar deletion.
 - No true two-process integration test currently proves that separate Rust processes can open, write, checkpoint, and recover the same database file.
 - `with_mvcc_transaction` uses serialized `BEGIN IMMEDIATE`; it is not Turso MVCC. Turso MVCC requires `journal_mode = mvcc` and `BEGIN CONCURRENT`, and MVCC is incompatible with multiprocess WAL.
