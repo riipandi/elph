@@ -20,10 +20,8 @@ use std::path::Path;
 
 use anyhow::Result;
 
-pub use conn::{
-    cleanup_stale_shared_memory, database_in_use, is_lock_err, is_mvcc_conflict_err, with_mvcc_transaction,
-};
 pub use conn::{connect, open_connection, open_local, open_local_with, with_conn};
+pub use conn::{is_lock_err, is_mvcc_conflict_err, with_write_transaction};
 pub use lazy::ensure_databases_once;
 pub use migrations::{Migration, run as run_migrations};
 

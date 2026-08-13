@@ -13,8 +13,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use turso::params;
 use turso::{Connection, Database};
 
-use crate::core::db::clear_broken_wal_sidecars;
-
 pub use crate::core::embed::EmbedFn;
 use crate::core::util::{DEFAULT_EMBEDDING_DIMS, drain_rows};
 use crate::memory::migrations;
@@ -237,11 +235,6 @@ impl MemoryStore {
             std::fs::create_dir_all(parent)
                 .with_context(|| format!("create memory store directory {}", parent.display()))?;
         }
-
-        // Drop empty/truncated WAL sidecars *before* first open — a 0-byte
-        // `store.db-wal` makes Turso fail with "short read on WAL frame" even
-        // when `store.db` itself is healthy (or when the main file is missing).
-        clear_broken_wal_sidecars(&self.db_path);
 
         crate::core::db::open_memory_db(&self.db_path).await
     }

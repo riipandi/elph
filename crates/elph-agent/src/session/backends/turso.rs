@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::datastore::migrations::run as run_migrations;
-use crate::datastore::with_mvcc_transaction;
+use crate::datastore::with_write_transaction;
 use crate::session::id::{generate_entry_id, generate_session_id};
 use crate::session::migrations::SESSION_TREE_MIGRATIONS;
 
@@ -169,7 +169,7 @@ impl TursoSessionStorage {
         // Wrap session creation in an MVCC transaction to ensure atomicity.
         // If session_sequences insert fails, the entire session creation should roll back.
         // MVCC allows multiple instances to create sessions concurrently with conflict detection.
-        with_mvcc_transaction(&conn, || async {
+        with_write_transaction(&conn, || async {
             conn.execute(
                 "INSERT INTO sessions (
                     id, created_at, updated_at, cwd, parent_session_id,
@@ -338,7 +338,7 @@ impl TursoSessionStorage {
     /// concurrent, multi-process writers.
     async fn persist_txn(&self, entry: &SessionTreeEntry, leaf_id: Option<&str>) -> Result<(), SessionError> {
         let conn = self.connection().await?;
-        with_mvcc_transaction(&conn, || async {
+        with_write_transaction(&conn, || async {
             self.persist_entry(&conn, entry).await?;
             self.persist_leaf_id(&conn, leaf_id).await?;
             Ok::<(), anyhow::Error>(())
@@ -494,7 +494,7 @@ async fn persist_heal_stale_leaves(
     if stale_ids.is_empty() {
         return Ok(());
     }
-    with_mvcc_transaction(conn, || async {
+    with_write_transaction(conn, || async {
         for id in stale_ids {
             conn.execute(
                 "DELETE FROM session_entries WHERE session_id = ? AND id = ?",
@@ -637,7 +637,7 @@ impl SessionStorage for TursoSessionStorage {
         }
 
         let conn = self.connection().await?;
-        let deleted = with_mvcc_transaction(&conn, || async {
+        let deleted = with_write_transaction(&conn, || async {
             let mut deleted = 0usize;
             let mut freed_bytes: i64 = 0;
             for id in &to_delete {

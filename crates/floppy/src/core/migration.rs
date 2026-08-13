@@ -9,9 +9,6 @@ use turso::Connection;
 use super::util::drain_rows;
 
 /// One versioned SQL migration entry.
-///
-/// Field layout matches common host migration runners so consumers can map entries
-/// without coupling this module to a specific application crate.
 #[derive(Debug, Clone, Copy)]
 pub struct FloppyMigration {
     pub version: i64,
@@ -20,8 +17,6 @@ pub struct FloppyMigration {
 }
 
 /// Apply an arbitrary ordered migration set via the shared `app_migrations` ledger.
-///
-/// Uses **per-version** membership (not `MAX(version)`) so disjoint bands coexist.
 pub async fn apply_set(conn: &Connection, migrations: &[FloppyMigration]) -> Result<()> {
     conn.execute(
         "CREATE TABLE IF NOT EXISTS app_migrations (
@@ -33,14 +28,12 @@ pub async fn apply_set(conn: &Connection, migrations: &[FloppyMigration]) -> Res
         (),
     )
     .await?;
-
     conn.execute(
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_app_migrations_version
          ON app_migrations(version)",
         (),
     )
     .await?;
-
     for migration in migrations {
         let already = {
             let mut rows = conn
@@ -53,16 +46,12 @@ pub async fn apply_set(conn: &Connection, migrations: &[FloppyMigration]) -> Res
         if already {
             continue;
         }
-
-        // Turso requires execute_batch for multi-statement DDL.
         conn.execute_batch(migration.up).await?;
-
         conn.execute(
             "INSERT INTO app_migrations (version, name) VALUES (?, ?)",
             (migration.version, migration.name),
         )
         .await?;
     }
-
     Ok(())
 }
