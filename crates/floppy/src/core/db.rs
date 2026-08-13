@@ -10,11 +10,13 @@ use std::future::Future;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::Semaphore;
+use tokio::sync::{OwnedSemaphorePermit, Semaphore};
+use tokio::time::timeout;
 use turso::{Builder, Connection, Database};
 
 pub const MAX_RETRIES: u32 = 10;
 pub const BASE_DELAY_MS: u64 = 50;
+const DB_OPEN_TIMEOUT_MS: u64 = 30_000;
 
 pub fn is_lock_err(msg: &str) -> bool {
     let lower = msg.to_ascii_lowercase();
@@ -93,12 +95,22 @@ pub(crate) async fn connect(db: &Database) -> Result<Connection> {
 
 pub async fn open_local_db(db_path: &str) -> Result<Database> {
     ensure_parent(db_path)?;
-    open_local_internal(Path::new(db_path), multiprocess_wal).await
+    timeout(
+        Duration::from_millis(DB_OPEN_TIMEOUT_MS),
+        open_local_internal(Path::new(db_path), multiprocess_wal),
+    )
+    .await
+    .map_err(|_| anyhow::anyhow!("database open timeout after {DB_OPEN_TIMEOUT_MS}ms"))?
 }
 
 pub async fn open_memory_db(db_path: &str) -> Result<Database> {
     ensure_parent(db_path)?;
-    open_local_internal(Path::new(db_path), multiprocess_wal_memory).await
+    timeout(
+        Duration::from_millis(DB_OPEN_TIMEOUT_MS),
+        open_local_internal(Path::new(db_path), multiprocess_wal_memory),
+    )
+    .await
+    .map_err(|_| anyhow::anyhow!("database open timeout after {DB_OPEN_TIMEOUT_MS}ms"))?
 }
 
 fn ensure_parent(db_path: &str) -> Result<()> {
@@ -120,6 +132,17 @@ where
     f(conn).await
 }
 
+pub struct PooledConnection {
+    connection: Connection,
+    _permit: OwnedSemaphorePermit,
+}
+impl std::ops::Deref for PooledConnection {
+    type Target = Connection;
+    fn deref(&self) -> &Self::Target {
+        &self.connection
+    }
+}
+
 #[derive(Clone)]
 pub struct ConnectionPool {
     db: Arc<Database>,
@@ -137,13 +160,18 @@ impl ConnectionPool {
         }
     }
 
-    pub async fn acquire(&self) -> Result<Connection> {
-        let _permit = self
+    pub async fn acquire(&self) -> Result<PooledConnection> {
+        let permit = self
             .semaphore
-            .acquire()
+            .clone()
+            .acquire_owned()
             .await
             .map_err(|_| anyhow::anyhow!("Connection pool semaphore closed"))?;
-        connect(&self.db).await
+        let connection = connect(&self.db).await?;
+        Ok(PooledConnection {
+            connection,
+            _permit: permit,
+        })
     }
 
     pub fn max_connections(&self) -> usize {

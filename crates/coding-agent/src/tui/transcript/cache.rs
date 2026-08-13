@@ -26,10 +26,13 @@ impl TranscriptCache {
     }
 
     pub async fn save_snapshot(&self, snapshot_json: &str) -> Result<()> {
-        self.conn.execute(
-            "INSERT OR REPLACE INTO transcript_snapshot (session_id, data, saved_at) VALUES (?1, ?2, datetime('now'))",
-            params![self.session_id.as_str(), snapshot_json],
-        ).await?;
+        self.conn
+            .execute(
+                "INSERT INTO transcript_snapshot (session_id, data, saved_at) VALUES (?1, ?2, datetime('now')) \
+                 ON CONFLICT(session_id) DO UPDATE SET data = excluded.data, saved_at = excluded.saved_at",
+                params![self.session_id.as_str(), snapshot_json],
+            )
+            .await?;
         Ok(())
     }
 
@@ -56,7 +59,8 @@ impl TranscriptCache {
             )
             .await?;
         let mut rows = self.conn.query(
-            "SELECT COUNT(*) FROM session_entries WHERE type = 'custom' AND payload LIKE '%elph.transcript.snapshot%'", (),
+            "SELECT COUNT(*) FROM session_entries WHERE type = 'custom' AND payload LIKE '%elph.transcript.snapshot%'",
+            (),
         ).await?;
         let remaining: i64 = rows.next().await?.map(|r| r.get(0).unwrap_or(0)).unwrap_or(0);
         if remaining == 0 {

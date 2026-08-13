@@ -132,8 +132,9 @@ async fn apply_connection_pragmas(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Execute a closure inside a serialized multiprocess-WAL write transaction.
-///
+/// The closure may be retried after rollback on a transient lock error.
+/// Keep it limited to database operations that are safe to replay; perform
+/// external side effects only after this function returns successfully.
 /// Writers are retried when acquiring the write lock or running the closure
 /// encounters a transient lock error. Commit failures are returned because a
 /// committed transaction must never be replayed blindly.
