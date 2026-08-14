@@ -136,19 +136,22 @@ impl TursoSessionRepo {
     }
 }
 
-async fn open_migrated(db_path: &Path, database: Option<&Arc<Database>>) -> Result<turso::Connection, SessionError> {
+async fn open_migrated(
+    db_path: &Path,
+    database: Option<&Arc<Database>>,
+) -> Result<(Option<Arc<Database>>, turso::Connection), SessionError> {
     match database {
-        Some(db) => crate::datastore::connect(db).await.map_err(map_err),
+        Some(db) => Ok((None, crate::datastore::connect(db).await.map_err(map_err)?)),
         None => {
             if let Some(parent) = db_path.parent() {
                 std::fs::create_dir_all(parent).map_err(map_err)?;
             }
-            let db = crate::datastore::open_local(db_path).await.map_err(map_err)?;
+            let db = Arc::new(crate::datastore::open_local(db_path).await.map_err(map_err)?);
             let conn = crate::datastore::connect(&db).await.map_err(map_err)?;
             crate::datastore::migrations::run(&conn, &crate::session::migrations::SESSION_TREE_MIGRATIONS)
                 .await
                 .map_err(|e| SessionError::new(SessionErrorCode::Storage, e.to_string()))?;
-            Ok(conn)
+            Ok((Some(db), conn))
         }
     }
 }
@@ -158,7 +161,7 @@ async fn list_sessions(
     cwd: Option<&str>,
     database: Option<&Arc<Database>>,
 ) -> Result<Vec<TursoSessionMetadata>, SessionError> {
-    let conn = open_migrated(db_path, database).await?;
+    let (_database, conn) = open_migrated(db_path, database).await?;
     let sql = if cwd.is_some() {
         "SELECT id, created_at, updated_at, cwd, parent_session_id,
                 provider_id, model_id, agent_mode, name
@@ -191,7 +194,7 @@ async fn session_has_entries(
     session_id: &str,
     database: Option<&Arc<Database>>,
 ) -> Result<bool, SessionError> {
-    let conn = open_migrated(db_path, database).await?;
+    let (_database, conn) = open_migrated(db_path, database).await?;
     let mut rows = conn
         .query(
             "SELECT 1 FROM session_entries WHERE session_id = ? LIMIT 1",
@@ -207,29 +210,23 @@ async fn delete_session(
     session_id: &str,
     database: Option<&Arc<Database>>,
 ) -> Result<(), SessionError> {
-    let conn = open_migrated(db_path, database).await?;
-    // FK ON DELETE CASCADE clears entries/sequences/turns/todos/goals.
-    // Spawn edges may reference this id as parent or child — clear explicitly.
-    if let Err(error) = conn
-        .execute(
+    let (_database, conn) = open_migrated(db_path, database).await?;
+    crate::datastore::with_write_transaction(&conn, || async {
+        conn.execute(
             "DELETE FROM agent_spawn_edges WHERE parent_session_id = ? OR child_session_id = ?",
             turso::params![session_id, session_id],
         )
-        .await
-    {
-        log::warn!("failed to cascade-delete agent_spawn_edges for {session_id}: {error}");
-    }
-    let changed = conn
-        .execute("DELETE FROM sessions WHERE id = ?", turso::params![session_id])
-        .await
-        .map_err(map_err)?;
-    if changed == 0 {
-        return Err(SessionError::new(
-            SessionErrorCode::NotFound,
-            format!("Session {session_id} not found"),
-        ));
-    }
-    Ok(())
+        .await?;
+        let changed = conn
+            .execute("DELETE FROM sessions WHERE id = ?", turso::params![session_id])
+            .await?;
+        if changed == 0 {
+            anyhow::bail!("Session {session_id} not found");
+        }
+        Ok::<(), anyhow::Error>(())
+    })
+    .await
+    .map_err(map_err)
 }
 
 fn row_to_metadata(row: &turso::Row, db_path: &str) -> Result<TursoSessionMetadata, SessionError> {

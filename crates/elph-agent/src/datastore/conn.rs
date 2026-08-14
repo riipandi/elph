@@ -232,19 +232,22 @@ pub async fn open_local(path: &Path) -> Result<Database> {
     })?
 }
 
-/// Open a local Turso database with a caller-supplied builder configuration.
+/// Open a local Turso database with multiprocess WAL enabled.
 ///
-/// Like [`open_local`] but lets the caller supply the `Builder` flags. Still
-/// wraps the open in the standard hard timeout.
+/// The caller may tune builder options, but cannot disable the required
+/// multiprocess WAL mode for this shared-database helper.
 pub async fn open_local_with(path: &Path, configure: impl Fn(Builder) -> Builder) -> Result<Database> {
-    timeout(Duration::from_millis(DB_OPEN_TIMEOUT_MS), open_local_internal(path, configure))
-        .await
-        .map_err(|_| {
-            anyhow::anyhow!(
-                "database open timeout after {}ms (database may be busy or locked)",
-                DB_OPEN_TIMEOUT_MS
-            )
-        })?
+    timeout(
+        Duration::from_millis(DB_OPEN_TIMEOUT_MS),
+        open_local_internal(path, |builder| configure(multiprocess_wal(builder))),
+    )
+    .await
+    .map_err(|_| {
+        anyhow::anyhow!(
+            "database open timeout after {}ms (database may be busy or locked)",
+            DB_OPEN_TIMEOUT_MS
+        )
+    })?
 }
 
 /// Connect to an open Database and apply mandatory pragmas.

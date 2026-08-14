@@ -1,6 +1,6 @@
 # Turso Integration and Multiprocess WAL Audit
 
-**Status:** Hardening implemented for the database open/configuration layer and session transaction safety. A true two-process OS integration test and store-level conflict handling remain follow-up work.
+**Status:** Hardening implemented for shared multiprocess-WAL opening, connection ownership, serialized transaction cleanup, atomic session pruning, and transactional session deletion. Cross-process stress coverage and optimistic session-tree conflict handling remain follow-up items.
 
 **Scope:** `crates/elph-agent`, `crates/coding-agent`, `crates/floppy`, workspace dependency configuration, database opening, migrations, transactions, session persistence, worker coordination, memory/codegraph stores, WAL sidecars, and multiprocess access.
 

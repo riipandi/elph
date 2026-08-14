@@ -69,13 +69,16 @@ impl TursoSessionStorage {
     ) -> Result<Self, SessionError> {
         let db_path = db_path.as_ref().to_path_buf();
         let session_id = session_id.into();
-        let conn = match &database {
-            Some(db) => connect_configured(db).await?,
-            None => {
-                let db = open_db(&db_path).await?;
-                connect_configured(&db).await?
-            }
+        let database = match database {
+            Some(db) => Some(db),
+            None => Some(Arc::new(open_db(&db_path).await?)),
         };
+        let conn = connect_configured(
+            database
+                .as_ref()
+                .ok_or_else(|| SessionError::new(SessionErrorCode::Storage, "database initialization failed"))?,
+        )
+        .await?;
         let metadata = load_metadata(&conn, &session_id, &db_path).await?;
         let entries = load_entries(&conn, &session_id).await?;
         // Resolve the leaf with tolerance for stale pointers (crash ordering,
@@ -143,13 +146,11 @@ impl TursoSessionStorage {
             std::fs::create_dir_all(parent).map_err(map_storage_error)?;
         }
         let session_id = options.session_id.unwrap_or_else(generate_session_id);
-        let conn = match &database {
-            Some(db) => connect_configured(db).await?,
-            None => {
-                let db = open_db(&db_path).await?;
-                connect_configured(&db).await?
-            }
+        let database = match database {
+            Some(db) => db,
+            None => Arc::new(open_db(&db_path).await?),
         };
+        let conn = connect_configured(&database).await?;
         let created_at = crate::messages::now_iso_timestamp();
         let cwd = options.cwd.unwrap_or_default();
         let agent_mode = options.agent_mode.unwrap_or_else(|| "build".to_string());
@@ -166,9 +167,7 @@ impl TursoSessionStorage {
             db_path: db_path.to_string_lossy().to_string(),
         };
 
-        // Wrap session creation in an MVCC transaction to ensure atomicity.
-        // If session_sequences insert fails, the entire session creation should roll back.
-        // MVCC allows multiple instances to create sessions concurrently with conflict detection.
+        // Serialized WAL transaction: atomic creation, not MVCC.
         with_write_transaction(&conn, || async {
             conn.execute(
                 "INSERT INTO sessions (
@@ -209,7 +208,7 @@ impl TursoSessionStorage {
             session_id,
             metadata,
             index: build_index(Vec::new(), None)?,
-            database,
+            database: Some(database),
         })
     }
 
