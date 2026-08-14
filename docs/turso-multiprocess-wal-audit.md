@@ -2,6 +2,8 @@
 
 **Status:** Multiprocess-WAL hardening is implemented for shared opening, connection ownership, serialized transaction cleanup, atomic migration application with SQL checksums, session-leaf compare-and-swap, transactional todo merging, and a real two-process writer test. The project remains on `turso = 0.8.0-pre.4` and uses serialized `BEGIN IMMEDIATE` writes, not MVCC.
 
+The current hardening pass validates durable filesystem paths before enabling multiprocess WAL and removes `experimental_vacuum` from shared database builders. In-place `VACUUM` requires exclusive ownership of the multiprocess WAL, so maintenance must be excluded from these shared open paths rather than enabled by default. Turso 0.8.0-pre.4 performs platform/filesystem capability checks during `Builder::build`; the application guard rejects URI and in-memory paths early.
+
 Cross-process crash/reopen, checkpoint, schema-refresh, vacuum-exclusion, and unsupported-filesystem tests remain deployment validation work.
 
 **Scope:** `crates/elph-agent`, `crates/coding-agent`, `crates/floppy`, workspace dependency configuration, database opening, migrations, transactions, session persistence, worker coordination, memory/codegraph stores, WAL sidecars, and multiprocess access.

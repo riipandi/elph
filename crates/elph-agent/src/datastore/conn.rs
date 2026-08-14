@@ -23,6 +23,35 @@ pub const BASE_DELAY_MS: u64 = 50;
 
 const DB_OPEN_TIMEOUT_MS: u64 = 30000; // 30 seconds timeout for database open (increased for multi-worker scenarios)
 
+/// Validate a durable local database path before enabling multiprocess WAL.
+///
+/// Turso performs the filesystem capability check (POSIX locks + mmap) during
+/// `Builder::build`; this guard rejects URI/in-memory paths and path shapes
+/// that cannot safely represent a local database file.
+pub fn validate_local_database_path(path: &Path) -> Result<()> {
+    if path.as_os_str().is_empty() || path == Path::new(":memory:") {
+        anyhow::bail!("multiprocess WAL requires a durable local database path");
+    }
+    if path.to_string_lossy().starts_with("file:") {
+        anyhow::bail!("multiprocess WAL requires a filesystem path, not a database URI");
+    }
+    let parent = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    let parent_metadata =
+        std::fs::metadata(parent).with_context(|| format!("inspect database directory {}", parent.display()))?;
+    if !parent_metadata.is_dir() {
+        anyhow::bail!("database parent is not a directory: {}", parent.display());
+    }
+    if let Ok(metadata) = std::fs::metadata(path)
+        && !metadata.is_file()
+    {
+        anyhow::bail!("database path is not a regular file: {}", path.display());
+    }
+    Ok(())
+}
+
 /// Check if a Turso error message indicates a lock-related failure.
 ///
 /// Detects `SQLITE_LOCKED` (`"locked"`, `"Locking"`) and `SQLITE_BUSY`
@@ -51,6 +80,7 @@ fn jitter_delay(attempt: u32) -> u64 {
 
 /// Open a local Turso database with multiprocess WAL and lock-retry backoff.
 pub async fn open_local_internal(path: &Path, configure: impl Fn(Builder) -> Builder) -> Result<Database> {
+    validate_local_database_path(path)?;
     let mut attempt = 0u32;
     loop {
         let build = configure(Builder::new_local(path.to_string_lossy().as_ref()))
@@ -132,20 +162,28 @@ async fn apply_connection_pragmas(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// The closure may be retried after a successful rollback on a transient lock error.
-/// Keep it limited to database operations that are safe to replay; perform
-/// external side effects only after this function returns successfully.
-/// Writers are retried when acquiring the write lock or running the closure
-/// encounters a transient lock error. Commit failures are terminal because a
-/// committed transaction must never be replayed blindly.
-pub async fn with_write_transaction<F, T, Fut>(conn: &Connection, f: F) -> Result<T>
+/// Result of a transaction whose commit may have become ambiguous.
+#[derive(Debug)]
+pub enum CommitOutcome<T> {
+    /// The transaction commit returned successfully.
+    Committed(T),
+    /// The transaction body failed and was rolled back successfully.
+    RolledBack,
+    /// The commit returned an error and the final durable state is unknown.
+    Unknown(anyhow::Error),
+}
+
+/// Execute a serialized write transaction and preserve ambiguous commit state.
+///
+/// Callers must use an idempotency key or a database uniqueness constraint before
+/// retrying [`CommitOutcome::Unknown`]. Never replay a non-idempotent closure blindly.
+pub async fn with_write_transaction_outcome<F, T, Fut>(conn: &Connection, f: F) -> Result<CommitOutcome<T>>
 where
     F: Fn() -> Fut,
     Fut: std::future::Future<Output = Result<T>>,
 {
     const MAX_TRANSACTION_RETRIES: u32 = 10;
     let mut attempt = 0u32;
-
     loop {
         match conn.execute("BEGIN IMMEDIATE", ()).await {
             Ok(_) => {}
@@ -156,15 +194,14 @@ where
             }
             Err(error) => return Err(error).context("BEGIN IMMEDIATE failed"),
         }
-
         match f().await {
-            Ok(result) => {
-                if let Err(error) = conn.execute("COMMIT", ()).await {
+            Ok(result) => match conn.execute("COMMIT", ()).await {
+                Ok(_) => return Ok(CommitOutcome::Committed(result)),
+                Err(error) => {
                     let _ = conn.execute("ROLLBACK", ()).await;
-                    return Err(error).context("COMMIT failed");
+                    return Ok(CommitOutcome::Unknown(error.into()));
                 }
-                return Ok(result);
-            }
+            },
             Err(error) => {
                 if let Err(rollback_error) = conn.execute("ROLLBACK", ()).await {
                     return Err(error).context(format!("ROLLBACK failed: {rollback_error}"));
@@ -174,9 +211,22 @@ where
                     attempt += 1;
                     continue;
                 }
-                return Err(error);
+                return Ok(CommitOutcome::RolledBack);
             }
         }
+    }
+}
+/// Execute a serialized write transaction. Commit failures are returned as errors
+/// and are never replayed because the transaction may already be durable.
+pub async fn with_write_transaction<F, T, Fut>(conn: &Connection, f: F) -> Result<T>
+where
+    F: Fn() -> Fut,
+    Fut: std::future::Future<Output = Result<T>>,
+{
+    match with_write_transaction_outcome(conn, f).await? {
+        CommitOutcome::Committed(result) => Ok(result),
+        CommitOutcome::RolledBack => Err(anyhow::anyhow!("transaction rolled back")),
+        CommitOutcome::Unknown(error) => Err(error).context("COMMIT outcome unknown"),
     }
 }
 
@@ -278,6 +328,12 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rejects_non_filesystem_database_paths() {
+        assert!(validate_local_database_path(Path::new(":memory:")).is_err());
+        assert!(validate_local_database_path(Path::new("file::memory:")).is_err());
+    }
 
     #[tokio::test]
     async fn open_local_creates_db_file() {

@@ -29,18 +29,39 @@ fn jitter_delay(attempt: u32) -> u64 {
 }
 
 fn multiprocess_wal(b: Builder) -> Builder {
-    b.experimental_multiprocess_wal(true)
-        .experimental_index_method(true)
-        .experimental_vacuum(true)
+    b.experimental_multiprocess_wal(true).experimental_index_method(true)
+}
+
+fn validate_local_database_path(path: &Path) -> Result<()> {
+    if path.as_os_str().is_empty() || path == Path::new(":memory:") {
+        anyhow::bail!("multiprocess WAL requires a durable local database path");
+    }
+    if path.to_string_lossy().starts_with("file:") {
+        anyhow::bail!("multiprocess WAL requires a filesystem path, not a database URI");
+    }
+    let parent = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    let metadata =
+        std::fs::metadata(parent).with_context(|| format!("inspect database directory {}", parent.display()))?;
+    if !metadata.is_dir() {
+        anyhow::bail!("database parent is not a directory: {}", parent.display());
+    }
+    if let Ok(metadata) = std::fs::metadata(path)
+        && !metadata.is_file()
+    {
+        anyhow::bail!("database path is not a regular file: {}", path.display());
+    }
+    Ok(())
 }
 
 fn multiprocess_wal_memory(b: Builder) -> Builder {
-    b.experimental_multiprocess_wal(true)
-        .experimental_index_method(true)
-        .experimental_vacuum(true)
+    b.experimental_multiprocess_wal(true).experimental_index_method(true)
 }
 
 async fn open_local_internal(path: &Path, configure: impl Fn(Builder) -> Builder) -> Result<Database> {
+    validate_local_database_path(path)?;
     let mut attempt = 0u32;
     loop {
         match configure(Builder::new_local(path.to_string_lossy().as_ref()))
@@ -184,6 +205,12 @@ impl ConnectionPool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rejects_non_filesystem_database_paths() {
+        assert!(validate_local_database_path(Path::new(":memory:")).is_err());
+        assert!(validate_local_database_path(Path::new("file::memory:")).is_err());
+    }
 
     #[test]
     fn connection_pool_never_creates_zero_permit_semaphore() {
