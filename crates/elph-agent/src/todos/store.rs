@@ -7,7 +7,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result, bail};
 use turso::Connection;
 
-use crate::datastore::{connect, with_conn};
+use crate::datastore::{connect, with_conn, with_write_transaction};
 use crate::messages::now_iso_timestamp;
 use crate::session::id::create_todo_id_checked;
 
@@ -81,28 +81,16 @@ impl TodoStore {
         validate_updates(&items)?;
         let now = now_iso_timestamp();
         self.with_conn(|conn| async move {
-            conn.execute("BEGIN IMMEDIATE", ()).await?;
-            let outcome = async {
+            with_write_transaction(&conn, || async {
                 conn.execute("DELETE FROM session_todos WHERE session_id = ?", turso::params![session_id])
                     .await?;
-                // Track ids minted/inserted in this batch so sequential inserts never collide.
                 let mut reserved = HashSet::new();
-                for (position, update) in items.into_iter().enumerate() {
+                for (position, update) in items.clone().into_iter().enumerate() {
                     insert_todo(&conn, session_id, &update, position as i64, &now, &mut reserved).await?;
                 }
                 Ok::<(), anyhow::Error>(())
-            }
-            .await;
-            match outcome {
-                Ok(()) => {
-                    conn.execute("COMMIT", ()).await?;
-                }
-                Err(err) => {
-                    let _ = conn.execute("ROLLBACK", ()).await;
-                    return Err(err);
-                }
-            }
-            Ok(())
+            })
+            .await
         })
         .await?;
         self.list(session_id).await
@@ -198,9 +186,12 @@ impl TodoStore {
 
     pub async fn clear(&self, session_id: &str) -> Result<()> {
         self.with_conn(|conn| async move {
-            conn.execute("DELETE FROM session_todos WHERE session_id = ?", turso::params![session_id])
-                .await?;
-            Ok(())
+            with_write_transaction(&conn, || async {
+                conn.execute("DELETE FROM session_todos WHERE session_id = ?", turso::params![session_id])
+                    .await?;
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
         })
         .await
     }

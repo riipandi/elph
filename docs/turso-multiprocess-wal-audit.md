@@ -320,7 +320,19 @@ The project does not appear to perform platform or filesystem capability checks,
 - No explicit vacuum maintenance protocol.
 - Cleanup and recovery errors are sometimes swallowed.
 
-## Recommended investigation order before implementation changes
+## P1 hardening status
+
+The following P1 write paths use the shared serialized transaction policy:
+
+- goal creation checks and inserts under one `BEGIN IMMEDIATE` transaction;
+- worker registration and heartbeat use transactional writes;
+- todo replace and clear use the shared transaction helper;
+- floppy memory database paths use the same multiprocess WAL and vacuum builder options;
+- session deletion and physical pruning are atomic with their related pointer/edge updates.
+
+Session-tree optimistic leaf compare-and-swap and automatic index refresh remain required before concurrent writers may safely mutate the same session from independent processes. A failed CAS must surface as a conflict and trigger a reload rather than silently applying last-writer-wins.
+
+Multiprocess WAL deployment still requires a local filesystem with coherent mmap and POSIX byte-range locking. Do not use NFS, SMB/CIFS, CephFS, or other unsupported distributed filesystems. Turso owns the `-wal` and `-tshm` sidecars; application code must not delete them.
 
 1. Verify the exact Turso `0.8.0-pre.4` source and confirm whether multiprocess Rust SDK fixes for WAL `NoLock` and SDK coordination races are included.
 2. Build a two-process test harness before changing production code.

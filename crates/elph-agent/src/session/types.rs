@@ -16,6 +16,7 @@ pub enum SessionErrorCode {
     InvalidSession,
     InvalidEntry,
     Storage,
+    Conflict,
     Unknown,
 }
 

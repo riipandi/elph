@@ -6,7 +6,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result, bail};
 use turso::Connection;
 
-use crate::datastore::{connect, is_lock_err, with_conn};
+use crate::datastore::{connect, is_lock_err, with_conn, with_write_transaction};
 
 use super::types::{Goal, GoalStatus};
 
@@ -136,23 +136,35 @@ impl GoalStore {
 
         let goal_id = crate::session::id::create_goal_id();
         self.with_conn(|conn| async move {
-            conn.execute(
-                "INSERT INTO goals (
-                    id, session_id, objective, completion_criterion, status,
-                    token_budget, turn_budget, wall_clock_budget_ms
-                 ) VALUES (?, ?, ?, ?, 'active', ?, ?, ?)",
-                turso::params![
-                    goal_id.as_str(),
-                    session_id,
-                    objective.trim(),
-                    completion_criterion,
-                    token_budget,
-                    turn_budget,
-                    wall_clock_budget_ms,
-                ],
-            )
-            .await?;
-            Ok(())
+            with_write_transaction(&conn, || async {
+                let mut rows = conn
+                    .query(
+                        "SELECT 1 FROM goals WHERE session_id = ? AND status NOT IN ('complete') LIMIT 1",
+                        turso::params![session_id],
+                    )
+                    .await?;
+                if rows.next().await?.is_some() {
+                    bail!("an unfinished goal already exists for this session");
+                }
+                conn.execute(
+                    "INSERT INTO goals (
+                        id, session_id, objective, completion_criterion, status,
+                        token_budget, turn_budget, wall_clock_budget_ms
+                     ) VALUES (?, ?, ?, ?, 'active', ?, ?, ?)",
+                    turso::params![
+                        goal_id.as_str(),
+                        session_id,
+                        objective.trim(),
+                        completion_criterion,
+                        token_budget,
+                        turn_budget,
+                        wall_clock_budget_ms,
+                    ],
+                )
+                .await?;
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
         })
         .await?;
 

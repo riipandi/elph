@@ -35,7 +35,9 @@ fn multiprocess_wal(b: Builder) -> Builder {
 }
 
 fn multiprocess_wal_memory(b: Builder) -> Builder {
-    b.experimental_multiprocess_wal(true).experimental_index_method(true)
+    b.experimental_multiprocess_wal(true)
+        .experimental_index_method(true)
+        .experimental_vacuum(true)
 }
 
 async fn open_local_internal(path: &Path, configure: impl Fn(Builder) -> Builder) -> Result<Database> {

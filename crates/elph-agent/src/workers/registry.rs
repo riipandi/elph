@@ -6,7 +6,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result, bail};
 use turso::Connection;
 
-use crate::datastore::{connect, with_conn};
+use crate::datastore::{connect, with_conn, with_write_transaction};
 use crate::messages::now_iso_timestamp;
 
 use super::types::{LiveWorker, WorkerRecord, WorkerStatus};
@@ -87,30 +87,33 @@ impl WorkerRegistry {
             let purpose = purpose.to_string();
             let model = model.map(str::to_string);
             async move {
-                // Drop any previous worker row for this session or this worker id.
-                conn.execute(
-                    "DELETE FROM workers WHERE session_id = ? OR worker_id = ?",
-                    turso::params![session_id.as_str(), worker_id.as_str()],
-                )
-                .await?;
-                conn.execute(
-                    "INSERT INTO workers (
-                        worker_id, session_id, project_key, name, purpose, model, status,
-                        context_pct, pid, hostname, started_at, heartbeat_at, metadata
-                     ) VALUES (?, ?, ?, ?, ?, ?, 'online', NULL, ?, ?, ?, ?, NULL)",
-                    turso::params![
-                        worker_id.as_str(),
-                        session_id.as_str(),
-                        project_key.as_str(),
-                        name.as_str(),
-                        purpose.as_str(),
-                        model.as_deref(),
-                        pid,
-                        hostname.as_deref(),
-                        now.as_str(),
-                        now.as_str(),
-                    ],
-                )
+                with_write_transaction(&conn, || async {
+                    conn.execute(
+                        "DELETE FROM workers WHERE session_id = ? OR worker_id = ?",
+                        turso::params![session_id.as_str(), worker_id.as_str()],
+                    )
+                    .await?;
+                    conn.execute(
+                        "INSERT INTO workers (
+                            worker_id, session_id, project_key, name, purpose, model, status,
+                            context_pct, pid, hostname, started_at, heartbeat_at, metadata
+                         ) VALUES (?, ?, ?, ?, ?, ?, 'online', NULL, ?, ?, ?, ?, NULL)",
+                        turso::params![
+                            worker_id.as_str(),
+                            session_id.as_str(),
+                            project_key.as_str(),
+                            name.as_str(),
+                            purpose.as_str(),
+                            model.as_deref(),
+                            pid,
+                            hostname.as_deref(),
+                            now.as_str(),
+                            now.as_str(),
+                        ],
+                    )
+                    .await?;
+                    Ok::<(), anyhow::Error>(())
+                })
                 .await?;
                 Ok(WorkerRecord {
                     worker_id,
@@ -141,18 +144,21 @@ impl WorkerRegistry {
         let now = now_iso_timestamp();
         let pid = std::process::id() as i64;
         self.with_conn(|conn| async move {
-            let n = conn
-                .execute(
-                    "UPDATE workers SET heartbeat_at = ?, status = ?, context_pct = ?, pid = ?,
-                        model = COALESCE(?, model)
-                     WHERE worker_id = ?",
-                    turso::params![now.as_str(), status.as_str(), context_pct, pid, model, worker_id,],
-                )
-                .await?;
-            if n == 0 {
-                bail!("worker not registered: {worker_id}");
-            }
-            Ok(())
+            with_write_transaction(&conn, || async {
+                let n = conn
+                    .execute(
+                        "UPDATE workers SET heartbeat_at = ?, status = ?, context_pct = ?, pid = ?,
+                            model = COALESCE(?, model)
+                         WHERE worker_id = ?",
+                        turso::params![now.as_str(), status.as_str(), context_pct, pid, model, worker_id,],
+                    )
+                    .await?;
+                if n == 0 {
+                    bail!("worker not registered: {worker_id}");
+                }
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
         })
         .await
     }
