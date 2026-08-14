@@ -334,7 +334,16 @@ Session-tree optimistic leaf compare-and-swap and automatic index refresh remain
 
 Multiprocess WAL deployment still requires a local filesystem with coherent mmap and POSIX byte-range locking. Do not use NFS, SMB/CIFS, CephFS, or other unsupported distributed filesystems. Turso owns the `-wal` and `-tshm` sidecars; application code must not delete them.
 
-1. Verify the exact Turso `0.8.0-pre.4` source and confirm whether multiprocess Rust SDK fixes for WAL `NoLock` and SDK coordination races are included.
+## P2 hardening status
+
+- Transaction rollback and commit failures are terminal and are never blindly replayed.
+- Store writes use the shared serialized transaction helper instead of ad-hoc transaction handling.
+- Turso sidecar lifecycle remains owned by Turso.
+- Database configuration is aligned across `elph-agent` and `floppy` for multiprocess WAL, index support, vacuum support, busy timeout, and foreign keys.
+- Retry classification remains limited to explicit lock/busy conditions; unrelated I/O and permission errors are not retryable.
+
+Structured operation names, process identifiers, and metrics for retry exhaustion, rollback failures, migration waits, and session conflicts remain recommended follow-up observability work.
+
 2. Build a two-process test harness before changing production code.
 3. Define ownership rules for `.tshm`, `-wal`, and `-shm`; remove mtime-based liveness assumptions from the design.
 4. Define the supported transaction model explicitly as serialized WAL writes, not MVCC.
