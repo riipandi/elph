@@ -248,14 +248,37 @@ impl TursoSessionStorage {
         }
     }
 
-    async fn persist_leaf_id(&self, conn: &turso::Connection, leaf_id: Option<&str>) -> Result<(), SessionError> {
+    async fn persist_leaf_id(
+        &self,
+        conn: &turso::Connection,
+        expected_leaf_id: Option<&str>,
+        leaf_id: Option<&str>,
+    ) -> Result<(), SessionError> {
         let updated_at = crate::messages::now_iso_timestamp();
-        conn.execute(
-            "UPDATE sessions SET active_leaf_id = ?, updated_at = ? WHERE id = ?",
-            turso::params![leaf_id, updated_at.as_str(), self.session_id.as_str()],
-        )
-        .await
-        .map_err(map_storage_error)?;
+        let changed = match expected_leaf_id {
+            Some(expected) => conn
+                .execute(
+                    "UPDATE sessions SET active_leaf_id = ?, updated_at = ?
+                     WHERE id = ? AND active_leaf_id = ?",
+                    turso::params![leaf_id, updated_at.as_str(), self.session_id.as_str(), expected],
+                )
+                .await
+                .map_err(map_storage_error)?,
+            None => conn
+                .execute(
+                    "UPDATE sessions SET active_leaf_id = ?, updated_at = ?
+                     WHERE id = ? AND active_leaf_id IS NULL",
+                    turso::params![leaf_id, updated_at.as_str(), self.session_id.as_str()],
+                )
+                .await
+                .map_err(map_storage_error)?,
+        };
+        if changed == 0 {
+            return Err(SessionError::new(
+                SessionErrorCode::Conflict,
+                format!("session {} changed in another process; reload before writing", self.session_id),
+            ));
+        }
         Ok(())
     }
 
@@ -336,9 +359,10 @@ impl TursoSessionStorage {
     /// entire operation and avoids sequence-allocation races.
     async fn persist_txn(&self, entry: &SessionTreeEntry, leaf_id: Option<&str>) -> Result<(), SessionError> {
         let conn = self.connection().await?;
+        let expected_leaf_id = self.index.leaf_id.as_deref();
         with_write_transaction(&conn, || async {
             self.persist_entry(&conn, entry).await?;
-            self.persist_leaf_id(&conn, leaf_id).await?;
+            self.persist_leaf_id(&conn, expected_leaf_id, leaf_id).await?;
             Ok::<(), anyhow::Error>(())
         })
         .await

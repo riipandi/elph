@@ -1,6 +1,8 @@
 # Turso Integration and Multiprocess WAL Audit
 
-**Status:** Hardening implemented for shared multiprocess-WAL opening, connection ownership, serialized transaction cleanup, atomic session pruning, and transactional session deletion. Cross-process stress coverage and optimistic session-tree conflict handling remain follow-up items.
+**Status:** Multiprocess-WAL hardening is implemented for shared opening, connection ownership, serialized transaction cleanup, atomic migration application with SQL checksums, session-leaf compare-and-swap, transactional todo merging, and a real two-process writer test. The project remains on `turso = 0.8.0-pre.4` and uses serialized `BEGIN IMMEDIATE` writes, not MVCC.
+
+Cross-process crash/reopen, checkpoint, schema-refresh, vacuum-exclusion, and unsupported-filesystem tests remain deployment validation work.
 
 **Scope:** `crates/elph-agent`, `crates/coding-agent`, `crates/floppy`, workspace dependency configuration, database opening, migrations, transactions, session persistence, worker coordination, memory/codegraph stores, WAL sidecars, and multiprocess access.
 
@@ -36,15 +38,20 @@ Implemented in the current hardening pass:
 - Added bounded retry when acquiring `BEGIN IMMEDIATE`; commit failures remain terminal and are not blindly replayed.
 - Require rollback to succeed before replaying a transient transaction error; commit failures perform best-effort rollback before returning.
 - Made session physical prune update `active_leaf_id` in the same transaction as deletes and rollups.
+- Added compare-and-swap protection for session `active_leaf_id`; stale independent writers now receive a conflict instead of silently overwriting the pointer.
+- Made migration application and migration-ledger writes atomic and added SHA-256 checksums for migration SQL.
+- Made todo merge read, merge, delete, and reinsert run under one serialized write transaction, preventing the previous cross-transaction lost-update window.
+- Added a real two-process Rust test that opens and writes the same database file with multiprocess WAL enabled.
 - Removed obsolete sidecar-recovery tests.
 - Wrapped the `elph-agent` migration runner in the serialized write helper.
 
 Not yet implemented in this pass:
 
-- A true two-process OS integration test.
-- Session index refresh and semantic conflict handling for concurrent writers.
-- Atomic goal, worker-name, and todo read-modify-write workflows.
-- An exclusive maintenance protocol for in-place `VACUUM`.
+- Crash/reopen, checkpoint, schema-refresh, and vacuum-exclusion integration tests.
+- Runtime filesystem capability detection or a fallback for unsupported distributed filesystems.
+- A shared helper module between `elph-agent` and `floppy`; their standalone APIs still live in separate crates.
+- Explicit commit-outcome/idempotency reporting for failures where the server status is unknown.
+- Database-level uniqueness constraints for every worker-name and goal invariant; the write paths are serialized, but schema-level enforcement is still recommended for defense in depth.
 
 
 ### Shared host database
@@ -293,32 +300,22 @@ The project does not appear to perform platform or filesystem capability checks,
 
 ### P0
 
-- Delete `.tshm` based on WAL mtime.
-- Delete `-wal` based on size while another process may be active.
-- Treat generic open errors as WAL corruption.
-- No true two-process test.
-- Migration startup race with destructive schema DDL.
-- Stale session index when the same session is shared across processes.
+- Crash/reopen, checkpoint, schema-refresh, and vacuum-exclusion behavior is not covered by integration tests.
+- Deployment on unsupported distributed filesystems is not rejected or diagnosed.
+- Session open caches the tree; a process must reload after a `Conflict` rather than retrying the stale object.
 
 ### P1
 
-- Misnamed MVCC transaction helper.
-- Retry does not cover begin and commit phases.
-- Lost update on `active_leaf_id`.
-- Prune updates leaf outside the delete transaction.
-- Goal, worker, and todo read-modify-write races.
-- Inconsistent foreign-key configuration.
-- Connection pool does not limit live connections.
+- Explicit commit-outcome/idempotency reporting is still absent for unknown commit status.
+- Goal and worker invariants should also have database-level uniqueness constraints.
+- The Turso helpers remain duplicated across `elph-agent` and `floppy`.
+- `VACUUM` still needs an exclusive maintenance protocol.
 
 ### P2
 
-- Duplicated Turso helpers with behavioral drift.
-- Migration comments are stale.
-- Migration ledger lacks SQL hashes.
+- Migration comments are stale in some historical sections.
 - FTS fallback relies on message substrings.
-- No filesystem/platform guard.
-- No explicit vacuum maintenance protocol.
-- Cleanup and recovery errors are sometimes swallowed.
+- Structured operation names, process identifiers, and metrics for retry exhaustion, rollback failures, migration waits, and session conflicts remain recommended observability work.
 
 ## P1 hardening status
 

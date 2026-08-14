@@ -384,6 +384,77 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn multiprocess_writers_share_the_same_wal() {
+        if let Ok(path) = std::env::var("ELPH_MULTIPROCESS_WAL_CHILD") {
+            let path = std::path::PathBuf::from(path);
+            let worker = std::env::var("ELPH_MULTIPROCESS_WAL_WORKER").expect("worker id");
+            for i in 0..20 {
+                with_conn(&path, |conn| {
+                    let worker = worker.clone();
+                    async move {
+                        with_write_transaction(&conn, || async {
+                            conn.execute(
+                                "INSERT INTO multiprocess_rows (worker, value) VALUES (?, ?)",
+                                turso::params![worker.as_str(), i],
+                            )
+                            .await?;
+                            Ok::<(), anyhow::Error>(())
+                        })
+                        .await
+                    }
+                })
+                .await
+                .expect("child write");
+            }
+            return;
+        }
+
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let path = tmp.path().join("multiprocess.db");
+        let (_db, conn) = open_connection(&path).await.expect("init");
+        conn.execute(
+            "CREATE TABLE multiprocess_rows (worker TEXT NOT NULL, value INTEGER NOT NULL)",
+            (),
+        )
+        .await
+        .expect("schema");
+        drop(conn);
+        drop(_db);
+
+        let current = std::env::current_exe().expect("test executable");
+        let mut children = Vec::new();
+        for worker in ["a", "b"] {
+            children.push(
+                std::process::Command::new(&current)
+                    .arg("--exact")
+                    .arg("datastore::conn::tests::multiprocess_writers_share_the_same_wal")
+                    .arg("--nocapture")
+                    .env("ELPH_MULTIPROCESS_WAL_CHILD", &path)
+                    .env("ELPH_MULTIPROCESS_WAL_WORKER", worker)
+                    .spawn()
+                    .expect("spawn child"),
+            );
+        }
+        for mut child in children {
+            assert!(child.wait().expect("wait child").success());
+        }
+
+        let (_db, conn) = open_connection(&path).await.expect("reopen");
+        let mut rows = conn
+            .query("SELECT COUNT(*) FROM multiprocess_rows", ())
+            .await
+            .expect("count");
+        let count: i64 = rows
+            .next()
+            .await
+            .expect("row")
+            .expect("count row")
+            .get(0)
+            .expect("value");
+        assert_eq!(count, 40);
+    }
+
+    #[tokio::test]
     async fn concurrent_writers_dont_deadlock() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let path = tmp.path().join("concurrent.db");

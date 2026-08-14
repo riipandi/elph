@@ -1,6 +1,6 @@
 //! Turso-backed session todo persistence.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -96,92 +96,121 @@ impl TodoStore {
         self.list(session_id).await
     }
 
-    /// Merge updates by id (default agent write path).
+    /// Merge updates by id in one serialized transaction.
     pub async fn merge(&self, session_id: &str, updates: Vec<TodoUpdate>) -> Result<Vec<TodoItem>> {
         let updates = normalize_updates(session_id, updates)?;
         validate_updates(&updates)?;
         let now = now_iso_timestamp();
-        let existing = self.list(session_id).await?;
-        let mut by_id: std::collections::HashMap<String, TodoItem> =
-            existing.into_iter().map(|t| (t.id.clone(), t)).collect();
-
-        for update in updates {
-            // Id already resolved by normalize_updates (minted or session-scoped).
-            let id = update
-                .id
-                .clone()
-                .unwrap_or_else(|| create_todo_id_checked(&by_id.keys().cloned().collect()));
-            if let Some(item) = by_id.get_mut(&id) {
-                if let Some(content) = update.content {
-                    item.content = content;
+        self.with_conn(|conn| async move {
+            with_write_transaction(&conn, || async {
+                let mut rows = conn
+                    .query(
+                        &format!(
+                            "SELECT {TODO_COLUMNS} FROM session_todos
+                             WHERE session_id = ?
+                             ORDER BY position ASC, created_at ASC"
+                        ),
+                        turso::params![session_id],
+                    )
+                    .await?;
+                let mut by_id: std::collections::HashMap<String, TodoItem> = HashMap::new();
+                while let Some(row) = rows.next().await? {
+                    let item = row_to_todo(&row)?;
+                    by_id.insert(item.id.clone(), item);
                 }
-                if let Some(status) = update.status {
-                    item.status = status;
-                    item.completed_at = if status == TodoStatus::Completed || status == TodoStatus::Cancelled {
-                        Some(now.clone())
+
+                for update in updates.clone() {
+                    let id = update.id.clone().expect("normalize_updates assigns ids");
+                    if let Some(item) = by_id.get_mut(&id) {
+                        if let Some(content) = update.content {
+                            item.content = content;
+                        }
+                        if let Some(status) = update.status {
+                            item.status = status;
+                            item.completed_at = if matches!(status, TodoStatus::Completed | TodoStatus::Cancelled) {
+                                Some(now.clone())
+                            } else {
+                                None
+                            };
+                        }
+                        item.updated_at = now.clone();
                     } else {
-                        None
-                    };
+                        let status = update.status.unwrap_or(TodoStatus::Pending);
+                        let content = update.content.unwrap_or_else(|| id.clone());
+                        let completed_at = if matches!(status, TodoStatus::Completed | TodoStatus::Cancelled) {
+                            Some(now.clone())
+                        } else {
+                            None
+                        };
+                        let position = by_id.len() as i64;
+                        by_id.insert(
+                            id.clone(),
+                            TodoItem {
+                                id,
+                                session_id: session_id.to_string(),
+                                content,
+                                status,
+                                position,
+                                created_at: now.clone(),
+                                updated_at: now.clone(),
+                                completed_at,
+                            },
+                        );
+                    }
                 }
-                item.updated_at = now.clone();
-            } else {
-                let status = update.status.unwrap_or(TodoStatus::Pending);
-                let content = update.content.clone().unwrap_or_else(|| id.clone());
-                let completed_at = if status == TodoStatus::Completed || status == TodoStatus::Cancelled {
-                    Some(now.clone())
-                } else {
-                    None
-                };
-                by_id.insert(
-                    id.clone(),
-                    TodoItem {
-                        id,
-                        session_id: session_id.to_string(),
-                        content,
-                        status,
-                        position: by_id.len() as i64,
-                        created_at: now.clone(),
-                        updated_at: now.clone(),
-                        completed_at,
-                    },
-                );
-            }
-        }
 
-        // At most one in_progress after merge.
-        let in_progress: Vec<_> = by_id
-            .values()
-            .filter(|t| t.status == TodoStatus::InProgress)
-            .map(|t| t.id.clone())
-            .collect();
-        if in_progress.len() > 1 {
-            // Keep the last updated as in_progress; demote others to pending.
-            let keep = in_progress.last().cloned();
-            for item in by_id.values_mut() {
-                if item.status == TodoStatus::InProgress && Some(item.id.as_str()) != keep.as_deref() {
-                    item.status = TodoStatus::Pending;
-                    item.completed_at = None;
-                    item.updated_at = now.clone();
+                let in_progress: Vec<_> = by_id
+                    .values()
+                    .filter(|item| item.status == TodoStatus::InProgress)
+                    .map(|item| item.id.clone())
+                    .collect();
+                if let Some(keep) = in_progress.last() {
+                    for item in by_id.values_mut() {
+                        if item.status == TodoStatus::InProgress && item.id != *keep {
+                            item.status = TodoStatus::Pending;
+                            item.completed_at = None;
+                            item.updated_at = now.clone();
+                        }
+                    }
                 }
-            }
-        }
 
-        let mut ordered: Vec<TodoItem> = by_id.into_values().collect();
-        ordered.sort_by_key(|t| t.position);
-        for (i, item) in ordered.iter_mut().enumerate() {
-            item.position = i as i64;
-        }
-
-        let replace_items: Vec<TodoUpdate> = ordered
-            .iter()
-            .map(|t| TodoUpdate {
-                id: Some(t.id.clone()),
-                content: Some(t.content.clone()),
-                status: Some(t.status),
-                ..Default::default()
+                let mut ordered: Vec<_> = by_id.into_values().collect();
+                ordered.sort_by_key(|item| item.position);
+                conn.execute("DELETE FROM session_todos WHERE session_id = ?", turso::params![session_id])
+                    .await?;
+                let mut reserved = HashSet::new();
+                for (position, item) in ordered.iter().enumerate() {
+                    insert_todo(
+                        &conn,
+                        session_id,
+                        &TodoUpdate {
+                            id: Some(item.id.clone()),
+                            content: Some(item.content.clone()),
+                            status: Some(item.status),
+                            reason: None,
+                        },
+                        position as i64,
+                        &now,
+                        &mut reserved,
+                    )
+                    .await?;
+                }
+                Ok::<(), anyhow::Error>(())
             })
-            .collect();
-        self.replace(session_id, replace_items).await
+            .await?;
+            let mut rows = conn
+                .query(
+                    &format!("SELECT {TODO_COLUMNS} FROM session_todos WHERE session_id = ? ORDER BY position ASC"),
+                    turso::params![session_id],
+                )
+                .await?;
+            let mut result = Vec::new();
+            while let Some(row) = rows.next().await? {
+                result.push(row_to_todo(&row)?);
+            }
+            Ok(result)
+        })
+        .await
     }
 
     pub async fn clear(&self, session_id: &str) -> Result<()> {
