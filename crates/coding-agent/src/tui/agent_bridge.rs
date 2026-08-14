@@ -629,7 +629,8 @@ impl TranscriptEventApplier {
 
         let indent = subagent_status_indent(agent_path);
         let style = match phase {
-            SubagentUiPhase::Pending | SubagentUiPhase::Running => TranscriptStyle::StatusRunning,
+            SubagentUiPhase::Pending => TranscriptStyle::StatusRunning, // Show as running while pending
+            SubagentUiPhase::Running => TranscriptStyle::StatusRunning,
             SubagentUiPhase::Idle | SubagentUiPhase::Done => TranscriptStyle::StatusSuccess,
             SubagentUiPhase::Error => TranscriptStyle::StatusFailed,
         };

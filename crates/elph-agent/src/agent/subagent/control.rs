@@ -159,38 +159,50 @@ impl AgentControl {
             child_control.set_event_forwarder(Some(forwarder)).await;
         }
 
-        let harness = match spawn_subagent_harness(
-            &bootstrap,
-            config.env.clone(),
-            config.model.clone(),
-            config.models.clone(),
-            config.stream_fn.clone(),
-            config.base_tools.clone(),
-            config.active_tool_names.clone(),
-            &config.root_session_id,
-            &agent_id,
-            &task_name,
-            &agent_path,
-            child_depth,
-            self.limits.clone(),
-            self.registry.clone(),
-            child_control,
-            config.system_prompt.clone(),
+        // Add timeout protection for harness spawn (30 seconds)
+        let harness = match tokio::time::timeout(
+            tokio::time::Duration::from_secs(30),
+            spawn_subagent_harness(
+                &bootstrap,
+                config.env.clone(),
+                config.model.clone(),
+                config.models.clone(),
+                config.stream_fn.clone(),
+                config.base_tools.clone(),
+                config.active_tool_names.clone(),
+                &config.root_session_id,
+                &agent_id,
+                &task_name,
+                &agent_path,
+                child_depth,
+                self.limits.clone(),
+                self.registry.clone(),
+                child_control,
+                config.system_prompt.clone(),
+            )
         )
         .await
         {
-            Ok(h) => h,
-            Err(error) => {
+            Ok(Ok(h)) => h,
+            Ok(Err(error)) => {
                 self.registry.release_path(&agent_path).await;
-                return Err(error);
+                return Err(format!("Failed to spawn subagent harness: {error}"));
+            }
+            Err(_) => {
+                self.registry.release_path(&agent_path).await;
+                return Err("Subagent spawn timed out after 30 seconds".to_string());
             }
         };
 
         let id = harness.info().id.clone();
         let harness_for_forwarding = harness.clone();
+        
+        // Insert with Pending status first, then transition to Running when AgentStart fires
+        let mut info = harness.info().clone();
+        info.status = SubagentStatus::Pending;
         let record = SubagentRecord {
-            info: harness.info().clone(),
-            harness,
+            info,
+            harness: harness.clone(),
         };
         self.registry.insert(record).await;
 
@@ -201,7 +213,23 @@ impl AgentControl {
         }
 
         if let Some(text) = message {
-            self.followup_task(&id, text).await?;
+            // Add timeout protection for initial followup task (60 seconds)
+            match tokio::time::timeout(
+                tokio::time::Duration::from_secs(60),
+                self.followup_task(&id, text)
+            ).await {
+                Ok(Ok(())) => {},
+                Ok(Err(e)) => {
+                    log::error!("Initial subagent followup failed: {}", e);
+                    self.registry.set_status(&id, SubagentStatus::Error).await;
+                    return Err(format!("Initial subagent task failed: {e}"));
+                }
+                Err(_) => {
+                    log::error!("Initial subagent followup timed out after 60 seconds");
+                    self.registry.set_status(&id, SubagentStatus::Error).await;
+                    return Err("Initial subagent task timed out after 60 seconds".to_string());
+                }
+            }
         }
 
         Ok(id)
@@ -344,6 +372,17 @@ impl AgentControl {
             let id = record.info.id.clone();
             let _ = record.harness.harness().cancel_active_run().await;
             self.registry.set_status(&id, SubagentStatus::Error).await;
+        }
+    }
+
+    /// Health check: mark subagents stuck in Pending state for too long as Error.
+    /// This prevents infinite spinner when AgentStart never fires.
+    pub async fn health_check_stuck_pending(&self, timeout_secs: u64) {
+        let timeout = std::time::Duration::from_secs(timeout_secs);
+        let stuck_agents = self.registry.stuck_pending_agents(timeout).await;
+        for agent_id in stuck_agents {
+            log::warn!("Subagent {} stuck in Pending state for {:?}, marking as Error", agent_id, timeout);
+            self.registry.set_status(&agent_id, SubagentStatus::Error).await;
         }
     }
 }

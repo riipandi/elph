@@ -84,7 +84,10 @@ pub fn subagent_status_indent(agent_path: &str) -> u16 {
 /// is kept for legacy status rows (non-tree startup/mcp status lines).
 #[cfg_attr(not(test), allow(dead_code))]
 pub fn format_subagent_status_detail(action: &str, phase: SubagentUiPhase) -> String {
-    let phase_word = phase.as_word();
+    let phase_word = match phase {
+        SubagentUiPhase::Pending => "starting",
+        _ => phase.as_word(),
+    };
     let action = subagent_action_label(action);
     if action.is_empty() {
         phase_word.to_string()

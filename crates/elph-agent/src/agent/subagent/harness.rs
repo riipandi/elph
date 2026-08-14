@@ -260,6 +260,7 @@ pub async fn spawn_subagent_harness(
             finished_at_ms: None,
             turns: 0,
         },
+        created_at_ms: Some(now_ms()),
     };
 
     if let Some(dir) = &output_dir {

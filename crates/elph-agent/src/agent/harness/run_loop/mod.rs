@@ -41,6 +41,8 @@ where
             .journal_queue_consume(crate::session::durability::QueueKind::FollowUp, follow_ids, None)
             .await;
         let control = self.shared.agent_control.lock().await.clone();
+        // Run health check before aborting to clean up stuck agents
+        control.health_check_stuck_pending(120).await; // 2 minute timeout for stuck pending
         control.abort_all_running().await;
         self.cancel_active_run().await?;
 

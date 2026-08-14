@@ -35,7 +35,7 @@ impl SubagentUiPhase {
     /// Plain-language status word for a11y (not color-only).
     pub fn as_word(self) -> &'static str {
         match self {
-            Self::Pending => "pending",
+            Self::Pending => "starting",
             Self::Running => "running",
             Self::Idle => "idle",
             Self::Error => "error",

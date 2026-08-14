@@ -109,6 +109,7 @@ impl CodingAgentSession {
 
                 match event {
                     AgentEvent::AgentStart => {
+                        // Transition from Pending to Running when the agent actually starts
                         let _ = ui_tx.send(AgentUiEvent::SubagentStatus {
                             agent_id: info.id.clone(),
                             agent_path: info.agent_path.clone(),
