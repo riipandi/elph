@@ -19,9 +19,10 @@ pub const DEMO_MULTI_OPTION_COUNT: usize = 4;
 pub fn sample_todos() -> Vec<DialogTodoItem> {
     vec![
         DialogTodoItem::new("Audit dialog_shell spacing", DialogTodoStatus::Done),
-        DialogTodoItem::new("Wire slash demo commands", DialogTodoStatus::Pending)
+        DialogTodoItem::new("Wire slash demo commands", DialogTodoStatus::InProgress)
             .with_detail("Palette entries for each TUI preset"),
-        DialogTodoItem::new("Integrate with elph shell", DialogTodoStatus::Skipped),
+        DialogTodoItem::new("Integrate with elph shell", DialogTodoStatus::Pending),
+        DialogTodoItem::new("Add interactive demo", DialogTodoStatus::Skipped),
     ]
 }
 

@@ -8,6 +8,7 @@ use iocraft::prelude::*;
 pub fn todo_row_prefix(status: DialogTodoStatus) -> &'static str {
     match status {
         DialogTodoStatus::Pending => "☐",
+        DialogTodoStatus::InProgress => "◐",
         DialogTodoStatus::Done => "☑",
         DialogTodoStatus::Skipped => "⊘",
     }
@@ -25,6 +26,7 @@ pub struct DialogTodoListContentProps {
     pub items: Vec<DialogTodoItem>,
     pub done_color: Color,
     pub pending_color: Color,
+    pub in_progress_color: Color,
     pub skipped_color: Color,
     pub detail_color: Color,
     pub theme: Option<UiTheme>,
@@ -38,6 +40,7 @@ impl Default for DialogTodoListContentProps {
             items: Vec::new(),
             done_color: theme.success,
             pending_color: theme.text_secondary,
+            in_progress_color: theme.warning,
             skipped_color: theme.text_muted,
             detail_color: theme.text_hint,
             theme: None,
@@ -59,6 +62,7 @@ pub fn DialogTodoListContent(props: &DialogTodoListContentProps, hooks: Hooks) -
                 DialogTodoStatus::Done => props.done_color,
                 DialogTodoStatus::Skipped => props.skipped_color,
                 DialogTodoStatus::Pending => props.pending_color,
+                DialogTodoStatus::InProgress => props.in_progress_color,
             };
             let mut elements: Vec<AnyElement<'static>> = vec![
                 element! {
@@ -107,6 +111,7 @@ mod tests {
     #[test]
     fn prefixes_reflect_status() {
         assert_eq!(todo_row_prefix(DialogTodoStatus::Pending), "☐");
+        assert_eq!(todo_row_prefix(DialogTodoStatus::InProgress), "◐");
         assert_eq!(todo_row_prefix(DialogTodoStatus::Done), "☑");
         assert_eq!(todo_row_prefix(DialogTodoStatus::Skipped), "⊘");
     }
