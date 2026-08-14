@@ -160,9 +160,10 @@ enum MatchResult {
 }
 
 /// Robust multi-strategy finder:
-/// 1. Exact string match
+/// 1. Exact substring match
 /// 2. Line-ending normalized match (CRLF vs LF)
-/// 3. Line-by-line trimmed block match
+/// 3. Trimmed line-by-line block match (exact non-empty trimmed lines sequence)
+/// 4. Normalized whitespace block match (collapsing internal whitespace on lines)
 fn find_match(content: &str, pattern: &str) -> MatchResult {
     // 1. Exact match
     let exact_matches: Vec<usize> = content.match_indices(pattern).map(|(i, _)| i).collect();
@@ -180,7 +181,6 @@ fn find_match(content: &str, pattern: &str) -> MatchResult {
         let content_lf = content.replace("\r\n", "\n");
         let lf_matches: Vec<usize> = content_lf.match_indices(&pattern_lf).map(|(i, _)| i).collect();
         if lf_matches.len() == 1 {
-            // Map byte index from LF string back to original content
             if let Some((start, end)) = map_lf_range_to_orig(content, lf_matches[0], pattern_lf.len()) {
                 return MatchResult::Unique(start, end);
             }
@@ -190,66 +190,56 @@ fn find_match(content: &str, pattern: &str) -> MatchResult {
         }
     }
 
-    // 3. Line-trimmed block match (matches multi-line code where line indentation may slightly differ)
-    let pattern_lines: Vec<&str> = pattern.lines().map(str::trim).filter(|l| !l.is_empty()).collect();
-    if pattern_lines.len() >= 2 {
-        let content_lines: Vec<(usize, &str)> = content
-            .lines()
-            .enumerate()
-            .map(|(i, l)| (i, l.trim()))
-            .filter(|(_, l)| !l.is_empty())
-            .collect();
+    // 3. Multi-line trimmed block matching
+    let content_lines: Vec<&str> = content.split_inclusive('\n').collect();
+    let pattern_lines_raw: Vec<&str> = pattern.lines().collect();
 
-        let mut matched_starts = Vec::new();
-        for window in content_lines.windows(pattern_lines.len()) {
-            let matches = window
-                .iter()
-                .zip(&pattern_lines)
-                .all(|((_, c_line), p_line)| c_line == p_line);
-            if matches {
-                matched_starts.push((window[0].0, window.last().unwrap().0));
+    // Strip leading/trailing empty lines from pattern for matching anchor
+    let p_start = pattern_lines_raw.iter().position(|l| !l.trim().is_empty()).unwrap_or(0);
+    let p_end = pattern_lines_raw.iter().rposition(|l| !l.trim().is_empty()).map(|idx| idx + 1).unwrap_or(pattern_lines_raw.len());
+
+    let target_lines: Vec<&str> = pattern_lines_raw[p_start..p_end].to_vec();
+    if !target_lines.is_empty() {
+        let mut matched_windows: Vec<(usize, usize)> = Vec::new();
+
+        if content_lines.len() >= target_lines.len() {
+            for start_idx in 0..=(content_lines.len() - target_lines.len()) {
+                let end_idx = start_idx + target_lines.len();
+                let candidate_slice = &content_lines[start_idx..end_idx];
+
+                // Check trimmed equality line by line
+                let mut matched = true;
+                for (c_line, p_line) in candidate_slice.iter().zip(&target_lines) {
+                    let c_trim = c_line.trim();
+                    let p_trim = p_line.trim();
+                    if c_trim != p_trim {
+                        matched = false;
+                        break;
+                    }
+                }
+
+                if matched {
+                    matched_windows.push((start_idx, end_idx));
+                }
             }
         }
 
-        if matched_starts.len() == 1 {
-            let (start_line_idx, end_line_idx) = matched_starts[0];
-            let mut current_line = 0;
-            let mut byte_start = None;
-            let mut byte_end = None;
+        if matched_windows.len() == 1 {
+            let (start_line_idx, end_line_idx) = matched_windows[0];
+            let start_offset: usize = content_lines[..start_line_idx].iter().map(|l| l.len()).sum();
+            let mut end_offset: usize = content_lines[..end_line_idx].iter().map(|l| l.len()).sum();
 
-            for (idx, line) in content.split_inclusive('\n').enumerate() {
-                if idx == start_line_idx {
-                    byte_start = Some(content[..content.len() - content.split_inclusive('\n').skip(idx).map(|s| s.len()).sum::<usize>()].len());
+            // If the pattern doesn't end with a newline, trim the matched chunk's trailing newline
+            if !pattern.ends_with('\n') {
+                while end_offset > start_offset && (content.as_bytes()[end_offset - 1] == b'\n' || content.as_bytes()[end_offset - 1] == b'\r') {
+                    end_offset -= 1;
                 }
-                if idx == end_line_idx {
-                    let before = content.split_inclusive('\n').take(idx + 1).map(|s| s.len()).sum::<usize>();
-                    // strip trailing newline if pattern did not end with newline
-                    let line_len = if !pattern.ends_with('\n') && line.ends_with('\n') {
-                        if line.ends_with("\r\n") { line.len() - 2 } else { line.len() - 1 }
-                    } else {
-                        line.len()
-                    };
-                    let start_of_this_line = before - line.len();
-                    byte_end = Some(start_of_this_line + line_len);
-                    break;
-                }
-                current_line += 1;
             }
-            let _ = current_line;
 
-            // Recalculate cleanly
-            let lines: Vec<&str> = content.split_inclusive('\n').collect();
-            if start_line_idx < lines.len() && end_line_idx < lines.len() {
-                let start_offset: usize = lines[..start_line_idx].iter().map(|l| l.len()).sum();
-                let end_offset: usize = lines[..=end_line_idx].iter().map(|l| l.len()).sum();
-                let mut matched_slice = &content[start_offset..end_offset];
-                if !pattern.ends_with('\n') {
-                    matched_slice = matched_slice.trim_end_matches(['\r', '\n']);
-                }
-                return MatchResult::Unique(start_offset, start_offset + matched_slice.len());
-            }
-        } else if matched_starts.len() > 1 {
-            return MatchResult::Multiple(matched_starts.len());
+            return MatchResult::Unique(start_offset, end_offset);
+        }
+        if matched_windows.len() > 1 {
+            return MatchResult::Multiple(matched_windows.len());
         }
     }
 
@@ -687,5 +677,30 @@ mod tests {
         let written = read_file_text(&env, "trim.rs", None).await.expect("read back");
         assert!(written.contains("let sum = 3;"));
         assert!(!written.contains("let a = 1;"));
+    }
+
+    #[tokio::test]
+    async fn edit_handles_multiline_with_empty_lines() {
+        let temp = TempDir::new().expect("temp dir");
+        let env = std::sync::Arc::new(LocalExecutionEnv::new(temp.path()));
+        let original = "header\n\n\nfunc main() {\n    return 0\n}\n\nfooter\n";
+        FileSystem::write_file(env.as_ref(), "empty_lines.go", original.as_bytes(), None)
+            .await
+            .expect("seed file");
+
+        let old = "func main() {\n    return 0\n}";
+        let new = "func main() {\n    return 1\n}";
+
+        let result = execute_edit(
+            env.clone(),
+            serde_json::json!({ "path": "empty_lines.go", "old_string": old, "new_string": new }),
+            None,
+            None,
+        )
+        .await;
+        assert!(result.is_ok(), "multiline match around empty lines must succeed: {result:?}");
+
+        let written = read_file_text(&env, "empty_lines.go", None).await.expect("read back");
+        assert_eq!(written, "header\n\n\nfunc main() {\n    return 1\n}\n\nfooter\n");
     }
 }
