@@ -177,23 +177,23 @@ impl GoalStore {
         let Some(goal) = self.get_active_goal(session_id).await? else {
             bail!("no active goal for this session");
         };
-
-        let completed_at = if status.is_terminal() {
-            Some(crate::messages::now_iso_timestamp())
-        } else {
-            None
-        };
-
+        let completed_at = status.is_terminal().then(crate::messages::now_iso_timestamp);
         self.with_conn(|conn| async move {
-            conn.execute(
-                "UPDATE goals SET status = ?, completed_at = ? WHERE id = ?",
-                turso::params![status.as_str(), completed_at, goal.id.as_str()],
-            )
-            .await?;
-            Ok(())
+            with_write_transaction(&conn, || async {
+                let changed = conn
+                    .execute(
+                        "UPDATE goals SET status = ?, completed_at = ? WHERE id = ? AND status = 'active'",
+                        turso::params![status.as_str(), completed_at.clone(), goal.id.as_str()],
+                    )
+                    .await?;
+                if changed == 0 {
+                    bail!("goal was changed by another process");
+                }
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
         })
         .await?;
-
         self.get_latest_goal(session_id)
             .await?
             .context("goal updated but not found")
@@ -217,7 +217,7 @@ impl GoalStore {
         self.with_conn(|conn| async move {
             conn.execute(
                 "UPDATE goals SET status = ?, completed_at = ? WHERE id = ?",
-                turso::params![status.as_str(), completed_at, goal.id.as_str()],
+                turso::params![status.as_str(), completed_at.clone(), goal.id.as_str()],
             )
             .await?;
             Ok(())
@@ -373,22 +373,29 @@ impl GoalStore {
 
         let id = goal.id.clone();
         self.with_conn(|conn| async move {
-            conn.execute(
-                "UPDATE goals
-                 SET tokens_used = ?, turns_used = ?, wall_clock_ms = ?,
-                     status = ?, completed_at = COALESCE(?, completed_at)
-                 WHERE id = ?",
-                turso::params![
-                    new_tokens,
-                    new_turns,
-                    new_wall,
-                    new_status.as_str(),
-                    completed_at,
-                    id.as_str(),
-                ],
-            )
-            .await?;
-            Ok(())
+            with_write_transaction(&conn, || async {
+                let changed = conn
+                    .execute(
+                        "UPDATE goals
+                         SET tokens_used = ?, turns_used = ?, wall_clock_ms = ?,
+                             status = ?, completed_at = COALESCE(?, completed_at)
+                         WHERE id = ? AND status = 'active'",
+                        turso::params![
+                            new_tokens,
+                            new_turns,
+                            new_wall,
+                            new_status.as_str(),
+                            completed_at.clone(),
+                            id.as_str(),
+                        ],
+                    )
+                    .await?;
+                if changed == 0 {
+                    bail!("goal was changed or completed by another process");
+                }
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
         })
         .await?;
 
