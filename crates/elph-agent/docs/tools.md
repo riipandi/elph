@@ -227,13 +227,7 @@ Replace an exact substring in a file. `old_string` must occur exactly once.
 | `old_string` | string | yes      | Text to replace  |
 | `new_string` | string | yes      | Replacement text |
 
-The edit is applied in memory, written to disk, then **re-read from disk and compared** to the
-intended result. A successful result therefore means the change actually persisted. The tool
-aborts (without touching the file) if `new_string` equals `old_string` (a no-op), if the edit
-would leave a standalone `old_string` **outside** the replaced region (the only allowed overlap
-is an `old_string` that stays inside `new_string`, e.g. appending a tag right after its own
-closing tag), if the file changed between the initial read and the write (TOCTOU — another tool
-or external editor modified it), or if the on-disk content does not match after the write.
+The edit reads the file, verifies that `old_string` appears exactly once, and replaces it with `new_string`. If `old_string` is not found, a diagnostic hint points out possible whitespace differences or the nearest matching line. The tool aborts if `new_string` equals `old_string` (a no-op) or if `old_string` appears multiple times (requiring more surrounding context).
 
 #### `write_file`
 

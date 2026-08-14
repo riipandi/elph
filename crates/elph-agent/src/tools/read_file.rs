@@ -110,7 +110,14 @@ async fn execute_read(
     let batch_mode = requests.len() > 1;
 
     for (i, request) in requests.iter().enumerate() {
-        let absolute = resolve_path(&env, &request.path, signal.as_ref()).await?;
+        let absolute = match resolve_path(&env, &request.path, signal.as_ref()).await {
+            Ok(p) => p,
+            Err(e) => {
+                all_outputs.push(format!("[{}] Error: {}", request.path, e));
+                continue;
+            }
+        };
+
         if is_probably_image(&absolute) {
             all_outputs.push(format!("[{}] Read image file (content omitted)", request.path));
             continue;
@@ -133,10 +140,21 @@ async fn execute_read(
 
         let ranged = request.offset.is_some() || request.limit.is_some();
         let (body, meta) = if ranged {
-            // Stream only the requested window — O(offset+limit) I/O, not full file.
-            read_line_window(&absolute, request.offset, request.limit)?
+            match read_line_window(&absolute, request.offset, request.limit) {
+                Ok(res) => res,
+                Err(e) => {
+                    all_outputs.push(format!("[{}] Error: {}", request.path, e));
+                    continue;
+                }
+            }
         } else {
-            let content = read_file_text(&env, &absolute, signal.as_ref()).await?;
+            let content = match read_file_text(&env, &absolute, signal.as_ref()).await {
+                Ok(c) => c,
+                Err(e) => {
+                    all_outputs.push(format!("[{}] Error: {}", request.path, e));
+                    continue;
+                }
+            };
             let total = content.lines().count();
             (
                 content,
@@ -149,8 +167,7 @@ async fn execute_read(
             )
         };
 
-        // A ranged read hashes only its returned window. Only expose hashes for
-        // complete reads so edit_file.expected_hash always covers the full file.
+        // A ranged read hashes only its returned window. Expose hashes for complete reads.
         if !ranged {
             all_hashes.push(json!({
                 "path": request.path,
@@ -262,6 +279,18 @@ fn read_line_window(
         selected.push('\n');
         taken += 1;
         end_line = total;
+    }
+
+    if total == 0 {
+        return Ok((
+            String::new(),
+            ReadWindowMeta {
+                start_line: 1,
+                end_line: 0,
+                total_lines: 0,
+                truncated_by_eof: true,
+            },
+        ));
     }
 
     if total < start {
