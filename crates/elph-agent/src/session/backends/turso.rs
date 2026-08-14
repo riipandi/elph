@@ -332,10 +332,9 @@ impl TursoSessionStorage {
     }
 
     /// Open one connection and persist `entry` + the new `leaf_id` inside a single
-    /// MVCC transaction with automatic retry on conflicts. Using one connection
-    /// per call (instead of one per write) avoids re-opening the multiprocess-WAL
-    /// database on every append and removes the sequence-allocation race under
-    /// concurrent, multi-process writers.
+    /// serialized WAL transaction with automatic retry on lock contention.
+    /// Using one connection per call keeps the database owner alive through the
+    /// entire operation and avoids sequence-allocation races.
     async fn persist_txn(&self, entry: &SessionTreeEntry, leaf_id: Option<&str>) -> Result<(), SessionError> {
         let conn = self.connection().await?;
         with_write_transaction(&conn, || async {
@@ -637,11 +636,10 @@ impl SessionStorage for TursoSessionStorage {
         }
 
         let conn = self.connection().await?;
-        let deleted = with_write_transaction(&conn, || async {
+        let (deleted, leaf_id) = with_write_transaction(&conn, || async {
             let mut deleted = 0usize;
             let mut freed_bytes: i64 = 0;
             for id in &to_delete {
-                // Sum payload_bytes for rollup before delete.
                 let mut rows = conn
                     .query(
                         "SELECT payload_bytes FROM session_entries WHERE session_id = ? AND id = ?",
@@ -663,39 +661,39 @@ impl SessionStorage for TursoSessionStorage {
                 .map_err(map_storage_error)?;
                 deleted += 1;
             }
+            let remaining: Vec<SessionTreeEntry> = self
+                .index
+                .entries
+                .iter()
+                .filter(|e| keep.contains(e.id()))
+                .cloned()
+                .collect();
+            let leaf = self.index.leaf_id.clone().filter(|id| keep.contains(id.as_str()));
             let updated_at = crate::messages::now_iso_timestamp();
             conn.execute(
                 "UPDATE sessions SET
                     entry_count = MAX(0, entry_count - ?),
                     approx_bytes = MAX(0, approx_bytes - ?),
+                    active_leaf_id = ?,
                     updated_at = ?
                  WHERE id = ?",
                 turso::params![
                     deleted as i64,
                     freed_bytes,
+                    leaf.as_deref(),
                     updated_at.as_str(),
                     self.session_id.as_str()
                 ],
             )
             .await
             .map_err(map_storage_error)?;
-            Ok::<usize, anyhow::Error>(deleted)
+            Ok::<(usize, (Vec<SessionTreeEntry>, Option<String>)), anyhow::Error>((deleted, (remaining, leaf)))
         })
         .await
         .map_err(map_storage_error)?;
 
-        // Rebuild in-memory index from survivors.
-        let remaining: Vec<SessionTreeEntry> = self
-            .index
-            .entries
-            .iter()
-            .filter(|e| keep.contains(e.id()))
-            .cloned()
-            .collect();
-        let leaf = self.index.leaf_id.clone().filter(|id| keep.contains(id.as_str()));
+        let (remaining, leaf) = leaf_id;
         self.index = build_index(remaining, leaf)?;
-        let conn = self.connection().await?;
-        self.persist_leaf_id(&conn, self.index.leaf_id.as_deref()).await?;
         log::info!(
             "session {}: physical_prune deleted {deleted} entries (kept {})",
             self.session_id,

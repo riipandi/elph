@@ -132,11 +132,11 @@ async fn apply_connection_pragmas(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// The closure may be retried after rollback on a transient lock error.
+/// The closure may be retried after a successful rollback on a transient lock error.
 /// Keep it limited to database operations that are safe to replay; perform
 /// external side effects only after this function returns successfully.
 /// Writers are retried when acquiring the write lock or running the closure
-/// encounters a transient lock error. Commit failures are returned because a
+/// encounters a transient lock error. Commit failures are terminal because a
 /// committed transaction must never be replayed blindly.
 pub async fn with_write_transaction<F, T, Fut>(conn: &Connection, f: F) -> Result<T>
 where
@@ -159,11 +159,16 @@ where
 
         match f().await {
             Ok(result) => {
-                conn.execute("COMMIT", ()).await.context("COMMIT failed")?;
+                if let Err(error) = conn.execute("COMMIT", ()).await {
+                    let _ = conn.execute("ROLLBACK", ()).await;
+                    return Err(error).context("COMMIT failed");
+                }
                 return Ok(result);
             }
             Err(error) => {
-                let _ = conn.execute("ROLLBACK", ()).await;
+                if let Err(rollback_error) = conn.execute("ROLLBACK", ()).await {
+                    return Err(error).context(format!("ROLLBACK failed: {rollback_error}"));
+                }
                 if attempt < MAX_TRANSACTION_RETRIES && is_lock_err(&error.to_string()) {
                     tokio::time::sleep(Duration::from_millis(jitter_delay(attempt))).await;
                     attempt += 1;

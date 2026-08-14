@@ -1,6 +1,6 @@
 # Turso Integration and Multiprocess WAL Audit
 
-**Status:** Hardening implemented for the database open/configuration layer. Remaining store-level and cross-process follow-up items are listed below.
+**Status:** Hardening implemented for the database open/configuration layer and session transaction safety. A true two-process OS integration test and store-level conflict handling remain follow-up work.
 
 **Scope:** `crates/elph-agent`, `crates/coding-agent`, `crates/floppy`, workspace dependency configuration, database opening, migrations, transactions, session persistence, worker coordination, memory/codegraph stores, WAL sidecars, and multiprocess access.
 
@@ -34,6 +34,8 @@ Implemented in the current hardening pass:
 - Unified connection configuration so `floppy` also applies `PRAGMA foreign_keys = ON`.
 - Renamed the transaction helper from `with_mvcc_transaction` to `with_write_transaction` and documented the actual serialized `BEGIN IMMEDIATE` model.
 - Added bounded retry when acquiring `BEGIN IMMEDIATE`; commit failures remain terminal and are not blindly replayed.
+- Require rollback to succeed before replaying a transient transaction error; commit failures perform best-effort rollback before returning.
+- Made session physical prune update `active_leaf_id` in the same transaction as deletes and rollups.
 - Removed obsolete sidecar-recovery tests.
 - Wrapped the `elph-agent` migration runner in the serialized write helper.
 
