@@ -14,12 +14,12 @@
         "maxTokens": 64000,
         "name": "agnes-2.0-flash",
         "provider": "nara-router",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -40,12 +40,12 @@
         "maxTokens": 64000,
         "name": "agnes-2.5-flash",
         "provider": "nara-router",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -66,12 +66,12 @@
         "maxTokens": 64000,
         "name": "agnes-2.5-pro",
         "provider": "nara-router",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -280,12 +280,12 @@
         "maxTokens": 64000,
         "name": "deepseek-v4-flash-alibaba",
         "provider": "nara-router",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -386,12 +386,12 @@
         "maxTokens": 64000,
         "name": "deepseek-v4-pro-alibaba",
         "provider": "nara-router",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -446,8 +446,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "gpt-5.4": {
@@ -657,13 +657,13 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "kimi-k2.7-code-alibaba": {
@@ -681,12 +681,12 @@
         "maxTokens": 64000,
         "name": "kimi-k2.7-code-alibaba",
         "provider": "nara-router",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -734,12 +734,12 @@
         "maxTokens": 64000,
         "name": "laguna-s-2.1",
         "provider": "nara-router",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -817,10 +817,10 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -898,10 +898,10 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -922,12 +922,12 @@
         "maxTokens": 64000,
         "name": "minimax-m3-promo",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -1003,10 +1003,10 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -1034,9 +1034,9 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": "minimal",
+            "minimal": null,
             "off": null,
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "muse-spark-1.2-contributor": {
@@ -1115,8 +1115,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen3.7-flash-alibaba": {
@@ -1141,8 +1141,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen3.7-max": {
@@ -1163,13 +1163,13 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen3.7-max-alibaba": {
@@ -1187,15 +1187,15 @@
         "maxTokens": 64000,
         "name": "qwen3.7-max-alibaba",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen3.7-plus": {
@@ -1221,8 +1221,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen3.7-plus-alibaba": {
@@ -1247,8 +1247,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen3.8-max": {
@@ -1269,12 +1269,12 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
+            "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -1293,15 +1293,15 @@
         "maxTokens": 64000,
         "name": "qwen3.8-max-alibaba",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "stepfun-3.7-flash": {
@@ -1345,12 +1345,12 @@
         "maxTokens": 64000,
         "name": "tencent-hy3-free",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null

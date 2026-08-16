@@ -14,6 +14,7 @@ pub fn from_models_dev(
     live_efforts: Option<&[String]>,
     rich: Option<&Value>,
     aimd_reasoning: Option<bool>,
+    models_dev_fallback: Option<&super::models_dev::ModelsDevData>,
 ) -> Value {
     let name = mdev
         .get("name")
@@ -47,7 +48,15 @@ pub fn from_models_dev(
         .filter(|s| !s.is_empty())
         .unwrap_or(provider.default_base_url)
         .to_string();
-    let thinking = build_thinking_level_map(provider.id, model_id, reasoning, Some(mdev), previous, live_efforts);
+    let thinking = build_thinking_level_map(
+        provider.id,
+        model_id,
+        reasoning,
+        Some(mdev),
+        previous,
+        live_efforts,
+        models_dev_fallback,
+    );
 
     let (description, knowledge_cutoff, release_date) = extract_meta(Some(mdev), rich);
 
@@ -88,6 +97,7 @@ pub fn enrich_existing(
     live_efforts: Option<&[String]>,
     rich: Option<&Value>,
     aimd_reasoning: Option<bool>,
+    models_dev_fallback: Option<&super::models_dev::ModelsDevData>,
 ) -> Value {
     let mut entry = previous.clone();
     if !entry.is_object() {
@@ -107,9 +117,21 @@ pub fn enrich_existing(
 
     // models.dev is authoritative for the reasoning flag; ai-model-directory only
     // fills it when models.dev (and the previous catalog) have no opinion.
+    // For gateway-preserved IDs with no direct models.dev entry, fall back to a
+    // keyword search across all providers to recover the reasoning flag from the
+    // underlying family model (e.g. tencent-hy3-free → tencent/hy3).
     let mdev_reasoning = mdev.and_then(|m| m.get("reasoning").and_then(|v| v.as_bool()));
+    let prev_reasoning = obj.get("reasoning").and_then(|v| v.as_bool());
+    let fallback_reasoning = models_dev_fallback
+        .map(|dev| {
+            let kw = super::thinking_map::extract_family_keyword(model_id);
+            dev.find_model_by_keyword(&kw)
+                .and_then(|m| m.get("reasoning").and_then(|v| v.as_bool()))
+        })
+        .flatten();
     let reasoning = mdev_reasoning
-        .or_else(|| obj.get("reasoning").and_then(|v| v.as_bool()))
+        .or(fallback_reasoning)
+        .or(prev_reasoning)
         .or(aimd_reasoning)
         .unwrap_or(false);
     obj.insert("reasoning".into(), json!(reasoning));
@@ -136,7 +158,15 @@ pub fn enrich_existing(
         obj.insert("cost".into(), zero_cost());
     }
 
-    let thinking = build_thinking_level_map(provider.id, model_id, reasoning, mdev, Some(previous), live_efforts);
+    let thinking = build_thinking_level_map(
+        provider.id,
+        model_id,
+        reasoning,
+        mdev,
+        Some(previous),
+        live_efforts,
+        models_dev_fallback,
+    );
     obj.insert("thinkingLevelMap".into(), thinking);
 
     // Enrich with metadata-complete fields from the rich (models.json/catalog.json) index.

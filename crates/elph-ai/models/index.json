@@ -172,7 +172,7 @@
     {
         "providerId": "openrouter",
         "rustMod": "openrouter",
-        "count": 413
+        "count": 414
     },
     {
         "providerId": "qwen-token-plan",

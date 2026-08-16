@@ -947,11 +947,11 @@
         "reasoning": true,
         "releaseDate": "2026-04-02",
         "thinkingLevelMap": {
-            "high": "HIGH",
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
-            "minimal": "MINIMAL",
+            "minimal": null,
             "off": null,
             "xhigh": null
         }
@@ -976,11 +976,11 @@
         "reasoning": true,
         "releaseDate": "2026-04-02",
         "thinkingLevelMap": {
-            "high": "HIGH",
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
-            "minimal": "MINIMAL",
+            "minimal": null,
             "off": null,
             "xhigh": null
         }

@@ -692,11 +692,11 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
+            "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "deepseek.v3-v1:0": {
@@ -1518,9 +1518,9 @@
         "reasoning": false,
         "releaseDate": "",
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -2313,11 +2313,11 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
+            "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "moonshotai.kimi-k2.5": {
@@ -2345,11 +2345,11 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
+            "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "nvidia.nemotron-nano-12b-v2": {
@@ -2409,8 +2409,8 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
-            "medium": "medium",
+            "max": null,
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -2473,8 +2473,8 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
-            "medium": "medium",
+            "max": null,
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -2889,11 +2889,11 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
+            "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen.qwen3-coder-30b-a3b-v1:0": {
@@ -2985,11 +2985,11 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
+            "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen.qwen3-next-80b-a3b": {
@@ -3415,11 +3415,11 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
+            "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "us.meta.llama4-maverick-17b-instruct-v1:0": {
@@ -3595,11 +3595,11 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
+            "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai.glm-4.7-flash": {
@@ -3627,11 +3627,11 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
+            "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai.glm-5": {
@@ -3659,11 +3659,11 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
+            "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     }
 }

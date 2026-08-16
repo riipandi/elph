@@ -250,8 +250,8 @@
         "reasoning": true,
         "releaseDate": "",
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
             "medium": null,
             "minimal": null,
@@ -290,8 +290,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "accounts/fireworks/models/kimi-k2p7-code": {
@@ -325,8 +325,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "accounts/fireworks/models/kimi-k3": {
@@ -483,8 +483,8 @@
         "reasoning": true,
         "releaseDate": "",
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
             "medium": null,
             "minimal": null,
@@ -512,8 +512,8 @@
         "reasoning": true,
         "releaseDate": "",
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
             "medium": null,
             "minimal": null,
@@ -576,13 +576,13 @@
         "reasoning": true,
         "releaseDate": "",
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "accounts/fireworks/routers/glm-5p2-fast": {
@@ -649,8 +649,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "accounts/fireworks/routers/kimi-k2p6-turbo": {
@@ -684,8 +684,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "accounts/fireworks/routers/kimi-k2p7-code-fast": {
@@ -719,8 +719,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "accounts/fireworks/routers/kimi-k3-fast": {

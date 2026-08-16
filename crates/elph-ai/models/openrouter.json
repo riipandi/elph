@@ -438,7 +438,7 @@
         "maxTokens": 64000,
         "name": "anthropic/claude-fable-5:batch",
         "provider": "openrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -495,12 +495,12 @@
         "maxTokens": 64000,
         "name": "anthropic/claude-haiku-4.5:batch",
         "provider": "openrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": "max",
-            "medium": "medium",
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -583,15 +583,15 @@
         "maxTokens": 64000,
         "name": "anthropic/claude-opus-4.1:batch",
         "provider": "openrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
-            "max": "max",
+            "max": null,
             "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "anthropic/claude-opus-4.5": {
@@ -640,15 +640,15 @@
         "maxTokens": 64000,
         "name": "anthropic/claude-opus-4.5:batch",
         "provider": "openrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
-            "max": "max",
+            "max": null,
             "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "anthropic/claude-opus-4.6": {
@@ -697,7 +697,7 @@
         "maxTokens": 64000,
         "name": "anthropic/claude-opus-4.6:batch",
         "provider": "openrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -785,7 +785,7 @@
         "maxTokens": 64000,
         "name": "anthropic/claude-opus-4.7:batch",
         "provider": "openrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -873,7 +873,7 @@
         "maxTokens": 64000,
         "name": "anthropic/claude-opus-4.8:batch",
         "provider": "openrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -963,7 +963,7 @@
         "maxTokens": 64000,
         "name": "anthropic/claude-opus-5:batch",
         "provider": "openrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1292,7 +1292,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -1323,7 +1323,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -1348,10 +1348,10 @@
         "provider": "openrouter",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -1647,10 +1647,10 @@
         "provider": "openrouter",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -1807,8 +1807,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "deepseek/deepseek-r1-0528": {
@@ -1838,8 +1838,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "deepseek/deepseek-r1-distill-llama-70b": {
@@ -1865,8 +1865,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "deepseek/deepseek-v3.1-terminus": {
@@ -1974,10 +1974,10 @@
         },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.012292,
+            "cacheRead": 0.012012,
             "cacheWrite": 0.0,
-            "input": 0.061459999999999994,
-            "output": 0.12291999999999999
+            "input": 0.060059999999999995,
+            "output": 0.12011999999999999
         },
         "description": "Fast DeepSeek V4 lane for economical reasoning, coding, and long-context work",
         "id": "deepseek/deepseek-v4-flash",
@@ -2226,7 +2226,7 @@
         "maxTokens": 64000,
         "name": "google/gemini-2.5-flash-lite:batch",
         "provider": "openrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -2252,7 +2252,7 @@
         "maxTokens": 64000,
         "name": "google/gemini-2.5-flash:batch",
         "provider": "openrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -2373,7 +2373,7 @@
         "maxTokens": 64000,
         "name": "google/gemini-2.5-pro:batch",
         "provider": "openrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -2432,7 +2432,7 @@
         "maxTokens": 64000,
         "name": "google/gemini-3-flash-preview:batch",
         "provider": "openrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2673,7 +2673,7 @@
         "maxTokens": 64000,
         "name": "google/gemini-3.1-flash-lite:batch",
         "provider": "openrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2765,7 +2765,7 @@
         "maxTokens": 64000,
         "name": "google/gemini-3.1-pro-preview:batch",
         "provider": "openrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2857,7 +2857,7 @@
         "maxTokens": 64000,
         "name": "google/gemini-3.5-flash-lite:batch",
         "provider": "openrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2883,7 +2883,7 @@
         "maxTokens": 64000,
         "name": "google/gemini-3.5-flash:batch",
         "provider": "openrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2942,7 +2942,7 @@
         "maxTokens": 64000,
         "name": "google/gemini-3.6-flash:batch",
         "provider": "openrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2997,7 +2997,7 @@
         "maxTokens": 64000,
         "name": "google/gemini-3.7-flash:batch",
         "provider": "openrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3026,9 +3026,9 @@
         "provider": "openrouter",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -3057,9 +3057,9 @@
         "provider": "openrouter",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -3088,9 +3088,9 @@
         "provider": "openrouter",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -3115,9 +3115,9 @@
         "provider": "openrouter",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -3142,9 +3142,9 @@
         "provider": "openrouter",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -3160,15 +3160,15 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.049999999999999996,
+            "cacheRead": 0.05,
             "cacheWrite": 0.0,
-            "input": 0.12,
-            "output": 0.39999999999999997
+            "input": 0.07,
+            "output": 0.33999999999999997
         },
         "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-4-26b-a4b-it",
         "input": ["image", "text", "video"],
-        "maxTokens": 262144,
+        "maxTokens": 16384,
         "name": "Gemma 4 26B A4B IT",
         "provider": "openrouter",
         "reasoning": true,
@@ -3176,8 +3176,8 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3207,8 +3207,8 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3239,8 +3239,8 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3270,8 +3270,8 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3471,10 +3471,10 @@
         "provider": "openrouter",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3502,10 +3502,10 @@
         "provider": "openrouter",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -4209,7 +4209,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -4267,7 +4267,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -4298,7 +4298,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -4329,7 +4329,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -4360,7 +4360,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -4384,10 +4384,10 @@
         "provider": "openrouter",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -5034,8 +5034,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "moonshotai/kimi-k2.5": {
@@ -5067,8 +5067,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "moonshotai/kimi-k2.6": {
@@ -5101,8 +5101,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "moonshotai/kimi-k2.7-code": {
@@ -5134,8 +5134,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "moonshotai/kimi-k2.7-code:batch": {
@@ -5153,7 +5153,7 @@
         "maxTokens": 64000,
         "name": "moonshotai/kimi-k2.7-code:batch",
         "provider": "openrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -5446,7 +5446,7 @@
             "high": "high",
             "low": "low",
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -5477,7 +5477,7 @@
             "high": "high",
             "low": "low",
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -5508,7 +5508,7 @@
             "high": "high",
             "low": "low",
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -5624,7 +5624,7 @@
         "maxTokens": 64000,
         "name": "nvidia/nemotron-3-ultra-550b-a55b:batch",
         "provider": "openrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
@@ -5687,7 +5687,7 @@
             "high": "high",
             "low": "low",
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -5712,8 +5712,8 @@
         "reasoning": true,
         "releaseDate": "2026-08-11",
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
             "medium": null,
             "minimal": null,
@@ -5739,8 +5739,8 @@
         "provider": "openrouter",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
             "medium": null,
             "minimal": null,
@@ -5773,7 +5773,7 @@
             "high": "high",
             "low": "low",
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -5804,7 +5804,7 @@
             "high": "high",
             "low": "low",
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -5944,7 +5944,7 @@
         "maxTokens": 64000,
         "name": "openai/gpt-3.5-turbo:batch",
         "provider": "openrouter",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -6708,7 +6708,7 @@
         "maxTokens": 64000,
         "name": "openai/gpt-5-nano:batch",
         "provider": "openrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -6984,13 +6984,13 @@
         "provider": "openrouter",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "openai/gpt-5.2-codex": {
@@ -7305,7 +7305,7 @@
         "maxTokens": 64000,
         "name": "openai/gpt-5.4-nano:batch",
         "provider": "openrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -8603,12 +8603,12 @@
         "maxTokens": 4096,
         "name": "Auto Router (Beta)",
         "provider": "openrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -8954,10 +8954,10 @@
         "provider": "openrouter",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -9017,10 +9017,10 @@
         "provider": "openrouter",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -9204,8 +9204,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen2.5-vl-72b-instruct": {
@@ -9262,8 +9262,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-235b-a22b": {
@@ -9293,8 +9293,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-235b-a22b-2507": {
@@ -9355,8 +9355,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-30b-a3b": {
@@ -9386,8 +9386,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-30b-a3b-instruct-2507": {
@@ -9448,8 +9448,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-32b": {
@@ -9479,8 +9479,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-8b": {
@@ -9510,8 +9510,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-coder": {
@@ -9727,8 +9727,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-next-80b-a3b-instruct": {
@@ -9789,8 +9789,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-vl-235b-a22b-instruct": {
@@ -9851,8 +9851,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-vl-30b-a3b-instruct": {
@@ -9913,8 +9913,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-vl-32b-instruct": {
@@ -10006,8 +10006,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-122b-a10b": {
@@ -10037,8 +10037,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-27b": {
@@ -10068,8 +10068,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-35b-a3b": {
@@ -10099,8 +10099,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-397b-a17b": {
@@ -10130,8 +10130,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-9b": {
@@ -10161,8 +10161,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-flash-02-23": {
@@ -10192,8 +10192,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-plus-02-15": {
@@ -10223,8 +10223,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-plus-20260420": {
@@ -10254,8 +10254,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.6-27b": {
@@ -10285,8 +10285,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.6-35b-a3b": {
@@ -10316,8 +10316,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.6-flash": {
@@ -10347,8 +10347,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.6-max-preview": {
@@ -10378,8 +10378,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.6-plus": {
@@ -10409,8 +10409,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.7-flash": {
@@ -10440,8 +10440,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.7-max": {
@@ -10471,8 +10471,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.7-plus": {
@@ -10502,8 +10502,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.8-2.4t-a95b": {
@@ -11253,7 +11253,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -11282,7 +11282,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -11587,8 +11587,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "z-ai/glm-4.5-air": {
@@ -11618,8 +11618,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "z-ai/glm-4.5v": {
@@ -11649,8 +11649,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "z-ai/glm-4.6": {
@@ -11680,8 +11680,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "z-ai/glm-4.6v": {
@@ -11711,8 +11711,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "z-ai/glm-4.7": {
@@ -11742,8 +11742,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "z-ai/glm-4.7-flash": {
@@ -11773,8 +11773,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "z-ai/glm-5": {
@@ -11804,8 +11804,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "z-ai/glm-5-turbo": {
@@ -11835,8 +11835,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "z-ai/glm-5.1": {
@@ -11866,8 +11866,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "z-ai/glm-5.2": {
@@ -11927,6 +11927,33 @@
             "xhigh": "xhigh"
         }
     },
+    "z-ai/glm-5.2:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "id": "z-ai/glm-5.2:free",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "GLM-5.2",
+        "provider": "openrouter",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
     "z-ai/glm-5v-turbo": {
         "api": "openai-completions",
         "baseUrl": "https://openrouter.ai/api/v1",
@@ -11954,8 +11981,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "~anthropic/claude-fable-latest": {

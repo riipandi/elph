@@ -22,12 +22,12 @@
         "maxTokens": 65536,
         "name": "Ling 2.6 1T",
         "provider": "ant-ling",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -56,12 +56,12 @@
         "maxTokens": 65536,
         "name": "Ling 2.6 Flash",
         "provider": "ant-ling",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null

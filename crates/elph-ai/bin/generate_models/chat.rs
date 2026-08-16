@@ -103,7 +103,8 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
                         let _live_map: HashMap<String, super::pricing::PriceTriple> = HashMap::new();
                         let rich = models_dev.rich_model(src.id, mid);
                         let aimd_reasoning = aimd_reasoning(&aimd, src.id, mid);
-                        let mut entry = from_models_dev(src, mid, mdev, None, None, rich, aimd_reasoning);
+                        let mut entry =
+                            from_models_dev(src, mid, mdev, None, None, rich, aimd_reasoning, Some(&models_dev));
                         let (i, o, cr, cw, csrc) = resolve_cost(src, mid, &models_dev, &live, &aimd, None);
                         tally_cost(
                             csrc,
@@ -135,11 +136,38 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
                     let rich = models_dev.rich_model(src.id, &mid);
                     let aimd_reasoning = aimd_reasoning(&aimd, src.id, &mid);
                     let mut entry = if let Some(m) = find_model(&models_dev, src.models_dev_keys, &mid) {
-                        enrich_existing(src, &mid, prev_ref, Some(m), live_efforts.as_deref(), rich, aimd_reasoning)
+                        enrich_existing(
+                            src,
+                            &mid,
+                            prev_ref,
+                            Some(m),
+                            live_efforts.as_deref(),
+                            rich,
+                            aimd_reasoning,
+                            Some(&models_dev),
+                        )
                     } else if let Some((_, m)) = find_model_fuzzy(&models_dev, &mid) {
-                        enrich_existing(src, &mid, prev_ref, Some(&m), live_efforts.as_deref(), rich, aimd_reasoning)
+                        enrich_existing(
+                            src,
+                            &mid,
+                            prev_ref,
+                            Some(&m),
+                            live_efforts.as_deref(),
+                            rich,
+                            aimd_reasoning,
+                            Some(&models_dev),
+                        )
                     } else {
-                        enrich_existing(src, &mid, prev_ref, None, live_efforts.as_deref(), rich, aimd_reasoning)
+                        enrich_existing(
+                            src,
+                            &mid,
+                            prev_ref,
+                            None,
+                            live_efforts.as_deref(),
+                            rich,
+                            aimd_reasoning,
+                            Some(&models_dev),
+                        )
                     };
                     let (i, o, cr, cw, csrc) = resolve_cost(src, &mid, &models_dev, &live, &aimd, entry.get("cost"));
                     tally_cost(
@@ -164,7 +192,16 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
                 let live_efforts = live_efforts_for(&live, src.id, mid);
                 let rich = models_dev.rich_model(src.id, mid);
                 let aimd_reasoning = aimd_reasoning(&aimd, src.id, mid);
-                let mut entry = from_models_dev(src, mid, mdev, prev, live_efforts.as_deref(), rich, aimd_reasoning);
+                let mut entry = from_models_dev(
+                    src,
+                    mid,
+                    mdev,
+                    prev,
+                    live_efforts.as_deref(),
+                    rich,
+                    aimd_reasoning,
+                    Some(&models_dev),
+                );
                 let (i, o, cr, cw, csrc) = resolve_cost(src, mid, &models_dev, &live, &aimd, entry.get("cost"));
                 tally_cost(
                     csrc,

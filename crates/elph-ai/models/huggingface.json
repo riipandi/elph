@@ -251,10 +251,10 @@
         "provider": "huggingface",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -468,7 +468,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -498,7 +498,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -528,7 +528,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -558,7 +558,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -588,7 +588,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -805,8 +805,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3-235B-A22B": {
@@ -835,8 +835,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3-235B-A22B-Instruct-2507": {
@@ -892,8 +892,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3-30B-A3B": {
@@ -915,12 +915,12 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": null,
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": "off",
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3-32B": {
@@ -949,8 +949,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3-4B-Instruct-2507": {
@@ -1203,8 +1203,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3-VL-30B-A3B-Instruct": {
@@ -1260,8 +1260,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3.5-27B": {
@@ -1290,8 +1290,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3.5-35B-A3B": {
@@ -1320,8 +1320,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3.5-397B-A17B": {
@@ -1380,8 +1380,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3.6-27B": {
@@ -1410,8 +1410,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3.6-35B-A3B": {
@@ -1440,24 +1440,24 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3.8-2.4T-A95B": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.25,
             "cacheWrite": 2.5,
-            "input": 2.0,
-            "output": 6.0
+            "input": 2.5,
+            "output": 6.25
         },
-        "description": "Open-weight sparse MoE (2.4T total, 95B active), the open-weight twin of Qwen3.8 Max for coding, research, complex reasoning, and agentic workflows",
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "Qwen/Qwen3.8-2.4T-A95B",
         "input": ["text"],
-        "maxTokens": 262144,
+        "maxTokens": 131072,
         "name": "Qwen3.8 2.4T A95B",
         "provider": "huggingface",
         "reasoning": true,
@@ -1486,7 +1486,7 @@
         "maxTokens": 64000,
         "name": "Sao10K/L3-8B-Lunaris-v1",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1596,11 +1596,11 @@
         "maxTokens": 64000,
         "name": "aisingapore/Gemma-SEA-LION-v4-27B-IT",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -1700,7 +1700,7 @@
         "maxTokens": 64000,
         "name": "deepcogito/cogito-671b-v2.1",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1726,7 +1726,7 @@
         "maxTokens": 64000,
         "name": "deepcogito/cogito-671b-v2.1-FP8",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1763,8 +1763,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "deepseek-ai/DeepSeek-R1-0528": {
@@ -1793,8 +1793,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "deepseek-ai/DeepSeek-R1-Distill-Llama-70B": {
@@ -1815,13 +1815,13 @@
         "provider": "huggingface",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "deepseek-ai/DeepSeek-R1-Distill-Llama-8B": {
@@ -1842,13 +1842,13 @@
         "provider": "huggingface",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B": {
@@ -1869,13 +1869,13 @@
         "provider": "huggingface",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B": {
@@ -1896,13 +1896,13 @@
         "provider": "huggingface",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "deepseek-ai/DeepSeek-V3": {
@@ -2202,9 +2202,9 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -2229,9 +2229,9 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -2256,9 +2256,9 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -2283,9 +2283,9 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -2315,8 +2315,8 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -2345,8 +2345,8 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -2370,10 +2370,10 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -2657,8 +2657,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "moonshotai/Kimi-K2.6": {
@@ -2687,8 +2687,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "moonshotai/Kimi-K2.7-Code": {
@@ -2717,8 +2717,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "moonshotai/Kimi-K3": {
@@ -2934,11 +2934,11 @@
         "maxTokens": 64000,
         "name": "pearl-ai/Gemma-4-31B-it-pearl",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -2986,7 +2986,7 @@
         "maxTokens": 64000,
         "name": "prism-ml/Ternary-Bonsai-27B-gguf",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -3178,7 +3178,7 @@
         "maxTokens": 64000,
         "name": "swiss-ai/Apertus-v1.5-8B",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -3264,7 +3264,7 @@
             "high": "high",
             "low": "low",
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3288,10 +3288,10 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3312,15 +3312,15 @@
         "maxTokens": 64000,
         "name": "zai-org/GLM-4-32B-0414",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-4.5": {
@@ -3341,13 +3341,13 @@
         "provider": "huggingface",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-4.5-Air": {
@@ -3376,8 +3376,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-4.5V": {
@@ -3406,8 +3406,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-4.5V-FP8": {
@@ -3425,15 +3425,15 @@
         "maxTokens": 64000,
         "name": "zai-org/GLM-4.5V-FP8",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-4.6": {
@@ -3462,8 +3462,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-4.6-FP8": {
@@ -3481,15 +3481,15 @@
         "maxTokens": 64000,
         "name": "zai-org/GLM-4.6-FP8",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-4.6V": {
@@ -3510,13 +3510,13 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-4.6V-FP8": {
@@ -3534,15 +3534,15 @@
         "maxTokens": 64000,
         "name": "zai-org/GLM-4.6V-FP8",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-4.6V-Flash": {
@@ -3560,15 +3560,15 @@
         "maxTokens": 64000,
         "name": "zai-org/GLM-4.6V-Flash",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-4.7": {
@@ -3597,8 +3597,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-4.7-FP8": {
@@ -3616,15 +3616,15 @@
         "maxTokens": 64000,
         "name": "zai-org/GLM-4.7-FP8",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-4.7-Flash": {
@@ -3653,8 +3653,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-5": {
@@ -3683,8 +3683,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-5.1": {
@@ -3713,8 +3713,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-5.1-FP8": {
@@ -3735,13 +3735,13 @@
         "provider": "huggingface",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-5.2": {
@@ -3770,8 +3770,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-5.2-FP8": {

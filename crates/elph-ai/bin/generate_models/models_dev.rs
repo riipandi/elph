@@ -58,6 +58,25 @@ impl ModelsDevData {
             .values()
             .find(|v| v.get("id").and_then(|i| i.as_str()) == Some(model_id))
     }
+
+    /// Find a models.dev entry by searching all providers' models for a keyword
+    /// match against the model id (case-insensitive). Used as a fallback when
+    /// a gateway-preserved ID like `tencent-hy3-free` has no direct match but
+    /// the underlying family model (e.g. `tencent/hy3`) exists on models.dev.
+    pub fn find_model_by_keyword(&self, keyword: &str) -> Option<Value> {
+        let kw = keyword.to_ascii_lowercase();
+        for (_pkey, prov) in &self.api {
+            if let Some(models) = prov.get("models").and_then(|m| m.as_object()) {
+                for (_mid, m) in models {
+                    let mid_lower = _mid.to_ascii_lowercase();
+                    if mid_lower.contains(&kw) {
+                        return Some(m.clone());
+                    }
+                }
+            }
+        }
+        None
+    }
 }
 
 /// Fetch all three models.dev endpoints (or load offline cache).
