@@ -41,12 +41,12 @@
             "supportsStore": false,
             "thinkingFormat": "deepseek"
         },
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.032664,
+            "cacheRead": 0.04,
             "cacheWrite": 0.0,
-            "input": 0.152432,
-            "output": 0.304864
+            "input": 0.2,
+            "output": 0.4
         },
         "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
         "id": "deepseek-v4-flash-0731",
@@ -61,7 +61,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": "off",
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -98,6 +98,33 @@
             "xhigh": "xhigh"
         }
     },
+    "deepseek-v4-pro-0813": {
+        "api": "openai-completions",
+        "baseUrl": "https://hyper.charm.land/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.0479072,
+            "cacheWrite": 0.0,
+            "input": 1.437216,
+            "output": 4.311648
+        },
+        "description": "DeepSeek V4 Pro snapshot with million-token context and support for thinking and non-thinking modes",
+        "id": "deepseek-v4-pro-0813",
+        "input": ["text"],
+        "maxTokens": 262144,
+        "name": "DeepSeek V4 Pro 0813",
+        "provider": "hyper",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
     "gemma-4-26b-a4b-it": {
         "api": "openai-completions",
         "baseUrl": "https://hyper.charm.land/v1",
@@ -109,15 +136,42 @@
         "contextWindow": 256000,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.058,
-            "input": 0.116,
-            "output": 0.408
+            "cacheWrite": 0.062,
+            "input": 0.124,
+            "output": 0.42
         },
         "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "gemma-4-26b-a4b-it",
         "input": ["text"],
         "maxTokens": 25600,
         "name": "Gemma 4 26B A4B IT",
+        "provider": "hyper",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "glm-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://hyper.charm.land/v1",
+        "contextWindow": 202752,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.38,
+            "input": 0.76,
+            "output": 2.356
+        },
+        "description": "General GLM flagship for coding, analysis, and tool-heavy engineering workflows",
+        "id": "glm-5",
+        "input": ["text"],
+        "maxTokens": 20275,
+        "name": "GLM-5",
         "provider": "hyper",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -207,10 +261,10 @@
         },
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.0152432,
             "cacheWrite": 0.094,
-            "input": 0.188,
-            "output": 0.73
+            "input": 0.16332,
+            "output": 0.65328
         },
         "description": "Open GPT reasoning model for self-hosted agents and controllable deployments",
         "id": "gpt-oss-120b",
@@ -338,9 +392,9 @@
         "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.32664,
-            "cacheWrite": 0.0,
-            "input": 3.2664,
-            "output": 16.332
+            "cacheWrite": 0.3,
+            "input": 3.0,
+            "output": 15.0
         },
         "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
         "id": "kimi-k3",
@@ -370,9 +424,9 @@
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.3033,
-            "input": 0.598,
-            "output": 0.738
+            "cacheWrite": 0.304,
+            "input": 0.608,
+            "output": 0.838
         },
         "description": "Popular open Llama workhorse for multilingual chat, coding, and self-hosting",
         "id": "llama-3.3-70b-instruct",
@@ -434,9 +488,9 @@
         "contextWindow": 262100,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.24,
-            "input": 0.48,
-            "output": 1.8
+            "cacheWrite": 0.213,
+            "input": 0.426,
+            "output": 1.62
         },
         "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
         "id": "minimax-m2.7",
@@ -499,7 +553,7 @@
         "contextWindow": 106000,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.2845,
+            "cacheWrite": 0.2225,
             "input": 0.445,
             "output": 2.145
         },

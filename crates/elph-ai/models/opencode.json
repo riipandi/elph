@@ -247,6 +247,33 @@
             "xhigh": null
         }
     },
+    "gemini-3.7-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.15,
+            "cacheWrite": 0.0,
+            "input": 1.5,
+            "output": 7.5
+        },
+        "description": "High-efficiency Gemini model for agentic workflows, coding, and multimodal reasoning",
+        "id": "gemini-3.7-flash",
+        "input": ["text", "image", "video", "audio", "pdf"],
+        "maxTokens": 65536,
+        "name": "Gemini 3.7 Flash",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "glm-5.1": {
         "api": "openai-completions",
         "baseUrl": "https://opencode.ai/zen/v1",
@@ -340,6 +367,60 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
+        }
+    },
+    "grok-4.6": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 500000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 0.0,
+            "input": 2.0,
+            "output": 6.0
+        },
+        "description": "xAI's frontier model for long-running agents, coding, knowledge work, and visual projects",
+        "id": "grok-4.6",
+        "input": ["text", "image"],
+        "maxTokens": 500000,
+        "name": "Grok 4.6",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "hy3-free": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 190000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "description": "Tencent Hy reasoning model for coding, instruction following, and agent tasks",
+        "id": "hy3-free",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "Hy3 Free",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "kimi-k2.7-code": {
@@ -438,92 +519,6 @@
             "xhigh": null
         }
     },
-    "ling-3.0-flash-free": {
-        "api": "openai-completions",
-        "baseUrl": "https://opencode.ai/zen/v1",
-        "compat": {
-            "maxTokensField": "max_tokens",
-            "supportsDeveloperRole": false,
-            "supportsStore": false
-        },
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "description": "Efficient model for low-latency assistance, extraction, and routine automation",
-        "id": "ling-3.0-flash-free",
-        "input": ["text"],
-        "maxTokens": 32768,
-        "name": "Ling-3.0-flash Free",
-        "provider": "opencode",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "ling-3.0-tiny-free": {
-        "api": "openai-completions",
-        "baseUrl": "https://opencode.ai/zen/v1",
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "description": "Compact MoE model for responsive agents, instruction following, and multi-turn conversations",
-        "id": "ling-3.0-tiny-free",
-        "input": ["text"],
-        "maxTokens": 32768,
-        "name": "Ling-3.0-tiny Free",
-        "provider": "opencode",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "longcat-2.0-free": {
-        "api": "openai-completions",
-        "baseUrl": "https://opencode.ai/zen/v1",
-        "contextWindow": 1000000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "description": "Meituan LongCat-2.0, a reasoning model with tool calling and a 1M-token context window",
-        "id": "longcat-2.0-free",
-        "input": ["text"],
-        "maxTokens": 131072,
-        "name": "LongCat-2.0 Free",
-        "provider": "opencode",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "mimo-v2.5-free": {
         "api": "openai-completions",
         "baseUrl": "https://opencode.ai/zen/v1",
@@ -554,6 +549,33 @@
             "minimal": null,
             "off": null,
             "xhigh": null
+        }
+    },
+    "muse-spark-1.2": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.15,
+            "cacheWrite": 0.0,
+            "input": 1.25,
+            "output": 4.25
+        },
+        "description": "Muse Spark 1.2 is a coding-focused update to Muse Spark 1.1 with improvements in code generation, complex debugging, codebase understanding, and end-to-end developer workflows.",
+        "id": "muse-spark-1.2",
+        "input": ["text", "image", "video", "pdf", "audio"],
+        "maxTokens": 131072,
+        "name": "Muse Spark 1.2",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": "xhigh"
         }
     },
     "nemotron-3-ultra-free": {
@@ -591,19 +613,20 @@
     "nemotron-3.5-lightning-free": {
         "api": "openai-completions",
         "baseUrl": "https://opencode.ai/zen/v1",
-        "contextWindow": 128000,
+        "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Fast NVIDIA Nemotron MoE for reliable agentic tasks across enterprise workloads",
         "id": "nemotron-3.5-lightning-free",
         "input": ["text"],
-        "maxTokens": 64000,
-        "name": "nemotron-3.5-lightning-free",
+        "maxTokens": 262144,
+        "name": "Nemotron 3.5 Lightning Free",
         "provider": "opencode",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -611,38 +634,6 @@
             "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": null
-        }
-    },
-    "north-mini-code-free": {
-        "api": "openai-completions",
-        "baseUrl": "https://opencode.ai/zen/v1",
-        "compat": {
-            "maxTokensField": "max_tokens",
-            "supportsDeveloperRole": false,
-            "supportsStore": false
-        },
-        "contextWindow": 256000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "description": "Cohere coding model for practical software engineering and agentic edits",
-        "id": "north-mini-code-free",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "North Mini Code Free",
-        "provider": "opencode",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": "off",
             "xhigh": null
         }
     },

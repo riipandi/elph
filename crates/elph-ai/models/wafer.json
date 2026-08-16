@@ -2,26 +2,27 @@
     "DeepSeek-V4-Flash-0731-Fast": {
         "api": "openai-completions",
         "baseUrl": "https://pass.wafer.ai/v1",
-        "contextWindow": 128000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.07,
             "cacheWrite": 0.0,
             "input": 0.28,
             "output": 0.56
         },
+        "description": "Fast DeepSeek model for efficient chat, coding help, and agent loops",
         "id": "DeepSeek-V4-Flash-0731-Fast",
         "input": ["text"],
-        "maxTokens": 64000,
-        "name": "DeepSeek-V4-Flash-0731-Fast",
+        "maxTokens": 32768,
+        "name": "DeepSeek V4 Flash 0731 Fast",
         "provider": "wafer",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -118,7 +119,7 @@
         },
         "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
         "id": "Kimi-K3",
-        "input": ["text", "image", "video"],
+        "input": ["text"],
         "maxTokens": 131072,
         "name": "Kimi K3",
         "provider": "wafer",
@@ -207,11 +208,11 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     }
 }

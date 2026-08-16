@@ -800,30 +800,12 @@ pub fn tool_call_card(
                             } else {
                                 None
                             })
-                            #(if !shell_args.description.is_empty() {
-                                Some(element! {
-                                    View(width: inner_width) {
-                                        Text(color: META_FG, wrap: TextWrap::Wrap, content: shell_args.description)
-                                    }
-                                })
-                            } else {
-                                None
-                            })
-                            #(if shell_args.timeout > 0 {
-                                Some(element! {
-                                    View(width: inner_width) {
-                                        Text(color: META_FG, wrap: TextWrap::NoWrap, content: format!("timeout: {}s", shell_args.timeout))
-                                    }
-                                })
-                            } else {
-                                None
-                            })
                             #(if !output.is_empty() {
                                 Some(element! {
                                     View(
                                         width: inner_width,
                                         padding_top: TOOL_OUTPUT_SECTION_GAP,
-                                        padding_left: TOOL_RESULT_PAD_LEFT,
+                                        padding_left: 0,
                                         padding_right: TOOL_RESULT_PAD_RIGHT,
                                         flex_direction: FlexDirection::Column,
                                         gap: 0,

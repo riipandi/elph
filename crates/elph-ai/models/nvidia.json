@@ -607,12 +607,12 @@
         },
         "id": "meta/llama-3.1-8b-instruct",
         "input": ["text"],
-        "knowledgeCutoff": "",
+        "knowledgeCutoff": "2023-12",
         "maxTokens": 4096,
         "name": "Llama 3.1 8B Instruct",
         "provider": "nvidia",
         "reasoning": false,
-        "releaseDate": "",
+        "releaseDate": "2024-07-23",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -647,12 +647,12 @@
         },
         "id": "meta/llama-3.2-11b-vision-instruct",
         "input": ["text", "image"],
-        "knowledgeCutoff": "",
+        "knowledgeCutoff": "2023-12",
         "maxTokens": 4096,
         "name": "Llama 3.2 11b Vision Instruct",
         "provider": "nvidia",
         "reasoning": false,
-        "releaseDate": "",
+        "releaseDate": "2024-09-25",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -856,6 +856,35 @@
             "medium": null,
             "minimal": null,
             "off": null,
+            "xhigh": null
+        }
+    },
+    "meta/muse-glimmer-30b": {
+        "api": "openai-completions",
+        "baseUrl": "https://integrate.api.nvidia.com/v1",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0.04,
+            "cacheWrite": 0.0,
+            "input": 0.3,
+            "output": 1.2
+        },
+        "description": "Muse Glimmer is a 30-billion-parameter open-weight multimodal model from Meta Superintelligence Labs, distilled from Muse Spark for always-on local agents, tool use, coding, and image understanding.",
+        "id": "meta/muse-glimmer-30b",
+        "input": ["text", "image"],
+        "knowledgeCutoff": "2026-01-04",
+        "maxTokens": 131072,
+        "name": "Muse Glimmer 30B",
+        "provider": "nvidia",
+        "reasoning": true,
+        "releaseDate": "2026-08-10",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": "off",
             "xhigh": null
         }
     },
@@ -1305,8 +1334,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.5985,
+            "output": 2.4045
         },
         "description": "Kimi model for long-context chat, coding, and agentic reasoning",
         "id": "moonshotai/kimi-k2-instruct-0905",
@@ -2155,6 +2184,35 @@
             "xhigh": null
         }
     },
+    "nvidia/nemotron-3.5-lightning-30b-a3b": {
+        "api": "openai-completions",
+        "baseUrl": "https://integrate.api.nvidia.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0525,
+            "output": 0.21
+        },
+        "description": "Fast NVIDIA Nemotron MoE for reliable agentic tasks across enterprise workloads",
+        "id": "nvidia/nemotron-3.5-lightning-30b-a3b",
+        "input": ["text"],
+        "knowledgeCutoff": "",
+        "maxTokens": 262144,
+        "name": "Nemotron 3.5 Lightning 30B A3B",
+        "provider": "nvidia",
+        "reasoning": true,
+        "releaseDate": "",
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "nvidia/nemotron-content-safety-reasoning-4b": {
         "api": "openai-completions",
         "baseUrl": "https://integrate.api.nvidia.com/v1",
@@ -2855,8 +2913,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.29,
-            "output": 1.2
+            "input": 1.5,
+            "output": 7.5
         },
         "description": "Qwen coding model for software agents, repository edits, and code reasoning",
         "id": "qwen/qwen3-coder-480b-a35b-instruct",
@@ -2885,7 +2943,7 @@
             "cacheRead": 0.0288,
             "cacheWrite": 0.0,
             "input": 0.15,
-            "output": 1.5
+            "output": 1.2
         },
         "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "qwen/qwen3-next-80b-a3b-instruct",
@@ -3037,8 +3095,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.21,
+            "output": 1.2075
         },
         "description": "StepFun flash model for efficient multimodal reasoning, coding, and tool use",
         "headers": {

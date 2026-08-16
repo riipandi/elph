@@ -52,27 +52,52 @@
             "xhigh": null
         }
     },
-    "deepseek-v4-pro": {
+    "deepseek-v4-pro:0813": {
         "api": "openai-completions",
         "baseUrl": "https://ollama.com/v1",
-        "contextWindow": 1048576,
+        "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0.003625,
+            "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.435,
-            "output": 0.87
+            "input": 0.0,
+            "output": 0.0
         },
-        "description": "Flagship DeepSeek model for coding, reasoning, and agentic work",
-        "id": "deepseek-v4-pro",
+        "id": "deepseek-v4-pro:0813",
         "input": ["text"],
-        "maxTokens": 1048576,
-        "name": "deepseek-v4-pro",
+        "maxTokens": 64000,
+        "name": "deepseek-v4-pro:0813",
         "provider": "ollama-cloud",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
+            "high": null,
             "low": null,
-            "max": "max",
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "deepseek-v4-pro:preview": {
+        "api": "openai-completions",
+        "baseUrl": "https://ollama.com/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "deepseek-v4-pro:preview",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "deepseek-v4-pro:preview",
+        "provider": "ollama-cloud",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
             "medium": null,
             "minimal": null,
             "off": null,

@@ -1254,13 +1254,14 @@
             "input": 0.25,
             "output": 0.8999999999999999
         },
-        "description": "Flagship model for demanding analysis, coding, and production agent workflows",
+        "description": "Reasoning-optimized 398B MoE agent model with extended thinking for long-horizon and multi-turn tool use",
         "id": "arcee-ai/trinity-large-thinking",
         "input": ["text"],
         "maxTokens": 80000,
         "name": "Trinity Large Thinking",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
+        "releaseDate": "2026-04-01",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1281,13 +1282,14 @@
             "input": 0.045,
             "output": 0.15
         },
-        "description": "Efficient model for low-latency assistance, extraction, and routine automation",
+        "description": "Reasoning-tuned 26B MoE model with 3B active parameters for agents, tools, and multi-step workloads",
         "id": "arcee-ai/trinity-mini",
         "input": ["text"],
         "maxTokens": 131072,
         "name": "Trinity Mini",
         "provider": "vercel-ai-gateway",
         "reasoning": false,
+        "releaseDate": "2025-12-01",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1895,7 +1897,7 @@
     "google/gemma-4-31b-it": {
         "api": "anthropic-messages",
         "baseUrl": "https://ai-gateway.vercel.sh",
-        "contextWindow": 256000,
+        "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -2197,8 +2199,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 1039813.227,
-            "output": 1039813.227
+            "input": 1041338.178,
+            "output": 1041338.178
         },
         "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "meta/llama-3.3-70b",
@@ -4923,7 +4925,7 @@
         },
         "description": "Open MiMo model for multimodal coding agents and long-context automation",
         "id": "xiaomi/mimo-v2.5",
-        "input": ["text", "image", "pdf"],
+        "input": ["text", "image"],
         "knowledgeCutoff": "2024-12",
         "maxTokens": 131100,
         "name": "MiMo M2.5",

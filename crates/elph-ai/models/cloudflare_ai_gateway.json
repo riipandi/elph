@@ -39,8 +39,8 @@
         "cost": {
             "cacheRead": 0.03,
             "cacheWrite": 0.3,
-            "input": 0.25,
-            "output": 1.25
+            "input": 0.3,
+            "output": 1.48
         },
         "id": "claude-3-haiku",
         "input": ["text", "image"],
@@ -446,10 +446,10 @@
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": "max",
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
@@ -1168,14 +1168,14 @@
             "supportsStore": false,
             "supportsStrictMode": false
         },
-        "contextWindow": 256000,
+        "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.16,
             "cacheWrite": 0.0,
             "input": 0.95,
             "output": 4.0
         },
-        "description": "Kimi multimodal agent model for visual understanding, coding, and planning",
+        "description": "Multimodal Kimi workhorse for agent loops, coding tasks, and visual context",
         "id": "workers-ai/@cf/moonshotai/kimi-k2.6",
         "input": ["text", "image"],
         "maxTokens": 256000,
@@ -1244,7 +1244,7 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.06,
+            "input": 0.0605,
             "output": 0.4
         },
         "description": "Efficient GLM model for fast reasoning, coding, and agent workflows",
@@ -1286,7 +1286,7 @@
         "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "workers-ai/@cf/zai-org/glm-5.2",
         "input": ["text"],
-        "maxTokens": 262144,
+        "maxTokens": 256000,
         "name": "Glm 5.2",
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,

@@ -724,6 +724,35 @@
             "xhigh": null
         }
     },
+    "gemini-3.7-flash": {
+        "api": "google-generative-ai",
+        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.075,
+            "cacheWrite": 0.0,
+            "input": 0.75,
+            "output": 3.75
+        },
+        "description": "High-efficiency Gemini model for agentic workflows, coding, and multimodal reasoning",
+        "id": "gemini-3.7-flash",
+        "input": ["text", "image", "video", "audio", "pdf"],
+        "knowledgeCutoff": "2026-03",
+        "maxTokens": 65536,
+        "name": "Gemini 3.7 Flash",
+        "provider": "google",
+        "reasoning": true,
+        "releaseDate": "2026-08-13",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "gemini-embedding-001": {
         "api": "google-generative-ai",
         "baseUrl": "https://generativelanguage.googleapis.com/v1beta",

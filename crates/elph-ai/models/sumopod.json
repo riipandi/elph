@@ -985,9 +985,9 @@
             "high": "high",
             "low": "low",
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -1110,7 +1110,7 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -1214,12 +1214,12 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 991000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.169,
             "cacheWrite": 2.1125,
-            "input": 1.69,
-            "output": 5.07
+            "input": 2.5,
+            "output": 7.5
         },
         "description": "Qwen frontier model tuned for agent frameworks, coding assistants, and long tasks",
         "id": "qwen3.7-max",
@@ -1309,15 +1309,16 @@
         },
         "contextWindow": 256000,
         "cost": {
-            "cacheRead": 0.1,
-            "cacheWrite": 0,
+            "cacheRead": 0.4,
+            "cacheWrite": 0.0,
             "input": 0.4,
             "output": 2.4
         },
+        "description": "ByteDance Seed coding model for multimodal software engineering and long-running agents",
         "id": "seed-2-0-code",
-        "input": ["text"],
-        "maxTokens": 65536,
-        "name": "seed-2-0-code",
+        "input": ["text", "image", "video"],
+        "maxTokens": 128000,
+        "name": "Seed 2.0 Code",
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1337,17 +1338,18 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 224000,
+        "contextWindow": 256000,
         "cost": {
-            "cacheRead": 0.05,
-            "cacheWrite": 0,
+            "cacheRead": 0.31,
+            "cacheWrite": 0.0,
             "input": 0.31,
             "output": 2.5
         },
+        "description": "Cost-efficient ByteDance Seed 2.0 model for production chat, analysis, and structured generation",
         "id": "seed-2-0-lite",
-        "input": ["text"],
-        "maxTokens": 65536,
-        "name": "seed-2-0-lite",
+        "input": ["text", "image", "video"],
+        "maxTokens": 128000,
+        "name": "Seed 2.0 Lite",
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1367,17 +1369,18 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 224000,
+        "contextWindow": 256000,
         "cost": {
-            "cacheRead": 0.02,
-            "cacheWrite": 0,
+            "cacheRead": 0.12,
+            "cacheWrite": 0.0,
             "input": 0.12,
             "output": 0.5
         },
+        "description": "Lightweight ByteDance Seed 2.0 model for low-latency multimodal reasoning and high-volume tasks",
         "id": "seed-2-0-mini",
-        "input": ["text"],
-        "maxTokens": 65536,
-        "name": "seed-2-0-mini",
+        "input": ["text", "image", "video"],
+        "maxTokens": 128000,
+        "name": "Seed 2.0 Mini",
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1399,15 +1402,16 @@
         },
         "contextWindow": 256000,
         "cost": {
-            "cacheRead": 0.1,
-            "cacheWrite": 0,
+            "cacheRead": 0.63,
+            "cacheWrite": 0.0,
             "input": 0.63,
             "output": 3.79
         },
+        "description": "Flagship ByteDance Seed 2.0 model for complex multimodal reasoning and long-horizon agent workflows",
         "id": "seed-2-0-pro",
-        "input": ["text"],
-        "maxTokens": 65536,
-        "name": "seed-2-0-pro",
+        "input": ["text", "image", "video"],
+        "maxTokens": 128000,
+        "name": "Seed 2.0 Pro",
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {

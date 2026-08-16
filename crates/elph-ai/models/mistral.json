@@ -945,7 +945,7 @@
         "name": "Voxtral Small (latest)",
         "provider": "mistral",
         "reasoning": false,
-        "releaseDate": "",
+        "releaseDate": "2025-07-15",
         "thinkingLevelMap": {
             "high": null,
             "low": null,

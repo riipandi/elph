@@ -108,7 +108,7 @@
             "input": 0.435,
             "output": 0.87
         },
-        "description": "Open MoE flagship with million-token context for coding and long agent runs",
+        "description": "DeepSeek V4 Pro snapshot with million-token context and support for thinking and non-thinking modes",
         "id": "deepseek-v4-pro",
         "input": ["text"],
         "knowledgeCutoff": "2025-05",

@@ -32,8 +32,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.03,
+            "output": 0.15
         },
         "id": "agnes-2.5-flash",
         "input": ["text", "image"],
@@ -58,8 +58,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.45,
+            "output": 0.9
         },
         "id": "agnes-2.5-pro",
         "input": ["text"],
@@ -202,10 +202,10 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": "max",
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
@@ -595,7 +595,7 @@
             "input": 2.0,
             "output": 6.0
         },
-        "description": "xAI's latest Grok for chat, coding, agentic tools, and lower hallucination risk",
+        "description": "xAI's Grok model for chat, coding, agentic tools, and lower hallucination risk",
         "id": "grok-4.5",
         "input": ["text", "image"],
         "maxTokens": 32768,
@@ -612,52 +612,27 @@
             "xhigh": null
         }
     },
-    "grok-4.5-free": {
+    "grok-4.6": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 212000,
+        "contextWindow": 500000,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.5,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 2.0,
+            "output": 6.0
         },
-        "id": "grok-4.5-free",
+        "description": "xAI's frontier model for long-running agents, coding, knowledge work, and visual projects",
+        "id": "grok-4.6",
         "input": ["text", "image"],
-        "maxTokens": 64000,
-        "name": "grok-4.5-free",
+        "maxTokens": 32768,
+        "name": "Grok 4.6",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "happyhorse-1.1": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "id": "happyhorse-1.1",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "happyhorse-1.1",
-        "provider": "nara-router",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -744,32 +719,6 @@
             "xhigh": null
         }
     },
-    "kimi-k3-free": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1000000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "id": "kimi-k3-free",
-        "input": ["text", "image"],
-        "maxTokens": 64000,
-        "name": "kimi-k3-free",
-        "provider": "nara-router",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "laguna-s-2.1": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
@@ -823,33 +772,6 @@
             "xhigh": null
         }
     },
-    "longcat-2.0-free": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1000000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "description": "Meituan LongCat-2.0, a reasoning model with tool calling and a 1M-token context window",
-        "id": "longcat-2.0-free",
-        "input": ["text"],
-        "maxTokens": 131072,
-        "name": "LongCat-2.0 Free",
-        "provider": "nara-router",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "mimo-v2.5": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
@@ -868,12 +790,12 @@
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -985,6 +907,32 @@
             "xhigh": null
         }
     },
+    "minimax-m3-promo": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.3,
+            "output": 1.2
+        },
+        "id": "minimax-m3-promo",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "minimax-m3-promo",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "mistral-large": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
@@ -1076,7 +1024,7 @@
         },
         "description": "Muse Spark 1.2 is a coding-focused update to Muse Spark 1.1 with improvements in code generation, complex debugging, codebase understanding, and end-to-end developer workflows.",
         "id": "muse-spark-1.2",
-        "input": ["text", "image", "video", "pdf", "audio"],
+        "input": ["text", "image", "audio", "video"],
         "maxTokens": 131072,
         "name": "Muse Spark 1.2",
         "provider": "nara-router",
@@ -1118,23 +1066,22 @@
             "xhigh": "xhigh"
         }
     },
-    "nemotron-3-ultra": {
+    "qwen-3.8-max-free": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 262144,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.5,
-            "output": 2.2
+            "input": 0.0,
+            "output": 0.0
         },
-        "description": "Largest Nemotron 3 model for maximum open-weight reasoning and agent accuracy",
-        "id": "nemotron-3-ultra",
+        "id": "qwen-3.8-max-free",
         "input": ["text"],
-        "maxTokens": 128000,
-        "name": "nemotron-3-ultra",
+        "maxTokens": 64000,
+        "name": "qwen-3.8-max-free",
         "provider": "nara-router",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1201,7 +1148,7 @@
     "qwen3.7-max": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 991000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.169,
             "cacheWrite": 2.1125,
@@ -1307,17 +1254,17 @@
     "qwen3.8-max": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 991000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.169,
             "cacheWrite": 2.1125,
-            "input": 1.69,
-            "output": 5.07
+            "input": 2.0,
+            "output": 6.0
         },
         "description": "2.4-trillion-parameter MoE flagship for coding, professional work, multimodal understanding, and long-horizon agentic workflows",
         "id": "qwen3.8-max",
-        "input": ["text"],
-        "maxTokens": 128000,
+        "input": ["text", "image", "video"],
+        "maxTokens": 131072,
         "name": "Qwen3.8 Max",
         "provider": "nara-router",
         "reasoning": true,
