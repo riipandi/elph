@@ -87,17 +87,14 @@ fn format_skills_ref<'a>(skills: impl Iterator<Item = &'a Skill>) -> String {
     }
 
     let mut lines: Vec<String> = vec![
-        "<available_skills note=\"Match by trigger. On match: read SKILL.md fully before acting, resolve relative refs from its dir. Skip loosely related. No match -> proceed without one, don't browse to be thorough.\">".to_string(),
+        "<available_skills note=\"On match: read SKILL.md fully before acting, resolve relative refs from its dir. Skip loosely related. No match -> proceed without one, don't browse to be thorough.\">".to_string(),
     ];
 
     for skill in collected {
-        // Extract trigger from description or use empty string
-        let trigger = extract_trigger_from_description(&skill.description);
         lines.push(format!(
-            "  <skill name=\"{}\" path=\"{}\" trigger=\"{}\"/>",
+            "  <skill name=\"{}\" path=\"{}\"/>",
             escape_xml(&skill.name),
             escape_xml(&skill.file_path),
-            escape_xml(&trigger)
         ));
     }
 
@@ -105,28 +102,6 @@ fn format_skills_ref<'a>(skills: impl Iterator<Item = &'a Skill>) -> String {
 
     // Sanitize: trim trailing whitespace from each line, preserve intentional blank lines
     lines.iter().map(|line| line.trim_end()).collect::<Vec<_>>().join("\n")
-}
-
-/// Extract a trigger phrase from the skill description.
-/// This is a simple heuristic to create a trigger attribute from the description.
-fn extract_trigger_from_description(description: &str) -> String {
-    // Take the first sentence or first 50 chars as a trigger
-    let cleaned = description.trim();
-    if cleaned.is_empty() {
-        return String::new();
-    }
-
-    // Find the first sentence ending
-    if let Some(end) = cleaned.find('.') {
-        cleaned[..end].trim().to_string()
-    } else {
-        // If no sentence ending, take first 50 chars
-        if cleaned.len() > 50 {
-            cleaned[..50].trim().to_string()
-        } else {
-            cleaned.to_string()
-        }
-    }
 }
 
 /// Filter skills for the current working directory, then format the
@@ -182,9 +157,7 @@ mod tests {
         let skills = [skill("test-skill", "/r/.agents/skills/test-skill/SKILL.md", None)];
         let output = format_skills_ref(skills.iter());
         assert!(output.contains("<available_skills"));
-        assert!(output.contains(
-            "<skill name=\"test-skill\" path=\"/r/.agents/skills/test-skill/SKILL.md\" trigger=\"test-skill description\"/>"
-        ));
+        assert!(output.contains("<skill name=\"test-skill\" path=\"/r/.agents/skills/test-skill/SKILL.md\"/>"));
         assert!(output.contains("</available_skills>"));
     }
 
@@ -315,6 +288,6 @@ mod tests {
         let mut s = skill("hidden", "/r/.agents/skills/hidden/SKILL.md", None);
         s.disable_model_invocation = true;
         let rendered = format_skills_for_system_prompt(&[s]);
-        assert!(rendered.is_empty());
+        assert_eq!(rendered, "");
     }
 }

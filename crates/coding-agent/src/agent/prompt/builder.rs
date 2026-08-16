@@ -660,7 +660,6 @@ mod tests {
         assert!(prompt.contains("<available_skills note="));
         assert!(prompt.contains("<skill name=\"test-skill\""));
         assert!(prompt.contains("path=\"/path/to/skill\""));
-        assert!(prompt.contains("trigger=\"Test skill for unit testing\""));
 
         // Verify old format is not used
         assert!(!prompt.contains("<skill name=\"test-skill\" location="));

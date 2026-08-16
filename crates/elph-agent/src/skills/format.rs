@@ -6,7 +6,7 @@ use crate::runtime::env::{basename_env_path, dirname_env_path};
 /// Format a skill invocation prompt, optionally appending additional user instructions.
 pub fn format_skill_invocation(skill: &Skill, additional_instructions: Option<&str>) -> String {
     let skill_dir = dirname_env_path(&skill.file_path);
-    let mut skill_block = format!("<skill name=\"{}\" location=\"{}\">", skill.name, skill.file_path);
+    let mut skill_block = format!("<skill name=\"{}\" path=\"{}\">", skill.name, skill.file_path);
 
     // Add optional fields
     if let Some(ref license) = skill.license {

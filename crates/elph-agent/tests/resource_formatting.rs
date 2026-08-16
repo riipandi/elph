@@ -20,7 +20,7 @@ fn format_skill_invocation_includes_additional_instructions() {
 
     assert_eq!(
         format_skill_invocation(&skill, Some("Check errors.")),
-        "<skill name=\"inspect\" location=\"/project/.elph/skills/inspect/SKILL.md\">\n\
+        "<skill name=\"inspect\" path=\"/project/.elph/skills/inspect/SKILL.md\">\n\
          <license>MIT</license>\n\
          <allowed-tools>read grep</allowed-tools>\n\
          References are relative to /project/.elph/skills/inspect.\n\n\
