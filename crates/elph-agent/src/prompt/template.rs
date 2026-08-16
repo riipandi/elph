@@ -59,7 +59,7 @@ pub fn render_base_template(ctx: &SystemPromptTemplateContext) -> String {
 
     if let Some(dir) = ctx.working_directory.as_deref().filter(|s| !s.is_empty()) {
         out.push_str("\n\nWorking directory: ");
-        out.push_str(dir);
+        out.push_str(&path_to_relative_with_tilde(dir));
     }
     if let Some(date) = ctx.current_date.as_deref().filter(|s| !s.is_empty()) {
         out.push_str("\n\nCurrent date: ");
@@ -78,6 +78,21 @@ pub fn render_base_template(ctx: &SystemPromptTemplateContext) -> String {
         out.push_str(ctx.skills_section.trim());
     }
     sanitize_system_prompt(&out)
+}
+
+/// Convert an absolute path to a relative path using `~` for home directory.
+/// If the path doesn't start with the home directory, returns the original path.
+fn path_to_relative_with_tilde(path: &str) -> String {
+    if let Some(home_dir) = std::env::var("HOME").ok() {
+        if path.starts_with(&home_dir) {
+            // Replace home directory with ~, ensuring we handle the path separator correctly
+            let remainder = path.strip_prefix(&home_dir).unwrap_or(path);
+            // Remove leading slash if present
+            let remainder = remainder.strip_prefix('/').unwrap_or(remainder);
+            return format!("~/{}", remainder);
+        }
+    }
+    path.to_string()
 }
 
 #[cfg(test)]
@@ -131,5 +146,38 @@ mod tests {
         let input = "Single line  ";
         let output = sanitize_system_prompt(input);
         assert_eq!(output, "Single line");
+    }
+
+    #[test]
+    fn path_to_relative_with_tilde_converts_home_path() {
+        // Set a temporary HOME environment variable for testing
+        unsafe { std::env::set_var("HOME", "/Users/testuser"); }
+        
+        let abs_path = "/Users/testuser/Developer/github.com/riipandi/elph";
+        let result = path_to_relative_with_tilde(abs_path);
+        assert_eq!(result, "~/Developer/github.com/riipandi/elph");
+        
+        // Clean up
+        unsafe { std::env::remove_var("HOME"); }
+    }
+
+    #[test]
+    fn path_to_relative_with_tilde_leaves_non_home_paths_unchanged() {
+        unsafe { std::env::set_var("HOME", "/Users/testuser"); }
+        
+        let other_path = "/var/log/system.log";
+        let result = path_to_relative_with_tilde(other_path);
+        assert_eq!(result, "/var/log/system.log");
+        
+        unsafe { std::env::remove_var("HOME"); }
+    }
+
+    #[test]
+    fn path_to_relative_with_tilde_handles_no_home_env() {
+        unsafe { std::env::remove_var("HOME"); }
+        
+        let path = "/Users/testuser/Developer/project";
+        let result = path_to_relative_with_tilde(path);
+        assert_eq!(result, "/Users/testuser/Developer/project");
     }
 }

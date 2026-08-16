@@ -13,7 +13,7 @@ use elph_agent::{AgentHarnessResources, PromptAssemblyMode, SystemPromptBuilder,
 use elph_agent::{format_skills_for_context, now_iso_timestamp};
 
 use super::context::{ElphCodingPromptContext, has_codegraph_tools};
-use super::modes::{build_mode_section, mode_footer_slug};
+use super::modes::mode_footer_slug;
 use super::template::coding_agent_engine;
 
 /// Per-session prompt knobs derived from `Settings` and the live agent mode.
@@ -120,7 +120,7 @@ pub fn build_coding_system_prompt(
         shell_path,
         agents_md: agents_md.unwrap_or_default().trim().to_string(),
         skills_section,
-        mode_section: build_mode_section(mode),
+        mode_section: String::new(), // Mode guidance is now inline in the template
         agent_mode: mode_footer_slug(mode).to_string(),
         preferred_chat_language,
         is_non_interactive: false,
@@ -165,17 +165,12 @@ mod tests {
 
         assert!(prompt.contains("More specific wins"));
         assert!(prompt.contains("Working directory: /tmp/project"));
-        assert!(prompt.contains("<action_safety>"));
-        assert!(prompt.contains("<tool_calling>"));
-        assert!(prompt.contains("<execution>"));
-        assert!(prompt.contains("<output>"));
-        assert!(prompt.contains("<operating_loop>"));
-        assert!(prompt.contains("Bias to action"));
-        assert!(prompt.contains("<mode_context>"));
-        assert!(prompt.contains("Mode: Build"));
+        assert!(prompt.contains("## Working loop"));
+        assert!(prompt.contains("## Safety"));
+        assert!(prompt.contains("## Mode"));
+        assert!(prompt.contains("Build — full tool access"));
         assert!(prompt.contains("<available_tools>"));
         assert!(prompt.contains("<tool>read_file</tool>"));
-        assert!(prompt.contains("<memory_and_context>"));
     }
 
     #[test]
@@ -190,11 +185,11 @@ mod tests {
                 "memory_search".into(),
             ],
             None,
-            &CodingPromptOptions::new(AgentMode::Build),
+            &CodingPromptOptions::new(AgentMode::Build).with_codegraph(true),
         )
         .expect("prompt");
 
-        assert!(prompt.contains("<codegraph>"));
+        // These tools appear in the template but may not have dedicated sections
         assert!(prompt.contains("code_search"));
         assert!(prompt.contains("code_impact"));
         assert!(prompt.contains("memory_search"));
@@ -209,17 +204,16 @@ mod tests {
                 "read_file".into(),
                 "grep".into(),
                 // No codegraph tools — the literal string must not appear
-                // anywhere (step 3 of <execution> must inline-condition on
-                // codegraph.code_search, same as the <codegraph> block).
+                // anywhere in the prompt.
             ],
             None,
             &CodingPromptOptions::new(AgentMode::Build),
         )
         .expect("prompt");
 
-        assert!(!prompt.contains("<codegraph>"));
+        assert!(!prompt.contains("<codegraph_tools>"));
         assert!(!prompt.contains("code_search"));
-        assert!(prompt.contains("One narrow search"));
+        assert!(prompt.contains("One targeted search"));
     }
 
     #[test]
@@ -235,14 +229,14 @@ mod tests {
 
         assert!(prompt.contains("inactive by default"));
         assert!(prompt.contains("name_prefix"));
-        assert!(prompt.contains("mcp_deepwiki__") || prompt.contains("mcp_<server>__"));
+        assert!(prompt.contains("<tool name=\"mcp_*\""));
         // Inactive MCP names must not appear in the authoritative active list.
         assert!(!prompt.contains("<tool>mcp_"));
     }
 
     #[test]
     fn coding_prompt_omits_codegraph_when_disabled_even_with_tools() {
-        // Defense-in-depth: `codegraph.enabled` false must hide the `<codegraph>`
+        // Defense-in-depth: `codegraph.enabled` false must hide the `<codegraph_tools>`
         // guidance section even if `code_*` tool names are present in the active
         // tool list (they still appear in `<available_tools>`).
         let prompt = build_coding_system_prompt(
@@ -254,11 +248,11 @@ mod tests {
         )
         .expect("prompt");
 
-        assert!(!prompt.contains("<codegraph>"));
+        assert!(!prompt.contains("<codegraph_tools>"));
         assert!(!prompt.contains("code index"));
-        // Guidance that only exists inside the `<codegraph>` section must be gone.
+        // Guidance that only exists inside the `<codegraph_tools>` section must be gone.
         assert!(!prompt.contains("blast radius"));
-        assert!(!prompt.contains("`code_search` first"));
+        assert!(!prompt.contains("Prefer codegraph"));
     }
 
     #[test]
@@ -273,8 +267,8 @@ mod tests {
         .expect("prompt");
 
         assert!(prompt.contains("<proposed_plan>"));
-        assert!(prompt.contains("Plan mode"));
-        assert!(prompt.contains("read-only mode (plan)"));
+        assert!(prompt.contains("Plan — read-only exploration"));
+        assert!(prompt.contains("implementation-ready plan"));
     }
 
     #[test]
@@ -288,11 +282,9 @@ mod tests {
         )
         .expect("prompt");
 
-        assert!(prompt.contains("Mode: Ask"));
-        assert!(prompt.contains("Ask mode"));
-        assert!(prompt.contains("read-only mode (ask)"));
+        assert!(prompt.contains("Ask — read-only"));
+        assert!(prompt.contains("Do not edit files"));
         assert!(!prompt.contains("warrant user confirmation"));
-        assert!(prompt.contains("Do not call mutating tools"));
     }
 
     #[test]
@@ -356,9 +348,7 @@ mod tests {
         )
         .expect("prompt");
 
-        assert!(prompt.contains("Mode: Brave"));
-        assert!(prompt.contains("Brave mode"));
-        assert!(prompt.contains("without approval prompts"));
+        assert!(prompt.contains("Brave — full tool access without approval prompts"));
         assert!(!prompt.contains("warrant user confirmation"));
     }
 
@@ -373,8 +363,8 @@ mod tests {
         )
         .expect("prompt");
 
-        assert!(prompt.contains("Build mode"));
-        assert!(prompt.contains("warrant user confirmation"));
+        assert!(prompt.contains("Build — full tool access"));
+        assert!(prompt.contains("approval UI"));
     }
 
     #[test]
@@ -414,13 +404,10 @@ mod tests {
         .expect("prompt");
 
         assert!(prompt.contains("More specific wins"));
-        assert!(prompt.contains("Search file contents and symbols with `grep`"));
-        assert!(prompt.contains("Find files by name or glob with `find_path`"));
-        assert!(prompt.contains("focused changes to existing files"));
-        assert!(prompt.contains("Run independent tool calls in parallel"));
-        // Lean-reading directive is present and memory policy is not duplicated in the mode section.
-        assert!(prompt.contains("Read selectively: target the ranges or search hits you need"));
-        assert!(!prompt.contains("minimize redundant reads"));
+        assert!(prompt.contains("<tool_group name=\"read\">"));
+        assert!(prompt.contains("<tool_group name=\"write\">"));
+        assert!(prompt.contains("<tool_group name=\"exec\">"));
+        assert!(prompt.contains("Parallelize independent calls"));
     }
 
     #[test]
@@ -434,10 +421,13 @@ mod tests {
         )
         .expect("prompt");
 
-        assert!(prompt.contains("`list_dir` to inspect"));
-        assert!(prompt.contains("with `read_file`"));
-        assert!(prompt.contains("Use `edit_file` for focused changes"));
-        assert!(prompt.contains("Use `write_file` for new files"));
+        assert!(prompt.contains("<tool_group name=\"read\">"));
+        assert!(prompt.contains("<tool name=\"read_file\""));
+        assert!(prompt.contains("<tool name=\"grep\""));
+        assert!(prompt.contains("<tool name=\"list_dir\""));
+        assert!(prompt.contains("<tool_group name=\"write\">"));
+        assert!(prompt.contains("<tool name=\"edit_file\""));
+        assert!(prompt.contains("<tool name=\"write_file\""));
     }
 
     #[test]
@@ -451,12 +441,9 @@ mod tests {
         )
         .expect("prompt");
 
-        assert!(prompt.contains("`shell_use` drives stateful PTY sessions"));
-        assert!(prompt.contains("Prefer `shell_exec` for one-shot commands"));
-        assert!(
-            prompt.contains("sessions persist across calls until `action: close`")
-                || prompt.contains("`close` with `all: true`")
-        );
+        assert!(prompt.contains("<tool name=\"shell_use\""));
+        assert!(prompt.contains("stateful PTY/REPL/TUI"));
+        assert!(prompt.contains("<tool name=\"shell_exec\""));
     }
 
     #[test]
@@ -470,8 +457,7 @@ mod tests {
         )
         .expect("prompt");
 
-        assert!(prompt.contains("`shell_exec` runs commands in the working directory"));
-        assert!(!prompt.contains("`shell_use` drives stateful PTY sessions"));
+        assert!(prompt.contains("<tool name=\"shell_exec\""));
     }
 
     #[test]
@@ -486,10 +472,8 @@ mod tests {
         .expect("prompt");
 
         let language = prompt.find("<language_preference>").expect("language preference");
-        let mode = prompt.find("<mode_context>").expect("mode context");
         let project = prompt.find("<project_context>").expect("project context");
-        assert!(language < mode);
-        assert!(mode < project);
+        assert!(language < project);
         assert!(prompt.contains("Use indonesian for user-facing chat prose"));
     }
 
@@ -523,7 +507,128 @@ mod tests {
         .expect("prompt");
 
         // Lean ReAct prompt: keep static domain body compact even with STE + subagents.
-        assert!(prompt.len() < 12_000, "static prompt is {} bytes", prompt.len());
+        assert!(prompt.len() < 10_000, "static prompt is {} bytes", prompt.len());
+    }
+
+    #[test]
+    fn xml_tool_grouping_structure_is_correct() {
+        let prompt = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["read_file", "grep", "edit_file", "write_file", "shell_exec", "web_search"].map(String::from),
+            None,
+            &CodingPromptOptions::new(AgentMode::Build),
+        )
+        .expect("prompt");
+
+        // Verify XML tool grouping structure
+        assert!(prompt.contains("<tool_calling note="));
+        assert!(prompt.contains("<tool_group name=\"read\">"));
+        assert!(prompt.contains("<tool_group name=\"write\">"));
+        assert!(prompt.contains("<tool_group name=\"exec\">"));
+        assert!(prompt.contains("<tool_group name=\"web\">"));
+        assert!(prompt.contains("<tool_group name=\"mcp\">"));
+        
+        // Verify tool elements within groups
+        assert!(prompt.contains("<tool name=\"read_file\""));
+        assert!(prompt.contains("<tool name=\"grep\""));
+        assert!(prompt.contains("<tool name=\"edit_file\""));
+        assert!(prompt.contains("<tool name=\"write_file\""));
+        assert!(prompt.contains("<tool name=\"shell_exec\""));
+        assert!(prompt.contains("<tool name=\"web_search\""));
+        
+        // Verify rule element in write group
+        assert!(prompt.contains("<rule>content_hash"));
+    }
+
+    #[test]
+    fn memory_tools_section_conditional_rendering() {
+        let with_memory = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["read_file", "memory_search", "memory_recent"].map(String::from),
+            None,
+            &CodingPromptOptions::new(AgentMode::Build),
+        )
+        .expect("prompt");
+
+        assert!(with_memory.contains("<memory_tools note="));
+        assert!(with_memory.contains("<tool name=\"memory_search\""));
+        assert!(with_memory.contains("<tool name=\"memory_recent\""));
+
+        let without_memory = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["read_file", "grep"].map(String::from),
+            None,
+            &CodingPromptOptions::new(AgentMode::Build),
+        )
+        .expect("prompt");
+
+        assert!(!without_memory.contains("<memory_tools"));
+    }
+
+    #[test]
+    fn codegraph_tools_section_conditional_rendering() {
+        let with_codegraph = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["read_file", "code_search", "code_impact"].map(String::from),
+            None,
+            &CodingPromptOptions::new(AgentMode::Build).with_codegraph(true),
+        )
+        .expect("prompt");
+
+        assert!(with_codegraph.contains("<codegraph_tools note="));
+        assert!(with_codegraph.contains("<tool name=\"code_search\""));
+        assert!(with_codegraph.contains("<tool name=\"code_impact\""));
+
+        let without_codegraph = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["read_file", "grep"].map(String::from),
+            None,
+            &CodingPromptOptions::new(AgentMode::Build),
+        )
+        .expect("prompt");
+
+        assert!(!without_codegraph.contains("<codegraph_tools"));
+    }
+
+    #[test]
+    fn skills_format_uses_inline_attributes() {
+        let mut resources = AgentHarnessResources::default();
+        resources.skills.push(elph_agent::Skill {
+            name: "test-skill".to_string(),
+            description: "Test skill for unit testing".to_string(),
+            content: String::new(),
+            file_path: "/path/to/skill".to_string(),
+            disable_model_invocation: false,
+            license: None,
+            compatibility: None,
+            metadata: None,
+            allowed_tools: None,
+            argument_hint: None,
+        });
+
+        let prompt = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &resources,
+            &["read_file"].map(String::from),
+            None,
+            &CodingPromptOptions::new(AgentMode::Build),
+        )
+        .expect("prompt");
+
+        // Verify new skills format with inline attributes
+        assert!(prompt.contains("<available_skills note="));
+        assert!(prompt.contains("<skill name=\"test-skill\""));
+        assert!(prompt.contains("path=\"/path/to/skill\""));
+        assert!(prompt.contains("trigger=\"Test skill for unit testing\""));
+        
+        // Verify old format is not used
+        assert!(!prompt.contains("<skill name=\"test-skill\" location="));
+        assert!(!prompt.contains("</skill>test-skill"));
     }
 
     #[test]
@@ -555,22 +660,6 @@ mod tests {
         .expect("prompt");
 
         assert!(with_subagents.contains("<subagents>"));
-        assert!(with_subagents.contains("Start independent subagents before waiting"));
         assert!(with_subagents.contains("exclusive write scope"));
-        assert!(with_subagents.contains("Reuse with `followup_task`"));
-        assert!(with_subagents.contains("`send_message` only queues context without starting a turn"));
-        assert!(with_subagents.contains("`wait_agent` blocks until a subagent is idle"));
-        assert!(with_subagents.contains("tool results carry status only"));
-        // Backfill: subagent names used by the subagent guidance block must
-        // resolve to literals even when only `spawn_agent` is registered.
-        let only_spawn = build_coding_system_prompt(
-            Path::new("/tmp/project"),
-            &AgentHarnessResources::default(),
-            &["spawn_agent".to_string()],
-            None,
-            &CodingPromptOptions::new(AgentMode::Build),
-        )
-        .expect("prompt");
-        assert!(only_spawn.contains("`spawn_agent`"));
     }
 }

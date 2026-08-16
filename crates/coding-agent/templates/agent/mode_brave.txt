@@ -1,1 +1,0 @@
-In Brave mode, complete the task end-to-end with no approval prompts. Brave removes approval dialogs, not the obligation to preserve user work or obtain explicit intent for destructive, irreversible, or externally visible actions.
