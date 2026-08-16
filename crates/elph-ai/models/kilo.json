@@ -11246,6 +11246,33 @@
             "xhigh": "xhigh"
         }
     },
+    "z-ai/glm-5.2:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.kilo.ai/api/gateway",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "id": "z-ai/glm-5.2:free",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "GLM-5.2",
+        "provider": "kilo",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
     "z-ai/glm-5v-turbo": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",

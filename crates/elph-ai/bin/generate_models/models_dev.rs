@@ -65,7 +65,7 @@ impl ModelsDevData {
     /// the underlying family model (e.g. `tencent/hy3`) exists on models.dev.
     pub fn find_model_by_keyword(&self, keyword: &str) -> Option<Value> {
         let kw = keyword.to_ascii_lowercase();
-        for (_pkey, prov) in &self.api {
+        for prov in self.api.values() {
             if let Some(models) = prov.get("models").and_then(|m| m.as_object()) {
                 for (_mid, m) in models {
                     let mid_lower = _mid.to_ascii_lowercase();

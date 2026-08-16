@@ -431,7 +431,7 @@ fn provider_override_map(provider_id: &str, model_id: &str) -> Option<Value> {
             ("high", Some("high")),
             ("max", Some("max")),
         ])),
-        // DeepSeek R1 Distill — off / low / medium / high / xhigh
+        // DeepSeek R1 — off / low / medium / high / xhigh
         b if b.contains("deepseek") && b.contains("r1") => Some(map_with(&[
             ("off", Some("off")),
             ("low", Some("low")),
@@ -439,6 +439,11 @@ fn provider_override_map(provider_id: &str, model_id: &str) -> Option<Value> {
             ("high", Some("high")),
             ("xhigh", Some("xhigh")),
         ])),
+        // DeepSeek v3/v4 — low / high / max (per api-docs.deepseek.com thinking_mode)
+        // reasoning_effort accepts: low/high/max; default effort is high
+        b if b.contains("deepseek") => {
+            Some(map_with(&[("low", Some("low")), ("high", Some("high")), ("max", Some("max"))]))
+        }
         // ByteDance Seed — low / medium / high / max
         b if b.contains("seed") && !b.contains("nano") => Some(map_with(&[
             ("low", Some("low")),
@@ -823,7 +828,22 @@ mod tests {
         assert_eq!(m["medium"], "medium");
         assert_eq!(m["high"], "high");
         assert_eq!(m["xhigh"], "xhigh");
+        assert!(m["minimal"].is_null());
         assert!(m["max"].is_null());
+    }
+
+    #[test]
+    fn deepseek_v4_low_high_max() {
+        // Per https://api-docs.deepseek.com/guides/thinking_mode/
+        // reasoning_effort accepts: low/high/max
+        let m = build_thinking_level_map("deepseek", "deepseek-v4-flash", true, None, None, None, None);
+        assert_eq!(m["low"], "low");
+        assert_eq!(m["high"], "high");
+        assert_eq!(m["max"], "max");
+        assert!(m["medium"].is_null());
+        assert!(m["xhigh"].is_null());
+        assert!(m["minimal"].is_null());
+        assert!(m["off"].is_null());
     }
 
     #[test]

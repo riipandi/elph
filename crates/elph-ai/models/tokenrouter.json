@@ -675,7 +675,7 @@
         "releaseDate": "2026-04-24",
         "thinkingLevelMap": {
             "high": "high",
-            "low": null,
+            "low": "low",
             "max": "max",
             "medium": null,
             "minimal": null,

@@ -6,6 +6,9 @@ use super::provider_sources::ProviderSource;
 use super::thinking_map::build_thinking_level_map;
 
 /// Convert a models.dev model object into an Elph catalog entry.
+// Allow 8 args: all params are needed to thread the models.dev fallback without
+// introducing an opaque config struct for a generator-only function.
+#[allow(clippy::too_many_arguments)]
 pub fn from_models_dev(
     provider: &ProviderSource,
     model_id: &str,
@@ -89,6 +92,8 @@ pub fn from_models_dev(
 }
 
 /// Refresh an existing Elph-only / gateway model with models.dev pricing/limits when found.
+// Allow 8 args: same rationale as `from_models_dev`.
+#[allow(clippy::too_many_arguments)]
 pub fn enrich_existing(
     provider: &ProviderSource,
     model_id: &str,
@@ -122,13 +127,11 @@ pub fn enrich_existing(
     // underlying family model (e.g. tencent-hy3-free → tencent/hy3).
     let mdev_reasoning = mdev.and_then(|m| m.get("reasoning").and_then(|v| v.as_bool()));
     let prev_reasoning = obj.get("reasoning").and_then(|v| v.as_bool());
-    let fallback_reasoning = models_dev_fallback
-        .map(|dev| {
-            let kw = super::thinking_map::extract_family_keyword(model_id);
-            dev.find_model_by_keyword(&kw)
-                .and_then(|m| m.get("reasoning").and_then(|v| v.as_bool()))
-        })
-        .flatten();
+    let fallback_reasoning = models_dev_fallback.and_then(|dev| {
+        let kw = super::thinking_map::extract_family_keyword(model_id);
+        dev.find_model_by_keyword(&kw)
+            .and_then(|m| m.get("reasoning").and_then(|v| v.as_bool()))
+    });
     let reasoning = mdev_reasoning
         .or(fallback_reasoning)
         .or(prev_reasoning)

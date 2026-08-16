@@ -725,7 +725,7 @@
             "high": "high",
             "low": "low",
             "max": "max",
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -757,7 +757,7 @@
             "high": "high",
             "low": "low",
             "max": "max",
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null

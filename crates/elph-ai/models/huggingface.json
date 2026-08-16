@@ -1979,8 +1979,8 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -2006,8 +2006,8 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -2036,8 +2036,8 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -2093,8 +2093,8 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -2807,22 +2807,23 @@
     "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 128000,
+        "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.05,
+            "output": 0.15
         },
+        "description": "Fast NVIDIA Nemotron MoE for reliable agentic tasks across enterprise workloads",
         "id": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16",
         "input": ["text"],
-        "maxTokens": 64000,
-        "name": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16",
+        "maxTokens": 32768,
+        "name": "Nemotron 3.5 Lightning 30B A3B",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
             "medium": null,
             "minimal": null,

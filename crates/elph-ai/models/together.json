@@ -242,8 +242,8 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": null,
-            "max": null,
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
