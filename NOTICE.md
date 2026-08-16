@@ -51,7 +51,7 @@ The original memelord code is Copyright (c) 2026 Glauber Costa, used under the M
 The `elph codegraph` integrates [code-review-graph](https://github.com/tirth8205/code-review-graph)
 by Tirth Kanani. The original code-review-graph is Copyright (c) 2026 Tirth Kanani, used under the MIT License.
 
-The Elph coding-agent system prompt (`crates/coding-agent/templates/agent/coding_base.txt` and related mode templates)
+The Elph coding-agent system prompt (`crates/coding-agent/prompts/coding_base.txt` and related mode templates)
 adapts section conventions from [Grok Build](https://github.com/xai-org/grok-build) by SpaceXAI — including
 tagged blocks such as `<action_safety>`, `<tool_calling>`, `<output_efficiency>`, and `<formatting>` —
 integrated with the Pi/elph-agent `SystemPromptBuilder` assembly pipeline (generic base template, Pi-style

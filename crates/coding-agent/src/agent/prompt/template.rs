@@ -55,7 +55,7 @@ impl std::fmt::Debug for PromptTemplateEngine {
 pub fn coding_agent_engine() -> PromptTemplateEngine {
     let mut engine = PromptTemplateEngine::new();
     engine
-        .register_embedded("coding_base", include_str!("../../../templates/agent/coding_base.txt"))
+        .register_embedded("coding_base", include_str!("../../../prompts/coding_base.txt"))
         .expect("coding_base template is valid");
     engine
 }

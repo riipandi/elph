@@ -105,7 +105,7 @@ advertisement from the static prompt.
 
 ## Simplified Technical English response style
 
-The coding-agent domain template (`crates/coding-agent/templates/agent/coding_base.txt`)
+The coding-agent domain template (`crates/coding-agent/prompts/coding_base.txt`)
 now ends with a `<response_style>` section derived from ASD-STE100 (Simplified
 Technical English) applied to **every response** the agent writes: chat replies and
 content written to files (code, comments, docs, commit messages).

@@ -471,7 +471,7 @@ Single tool **`todo_write`** (name aligned with grok; document alias in tools.md
 - TUI **Tasks panel** above input (design already sketched in archived `docs/archive/tui.md`): show non-cancelled open items; hide when empty; completion notice when last active completes
 - Subscribe to tool results to refresh panel without full redraw thrash
 
-### 5.3 Prompt / ReAct structure (`templates/agent/`)
+### 5.3 Prompt / ReAct structure (`prompts/` in coding-agent)
 
 Update `coding_base.txt` (and mode snippets as needed):
 
