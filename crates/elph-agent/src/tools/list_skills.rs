@@ -22,6 +22,19 @@ fn escape_xml(value: &str) -> String {
         .replace('"', "&quot;")
 }
 
+/// Convert an absolute path under `$HOME` to a tilde-relative path
+/// (e.g. `/Users/alice/project` → `~/project`). Leaves non-home paths unchanged.
+fn path_to_relative_with_tilde(path: &str) -> String {
+    if let Ok(home_dir) = std::env::var("HOME")
+        && path.starts_with(&home_dir)
+    {
+        let remainder = path.strip_prefix(&home_dir).unwrap_or(path);
+        let remainder = remainder.strip_prefix('/').unwrap_or(remainder);
+        return format!("~/{}", remainder);
+    }
+    path.to_string()
+}
+
 /// Build the `<available_skills>`-style XML block for `list_skills` output.
 ///
 /// Follows the [Agent Skills specification](https://agentskills.io/specification):
@@ -32,7 +45,7 @@ pub fn format_skill_catalog(skills: &[Skill]) -> String {
         out.push_str(&format!(
             "  <skill name=\"{}\" path=\"{}\">\n",
             escape_xml(&skill.name),
-            escape_xml(&skill.file_path),
+            escape_xml(&path_to_relative_with_tilde(&skill.file_path)),
         ));
         out.push_str(&format!("    <description>{}</description>\n", escape_xml(&skill.description)));
         if let Some(ref license) = skill.license {
@@ -253,5 +266,26 @@ mod tests {
         assert!(text.contains("<metadata key=\"version\" value=\"1.0\"/>"));
         assert!(text.contains("</skill>"));
         assert!(text.contains("</available_skills>"));
+    }
+
+    #[test]
+    fn home_paths_are_converted_to_tilde() {
+        let home = std::env::var("HOME").unwrap_or_default();
+        if !home.is_empty() {
+            let skill = Skill {
+                name: "math".to_string(),
+                description: "Do math.".to_string(),
+                content: "".into(),
+                file_path: format!("{}/projects/elph/.agents/skills/math/SKILL.md", home),
+                disable_model_invocation: false,
+                license: None,
+                compatibility: None,
+                metadata: None,
+                allowed_tools: None,
+                argument_hint: None,
+            };
+            let text = run(vec![skill], json!({}));
+            assert!(text.contains("path=\"~/projects/elph/.agents/skills/math/SKILL.md\""));
+        }
     }
 }

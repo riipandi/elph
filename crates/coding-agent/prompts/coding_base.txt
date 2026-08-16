@@ -48,6 +48,8 @@ Think freely when weighing approach: what's known, what's been tried, how it map
   </tool_group>
 </tool_calling>
 
+${{ skills_section }}
+
 ## Parallel Tool Calls
 - Batch up to 5 independent read operations (grep/read_file/find_path) in one call when targets are known
 - Never parallelize write operations → sequential only to avoid conflicts

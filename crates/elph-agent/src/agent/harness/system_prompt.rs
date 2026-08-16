@@ -94,7 +94,7 @@ fn format_skills_ref<'a>(skills: impl Iterator<Item = &'a Skill>) -> String {
         lines.push(format!(
             "  <skill name=\"{}\" path=\"{}\"/>",
             escape_xml(&skill.name),
-            escape_xml(&skill.file_path),
+            escape_xml(&path_to_relative_with_tilde(&skill.file_path)),
         ));
     }
 
@@ -120,6 +120,19 @@ fn escape_xml(value: &str) -> String {
         .replace('>', "&gt;")
         .replace('"', "&quot;")
         .replace('\'', "&apos;")
+}
+
+/// Convert an absolute path under `$HOME` to a tilde-relative path
+/// (e.g. `/Users/alice/project` → `~/project`). Leaves non-home paths unchanged.
+fn path_to_relative_with_tilde(path: &str) -> String {
+    if let Ok(home_dir) = std::env::var("HOME")
+        && path.starts_with(&home_dir)
+    {
+        let remainder = path.strip_prefix(&home_dir).unwrap_or(path);
+        let remainder = remainder.strip_prefix('/').unwrap_or(remainder);
+        return format!("~/{}", remainder);
+    }
+    path.to_string()
 }
 
 #[cfg(test)]
@@ -289,5 +302,26 @@ mod tests {
         s.disable_model_invocation = true;
         let rendered = format_skills_for_system_prompt(&[s]);
         assert_eq!(rendered, "");
+    }
+
+    #[test]
+    fn path_uses_tilde_for_home_paths() {
+        let home = std::env::var("HOME").unwrap_or_default();
+        if !home.is_empty() {
+            let s = skill(
+                "my-skill",
+                &format!("{}/projects/elph/.agents/skills/my-skill/SKILL.md", home),
+                None,
+            );
+            let rendered = format_skills_for_system_prompt(&[s]);
+            assert!(rendered.contains("path=\"~/projects/elph/.agents/skills/my-skill/SKILL.md\""));
+        }
+    }
+
+    #[test]
+    fn path_leaves_non_home_paths_unchanged() {
+        let s = skill("my-skill", "/r/.agents/skills/my-skill/SKILL.md", None);
+        let rendered = format_skills_for_system_prompt(&[s]);
+        assert!(rendered.contains("path=\"/r/.agents/skills/my-skill/SKILL.md\""));
     }
 }

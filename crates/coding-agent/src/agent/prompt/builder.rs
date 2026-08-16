@@ -111,7 +111,7 @@ pub fn build_coding_system_prompt(
         format_skills_for_context(&resources.skills, cwd)
     };
 
-    let base_context = SystemPromptTemplateContext {
+    let mut base_context = SystemPromptTemplateContext {
         persona: "You are a fast and decisive coding agent. Accomplish the task using available tools, per the guidelines below."
             .to_string(),
         working_directory: Some(cwd.display().to_string()),
@@ -139,6 +139,10 @@ pub fn build_coding_system_prompt(
     let elph_context = elph_context.with_worker_peers(worker_peers.as_deref());
 
     let coding_base = coding_agent_engine().render("coding_base", &elph_context)?;
+    // Pass an empty skills_section to the base template so the generic renderer
+    // does not emit <available_skills>. The coding_base.txt MiniJinja template
+    // already embeds it (after </tool_calling>) via `${{ skills_section }}`.
+    base_context.skills_section = String::new();
     SystemPromptBuilder::new()
         .mode(PromptAssemblyMode::Extend)
         .context(base_context)
@@ -664,6 +668,11 @@ mod tests {
         // Verify old format is not used
         assert!(!prompt.contains("<skill name=\"test-skill\" location="));
         assert!(!prompt.contains("</skill>test-skill"));
+
+        // Verify skills appear after tool_calling, not before it
+        let tool_calling = prompt.find("<tool_calling").expect("tool_calling section");
+        let available_skills = prompt.find("<available_skills").expect("available_skills section");
+        assert!(tool_calling < available_skills, "available_skills must come after tool_calling");
     }
 
     #[test]

@@ -49,9 +49,14 @@ pub fn sanitize_system_prompt(prompt: &str) -> String {
 ///
 /// Working directory: {working_directory}   (when set)
 /// Current date: {current_date} | OS: {os_name} | Shell: {shell_path}  (when set)
-/// where current_date is formatted as `YYYY-MM-DD TZONE` (e.g. `2026-08-16 UTC+7`).
-/// {skills_section}                         (when set)
 /// ```
+///
+/// Skills (`<available_skills>`) are intentionally NOT rendered here.
+/// Domain-specific templates (e.g. `coding_base.txt`) place the block at the
+/// appropriate location in their own output. Generic hosts using
+/// `PromptAssemblyMode::Extend` with no domain body fall back to
+/// [`SystemPromptBuilder`](super::system_builder::SystemPromptBuilder) which
+/// appends it after the domain body if not already present.
 pub fn render_base_template(ctx: &SystemPromptTemplateContext) -> String {
     let mut out = String::new();
     out.push_str(ctx.persona.trim());
