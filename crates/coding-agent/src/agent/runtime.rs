@@ -251,7 +251,10 @@ pub async fn create_coding_session_with_events(
     let todo_hook: TodoHook = Arc::new(move |items| {
         let ui_tx = ui_tx_for_todo.clone();
         Box::pin(async move {
-            let _ = ui_tx.send(crate::agent::AgentUiEvent::TodoUpdated { items });
+            log::debug!("todo_hook: sending TodoUpdated event with {} items", items.len());
+            if let Err(err) = ui_tx.send(crate::agent::AgentUiEvent::TodoUpdated { items }) {
+                log::warn!("todo_hook: failed to send event: {err}");
+            }
         })
     });
     // Work tracker: enforces honest progress by requiring actual mutating

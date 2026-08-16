@@ -660,7 +660,10 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             // turn dialogue stays out of the main transcript — nothing to do here.
 
             if let AgentUiEvent::TodoUpdated { items } = &event {
+                log::debug!("tick: received TodoUpdated event with {} items, updating state", items.len());
                 todos.set(items.clone());
+                // Force a redraw so the todo panel reflects the status change immediately.
+                chrome_full_redraw_pending.set(true);
                 continue;
             }
 
