@@ -226,7 +226,7 @@ mod tests {
         )
         .expect("prompt");
 
-        assert!(prompt.contains("inactive by default"));
+        assert!(prompt.contains("Inactive by default"));
         assert!(prompt.contains("name_prefix"));
         assert!(prompt.contains("<tool name=\"mcp_*\""));
         // Inactive MCP names must not appear in the authoritative active list.
@@ -441,7 +441,7 @@ mod tests {
         .expect("prompt");
 
         assert!(prompt.contains("<tool name=\"shell_use\""));
-        assert!(prompt.contains("stateful PTY/REPL/TUI"));
+        assert!(prompt.contains("Stateful PTY/REPL/TUI"));
         assert!(prompt.contains("<tool name=\"shell_exec\""));
     }
 
@@ -562,6 +562,7 @@ mod tests {
         assert!(with_codegraph.contains("<codegraph_tools note="));
         assert!(with_codegraph.contains("<tool name=\"code_search\""));
         assert!(with_codegraph.contains("<tool name=\"code_impact\""));
+        assert!(with_codegraph.contains(">50 file impact"));
 
         let without_codegraph = build_coding_system_prompt(
             Path::new("/tmp/project"),
@@ -573,6 +574,61 @@ mod tests {
         .expect("prompt");
 
         assert!(!without_codegraph.contains("<codegraph_tools"));
+    }
+
+    #[test]
+    fn error_recovery_section_is_present() {
+        let prompt = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["read_file", "grep"].map(String::from),
+            None,
+            &CodingPromptOptions::new(AgentMode::Build),
+        )
+        .expect("prompt");
+
+        assert!(prompt.contains("## Error Recovery"));
+        assert!(prompt.contains("Tool fails with transient error"));
+        assert!(prompt.contains("Test fails → check build/test output"));
+        assert!(prompt.contains("Context refresh only when"));
+        assert!(prompt.contains("You are a fast and decisive coding agent"));
+    }
+
+    #[test]
+    fn output_format_section_is_present() {
+        let prompt = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["read_file", "grep"].map(String::from),
+            None,
+            &CodingPromptOptions::new(AgentMode::Build),
+        )
+        .expect("prompt");
+
+        assert!(prompt.contains("## Output Format"));
+        assert!(prompt.contains("Code changes: Show diff summary"));
+        assert!(prompt.contains("Test results: Pass/fail count"));
+        assert!(prompt.contains("Build errors: First 10 lines"));
+        assert!(prompt.contains("Ask for full output when"));
+        assert!(prompt.contains("You are a fast and decisive coding agent"));
+    }
+
+    #[test]
+    fn parallel_tool_calls_section_is_present() {
+        let prompt = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["read_file", "grep"].map(String::from),
+            None,
+            &CodingPromptOptions::new(AgentMode::Build),
+        )
+        .expect("prompt");
+
+        assert!(prompt.contains("## Parallel Tool Calls"));
+        assert!(prompt.contains("Batch up to 5 independent read operations"));
+        assert!(prompt.contains("Never parallelize write operations"));
+        assert!(prompt.contains("Background jobs: max 2 concurrent"));
+        assert!(prompt.contains("You are a fast and decisive coding agent"));
     }
 
     #[test]
