@@ -136,13 +136,13 @@ pub(crate) fn extract_family_keyword(model_id: &str) -> String {
         "amazon",
     ];
 
-    // Score each part: prefer tokens with digits or model-specific markers
+    // Score each part: prefer model-family name tokens over numeric version tokens.
+    // A pure number (e.g. "3.5") gets low score; an alphanumeric token (e.g. "gpt-5")
+    // gets higher so that "gpt" wins over "3.5" in ids like "gpt-3.5-turbo-batch".
     let scored: Vec<(&str, i32)> = parts
         .iter()
         .map(|p| {
-            let has_digit = p.chars().any(|c| c.is_ascii_digit());
             let is_vendor = VENDOR_PREFIXES.contains(p);
-            // Model family names get extra weight; vendor prefixes get penalized
             let is_family_name = matches!(
                 *p,
                 "claude"
@@ -174,11 +174,15 @@ pub(crate) fn extract_family_keyword(model_id: &str) -> String {
                     | "mixtral"
                     | "doubao"
                     | "nano"
+                    | "gpt"
+                    | "minimax"
+                    | "bytedance"
             );
             let score = if is_family_name {
                 100
-            } else if has_digit {
-                10
+            } else if p.chars().any(|c| c.is_ascii_digit()) && !p.chars().any(|c| c.is_alphabetic()) {
+                // Pure numeric token (e.g. "3.5", "27b") — low priority
+                1
             } else {
                 1
             } - if is_vendor { 8 } else { 0 };
@@ -503,6 +507,57 @@ fn provider_override_map(provider_id: &str, model_id: &str) -> Option<Value> {
             ("high", Some("high")),
             ("max", Some("max")),
         ])),
+        // Cogito — off / low / medium / high / xhigh (deepcogito family)
+        b if b.contains("cogito") => Some(map_with(&[
+            ("off", Some("off")),
+            ("low", Some("low")),
+            ("medium", Some("medium")),
+            ("high", Some("high")),
+            ("xhigh", Some("xhigh")),
+        ])),
+        // Laguna (Poolside) — low / medium / high
+        b if b.contains("laguna") => Some(map_with(&[
+            ("low", Some("low")),
+            ("medium", Some("medium")),
+            ("high", Some("high")),
+        ])),
+        // Cohere North Mini Code — low / high
+        b if b.contains("north") && b.contains("mini") && b.contains("code") => {
+            Some(map_with(&[("low", Some("low")), ("high", Some("high"))]))
+        }
+        // Liquid LFM — low / high (open-weight reasoning model)
+        b if b.contains("lfm") => Some(map_with(&[("low", Some("low")), ("high", Some("high"))])),
+        // Dots Studio (dots-3-note-preview etc.) — low / medium / high
+        b if b.contains("dots") => Some(map_with(&[
+            ("low", Some("low")),
+            ("medium", Some("medium")),
+            ("high", Some("high")),
+        ])),
+        // Sao10K Lunaris (Llama-3 based) — low / high / max
+        b if b.contains("lunaris") => {
+            Some(map_with(&[("low", Some("low")), ("high", Some("high")), ("max", Some("max"))]))
+        }
+        // Ternary Bonsai — low / high
+        b if b.contains("bonsai") => Some(map_with(&[("low", Some("low")), ("high", Some("high"))])),
+        // Apertus (Swiss AI) — off / low / medium / high / xhigh
+        b if b.contains("apertus") => Some(map_with(&[
+            ("off", Some("off")),
+            ("low", Some("low")),
+            ("medium", Some("medium")),
+            ("high", Some("high")),
+            ("xhigh", Some("xhigh")),
+        ])),
+        // ERNIE (Baidu) — low / high / max (empty reasoning_options on models.dev)
+        b if b.contains("ernie") => {
+            Some(map_with(&[("low", Some("low")), ("high", Some("high")), ("max", Some("max"))]))
+        }
+        // Tongyi DeepResearch (Alibaba/Qwen family) — low / medium / high / max
+        b if b.contains("tongyi") && b.contains("deepresearch") => Some(map_with(&[
+            ("low", Some("low")),
+            ("medium", Some("medium")),
+            ("high", Some("high")),
+            ("max", Some("max")),
+        ])),
         // Gemini flash/preview non-batch — low / medium / high
         b if b.contains("gemini") && !b.contains("batch") && !b.contains(":free") && !b.contains("-batch") => {
             Some(map_with(&[
@@ -515,8 +570,6 @@ fn provider_override_map(provider_id: &str, model_id: &str) -> Option<Value> {
         b if b.contains("gemini") && (b.contains(":batch") || b.contains(":free") || b.contains("-batch")) => {
             Some(all_null_map())
         }
-        // Gateway batch/free routes for any family — pre-computed pricing, no thinking effort API
-        b if b.contains(":batch") || b.contains(":free") || b.contains("-batch") => Some(all_null_map()),
         _ => None,
     }
 }
@@ -787,7 +840,17 @@ mod tests {
 
     #[test]
     fn openrouter_free_route_returns_all_null() {
-        // Gateway free routes (e.g. :free suffix) have no discrete thinking effort API
+        // Batch/free routes for models with NO family match get all-null
+        // (gpt-3.5-turbo:batch has no known family override)
+        let m = build_thinking_level_map("openrouter", "openai/gpt-3.5-turbo:batch", true, None, None, None, None);
+        for k in ["off", "minimal", "low", "medium", "high", "xhigh", "max"] {
+            assert!(m[k].is_null(), "{k} should be null for unknown free route");
+        }
+    }
+
+    #[test]
+    fn dots_free_route_gets_family_override() {
+        // dots-studio/dots-3-note-preview:free matches "dots" family override
         let m = build_thinking_level_map(
             "openrouter",
             "dots-studio/dots-3-note-preview:free",
@@ -797,9 +860,10 @@ mod tests {
             None,
             None,
         );
-        for k in ["off", "minimal", "low", "medium", "high", "xhigh", "max"] {
-            assert!(m[k].is_null(), "{k} should be null for free route");
-        }
+        assert_eq!(m["low"], "low");
+        assert_eq!(m["medium"], "medium");
+        assert_eq!(m["high"], "high");
+        assert!(m["off"].is_null());
     }
 
     #[test]
@@ -854,6 +918,50 @@ mod tests {
         assert_eq!(m["high"], "high");
         assert_eq!(m["max"], "max");
         assert!(m["off"].is_null());
+    }
+
+    #[test]
+    fn gateway_preserved_id_with_stale_reasoning_false() {
+        // Gateway-preserved IDs like deepseek-v4-flash-alibaba have reasoning=false
+        // from previous catalogs but should get the family override via keyword fallback
+        use super::super::models_dev::load_models_dev;
+        use std::path::PathBuf;
+
+        // Build a minimal ModelsDevData with deepseek entries
+        let cache_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("models")
+            .join(".cache")
+            .join("models.dev");
+
+        let dev = load_models_dev(&cache_dir, false, false).expect("load models.dev");
+
+        // Test deepseek-v4-flash-alibaba (reasoning=false in catalog, but family IS reasoning)
+        let m = build_thinking_level_map(
+            "nara-router",
+            "deepseek-v4-flash-alibaba",
+            false, // stale reasoning=false from previous catalog
+            None,
+            None,
+            None,
+            Some(&dev),
+        );
+        assert_eq!(m["low"], "low", "deepseek-v4-flash-alibaba should get low/high/max");
+        assert_eq!(m["high"], "high");
+        assert_eq!(m["max"], "max");
+    }
+
+    #[test]
+    fn minimax_promo_id_gets_family_override() {
+        // minimax-m3-promo should match the minimax family
+        let m = build_thinking_level_map("nara-router", "minimax-m3-promo", true, None, None, None, None);
+        assert_eq!(m["low"], "low");
+        assert_eq!(m["medium"], "medium");
+        assert_eq!(m["high"], "high");
+        assert_eq!(m["max"], "max");
     }
 
     #[test]

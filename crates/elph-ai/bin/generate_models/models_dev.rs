@@ -63,19 +63,25 @@ impl ModelsDevData {
     /// match against the model id (case-insensitive). Used as a fallback when
     /// a gateway-preserved ID like `tencent-hy3-free` has no direct match but
     /// the underlying family model (e.g. `tencent/hy3`) exists on models.dev.
+    /// Prefers entries where `reasoning=true` over those where it is false.
     pub fn find_model_by_keyword(&self, keyword: &str) -> Option<Value> {
         let kw = keyword.to_ascii_lowercase();
+        let mut any_match: Option<Value> = None;
         for prov in self.api.values() {
             if let Some(models) = prov.get("models").and_then(|m| m.as_object()) {
                 for (_mid, m) in models {
                     let mid_lower = _mid.to_ascii_lowercase();
                     if mid_lower.contains(&kw) {
-                        return Some(m.clone());
+                        let is_reasoning = m.get("reasoning").and_then(|v| v.as_bool()) == Some(true);
+                        if is_reasoning {
+                            return Some(m.clone());
+                        }
+                        any_match.get_or_insert_with(|| m.clone());
                     }
                 }
             }
         }
-        None
+        any_match
     }
 }
 

@@ -19,9 +19,9 @@
         "reasoning": false,
         "releaseDate": "2025-12-01",
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,

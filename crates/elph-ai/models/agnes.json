@@ -14,7 +14,7 @@
         "maxTokens": 64000,
         "name": "Agnes 2.0 Flash",
         "provider": "agnes",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -40,7 +40,7 @@
         "maxTokens": 65536,
         "name": "Agnes 2.5 Flash",
         "provider": "agnes",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -66,7 +66,7 @@
         "maxTokens": 65536,
         "name": "Agnes 2.5 Pro",
         "provider": "agnes",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,

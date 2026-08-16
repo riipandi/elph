@@ -14,7 +14,7 @@
         "maxTokens": 64000,
         "name": "agnes-2.0-flash",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -40,7 +40,7 @@
         "maxTokens": 64000,
         "name": "agnes-2.5-flash",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -66,7 +66,7 @@
         "maxTokens": 64000,
         "name": "agnes-2.5-pro",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -280,11 +280,11 @@
         "maxTokens": 64000,
         "name": "deepseek-v4-flash-alibaba",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -306,11 +306,11 @@
         "maxTokens": 64000,
         "name": "deepseek-v4-flash-bynara",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -386,11 +386,11 @@
         "maxTokens": 64000,
         "name": "deepseek-v4-pro-alibaba",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -681,15 +681,15 @@
         "maxTokens": 64000,
         "name": "kimi-k2.7-code-alibaba",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "kimi-k3": {
@@ -734,12 +734,12 @@
         "maxTokens": 64000,
         "name": "laguna-s-2.1",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -948,7 +948,7 @@
         "maxTokens": 64000,
         "name": "mistral-large",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -974,7 +974,7 @@
         "maxTokens": 64000,
         "name": "mistral-medium-3-5",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1081,15 +1081,15 @@
         "maxTokens": 64000,
         "name": "qwen-3.8-max-free",
         "provider": "nara-router",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen3.7-flash": {

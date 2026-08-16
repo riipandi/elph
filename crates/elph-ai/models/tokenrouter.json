@@ -14,7 +14,7 @@
         "maxTokens": 64000,
         "name": "MiniMax-Hailuo-2.3",
         "provider": "tokenrouter",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -451,12 +451,12 @@
         "maxTokens": 64000,
         "name": "bytedance-seed/seedream-4.5",
         "provider": "tokenrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": "max",
-            "medium": "medium",
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -477,12 +477,12 @@
         "maxTokens": 64000,
         "name": "bytedance-seed/seedream-5.0-lite",
         "provider": "tokenrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": "max",
-            "medium": "medium",
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -503,12 +503,12 @@
         "maxTokens": 64000,
         "name": "bytedance-seed/seedream-5.0-pro",
         "provider": "tokenrouter",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": "max",
-            "medium": "medium",
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -556,15 +556,15 @@
         "maxTokens": 65536,
         "name": "Claude Opus 4.8 AWS",
         "provider": "tokenrouter",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
-            "max": null,
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "deepseek/deepseek-v3.2": {
@@ -1074,10 +1074,10 @@
         "reasoning": false,
         "releaseDate": "2026-04-22",
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -1152,12 +1152,12 @@
         "maxTokens": 64000,
         "name": "kling-3.0-turbo",
         "provider": "tokenrouter",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -1205,12 +1205,12 @@
         "maxTokens": 64000,
         "name": "kling-v3",
         "provider": "tokenrouter",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -1231,12 +1231,12 @@
         "maxTokens": 64000,
         "name": "kling-v3-omni",
         "provider": "tokenrouter",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -1257,7 +1257,7 @@
         "maxTokens": 64000,
         "name": "microsoft/mai-image-2.5",
         "provider": "tokenrouter",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1286,10 +1286,10 @@
         "provider": "tokenrouter",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -1337,12 +1337,12 @@
         "maxTokens": 65536,
         "name": "MiniMax M2.1 Highspeed",
         "provider": "tokenrouter",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -2347,13 +2347,13 @@
         "provider": "tokenrouter",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-122b-a10b": {
@@ -2942,9 +2942,9 @@
         "provider": "tokenrouter",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -2966,11 +2966,11 @@
         "maxTokens": 65536,
         "name": "Grok 4.20 Beta",
         "provider": "tokenrouter",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
