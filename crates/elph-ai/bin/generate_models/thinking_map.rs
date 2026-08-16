@@ -558,6 +558,16 @@ fn provider_override_map(provider_id: &str, model_id: &str) -> Option<Value> {
             ("high", Some("high")),
             ("max", Some("max")),
         ])),
+        // Mistral — off / low / high (supports reasoning_effort per official docs)
+        b if b.contains("mistral")
+            && !b.contains("min")
+            && !b.contains("magistral")
+            && !b.contains("pixtral")
+            && !b.contains("voxtral")
+            && !b.contains("codestral") =>
+        {
+            Some(map_with(&[("off", Some("off")), ("low", Some("low")), ("high", Some("high"))]))
+        }
         // Gemini flash/preview non-batch — low / medium / high
         b if b.contains("gemini") && !b.contains("batch") && !b.contains(":free") && !b.contains("-batch") => {
             Some(map_with(&[
