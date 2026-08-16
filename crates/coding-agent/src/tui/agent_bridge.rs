@@ -1583,6 +1583,13 @@ mod tests {
             },
         );
         // Must not panic — the fix rounds drop down to a char boundary.
-        assert!(messages[0].tool.as_ref().unwrap().output.contains("...stream output truncated..."));
+        assert!(
+            messages[0]
+                .tool
+                .as_ref()
+                .unwrap()
+                .output
+                .contains("...stream output truncated...")
+        );
     }
 }

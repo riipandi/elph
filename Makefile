@@ -262,6 +262,7 @@ prepare: ## Install required toolchain
 	@command -v cargo-deny >/dev/null 2>&1 || $(CARGO) binstall --locked -y cargo-deny
 	@command -v cargo-nextest >/dev/null 2>&1 || $(CARGO) binstall --locked -y cargo-nextest
 	@command -v cargo-machete >/dev/null 2>&1 || $(CARGO) binstall --locked -y cargo-machete
+	@command -v cargo-flamegraph >/dev/null 2>&1 || $(CARGO) binstall --locked -y flamegraph
 	@command -v cargo-llvm-cov >/dev/null 2>&1 || $(CARGO) binstall --locked -y cargo-llvm-cov
 	@command -v communique >/dev/null 2>&1 || $(CARGO) binstall --locked -y communique
 	@command -v watchexec >/dev/null 2>&1 || $(CARGO) binstall --locked -y watchexec-cli

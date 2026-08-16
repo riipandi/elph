@@ -125,8 +125,14 @@ impl SubagentHarness {
             .map(|message| {
                 let mut text = String::new();
                 for block in &message.content {
-                    if let elph_ai::AssistantContentBlock::Text(content) = block {
-                        text.push_str(&content.text);
+                    match block {
+                        elph_ai::AssistantContentBlock::Text(content) => {
+                            text.push_str(&content.text);
+                        }
+                        elph_ai::AssistantContentBlock::Thinking(content) => {
+                            text.push_str(&content.thinking);
+                        }
+                        _ => {}
                     }
                 }
                 text
