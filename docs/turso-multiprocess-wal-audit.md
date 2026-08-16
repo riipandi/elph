@@ -316,7 +316,7 @@ The project does not appear to perform platform or filesystem capability checks,
 ### P2
 
 - Migration comments are stale in some historical sections.
-- FTS fallback relies on message substrings.
+- FTS fallback now matches only known capability errors from the Turso index method parser. Unrelated migration failures are returned instead of being hidden by broad message matching.
 - Structured operation names, process identifiers, and metrics for retry exhaustion, rollback failures, migration waits, and session conflicts remain recommended observability work.
 
 ## P1 hardening status
