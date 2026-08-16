@@ -2,7 +2,7 @@
 //!
 //! Layering (generic runtime → product domain):
 //! 1. [`elph_agent::render_base_template`] — persona, session env, [`format_skills_for_context`] (`<available_skills>`)
-//! 2. [`super::template::coding_agent_engine`] — Grok-style `coding_base.md` (MiniJinja) with tool names
+//! 2. [`super::template::coding_agent_engine`] — Grok-style `coding_base.txt` (MiniJinja) with tool names
 //! 3. `mode_section` — per-mode appendix (`<mode_context>`)
 //! 4. [`elph_agent::format_project_context`] — Pi-style `<project_context>` for AGENTS.md
 
@@ -112,7 +112,7 @@ pub fn build_coding_system_prompt(
     };
 
     let base_context = SystemPromptTemplateContext {
-        persona: "You are a fast, decisive coding agent. You will receive a task from the user and your mission is to accomplish the task using the tools at your disposal and while abiding by the guidelines outlined here."
+        persona: "You are a fast, decisive coding agent. Accomplish the task using available tools, per the guidelines below."
             .to_string(),
         working_directory: Some(cwd.display().to_string()),
         current_date: Some(date),

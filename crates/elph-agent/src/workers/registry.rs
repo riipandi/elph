@@ -75,11 +75,10 @@ impl WorkerRegistry {
             .or_else(|_| std::env::var("COMPUTERNAME"))
             .ok();
         self.demote_stale(project_key, stale_secs).await?;
-        let name = self.unique_name(project_key, desired_name).await?;
 
         self.with_conn(|conn| {
             let worker_id = worker_id.to_string();
-            let name = name.clone();
+            let desired_name = desired_name.to_string();
             let now = now.clone();
             let hostname = hostname.clone();
             let session_id = session_id.to_string();
@@ -87,12 +86,13 @@ impl WorkerRegistry {
             let purpose = purpose.to_string();
             let model = model.map(str::to_string);
             async move {
-                with_write_transaction(&conn, || async {
+                let name = with_write_transaction(&conn, || async {
                     conn.execute(
                         "DELETE FROM workers WHERE session_id = ? OR worker_id = ?",
                         turso::params![session_id.as_str(), worker_id.as_str()],
                     )
                     .await?;
+                    let name = Self::allocate_unique_name(&conn, &project_key, &desired_name).await?;
                     conn.execute(
                         "INSERT INTO workers (
                             worker_id, session_id, project_key, name, purpose, model, status,
@@ -112,7 +112,7 @@ impl WorkerRegistry {
                         ],
                     )
                     .await?;
-                    Ok::<(), anyhow::Error>(())
+                    Ok::<String, anyhow::Error>(name)
                 })
                 .await?;
                 Ok(WorkerRecord {
@@ -235,41 +235,34 @@ impl WorkerRegistry {
         Ok(self.list_live(project_key, stale_secs).await?.len())
     }
 
-    async fn unique_name(&self, project_key: &str, desired: &str) -> Result<String> {
+    async fn allocate_unique_name(conn: &Connection, project_key: &str, desired: &str) -> Result<String> {
         let base = if desired.trim().is_empty() {
             "worker".to_string()
         } else {
             desired.trim().to_string()
         };
-        self.with_conn(|conn| {
-            let project_key = project_key.to_string();
-            let base = base.clone();
-            async move {
-                let mut candidate = base.clone();
-                let mut n = 2u32;
-                loop {
-                    let mut rows = conn
-                        .query(
-                            "SELECT 1 FROM workers
-                             WHERE project_key = ? AND name = ? AND status IN ('online','idle','busy')
-                             LIMIT 1",
-                            turso::params![project_key.as_str(), candidate.as_str()],
-                        )
-                        .await?;
-                    let taken = rows.next().await?.is_some();
-                    while rows.next().await?.is_some() {}
-                    if !taken {
-                        return Ok(candidate);
-                    }
-                    candidate = format!("{base}{n}");
-                    n += 1;
-                    if n > 10_000 {
-                        bail!("could not allocate unique worker name");
-                    }
-                }
+        let mut candidate = base.clone();
+        let mut n = 2u32;
+        loop {
+            let mut rows = conn
+                .query(
+                    "SELECT 1 FROM workers
+                 WHERE project_key = ? AND name = ? AND status IN ('online','idle','busy')
+                 LIMIT 1",
+                    turso::params![project_key, candidate.as_str()],
+                )
+                .await?;
+            let taken = rows.next().await?.is_some();
+            while rows.next().await?.is_some() {}
+            if !taken {
+                return Ok(candidate);
             }
-        })
-        .await
+            candidate = format!("{base}{n}");
+            n += 1;
+            if n > 10_000 {
+                bail!("could not allocate unique worker name");
+            }
+        }
     }
 
     /// Demote workers that are heartbeat-stale **or** whose process pid is dead.

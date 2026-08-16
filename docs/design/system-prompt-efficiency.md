@@ -83,7 +83,7 @@ they are **default-inactive** on the model-visible wire:
   turns. Subagents receive the full parent registry with the parent's active set
   (MCP stays inactive until listed/called).
 
-Prompt guidance (`coding_base.md`) tells the model to pass `name_prefix` (e.g.
+Prompt guidance (`coding_base.txt`) tells the model to pass `name_prefix` (e.g.
 `mcp_deepwiki__`) to activate. Full-harness coverage in
 `crates/elph-agent/tests/harness.rs`:
 `harness_lazy_activates_mcp_tools_via_list_available_tools`,
@@ -105,7 +105,7 @@ advertisement from the static prompt.
 
 ## Simplified Technical English response style
 
-The coding-agent domain template (`crates/coding-agent/templates/agent/coding_base.md`)
+The coding-agent domain template (`crates/coding-agent/templates/agent/coding_base.txt`)
 now ends with a `<response_style>` section derived from ASD-STE100 (Simplified
 Technical English) applied to **every response** the agent writes: chat replies and
 content written to files (code, comments, docs, commit messages).
@@ -130,11 +130,12 @@ lean when the user opts out.
 ## Caller-side consistency (`format_skills_for_context`)
 
 The single combined entry point `format_skills_for_context(skills, cwd)` (filter
+
 - XML render) is exported (`elph_agent`) and used by the coding-agent prompt
-builder. Other hosts using `PromptAssemblyMode::Full` append `skills_section`
-verbatim, so they should call `format_skills_for_context` (or pre-filter with
-`filter_skills_for_context`) before setting `skills_section` — the builder itself
-keeps rendering exactly what it receives.
+  builder. Other hosts using `PromptAssemblyMode::Full` append `skills_section`
+  verbatim, so they should call `format_skills_for_context` (or pre-filter with
+  `filter_skills_for_context`) before setting `skills_section` — the builder itself
+  keeps rendering exactly what it receives.
 
 ## Serialized Schema Formats
 

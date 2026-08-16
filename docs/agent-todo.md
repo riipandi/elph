@@ -72,7 +72,7 @@ never trigger auto-close. Closed items emit `TodoUpdated` like a normal
 
 ## ReAct usage
 
-System prompt (`coding_base.md` → `<operating_loop>`) biases to **See → Do → Check**, not ceremony:
+System prompt (`coding_base.txt` → `<operating_loop>`) biases to **See → Do → Check**, not ceremony:
 
 1. **See** — conversation + already-injected memory/codegraph/tool results
 2. **Do** — smallest tool set that advances the request

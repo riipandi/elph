@@ -473,7 +473,7 @@ Single tool **`todo_write`** (name aligned with grok; document alias in tools.md
 
 ### 5.3 Prompt / ReAct structure (`templates/agent/`)
 
-Update `coding_base.md` (and mode snippets as needed):
+Update `coding_base.txt` (and mode snippets as needed):
 
 1. **Observe** — use conversation, memory blocks, codegraph, todos
 2. **Plan** — for multi-step (≥3) non-trivial work, call `todo_write` early; keep exactly one `in_progress`

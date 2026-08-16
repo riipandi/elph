@@ -53,7 +53,7 @@ Not yet implemented in this pass:
 - Runtime filesystem capability detection or a fallback for unsupported distributed filesystems.
 - A shared helper module between `elph-agent` and `floppy`; their standalone APIs still live in separate crates.
 - Explicit commit-outcome/idempotency reporting for failures where the server status is unknown is available through `CommitOutcome`; callers must still use an idempotency key or uniqueness constraint before retrying `Unknown`.
-- Database-level uniqueness constraints for every worker-name and goal invariant; the write paths are serialized, but schema-level enforcement is still recommended for defense in depth.
+- Worker registration now allocates the display name inside the same serialized transaction as stale-row removal and insertion, closing the cross-process name-selection race.
 
 
 ### Shared host database

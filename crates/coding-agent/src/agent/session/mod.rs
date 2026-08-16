@@ -34,9 +34,9 @@ use elph_agent::parse_command_args;
 use std::path::Path;
 
 /// System prompt for background session title generation (`crates/coding-agent/templates/agent/`).
-const SESSION_TITLE_SYSTEM: &str = include_str!("../../../templates/agent/session_title_system.md");
+const SESSION_TITLE_SYSTEM: &str = include_str!("../../../templates/agent/session_title_system.txt");
 /// User prompt template; `{{conversation}}` is replaced with the naming excerpt.
-const SESSION_TITLE_USER: &str = include_str!("../../../templates/agent/session_title_user.md");
+const SESSION_TITLE_USER: &str = include_str!("../../../templates/agent/session_title_user.txt");
 /// Maximum number of background auto-title attempts per session lifetime.
 const SESSION_TITLE_MAX_ATTEMPTS: u32 = 3;
 

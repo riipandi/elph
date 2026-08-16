@@ -30,7 +30,7 @@ crates/
 docs/               # project documentation, porting status, design notes
 skills/             # OpenWiki skill files (mermaid-diagrams, migrate-wiki, write-connector)
 extensions/         # WASM extension plugins (say-hello)
-templates/agent/    # MiniJinja system prompt templates (coding_base.md, mode_*.md, session_title_*.md)
+templates/agent/    # MiniJinja system prompt templates (coding_base.txt, mode_*.md, session_title_*.md)
 ```
 
 > **Note:** `elph-db` was removed in commit `eba87a7`. Its open/connect/retry/lock-error helpers were absorbed into `crates/elph-agent/src/datastore/conn.rs`.

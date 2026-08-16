@@ -19,10 +19,10 @@ pub fn mode_tool_guidance(mode: AgentMode) -> &'static str {
 
 pub fn mode_appendix_source(mode: AgentMode) -> &'static str {
     match mode {
-        AgentMode::Build => include_str!("../../../templates/agent/mode_build.md"),
-        AgentMode::Plan => include_str!("../../../templates/agent/mode_plan.md"),
-        AgentMode::Ask => include_str!("../../../templates/agent/mode_ask.md"),
-        AgentMode::Brave => include_str!("../../../templates/agent/mode_brave.md"),
+        AgentMode::Build => include_str!("../../../templates/agent/mode_build.txt"),
+        AgentMode::Plan => include_str!("../../../templates/agent/mode_plan.txt"),
+        AgentMode::Ask => include_str!("../../../templates/agent/mode_ask.txt"),
+        AgentMode::Brave => include_str!("../../../templates/agent/mode_brave.txt"),
     }
 }
 

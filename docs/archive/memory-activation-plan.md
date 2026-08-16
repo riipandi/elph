@@ -41,7 +41,7 @@ Floppy is wired into Elph but under-used for day-to-day coding efficiency.
 | Auto-write      | User-correction keywords + tool **errors** only                                               | Successful edits / “already done” not stored          |
 | Task lifecycle  | Auto start/end on turn                                                                        | `end_task` weak metrics; task id in `thread_local!`   |
 | Store instances | Tools (`OnceCell`) vs hooks (`RECALL_STORE`)                                                  | Separate `MemoryStore` → `current_task_id` not shared |
-| Prompts         | Generic “do not re-fetch known info” in `coding_base.md`                                      | No memory-first / anti-rescan policy                  |
+| Prompts         | Generic “do not re-fetch known info” in `coding_base.txt`                                     | No memory-first / anti-rescan policy                  |
 | Categories      | `correction`, `user`, `insight`, `discovery`, `consolidated`                                  | No first-class `work`; discovery underused            |
 
 **Desired outcomes:**
@@ -106,7 +106,7 @@ Session end:
 | Host tools                          | `crates/coding-agent/src/memory/tools.rs`                                                                                 |
 | Slash / CLI entry                   | `crates/coding-agent/src/memory/mod.rs`, `crates/coding-agent/src/memory/cmd.rs`, `crates/coding-agent/src/cli/memory.rs` |
 | Session factory                     | `crates/coding-agent/src/agent/runtime.rs`                                                                                |
-| Prompt templates                    | `crates/coding-agent/templates/agent/coding_base.md`, `mode_*.md`                                                         |
+| Prompt templates                    | `crates/coding-agent/templates/agent/coding_base.txt`, `mode_*.md`                                                        |
 | Prompt assembly                     | `crates/coding-agent/src/agent/prompt/builder.rs`                                                                         |
 | Harness hooks API                   | `crates/elph-agent/src/agent/harness/hooks.rs`                                                                            |
 | Hook event shapes                   | `BeforeAgentStartEvent { prompt, system_prompt, ... }`, `ToolResultEvent { tool_name, input, is_error, ... }`             |
@@ -549,9 +549,9 @@ Make the model **prefer memory** over redundant scanning and **trust/repair** re
 
 ## Tasks
 
-### Task 3.1 — `coding_base.md` section
+### Task 3.1 — `coding_base.txt` section
 
-**File:** `crates/coding-agent/templates/agent/coding_base.md`
+**File:** `crates/coding-agent/templates/agent/coding_base.txt`
 
 Insert `<memory_and_context>` after `<context_and_rules>` (or before `<execution>`).
 
@@ -568,7 +568,7 @@ Insert `<memory_and_context>` after `<context_and_rules>` (or before `<execution
 
 ### Task 3.2 — Mode templates
 
-**Files:** `mode_build.md`, `mode_brave.md`, `mode_plan.md`, `mode_ask.md`
+**Files:** `mode_build.txt`, `mode_brave.txt`, `mode_plan.txt`, `mode_ask.txt`
 
 | Mode          | Extra line(s)                                                                                  |
 | ------------- | ---------------------------------------------------------------------------------------------- |
@@ -576,7 +576,7 @@ Insert `<memory_and_context>` after `<context_and_rules>` (or before `<execution
 | plan / ask    | Recall heavily; do not invent work logs for pure Q&A; discoveries OK when mapping architecture |
 
 > **Note (2026-08-01):** the mode-specific memory lines above were consolidated into the
-> always-rendered `<memory_and_context>` section of `coding_base.md` and removed from the
+> always-rendered `<memory_and_context>` section of `coding_base.txt` and removed from the
 > `mode_*.md` templates to keep the static prompt lean. Mode templates now carry only
 > mode-protocol guidance (Plan keeps the "no work-log entries during planning" guard).
 
