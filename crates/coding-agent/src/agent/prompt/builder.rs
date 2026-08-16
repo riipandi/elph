@@ -10,7 +10,7 @@ use std::path::Path;
 
 use crate::types::AgentMode;
 use elph_agent::{AgentHarnessResources, PromptAssemblyMode, SystemPromptBuilder, SystemPromptTemplateContext};
-use elph_agent::{format_skills_for_context, now_iso_timestamp};
+use elph_agent::{format_skills_for_context, now_date_with_offset};
 
 use super::context::{ElphCodingPromptContext, has_codegraph_tools};
 use super::modes::mode_footer_slug;
@@ -101,7 +101,7 @@ pub fn build_coding_system_prompt(
         worker_name,
         worker_peers,
     } = options.clone();
-    let date = now_iso_timestamp().chars().take(10).collect::<String>();
+    let date = now_date_with_offset();
     let shell_path = std::env::var("SHELL").ok();
     let os_name = std::env::consts::OS.to_string();
 

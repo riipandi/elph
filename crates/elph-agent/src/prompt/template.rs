@@ -49,6 +49,7 @@ pub fn sanitize_system_prompt(prompt: &str) -> String {
 ///
 /// Working directory: {working_directory}   (when set)
 /// Current date: {current_date} | OS: {os_name} | Shell: {shell_path}  (when set)
+/// where current_date is formatted as `YYYY-MM-DD TZONE` (e.g. `2026-08-16 UTC+7`).
 /// {skills_section}                         (when set)
 /// ```
 pub fn render_base_template(ctx: &SystemPromptTemplateContext) -> String {

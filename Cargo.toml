@@ -145,7 +145,7 @@ syntect = { version = "5.3.0", default-features = false, features = [
 tempfile = "3.27.0"
 textwrap = "0.16.2"
 thiserror = "2.0.20"
-time = { version = "0.3.55", default-features = false, features = ["formatting", "parsing", "std"] }
+time = { version = "0.3.55", default-features = false, features = ["formatting", "parsing", "std", "local-offset"] }
 tokio = { version = "1.53.1", default-features = false, features = ["macros", "rt"] }
 tokio-rustls = "0.26.4"
 tokio-tungstenite = { version = "0.30.0", default-features = false, features = ["connect", "rustls-tls-webpki-roots"] }

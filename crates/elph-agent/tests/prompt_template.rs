@@ -7,7 +7,7 @@ fn extend_mode_renders_base_persona() {
     let context = SystemPromptTemplateContext {
         persona: "Test persona".to_string(),
         working_directory: Some("/tmp/project".to_string()),
-        current_date: Some("2026-07-17".to_string()),
+        current_date: Some("2026-07-17 UTC+7".to_string()),
         ..Default::default()
     };
 

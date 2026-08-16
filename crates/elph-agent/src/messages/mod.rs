@@ -30,6 +30,28 @@ pub fn now_iso_timestamp() -> String {
         .unwrap_or_else(|_| "1970-01-01T00:00:00Z".to_string())
 }
 
+/// Return the current local date with its UTC offset, formatted as
+/// `YYYY-MM-DD UTC±H` (e.g. `2026-08-16 UTC+7`). Falls back to UTC when
+/// the system timezone is unavailable.
+pub fn now_date_with_offset() -> String {
+    let dt = time::OffsetDateTime::now_local().unwrap_or_else(|_| time::OffsetDateTime::now_utc());
+    let offset = dt.offset();
+    let hours = offset.whole_hours();
+    let tz = if hours == 0 {
+        "UTC".to_string()
+    } else if hours > 0 {
+        format!("UTC+{}", hours)
+    } else {
+        format!("UTC{}", hours)
+    };
+    format!(
+        "{} {}",
+        dt.format(&time::format_description::well_known::Iso8601::DATE)
+            .unwrap_or_default(),
+        tz
+    )
+}
+
 pub fn create_branch_summary_message(summary: &str, from_id: &str, timestamp: &str) -> AgentMessage {
     AgentMessage::Custom(CustomAgentMessage::BranchSummary {
         summary: summary.to_string(),

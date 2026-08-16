@@ -214,6 +214,7 @@ pub use messages::create_custom_message;
 pub use messages::default_convert_to_llm;
 pub use messages::default_convert_to_llm as convert_to_llm;
 pub use messages::default_convert_to_llm_fn;
+pub use messages::now_date_with_offset;
 pub use messages::now_iso_timestamp;
 pub use messages::shell_exec_execution_to_text;
 #[cfg(feature = "extensions")]
