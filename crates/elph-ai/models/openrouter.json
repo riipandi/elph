@@ -1974,10 +1974,10 @@
         },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.012012,
+            "cacheRead": 0.011732000000000001,
             "cacheWrite": 0.0,
-            "input": 0.060059999999999995,
-            "output": 0.12011999999999999
+            "input": 0.05866,
+            "output": 0.11732
         },
         "description": "Fast DeepSeek V4 lane for economical reasoning, coding, and long-context work",
         "id": "deepseek/deepseek-v4-flash",
