@@ -25,6 +25,10 @@ use crate::tools::common::{check_aborted, resolve_path};
 use crate::types::{AgentTool, AgentToolResult, ToolExecuteFn, ToolResultContent, ToolUpdateCallback};
 use elph_ai::TextContent;
 
+/// Max characters kept in a shell_exec tool result before it enters the agent
+/// context. Matches the MCP bound so session message memory stays bounded.
+const MAX_TOOL_RESULT_CHARS: usize = 32_768;
+
 /// Default timeout (seconds) for background tasks in interactive (TUI) mode.
 const BACKGROUND_DEFAULT_TIMEOUT_SECS: u64 = 600;
 
@@ -396,6 +400,26 @@ async fn execute_shell_exec(
         } else {
             text.push_str("\n\n[output truncated]");
         }
+    }
+
+    // Cap the result to keep session message memory bounded. Long outputs are
+    // still available on disk via `fullOutputPath` / `outputPath` in details.
+    if text.chars().count() > MAX_TOOL_RESULT_CHARS {
+        let mut cut: String = text.chars().take(MAX_TOOL_RESULT_CHARS).collect();
+        if let Some(idx) = cut.rfind('\n')
+            && idx > MAX_TOOL_RESULT_CHARS / 2
+        {
+            cut.truncate(idx);
+        }
+        let omitted = text.chars().count().saturating_sub(cut.chars().count());
+        cut.push_str(&format!(
+            "\n\n... [truncated {omitted} characters; full output available at {}]",
+            capture
+                .full_output_path
+                .as_deref()
+                .unwrap_or("the session terminals log")
+        ));
+        text = cut;
     }
 
     Ok(AgentToolResult {
