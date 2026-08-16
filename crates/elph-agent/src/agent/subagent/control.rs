@@ -179,7 +179,7 @@ impl AgentControl {
                 self.registry.clone(),
                 child_control,
                 config.system_prompt.clone(),
-            )
+            ),
         )
         .await
         {
@@ -196,7 +196,7 @@ impl AgentControl {
 
         let id = harness.info().id.clone();
         let harness_for_forwarding = harness.clone();
-        
+
         // Insert with Pending status first, then transition to Running when AgentStart fires
         let mut info = harness.info().clone();
         info.status = SubagentStatus::Pending;
@@ -214,11 +214,8 @@ impl AgentControl {
 
         if let Some(text) = message {
             // Add timeout protection for initial followup task (60 seconds)
-            match tokio::time::timeout(
-                tokio::time::Duration::from_secs(60),
-                self.followup_task(&id, text)
-            ).await {
-                Ok(Ok(())) => {},
+            match tokio::time::timeout(tokio::time::Duration::from_secs(60), self.followup_task(&id, text)).await {
+                Ok(Ok(())) => {}
                 Ok(Err(e)) => {
                     log::error!("Initial subagent followup failed: {}", e);
                     self.registry.set_status(&id, SubagentStatus::Error).await;
@@ -381,7 +378,11 @@ impl AgentControl {
         let timeout = std::time::Duration::from_secs(timeout_secs);
         let stuck_agents = self.registry.stuck_pending_agents(timeout).await;
         for agent_id in stuck_agents {
-            log::warn!("Subagent {} stuck in Pending state for {:?}, marking as Error", agent_id, timeout);
+            log::warn!(
+                "Subagent {} stuck in Pending state for {:?}, marking as Error",
+                agent_id,
+                timeout
+            );
             self.registry.set_status(&agent_id, SubagentStatus::Error).await;
         }
     }

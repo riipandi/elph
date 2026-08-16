@@ -167,8 +167,9 @@ async fn apply_connection_pragmas(conn: &Connection) -> Result<()> {
 pub enum CommitOutcome<T> {
     /// The transaction commit returned successfully.
     Committed(T),
-    /// The transaction body failed and was rolled back successfully.
-    RolledBack,
+    /// The transaction body failed and was rolled back successfully. The
+    /// original body error is preserved for callers and retry classification.
+    RolledBack(anyhow::Error),
     /// The commit returned an error and the final durable state is unknown.
     Unknown(anyhow::Error),
 }
@@ -211,7 +212,7 @@ where
                     attempt += 1;
                     continue;
                 }
-                return Ok(CommitOutcome::RolledBack);
+                return Ok(CommitOutcome::RolledBack(error));
             }
         }
     }
@@ -225,7 +226,7 @@ where
 {
     match with_write_transaction_outcome(conn, f).await? {
         CommitOutcome::Committed(result) => Ok(result),
-        CommitOutcome::RolledBack => Err(anyhow::anyhow!("transaction rolled back")),
+        CommitOutcome::RolledBack(error) => Err(error).context("transaction rolled back"),
         CommitOutcome::Unknown(error) => Err(error).context("COMMIT outcome unknown"),
     }
 }
@@ -412,6 +413,30 @@ mod tests {
         assert!(is_mvcc_conflict_err("transaction conflict"));
         assert!(!is_mvcc_conflict_err("syntax error"));
         assert!(!is_mvcc_conflict_err("no such table"));
+    }
+
+    #[tokio::test]
+    async fn transaction_preserves_body_error_after_rollback() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let path = tmp.path().join("transaction-error.db");
+        let (_db, conn) = open_connection(&path).await.expect("open_connection");
+        conn.execute("CREATE TABLE t (value INTEGER NOT NULL)", ())
+            .await
+            .expect("create table");
+
+        let error = with_write_transaction(&conn, || async {
+            conn.execute("INSERT INTO missing_table VALUES (1)", ()).await?;
+            Ok::<(), anyhow::Error>(())
+        })
+        .await
+        .expect_err("transaction should fail");
+
+        let message = format!("{error:?}");
+        assert!(message.contains("missing_table"), "original error was lost: {message}");
+        assert!(
+            message.contains("transaction rolled back"),
+            "rollback context missing: {message}"
+        );
     }
 
     #[tokio::test]

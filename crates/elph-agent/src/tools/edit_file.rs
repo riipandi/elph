@@ -204,7 +204,11 @@ fn find_match(content: &str, pattern: &str) -> MatchResult {
 
     // Strip leading/trailing empty lines from pattern for matching anchor
     let p_start = pattern_lines_raw.iter().position(|l| !l.trim().is_empty()).unwrap_or(0);
-    let p_end = pattern_lines_raw.iter().rposition(|l| !l.trim().is_empty()).map(|idx| idx + 1).unwrap_or(pattern_lines_raw.len());
+    let p_end = pattern_lines_raw
+        .iter()
+        .rposition(|l| !l.trim().is_empty())
+        .map(|idx| idx + 1)
+        .unwrap_or(pattern_lines_raw.len());
 
     let target_lines: Vec<&str> = pattern_lines_raw[p_start..p_end].to_vec();
     if !target_lines.is_empty() {
@@ -239,7 +243,9 @@ fn find_match(content: &str, pattern: &str) -> MatchResult {
 
             // If the pattern doesn't end with a newline, trim the matched chunk's trailing newline
             if !pattern.ends_with('\n') {
-                while end_offset > start_offset && (content.as_bytes()[end_offset - 1] == b'\n' || content.as_bytes()[end_offset - 1] == b'\r') {
+                while end_offset > start_offset
+                    && (content.as_bytes()[end_offset - 1] == b'\n' || content.as_bytes()[end_offset - 1] == b'\r')
+                {
                     end_offset -= 1;
                 }
             }
@@ -539,7 +545,10 @@ mod tests {
         assert!(result.is_ok(), "adjacent append overlap must succeed: {result:?}");
 
         let written = read_file_text(&env, "d.txt", None).await.expect("read back");
-        assert_eq!(written, "<div></div><span>hello</span>\n", "file must contain the intended replacement");
+        assert_eq!(
+            written, "<div></div><span>hello</span>\n",
+            "file must contain the intended replacement"
+        );
     }
 
     #[tokio::test]
@@ -558,21 +567,24 @@ mod tests {
         // (old_string has different whitespace than file, but matches after trimming)
         let result = execute_edit(
             env.clone(),
-            serde_json::json!({ 
-                "path": "e.txt", 
-                "old_string": "fn main() {\n    let x = 1;", 
-                "new_string": "fn main() {\n  let x = 1;" 
+            serde_json::json!({
+                "path": "e.txt",
+                "old_string": "fn main() {\n    let x = 1;",
+                "new_string": "fn main() {\n  let x = 1;"
             }),
             None,
             None,
         )
         .await;
-        
+
         // This should succeed because we're using fuzzy matching and changing whitespace
         assert!(result.is_ok(), "whitespace change with fuzzy match must succeed: {result:?}");
 
         let written = read_file_text(&env, "e.txt", None).await.expect("read back");
-        assert_eq!(written, "fn main() {\n  let x = 1;\n}\n", "file must contain the new whitespace");
+        assert_eq!(
+            written, "fn main() {\n  let x = 1;\n}\n",
+            "file must contain the new whitespace"
+        );
     }
 
     #[tokio::test]
@@ -592,7 +604,7 @@ mod tests {
         )
         .await;
         assert!(result.is_err(), "identical exact match must be rejected");
-        
+
         let err = result.unwrap_err().to_string();
         assert!(err.contains("edit aborted"), "error should mention edit aborted: {err}");
         assert!(err.contains("identical"), "error should mention identical: {err}");

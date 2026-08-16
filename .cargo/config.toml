@@ -1,5 +1,5 @@
 [build]
-rustflags = ["-C", "target-cpu=native"]
+rustflags = ["-C", "target-cpu=native", "-Z", "threads=8"]
 
 ################################################################################
 # Using alternative linker to improves compilation time.

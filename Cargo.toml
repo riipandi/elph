@@ -180,7 +180,7 @@ codegen-units = 1
 
 [profile.dev]
 incremental = true
-debug = "limited"
+debug = "line-tables-only"
 
 [patch.crates-io]
 # Bracketed multiline paste (`TerminalEvent::Paste`) — not in iocraft 0.8.4 on crates.io.

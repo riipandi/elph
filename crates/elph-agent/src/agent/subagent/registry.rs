@@ -118,7 +118,7 @@ impl AgentRegistry {
             .map(|d| d.as_millis() as i64)
             .unwrap_or(0);
         let timeout_ms = timeout.as_millis() as i64;
-        
+
         self.agents
             .lock()
             .await
