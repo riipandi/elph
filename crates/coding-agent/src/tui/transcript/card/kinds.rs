@@ -38,8 +38,9 @@ use super::frame::{
 };
 use super::toggle_ctx::CollapsibleToggleCtx;
 use super::tool_format::{
-    format_assistant_stream_body_display, format_thinking_body_display, format_thinking_stream_body_display,
-    format_tool_output_display, format_tool_output_display_full, format_tool_output_display_unlimited,
+    ShellExecArgs, format_assistant_stream_body_display, format_shell_header, format_thinking_body_display,
+    format_thinking_stream_body_display, format_tool_args_display, format_tool_output_display,
+    format_tool_output_display_full, format_tool_output_display_unlimited, is_shell_exec_tool,
 };
 
 pub fn tool_status_marker(style: TranscriptStyle) -> &'static str {
@@ -737,6 +738,107 @@ pub fn tool_call_card(
             && !has_diff
             && ask_user_rows.is_none()
             && !parse_tool_params(&tool.args_summary).is_empty();
+        // Wait: click only when finished and there is result body text.
+        let clickable = message.is_collapsible_detail();
+        // shell_exec: skip generic arg dump; render custom command+output block instead.
+        let is_shell = show_detail && is_shell_exec_tool(&tool.name) && !collapsed && !has_diff;
+        if is_shell {
+            let shell_args = ShellExecArgs::parse(&tool.args_summary);
+            let verb = tool_display_verb(&tool.name);
+            let header_task = format_shell_header(&verb, &shell_args);
+            // Color the $ command line by status: running = grey, done = green, failed = red.
+            let cmd_fg = match status {
+                ProcessStatus::Running => TOOL_RUNNING_FG,
+                ProcessStatus::Done => TOOL_SUCCESS_FG,
+                ProcessStatus::Failed => TOOL_FAILED_FG,
+                _ => TOOL_OUTPUT_FG,
+            };
+            // Output color follows status too.
+            let out_fg = cmd_fg;
+            let cmd_text = if shell_args.command.is_empty() {
+                format_tool_args_display(&tool.args_summary)
+            } else {
+                format!("$ {}", shell_args.command)
+            };
+            return element! {
+                View(
+                    width: chrome.outer_width,
+                    background_color: chrome.background,
+                    border_style: BorderStyle::None,
+                    margin_bottom: chrome.margin_bottom,
+                    padding_top: chrome.padding_top,
+                    padding_bottom: chrome.padding_bottom,
+                    padding_left: chrome.padding_h,
+                    padding_right: chrome.padding_h,
+                    flex_direction: FlexDirection::Column,
+                    gap: 0,
+                ) {
+                    ProcessHeaderToggle(
+                        inner_width: inner_width,
+                        label: header_task,
+                        detail: String::new(),
+                        detail_href: None,
+                        duration_secs: message.duration_secs,
+                        status: status,
+                        message_index: message_index,
+                        clickable: clickable,
+                        toggle: toggle,
+                    )
+                    View(
+                            width: inner_width,
+                            padding_top: 1,
+                            padding_left: TOOL_RESULT_PAD_LEFT,
+                            padding_right: TOOL_RESULT_PAD_RIGHT,
+                            flex_direction: FlexDirection::Column,
+                            gap: 0,
+                            flex_shrink: 0f32,
+                        ) {
+                            #(if !cmd_text.is_empty() {
+                                Some(element! {
+                                    Text(color: cmd_fg, wrap: TextWrap::Wrap, content: cmd_text)
+                                })
+                            } else {
+                                None
+                            })
+                            #(if !shell_args.description.is_empty() {
+                                Some(element! {
+                                    View(width: inner_width) {
+                                        Text(color: META_FG, wrap: TextWrap::Wrap, content: shell_args.description)
+                                    }
+                                })
+                            } else {
+                                None
+                            })
+                            #(if shell_args.timeout > 0 {
+                                Some(element! {
+                                    View(width: inner_width) {
+                                        Text(color: META_FG, wrap: TextWrap::NoWrap, content: format!("timeout: {}s", shell_args.timeout))
+                                    }
+                                })
+                            } else {
+                                None
+                            })
+                            #(if !output.is_empty() {
+                                Some(element! {
+                                    View(
+                                        width: inner_width,
+                                        padding_top: TOOL_OUTPUT_SECTION_GAP,
+                                        padding_left: TOOL_RESULT_PAD_LEFT,
+                                        padding_right: TOOL_RESULT_PAD_RIGHT,
+                                        flex_direction: FlexDirection::Column,
+                                        gap: 0,
+                                    ) {
+                                        Text(color: out_fg, wrap: TextWrap::Wrap, content: output)
+                                    }
+                                })
+                            } else {
+                                None
+                            })
+                        }
+                }
+            }
+            .into();
+        }
         // Compact header for collapsed tools + Wait Agent (running/done): verb + scannable target.
         // Expanded generic tools: verb only (args/output below).
         // Expanded edit_file with diff: verb + short path so the header still identifies the file.
@@ -754,8 +856,6 @@ pub fn tool_call_card(
         } else {
             (tool_display_verb(&tool.name), String::new(), None)
         };
-        // Wait: click only when finished and there is result body text.
-        let clickable = message.is_collapsible_detail();
         // Result body (args / output / diff) sits one cell in from the header glyph column,
         // with matching right padding so content stays symmetrically framed inside the card.
         let result_width = inner_width

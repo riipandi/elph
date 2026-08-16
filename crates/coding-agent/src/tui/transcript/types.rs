@@ -18,8 +18,9 @@ use super::card::{
 use crate::tui::ask_user_tool_card::format_ask_user_tool_layout_text;
 
 use super::card::{
-    format_thinking_body_display, format_thinking_stream_body_display, format_tool_args_display,
-    format_tool_output_display, format_tool_output_display_full, tool_status_marker,
+    ShellExecArgs, format_shell_header, format_thinking_body_display, format_thinking_stream_body_display,
+    format_tool_args_display, format_tool_output_display, format_tool_output_display_full, is_shell_exec_tool,
+    tool_status_marker,
 };
 use super::markdown::AssistantMarkdownBuffer;
 
@@ -746,10 +747,23 @@ impl ToolCardDetail {
         } else {
             tool_display_verb(&self.name)
         };
-        let mut header = format!("{} {label}", tool_status_marker(style));
-        if let Some(secs) = duration_secs {
-            header.push_str(&crate::tui::activity::format_duration_label_suffix(secs));
-        }
+        // shell_exec: build header with description + timeout inline (matches kinds.rs render).
+        let shell_args = if is_shell_exec_tool(&self.name) {
+            Some(ShellExecArgs::parse(&self.args_summary))
+        } else {
+            None
+        };
+        let header = if let Some(ref sa) = shell_args {
+            let body_label = format_shell_header(&label, sa);
+            format!("{} {body_label}", tool_status_marker(style))
+        } else {
+            format!("{} {label}", tool_status_marker(style))
+        };
+        let header = if let Some(secs) = duration_secs {
+            format!("{}{}", header, crate::tui::activity::format_duration_label_suffix(secs))
+        } else {
+            header
+        };
         if collapsed {
             return header;
         }
@@ -768,6 +782,38 @@ impl ToolCardDetail {
         }
 
         let mut lines = vec![header];
+        // shell_exec uses a custom layout: command block + optional metadata + output.
+        if is_shell_exec_tool(&self.name) {
+            let args = ShellExecArgs::parse(&self.args_summary);
+            // Command block: single `$ prefix` line (cap like generic tool output).
+            let cmd = if args.command.is_empty() {
+                format_tool_args_display(&self.args_summary)
+            } else {
+                format!("$ {}", args.command)
+            };
+            lines.push(String::new());
+            lines.push(cmd);
+            // Optional description.
+            if !args.description.is_empty() {
+                lines.push(String::new());
+                lines.push(args.description);
+            }
+            // Optional timeout.
+            if args.timeout > 0 {
+                lines.push(String::new());
+                lines.push(format!("timeout: {}s", args.timeout));
+            }
+            let output = if style == TranscriptStyle::ToolRunning {
+                format_tool_output_display(&self.output)
+            } else {
+                format_tool_output_display_full(&self.output)
+            };
+            if !output.is_empty() {
+                lines.push(String::new());
+                lines.extend(output.lines().map(str::to_string));
+            }
+            return lines.join("\n");
+        }
         let args = if self.name == "ask_user_question" {
             format_ask_user_tool_layout_text(&self.args_summary)
         } else {
@@ -1499,6 +1545,39 @@ mod tests {
         let shell = TranscriptMessage::tool_call("shell_exec", r#"{"command":"ls"}"#, TranscriptStyle::ToolRunning);
         assert!(!shell.is_tool_collapsed());
         assert_eq!(shell.transcript_padding_top(), COLORED_CARD_PAD);
+    }
+
+    #[test]
+    fn shell_exec_layout_shows_command_description_timeout_and_output() {
+        let args = r#"{"command":"cargo fmt -p elph-agent && cargo clippy --all-targets","description":"Final fmt+clippy+test pass","timeout":600}"#;
+        let mut msg = TranscriptMessage::tool_call("shell_exec", args, TranscriptStyle::ToolSuccess);
+        msg.duration_secs = Some(3.2);
+        msg.tool.as_mut().unwrap().output = "---tests---\ntest result: ok.\n".to_string();
+
+        let layout = msg.layout_text();
+        // Header with description and timeout.
+        assert!(
+            layout.starts_with("✓ Shell Final fmt+clippy+test pass 10m00s · 3.2s"),
+            "{layout}"
+        );
+        // Command block with $ prefix.
+        assert!(layout.contains("\n$ cargo fmt"), "{layout}");
+        // Description line.
+        assert!(layout.contains("Final fmt+clippy+test pass"), "{layout}");
+        // Timeout line.
+        assert!(layout.contains("timeout: 600s"), "{layout}");
+        // Output tail (truncated for non-user-shell).
+        assert!(layout.contains("test result: ok."), "{layout}");
+    }
+
+    #[test]
+    fn shell_exec_layout_without_optional_fields_still_works() {
+        let msg = TranscriptMessage::tool_call("shell_exec", r#"{"command":"echo hi"}"#, TranscriptStyle::ToolRunning);
+        let layout = msg.layout_text();
+        assert!(layout.starts_with("◌ Shell"), "{layout}");
+        assert!(layout.contains("$ echo hi"), "{layout}");
+        assert!(!layout.contains("description"), "{layout}");
+        assert!(!layout.contains("timeout"), "{layout}");
     }
 
     #[test]

@@ -169,6 +169,67 @@ pub fn format_tool_output_display_unlimited(output: &str) -> String {
     }
 }
 
+/// Parse `shell_exec` args JSON into structured command/description/timeout fields.
+#[derive(Debug, Clone, Default)]
+pub struct ShellExecArgs {
+    pub command: String,
+    pub description: String,
+    pub timeout: u64,
+}
+
+impl ShellExecArgs {
+    pub fn parse(args_json: &str) -> Self {
+        let mut result = Self::default();
+        let Ok(value) = serde_json::from_str::<serde_json::Value>(args_json) else {
+            return result;
+        };
+        match value {
+            serde_json::Value::Object(map) => {
+                if let Some(c) = map.get("command").and_then(|v| v.as_str()) {
+                    result.command = c.to_string();
+                }
+                if let Some(d) = map.get("description").and_then(|v| v.as_str()) {
+                    result.description = d.to_string();
+                }
+                if let Some(t) = map.get("timeout").and_then(|v| v.as_u64()) {
+                    result.timeout = t;
+                }
+            }
+            other => {
+                // Scalar fallback: treat entire value as command.
+                result.command = other.to_string();
+            }
+        }
+        result
+    }
+}
+
+/// Full tool header for expanded shell_exec cards:
+/// `Shell (DESCRIPTION) [TIMEOUT]` (no status suffix — that lives in ProcessHeaderToggle).
+pub fn format_shell_header(label: &str, args: &ShellExecArgs) -> String {
+    use elph_tui::utils::truncate_with_ellipsis;
+    let mut parts: Vec<String> = vec![label.to_string()];
+    if !args.description.is_empty() {
+        let desc = truncate_with_ellipsis(&args.description, 50);
+        parts.push(desc);
+    }
+    if args.timeout > 0 {
+        let s = args.timeout.max(1);
+        let time_str = if s >= 60 {
+            format!("{}m{:02}s", s / 60, s % 60)
+        } else {
+            format!("{}s", s)
+        };
+        parts.push(time_str);
+    }
+    parts.join(" ")
+}
+
+/// Whether this tool call is a `shell_exec` invocation.
+pub fn is_shell_exec_tool(tool_name: &str) -> bool {
+    tool_name == "shell_exec" || tool_name.ends_with("__shell_exec")
+}
+
 fn sanitize_tool_body(output: &str) -> String {
     output
         .chars()

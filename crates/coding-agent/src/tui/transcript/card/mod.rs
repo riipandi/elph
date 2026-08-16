@@ -20,6 +20,6 @@ pub(crate) use chrome::{
 };
 pub(crate) use kinds::tool_status_marker;
 pub(crate) use tool_format::{
-    format_thinking_body_display, format_thinking_stream_body_display, format_tool_args_display,
-    format_tool_output_display, format_tool_output_display_full,
+    ShellExecArgs, format_shell_header, format_thinking_body_display, format_thinking_stream_body_display,
+    format_tool_args_display, format_tool_output_display, format_tool_output_display_full, is_shell_exec_tool,
 };
