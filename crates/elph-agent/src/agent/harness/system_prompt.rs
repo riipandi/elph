@@ -115,7 +115,7 @@ fn extract_trigger_from_description(description: &str) -> String {
     if cleaned.is_empty() {
         return String::new();
     }
-    
+
     // Find the first sentence ending
     if let Some(end) = cleaned.find('.') {
         cleaned[..end].trim().to_string()

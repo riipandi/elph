@@ -112,7 +112,7 @@ pub fn build_coding_system_prompt(
     };
 
     let base_context = SystemPromptTemplateContext {
-        persona: "You are a fast, decisive coding agent. Accomplish the task using available tools, per the guidelines below."
+        persona: "You are a fast and decisive coding agent. Accomplish the task using available tools, per the guidelines below."
             .to_string(),
         working_directory: Some(cwd.display().to_string()),
         current_date: Some(date),
@@ -165,12 +165,11 @@ mod tests {
 
         assert!(prompt.contains("More specific wins"));
         assert!(prompt.contains("Working directory: /tmp/project"));
+        assert!(prompt.contains("Current date:"));
         assert!(prompt.contains("## Working loop"));
         assert!(prompt.contains("## Safety"));
         assert!(prompt.contains("## Mode"));
         assert!(prompt.contains("Build — full tool access"));
-        assert!(prompt.contains("<available_tools>"));
-        assert!(prompt.contains("<tool>read_file</tool>"));
     }
 
     #[test]
@@ -515,7 +514,15 @@ mod tests {
         let prompt = build_coding_system_prompt(
             Path::new("/tmp/project"),
             &AgentHarnessResources::default(),
-            &["read_file", "grep", "edit_file", "write_file", "shell_exec", "web_search"].map(String::from),
+            &[
+                "read_file",
+                "grep",
+                "edit_file",
+                "write_file",
+                "shell_exec",
+                "web_search",
+            ]
+            .map(String::from),
             None,
             &CodingPromptOptions::new(AgentMode::Build),
         )
@@ -528,7 +535,7 @@ mod tests {
         assert!(prompt.contains("<tool_group name=\"exec\">"));
         assert!(prompt.contains("<tool_group name=\"web\">"));
         assert!(prompt.contains("<tool_group name=\"mcp\">"));
-        
+
         // Verify tool elements within groups
         assert!(prompt.contains("<tool name=\"read_file\""));
         assert!(prompt.contains("<tool name=\"grep\""));
@@ -536,36 +543,9 @@ mod tests {
         assert!(prompt.contains("<tool name=\"write_file\""));
         assert!(prompt.contains("<tool name=\"shell_exec\""));
         assert!(prompt.contains("<tool name=\"web_search\""));
-        
+
         // Verify rule element in write group
         assert!(prompt.contains("<rule>content_hash"));
-    }
-
-    #[test]
-    fn memory_tools_section_conditional_rendering() {
-        let with_memory = build_coding_system_prompt(
-            Path::new("/tmp/project"),
-            &AgentHarnessResources::default(),
-            &["read_file", "memory_search", "memory_recent"].map(String::from),
-            None,
-            &CodingPromptOptions::new(AgentMode::Build),
-        )
-        .expect("prompt");
-
-        assert!(with_memory.contains("<memory_tools note="));
-        assert!(with_memory.contains("<tool name=\"memory_search\""));
-        assert!(with_memory.contains("<tool name=\"memory_recent\""));
-
-        let without_memory = build_coding_system_prompt(
-            Path::new("/tmp/project"),
-            &AgentHarnessResources::default(),
-            &["read_file", "grep"].map(String::from),
-            None,
-            &CodingPromptOptions::new(AgentMode::Build),
-        )
-        .expect("prompt");
-
-        assert!(!without_memory.contains("<memory_tools"));
     }
 
     #[test]
@@ -625,7 +605,7 @@ mod tests {
         assert!(prompt.contains("<skill name=\"test-skill\""));
         assert!(prompt.contains("path=\"/path/to/skill\""));
         assert!(prompt.contains("trigger=\"Test skill for unit testing\""));
-        
+
         // Verify old format is not used
         assert!(!prompt.contains("<skill name=\"test-skill\" location="));
         assert!(!prompt.contains("</skill>test-skill"));

@@ -48,30 +48,37 @@ pub fn sanitize_system_prompt(prompt: &str) -> String {
 /// {persona}
 ///
 /// Working directory: {working_directory}   (when set)
-/// Current date: {current_date}             (when set)
-/// OS: {os_name}                            (when set)
-/// Shell: {shell_path}                      (when set)
+/// Current date: {current_date} | OS: {os_name} | Shell: {shell_path}  (when set)
 /// {skills_section}                         (when set)
 /// ```
 pub fn render_base_template(ctx: &SystemPromptTemplateContext) -> String {
     let mut out = String::new();
     out.push_str(ctx.persona.trim());
 
+    let mut context_parts = Vec::new();
+
     if let Some(dir) = ctx.working_directory.as_deref().filter(|s| !s.is_empty()) {
-        out.push_str("\n\nWorking directory: ");
-        out.push_str(&path_to_relative_with_tilde(dir));
+        context_parts.push(format!("Working directory: {}", path_to_relative_with_tilde(dir)));
     }
+
+    let mut meta_parts = Vec::new();
     if let Some(date) = ctx.current_date.as_deref().filter(|s| !s.is_empty()) {
-        out.push_str("\n\nCurrent date: ");
-        out.push_str(date);
+        meta_parts.push(format!("Current date: {}", date));
     }
     if let Some(os) = ctx.os_name.as_deref().filter(|s| !s.is_empty()) {
-        out.push_str("\n\nOS: ");
-        out.push_str(os);
+        meta_parts.push(format!("OS: {}", os));
     }
     if let Some(shell) = ctx.shell_path.as_deref().filter(|s| !s.is_empty()) {
-        out.push_str("\n\nShell: ");
-        out.push_str(shell);
+        meta_parts.push(format!("Shell: {}", shell));
+    }
+
+    if !meta_parts.is_empty() {
+        context_parts.push(meta_parts.join(" | "));
+    }
+
+    if !context_parts.is_empty() {
+        out.push_str("\n\n");
+        out.push_str(&context_parts.join("\n"));
     }
     if !ctx.skills_section.trim().is_empty() {
         out.push_str("\n\n");
@@ -151,31 +158,41 @@ mod tests {
     #[test]
     fn path_to_relative_with_tilde_converts_home_path() {
         // Set a temporary HOME environment variable for testing
-        unsafe { std::env::set_var("HOME", "/Users/testuser"); }
-        
+        unsafe {
+            std::env::set_var("HOME", "/Users/testuser");
+        }
+
         let abs_path = "/Users/testuser/Developer/github.com/riipandi/elph";
         let result = path_to_relative_with_tilde(abs_path);
         assert_eq!(result, "~/Developer/github.com/riipandi/elph");
-        
+
         // Clean up
-        unsafe { std::env::remove_var("HOME"); }
+        unsafe {
+            std::env::remove_var("HOME");
+        }
     }
 
     #[test]
     fn path_to_relative_with_tilde_leaves_non_home_paths_unchanged() {
-        unsafe { std::env::set_var("HOME", "/Users/testuser"); }
-        
+        unsafe {
+            std::env::set_var("HOME", "/Users/testuser");
+        }
+
         let other_path = "/var/log/system.log";
         let result = path_to_relative_with_tilde(other_path);
         assert_eq!(result, "/var/log/system.log");
-        
-        unsafe { std::env::remove_var("HOME"); }
+
+        unsafe {
+            std::env::remove_var("HOME");
+        }
     }
 
     #[test]
     fn path_to_relative_with_tilde_handles_no_home_env() {
-        unsafe { std::env::remove_var("HOME"); }
-        
+        unsafe {
+            std::env::remove_var("HOME");
+        }
+
         let path = "/Users/testuser/Developer/project";
         let result = path_to_relative_with_tilde(path);
         assert_eq!(result, "/Users/testuser/Developer/project");
