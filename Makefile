@@ -252,7 +252,7 @@ stats: ## Show sccache stats, code line count, and target/ breakdown
 	  "$(SCCACHE_BIN)" --show-stats; \
 	fi
 	@echo ""; \
-	printf '\033[33mtarget/ breakdown:\033[0m\n'; \
+	printf '\033[33mtarget/breakdown:\033[0m\n'; \
 	for _d in debug release; do \
 	  if [ -d "target/$$_d" ]; then \
 	    _sz=$$(du -sh "target/$$_d" 2>/dev/null | cut -f1); \

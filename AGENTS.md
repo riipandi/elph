@@ -73,6 +73,37 @@ Do not mix types (structs, enums, type aliases) and functions in one braced `use
 
 ---
 
+## Build System Conventions
+
+### Always prefer `make` over direct `cargo`
+
+| Task          | Target                                                            |
+| ------------- | ----------------------------------------------------------------- |
+| Compile check | `make check` or `make check-elph` / `make check-elph-tui`         |
+| Lint          | `make lint` or `make lint-elph` / `make lint-elph-tui`            |
+| Format        | `make fmt`                                                        |
+| Test          | `make test` (workspace) · `make test-elph` · `make test-elph-tui` |
+| Build         | `make build` or `make install`                                    |
+| Stats         | `make stats` (sccache hit rate + target/ breakdown)               |
+| Space reclaim | `make gc` (incremental >7d, deps >60d) · `make gc DRY=1`          |
+
+`make` automatically sets `RUSTC_WRAPPER=sccache`, `SCCACHE_DIRECT=true`, and `SCCACHE_MAXSIZE=50G`. Do **not** run `cargo build/test/check/clippy` directly in this project — you will bypass sccache, waste remote-cache hits, and inflate `target/` with redundant incremental artefacts.
+
+If a make target does not exist for the operation you need, append `CARGO=` to call cargo directly but still set the wrapper:
+
+```sh
+# Only when no make target exists:
+RUSTC_WRAPPER=sccache SCCACHE_DIRECT=1 cargo <cmd>
+```
+
+### sccache behaviour notes
+
+- **Cache miss on first run is normal.** The remote bucket (`r2-sccache`) is warm only after a full build populates it. After `make build` completes, subsequent runs should show 40%+ hit rate.
+- **Incremental dirs are redundant.** Cargo's `--incremental` flag emits a `Non-cacheable` reason in sccache stats. This is expected — the real cache is the remote bucket. Removing stale incremental dirs via `make gc` or `make clean-incremental` is safe; sccache re-hits them on rebuild.
+- **Disable with `SCCACHE_DISABLE=1`.** Only when debugging a sccache-specific issue.
+
+---
+
 ## Testing Conventions
 
 Follow these rules strictly.
