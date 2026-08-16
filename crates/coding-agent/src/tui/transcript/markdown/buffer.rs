@@ -1,6 +1,7 @@
 //! Incremental markdown cache for one streaming assistant message.
 
 use std::hash::{Hash, Hasher};
+use std::sync::Mutex;
 
 use elph_tui::MarkdownDocument;
 use elph_tui::markdown_document_row_count;
@@ -18,12 +19,49 @@ pub struct RenderedPart {
 }
 
 /// Streaming markdown state for [`crate::tui::transcript::TranscriptMessage`].
-#[derive(Clone, Default)]
 pub struct AssistantMarkdownBuffer {
     pub stable_end: usize,
     pub parts: Vec<RenderedPart>,
     pub wrap_width: u16,
     pub stream_complete: bool,
+    /// Cached built document (stable + tail merged) to avoid re-parsing the streaming
+    /// tail on every layout+paint pass within the same frame.
+    built_doc_cache: Mutex<BuiltDocCache>,
+}
+
+impl Clone for AssistantMarkdownBuffer {
+    fn clone(&self) -> Self {
+        Self {
+            stable_end: self.stable_end,
+            parts: self.parts.clone(),
+            wrap_width: self.wrap_width,
+            stream_complete: self.stream_complete,
+            built_doc_cache: Mutex::new((*self.built_doc_cache.lock().unwrap()).clone()),
+        }
+    }
+}
+
+impl Default for AssistantMarkdownBuffer {
+    fn default() -> Self {
+        Self {
+            stable_end: 0,
+            parts: Vec::new(),
+            wrap_width: 0,
+            stream_complete: false,
+            built_doc_cache: Mutex::new(BuiltDocCache::default()),
+        }
+    }
+}
+
+/// Per-buffer cache for the merged (stable + tail) markdown document.
+///
+/// Layout (`assistant_row_count`) and paint (`render_markdown_buffer`) both build
+/// the same merged document each frame. This cache lets them share the result so
+/// the streaming-tail parse runs once per frame instead of twice.
+#[derive(Clone, Default)]
+struct BuiltDocCache {
+    key: Option<u64>, // tail_hash
+    doc: Option<MarkdownDocument>,
 }
 
 pub fn stable_source_hash(source: &str) -> u64 {
@@ -35,6 +73,32 @@ pub fn stable_source_hash(source: &str) -> u64 {
 impl AssistantMarkdownBuffer {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Compute (or return cached) the merged markdown document for this buffer.
+    ///
+    /// Layout and paint both call this each frame. The cache is keyed by tail hash —
+    /// when the tail content changes the cached doc is discarded. This eliminates
+    /// the duplicate streaming-tail parse that previously happened once in
+    /// `assistant_row_count` (layout) and again in `render_markdown_buffer` (paint)
+    /// per visible assistant message per frame.
+    pub fn built_document(&self, raw: &str, tail_foreground: iocraft::prelude::Color) -> MarkdownDocument {
+        let tail = self.tail(raw);
+        let tail_hash = {
+            let mut h = std::collections::hash_map::DefaultHasher::new();
+            tail.hash(&mut h);
+            h.finish()
+        };
+        // INVARIANT: no panicking code runs while holding this lock.
+        let mut cache = self.built_doc_cache.lock().unwrap();
+        if cache.key == Some(tail_hash) {
+            // INVARIANT: key match guarantees doc is Some — we set both atomically.
+            return cache.doc.clone().expect("cached doc must be present");
+        }
+        let doc = super::render::build_assistant_markdown_document(self, raw, tail_foreground);
+        cache.key = Some(tail_hash);
+        cache.doc = Some(doc.clone());
+        doc
     }
 
     pub fn tail<'a>(&self, raw: &'a str) -> &'a str {
@@ -154,6 +218,7 @@ impl AssistantMarkdownBuffer {
                     document: None,
                 })
                 .collect(),
+            ..Default::default()
         }
     }
 }
@@ -227,5 +292,30 @@ mod tests {
         assert_eq!(buf.wrap_width, 80);
         assert_eq!(buf.parts[0].row_count, row_count_before);
         assert_eq!(buf.parts[0].source_hash, hash);
+    }
+
+    #[test]
+    fn built_document_caches_and_reuses() {
+        let mut buf = AssistantMarkdownBuffer::new();
+        let raw = "Para1.\n\n```mermaid\ngraph LR; A --> B\n```\n";
+        buf.mark_stream_complete();
+        buf.refresh_stable(raw, 80);
+
+        // First call builds the document.
+        let doc1 = buf.built_document(raw, iocraft::prelude::Color::Reset);
+        assert!(!doc1.lines.is_empty());
+
+        // Second call with same tail returns cached copy.
+        let doc2 = buf.built_document(raw, iocraft::prelude::Color::Reset);
+        assert_eq!(doc1.lines.len(), doc2.lines.len());
+
+        // Different tail invalidates cache. Use a completely different buffer to avoid
+        // stable_end drift from the first refresh.
+        let mut buf2 = AssistantMarkdownBuffer::new();
+        let raw2 = "Solo paragraph.";
+        buf2.mark_stream_complete();
+        buf2.refresh_stable(raw2, 80);
+        let doc3 = buf2.built_document(raw2, iocraft::prelude::Color::Reset);
+        assert_ne!(doc1.lines.len(), doc3.lines.len());
     }
 }

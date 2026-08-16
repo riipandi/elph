@@ -42,6 +42,9 @@ ifneq ($(SCCACHE_OK),)
     export AWS_PROFILE := r2-sccache
     export RUSTC_WRAPPER := sccache
     export SCCACHE_DIRECT := true
+    # Cap remote cache at 50 GB so it never eclipses local disk. The bucket is shared
+    # across sessions — anything beyond this size is unlikely to be re-used soon.
+    export SCCACHE_MAXSIZE := 50G
   endif
 endif
 
@@ -241,18 +244,74 @@ fmt: ## Format all code
 coverage: ## Run tests with coverage (requires cargo-llvm-cov)
 	@$(CARGO) llvm-cov nextest --no-cfg-coverage 2>&1
 
-stats: ## Show sccache stats and code line count
+stats: ## Show sccache stats, code line count, and target/ breakdown
 	@tokei . -e "*.json" -e "*.md"
 	@if [ -n "$(SCCACHE_BIN)" ]; then \
 	  echo ""; \
 	  printf '\033[33msccache stats:\033[0m\n'; \
 	  "$(SCCACHE_BIN)" --show-stats; \
 	fi
+	@echo ""; \
+	printf '\033[33mtarget/ breakdown:\033[0m\n'; \
+	for _d in debug release; do \
+	  if [ -d "target/$$_d" ]; then \
+	    _sz=$$(du -sh "target/$$_d" 2>/dev/null | cut -f1); \
+	    _incr=$$(du -sh "target/$$_d/incremental" 2>/dev/null | cut -f1); \
+	    _deps=$$(du -sh "target/$$_d/deps" 2>/dev/null | cut -f1); \
+	    _bins=$$(du -sh "target/$$_d/bin" 2>/dev/null | cut -f1); \
+	    printf '  %8s  %8s (incr %s · deps %s · bin %s)\n' "$$_d" "$$_sz" "$$_incr" "$$_deps" "$$_bins"; \
+	  fi; \
+	done
+	@echo ""; \
+	printf '\033[33mcargo registry:\033[0m  '; du -sh ~/.cargo/registry/src 2>/dev/null | cut -f1; true
 
 clean: ## Clean build artifacts and caches
 	@find crates -type f -name '*_gen.rs' -delete
 	@rm -fr crates/elph-ai/models/.cache
 	@$(CARGO) clean
+
+# ─── Space reclamation ──────────────────────────────────────────────────────────
+#
+# Incremental build dirs are redundant with sccache's remote cache — a fresh
+# full compile produces the same artifact and re-caches it.  Removing old ones
+# is safe; the first rebuild after GC may be slower but re-populates the cache.
+#
+# Dry-run  (make gc DRY=1): prints what would be deleted without removing anything.
+# Defaults: incremental dirs >7 days old, deps files >60 days old.
+
+GC_INCR_MAX_AGE := 7d
+GC_DEPS_MAX_AGE  := 60d
+
+gc: ## Reclaim space from stale build artefacts (incremental >7d, deps >60d)
+	@_dry="$(DRY)"; \
+	if [ "$$_dry" = "1" ]; then _op="would remove"; _skip=yes; else _op="removing"; _skip=no; fi; \
+	echo "=== GC $$_op ==="; \
+	incr=$$(du -sh target/debug/incremental 2>/dev/null | cut -f1); \
+	incr_count=$$(find target/debug/incremental -maxdepth 1 -type d -mtime +$(GC_INCR_MAX_AGE) 2>/dev/null | wc -l | tr -d ' '); \
+	echo "  incremental : $$incr ($$incr_count dirs older than $(GC_INCR_MAX_AGE))"; \
+	if [ "$$_skip" = "no" ]; then \
+	  find target/debug/incremental -maxdepth 1 -type d -mtime +$(GC_INCR_MAX_AGE) -exec rm -rf {} + 2>/dev/null || true; \
+	fi; \
+	deps=$$(du -sh target/debug/deps 2>/dev/null | cut -f1); \
+	dep_count=$$(find target/debug/deps -maxdepth 1 -type f -mtime +$(GC_DEPS_MAX_AGE) 2>/dev/null | wc -l | tr -d ' '); \
+	echo "  deps        : $$deps ($$dep_count files older than $(GC_DEPS_MAX_AGE))"; \
+	if [ "$$_skip" = "no" ] && [ "$$dep_count" -gt 0 ]; then \
+	  find target/debug/deps -maxdepth 1 -type f -mtime +$(GC_DEPS_MAX_AGE) -delete 2>/dev/null || true; \
+	fi; \
+	echo "  done."; \
+	new_inc=$$(du -sh target/debug/incremental 2>/dev/null | cut -f1); \
+	new_deps=$$(du -sh target/debug/deps 2>/dev/null | cut -f1); \
+	echo "  after: incremental $$new_inc · deps $$new_deps"
+
+clean-incremental: ## Remove all incremental build dirs (faster rebuild, re-cached by sccache)
+	@echo "Removing target/debug/incremental/ ..."
+	@rm -fr target/debug/incremental
+	@echo "Done."
+
+clean-deps: ## Remove deps older than $(GC_DEPS_MAX_AGE) (safe — cargo will re-download/rebuild)
+	@echo "Removing deps older than $(GC_DEPS_MAX_AGE) ..."
+	@find target/debug/deps -maxdepth 1 -type f -mtime +$(GC_DEPS_MAX_AGE) -print -delete
+	@echo "Done."
 
 # ─── Misc ───────────────────────────────────────────────────────────────────
 

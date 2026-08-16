@@ -4,7 +4,6 @@ use elph_tui::{markdown_document_row_count, wrapped_text_row_count};
 use iocraft::prelude::Color;
 
 use super::buffer::AssistantMarkdownBuffer;
-use super::render::build_assistant_markdown_document;
 
 pub fn markdown_part_row_count(source: &str, wrap_width: u16) -> u16 {
     wrapped_text_row_count(source, wrap_width as usize).min(u16::MAX as usize) as u16
@@ -20,9 +19,8 @@ pub fn assistant_row_count(
     };
     // Fast path: a completed message whose stable prefix covers the whole content and whose
     // cached document is present can be measured directly from the cache — no need to clone
-    // the document through `build_assistant_markdown_document`. This avoids the biggest
-    // per-frame allocation in the layout path and covers the vast majority of messages on
-    // screen in a long session.
+    // the document through `built_document`. This avoids the biggest per-frame allocation
+    // in the layout path and covers the vast majority of messages on screen in a long session.
     if md.stream_complete
         && md.stable_end >= content.len()
         && md.wrap_width == wrap_width
@@ -30,11 +28,9 @@ pub fn assistant_row_count(
     {
         return markdown_document_row_count(md.parts[0].document.as_ref().expect("checked above"), wrap_width);
     }
-    // Build the exact same merged document the renderer paints, then measure it. Summing the
-    // stable and tail row counts independently missed the inter-segment gap at the stable↔tail
-    // boundary, so the measured height ran one row short and the scroll viewport clipped the
-    // first line of the following paragraph.
-    let document = build_assistant_markdown_document(md, content, Color::Reset);
+    // Build the exact same merged document the renderer paints, then measure it. The buffer's
+    // built_doc_cache ensures layout and paint share the same parsed document within a frame.
+    let document = md.built_document(content, Color::Reset);
     if document.is_empty() {
         return 1;
     }
@@ -70,17 +66,17 @@ mod tests {
             None
         };
         let hash = stable_source_hash(stable_src);
-        AssistantMarkdownBuffer {
-            stable_end,
-            parts: vec![RenderedPart {
-                source_end: stable_end,
-                source_hash: hash,
-                row_count: 1,
-                document,
-            }],
-            wrap_width: width,
-            stream_complete: false,
-        }
+        let mut buf = AssistantMarkdownBuffer::new();
+        buf.stable_end = stable_end;
+        buf.parts = vec![RenderedPart {
+            source_end: stable_end,
+            source_hash: hash,
+            row_count: 1,
+            document,
+        }];
+        buf.wrap_width = width;
+        buf.stream_complete = false;
+        buf
     }
 
     #[test]
@@ -134,17 +130,16 @@ mod tests {
         // Once the stream completes the whole reply is the stable prefix and the tail is empty.
         let content = "Para1.\n\nPara2.\n\nPara3.";
         let full_doc = parse_markdown_document(content);
-        let buf = AssistantMarkdownBuffer {
-            stable_end: content.len(),
-            parts: vec![RenderedPart {
-                source_end: content.len(),
-                source_hash: stable_source_hash(content),
-                row_count: 1,
-                document: Some(full_doc),
-            }],
-            wrap_width: 80,
-            stream_complete: true,
-        };
+        let mut buf = AssistantMarkdownBuffer::new();
+        buf.stable_end = content.len();
+        buf.parts = vec![RenderedPart {
+            source_end: content.len(),
+            source_hash: stable_source_hash(content),
+            row_count: 1,
+            document: Some(full_doc),
+        }];
+        buf.wrap_width = 80;
+        buf.stream_complete = true;
         let buf = std::sync::Arc::new(buf);
         let measured = assistant_row_count(content, Some(&buf), 80);
         let painted = painted_rows(&buf, content, 80);
