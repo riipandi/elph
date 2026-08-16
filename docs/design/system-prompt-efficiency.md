@@ -146,13 +146,14 @@ nested `<property>` elements for parameter schemas. Full reference:
 ### Skill advertisement (`<available_skills>`)
 
 ```xml
-<available_skills>
-  <skill name="rust-verify-harden" location="/repo/.agents/skills/rust-verify-harden/SKILL.md">Verify build quality gates...</skill>
+<available_skills note="On match: read SKILL.md fully before acting, resolve relative refs from its dir. Skip loosely related. No match -> proceed without one, don't browse to be thorough.">
+  <skill name="rust-verify-harden" path="~/repo/.agents/skills/rust-verify-harden/SKILL.md"/>
 </available_skills>
 ```
 
-Fields: `name` (attribute), `location` (attribute = `file_path`), description (text).
-No child `<name>`, `<description>`, or `<location>` elements.
+Fields: `name` (attribute), `path` (attribute = `file_path`, home directory rendered as `~`). No description, no `trigger`, no child elements. Single-line compact form saves tokens.
+
+The `list_skills` tool returns a separate **structured** form with all frontmatter fields as child elements (`<description>`, `<license>`, `<compatibility>`, `<allowed-tools>`, `<metadata>`). See [`docs/skill-tool-schema.md`](../skill-tool-schema.md).
 
 ### Tool catalog (`<available_tools>`)
 

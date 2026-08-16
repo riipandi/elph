@@ -6,32 +6,34 @@ Serialized XML schemas used by the agent harness to advertise skills and tools t
 
 | Block | Purpose | Source |
 |-------|---------|--------|
-| `<available_skills>` | Skills visible in the system prompt | `format_skills_for_context` / `format_skills_for_system_prompt` |
-| `<skill name="" location="">` | Compact single-skill advertisement | Same as above |
+| `<available_skills>` (system prompt) | Skills visible in the system prompt (compact form) | `format_skills_for_context` / `format_skills_for_system_prompt` |
+| `<skill name="" path="">` | Compact single-skill advertisement — system prompt only | Same as above |
+| `<available_skills>` (tool output) | Full skill catalog via `list_skills` tool (structured form) | `format_skill_catalog` |
+| `<skill name="" path="">...` | Structured single-skill entry with child elements | Same as above |
 | `<available_tools>` | Full tool catalog with parameter schemas | `create_list_available_tools` |
 | `<tool name="" description="">` | Single tool entry with nested `<property>` children | Same as above |
-| `<skill name="" location="">...content...</skill>` | Full skill invocation (slash command body) | `format_skill_invocation` |
+| `<skill name="" path="">...content...</skill>` | Full skill invocation (slash command body) | `format_skill_invocation` |
 
 **Key principle:** attributes carry metadata; element text carries descriptions. No redundant nesting.
 
 ---
 
-## Skill Advertisement Format
+## Skill Advertisement Format (System Prompt)
 
-Used in the system prompt (`<available_skills>`) and returned by the `list_skills` tool.
+Used **only** in the system prompt. Compact single-line self-closing tags — `name` and `path` are attributes, no description or other fields included.
 
 ### Single-skill line
 
 ```xml
-<skill name="rust-verify-harden" location="/repo/.agents/skills/rust-verify-harden/SKILL.md">Verify build quality gates and harden Rust code (memory safety, Turso/SQLite usage).</skill>
+<skill name="rust-verify-harden" path="~/repo/.agents/skills/rust-verify-harden/SKILL.md"/>
 ```
 
 ### Full block
 
 ```xml
-<available_skills>
-  <skill name="rust-lean-refactor" location="/repo/.agents/skills/rust-lean-refactor/SKILL.md">Reorganize Rust code to be lean, clean, and non-bloated.</skill>
-  <skill name="update-models" location="/repo/.agents/skills/update-models/SKILL.md">Refresh elph-ai chat model catalogs from models.dev with optional live pricing.</skill>
+<available_skills note="On match: read SKILL.md fully before acting, resolve relative refs from its dir. Skip loosely related. No match -> proceed without one, don't browse to be thorough.">
+  <skill name="rust-lean-refactor" path="~/repo/.agents/skills/rust-lean-refactor/SKILL.md"/>
+  <skill name="update-models" path="~/repo/.agents/skills/update-models/SKILL.md"/>
 </available_skills>
 ```
 
@@ -40,14 +42,60 @@ Used in the system prompt (`<available_skills>`) and returned by the `list_skill
 | Field | Encoding | Example |
 |-------|----------|---------|
 | `name` | Attribute `name`, XML-escaped | `name="rust-lean-refactor"` |
-| `location` | Attribute `location` (equals `file_path`), XML-escaped | `location="/repo/.agents/skills/r…" ` |
-| description | Element text content, XML-escaped | `Reorganize Rust code…` |
+| `path` | Attribute `path` (equals `file_path`), XML-escaped, home directory rendered as `~` | `path="~/repo/.agents/skills/rust-lean-refactor/SKILL.md"` |
 
-**No `<description>`, `<name>`, or `<location>` child elements.** Single-line compact form saves tokens.
+**No description, no `trigger`, no child elements.** Paths under `$HOME` are rendered with `~` instead of the full absolute path to avoid exposing the username. Single-line compact form saves tokens.
 
 ### Relevance gating
 
 Skills with `metadata.scope: project` are hidden when the session `cwd` is outside the skill's project root. Use `list_skills(relevance: "project")` to discover them at runtime.
+
+---
+
+## Skill Catalog Format (`list_skills` tool output)
+
+Used when the model calls the `list_skills` tool. Returns the **full** structured form including all frontmatter fields — unlike the compact system-prompt form above.
+
+### Single-skill entry
+
+```xml
+<skill name="pdf-processing" path="~/skills/pdf/SKILL.md">
+  <description>Extract PDF text and tables.</description>
+  <license>Apache-2.0</license>
+  <compatibility>Requires poppler</compatibility>
+  <allowed-tools>read shell_exec</allowed-tools>
+  <metadata key="version" value="1.0"/>
+  <metadata key="author" value="example-org"/>
+</skill>
+```
+
+### Full block
+
+```xml
+<available_skills>
+  <skill name="rust-verify-harden" path="~/repo/.agents/skills/rust-verify-harden/SKILL.md">
+    <description>Run make check/lint/test and fix failures...</description>
+    <license>MIT</license>
+    <allowed-tools>shell_exec grep read_file write_file cargo_test</allowed-tools>
+    <metadata key="scope" value="project"/>
+  </skill>
+  <skill name="animation-vocabulary" path="~/.agents/skills/animation-vocabulary/SKILL.md">
+    <description>Reverse-lookup glossary terms for web animations.</description>
+  </skill>
+</available_skills>
+```
+
+### Child element rules
+
+| Element | Condition |
+|---------|-----------|
+| `<description>` | Always present (required field) |
+| `<license>` | `skill.license.is_some()` |
+| `<compatibility>` | `skill.compatibility.is_some()` |
+| `<allowed-tools>` | `skill.allowed_tools.is_some()` and non-empty — space-joined values |
+| `<metadata key="..." value="..." />` | `skill.metadata.is_some()` — one per key-value pair |
+
+Paths use the same `~/` tilde shorthand as the system prompt format.
 
 ---
 
@@ -124,13 +172,13 @@ Tools with no `properties` (e.g. `spawn_agent` bare variant, `get_goal`) omit th
 Used when a skill is dispatched via `/skill:name [args]` or slash palette. Includes full SKILL.md content plus metadata.
 
 ```xml
-<skill name="rust-verify-harden" location="/repo/.agents/skills/rust-verify-harden/SKILL.md">
+<skill name="rust-verify-harden" path="~/repo/.agents/skills/rust-verify-harden/SKILL.md">
 <license>MIT</license>
 <compatibility>Requires cargo, rustc, sqlite</compatibility>
 <allowed-tools>shell_exec read_file write_file grep cargo_test</allowed-tools>
 <meta key="scope" value="project" />
 <meta key="version" value="2.1" />
-References are relative to /repo/.agents/skills/rust-verify-harden.
+References are relative to ~/repo/.agents/skills/rust-verify-harden.
 
 # rust-verify-harden
 
