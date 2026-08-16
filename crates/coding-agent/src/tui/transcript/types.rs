@@ -19,7 +19,7 @@ use crate::tui::ask_user_tool_card::format_ask_user_tool_layout_text;
 
 use super::card::{
     format_thinking_body_display, format_thinking_stream_body_display, format_tool_args_display,
-    format_tool_output_display, tool_status_marker,
+    format_tool_output_display, format_tool_output_display_full, tool_status_marker,
 };
 use super::markdown::AssistantMarkdownBuffer;
 
@@ -778,7 +778,11 @@ impl ToolCardDetail {
             lines.push(String::new());
             lines.extend(args.lines().map(str::to_string));
         }
-        let output = format_tool_output_display(&self.output);
+        let output = if style == TranscriptStyle::ToolRunning {
+            format_tool_output_display(&self.output)
+        } else {
+            format_tool_output_display_full(&self.output)
+        };
         if !output.is_empty() {
             // Match TOOL_OUTPUT_SECTION_GAP / ASK_USER_ANSWER_SECTION_GAP row counts.
             lines.push(String::new());
