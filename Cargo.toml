@@ -28,7 +28,7 @@ anyhow = "1.0.104"
 aws-config = "1.10.1"
 aws-sdk-bedrockruntime = "1.139.0"
 aws-smithy-runtime-api = "1.14.0"
-aws-smithy-types = "1.6.1"
+aws-smithy-types = "1.6.2"
 ast-grep-core = "0.45.0"
 ast-grep-language = { version = "0.45.0", default-features = false, features = [
   "tree-sitter-c",
@@ -64,7 +64,7 @@ failsafe = "1.3.0"
 fast-glob = "1.1.0"
 fastrace = "0.7.19"
 fastrace-reqwest = "0.3.0"
-fff-search = "0.10.3"
+fff-search = "0.10.5"
 figlet-rs = "1.0.0"
 floppy = { path = "crates/floppy", version = "0.0.1" }
 futures = "0.3.33"
@@ -103,7 +103,7 @@ memchr = "2.8.3"
 mermaid-text = "0.57.0"
 memorable-ids = "0.1.1"
 mexprp = { version = "0.3.1", default-features = false }
-minijinja = "2.23.0"
+minijinja = "2.24.0"
 parking_lot = "0.12.5"
 pulldown-cmark = { version = "0.13.4", default-features = false, features = ["simd"] }
 qrcode = "0.14.1"
@@ -132,7 +132,7 @@ rendown = { path = "crates/rendown", version = "0.0.1" }
 shell-use = { version = "0.0.1-beta.6" }
 smol = "2.0.2"
 smol-macros = "0.1.1"
-yaml_serde = "0.10.4"
+yaml_serde = "0.10.6"
 sha2 = "0.11.0"
 similar = { version = "3.1.2", features = ["inline", "unicode"] }
 supports-color = "3.0.2"

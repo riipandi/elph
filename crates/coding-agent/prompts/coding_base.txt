@@ -137,12 +137,11 @@ ${% if ste_code %}
 Clarity rules inspired by Simplified Technical English (ASD-STE100). They govern **style and structure**, not the chat language.
 
 ${% if preferred_chat_language and preferred_chat_language != "english" %}
-
 - Write user-facing chat in ${{ preferred_chat_language }} using the style rules below (short, active, no filler). Do not switch chat to English just because this section mentions STE.
 - When writing into the repository (code, comments, docs, plan, commits), use English and the same brevity rules.
-  ${% else %}
+${% else %}
 - Write user-facing chat and repository text in clear technical English using the style rules below.
-  ${% endif %}
+${% endif %}
 - Prefer short active sentences. One idea per sentence for instructions. Avoid filler and hedging.
 - Keep names and identifiers exact and in their original form.
 - No preamble or recap. Start with the answer or the next action; end when done.

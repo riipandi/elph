@@ -741,8 +741,17 @@ impl TranscriptEventApplier {
             let new_len = last.content.len().saturating_add(cleaned.len());
             if new_len > ASSISTANT_STREAM_CAP && !last.content.is_empty() {
                 let drop = new_len.saturating_sub(ASSISTANT_STREAM_CAP / 2).min(last.content.len());
+                // Round down to a valid char boundary so we never slice mid-UTF-8.
+                let drop = last
+                    .content
+                    .char_indices()
+                    .map(|(i, _)| i)
+                    .chain(std::iter::once(last.content.len()))
+                    .take_while(|&i| i <= drop)
+                    .last()
+                    .unwrap_or(0);
                 let prefix = "\n[...stream truncated...]\n";
-                last.content = format!("{}{}", prefix, &last.content[drop..]);
+                last.content = format!("{prefix}{}", &last.content[drop..]);
             }
             last.content.push_str(&cleaned);
             return true;
@@ -820,6 +829,14 @@ impl TranscriptEventApplier {
             // Keep only the last TOOL_OUTPUT_STREAM_CAP - chunk_len bytes, prefixed with a marker.
             let drop = new_len.saturating_sub(TOOL_OUTPUT_STREAM_CAP).min(target.len());
             let prefix = "\n[...stream output truncated...]\n";
+            // Round down to a valid char boundary so we never slice mid-UTF-8.
+            let drop = target
+                .char_indices()
+                .map(|(i, _)| i)
+                .chain(std::iter::once(target.len()))
+                .take_while(|&i| i <= drop)
+                .last()
+                .unwrap_or(0);
             *target = format!("{prefix}{}", &target[drop..]);
         }
         target.push_str(output);
@@ -1520,5 +1537,52 @@ mod tests {
         assert!(messages[0].content.contains("...stream truncated..."));
         // Tail (most recent bytes) is preserved, not the head.
         assert!(messages[0].content.ends_with(&long_delta[long_delta.len() / 2..]));
+    }
+
+    #[test]
+    fn assistant_stream_caps_skips_utf8_boundary() {
+        // Use a multi-byte Unicode char (─, 3 bytes) positioned so byte-slicing would hit mid-char.
+        let mut messages = Vec::new();
+        let mut applier = TranscriptEventApplier::new(false, false);
+        applier.apply(&mut messages, AgentUiEvent::TextDelta("start".into()));
+        let long_delta = "x".repeat(ASSISTANT_STREAM_CAP) + "─";
+        // This must not panic — the fix rounds drop down to a char boundary.
+        applier.apply(&mut messages, AgentUiEvent::TextDelta(long_delta));
+        assert!(messages[0].content.contains("...stream truncated..."));
+    }
+
+    #[test]
+    fn tool_update_stream_caps_skips_utf8_boundary() {
+        let mut messages = Vec::new();
+        let mut applier = TranscriptEventApplier::new(false, false);
+        applier.apply(
+            &mut messages,
+            AgentUiEvent::ToolStart {
+                id: "t1".into(),
+                name: "shell_exec".into(),
+                args_summary: r#"{"command":"echo"}"#.into(),
+                user_shell: false,
+            },
+        );
+        // Seed target so !target.is_empty() and the cap triggers on the next update.
+        applier.apply(
+            &mut messages,
+            AgentUiEvent::ToolUpdate {
+                id: "t1".into(),
+                output: "seed\n".into(),
+            },
+        );
+        // Now send enough to exceed the cap; end with a multi-byte char so byte-slicing
+        // would hit mid-UTF-8 without the boundary fix.
+        let prefix = "a".repeat(TOOL_OUTPUT_STREAM_CAP + 100);
+        applier.apply(
+            &mut messages,
+            AgentUiEvent::ToolUpdate {
+                id: "t1".into(),
+                output: prefix + "─",
+            },
+        );
+        // Must not panic — the fix rounds drop down to a char boundary.
+        assert!(messages[0].tool.as_ref().unwrap().output.contains("...stream output truncated..."));
     }
 }
