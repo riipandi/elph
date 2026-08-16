@@ -85,7 +85,30 @@ impl TursoSessionStorage {
         // rows pruned by snapshot cleanup, partial recovery writes). Failing
         // open here would make every `--continue`/`--resume` unrecoverable.
         let persisted = load_leaf_id(&conn, &session_id).await?;
+        let persisted_snapshot = persisted.clone();
         let index = build_index(entries, persisted)?;
+        // Sync resolved leaf back to the DB when the persisted pointer was
+        // stale/phantom — without this the first write's CAS on
+        // `active_leaf_id` would see a mismatch and roll back the transaction.
+        if index.leaf_id.as_deref() != persisted_snapshot.as_deref() {
+            let updated_at = crate::messages::now_iso_timestamp();
+            if let Err(error) = conn
+                .execute(
+                    "UPDATE sessions SET active_leaf_id = ?, updated_at = ? WHERE id = ?",
+                    turso::params![
+                        index.leaf_id.as_deref().unwrap_or(""),
+                        updated_at.as_str(),
+                        session_id.as_str(),
+                    ],
+                )
+                .await
+                .map_err(map_storage_error)
+            {
+                log::warn!(
+                    "session {session_id}: resolved phantom leaf in memory but could not persist active_leaf_id update: {error}"
+                );
+            }
+        }
         // Best-effort auto-heal: if the tree is riddled with phantom leaves
         // (>= 16), drop stale `Leaf` entries and re-resolve so a single corrupt
         // row can't keep poisoning the leaf forever. When we heal, ALSO persist

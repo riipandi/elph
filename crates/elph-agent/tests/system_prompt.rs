@@ -51,11 +51,9 @@ fn format_skills_for_system_prompt_orders_visible_skills() {
     let formatted = format_skills_for_system_prompt(&[visible_skill(), disabled_skill(), second_skill()]);
 
     let expected = "\
-Use a matching skill; read its full file first and resolve relative references from the skill directory.
-
-<available_skills>
-  <skill name=\"visible\" location=\"/skills/visible/SKILL.md\">Use &lt;this&gt; &amp; that</skill>
-  <skill name=\"second\" location=\"/skills/second/SKILL.md\">Second skill</skill>
+<available_skills note=\"Match by trigger. On match: read SKILL.md fully before acting, resolve relative refs from its dir. Skip loosely related. No match -> proceed without one, don't browse to be thorough.\">
+  <skill name=\"visible\" path=\"/skills/visible/SKILL.md\" trigger=\"Use &lt;this&gt; &amp; that\"/>
+  <skill name=\"second\" path=\"/skills/second/SKILL.md\" trigger=\"Second skill\"/>
 </available_skills>";
     assert_eq!(formatted, expected);
 }
@@ -80,8 +78,9 @@ fn format_skills_for_system_prompt_escapes_xml_fields() {
         argument_hint: None,
     }]);
 
-    // Single quotes are escaped to &apos; in system_prompt.rs's escape_xml
+    // Single quotes are escaped to &apos; in system_prompt.rs's escape_xml;
+    // the full description (no trailing period) becomes the trigger.
     assert!(formatted.contains(
-        "<skill name=\"a&amp;b\" location=\"/skills/&lt;bad&gt;&amp;&quot;quote&quot;/SKILL.md\">Quote &quot;double&quot; and &apos;single&apos;</skill>"
+        "<skill name=\"a&amp;b\" path=\"/skills/&lt;bad&gt;&amp;&quot;quote&quot;/SKILL.md\" trigger=\"Quote &quot;double&quot; and &apos;single&apos;\"/>"
     ));
 }

@@ -188,10 +188,10 @@ fn find_match(content: &str, pattern: &str) -> MatchResult {
         let pattern_lf = pattern.replace("\r\n", "\n");
         let content_lf = content.replace("\r\n", "\n");
         let lf_matches: Vec<usize> = content_lf.match_indices(&pattern_lf).map(|(i, _)| i).collect();
-        if lf_matches.len() == 1 {
-            if let Some((start, end)) = map_lf_range_to_orig(content, lf_matches[0], pattern_lf.len()) {
-                return MatchResult::Unique(start, end);
-            }
+        if lf_matches.len() == 1
+            && let Some((start, end)) = map_lf_range_to_orig(content, lf_matches[0], pattern_lf.len())
+        {
+            return MatchResult::Unique(start, end);
         }
         if lf_matches.len() > 1 {
             return MatchResult::Multiple(lf_matches.len());

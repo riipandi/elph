@@ -41,6 +41,7 @@ fn main() {
         parent_session_id: "session-root".into(),
         model: "anthropic/claude-sonnet-4".into(),
         output: Default::default(),
+        created_at_ms: None,
     };
     println!("  id:                {}", info.id);
     println!("  session_id:        {}", info.session_id);

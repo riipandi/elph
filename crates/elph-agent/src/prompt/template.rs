@@ -90,14 +90,14 @@ pub fn render_base_template(ctx: &SystemPromptTemplateContext) -> String {
 /// Convert an absolute path to a relative path using `~` for home directory.
 /// If the path doesn't start with the home directory, returns the original path.
 fn path_to_relative_with_tilde(path: &str) -> String {
-    if let Some(home_dir) = std::env::var("HOME").ok() {
-        if path.starts_with(&home_dir) {
-            // Replace home directory with ~, ensuring we handle the path separator correctly
-            let remainder = path.strip_prefix(&home_dir).unwrap_or(path);
-            // Remove leading slash if present
-            let remainder = remainder.strip_prefix('/').unwrap_or(remainder);
-            return format!("~/{}", remainder);
-        }
+    if let Ok(home_dir) = std::env::var("HOME")
+        && path.starts_with(&home_dir)
+    {
+        // Replace home directory with ~, ensuring we handle the path separator correctly
+        let remainder = path.strip_prefix(&home_dir).unwrap_or(path);
+        // Remove leading slash if present
+        let remainder = remainder.strip_prefix('/').unwrap_or(remainder);
+        return format!("~/{}", remainder);
     }
     path.to_string()
 }
