@@ -38,6 +38,8 @@ pub struct AcpAgentState {
     pub settings: Settings,
     pub client_fs_read: bool,
     pub client_elicitation_form: bool,
+    /// Connection-scoped ACP login. Cleared by logout; does not delete `auth.json`.
+    pub authenticated: bool,
 }
 
 #[derive(Clone)]

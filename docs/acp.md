@@ -25,7 +25,7 @@ Elph’s wire shape follows the same product conventions as [pi-acp](https://git
 
 - Working directory must be an **absolute** path.
 - Resume `cwd` must match the stored session cwd.
-- No ACP auth methods yet (credentials stay file/env).
+- **Authentication (required for the [ACP Registry](https://agentclientprotocol.com/get-started/registry)):** initialize advertises `authMethods`. v1: `authenticate` + `logout` (`agentCapabilities.auth.logout`). v2: `auth/login` + `auth/logout`. Methods: `existing-credentials` plus `openai`, `anthropic`, `xai`, `openrouter`, `github-copilot`. Login succeeds when the matching env var or `auth.json` entry is present. Logout is **connection-scoped** (does not delete `auth.json`); open sessions are aborted and later `session/new`, `session/prompt`, `session/resume`/`load`, and config/mode changes return `auth_required` until the client logs in again.
 - No audio prompts.
 - File reads: `file://` prompt links are hydrated from disk (v1 also uses client `fs/read_text_file` when advertised). Writes stay local. Elph does **not** call client `fs/write_text_file`.
 - Shell runs **locally** (`shell_exec` / `shell_use`). The agent streams display-only `terminal_update` / `terminal_output_chunk` (command, cwd, base64 output, exit code or `SIGINT` on cancel). It does **not** advertise or call client `terminal/*`. Non-shell tools never get a terminal id.
@@ -112,9 +112,9 @@ Unsupported transports (including ACP-over-MCP) are ignored with a warning. A fa
 
 ## Later / client limitations
 
-- **Authentication** — ACP `authenticate` / `authMethods` / `logout` are **not** implemented and **not** advertised. Clients that require in-protocol login will not work; use file/env credentials (`auth.json`, provider env vars).
 - **Extensions** — WASM extension slash commands are not listed in `available_commands_update`.
 - **Client `terminal/*`** — not used. Local shell + display-only terminal updates only.
+- **Interactive OAuth inside `authenticate`** — ACP login checks existing env/`auth.json` credentials. Device/OAuth still uses `elph provider connect` (or a terminal outside this connection).
 
 Wire tests: `crates/coding-agent/tests/acp_wire.rs` (initialize, capability ads, relative-cwd, cancel-then-new). Unit tests cover slash catalog, permission option mapping, and display-only terminal encoding. A full in-process `session/new` + prompt turn is not in CI (needs a live session store / multi-thread runtime). CLI flag tests: `tests/acp.rs`. There is no automated Zed UI smoke.
 

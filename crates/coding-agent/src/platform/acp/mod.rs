@@ -1,5 +1,6 @@
 //! ACP agent server over stdio (v1 stable, v2 experimental).
 
+mod auth;
 mod capabilities;
 mod commands;
 mod config;
@@ -32,8 +33,8 @@ use std::sync::Arc;
 use agent_client_protocol::schema::ProtocolVersion;
 use agent_client_protocol::schema::v2::{
     CancelSessionNotification, CloseSessionRequest, DeleteSessionRequest, InitializeRequest, InitializeResponse,
-    ListSessionsRequest, NewSessionRequest, PromptRequest, ResumeSessionRequest, SetSessionConfigOptionRequest,
-    SetSessionConfigOptionResponse,
+    ListSessionsRequest, LoginAuthRequest, LoginAuthResponse, LogoutAuthRequest, LogoutAuthResponse, NewSessionRequest,
+    PromptRequest, ResumeSessionRequest, SetSessionConfigOptionRequest, SetSessionConfigOptionResponse,
 };
 use agent_client_protocol::{Agent, ConnectTo, Result as AcpResult, Stdio};
 use parking_lot::Mutex;
@@ -67,6 +68,7 @@ where
         settings,
         client_fs_read: false,
         client_elicitation_form: false,
+        authenticated: false,
     }));
 
     Agent
@@ -85,7 +87,8 @@ where
                     }
                     let _ = responder.respond(
                         InitializeResponse::new(ProtocolVersion::V2, capabilities::implementation())
-                            .capabilities(capabilities::agent_capabilities()),
+                            .capabilities(capabilities::agent_capabilities())
+                            .auth_methods(auth::v2_auth_methods()),
                     );
                     Ok(())
                 }
@@ -95,7 +98,39 @@ where
         .on_receive_request(
             {
                 let state = Arc::clone(&state);
+                async move |request: LoginAuthRequest, responder, _connection| {
+                    match auth::login(&state, request.method_id.0.as_ref()) {
+                        Ok(()) => {
+                            let _ = responder.respond(LoginAuthResponse::new());
+                        }
+                        Err(error) => {
+                            let _ = responder.respond_with_error(error);
+                        }
+                    }
+                    Ok(())
+                }
+            },
+            agent_client_protocol::on_receive_request!(),
+        )
+        .on_receive_request(
+            {
+                let state = Arc::clone(&state);
+                async move |_request: LogoutAuthRequest, responder, _connection| {
+                    auth::logout(&state).await;
+                    let _ = responder.respond(LogoutAuthResponse::new());
+                    Ok(())
+                }
+            },
+            agent_client_protocol::on_receive_request!(),
+        )
+        .on_receive_request(
+            {
+                let state = Arc::clone(&state);
                 async move |request: NewSessionRequest, responder, connection| {
+                    if let Err(error) = auth::require(&state) {
+                        let _ = responder.respond_with_error(error);
+                        return Ok(());
+                    }
                     let state = Arc::clone(&state);
                     let conn = connection.clone();
                     if let Err(error) = connection.spawn(async move {
@@ -123,6 +158,10 @@ where
             {
                 let state = Arc::clone(&state);
                 async move |request: ResumeSessionRequest, responder, connection| {
+                    if let Err(error) = auth::require(&state) {
+                        let _ = responder.respond_with_error(error);
+                        return Ok(());
+                    }
                     let state = Arc::clone(&state);
                     let conn = connection.clone();
                     if let Err(error) = connection.spawn(async move {
@@ -204,6 +243,10 @@ where
             {
                 let state = Arc::clone(&state);
                 async move |request: SetSessionConfigOptionRequest, responder, connection| {
+                    if let Err(error) = auth::require(&state) {
+                        let _ = responder.respond_with_error(error);
+                        return Ok(());
+                    }
                     match set_config(&state, &request, &connection).await {
                         Ok(response) => {
                             let _ = responder.respond(response);
@@ -222,6 +265,10 @@ where
             {
                 let state = Arc::clone(&state);
                 async move |request: PromptRequest, responder, connection| {
+                    if let Err(error) = auth::require(&state) {
+                        let _ = responder.respond_with_error(error);
+                        return Ok(());
+                    }
                     let state = Arc::clone(&state);
                     let conn = connection.clone();
                     if let Err(error) = connection.spawn(async move {

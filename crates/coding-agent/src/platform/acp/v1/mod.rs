@@ -7,9 +7,10 @@ use std::sync::atomic::Ordering;
 
 use agent_client_protocol::schema::ProtocolVersion;
 use agent_client_protocol::schema::v1::{
-    AgentCapabilities, AvailableCommand, AvailableCommandsUpdate, CancelNotification, CloseSessionRequest,
-    ContentBlock, ContentChunk, CurrentModeUpdate, DeleteSessionRequest, Implementation, InitializeRequest,
-    InitializeResponse, ListSessionsRequest, ListSessionsResponse, LoadSessionRequest, LoadSessionResponse,
+    AgentAuthCapabilities, AgentCapabilities, AuthenticateRequest, AuthenticateResponse, AvailableCommand,
+    AvailableCommandsUpdate, CancelNotification, CloseSessionRequest, ContentBlock, ContentChunk, CurrentModeUpdate,
+    DeleteSessionRequest, Implementation, InitializeRequest, InitializeResponse, ListSessionsRequest,
+    ListSessionsResponse, LoadSessionRequest, LoadSessionResponse, LogoutCapabilities, LogoutRequest, LogoutResponse,
     NewSessionRequest, NewSessionResponse, PermissionOption, PermissionOptionKind, Plan, PlanEntry, PlanEntryPriority,
     PlanEntryStatus, PromptCapabilities, PromptRequest, PromptResponse, RequestPermissionOutcome,
     RequestPermissionRequest, ResumeSessionRequest, ResumeSessionResponse, SessionConfigOption,
@@ -38,6 +39,7 @@ where
         settings,
         client_fs_read: false,
         client_elicitation_form: false,
+        authenticated: false,
     }));
 
     Agent
@@ -51,6 +53,7 @@ where
                     let _ = responder.respond(
                         InitializeResponse::new(ProtocolVersion::V1)
                             .agent_capabilities(v1_capabilities())
+                            .auth_methods(crate::platform::acp::auth::v1_auth_methods())
                             .agent_info(Implementation::new("elph", env!("CARGO_PKG_VERSION")).title("Elph")),
                     );
                     Ok(())
@@ -61,7 +64,39 @@ where
         .on_receive_request(
             {
                 let state = Arc::clone(&state);
+                async move |request: AuthenticateRequest, responder, _connection| {
+                    match crate::platform::acp::auth::login(&state, request.method_id.0.as_ref()) {
+                        Ok(()) => {
+                            let _ = responder.respond(AuthenticateResponse::new());
+                        }
+                        Err(error) => {
+                            let _ = responder.respond_with_error(error);
+                        }
+                    }
+                    Ok(())
+                }
+            },
+            agent_client_protocol::on_receive_request!(),
+        )
+        .on_receive_request(
+            {
+                let state = Arc::clone(&state);
+                async move |_request: LogoutRequest, responder, _connection| {
+                    crate::platform::acp::auth::logout(&state).await;
+                    let _ = responder.respond(LogoutResponse::new());
+                    Ok(())
+                }
+            },
+            agent_client_protocol::on_receive_request!(),
+        )
+        .on_receive_request(
+            {
+                let state = Arc::clone(&state);
                 async move |request: NewSessionRequest, responder, connection| {
+                    if let Err(error) = crate::platform::acp::auth::require(&state) {
+                        let _ = responder.respond_with_error(error);
+                        return Ok(());
+                    }
                     let state = Arc::clone(&state);
                     let conn = connection.clone();
                     if let Err(error) = connection.spawn(async move {
@@ -93,6 +128,10 @@ where
             {
                 let state = Arc::clone(&state);
                 async move |request: LoadSessionRequest, responder, connection| {
+                    if let Err(error) = crate::platform::acp::auth::require(&state) {
+                        let _ = responder.respond_with_error(error);
+                        return Ok(());
+                    }
                     let state = Arc::clone(&state);
                     let conn = connection.clone();
                     if let Err(error) = connection.spawn(async move {
@@ -131,6 +170,10 @@ where
             {
                 let state = Arc::clone(&state);
                 async move |request: ResumeSessionRequest, responder, connection| {
+                    if let Err(error) = crate::platform::acp::auth::require(&state) {
+                        let _ = responder.respond_with_error(error);
+                        return Ok(());
+                    }
                     let state = Arc::clone(&state);
                     let conn = connection.clone();
                     if let Err(error) = connection.spawn(async move {
@@ -234,21 +277,21 @@ where
         .on_receive_request(
             {
                 let state = Arc::clone(&state);
-                async move |request: SetSessionModeRequest, responder, connection| match set_mode(
-                    &state,
-                    &connection,
-                    &request,
-                )
-                .await
-                {
-                    Ok(response) => {
-                        let _ = responder.respond(response);
-                        Ok(())
+                async move |request: SetSessionModeRequest, responder, connection| {
+                    if let Err(error) = crate::platform::acp::auth::require(&state) {
+                        let _ = responder.respond_with_error(error);
+                        return Ok(());
                     }
-                    Err(error) => {
-                        let _ = responder
-                            .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
-                        Ok(())
+                    match set_mode(&state, &connection, &request).await {
+                        Ok(response) => {
+                            let _ = responder.respond(response);
+                            Ok(())
+                        }
+                        Err(error) => {
+                            let _ = responder
+                                .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                            Ok(())
+                        }
                     }
                 }
             },
@@ -258,6 +301,10 @@ where
             {
                 let state = Arc::clone(&state);
                 async move |request: SetSessionConfigOptionRequest, responder, connection| {
+                    if let Err(error) = crate::platform::acp::auth::require(&state) {
+                        let _ = responder.respond_with_error(error);
+                        return Ok(());
+                    }
                     match set_config_v1(&state, &connection, &request).await {
                         Ok(response) => {
                             let _ = responder.respond(response);
@@ -276,6 +323,10 @@ where
             {
                 let state = Arc::clone(&state);
                 async move |request: PromptRequest, responder, connection| {
+                    if let Err(error) = crate::platform::acp::auth::require(&state) {
+                        let _ = responder.respond_with_error(error);
+                        return Ok(());
+                    }
                     let state = Arc::clone(&state);
                     let conn = connection.clone();
                     if let Err(error) = connection.spawn(async move {
@@ -441,6 +492,7 @@ fn to_v1_option(select: crate::platform::acp::config::ConfigSelect) -> SessionCo
 
 fn v1_capabilities() -> AgentCapabilities {
     AgentCapabilities::new()
+        .auth(AgentAuthCapabilities::new().logout(LogoutCapabilities::new()))
         .load_session(true)
         .prompt_capabilities(PromptCapabilities::new().embedded_context(true).image(true))
         .mcp_capabilities(

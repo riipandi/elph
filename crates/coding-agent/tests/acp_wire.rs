@@ -28,15 +28,58 @@ async fn v1_initialize_and_rejects_relative_cwd() {
     assert_eq!(response["result"]["agentInfo"]["name"], "elph");
     assert_eq!(response["result"]["agentCapabilities"]["mcpCapabilities"]["http"], true);
     assert_eq!(response["result"]["agentCapabilities"]["loadSession"], true);
+    assert!(
+        response["result"]["agentCapabilities"]["auth"]["logout"].is_object(),
+        "v1 must advertise logout: {response}"
+    );
+    let methods = response["result"]["authMethods"].as_array().expect("authMethods");
+    assert!(
+        methods.iter().any(|m| m["id"] == "existing-credentials"),
+        "v1 authMethods: {methods:?}"
+    );
 
     write_line(
         &mut writer,
         &rpc(2, "session/new", json!({ "cwd": "relative", "mcpServers": [] })),
     )
     .await;
+    let unauth = read_json(&mut reader).await;
+    assert_eq!(unauth["id"], 2);
+    assert_eq!(unauth["error"]["code"], -32000, "auth_required: {unauth}");
+
+    write_line(&mut writer, &rpc(3, "authenticate", json!({ "methodId": "not-a-method" }))).await;
+    let bad = read_json(&mut reader).await;
+    assert!(bad.get("error").is_some(), "unknown method: {bad}");
+
+    // Safety: process-local test credential so login can succeed.
+    unsafe { std::env::set_var("OPENAI_API_KEY", "sk-acp-wire-test") };
+    write_line(
+        &mut writer,
+        &rpc(4, "authenticate", json!({ "methodId": "existing-credentials" })),
+    )
+    .await;
+    let logged_in = read_json(&mut reader).await;
+    assert!(logged_in.get("result").is_some(), "authenticate: {logged_in}");
+
+    write_line(
+        &mut writer,
+        &rpc(5, "session/new", json!({ "cwd": "relative", "mcpServers": [] })),
+    )
+    .await;
     let failed = read_json(&mut reader).await;
-    assert_eq!(failed["id"], 2);
+    assert_eq!(failed["id"], 5);
     assert!(failed.get("error").is_some(), "relative cwd must be rejected: {failed}");
+
+    write_line(&mut writer, &rpc(6, "logout", json!({}))).await;
+    let out = read_json(&mut reader).await;
+    assert!(out.get("result").is_some(), "logout: {out}");
+    write_line(
+        &mut writer,
+        &rpc(7, "session/new", json!({ "cwd": "relative", "mcpServers": [] })),
+    )
+    .await;
+    let after = read_json(&mut reader).await;
+    assert_eq!(after["error"]["code"], -32000, "auth_required after logout: {after}");
 }
 
 #[tokio::test]
@@ -62,6 +105,21 @@ async fn v2_initialize_advertises_mcp_and_cancel_is_notification() {
     assert!(session.get("mcp").is_some(), "v2 must advertise session.mcp: {response}");
     assert!(session["mcp"].get("stdio").is_some());
     assert!(session["mcp"].get("http").is_some());
+    let methods = response["result"]["authMethods"].as_array().expect("authMethods");
+    assert!(
+        methods
+            .iter()
+            .any(|m| m["methodId"] == "existing-credentials" || m["id"] == "existing-credentials"),
+        "v2 authMethods: {methods:?}"
+    );
+
+    write_line(
+        &mut writer,
+        &rpc(8, "session/new", json!({ "cwd": "also-relative", "mcpServers": [] })),
+    )
+    .await;
+    let unauth = read_json(&mut reader).await;
+    assert_eq!(unauth["error"]["code"], -32000, "v2 session/new requires login: {unauth}");
 
     write_line(
         &mut writer,

@@ -17,8 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   expose reasoning effort (pi-acp convention); `configOptions` also expose model and
   agent mode. Client `mcpServers` are attached to the session registry. `session/cancel`
   cancels in-flight tool calls. v2 keeps accept-then-`state_update`. Local shell is
-  mirrored as display-only ACP terminals (not client `terminal/*`). ACP **auth is not
-  implemented** — clients must use file/env credentials. See `docs/acp.md`.
+  mirrored as display-only ACP terminals (not client `terminal/*`). ACP **auth**
+  advertises `authMethods` and implements v1 `authenticate`/`logout` and v2
+  `auth/login`/`auth/logout`. After logout, session operations return `auth_required`.
+  See `docs/acp.md`.
 
 ### Added
 
