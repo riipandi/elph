@@ -36,7 +36,8 @@ pub async fn create_session(
     let sid = SessionId::from(session_id.clone());
     after_open(state, connection, &sid).await?;
     let (session, _, _) = lookup_session(state, &session_id)?;
-    Ok(NewSessionResponse::new(sid).config_options(config::config_options(&session)))
+    let settings = state.lock().settings.clone();
+    Ok(NewSessionResponse::new(sid).config_options(config::config_options(&session, &settings).await))
 }
 
 pub async fn resume_session(
@@ -61,7 +62,8 @@ pub async fn resume_session(
 
     after_open(state, connection, &sid).await?;
     let (session, _, _) = lookup_session(state, &session_id)?;
-    Ok(ResumeSessionResponse::new().config_options(config::config_options(&session)))
+    let settings = state.lock().settings.clone();
+    Ok(ResumeSessionResponse::new().config_options(config::config_options(&session, &settings).await))
 }
 
 pub struct ListedSession {
@@ -239,8 +241,8 @@ async fn after_open(
     connection: &ConnectionTo<Client>,
     session_id: &SessionId,
 ) -> anyhow::Result<()> {
-    commands::send_available_commands(connection, session_id)?;
     let (session, _, _) = lookup_session(state, session_id.0.as_ref())?;
+    commands::send_available_commands(connection, session_id, &session).await?;
     if let Ok(title) = crate::agent::session_title_for_rename(Some(&session)) {
         send_update(
             connection,

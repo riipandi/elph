@@ -8,22 +8,24 @@ use std::sync::atomic::Ordering;
 use agent_client_protocol::schema::ProtocolVersion;
 use agent_client_protocol::schema::v1::{
     AgentCapabilities, AvailableCommand, AvailableCommandsUpdate, CancelNotification, CloseSessionRequest,
-    ContentBlock, ContentChunk, DeleteSessionRequest, Implementation, InitializeRequest, InitializeResponse,
-    ListSessionsRequest, ListSessionsResponse, LoadSessionRequest, LoadSessionResponse, NewSessionRequest,
-    NewSessionResponse, PermissionOption, PermissionOptionKind, Plan, PlanEntry, PlanEntryPriority, PlanEntryStatus,
-    PromptCapabilities, PromptRequest, PromptResponse, RequestPermissionOutcome, RequestPermissionRequest,
-    ResumeSessionRequest, ResumeSessionResponse, SessionId, SessionInfo, SessionListCapabilities, SessionMode,
-    SessionModeState, SessionNotification, SessionUpdate, SetSessionModeRequest, SetSessionModeResponse, StopReason,
-    TextContent, ToolCall, ToolCallStatus, ToolCallUpdate, ToolKind,
+    ContentBlock, ContentChunk, CurrentModeUpdate, DeleteSessionRequest, Implementation, InitializeRequest,
+    InitializeResponse, ListSessionsRequest, ListSessionsResponse, LoadSessionRequest, LoadSessionResponse,
+    NewSessionRequest, NewSessionResponse, PermissionOption, PermissionOptionKind, Plan, PlanEntry, PlanEntryPriority,
+    PlanEntryStatus, PromptCapabilities, PromptRequest, PromptResponse, RequestPermissionOutcome,
+    RequestPermissionRequest, ResumeSessionRequest, ResumeSessionResponse, SessionConfigOption,
+    SessionConfigOptionCategory, SessionConfigSelectOption, SessionId, SessionInfo, SessionListCapabilities,
+    SessionMode, SessionModeState, SessionNotification, SessionUpdate, SetSessionConfigOptionRequest,
+    SetSessionConfigOptionResponse, SetSessionModeRequest, SetSessionModeResponse, StopReason, TextContent, ToolCall,
+    ToolCallStatus, ToolCallUpdate, ToolKind,
 };
 use agent_client_protocol::{Agent, Client, ConnectionTo, Result as AcpResult, Stdio};
 use parking_lot::Mutex;
 
 use crate::agent::AgentUiEvent;
+use crate::platform::acp::config::{ConfigCategory, apply_config_value, parse_thought, session_config};
 use crate::platform::acp::session::{close_by_id, list_session_rows, open_or_create};
 use crate::platform::acp::state::{AcpAgentState, lookup_session};
 use crate::platform::{Paths, Settings};
-use crate::types::AgentMode;
 
 pub async fn run(paths: Paths, settings: Settings) -> AcpResult<()> {
     let state = Arc::new(Mutex::new(AcpAgentState {
@@ -52,9 +54,12 @@ pub async fn run(paths: Paths, settings: Settings) -> AcpResult<()> {
                 async move |request: NewSessionRequest, responder, connection| {
                     match open_or_create(&state, &request.cwd, request.additional_directories.clone(), None).await {
                         Ok(id) => {
-                            let _ = send_v1_commands(&connection, &id);
-                            let _ =
-                                responder.respond(NewSessionResponse::new(SessionId::from(id)).modes(v1_mode_state()));
+                            let (modes, options) = advertise_v1(&state, &connection, &id).await;
+                            let _ = responder.respond(
+                                NewSessionResponse::new(SessionId::from(id))
+                                    .modes(modes)
+                                    .config_options(options),
+                            );
                         }
                         Err(error) => {
                             let _ = responder
@@ -82,8 +87,8 @@ pub async fn run(paths: Paths, settings: Settings) -> AcpResult<()> {
                             if let Ok((session, _, _)) = lookup_session(&state, &id) {
                                 let _ = replay_v1(&connection, &id, &session).await;
                             }
-                            let _ = send_v1_commands(&connection, &id);
-                            let _ = responder.respond(LoadSessionResponse::new().modes(v1_mode_state()));
+                            let (modes, options) = advertise_v1(&state, &connection, &id).await;
+                            let _ = responder.respond(LoadSessionResponse::new().modes(modes).config_options(options));
                         }
                         Err(error) => {
                             let _ = responder
@@ -108,8 +113,9 @@ pub async fn run(paths: Paths, settings: Settings) -> AcpResult<()> {
                     .await
                     {
                         Ok(id) => {
-                            let _ = send_v1_commands(&connection, &id);
-                            let _ = responder.respond(ResumeSessionResponse::new().modes(v1_mode_state()));
+                            let (modes, options) = advertise_v1(&state, &connection, &id).await;
+                            let _ =
+                                responder.respond(ResumeSessionResponse::new().modes(modes).config_options(options));
                         }
                         Err(error) => {
                             let _ = responder
@@ -216,6 +222,24 @@ pub async fn run(paths: Paths, settings: Settings) -> AcpResult<()> {
         .on_receive_request(
             {
                 let state = Arc::clone(&state);
+                async move |request: SetSessionConfigOptionRequest, responder, connection| {
+                    match set_config_v1(&state, &connection, &request).await {
+                        Ok(response) => {
+                            let _ = responder.respond(response);
+                        }
+                        Err(error) => {
+                            let _ = responder
+                                .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                        }
+                    }
+                    Ok(())
+                }
+            },
+            agent_client_protocol::on_receive_request!(),
+        )
+        .on_receive_request(
+            {
+                let state = Arc::clone(&state);
                 async move |request: PromptRequest, responder, connection| match run_prompt(
                     &state,
                     &connection,
@@ -256,16 +280,66 @@ pub async fn run(paths: Paths, settings: Settings) -> AcpResult<()> {
         .await
 }
 
-fn v1_mode_state() -> SessionModeState {
+async fn advertise_v1(
+    state: &Arc<Mutex<AcpAgentState>>,
+    connection: &ConnectionTo<Client>,
+    session_id: &str,
+) -> (SessionModeState, Vec<SessionConfigOption>) {
+    let settings = state.lock().settings.clone();
+    if let Ok((session, _, _)) = lookup_session(state, session_id) {
+        let _ = send_v1_commands(connection, session_id, &session).await;
+        let snapshot = session_config(&session, &settings).await;
+        let modes = v1_thought_modes(&snapshot);
+        let options = snapshot.into_iter().map(to_v1_option).collect();
+        return (modes, options);
+    }
+    (v1_thought_modes_fallback(), Vec::new())
+}
+
+fn v1_thought_modes(snapshot: &[crate::platform::acp::config::ConfigSelect]) -> SessionModeState {
+    snapshot
+        .iter()
+        .find(|s| s.id == "thought_level")
+        .map(|s| {
+            SessionModeState::new(
+                s.current.clone(),
+                s.options
+                    .iter()
+                    .map(|c| SessionMode::new(c.id.clone(), c.name.clone()))
+                    .collect(),
+            )
+        })
+        .unwrap_or_else(v1_thought_modes_fallback)
+}
+
+fn v1_thought_modes_fallback() -> SessionModeState {
     SessionModeState::new(
-        "build",
+        "off",
         vec![
-            SessionMode::new("ask", "Ask"),
-            SessionMode::new("plan", "Plan"),
-            SessionMode::new("build", "Build"),
-            SessionMode::new("brave", "Brave"),
+            SessionMode::new("off", "Thinking: off"),
+            SessionMode::new("minimal", "Thinking: minimal"),
+            SessionMode::new("low", "Thinking: low"),
+            SessionMode::new("medium", "Thinking: medium"),
+            SessionMode::new("high", "Thinking: high"),
+            SessionMode::new("xhigh", "Thinking: xhigh"),
+            SessionMode::new("max", "Thinking: max"),
         ],
     )
+}
+
+fn to_v1_option(select: crate::platform::acp::config::ConfigSelect) -> SessionConfigOption {
+    let options: Vec<SessionConfigSelectOption> = select
+        .options
+        .into_iter()
+        .map(|c| SessionConfigSelectOption::new(c.id, c.name))
+        .collect();
+    SessionConfigOption::select(select.id, select.name, select.current, options)
+        .category(match select.category {
+            ConfigCategory::Mode => SessionConfigOptionCategory::Mode,
+            ConfigCategory::Model => SessionConfigOptionCategory::Model,
+            ConfigCategory::ThoughtLevel => SessionConfigOptionCategory::ThoughtLevel,
+        })
+        .description(select.description)
 }
 
 fn v1_capabilities() -> AgentCapabilities {
@@ -280,10 +354,23 @@ fn v1_capabilities() -> AgentCapabilities {
         )
 }
 
-fn send_v1_commands(connection: &ConnectionTo<Client>, session_id: &str) -> anyhow::Result<()> {
-    let commands = crate::platform::acp::commands::advertised_commands()
+async fn send_v1_commands(
+    connection: &ConnectionTo<Client>,
+    session_id: &str,
+    session: &crate::agent::CodingAgentSession,
+) -> anyhow::Result<()> {
+    let commands = crate::platform::acp::commands::slash_catalog(session)
+        .await
         .into_iter()
-        .map(|c| AvailableCommand::new(c.name, c.description))
+        .map(|c| {
+            let mut cmd = AvailableCommand::new(c.name, c.description);
+            if let Some(hint) = c.hint {
+                cmd = cmd.input(agent_client_protocol::schema::v1::AvailableCommandInput::Unstructured(
+                    agent_client_protocol::schema::v1::UnstructuredCommandInput::new(hint),
+                ));
+            }
+            cmd
+        })
         .collect();
     notify(
         connection,
@@ -555,18 +642,50 @@ async fn send_v1_permission(connection: &ConnectionTo<Client>, request: RequestP
 
 async fn set_mode(
     state: &Arc<Mutex<AcpAgentState>>,
-    _connection: &ConnectionTo<Client>,
+    connection: &ConnectionTo<Client>,
     request: &SetSessionModeRequest,
 ) -> anyhow::Result<SetSessionModeResponse> {
     let key = request.session_id.0.as_ref().to_string();
     let (session, _, _) = lookup_session(state, &key)?;
-    let mode = match request.mode_id.0.as_ref() {
-        "ask" => AgentMode::Ask,
-        "plan" => AgentMode::Plan,
-        "build" => AgentMode::Build,
-        "brave" => AgentMode::Brave,
-        other => anyhow::bail!("unknown mode {other}"),
-    };
-    session.set_agent_mode(mode).await?;
+    let level = parse_thought(request.mode_id.0.as_ref())
+        .ok_or_else(|| anyhow::anyhow!("unknown thinking level {}", request.mode_id.0))?;
+    session.set_thinking_level(level).await?;
+    let _ = notify(
+        connection,
+        &key,
+        SessionUpdate::CurrentModeUpdate(CurrentModeUpdate::new(request.mode_id.clone())),
+    );
     Ok(SetSessionModeResponse::new())
+}
+
+async fn set_config_v1(
+    state: &Arc<Mutex<AcpAgentState>>,
+    connection: &ConnectionTo<Client>,
+    request: &SetSessionConfigOptionRequest,
+) -> anyhow::Result<SetSessionConfigOptionResponse> {
+    let key = request.session_id.0.as_ref().to_string();
+    let (session, _, _) = lookup_session(state, &key)?;
+    let settings = state.lock().settings.clone();
+    let raw = v1_config_raw(&request.value)?;
+    apply_config_value(&session, request.config_id.0.as_ref(), &raw).await?;
+    if request.config_id.0.as_ref() == "thought_level" {
+        let _ = notify(
+            connection,
+            &key,
+            SessionUpdate::CurrentModeUpdate(CurrentModeUpdate::new(raw.clone())),
+        );
+    }
+    let options = session_config(&session, &settings)
+        .await
+        .into_iter()
+        .map(to_v1_option)
+        .collect();
+    Ok(SetSessionConfigOptionResponse::new(options))
+}
+
+fn v1_config_raw(value: &agent_client_protocol::schema::v1::SessionConfigOptionValue) -> anyhow::Result<String> {
+    match value {
+        agent_client_protocol::schema::v1::SessionConfigOptionValue::ValueId { value } => Ok(value.0.to_string()),
+        _ => anyhow::bail!("config option expects an id value"),
+    }
 }

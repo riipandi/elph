@@ -26,7 +26,8 @@ A v2 initialize against a v1 process is rejected, and the reverse.
 - No ACP auth methods (credentials stay file/env).
 - No audio prompts.
 - No Client `fs/*` or `terminal/*` execution (Elph uses its own tools).
-- Slash commands that the ACP host can run are advertised after session setup and executed by a shared dispatcher (not a stub echo).
+- Slash commands advertised after session setup are ACP-safe builtins **plus** the session's prompt templates and skills (same catalog as the TUI palette). Dispatch uses that catalog.
+- `configOptions` advertise **model**, **thought_level** (reasoning), and **mode** (ask/plan/build/brave). On v1, Zed-style `modes` are thinking levels (same as [pi-acp](https://github.com/svkozak/pi-acp)); agent permission mode stays on `configOptions.mode`.
 - Tool approval uses `session/request_permission` on both versions.
 
 ## v1 capabilities
@@ -39,7 +40,9 @@ A v2 initialize against a v1 process is rejected, and the reverse.
 
 Methods: `session/new`, `session/load`, `session/resume`, `session/list`, `session/close`, `session/delete`, `session/prompt` (held until `stopReason`), `session/cancel`, `session/set_mode`.
 
-`session/new` (and load/resume) include `modes` for ask / plan / build / brave.
+`session/new` (and load/resume) include `modes` for thinking levels (`off`…`max`) and `configOptions` for model, thought_level, and agent mode.
+
+`session/set_mode` sets thinking level (pi-acp / Zed). `session/set_config_option` sets `model`, `thought_level`, or `mode`.
 
 ## v2 capabilities
 

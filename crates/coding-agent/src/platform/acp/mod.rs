@@ -219,7 +219,8 @@ async fn set_config(
 ) -> anyhow::Result<SetSessionConfigOptionResponse> {
     let key = session_key(&request.session_id);
     let (session, _, _) = lookup_session(state, &key)?;
-    let options = config::set_config_option(&session, request.config_id.0.as_ref(), &request.value).await?;
+    let settings = state.lock().settings.clone();
+    let options = config::set_config_option(&session, &settings, request.config_id.0.as_ref(), &request.value).await?;
     let _ = updates::send_update(
         connection,
         &request.session_id,

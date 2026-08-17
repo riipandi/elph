@@ -11,8 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **ACP:** `elph acp --stdio` speaks **v1 (stable)**; `elph acp --stdio --experimental`
   speaks **v2 (draft)**. Bare `elph acp` aliases `--stdio`. Each process speaks one
-  version. v1 holds `session/prompt` until `stopReason` and supports `session/load` /
-  `session/set_mode`. v2 keeps accept-then-`state_update`. See `docs/acp.md`.
+  version. v1 holds `session/prompt` until `stopReason` and supports `session/load`.
+  Slash advertisement includes prompt templates and skills. v1 `modes` / `thought_level`
+  expose reasoning effort (pi-acp convention); `configOptions` also expose model and
+  agent mode. v2 keeps accept-then-`state_update`. See `docs/acp.md`.
 
 ### Added
 

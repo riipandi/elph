@@ -6,13 +6,15 @@ use agent_client_protocol::schema::v2::{
 use agent_client_protocol::{Client, ConnectionTo};
 
 use crate::agent::{
-    SlashDispatch, clone_session_message, dispatch_slash_command, export_session_message, fork_session_message,
-    format_help_message, import_session_from_jsonl, import_slash_message, resume_list_message,
-    system_prompt_slash_message, tools_slash_message, tree_slash_message, trust_slash_message, workers_slash_message,
+    CodingAgentSession, SlashDispatch, clone_session_message, dispatch_slash_command, export_session_message,
+    fork_session_message, format_help_message, import_session_from_jsonl, import_slash_message, resume_list_message,
+    slash_commands_for_palette, system_prompt_slash_message, tools_slash_message, tree_slash_message,
+    trust_slash_message, workers_slash_message,
 };
 use crate::platform::Paths;
 use crate::platform::acp::state::{AcpAgentState, lookup_session};
 use crate::platform::acp::updates::{send_agent_text, send_idle, send_update};
+use crate::types::SlashCommand;
 
 use parking_lot::Mutex;
 use std::sync::Arc;
@@ -41,25 +43,73 @@ const ACP_COMMANDS: &[(&str, &str, Option<&str>)] = &[
     ("provider", "List configured providers", Some("list")),
 ];
 
-pub fn advertised_commands() -> Vec<AvailableCommand> {
-    ACP_COMMANDS
-        .iter()
-        .map(|(name, desc, hint)| {
-            let mut cmd = AvailableCommand::new(*name, *desc);
-            if let Some(hint) = hint {
-                cmd = cmd.input(AvailableCommandInput::Text(TextCommandInput::new(*hint)));
+/// ACP-safe builtins plus session prompt templates and skills (pi-acp style).
+pub async fn advertised_commands(session: &CodingAgentSession) -> Vec<AvailableCommand> {
+    to_v2_commands(&slash_catalog(session).await)
+}
+
+pub async fn send_available_commands(
+    connection: &ConnectionTo<Client>,
+    session_id: &SessionId,
+    session: &CodingAgentSession,
+) -> anyhow::Result<()> {
+    send_update(
+        connection,
+        session_id,
+        SessionUpdate::AvailableCommandsUpdate(AvailableCommandsUpdate::new(advertised_commands(session).await)),
+    )
+}
+
+pub struct AdvertisedSlash {
+    pub name: String,
+    pub description: String,
+    pub hint: Option<String>,
+}
+
+pub async fn slash_catalog(session: &CodingAgentSession) -> Vec<AdvertisedSlash> {
+    let resources = session.harness().get_resources().await;
+    let palette = slash_commands_for_palette(
+        None,
+        Some(resources.prompt_templates.as_slice()),
+        Some(resources.skills.as_slice()),
+    );
+    merge_advertised(&palette)
+}
+
+fn merge_advertised(palette: &[SlashCommand]) -> Vec<AdvertisedSlash> {
+    let mut out = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    for (name, desc, hint) in ACP_COMMANDS {
+        seen.insert((*name).to_string());
+        out.push(AdvertisedSlash {
+            name: (*name).to_string(),
+            description: (*desc).to_string(),
+            hint: hint.map(str::to_string),
+        });
+    }
+    for cmd in palette.iter().filter(|c| !c.hidden) {
+        if !seen.insert(cmd.name.clone()) {
+            continue;
+        }
+        out.push(AdvertisedSlash {
+            name: cmd.name.clone(),
+            description: cmd.description.clone(),
+            hint: cmd.args_hint.clone(),
+        });
+    }
+    out
+}
+
+fn to_v2_commands(cmds: &[AdvertisedSlash]) -> Vec<AvailableCommand> {
+    cmds.iter()
+        .map(|c| {
+            let mut cmd = AvailableCommand::new(c.name.clone(), c.description.clone());
+            if let Some(hint) = &c.hint {
+                cmd = cmd.input(AvailableCommandInput::Text(TextCommandInput::new(hint.clone())));
             }
             cmd
         })
         .collect()
-}
-
-pub fn send_available_commands(connection: &ConnectionTo<Client>, session_id: &SessionId) -> anyhow::Result<()> {
-    send_update(
-        connection,
-        session_id,
-        SessionUpdate::AvailableCommandsUpdate(AvailableCommandsUpdate::new(advertised_commands())),
-    )
 }
 
 /// Outcome of an ACP-safe slash command (no wire types).
@@ -73,10 +123,14 @@ pub enum SlashOutcome {
 }
 
 pub async fn resolve_slash(state: &Arc<Mutex<AcpAgentState>>, key: &str, input: &str) -> anyhow::Result<SlashOutcome> {
-    let dispatch = dispatch_slash_command(input, None, None, None);
+    let (session, _, _) = lookup_session(state, key)?;
+    let resources = session.harness().get_resources().await;
+    let templates = resources.prompt_templates.clone();
+    let skills = resources.skills.clone();
+    let dispatch = dispatch_slash_command(input, None, Some(&templates), Some(&skills));
 
     let text = match dispatch {
-        Some(SlashDispatch::Help) => format_help_message(None, None, None),
+        Some(SlashDispatch::Help) => format_help_message(None, Some(&templates), Some(&skills)),
         Some(SlashDispatch::Tools { .. }) => {
             let (session, _, _) = lookup_session(state, key)?;
             tools_slash_message(Some(&session)).map_err(|e| anyhow::anyhow!("{e}"))?
@@ -302,5 +356,22 @@ mod tests {
         assert!(is_slash("  /tools  "));
         assert!(!is_slash("/"));
         assert!(!is_slash("hello"));
+    }
+
+    #[test]
+    fn catalog_includes_templates_and_skills() {
+        let palette = vec![
+            SlashCommand::new("review", "[prompt] Review a PR").with_args_hint("<url>"),
+            SlashCommand::new("code-review", "[skill] Review changes"),
+            SlashCommand::new("help", "duplicate builtin"),
+        ];
+        let cmds = merge_advertised(&palette);
+        assert!(cmds.iter().any(|c| c.name == "help"));
+        assert!(
+            cmds.iter()
+                .any(|c| c.name == "review" && c.hint.as_deref() == Some("<url>"))
+        );
+        assert!(cmds.iter().any(|c| c.name == "code-review"));
+        assert_eq!(cmds.iter().filter(|c| c.name == "help").count(), 1);
     }
 }
