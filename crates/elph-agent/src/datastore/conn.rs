@@ -145,7 +145,7 @@ async fn connect_retry(db: &Database) -> Result<Connection> {
         match db.connect() {
             Ok(conn) => return Ok(conn),
             Err(e) => {
-                if attempt >= MAX_RETRIES || !is_lock_err(&e.to_string()) {
+                if attempt >= MAX_RETRIES || !is_open_retryable(&e.to_string()) {
                     return Err(e).context("connect: database connection failed (database may be locked or corrupted)");
                 }
                 log::warn!(
