@@ -10,9 +10,7 @@ use parking_lot::Mutex;
 use crate::platform::acp::commands;
 use crate::platform::acp::content::extract_prompt;
 use crate::platform::acp::state::{AcpAgentState, lookup_session, session_key};
-use crate::platform::acp::updates::{
-    is_running, mark_running, send_idle, send_running, send_user_message, stream_ui_events,
-};
+use crate::platform::acp::updates::{drive_turn, is_running, send_idle, send_running, send_user_message};
 
 pub async fn handle_prompt(
     state: Arc<Mutex<AcpAgentState>>,
@@ -22,12 +20,24 @@ pub async fn handle_prompt(
 ) -> anyhow::Result<()> {
     let session_id = request.session_id.clone();
     let key = session_key(&session_id);
-    lookup_session(&state, &key)?;
-    let extracted = extract_prompt(&request.prompt).map_err(|e| anyhow::anyhow!("{e}"))?;
+    if let Err(error) = lookup_session(&state, &key) {
+        let _ = responder.respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+        return Ok(());
+    }
+    let extracted = match extract_prompt(&request.prompt) {
+        Ok(extracted) => extracted,
+        Err(error) => {
+            let _ = responder.respond_with_error(agent_client_protocol::util::internal_error(error));
+            return Ok(());
+        }
+    };
     if !extracted.images.is_empty() {
         let (session, _, _) = lookup_session(&state, &key)?;
         if !session.supports_image_input() {
-            anyhow::bail!("this model does not accept image prompt content");
+            let _ = responder.respond_with_error(agent_client_protocol::util::internal_error(
+                "this model does not accept image prompt content",
+            ));
+            return Ok(());
         }
     }
     let _ = responder.respond(PromptResponse::new());
@@ -51,10 +61,16 @@ pub async fn handle_prompt(
 
     let (session, ui_rx, _) = lookup_session(&state, &key)?;
     let steer = is_running(&state, &session_id);
-    mark_running(&state, &session_id);
-    send_running(&connection, &session_id)?;
-    session.submit_prompt(extracted.text, steer).await?;
-    stream_ui_events(&state, &connection, &session_id, &ui_rx).await
+    drive_turn(
+        &state,
+        &connection,
+        &session_id,
+        session,
+        extracted.text,
+        steer,
+        &ui_rx,
+    )
+    .await
 }
 
 pub async fn handle_cancel(

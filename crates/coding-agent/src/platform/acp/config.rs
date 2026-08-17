@@ -12,7 +12,20 @@ use crate::platform::acp::state::current_mode;
 use crate::types::{AgentMode, ThinkingLevel};
 
 pub async fn config_options(session: &CodingAgentSession, settings: &Settings) -> Vec<SessionConfigOption> {
-    let snapshot = session_config(session, settings).await;
+    config_options_with(session, settings, true).await
+}
+
+/// Small payload for `session/new` so the client is not blocked on the full catalog.
+pub async fn config_options_initial(session: &CodingAgentSession, settings: &Settings) -> Vec<SessionConfigOption> {
+    config_options_with(session, settings, false).await
+}
+
+async fn config_options_with(
+    session: &CodingAgentSession,
+    settings: &Settings,
+    full_catalog: bool,
+) -> Vec<SessionConfigOption> {
+    let snapshot = session_config(session, settings, full_catalog).await;
     snapshot.into_iter().map(to_v2_option).collect()
 }
 
@@ -69,7 +82,11 @@ pub enum ConfigCategory {
     ThoughtLevel,
 }
 
-pub async fn session_config(session: &CodingAgentSession, settings: &Settings) -> Vec<ConfigSelect> {
+pub async fn session_config(
+    session: &CodingAgentSession,
+    settings: &Settings,
+    full_catalog: bool,
+) -> Vec<ConfigSelect> {
     let mode = current_mode(session);
     let mode_option = ConfigSelect {
         id: "mode",
@@ -92,7 +109,7 @@ pub async fn session_config(session: &CodingAgentSession, settings: &Settings) -
         description: "Select the model for this session",
         category: ConfigCategory::Model,
         current: current_model.clone(),
-        options: advertised_models(session, settings),
+        options: advertised_models(session, settings, full_catalog),
     };
 
     let thought = current_thought(session).await;
@@ -112,10 +129,28 @@ async fn current_thought(session: &CodingAgentSession) -> ThinkingLevel {
     from_agent_thinking(session.harness().get_thinking_level().await)
 }
 
-fn advertised_models(session: &CodingAgentSession, settings: &Settings) -> Vec<ConfigChoice> {
+fn advertised_models(session: &CodingAgentSession, settings: &Settings, full_catalog: bool) -> Vec<ConfigChoice> {
     let current = format!("{}/{}", session.model_provider(), session.model_id());
     let mut options = Vec::new();
     let mut seen = std::collections::HashSet::new();
+
+    if !full_catalog {
+        for value in &settings.models.scoped_models {
+            if seen.insert(value.clone()) {
+                options.push(model_choice(value));
+            }
+        }
+        if seen.insert(current.clone()) {
+            options.insert(
+                0,
+                ConfigChoice {
+                    id: current,
+                    name: session.model_display(),
+                },
+            );
+        }
+        return options;
+    }
 
     for (id, name) in session.list_acp_models() {
         if seen.insert(id.clone()) {

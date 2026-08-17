@@ -36,7 +36,7 @@ pub async fn create_session(
     let (session, _, _) = lookup_session(state, &session_id)?;
     let settings = state.lock().settings.clone();
     let _ = connection;
-    Ok(NewSessionResponse::new(sid).config_options(config::config_options(&session, &settings).await))
+    Ok(NewSessionResponse::new(sid).config_options(config::config_options_initial(&session, &settings).await))
 }
 
 /// Side effects after `session/new` has been answered (must not run on the I/O task).
@@ -49,7 +49,25 @@ pub async fn finish_create_session(
     if let Err(error) = after_open(state, connection, session_id).await {
         log::warn!("ACP after session/new: {error:#}");
     }
+    emit_full_config(state, connection, session_id).await;
     attach_session_mcp(state, session_id, mcp::map_servers(&request.mcp_servers)).await;
+}
+
+async fn emit_full_config(
+    state: &Arc<Mutex<AcpAgentState>>,
+    connection: &ConnectionTo<Client>,
+    session_id: &SessionId,
+) {
+    let settings = state.lock().settings.clone();
+    let Ok((session, _, _)) = lookup_session(state, session_id.0.as_ref()) else {
+        return;
+    };
+    let options = config::config_options(&session, &settings).await;
+    let _ = send_update(
+        connection,
+        session_id,
+        SessionUpdate::ConfigOptionUpdate(agent_client_protocol::schema::v2::ConfigOptionUpdate::new(options)),
+    );
 }
 
 async fn attach_session_mcp(
@@ -81,7 +99,7 @@ pub async fn resume_session(
     let (session, _, _) = lookup_session(state, &session_id)?;
     let settings = state.lock().settings.clone();
     let _ = (connection, sid);
-    Ok(ResumeSessionResponse::new().config_options(config::config_options(&session, &settings).await))
+    Ok(ResumeSessionResponse::new().config_options(config::config_options_initial(&session, &settings).await))
 }
 
 pub async fn finish_resume_session(
@@ -99,6 +117,7 @@ pub async fn finish_resume_session(
     if let Err(error) = after_open(state, connection, session_id).await {
         log::warn!("ACP after session/resume: {error:#}");
     }
+    emit_full_config(state, connection, session_id).await;
     attach_session_mcp(state, session_id, mcp::map_servers(&request.mcp_servers)).await;
 }
 

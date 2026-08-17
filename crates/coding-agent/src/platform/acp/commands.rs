@@ -309,15 +309,29 @@ pub async fn handle_slash(
         }
         SlashOutcome::Continue => {
             let (session, ui_rx, _) = lookup_session(state, key)?;
-            session
-                .submit_prompt(crate::agent::RETRY_CONTINUE_PROMPT.to_string(), false)
-                .await?;
-            crate::platform::acp::updates::stream_ui_events(state, connection, session_id, &ui_rx).await
+            crate::platform::acp::updates::drive_turn(
+                state,
+                connection,
+                session_id,
+                session,
+                crate::agent::RETRY_CONTINUE_PROMPT.to_string(),
+                false,
+                &ui_rx,
+            )
+            .await
         }
         SlashOutcome::SubmitPrompt => {
             let (session, ui_rx, _) = lookup_session(state, key)?;
-            session.submit_prompt(input.to_string(), false).await?;
-            crate::platform::acp::updates::stream_ui_events(state, connection, session_id, &ui_rx).await
+            crate::platform::acp::updates::drive_turn(
+                state,
+                connection,
+                session_id,
+                session,
+                input.to_string(),
+                false,
+                &ui_rx,
+            )
+            .await
         }
     }
 }

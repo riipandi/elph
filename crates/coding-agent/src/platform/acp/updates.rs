@@ -103,6 +103,39 @@ pub fn send_thought_chunk(
     )
 }
 
+/// Run a harness turn while streaming UI events (required for tool approval).
+pub async fn drive_turn(
+    state: &Arc<Mutex<AcpAgentState>>,
+    connection: &ConnectionTo<Client>,
+    session_id: &SessionId,
+    session: Arc<crate::agent::CodingAgentSession>,
+    text: String,
+    steer: bool,
+    ui_rx: &Arc<tokio::sync::Mutex<mpsc::UnboundedReceiver<AgentUiEvent>>>,
+) -> anyhow::Result<()> {
+    mark_running(state, session_id);
+    send_running(connection, session_id)?;
+    let submit = session.submit_prompt(text, steer);
+    tokio::pin!(submit);
+    let stream = stream_ui_events(state, connection, session_id, ui_rx);
+    tokio::pin!(stream);
+    tokio::select! {
+        submit_res = &mut submit => match submit_res {
+            Ok(()) => stream.await,
+            Err(error) => {
+                let _ = send_agent_text(connection, session_id, &format!("Prompt failed: {error:#}"));
+                mark_idle(state, session_id);
+                send_idle(connection, session_id, StopReason::EndTurn)?;
+                Err(error)
+            }
+        },
+        stream_res = &mut stream => {
+            let _ = submit.await;
+            stream_res
+        }
+    }
+}
+
 pub async fn stream_ui_events(
     state: &Arc<Mutex<AcpAgentState>>,
     connection: &ConnectionTo<Client>,
@@ -120,6 +153,7 @@ pub async fn stream_ui_events(
     let agent_msg = ids.next("msg_agent");
     let thought_msg = ids.next("msg_thought");
     let mut saw_text = false;
+    let mut agent_text = String::new();
     let mut rx = ui_rx.lock().await;
 
     while let Some(event) = rx.recv().await {
@@ -135,6 +169,7 @@ pub async fn stream_ui_events(
                     send_running(connection, session_id)?;
                     saw_text = true;
                 }
+                agent_text.push_str(&text);
                 send_agent_chunk(connection, session_id, &agent_msg, text)?;
             }
             AgentUiEvent::ThinkingDelta(text) if !text.is_empty() => {
@@ -185,6 +220,16 @@ pub async fn stream_ui_events(
                 send_running(connection, session_id)?;
             }
             AgentUiEvent::RunCompleted { usage, .. } => {
+                if !agent_text.is_empty() {
+                    let _ = send_update(
+                        connection,
+                        session_id,
+                        SessionUpdate::AgentMessage(
+                            AgentMessage::new(agent_msg.clone())
+                                .content(vec![ContentBlock::Text(TextContent::new(agent_text.clone()))]),
+                        ),
+                    );
+                }
                 if let Some(usage) = usage {
                     let used = usage.input_tokens.saturating_add(usage.output_tokens).max(0) as u64;
                     let _ = send_update(

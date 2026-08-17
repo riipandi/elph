@@ -254,22 +254,25 @@ where
         .on_receive_request(
             {
                 let state = Arc::clone(&state);
-                async move |request: PromptRequest, responder, connection| match run_prompt(
-                    &state,
-                    &connection,
-                    &request,
-                )
-                .await
-                {
-                    Ok(reason) => {
-                        let _ = responder.respond(PromptResponse::new(reason));
+                async move |request: PromptRequest, responder, connection| {
+                    let state = Arc::clone(&state);
+                    let conn = connection.clone();
+                    if let Err(error) = connection.spawn(async move {
+                        match run_prompt(&state, &conn, &request).await {
+                            Ok(reason) => {
+                                let _ = responder.respond(PromptResponse::new(reason));
+                            }
+                            Err(error) => {
+                                let _ = responder.respond_with_error(agent_client_protocol::util::internal_error(
+                                    error.to_string(),
+                                ));
+                            }
+                        }
                         Ok(())
+                    }) {
+                        log::warn!("ACP v1 session/prompt spawn failed: {error}");
                     }
-                    Err(error) => {
-                        let _ = responder
-                            .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
-                        Ok(())
-                    }
+                    Ok(())
                 }
             },
             agent_client_protocol::on_receive_request!(),
@@ -333,7 +336,7 @@ async fn v1_config_extras(
 ) -> (SessionModeState, Vec<SessionConfigOption>) {
     let settings = state.lock().settings.clone();
     if let Ok((session, _, _)) = lookup_session(state, session_id) {
-        let snapshot = session_config(&session, &settings).await;
+        let snapshot = session_config(&session, &settings, false).await;
         let modes = v1_thought_modes(&snapshot);
         let options = snapshot.into_iter().map(to_v1_option).collect();
         return (modes, options);
@@ -347,10 +350,21 @@ async fn v1_after_open(
     session_id: &str,
     servers: Vec<(String, elph_agent::McpServerConfig)>,
 ) {
-    if let Ok((session, _, _)) = lookup_session(state, session_id)
-        && let Err(error) = send_v1_commands(connection, session_id, &session).await
-    {
-        log::warn!("ACP v1 available commands: {error:#}");
+    if let Ok((session, _, _)) = lookup_session(state, session_id) {
+        if let Err(error) = send_v1_commands(connection, session_id, &session).await {
+            log::warn!("ACP v1 available commands: {error:#}");
+        }
+        let settings = state.lock().settings.clone();
+        let options = session_config(&session, &settings, true)
+            .await
+            .into_iter()
+            .map(to_v1_option)
+            .collect();
+        let _ = notify(
+            connection,
+            session_id,
+            SessionUpdate::ConfigOptionUpdate(agent_client_protocol::schema::v1::ConfigOptionUpdate::new(options)),
+        );
     }
     attach_v1_mcp(state, session_id, servers).await;
 }
@@ -474,8 +488,40 @@ async fn run_prompt(
     if crate::platform::acp::commands::is_slash(trimmed) {
         return run_slash_v1(state, connection, &key, trimmed).await;
     }
-    session.submit_prompt(text, false).await?;
-    stream_v1(state, connection, &key, &ui_rx).await
+    submit_and_stream_v1(state, connection, &key, session, text, &ui_rx).await
+}
+
+async fn submit_and_stream_v1(
+    state: &Arc<Mutex<AcpAgentState>>,
+    connection: &ConnectionTo<Client>,
+    key: &str,
+    session: std::sync::Arc<crate::agent::CodingAgentSession>,
+    text: String,
+    ui_rx: &Arc<tokio::sync::Mutex<tokio::sync::mpsc::UnboundedReceiver<AgentUiEvent>>>,
+) -> anyhow::Result<StopReason> {
+    let submit = session.submit_prompt(text, false);
+    tokio::pin!(submit);
+    let stream = stream_v1(state, connection, key, ui_rx);
+    tokio::pin!(stream);
+    tokio::select! {
+        submit_res = &mut submit => match submit_res {
+            Ok(()) => stream.await,
+            Err(error) => {
+                let _ = notify(
+                    connection,
+                    key,
+                    SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::Text(TextContent::new(
+                        format!("Prompt failed: {error:#}"),
+                    )))),
+                );
+                Err(error)
+            }
+        },
+        stream_res = &mut stream => {
+            let _ = submit.await;
+            stream_res
+        }
+    }
 }
 
 async fn run_slash_v1(
@@ -495,15 +541,19 @@ async fn run_slash_v1(
         }
         crate::platform::acp::commands::SlashOutcome::Continue => {
             let (session, ui_rx, _) = lookup_session(state, key)?;
-            session
-                .submit_prompt(crate::agent::RETRY_CONTINUE_PROMPT.to_string(), false)
-                .await?;
-            stream_v1(state, connection, key, &ui_rx).await
+            submit_and_stream_v1(
+                state,
+                connection,
+                key,
+                session,
+                crate::agent::RETRY_CONTINUE_PROMPT.to_string(),
+                &ui_rx,
+            )
+            .await
         }
         crate::platform::acp::commands::SlashOutcome::SubmitPrompt => {
             let (session, ui_rx, _) = lookup_session(state, key)?;
-            session.submit_prompt(input.to_string(), false).await?;
-            stream_v1(state, connection, key, &ui_rx).await
+            submit_and_stream_v1(state, connection, key, session, input.to_string(), &ui_rx).await
         }
     }
 }
@@ -749,7 +799,7 @@ async fn set_config_v1(
             SessionUpdate::CurrentModeUpdate(CurrentModeUpdate::new(raw.clone())),
         );
     }
-    let options = session_config(&session, &settings)
+    let options = session_config(&session, &settings, true)
         .await
         .into_iter()
         .map(to_v1_option)
