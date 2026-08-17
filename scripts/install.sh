@@ -5,7 +5,7 @@
 # Usage:
 #   curl -fsSL https://elph.space/elph/install.sh | bash
 #   curl -fsSL https://elph.space/elph/install.sh | bash -s -- --canary
-#   curl -fsSL https://raw.githubusercontent.com/riipandi/elph/main/scripts/install-elph.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/riipandi/elph/main/scripts/install.sh | bash
 #
 # Options:
 #   --version <tag>      Pin a specific version (default: latest elph-v* release)
