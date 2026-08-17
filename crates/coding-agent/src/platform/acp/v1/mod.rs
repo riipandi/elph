@@ -56,20 +56,27 @@ where
             {
                 let state = Arc::clone(&state);
                 async move |request: NewSessionRequest, responder, connection| {
-                    match open_or_create(&state, &request.cwd, request.additional_directories.clone(), None).await {
-                        Ok(id) => {
-                            attach_v1_mcp(&state, &id, mcp::map_v1_servers(&request.mcp_servers)).await;
-                            let (modes, options) = advertise_v1(&state, &connection, &id).await;
-                            let _ = responder.respond(
-                                NewSessionResponse::new(SessionId::from(id))
-                                    .modes(modes)
-                                    .config_options(options),
-                            );
+                    let state = Arc::clone(&state);
+                    let conn = connection.clone();
+                    if let Err(error) = connection.spawn(async move {
+                        match open_or_create(&state, &request.cwd, request.additional_directories.clone(), None).await {
+                            Ok(id) => {
+                                let (modes, options) = v1_config_extras(&state, &id).await;
+                                let _ = responder.respond(
+                                    NewSessionResponse::new(SessionId::from(id.clone()))
+                                        .modes(modes)
+                                        .config_options(options),
+                                );
+                                v1_after_open(&state, &conn, &id, mcp::map_v1_servers(&request.mcp_servers)).await;
+                            }
+                            Err(error) => {
+                                let _ = responder
+                                    .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                            }
                         }
-                        Err(error) => {
-                            let _ = responder
-                                .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
-                        }
+                        Ok(())
+                    }) {
+                        log::warn!("ACP v1 session/new spawn failed: {error}");
                     }
                     Ok(())
                 }
@@ -89,12 +96,12 @@ where
                     .await
                     {
                         Ok(id) => {
-                            attach_v1_mcp(&state, &id, mcp::map_v1_servers(&request.mcp_servers)).await;
+                            let (modes, options) = v1_config_extras(&state, &id).await;
+                            let _ = responder.respond(LoadSessionResponse::new().modes(modes).config_options(options));
                             if let Ok((session, _, _)) = lookup_session(&state, &id) {
                                 let _ = replay_v1(&connection, &id, &session).await;
                             }
-                            let (modes, options) = advertise_v1(&state, &connection, &id).await;
-                            let _ = responder.respond(LoadSessionResponse::new().modes(modes).config_options(options));
+                            v1_after_open(&state, &connection, &id, mcp::map_v1_servers(&request.mcp_servers)).await;
                         }
                         Err(error) => {
                             let _ = responder
@@ -119,10 +126,10 @@ where
                     .await
                     {
                         Ok(id) => {
-                            attach_v1_mcp(&state, &id, mcp::map_v1_servers(&request.mcp_servers)).await;
-                            let (modes, options) = advertise_v1(&state, &connection, &id).await;
+                            let (modes, options) = v1_config_extras(&state, &id).await;
                             let _ =
                                 responder.respond(ResumeSessionResponse::new().modes(modes).config_options(options));
+                            v1_after_open(&state, &connection, &id, mcp::map_v1_servers(&request.mcp_servers)).await;
                         }
                         Err(error) => {
                             let _ = responder
@@ -320,20 +327,32 @@ fn cancel_v1_open_tools(
     Ok(())
 }
 
-async fn advertise_v1(
+async fn v1_config_extras(
     state: &Arc<Mutex<AcpAgentState>>,
-    connection: &ConnectionTo<Client>,
     session_id: &str,
 ) -> (SessionModeState, Vec<SessionConfigOption>) {
     let settings = state.lock().settings.clone();
     if let Ok((session, _, _)) = lookup_session(state, session_id) {
-        let _ = send_v1_commands(connection, session_id, &session).await;
         let snapshot = session_config(&session, &settings).await;
         let modes = v1_thought_modes(&snapshot);
         let options = snapshot.into_iter().map(to_v1_option).collect();
         return (modes, options);
     }
     (v1_thought_modes_fallback(), Vec::new())
+}
+
+async fn v1_after_open(
+    state: &Arc<Mutex<AcpAgentState>>,
+    connection: &ConnectionTo<Client>,
+    session_id: &str,
+    servers: Vec<(String, elph_agent::McpServerConfig)>,
+) {
+    if let Ok((session, _, _)) = lookup_session(state, session_id)
+        && let Err(error) = send_v1_commands(connection, session_id, &session).await
+    {
+        log::warn!("ACP v1 available commands: {error:#}");
+    }
+    attach_v1_mcp(state, session_id, servers).await;
 }
 
 fn v1_thought_modes(snapshot: &[crate::platform::acp::config::ConfigSelect]) -> SessionModeState {

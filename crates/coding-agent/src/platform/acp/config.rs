@@ -6,7 +6,7 @@ use agent_client_protocol::schema::v2::{
 use anyhow::Context;
 use elph_ai::get_builtin_model;
 
-use crate::agent::{CodingAgentSession, from_agent_thinking, list_model_select_items};
+use crate::agent::{CodingAgentSession, from_agent_thinking};
 use crate::platform::Settings;
 use crate::platform::acp::state::current_mode;
 use crate::types::{AgentMode, ThinkingLevel};
@@ -117,21 +117,11 @@ fn advertised_models(session: &CodingAgentSession, settings: &Settings) -> Vec<C
     let mut options = Vec::new();
     let mut seen = std::collections::HashSet::new();
 
-    let scoped = settings.models.scoped_models.as_slice();
-    if !scoped.is_empty() {
-        for value in scoped {
-            if seen.insert(value.clone()) {
-                options.push(model_choice(value));
-            }
-        }
-    } else {
-        for item in list_model_select_items() {
-            if seen.insert(item.value.clone()) {
-                options.push(ConfigChoice {
-                    id: item.value,
-                    name: item.label,
-                });
-            }
+    // Never dump the full catalog into session/new — a huge select payload can
+    // stall or drop the stdio transport. Scoped list + current model only.
+    for value in settings.models.scoped_models.iter().take(32) {
+        if seen.insert(value.clone()) {
+            options.push(model_choice(value));
         }
     }
 

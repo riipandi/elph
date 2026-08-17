@@ -84,14 +84,23 @@ where
             {
                 let state = Arc::clone(&state);
                 async move |request: NewSessionRequest, responder, connection| {
-                    match session::create_session(&state, &request, &connection).await {
-                        Ok(response) => {
-                            let _ = responder.respond(response);
+                    let state = Arc::clone(&state);
+                    let conn = connection.clone();
+                    if let Err(error) = connection.spawn(async move {
+                        match session::create_session(&state, &request, &conn).await {
+                            Ok(response) => {
+                                let sid = response.session_id.clone();
+                                let _ = responder.respond(response);
+                                session::finish_create_session(&state, &request, &conn, &sid).await;
+                            }
+                            Err(error) => {
+                                let _ = responder
+                                    .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                            }
                         }
-                        Err(error) => {
-                            let _ = responder
-                                .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
-                        }
+                        Ok(())
+                    }) {
+                        log::warn!("ACP session/new spawn failed: {error}");
                     }
                     Ok(())
                 }
@@ -102,14 +111,23 @@ where
             {
                 let state = Arc::clone(&state);
                 async move |request: ResumeSessionRequest, responder, connection| {
-                    match session::resume_session(&state, &request, &connection).await {
-                        Ok(response) => {
-                            let _ = responder.respond(response);
+                    let state = Arc::clone(&state);
+                    let conn = connection.clone();
+                    if let Err(error) = connection.spawn(async move {
+                        match session::resume_session(&state, &request, &conn).await {
+                            Ok(response) => {
+                                let sid = request.session_id.clone();
+                                let _ = responder.respond(response);
+                                session::finish_resume_session(&state, &request, &conn, &sid).await;
+                            }
+                            Err(error) => {
+                                let _ = responder
+                                    .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                            }
                         }
-                        Err(error) => {
-                            let _ = responder
-                                .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
-                        }
+                        Ok(())
+                    }) {
+                        log::warn!("ACP session/resume spawn failed: {error}");
                     }
                     Ok(())
                 }

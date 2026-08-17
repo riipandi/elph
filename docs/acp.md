@@ -49,7 +49,7 @@ Methods:
 | Method | Notes |
 |---|---|
 | `initialize` | Echoes protocol version 1 |
-| `session/new` | Returns `modes` (thinking) + `configOptions` |
+| `session/new` | Answered first, then commands/MCP attach (keeps stdio alive) |
 | `session/load` | Replays history, then same extras as new |
 | `session/resume` | Reattach without full replay |
 | `session/list` | Cursor pagination (page size 50) |
@@ -76,7 +76,7 @@ Methods:
 | Method | Notes |
 |---|---|
 | `initialize` | Protocol version 2 only |
-| `session/new` | `configOptions` for model / thinking / mode |
+| `session/new` | Answered first; `available_commands_update` + MCP attach after |
 | `session/list` | Same listing as v1 |
 | `session/resume` | Optional `replayFrom: start` |
 | `session/close` / `session/delete` | Same host as v1 |

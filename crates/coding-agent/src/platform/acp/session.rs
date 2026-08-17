@@ -30,18 +30,39 @@ pub async fn create_session(
         anyhow::bail!("cwd must be an absolute path");
     }
     let additional: Vec<PathBuf> = request.additional_directories.iter().map(|p| p.0.clone()).collect();
-    let client_mcp = mcp::map_servers(&request.mcp_servers);
 
     let session_id = open_or_create(state, &cwd, additional, None).await?;
     let sid = SessionId::from(session_id.clone());
-    after_open(state, connection, &sid).await?;
     let (session, _, _) = lookup_session(state, &session_id)?;
+    let settings = state.lock().settings.clone();
+    let _ = connection;
+    Ok(NewSessionResponse::new(sid).config_options(config::config_options(&session, &settings).await))
+}
+
+/// Side effects after `session/new` has been answered (must not run on the I/O task).
+pub async fn finish_create_session(
+    state: &Arc<Mutex<AcpAgentState>>,
+    request: &NewSessionRequest,
+    connection: &ConnectionTo<Client>,
+    session_id: &SessionId,
+) {
+    if let Err(error) = after_open(state, connection, session_id).await {
+        log::warn!("ACP after session/new: {error:#}");
+    }
+    attach_session_mcp(state, session_id, mcp::map_servers(&request.mcp_servers)).await;
+}
+
+async fn attach_session_mcp(
+    state: &Arc<Mutex<AcpAgentState>>,
+    session_id: &SessionId,
+    client_mcp: Vec<(String, elph_agent::McpServerConfig)>,
+) {
     let paths = state.lock().paths.clone();
-    if let Err(error) = mcp::attach_client_servers(&session, &paths, client_mcp).await {
+    if let Ok((session, _, _)) = lookup_session(state, session_id.0.as_ref())
+        && let Err(error) = mcp::attach_client_servers(&session, &paths, client_mcp).await
+    {
         log::warn!("ACP mcpServers attach: {error:#}");
     }
-    let settings = state.lock().settings.clone();
-    Ok(NewSessionResponse::new(sid).config_options(config::config_options(&session, &settings).await))
 }
 
 pub async fn resume_session(
@@ -54,24 +75,31 @@ pub async fn resume_session(
         anyhow::bail!("cwd must be an absolute path");
     }
     let additional: Vec<PathBuf> = request.additional_directories.iter().map(|p| p.0.clone()).collect();
-    let client_mcp = mcp::map_servers(&request.mcp_servers);
     let resume_id = request.session_id.0.to_string();
     let session_id = open_or_create(state, &cwd, additional, Some(&resume_id)).await?;
     let sid = SessionId::from(session_id.clone());
-
-    if matches!(request.replay_from, Some(ReplayFrom::Start(_))) {
-        let (session, _, _) = lookup_session(state, &session_id)?;
-        replay::replay_from_start(connection, &sid, &session).await?;
-    }
-
-    after_open(state, connection, &sid).await?;
     let (session, _, _) = lookup_session(state, &session_id)?;
-    let paths = state.lock().paths.clone();
-    if let Err(error) = mcp::attach_client_servers(&session, &paths, client_mcp).await {
-        log::warn!("ACP mcpServers attach: {error:#}");
-    }
     let settings = state.lock().settings.clone();
+    let _ = (connection, sid);
     Ok(ResumeSessionResponse::new().config_options(config::config_options(&session, &settings).await))
+}
+
+pub async fn finish_resume_session(
+    state: &Arc<Mutex<AcpAgentState>>,
+    request: &ResumeSessionRequest,
+    connection: &ConnectionTo<Client>,
+    session_id: &SessionId,
+) {
+    if matches!(request.replay_from, Some(ReplayFrom::Start(_)))
+        && let Ok((session, _, _)) = lookup_session(state, session_id.0.as_ref())
+        && let Err(error) = replay::replay_from_start(connection, session_id, &session).await
+    {
+        log::warn!("ACP resume replay: {error:#}");
+    }
+    if let Err(error) = after_open(state, connection, session_id).await {
+        log::warn!("ACP after session/resume: {error:#}");
+    }
+    attach_session_mcp(state, session_id, mcp::map_servers(&request.mcp_servers)).await;
 }
 
 pub struct ListedSession {
@@ -220,7 +248,7 @@ pub(super) async fn open_or_create(
         agent_mode: None,
         system_prompt_override: None,
         preloaded_resources: None,
-        defer_mcp_load: false,
+        defer_mcp_load: true,
         headless: false,
     })
     .await?;

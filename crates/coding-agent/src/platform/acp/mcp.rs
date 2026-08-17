@@ -84,10 +84,10 @@ pub async fn attach_client_servers(
     paths: &Paths,
     client_servers: Vec<(String, McpServerConfig)>,
 ) -> anyhow::Result<usize> {
-    if client_servers.is_empty() {
+    let (mut config, warnings) = crate::platform::mcp::load_config_best_effort(paths);
+    if client_servers.is_empty() && config.is_empty() {
         return Ok(0);
     }
-    let (mut config, warnings) = crate::platform::mcp::load_config_best_effort(paths);
     for warning in &warnings {
         log::warn!("{warning}");
     }
