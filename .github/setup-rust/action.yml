@@ -36,14 +36,14 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install Rust toolchain
+    - name: rustup
       uses: dtolnay/rust-toolchain@v1
       with:
         toolchain: 1.97.0
         components: clippy, rustfmt
 
-    - name: Install CI tools with cargo-binstall
-      if: inputs.installNextest == 'true' || inputs.installCross == 'true' || inputs.installSccache == 'true' || inputs.cacheBackend == 'namespace'
+    - name: tools
+      if: inputs.installNextest == 'true' || inputs.installCross == 'true' || inputs.installSccache == 'true' || inputs.cacheBackend == 'namespace' || runner.os == 'Linux'
       shell: bash
       run: |
         set -euo pipefail
@@ -60,6 +60,16 @@ runs:
             cargo binstall --locked -y sccache
           fi
         fi
+        # .cargo/config.toml uses clang --ld-path=wild for x86_64-unknown-linux-gnu
+        if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ]; then
+          if ! command -v clang >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y --no-install-recommends clang
+          fi
+          if ! command -v wild >/dev/null 2>&1; then
+            cargo binstall --locked -y wild-linker
+          fi
+        fi
         if [ "${{ inputs.installCross }}" = "true" ]; then
           if ! command -v cross >/dev/null 2>&1; then
             cargo binstall --locked -y cross
@@ -74,7 +84,7 @@ runs:
           done
         fi
 
-    - name: Setup Cargo cache
+    - name: cargo-cache
       if: inputs.cacheBackend == 'rust-cache'
       uses: swatinem/rust-cache@v2.9.1
       with:
@@ -83,13 +93,13 @@ runs:
         cache-bin: false
         save-if: ${{ inputs.saveCache }}
 
-    - name: Setup Cargo cache (Namespace volume)
+    - name: ns-cache
       if: inputs.cacheBackend == 'namespace'
       uses: namespacelabs/nscloud-cache-action@v1
       with:
         cache: rust
 
-    - name: Configure sccache (Cloudflare R2)
+    - name: sccache
       shell: bash
       run: |
         set -euo pipefail

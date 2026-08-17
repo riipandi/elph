@@ -1,20 +1,26 @@
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 
-name: Release App
+name: Release
 
 on:
   workflow_call:
     inputs:
       app:
         description: Application to release (elph)
-        required: true
+        required: false
         type: string
-
+        default: elph
     secrets:
       SCCACHE_R2_ACCESS_KEY_ID:
         required: false
       SCCACHE_R2_SECRET_ACCESS_KEY:
         required: false
+  push:
+    tags: ["elph-v*.*.*"]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -30,34 +36,45 @@ env:
   SCCACHE_REGION: ${{ vars.SCCACHE_R2_REGION || 'auto' }}
 
 jobs:
-  release-auth:
-    name: Authorize release (${{ inputs.app }})
+  auth:
+    name: auth
     runs-on: ubuntu-slim
     timeout-minutes: 2
     steps:
       - uses: actions/checkout@v7
-      - name: Check release actor
+      - name: actor
         run: ./scripts/ci-check-release-actor.sh
 
   version-gate:
-    needs: release-auth
-    uses: ./.github/workflows/_version-gate.yml
-    with:
-      app: ${{ inputs.app }}
+    name: version
+    needs: auth
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    outputs:
+      should_continue: ${{ steps.gate.outputs.should_continue }}
+      release_version: ${{ steps.gate.outputs.release_version }}
+      cargo_version: ${{ steps.gate.outputs.cargo_version }}
+      latest_release: ${{ steps.gate.outputs.latest_release }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: gate
+        uses: ./.github/version-gate
+        with:
+          app: ${{ inputs.app || 'elph' }}
 
   quality-gate:
-    name: Quality gate (${{ inputs.app }})
+    name: check
     needs: version-gate
     if: needs.version-gate.outputs.should_continue == 'true'
-    uses: ./.github/workflows/_ci-app.yml
+    uses: ./.github/workflows/test.yml
     secrets: inherit
     with:
-      app: ${{ inputs.app }}
+      app: ${{ inputs.app || 'elph' }}
       sharedKeyPrefix: release
       mode: check
 
   build-linux:
-    name: Build Linux (${{ inputs.app }})
+    name: linux
     needs: [version-gate, quality-gate]
     if: needs.version-gate.outputs.should_continue == 'true'
     runs-on: namespace-profile-linux-base-amd64
@@ -65,50 +82,50 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Apply release version from tag
+      - name: version
         env:
-          APP: ${{ inputs.app }}
+          APP: ${{ inputs.app || 'elph' }}
           TARGET_VERSION: ${{ needs.version-gate.outputs.release_version }}
         run: ./scripts/ci-set-app-version.sh
 
-      - name: Setup Rust
+      - name: rust
         uses: ./.github/setup-rust
         with:
           sharedKey: release-linux
           cacheBackend: namespace
           installNextest: "false"
 
-      - name: Build Linux release
-        run: cargo build --release --bin ${{ inputs.app }}
+      - name: build
+        run: cargo build --release --bin ${{ inputs.app || 'elph' }}
         env:
-          APP: ${{ inputs.app }}
+          APP: ${{ inputs.app || 'elph' }}
           RUSTC_WRAPPER: sccache
 
-      - name: Package binary
+      - name: package
         shell: bash
         run: |
           set -euo pipefail
-          app="${{ inputs.app }}"
+          app="${{ inputs.app || 'elph' }}"
           label="${app}-linux-x86_64"
           mkdir -p release/archives release/binaries
           cp "target/release/${app}" "release/binaries/${label}"
           tar -C target/release -czf "release/archives/${label}.tar.gz" "${app}"
 
-      - name: Show sccache statistics
+      - name: sccache
         if: always()
         uses: ./.github/show-sccache-stats
 
-      - name: Upload Linux artifacts
+      - name: upload
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ inputs.app }}-linux
+          name: ${{ inputs.app || 'elph' }}-linux
           path: |
-            release/archives/${{ inputs.app }}-*
-            release/binaries/${{ inputs.app }}-*
+            release/archives/${{ inputs.app || 'elph' }}-*
+            release/binaries/${{ inputs.app || 'elph' }}-*
           if-no-files-found: error
 
   build-macos:
-    name: Build macOS (${{ inputs.app }})
+    name: macos
     needs: [version-gate, quality-gate]
     if: needs.version-gate.outputs.should_continue == 'true'
     runs-on: namespace-profile-macos-base-arm64
@@ -116,40 +133,40 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Apply release version from tag
+      - name: version
         env:
-          APP: ${{ inputs.app }}
+          APP: ${{ inputs.app || 'elph' }}
           TARGET_VERSION: ${{ needs.version-gate.outputs.release_version }}
         run: ./scripts/ci-set-app-version.sh
 
-      - name: Setup Rust
+      - name: rust
         uses: ./.github/setup-rust
         with:
           sharedKey: release-macos
           cacheBackend: namespace
           installNextest: "false"
 
-      - name: Build macOS release
+      - name: build
         run: make release-macos
         env:
-          APP: ${{ inputs.app }}
+          APP: ${{ inputs.app || 'elph' }}
           RUSTC_WRAPPER: sccache
 
-      - name: Show sccache statistics
+      - name: sccache
         if: always()
         uses: ./.github/show-sccache-stats
 
-      - name: Upload macOS artifacts
+      - name: upload
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ inputs.app }}-macos
+          name: ${{ inputs.app || 'elph' }}-macos
           path: |
-            release/archives/${{ inputs.app }}-*
-            release/binaries/${{ inputs.app }}-*
+            release/archives/${{ inputs.app || 'elph' }}-*
+            release/binaries/${{ inputs.app || 'elph' }}-*
           if-no-files-found: error
 
   build-windows:
-    name: Build Windows (${{ inputs.app }})
+    name: windows
     needs: [version-gate, quality-gate]
     if: needs.version-gate.outputs.should_continue == 'true'
     runs-on: namespace-profile-windows-base-amd64
@@ -157,51 +174,51 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Apply release version from tag
+      - name: version
         shell: bash
         env:
-          APP: ${{ inputs.app }}
+          APP: ${{ inputs.app || 'elph' }}
           TARGET_VERSION: ${{ needs.version-gate.outputs.release_version }}
         run: ./scripts/ci-set-app-version.sh
 
-      - name: Setup Rust
+      - name: rust
         uses: ./.github/setup-rust
         with:
           sharedKey: release-windows
           cacheBackend: namespace
           installNextest: "false"
 
-      - name: Build Windows release
+      - name: build
         shell: bash
-        run: cargo build --release --bin ${{ inputs.app }}
+        run: cargo build --release --bin ${{ inputs.app || 'elph' }}
         env:
           RUSTC_WRAPPER: sccache
 
-      - name: Package binary
+      - name: package
         shell: bash
         run: |
           set -euo pipefail
-          app="${{ inputs.app }}"
+          app="${{ inputs.app || 'elph' }}"
           label="${app}-win-x86_64"
           mkdir -p release/archives release/binaries
           cp "target/release/${app}.exe" "release/binaries/${label}.exe"
           cd target/release && zip -q -j "${{ github.workspace }}/release/archives/${label}.zip" "${app}.exe"
 
-      - name: Show sccache statistics
+      - name: sccache
         if: always()
         uses: ./.github/show-sccache-stats
 
-      - name: Upload Windows artifacts
+      - name: upload
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ inputs.app }}-windows
+          name: ${{ inputs.app || 'elph' }}-windows
           path: |
-            release/archives/${{ inputs.app }}-*
-            release/binaries/${{ inputs.app }}-*
+            release/archives/${{ inputs.app || 'elph' }}-*
+            release/binaries/${{ inputs.app || 'elph' }}-*
           if-no-files-found: error
 
   publish:
-    name: Publish (${{ inputs.app }})
+    name: publish
     needs: [version-gate, build-linux, build-macos, build-windows]
     if: needs.version-gate.outputs.should_continue == 'true'
     runs-on: ubuntu-slim
@@ -209,35 +226,35 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Download Linux artifacts
+      - name: linux
         uses: actions/download-artifact@v8
         with:
-          name: ${{ inputs.app }}-linux
+          name: ${{ inputs.app || 'elph' }}-linux
           path: .
 
-      - name: Download macOS artifacts
+      - name: macos
         uses: actions/download-artifact@v8
         with:
-          name: ${{ inputs.app }}-macos
+          name: ${{ inputs.app || 'elph' }}-macos
           path: .
 
-      - name: Download Windows artifacts
+      - name: windows
         uses: actions/download-artifact@v8
         with:
-          name: ${{ inputs.app }}-windows
+          name: ${{ inputs.app || 'elph' }}-windows
           path: .
 
-      - name: Confirm release version
+      - name: confirm
         shell: bash
         run: |
           set -euo pipefail
-          echo "Publishing ${{ inputs.app }} v${{ needs.version-gate.outputs.release_version }} (${GITHUB_REF_NAME})"
+          echo "Publishing ${{ inputs.app || 'elph' }} v${{ needs.version-gate.outputs.release_version }} (${GITHUB_REF_NAME})"
 
-      - name: Write checksums manifest
+      - name: checksums
         shell: bash
         run: |
           set -euo pipefail
-          app="${{ inputs.app }}"
+          app="${{ inputs.app || 'elph' }}"
           mkdir -p "release/archives"
           if command -v sha256sum >/dev/null 2>&1; then
             (cd release/archives && sha256sum -- ${app}-* > SHA256SUMS)
@@ -246,7 +263,7 @@ jobs:
           fi
           cat "release/archives/SHA256SUMS"
 
-      - name: Create GitHub Release
+      - name: gh-release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
@@ -254,11 +271,11 @@ jobs:
           make_latest: false
           generate_release_notes: true
           files: |
-            release/archives/${{ inputs.app }}-*
+            release/archives/${{ inputs.app || 'elph' }}-*
             release/archives/SHA256SUMS
 
   sync-version:
-    name: Sync version on main (${{ inputs.app }})
+    name: sync
     needs: [version-gate, publish]
     if: needs.version-gate.outputs.should_continue == 'true'
     runs-on: ubuntu-slim
@@ -272,15 +289,15 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Sync app version to released tag
+      - name: sync
         env:
-          APP: ${{ inputs.app }}
+          APP: ${{ inputs.app || 'elph' }}
           RELEASED_VERSION: ${{ needs.version-gate.outputs.release_version }}
         run: ./scripts/ci-sync-app-version-on-main.sh
 
-      - name: Commit and push to main
+      - name: push
         env:
-          APP: ${{ inputs.app }}
+          APP: ${{ inputs.app || 'elph' }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"

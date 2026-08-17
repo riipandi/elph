@@ -26,9 +26,11 @@ Create these runner profiles in the [Namespace dashboard](https://cloud.namespac
 
 Connect the GitHub org to Namespace before the first run. Lightweight jobs (version gate, publish, sync) stay on GitHub `ubuntu-slim`.
 
+`.cargo/config.toml` uses the [wild](https://github.com/wild-linker/wild) linker for `x86_64-unknown-linux-gnu` (`clang --ld-path=wild`). Linux AMD64 jobs install `clang` and `wild-linker` (`cargo binstall wild-linker`) before compiling.
+
 ## Test (debug)
 
-Workflow: `.github/workflows/ci-elph.yml` → reusable `.github/workflows/_ci-app.yml`.
+Workflow: `.github/workflows/test.yml` (`Test / linux`, `Test / macos`).
 
 Triggers:
 
@@ -41,14 +43,14 @@ On Linux and macOS the job runs, in order: `cargo fmt --check`, `make check-elph
 
 ## Release
 
-Workflow: `.github/workflows/release-elph.yml` → reusable `.github/workflows/_release-app.yml`.
+Workflow: `.github/workflows/release.yml` (`Release / auth`, `version`, `check`, `linux`, `macos`, `windows`, `publish`, `sync`).
 
 Trigger: push a tag matching `elph-v*.*.*` (for example `elph-v0.1.0`).
 
 Sequence:
 
 1. Actor allow-list (`RELEASE_ALLOWED_ACTORS` repo variable, checked by `scripts/ci-check-release-actor.sh`).
-2. Version gate (`scripts/ci-check-release-version.sh`) — tag version must be newer than the latest GitHub release and at least the version in `crates/coding-agent/Cargo.toml`.
+2. Version gate (`.github/version-gate` → `scripts/ci-check-release-version.sh`) — tag version must be newer than the latest GitHub release and at least the version in `crates/coding-agent/Cargo.toml`.
 3. Quality gate — fmt, check, lint only (no test, no debug build).
 4. Release-profile binaries on Linux, macOS (`make release-macos`), and Windows.
 5. GitHub Release with archives and `SHA256SUMS`.

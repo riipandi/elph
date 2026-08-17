@@ -1,0 +1,112 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+name: Test
+
+on:
+  workflow_call:
+    inputs:
+      app:
+        description: Application to test (elph)
+        required: false
+        type: string
+        default: elph
+      sharedKeyPrefix:
+        description: Cache key prefix
+        required: false
+        type: string
+        default: ci
+      mode:
+        description: full = fmt+check+lint+test+debug build; check = fmt+check+lint
+        required: false
+        type: string
+        default: full
+    secrets:
+      SCCACHE_R2_ACCESS_KEY_ID:
+        required: false
+      SCCACHE_R2_SECRET_ACCESS_KEY:
+        required: false
+  push:
+    branches: [main]
+    paths:
+      - "crates/coding-agent/**"
+      - "crates/elph-agent/**"
+      - "crates/elph-ai/**"
+      - "crates/elph-tui/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - "Makefile"
+      - ".github/**"
+  pull_request:
+    paths:
+      - "crates/coding-agent/**"
+      - "crates/elph-agent/**"
+      - "crates/elph-ai/**"
+      - "crates/elph-tui/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - "Makefile"
+      - ".github/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+  BINSTALL_DISABLE_TELEMETRY: true
+  AWS_ACCESS_KEY_ID: ${{ secrets.SCCACHE_R2_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.SCCACHE_R2_SECRET_ACCESS_KEY }}
+  SCCACHE_BUCKET: ${{ vars.SCCACHE_R2_BUCKET }}
+  SCCACHE_ENDPOINT: ${{ vars.SCCACHE_R2_ENDPOINT }}
+  SCCACHE_REGION: ${{ vars.SCCACHE_R2_REGION || 'auto' }}
+
+jobs:
+  test:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux
+            runner: namespace-profile-linux-base-amd64
+          - name: macos
+            runner: namespace-profile-macos-base-arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: rust
+        uses: ./.github/setup-rust
+        with:
+          sharedKey: ${{ inputs.sharedKeyPrefix || 'ci' }}-${{ inputs.app || 'elph' }}-${{ matrix.name }}
+          cacheBackend: namespace
+          saveCache: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: fmt
+        run: cargo fmt --all --check
+
+      - name: check
+        run: make check-${{ inputs.app || 'elph' }}
+
+      - name: clippy
+        run: make lint-${{ inputs.app || 'elph' }}
+
+      - name: test
+        if: (inputs.mode || 'full') == 'full'
+        run: make test-${{ inputs.app || 'elph' }}
+
+      - name: build
+        if: (inputs.mode || 'full') == 'full'
+        run: make build-${{ inputs.app || 'elph' }}
+        env:
+          RUSTC_WRAPPER: sccache
+
+      - name: sccache
+        if: always()
+        uses: ./.github/show-sccache-stats

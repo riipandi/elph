@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-action.json
+
+name: version-gate
+description: Compare the release tag with Cargo.toml and the latest GitHub release
+
+inputs:
+  app:
+    description: Application to check (elph)
+    required: true
+
+outputs:
+  should_continue:
+    description: Whether downstream jobs should run
+    value: ${{ steps.check.outputs.should_continue }}
+  release_version:
+    description: Version from the release tag
+    value: ${{ steps.check.outputs.release_version }}
+  cargo_version:
+    description: Version from Cargo.toml on the tag commit
+    value: ${{ steps.check.outputs.cargo_version }}
+  latest_release:
+    description: Latest stable GitHub release version, or none
+    value: ${{ steps.check.outputs.latest_release }}
+
+runs:
+  using: composite
+  steps:
+    - name: check
+      id: check
+      shell: bash
+      env:
+        APP: ${{ inputs.app }}
+        GITHUB_TOKEN: ${{ github.token }}
+      run: ./scripts/ci-check-release-version.sh
