@@ -7,9 +7,10 @@ TZ = "Asia/Jakarta"
 publish = "website/dist"
 command = """\
   git config core.quotepath false && \
-  pnpm install && NODE_ENV=production pnpm run build && \
-	cp ./schemas/*.json ./website/dist/ && \
-	cp ./scripts/install.sh ./website/dist/
+  cd website && pnpm install --frozen-lockfile && \
+  NODE_ENV=production pnpm run build && cd .. && \
+  cp ./schemas/*.json ./website/dist/ && \
+  cp ./scripts/install.sh ./website/dist/
   """
 
 [[redirects]]
