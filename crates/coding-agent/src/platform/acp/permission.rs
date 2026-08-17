@@ -1,4 +1,4 @@
-//! `session/request_permission` bridge.
+//! `session/request_permission` for tools and agent mode changes.
 
 use agent_client_protocol::schema::v2::{
     PermissionOption, PermissionOptionKind, RequestPermissionOutcome, RequestPermissionRequest,
@@ -6,7 +6,7 @@ use agent_client_protocol::schema::v2::{
 };
 use agent_client_protocol::{Client, ConnectionTo};
 
-use crate::agent::{ModeChangeRequest, ToolApprovalChoice, ToolApprovalRequest};
+use crate::agent::{CodingAgentSession, ModeChangeRequest, ToolApprovalChoice, ToolApprovalRequest};
 use crate::platform::acp::tools;
 
 pub async fn request_tool_approval(
@@ -35,6 +35,7 @@ pub async fn request_tool_approval(
 pub async fn request_mode_change(
     connection: &ConnectionTo<Client>,
     session_id: &SessionId,
+    session: &CodingAgentSession,
     req: ModeChangeRequest,
 ) -> anyhow::Result<()> {
     let options = vec![
@@ -52,16 +53,21 @@ pub async fn request_mode_change(
         send_permission(connection, request).await,
         Some(id) if id == "allow"
     );
-    let reply = if approved {
-        req.target_mode.clone()
-    } else {
-        String::new()
-    };
-    let _ = req.response_tx.send(reply);
+    if approved {
+        let mode = crate::agent::agent_mode_from_setting(&req.target_mode);
+        session.invalidate_system_prompt_cache();
+        session.try_set_mode_sync(mode);
+        if let Err(error) = session.set_agent_mode(mode).await {
+            log::warn!("ACP mode change apply failed: {error:#}");
+            let _ = req.response_tx.send("false".into());
+            return Ok(());
+        }
+    }
+    let _ = req.response_tx.send(if approved { "true" } else { "false" }.into());
     Ok(())
 }
 
-async fn send_permission(connection: &ConnectionTo<Client>, request: RequestPermissionRequest) -> Option<String> {
+pub async fn send_permission(connection: &ConnectionTo<Client>, request: RequestPermissionRequest) -> Option<String> {
     let response = connection.send_request(request).block_task().await.ok()?;
     match response.outcome {
         RequestPermissionOutcome::Selected(selected) => Some(selected.option_id.0.to_string()),

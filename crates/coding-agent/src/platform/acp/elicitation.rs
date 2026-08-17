@@ -1,47 +1,264 @@
-//! User questions via permission fallback.
+//! `ask_user_question` via `session/request_permission` (choice UI).
 //!
-//! TODO(later): ACP elicitation forms (`session/elicitation`) — not advertised yet.
-//! TODO(later): WASM extension slash commands in `available_commands_update`.
+//! Free-text fields are not representable as permission options; those steps
+//! fall back to a default, skip, or continue. Structured elicitation forms
+//! remain a later TODO.
+
+use std::collections::BTreeMap;
 
 use agent_client_protocol::schema::v2::{PermissionOption, PermissionOptionKind, RequestPermissionRequest, SessionId};
 use agent_client_protocol::{Client, ConnectionTo};
 
-use crate::agent::UserQuestionRequest;
+use crate::agent::{UserQuestionOption, UserQuestionRequest, UserQuestionStep};
+use crate::platform::acp::permission::send_permission;
 
 pub async fn ask_user(
     connection: &ConnectionTo<Client>,
     session_id: &SessionId,
     req: UserQuestionRequest,
 ) -> anyhow::Result<()> {
-    let first = req.steps.first();
-    let title = first.map(|s| s.question.clone()).unwrap_or_else(|| "Question".into());
-    let mut options: Vec<PermissionOption> = first
-        .and_then(|s| s.options.as_ref())
-        .map(|opts| {
-            opts.iter()
-                .map(|opt| PermissionOption::new(opt.value.clone(), opt.label.clone(), PermissionOptionKind::AllowOnce))
-                .collect()
-        })
-        .unwrap_or_default();
-    if options.is_empty() {
-        options.push(PermissionOption::new("ok", "OK", PermissionOptionKind::AllowOnce));
-    }
-    options.push(PermissionOption::new("skip", "Skip", PermissionOptionKind::RejectOnce));
-
-    let request = RequestPermissionRequest::new(session_id.clone(), title, options);
-    let response = connection
-        .send_request(request)
-        .block_task()
-        .await
-        .map_err(|e| anyhow::anyhow!("{e}"))?;
-    let answer = match response.outcome {
-        agent_client_protocol::schema::v2::RequestPermissionOutcome::Selected(selected) => {
-            selected.option_id.0.to_string()
+    let mut collected = BTreeMap::new();
+    let total = req.steps.len().max(1);
+    for (index, step) in req.steps.iter().enumerate() {
+        let title = if total > 1 {
+            format!("({}/{}) {}", index + 1, total, step.question)
+        } else {
+            step.question.clone()
+        };
+        let answer = ask_step(connection, session_id, &title, step).await;
+        if answer.is_none() && step.required {
+            let _ = req.response_tx.send(String::new());
+            return Ok(());
         }
-        agent_client_protocol::schema::v2::RequestPermissionOutcome::Cancelled
-        | agent_client_protocol::schema::v2::RequestPermissionOutcome::Other(_)
-        | _ => String::new(),
-    };
-    let _ = req.response_tx.send(answer);
+        collected.insert(step.id.clone(), answer.unwrap_or_default());
+    }
+    let _ = req.response_tx.send(finalize_answers(&req.steps, &collected));
     Ok(())
+}
+
+async fn ask_step(
+    connection: &ConnectionTo<Client>,
+    session_id: &SessionId,
+    title: &str,
+    step: &UserQuestionStep,
+) -> Option<String> {
+    if step.allow_multiple {
+        return ask_multi(connection, session_id, title, step).await;
+    }
+    if is_confirm(step) {
+        return ask_confirm(connection, session_id, title, step).await;
+    }
+    if let Some(options) = step.options.as_ref().filter(|opts| !opts.is_empty()) {
+        return ask_select(connection, session_id, title, step, options).await;
+    }
+    ask_text_fallback(connection, session_id, title, step).await
+}
+
+async fn ask_confirm(
+    connection: &ConnectionTo<Client>,
+    session_id: &SessionId,
+    title: &str,
+    step: &UserQuestionStep,
+) -> Option<String> {
+    let mut options = vec![
+        PermissionOption::new("true", "Yes", PermissionOptionKind::AllowOnce),
+        PermissionOption::new("false", "No", PermissionOptionKind::RejectOnce),
+    ];
+    if !step.required {
+        options.push(PermissionOption::new("skip", "Skip", PermissionOptionKind::RejectOnce));
+    }
+    match send_choice(connection, session_id, title, step_description(step), options).await {
+        Some(id) if id != "skip" => Some(id),
+        Some(_) => Some(String::new()),
+        None => None,
+    }
+}
+
+async fn ask_select(
+    connection: &ConnectionTo<Client>,
+    session_id: &SessionId,
+    title: &str,
+    step: &UserQuestionStep,
+    choices: &[UserQuestionOption],
+) -> Option<String> {
+    let mut options: Vec<PermissionOption> = choices
+        .iter()
+        .map(|opt| {
+            let label = match &opt.hint {
+                Some(hint) if !hint.is_empty() => format!("{} — {hint}", opt.label),
+                _ => opt.label.clone(),
+            };
+            PermissionOption::new(opt.value.clone(), label, PermissionOptionKind::AllowOnce)
+        })
+        .collect();
+    if step.allow_custom
+        && let Some(default) = step.default.as_ref().filter(|d| !d.is_empty())
+    {
+        options.push(PermissionOption::new(
+            default.clone(),
+            format!("{} ({default})", step.custom_label),
+            PermissionOptionKind::AllowOnce,
+        ));
+    }
+    if !step.required {
+        options.push(PermissionOption::new("skip", "Skip", PermissionOptionKind::RejectOnce));
+    }
+    match send_choice(connection, session_id, title, step_description(step), options).await {
+        Some(id) if id != "skip" => Some(id),
+        Some(_) => Some(String::new()),
+        None => None,
+    }
+}
+
+async fn ask_multi(
+    connection: &ConnectionTo<Client>,
+    session_id: &SessionId,
+    title: &str,
+    step: &UserQuestionStep,
+) -> Option<String> {
+    let Some(choices) = step.options.as_ref().filter(|opts| !opts.is_empty()) else {
+        return ask_text_fallback(connection, session_id, title, step).await;
+    };
+    let mut selected = Vec::new();
+    for (i, opt) in choices.iter().enumerate() {
+        let opt_title = format!("{title} — include {}?", opt.label);
+        let options = vec![
+            PermissionOption::new("yes", format!("Include {}", opt.label), PermissionOptionKind::AllowOnce),
+            PermissionOption::new("no", "Do not include", PermissionOptionKind::RejectOnce),
+        ];
+        let desc = format!("Option {}/{}: {}", i + 1, choices.len(), opt.hint.clone().unwrap_or_default());
+        if send_choice(connection, session_id, &opt_title, desc, options)
+            .await
+            .as_deref()
+            == Some("yes")
+        {
+            selected.push(opt.value.clone());
+        }
+    }
+    if selected.is_empty() && step.required {
+        return None;
+    }
+    Some(serde_json::to_string(&selected).unwrap_or_default())
+}
+
+async fn ask_text_fallback(
+    connection: &ConnectionTo<Client>,
+    session_id: &SessionId,
+    title: &str,
+    step: &UserQuestionStep,
+) -> Option<String> {
+    let mut options = Vec::new();
+    if let Some(default) = step.default.as_ref().filter(|d| !d.is_empty()) {
+        options.push(PermissionOption::new(
+            default.clone(),
+            format!("Use default ({default})"),
+            PermissionOptionKind::AllowOnce,
+        ));
+    }
+    options.push(PermissionOption::new(
+        "ok",
+        "Continue (reply in the next message if you need to type)",
+        PermissionOptionKind::AllowOnce,
+    ));
+    if !step.required {
+        options.push(PermissionOption::new("skip", "Skip", PermissionOptionKind::RejectOnce));
+    }
+    let desc = format!(
+        "{}\nACP clients can only pick options here; type a follow-up message for free text.",
+        step_description(step)
+    );
+    match send_choice(connection, session_id, title, desc, options).await {
+        Some(id) if id == "ok" => Some(step.default.clone().unwrap_or_default()),
+        Some(id) if id != "skip" => Some(id),
+        Some(_) => Some(String::new()),
+        None => None,
+    }
+}
+
+async fn send_choice(
+    connection: &ConnectionTo<Client>,
+    session_id: &SessionId,
+    title: &str,
+    description: String,
+    options: Vec<PermissionOption>,
+) -> Option<String> {
+    if options.is_empty() {
+        return None;
+    }
+    let request =
+        RequestPermissionRequest::new(session_id.clone(), title.to_string(), options).description(description);
+    send_permission(connection, request).await
+}
+
+fn is_confirm(step: &UserQuestionStep) -> bool {
+    step.options.is_none()
+        && step
+            .default
+            .as_ref()
+            .is_some_and(|value| value == "true" || value == "false")
+}
+
+fn step_description(step: &UserQuestionStep) -> String {
+    let mut parts = Vec::new();
+    if let Some(tab) = &step.tab_label {
+        parts.push(tab.clone());
+    }
+    if step.allow_custom {
+        parts.push(format!("Custom answers: {}", step.custom_label));
+    }
+    if let Some(min) = step.min_length {
+        parts.push(format!("min length {min}"));
+    }
+    parts.join(" · ")
+}
+
+fn finalize_answers(steps: &[UserQuestionStep], collected: &BTreeMap<String, String>) -> String {
+    if steps.len() == 1 {
+        let step = &steps[0];
+        let answer = collected.get(&step.id).cloned().unwrap_or_default();
+        if !step.allow_multiple {
+            return answer;
+        }
+    }
+    serde_json::to_string(collected).unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn step(id: &str, multiple: bool) -> UserQuestionStep {
+        UserQuestionStep {
+            id: id.into(),
+            question: "Q".into(),
+            options: None,
+            allow_multiple: multiple,
+            allow_custom: false,
+            custom_label: "Other".into(),
+            default: None,
+            required: true,
+            min_length: None,
+            pattern: None,
+            tab_label: None,
+        }
+    }
+
+    #[test]
+    fn single_step_returns_plain_answer() {
+        let steps = vec![step("a", false)];
+        let mut collected = BTreeMap::new();
+        collected.insert("a".into(), "yes".into());
+        assert_eq!(finalize_answers(&steps, &collected), "yes");
+    }
+
+    #[test]
+    fn multi_step_returns_json() {
+        let steps = vec![step("a", false), step("b", false)];
+        let mut collected = BTreeMap::new();
+        collected.insert("a".into(), "1".into());
+        collected.insert("b".into(), "2".into());
+        let json = finalize_answers(&steps, &collected);
+        assert!(json.contains("\"a\":\"1\""));
+        assert!(json.contains("\"b\":\"2\""));
+    }
 }

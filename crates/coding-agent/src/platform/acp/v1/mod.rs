@@ -263,9 +263,8 @@ where
                                 let _ = responder.respond(PromptResponse::new(reason));
                             }
                             Err(error) => {
-                                let _ = responder.respond_with_error(agent_client_protocol::util::internal_error(
-                                    error.to_string(),
-                                ));
+                                let _ = responder
+                                    .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
                             }
                         }
                         Ok(())
@@ -675,15 +674,21 @@ async fn stream_v1(
                 let _ = req.response_tx.send(choice);
             }
             AgentUiEvent::UserQuestionRequired(req) => {
-                let _ = req.response_tx.send(String::new());
+                ask_user_v1(connection, key, req).await?;
             }
             AgentUiEvent::ModeChangeRequired(req) => {
                 let approved = request_v1_mode_change(connection, key, &req).await;
-                let _ = req.response_tx.send(if approved {
-                    req.target_mode.clone()
-                } else {
-                    String::new()
-                });
+                if approved && let Ok((session, _, _)) = lookup_session(state, key) {
+                    let mode = crate::agent::agent_mode_from_setting(&req.target_mode);
+                    session.invalidate_system_prompt_cache();
+                    session.try_set_mode_sync(mode);
+                    if let Err(error) = session.set_agent_mode(mode).await {
+                        log::warn!("ACP v1 mode change apply failed: {error:#}");
+                        let _ = req.response_tx.send("false".into());
+                        continue;
+                    }
+                }
+                let _ = req.response_tx.send(if approved { "true" } else { "false" }.into());
             }
             AgentUiEvent::PlanConfirmationRequired(_) => {}
             _ => {}
@@ -706,6 +711,82 @@ async fn replay_v1(
         };
         notify(connection, session_id, update)?;
     }
+    Ok(())
+}
+
+async fn ask_user_v1(
+    connection: &ConnectionTo<Client>,
+    session_id: &str,
+    req: crate::agent::UserQuestionRequest,
+) -> anyhow::Result<()> {
+    let mut collected = std::collections::BTreeMap::new();
+    let total = req.steps.len().max(1);
+    for (index, step) in req.steps.iter().enumerate() {
+        let title = if total > 1 {
+            format!("({}/{}) {}", index + 1, total, step.question)
+        } else {
+            step.question.clone()
+        };
+        let mut options: Vec<PermissionOption> = step
+            .options
+            .as_ref()
+            .into_iter()
+            .flatten()
+            .map(|opt| PermissionOption::new(opt.value.clone(), opt.label.clone(), PermissionOptionKind::AllowOnce))
+            .collect();
+        if options.is_empty() {
+            if step
+                .default
+                .as_ref()
+                .is_some_and(|value| value == "true" || value == "false")
+            {
+                options.push(PermissionOption::new("true", "Yes", PermissionOptionKind::AllowOnce));
+                options.push(PermissionOption::new("false", "No", PermissionOptionKind::RejectOnce));
+            } else if let Some(default) = step.default.as_ref().filter(|d| !d.is_empty()) {
+                options.push(PermissionOption::new(
+                    default.clone(),
+                    format!("Use default ({default})"),
+                    PermissionOptionKind::AllowOnce,
+                ));
+            } else {
+                options.push(PermissionOption::new("ok", "OK", PermissionOptionKind::AllowOnce));
+            }
+        }
+        if !step.required {
+            options.push(PermissionOption::new("skip", "Skip", PermissionOptionKind::RejectOnce));
+        }
+        let mut fields = agent_client_protocol::schema::v1::ToolCallUpdateFields::new();
+        fields.title = Some(title);
+        let request = RequestPermissionRequest::new(
+            SessionId::from(session_id.to_string()),
+            ToolCallUpdate::new(format!("ask_{}", step.id), fields),
+            options,
+        );
+        match send_v1_permission(connection, request).await.as_deref() {
+            Some("skip") => {
+                collected.insert(step.id.clone(), String::new());
+            }
+            Some("ok") => {
+                collected.insert(step.id.clone(), step.default.clone().unwrap_or_default());
+            }
+            Some(id) => {
+                collected.insert(step.id.clone(), id.to_string());
+            }
+            None if step.required => {
+                let _ = req.response_tx.send(String::new());
+                return Ok(());
+            }
+            None => {
+                collected.insert(step.id.clone(), String::new());
+            }
+        }
+    }
+    let response = if req.steps.len() == 1 && !req.steps[0].allow_multiple {
+        collected.get(&req.steps[0].id).cloned().unwrap_or_default()
+    } else {
+        serde_json::to_string(&collected).unwrap_or_default()
+    };
+    let _ = req.response_tx.send(response);
     Ok(())
 }
 
@@ -748,9 +829,11 @@ async fn request_v1_mode_change(
         ),
         PermissionOption::new("reject", "Stay in current mode", PermissionOptionKind::RejectOnce),
     ];
+    let mut fields = agent_client_protocol::schema::v1::ToolCallUpdateFields::new();
+    fields.title = Some(format!("Switch to {} mode", req.target_mode));
     let request = RequestPermissionRequest::new(
         SessionId::from(session_id.to_string()),
-        ToolCallUpdate::new("mode_change", agent_client_protocol::schema::v1::ToolCallUpdateFields::new()),
+        ToolCallUpdate::new("mode_change", fields),
         options,
     );
     matches!(send_v1_permission(connection, request).await.as_deref(), Some("allow"))

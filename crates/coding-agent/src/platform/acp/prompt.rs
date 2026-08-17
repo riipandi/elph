@@ -61,16 +61,7 @@ pub async fn handle_prompt(
 
     let (session, ui_rx, _) = lookup_session(&state, &key)?;
     let steer = is_running(&state, &session_id);
-    drive_turn(
-        &state,
-        &connection,
-        &session_id,
-        session,
-        extracted.text,
-        steer,
-        &ui_rx,
-    )
-    .await
+    drive_turn(&state, &connection, &session_id, session, extracted.text, steer, &ui_rx).await
 }
 
 pub async fn handle_cancel(

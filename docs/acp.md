@@ -32,7 +32,9 @@ Elph’s wire shape follows the same product conventions as [pi-acp](https://git
 - Skills are advertised as `/skill:NAME` so they do not collide with prompt templates. Templates keep their raw name (e.g. `/review`).
 - `configOptions` advertise **model** (full live session catalog plus disk/embedded providers), **thought_level** (reasoning), and **mode** (ask/plan/build/brave).
 - On v1, Zed-style `modes` / `session/set_mode` are thinking levels (`off` … `max`), matching pi-acp. Agent permission mode stays on `configOptions.mode`.
-- Tool approval uses `session/request_permission`.
+- Tool approval uses `session/request_permission` (allow once / session / all / reject).
+- Agent `request_mode_change` uses `session/request_permission`, applies the mode, then replies `true`/`false` to the tool (same contract as the TUI).
+- `ask_user_question` walks each step over `session/request_permission` (confirm, single-select, multi-select as per-option include). Free-text is not available on permission buttons; those steps offer default / skip / continue.
 - Client `mcpServers` on `session/new`, `session/load`, and `session/resume` are overlaid on `mcp.json` (home ← project ← client; same name wins) and bound into the session tool registry.
 - `session/cancel` aborts the harness turn **and** marks in-flight tool calls cancelled (v2 status `cancelled`; v1 `failed` with output `cancelled`).
 

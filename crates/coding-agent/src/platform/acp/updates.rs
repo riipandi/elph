@@ -216,7 +216,16 @@ pub async fn stream_ui_events(
             }
             AgentUiEvent::ModeChangeRequired(req) => {
                 send_requires_action(connection, session_id)?;
-                permission::request_mode_change(connection, session_id, req).await?;
+                let session = state
+                    .lock()
+                    .sessions
+                    .get(&session_key(session_id))
+                    .map(|s| Arc::clone(&s.session));
+                if let Some(session) = session {
+                    permission::request_mode_change(connection, session_id, &session, req).await?;
+                } else {
+                    let _ = req.response_tx.send("false".into());
+                }
                 send_running(connection, session_id)?;
             }
             AgentUiEvent::RunCompleted { usage, .. } => {
