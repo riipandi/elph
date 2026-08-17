@@ -1094,6 +1094,7 @@ impl CodingAgentSession {
     }
 
     pub async fn invoke_skill(&self, name: &str, args: &str) -> Result<()> {
+        self.ensure_mcp_tools_ready().await;
         let _guard = self.turn_gate.lock().await;
         let started = Instant::now();
         let additional = (!args.trim().is_empty()).then(|| args.trim());
@@ -1115,6 +1116,7 @@ impl CodingAgentSession {
     }
 
     pub async fn prompt_from_template(&self, name: &str, args: &str) -> Result<()> {
+        self.ensure_mcp_tools_ready().await;
         let _guard = self.turn_gate.lock().await;
         let started = Instant::now();
         let parsed = parse_command_args(args);

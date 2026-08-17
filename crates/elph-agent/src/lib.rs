@@ -359,6 +359,7 @@ pub use tools::create_grep_tool;
 pub use tools::create_list_available_tools;
 #[cfg(feature = "tools-list-dir")]
 pub use tools::create_list_dir_tool;
+pub use tools::create_list_skills_tool;
 #[cfg(feature = "tools-move-path")]
 pub use tools::create_move_path_tool;
 #[cfg(feature = "tools-read-file")]

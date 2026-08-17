@@ -46,11 +46,11 @@ pub async fn finish_create_session(
     connection: &ConnectionTo<Client>,
     session_id: &SessionId,
 ) {
+    attach_session_mcp(state, session_id, mcp::map_servers(&request.mcp_servers)).await;
     if let Err(error) = after_open(state, connection, session_id).await {
         log::warn!("ACP after session/new: {error:#}");
     }
     emit_full_config(state, connection, session_id).await;
-    attach_session_mcp(state, session_id, mcp::map_servers(&request.mcp_servers)).await;
 }
 
 async fn emit_full_config(
@@ -114,11 +114,11 @@ pub async fn finish_resume_session(
     {
         log::warn!("ACP resume replay: {error:#}");
     }
+    attach_session_mcp(state, session_id, mcp::map_servers(&request.mcp_servers)).await;
     if let Err(error) = after_open(state, connection, session_id).await {
         log::warn!("ACP after session/resume: {error:#}");
     }
     emit_full_config(state, connection, session_id).await;
-    attach_session_mcp(state, session_id, mcp::map_servers(&request.mcp_servers)).await;
 }
 
 pub struct ListedSession {
@@ -307,6 +307,10 @@ async fn after_open(
     session_id: &SessionId,
 ) -> anyhow::Result<()> {
     let (session, _, _) = lookup_session(state, session_id.0.as_ref())?;
+    session.ensure_mcp_tools_ready().await;
+    if let Err(error) = session.reconcile_tool_surface().await {
+        log::warn!("ACP tool catalog refresh: {error:#}");
+    }
     commands::send_available_commands(connection, session_id, &session).await?;
     if let Ok(title) = crate::agent::session_title_for_rename(Some(&session)) {
         send_update(

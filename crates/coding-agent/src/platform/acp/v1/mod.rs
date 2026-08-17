@@ -355,7 +355,12 @@ async fn v1_after_open(
     session_id: &str,
     servers: Vec<(String, elph_agent::McpServerConfig)>,
 ) {
+    attach_v1_mcp(state, session_id, servers).await;
     if let Ok((session, _, _)) = lookup_session(state, session_id) {
+        session.ensure_mcp_tools_ready().await;
+        if let Err(error) = session.reconcile_tool_surface().await {
+            log::warn!("ACP v1 tool catalog refresh: {error:#}");
+        }
         if let Err(error) = send_v1_commands(connection, session_id, &session).await {
             log::warn!("ACP v1 available commands: {error:#}");
         }
@@ -371,7 +376,6 @@ async fn v1_after_open(
             SessionUpdate::ConfigOptionUpdate(agent_client_protocol::schema::v1::ConfigOptionUpdate::new(options)),
         );
     }
-    attach_v1_mcp(state, session_id, servers).await;
 }
 
 fn v1_thought_modes(snapshot: &[crate::platform::acp::config::ConfigSelect]) -> SessionModeState {
@@ -550,7 +554,19 @@ async fn submit_and_stream_v1(
     text: String,
     ui_rx: &Arc<tokio::sync::Mutex<tokio::sync::mpsc::UnboundedReceiver<AgentUiEvent>>>,
 ) -> anyhow::Result<StopReason> {
-    let submit = session.submit_prompt(text, false);
+    race_v1(state, connection, key, session.submit_prompt(text, false), ui_rx).await
+}
+
+async fn race_v1<F>(
+    state: &Arc<Mutex<AcpAgentState>>,
+    connection: &ConnectionTo<Client>,
+    key: &str,
+    submit: F,
+    ui_rx: &Arc<tokio::sync::Mutex<tokio::sync::mpsc::UnboundedReceiver<AgentUiEvent>>>,
+) -> anyhow::Result<StopReason>
+where
+    F: std::future::Future<Output = anyhow::Result<()>>,
+{
     tokio::pin!(submit);
     let stream = stream_v1(state, connection, key, ui_rx);
     tokio::pin!(stream);
@@ -605,6 +621,25 @@ async fn run_slash_v1(
         crate::platform::acp::commands::SlashOutcome::SubmitPrompt => {
             let (session, ui_rx, _) = lookup_session(state, key)?;
             submit_and_stream_v1(state, connection, key, session, input.to_string(), &ui_rx).await
+        }
+        crate::platform::acp::commands::SlashOutcome::Skill { name, args } => {
+            let (session, ui_rx, _) = lookup_session(state, key)?;
+            race_v1(state, connection, key, session.invoke_skill(&name, &args), &ui_rx).await
+        }
+        crate::platform::acp::commands::SlashOutcome::PromptTemplate { name, args } => {
+            let (session, ui_rx, _) = lookup_session(state, key)?;
+            race_v1(state, connection, key, session.prompt_from_template(&name, &args), &ui_rx).await
+        }
+        crate::platform::acp::commands::SlashOutcome::Reloaded(text) => {
+            if let Ok((session, _, _)) = lookup_session(state, key) {
+                let _ = send_v1_commands(connection, key, &session).await;
+            }
+            notify(
+                connection,
+                key,
+                SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::Text(TextContent::new(text)))),
+            )?;
+            Ok(StopReason::EndTurn)
         }
     }
 }

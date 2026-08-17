@@ -241,6 +241,40 @@ pub async fn active_tools_message(session: &CodingAgentSession) -> Result<String
     Ok(format_tools_message(mode, &tools, true))
 }
 
+/// Full registry for ACP `/tools`: active tools plus lazy/inactive (MCP) names.
+pub async fn discovery_tools_message(session: &CodingAgentSession) -> Result<String> {
+    let mode = *session.mode_state().lock().await;
+    let active: HashSet<String> = session
+        .harness()
+        .get_active_tools()
+        .await
+        .into_iter()
+        .map(|tool| tool.name().to_string())
+        .collect();
+    let mut tools = session.harness().get_tools().await;
+    tools.sort_by(|left, right| left.name().cmp(right.name()));
+    let mut message = format_tools_message(mode, &tools, true);
+    let inactive: Vec<String> = tools
+        .iter()
+        .map(|tool| tool.name().to_string())
+        .filter(|name| !active.contains(name))
+        .collect();
+    if !inactive.is_empty() {
+        message.push_str("\n\nInactive (lazy — call `list_available_tools` with name_prefix to activate):\n");
+        for name in inactive {
+            message.push_str(&format!("  {name}\n"));
+        }
+    }
+    let skills = session.harness().get_resources().await.skills;
+    if !skills.is_empty() {
+        message.push_str("\nSkills (use `/skill:NAME` or `list_skills`):\n");
+        for skill in skills {
+            message.push_str(&format!("  {} — {}\n", skill.name, short_description(&skill.description)));
+        }
+    }
+    Ok(message)
+}
+
 const TOOLS_SNAPSHOT_TIMEOUT: std::time::Duration = std::time::Duration::from_millis(400);
 
 /// Resolve `/tools` output for the TUI slash handler (sync).

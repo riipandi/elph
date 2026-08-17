@@ -93,5 +93,5 @@ pub use tool_policy::agent_mode_from_setting;
 pub use tool_policy::from_agent_thinking;
 pub use tool_policy::thinking_level_from_setting;
 pub use tool_policy::to_agent_thinking;
-pub use tools_slash::tools_slash_message;
+pub use tools_slash::{discovery_tools_message, tools_slash_message};
 pub use workspace_reload::{WorkspaceReloadReport, WorkspaceReloadRequest};

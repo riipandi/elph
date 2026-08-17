@@ -121,6 +121,58 @@ pub async fn drive_turn(
     tokio::pin!(submit);
     let stream = stream_ui_events(state, connection, session_id, ui_rx);
     tokio::pin!(stream);
+    race_submit_and_stream(state, connection, session_id, submit, stream).await
+}
+
+pub async fn drive_skill(
+    state: &Arc<Mutex<AcpAgentState>>,
+    connection: &ConnectionTo<Client>,
+    session_id: &SessionId,
+    session: Arc<crate::agent::CodingAgentSession>,
+    name: String,
+    args: String,
+    ui_rx: &Arc<tokio::sync::Mutex<mpsc::UnboundedReceiver<AgentUiEvent>>>,
+) -> anyhow::Result<()> {
+    mark_running(state, session_id);
+    send_running(connection, session_id)?;
+    let submit = session.invoke_skill(&name, &args);
+    tokio::pin!(submit);
+    let stream = stream_ui_events(state, connection, session_id, ui_rx);
+    tokio::pin!(stream);
+    race_submit_and_stream(state, connection, session_id, submit, stream).await
+}
+
+pub async fn drive_template(
+    state: &Arc<Mutex<AcpAgentState>>,
+    connection: &ConnectionTo<Client>,
+    session_id: &SessionId,
+    session: Arc<crate::agent::CodingAgentSession>,
+    name: String,
+    args: String,
+    ui_rx: &Arc<tokio::sync::Mutex<mpsc::UnboundedReceiver<AgentUiEvent>>>,
+) -> anyhow::Result<()> {
+    mark_running(state, session_id);
+    send_running(connection, session_id)?;
+    let submit = session.prompt_from_template(&name, &args);
+    tokio::pin!(submit);
+    let stream = stream_ui_events(state, connection, session_id, ui_rx);
+    tokio::pin!(stream);
+    race_submit_and_stream(state, connection, session_id, submit, stream).await
+}
+
+async fn race_submit_and_stream<F, S>(
+    state: &Arc<Mutex<AcpAgentState>>,
+    connection: &ConnectionTo<Client>,
+    session_id: &SessionId,
+    submit: F,
+    stream: S,
+) -> anyhow::Result<()>
+where
+    F: std::future::Future<Output = anyhow::Result<()>>,
+    S: std::future::Future<Output = anyhow::Result<()>>,
+{
+    tokio::pin!(submit);
+    tokio::pin!(stream);
     tokio::select! {
         submit_res = &mut submit => match submit_res {
             Ok(()) => stream.await,

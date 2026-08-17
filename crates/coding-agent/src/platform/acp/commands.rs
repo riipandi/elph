@@ -8,8 +8,8 @@ use agent_client_protocol::{Client, ConnectionTo};
 use crate::agent::{
     CodingAgentSession, SlashDispatch, clone_session_message, dispatch_slash_command, export_session_message,
     fork_session_message, format_help_message, import_session_from_jsonl, import_slash_message, resume_list_message,
-    slash_commands_for_palette, system_prompt_slash_message, tools_slash_message, tree_slash_message,
-    trust_slash_message, workers_slash_message,
+    slash_commands_for_palette, system_prompt_slash_message, tree_slash_message, trust_slash_message,
+    workers_slash_message,
 };
 use crate::platform::Paths;
 use crate::platform::acp::state::{AcpAgentState, lookup_session};
@@ -118,8 +118,14 @@ pub enum SlashOutcome {
     Text(String),
     /// Submit `input` as a model prompt.
     SubmitPrompt,
+    /// Expand and run a workspace skill (`harness.skill`).
+    Skill { name: String, args: String },
+    /// Expand and run a prompt template.
+    PromptTemplate { name: String, args: String },
     /// Continue the interrupted task (`/continue`).
     Continue,
+    /// Reload finished; re-advertise slash commands to the client.
+    Reloaded(String),
 }
 
 pub async fn resolve_slash(state: &Arc<Mutex<AcpAgentState>>, key: &str, input: &str) -> anyhow::Result<SlashOutcome> {
@@ -133,7 +139,9 @@ pub async fn resolve_slash(state: &Arc<Mutex<AcpAgentState>>, key: &str, input: 
         Some(SlashDispatch::Help) => format_help_message(None, Some(&templates), Some(&skills)),
         Some(SlashDispatch::Tools { .. }) => {
             let (session, _, _) = lookup_session(state, key)?;
-            tools_slash_message(Some(&session)).map_err(|e| anyhow::anyhow!("{e}"))?
+            crate::agent::discovery_tools_message(&session)
+                .await
+                .map_err(|e| anyhow::anyhow!("{e}"))?
         }
         Some(SlashDispatch::SystemPrompt) => {
             let (session, _, _) = lookup_session(state, key)?;
@@ -167,9 +175,10 @@ pub async fn resolve_slash(state: &Arc<Mutex<AcpAgentState>>, key: &str, input: 
                     cwd: &cwd,
                 })
                 .await;
+            let _ = session.reconcile_tool_surface().await;
             let mut parts = vec![report.summary_text()];
             parts.extend(report.notices);
-            parts.join("\n\n")
+            return Ok(SlashOutcome::Reloaded(parts.join("\n\n")));
         }
         Some(SlashDispatch::Goal { args }) => {
             let (session, _, _) = lookup_session(state, key)?;
@@ -284,10 +293,11 @@ pub async fn resolve_slash(state: &Arc<Mutex<AcpAgentState>>, key: &str, input: 
                 return Ok(SlashOutcome::Text("/aside ended without a reply.".into()));
             }
         }
-        Some(SlashDispatch::Skill { .. })
-        | Some(SlashDispatch::PromptTemplate { .. })
-        | Some(SlashDispatch::Extension { .. })
-        | None => return Ok(SlashOutcome::SubmitPrompt),
+        Some(SlashDispatch::Skill { name, args }) => return Ok(SlashOutcome::Skill { name, args }),
+        Some(SlashDispatch::PromptTemplate { name, args }) => {
+            return Ok(SlashOutcome::PromptTemplate { name, args });
+        }
+        Some(SlashDispatch::Extension { .. }) | None => return Ok(SlashOutcome::SubmitPrompt),
         Some(other) => tui_only_message(&other),
     };
 
@@ -334,6 +344,23 @@ pub async fn handle_slash(
                 &ui_rx,
             )
             .await
+        }
+        SlashOutcome::Skill { name, args } => {
+            let (session, ui_rx, _) = lookup_session(state, key)?;
+            crate::platform::acp::updates::drive_skill(state, connection, session_id, session, name, args, &ui_rx).await
+        }
+        SlashOutcome::PromptTemplate { name, args } => {
+            let (session, ui_rx, _) = lookup_session(state, key)?;
+            crate::platform::acp::updates::drive_template(state, connection, session_id, session, name, args, &ui_rx)
+                .await
+        }
+        SlashOutcome::Reloaded(text) => {
+            if let Ok((session, _, _)) = lookup_session(state, key) {
+                let _ = send_available_commands(connection, session_id, &session).await;
+            }
+            send_agent_text(connection, session_id, &text)?;
+            send_idle(connection, session_id, agent_client_protocol::schema::v2::StopReason::EndTurn)?;
+            Ok(())
         }
     }
 }

@@ -159,11 +159,9 @@ impl BuiltinToolsBuilder {
         }
         // list_available_tools is a meta tool that describes all other tools.
         tools.push(crate::tools::create_list_available_tools(&tools));
-        // On-demand skill discovery: catalog the loaded skill set so the model
-        // can rediscover skills not advertised in <available_skills>.
-        if !self.skills.is_empty() {
-            tools.push(crate::tools::create_list_skills_tool(self.skills));
-        }
+        // Always register `list_skills` so the model can discover a later-loaded
+        // catalog even when bootstrap skills were empty.
+        tools.push(crate::tools::create_list_skills_tool(self.skills));
         tools
     }
 }
@@ -196,6 +194,7 @@ mod tests {
         assert!(names.contains(&"shell_exec".to_string()));
         assert!(names.contains(&"grep".to_string()));
         assert!(names.contains(&"web_search".to_string()));
+        assert!(names.contains(&"list_skills".to_string()));
     }
 
     #[cfg(feature = "tools-shell-use")]

@@ -31,7 +31,8 @@ Elph’s wire shape follows the same product conventions as [pi-acp](https://git
 - Display-only terminals are emitted for shell tool calls (`terminal_update` / `terminal_output_chunk`).
 - Prompt images are accepted and forwarded to the model when the session model supports image input.
 - Slash commands advertised after session setup are a **headless subset** of builtins (no TUI pickers such as `/model`, `/resume`, `/memory`, `/hotkeys`) plus prompt templates and skills.
-- Skills are advertised as `/skill:NAME` so they do not collide with prompt templates. Templates keep their raw name (e.g. `/review`).
+- Skills are advertised as `/skill:NAME` so they do not collide with prompt templates. Templates keep their raw name (e.g. `/review`). Invoking a skill runs `harness.skill` (full SKILL.md), not a raw `/skill:…` user prompt.
+- After session open, MCP is attached **before** `available_commands_update`. The `list_available_tools` / `list_skills` catalogs are rebuilt from the live registry so lazy MCP tools and skills stay discoverable. `/tools` lists inactive (lazy) tools and loaded skills. `/reload` re-sends the slash catalog.
 - `configOptions` advertise **model** (full live session catalog plus disk/embedded providers), **thought_level** (reasoning), and **mode** (ask/plan/build/brave).
 - On v1, Zed-style `modes` / `session/set_mode` are thinking levels (`off` … `max`), matching pi-acp. Agent permission mode stays on `configOptions.mode`.
 - Tool approval uses `session/request_permission` (allow once / session / all / reject).
