@@ -39,7 +39,7 @@ Triggers:
 
 Both use path filters on the elph workspace, lockfile, toolchain, Makefile, and `.github/`.
 
-On Linux and macOS the job runs, in order: `cargo fmt --check`, `make check-elph`, `make lint-elph`, `make test-elph`, then `make build-elph` (debug profile — no `RELEASE=1`). Release-profile compilation is not part of this workflow.
+On Linux and macOS the job runs, in order: `cargo fmt --check`, `make check-elph`, `make lint-elph`, `make test-elph`, then `make build-elph`. With `CI=true` (or `make build -- --ci`), those targets use Cargo profile `ci` (`target/ci/`: `opt-level=0`, no debuginfo, no incremental — sccache is the cache). Local `make` stays on `dev`. Profiles: `--debug`, `--release`, `--dist`, `--ci` (last flag wins). `PROFILE=dist` / `--dist` is unchanged (`opt-level=3`, thin LTO, `codegen-units=1`).
 
 ## Release
 

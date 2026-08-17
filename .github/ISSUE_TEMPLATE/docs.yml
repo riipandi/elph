@@ -1,42 +1,23 @@
 name: Docs
-description: Wrong, missing, or stale documentation
+description: Missing or wrong documentation
 title: "[docs] "
 labels: [documentation]
 body:
   - type: markdown
     attributes:
-      value: |
-        Update **source** docs (`docs/`, crate READMEs, comments). Do not hand-edit generated `openwiki/` pages unless that is the only place the fact exists — OpenWiki refreshes on a schedule.
-
-  - type: dropdown
-    id: kind
-    attributes:
-      label: Kind
-      options:
-        - Missing (feature exists, no doc)
-        - Wrong (doc does not match the code)
-        - Stale (old API / command / path)
-        - Hard to find
-    validations:
-      required: true
+      value: Edit source docs (`docs/`, crate READMEs). Do not hand-edit generated `openwiki/` pages.
 
   - type: input
     id: path
     attributes:
-      label: Path or URL
-      description: e.g. `docs/session-persistence.md`, `crates/elph-agent/docs/tools.md`, `README.md`
+      label: Path
+      placeholder: docs/session-persistence.md
     validations:
       required: true
 
   - type: textarea
     id: issue
     attributes:
-      label: What is wrong
+      label: What's wrong
     validations:
       required: true
-
-  - type: textarea
-    id: should
-    attributes:
-      label: What it should say
-      description: Quote or paraphrase the current implementation if you already checked the code.

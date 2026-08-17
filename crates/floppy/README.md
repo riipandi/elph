@@ -15,12 +15,13 @@ floppy::memory     # feature "memory" (default) — task-scoped memories
 floppy::codegraph  # feature "codegraph" — AST chunks, hybrid search, thin graph
 ```
 
-| Feature | Enables |
-| ------- | ------- |
-| `memory` (default) | `MemoryStore`, scoring, task lifecycle |
-| `embed` | Local MiniLM via `embed_anything` |
-| `codegraph` | Code index + hybrid FTS/vector search |
-| `full` | `memory` + `embed` + `codegraph` |
+| Feature            | Enables                                                                            |
+| ------------------ | ---------------------------------------------------------------------------------- |
+| `memory` (default) | `MemoryStore`, scoring, task lifecycle                                             |
+| `embed`            | Local MiniLM via `embed_anything` (Accelerate on macOS; Candle CPU elsewhere)      |
+| `mkl`              | Intel MKL CPU backend for embeddings (x86_64; not compatible with the wild linker) |
+| `codegraph`        | Code index + hybrid FTS/vector search                                              |
+| `full`             | `memory` + `embed` + `codegraph`                                                   |
 
 ## Example
 
@@ -38,9 +39,9 @@ store.init().await?;
 
 ## Migration bands (shared `store.db`)
 
-| Band | Owner |
-| ---- | ----- |
-| 1–99 | `memory` |
+| Band    | Owner       |
+| ------- | ----------- |
+| 1–99    | `memory`    |
 | 500–599 | `codegraph` |
 
 Ledger: `app_migrations` via [`core::apply_set`].

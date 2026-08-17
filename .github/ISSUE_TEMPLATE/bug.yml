@@ -1,136 +1,55 @@
 name: Bug report
-description: Something in Elph does not work as implemented
+description: Something in Elph does not work
 title: "[bug] "
 labels: [bug]
 body:
   - type: markdown
     attributes:
       value: |
-        File a **security** issue privately via [Security advisories](https://github.com/riipandi/elph/security/advisories/new), not here.
-
-        Search [existing issues](https://github.com/riipandi/elph/issues) first. Include enough to reproduce without a private API key or workspace.
+        Security reports go to [advisories](https://github.com/riipandi/elph/security/advisories/new), not here. Do not paste API keys.
 
   - type: dropdown
     id: area
     attributes:
       label: Area
-      description: Where the bug shows up. Pick the closest surface.
-      multiple: true
       options:
-        - CLI (`elph` binary, flags, subcommands)
-        - TUI (layout, input, transcript, theme)
-        - Agent loop (turns, tools, compaction, steering)
-        - Tools / exec / sandbox
-        - MCP / skills / extensions (WASM)
-        - Providers / models (`elph-ai`)
-        - Session / Turso store
-        - Memory (`floppy`)
-        - Codegraph
-        - ACP
-        - Config / env (`ELPH_*`)
-        - Install / release / CI
-        - Docs
+        - CLI
+        - TUI
         - Other
     validations:
       required: true
 
   - type: textarea
-    id: summary
+    id: what
     attributes:
       label: What happened
-      description: One or two sentences. What you did, what you saw, why it is wrong.
-      placeholder: After /compact the transcript dropped the last tool result and the next turn sent an empty history.
+      description: What you did, what you expected, what you got.
     validations:
       required: true
 
   - type: textarea
     id: reproduce
     attributes:
-      label: How to reproduce
-      description: Numbered steps. Prefer a minimal command or a failing `make test-*` case.
+      label: Repro
+      description: Steps or a `make test-*` case.
       placeholder: |
-        1. `make install` (debug → `elph-debug`)
-        2. `elph-debug` in an empty git repo
-        3. …
-      value: |
-        1.
-        2.
-        3.
-    validations:
-      required: true
-
-  - type: textarea
-    id: expected
-    attributes:
-      label: Expected
-      placeholder: The session stays loadable and the last assistant message is intact.
-    validations:
-      required: true
-
-  - type: textarea
-    id: actual
-    attributes:
-      label: Actual
-      placeholder: Reload shows `session decode failed` and `{logs_dir}/crash.log-*` has a Turso lock error.
+        1. `elph` (or `elph-debug`) in a git repo
+        2. …
     validations:
       required: true
 
   - type: input
-    id: version
+    id: env
     attributes:
-      label: Elph version
-      description: Output of `elph --version` / `elph-debug --version` / `elph-canary --version`, or the git tag / SHA.
-      placeholder: elph 0.0.26 (abc1234)
+      label: Version / OS
+      description: "`elph --version` (or tag/SHA) and OS/arch. For TUI, add the terminal."
+      placeholder: elph 0.0.26 · macOS 15 arm64 · Ghostty
     validations:
       required: true
-
-  - type: dropdown
-    id: channel
-    attributes:
-      label: How you installed it
-      options:
-        - Release binary (`elph.space/install.sh` or GitHub Release)
-        - Canary (`--canary` or `make install RELEASE=1`)
-        - Debug (`make install`)
-        - crates.io (`cargo install --locked elph`)
-        - From this repo (`cargo install --path …` or `make run`)
-        - Other
-    validations:
-      required: true
-
-  - type: input
-    id: os
-    attributes:
-      label: OS and arch
-      description: e.g. macOS 15 arm64, Ubuntu 24.04 x86_64, Windows 11 x86_64
-    validations:
-      required: true
-
-  - type: input
-    id: terminal
-    attributes:
-      label: Terminal (TUI bugs)
-      description: App + `$TERM`. Leave blank if this is not a TUI issue.
-      placeholder: Ghostty, tmux, xterm-256color
-
-  - type: input
-    id: model
-    attributes:
-      label: Provider / model
-      description: Only if the bug involves a model call. Do not paste API keys.
-      placeholder: openrouter / anthropic/claude-sonnet-4.6
 
   - type: textarea
     id: logs
     attributes:
-      label: Logs
-      description: |
-        Relevant lines from `{logs_dir}/elph.jsonl` or `{logs_dir}/crash.log-*`.
-        Set `ELPH_LOG_LEVEL=debug` if the default log is empty. Redact tokens and file contents.
+      label: Logs (optional)
+      description: Snippet from `{logs_dir}/elph.jsonl` or `crash.log-*`. Redact secrets.
       render: text
-
-  - type: textarea
-    id: extra
-    attributes:
-      label: Extra context
-      description: Related issue/PR, crate (`coding-agent`, `elph-agent`, `elph-ai`, `elph-tui`, `floppy`), or a pi-upstream difference.

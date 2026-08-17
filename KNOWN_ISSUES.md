@@ -1,5 +1,43 @@
 # Known Issues
 
+## 2026-08-18 — Intel MKL embeddings cannot link with the wild linker
+
+`.cargo/config.toml` uses [wild](https://github.com/wild-linker/wild) for `x86_64-unknown-linux-gnu` (`clang --ld-path=wild`). `floppy` embeddings go through `embed_anything` / Candle.
+
+Enabling `embed_anything/mkl` (Intel MKL via `intel-mkl-src`) fails at link time with wild:
+
+```
+wild: error: Undefined symbol hgemm_, referenced by candle-core …/mkl.rs
+```
+
+`hgemm_` is an MKL BLAS symbol. Wild does not resolve the static MKL archives the way GNU ld / lld do.
+
+### Current behavior
+
+- **macOS** — Apple Accelerate (`embed_anything/accelerate`). Unrelated to this issue.
+- **Linux / Windows (default)** — Candle’s built-in CPU backend. No MKL.
+- **Opt-in MKL** — `floppy` feature `mkl` (`embed_anything/mkl`). Use only with GNU ld or lld, not wild.
+
+`floppy/full` and the `elph` binary do **not** enable `mkl`. CI Linux AMD64 therefore links with wild.
+
+### Workaround
+
+Keep the default CPU backend, or disable wild for that target and build with MKL:
+
+```toml
+# crates/coding-agent or a local override — not compatible with wild
+floppy = { workspace = true, features = ["full", "mkl"] }
+```
+
+```bash
+# drop wild for one build, then:
+# RUSTFLAGS='-C link-arg=-fuse-ld=lld' make test-elph
+```
+
+### Follow-up
+
+Re-test `floppy/mkl` when wild can link MKL static archives, or document a supported linker matrix if MKL becomes a default again.
+
 ## 2026-08-13 — Turso multiprocess WAL integration requires hardening
 
 The project uses Turso `0.8.0-pre.4` with `experimental_multiprocess_wal(true)` for `.elph/store.db`. The builder configuration is consistent, but the surrounding integration is not yet production-ready for concurrent OS processes.
