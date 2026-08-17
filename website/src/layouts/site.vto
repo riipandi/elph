@@ -1,0 +1,11 @@
+{{ layout "layouts/base.vto" }}
+
+<div class="flex flex-col">
+  {{ include "partials/header.vto" }}
+
+  <main id="main-content" class="flex flex-col grow">
+    {{ content }}
+  </main>
+
+  {{ include "partials/footer.vto" }}
+</div>

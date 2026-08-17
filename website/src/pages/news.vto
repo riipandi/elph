@@ -1,0 +1,55 @@
+{{ layout "layouts/site.vto" }}
+
+{{ setMetadata('title', 'News') }}
+{{ setMetadata('description', 'Release notes, runtime changes, and product updates from Elph.') }}
+
+<div class="page-shell">
+  <header class="page-head">
+    <div class="max-w-7xl mx-auto px-5 sm:px-8 pt-14 pb-10 md:pt-20 md:pb-12">
+      <p class="page-kicker mb-4">News</p>
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12 items-end">
+        <h1 class="lg:col-span-7 text-3xl md:text-4xl font-semibold">Updates</h1>
+        <p class="lg:col-span-5 text-base leading-relaxed">
+          Notes on what shipped. Elph is pre-alpha — read these before you upgrade.
+        </p>
+      </div>
+    </div>
+  </header>
+
+  <section class="py-12 md:py-16">
+    <div class="max-w-7xl mx-auto px-5 sm:px-8">
+      {{ if posts && posts.items && posts.items.length > 0 }}
+        <div class="divide-y" style="border-color: var(--chrome-line)">
+          {{ for post of posts.items }}
+            <article class="py-1 first:pt-0" style="border-color: var(--chrome-line)">
+              <a href="/news/{{ post.slug }}" class="row-link">
+                {{ if post.dateDisplay }}
+                  <time class="font-mono text-[11px]" style="color: var(--chrome-muted)" datetime="{{ post.created }}">{{ post.dateDisplay }}</time>
+                {{ /if }}
+                <h2 class="mt-2 text-xl font-semibold" style="color: var(--chrome-fg)">{{ post.title }}</h2>
+                <p class="mt-2 text-sm leading-relaxed">
+                  {{ post.description || post.body }}
+                </p>
+                <span class="inline-block mt-3 font-mono text-xs" style="color: var(--chrome-muted)">Read</span>
+              </a>
+            </article>
+          {{ /for }}
+        </div>
+      {{ else }}
+        <p>No news yet.</p>
+      {{ /if }}
+
+      {{ if posts && posts.totalPages > 1 }}
+        <nav class="flex items-center justify-center gap-4 mt-12 pt-8" style="border-top: 1px solid var(--chrome-line)">
+          {{ if posts.hasPrev }}
+            <a href="{{ posts.prevUrl }}" class="font-mono text-xs" style="color: var(--chrome-accent)">← Previous</a>
+          {{ /if }}
+          <span class="font-mono text-xs">{{ posts.page }} / {{ posts.totalPages }}</span>
+          {{ if posts.hasNext }}
+            <a href="{{ posts.nextUrl }}" class="font-mono text-xs" style="color: var(--chrome-accent)">Next →</a>
+          {{ /if }}
+        </nav>
+      {{ /if }}
+    </div>
+  </section>
+</div>

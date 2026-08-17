@@ -1,0 +1,95 @@
+/* ---------------------------------------------------------------------------
+   Pagefind Modal — CSS variables for sand/emerald theme
+   --------------------------------------------------------------------------- */
+:root {
+  --pf-border-radius: 12px;
+  --pf-font: inherit;
+  --pf-input-height: 44px;
+  --pf-input-font-size: 16px;
+  --pf-result-title-font-size: 14px;
+  --pf-result-excerpt-font-size: 13px;
+  --pf-summary-font-size: 12px;
+  --pf-modal-max-width: 600px;
+  --pf-modal-backdrop: rgba(26, 24, 20, 0.5);
+  --pf-background: #faf9f6;
+  --pf-text: #1a1814;
+  --pf-text-secondary: #6b6354;
+  --pf-text-muted: #8f8572;
+  --pf-border: #e8e4d9;
+  --pf-border-focus: #34d399;
+  --pf-hover: #f3f1eb;
+  --pf-skeleton: #e8e4d9;
+  --pf-skeleton-shine: #f3f1eb;
+  --pf-mark: #059669;
+  --pf-outline-focus: #34d399;
+  --pf-outline-offset: 2px;
+  --pf-shadow-sm: 0 2px 8px rgba(26, 24, 20, 0.06);
+  --pf-shadow-md: 0 4px 12px rgba(26, 24, 20, 0.1);
+  --pf-shadow-lg: 0 16px 48px rgba(26, 24, 20, 0.2);
+  --pf-scroll-shadow: rgba(26, 24, 20, 0.08);
+  --pf-icon-search: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%236b6354' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E");
+}
+
+[data-pf-theme="dark"],
+:root.dark,
+html.dark {
+  --pf-background: #1a1814;
+  --pf-text: #e8e4d9;
+  --pf-text-secondary: #b0a894;
+  --pf-text-muted: #8f8572;
+  --pf-border: #2d2a22;
+  --pf-border-focus: #34d399;
+  --pf-hover: #2d2a22;
+  --pf-skeleton: #2d2a22;
+  --pf-skeleton-shine: #4a4539;
+  --pf-mark: #34d399;
+  --pf-outline-focus: #34d399;
+  --pf-modal-backdrop: rgba(0, 0, 0, 0.6);
+  --pf-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --pf-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --pf-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
+  --pf-scroll-shadow: rgba(0, 0, 0, 0.3);
+  --pf-icon-search: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%238f8572' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E");
+}
+
+/* Search trigger — desktop header */
+.search-trigger {
+  cursor: pointer;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0px;
+  border-radius: 12px;
+  color: #8f8572;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+.search-trigger:hover {
+  color: #6b6354;
+  background: #e8e4d9;
+}
+.dark .search-trigger {
+  color: #b0a894;
+}
+.dark .search-trigger:hover {
+  color: #fff;
+  background: #2d2a22;
+}
+
+/* Mobile search trigger — inherit wrapper (GitHub-btn) styling */
+.mobile-search-wrap {
+  --pf-background: transparent;
+  --pf-border: transparent;
+  --pf-hover: transparent;
+  --pf-input-height: 40px;
+  --pf-border-radius: 0;
+  --pf-text-muted: #6b6354;
+}
+.dark .mobile-search-wrap {
+  --pf-text-muted: #b0a894;
+}
+.mobile-search-wrap pagefind-modal-trigger {
+  width: 100%;
+}

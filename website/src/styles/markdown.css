@@ -1,0 +1,354 @@
+/* ---------------------------------------------------------------------------
+   Inline code inside prose
+   --------------------------------------------------------------------------- */
+.prose :not(pre) > code {
+  background: color-mix(in srgb, var(--chrome-fg) 6%, transparent);
+  color: var(--chrome-fg);
+  padding: 0.15em 0.4em;
+  border-radius: 0.25rem;
+  font-weight: 500;
+  font-size: 0.85em;
+}
+.prose code::before,
+.prose code::after {
+  content: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Prose overrides for docs
+   --------------------------------------------------------------------------- */
+.prose {
+  --prose-body: #3f3d38;
+  --prose-heading: #191816;
+  --prose-muted: #5c5a54;
+  --prose-border: #e2ded4;
+  --prose-accent: #3a4030;
+}
+.dark .prose {
+  --prose-body: #c4c1b8;
+  --prose-heading: #ecebe6;
+  --prose-muted: #9a9890;
+  --prose-border: #252320;
+  --prose-accent: #c6ff00;
+}
+
+.prose h1 {
+  @apply text-3xl md:text-4xl font-bold tracking-tight mb-3;
+  color: var(--prose-heading);
+}
+.prose h2 {
+  @apply text-2xl font-semibold tracking-tight mt-12 mb-4 pb-3;
+  color: var(--prose-heading);
+  border-bottom: 1px solid var(--prose-border);
+}
+.prose h3 {
+  @apply text-xl font-semibold mt-8 mb-3;
+  color: var(--prose-heading);
+}
+.prose h4 {
+  @apply text-lg font-semibold mt-6 mb-2;
+  color: var(--prose-heading);
+}
+.prose p {
+  @apply leading-relaxed;
+  color: var(--prose-body);
+}
+.prose ul,
+.prose ol {
+  color: var(--prose-body);
+}
+.prose ul > li,
+.prose ol > li {
+  @apply leading-relaxed my-1;
+}
+.prose a {
+  text-decoration: none;
+  color: var(--prose-accent);
+}
+.prose a:hover {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--prose-accent) 40%, transparent);
+}
+.prose blockquote {
+  @apply border-l-4 rounded-r-xl px-5 py-4 my-6;
+  border-color: var(--prose-accent);
+  background: color-mix(in srgb, var(--prose-accent) 6%, transparent);
+}
+.prose blockquote p {
+  color: var(--prose-body);
+  @apply italic;
+}
+
+.table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  @apply my-6;
+}
+.table-wrapper table {
+  min-width: 100%;
+  width: auto;
+  @apply text-sm my-0;
+}
+.prose th {
+  @apply text-left font-semibold pb-3;
+  color: var(--prose-heading);
+  border-bottom: 1px solid var(--prose-border);
+}
+.prose td {
+  @apply py-2.5;
+  border-bottom: 1px solid var(--prose-border);
+  color: var(--prose-body);
+}
+.prose hr {
+  @apply my-10;
+  border-color: var(--prose-border);
+}
+.prose img {
+  max-width: 100%;
+  height: auto;
+  @apply rounded-lg my-6;
+}
+.prose ul ul,
+.prose ol ol {
+  @apply my-1;
+}
+.prose li::marker {
+  color: var(--prose-muted);
+}
+
+/* ---------------------------------------------------------------------------
+   @mdit/plugin-anchor — heading permalinks
+   --------------------------------------------------------------------------- */
+.header-anchor {
+  float: left;
+  margin-left: -1.25em;
+  padding-right: 0.3em;
+  opacity: 0;
+  text-decoration: none !important;
+  color: var(--color-sand-400);
+  transition: opacity 0.15s ease;
+  font-size: 0.85em;
+  line-height: 1;
+  font-weight: 400;
+}
+.dark .header-anchor {
+  color: var(--color-sand-500);
+}
+.header-anchor::before {
+  content: "\00B6";
+  font-size: 0.9em;
+}
+
+.prose h2:hover .header-anchor,
+.prose h3:hover .header-anchor,
+.prose h4:hover .header-anchor {
+  opacity: 0.7;
+}
+.header-anchor:hover {
+  opacity: 1 !important;
+  color: var(--color-emerald-600);
+}
+.dark .header-anchor:hover {
+  color: var(--color-emerald-400);
+}
+.prose h2 .header-anchor,
+.prose h3 .header-anchor,
+.prose h4 .header-anchor {
+  margin-top: 0.15em;
+}
+
+/* ---------------------------------------------------------------------------
+   @mdit/plugin-alert — GFM-style alerts
+   --------------------------------------------------------------------------- */
+.markdown-alert {
+  @apply border-l-4 rounded-lg px-5 py-4 my-6;
+}
+
+.markdown-alert-note {
+  border-color: #3b82f6;
+  background: color-mix(in srgb, #3b82f6 6%, transparent);
+}
+.dark .markdown-alert-note {
+  background: color-mix(in srgb, #3b82f6 8%, transparent);
+}
+.markdown-alert-tip {
+  border-color: #10b981;
+  background: color-mix(in srgb, #10b981 6%, transparent);
+}
+.dark .markdown-alert-tip {
+  background: color-mix(in srgb, #10b981 8%, transparent);
+}
+.markdown-alert-important {
+  border-color: #6366f1;
+  background: color-mix(in srgb, #6366f1 6%, transparent);
+}
+.dark .markdown-alert-important {
+  background: color-mix(in srgb, #6366f1 8%, transparent);
+}
+.markdown-alert-warning {
+  border-color: #10b981;
+  background: color-mix(in srgb, #10b981 6%, transparent);
+}
+.dark .markdown-alert-warning {
+  background: color-mix(in srgb, #10b981 8%, transparent);
+}
+.markdown-alert-caution {
+  border-color: #ef4444;
+  background: color-mix(in srgb, #ef4444 6%, transparent);
+}
+.dark .markdown-alert-caution {
+  background: color-mix(in srgb, #ef4444 8%, transparent);
+}
+
+.markdown-alert-title {
+  @apply flex items-center gap-2 font-bold uppercase tracking-wider mb-2;
+  font-size: 0.8125rem;
+}
+.markdown-alert-note .markdown-alert-title {
+  @apply text-blue-600 dark:text-blue-400;
+}
+.markdown-alert-tip .markdown-alert-title {
+  @apply text-emerald-600 dark:text-emerald-400;
+}
+.markdown-alert-important .markdown-alert-title {
+  @apply text-indigo-600 dark:text-indigo-400;
+}
+.markdown-alert-warning .markdown-alert-title {
+  @apply text-emerald-600 dark:text-emerald-400;
+}
+.markdown-alert-caution .markdown-alert-title {
+  @apply text-red-600 dark:text-red-400;
+}
+.markdown-alert p {
+  color: var(--prose-body, inherit);
+  @apply leading-relaxed my-0;
+}
+.markdown-alert p + p {
+  @apply mt-3;
+}
+.markdown-alert-title svg {
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
+}
+.markdown-alert code {
+  @apply text-sm;
+}
+
+/* ---------------------------------------------------------------------------
+   @mdit/plugin-tab — tabbed content
+   --------------------------------------------------------------------------- */
+.tabs-tabs-wrapper {
+  @apply my-6;
+}
+.tabs-tabs-header {
+  @apply flex gap-0 overflow-x-auto;
+  border-bottom: 1px solid var(--prose-border, #e8e4d9);
+}
+.tabs-tab-button {
+  @apply px-5 py-2.5 text-sm font-medium cursor-pointer whitespace-nowrap transition-all duration-150;
+  @apply border-b-2 border-transparent bg-transparent;
+  @apply outline-none;
+  color: var(--color-sand-500);
+}
+.tabs-tab-button:hover {
+  color: var(--color-sand-700);
+}
+.dark .tabs-tab-button:hover {
+  color: var(--color-sand-200);
+}
+.tabs-tab-button.active {
+  border-bottom-color: var(--color-emerald-500);
+  color: var(--color-emerald-600);
+}
+.dark .tabs-tab-button.active {
+  border-bottom-color: var(--color-emerald-400);
+  color: var(--color-emerald-400);
+}
+.tabs-tab-content {
+  display: none;
+  @apply p-5 border border-t-0 rounded-b-lg;
+  border-color: var(--prose-border, #e8e4d9);
+  background: #fff;
+}
+.dark .tabs-tab-content {
+  background: rgba(26, 24, 20, 0.4);
+  border-color: var(--prose-border, #2d2a22);
+}
+.tabs-tab-content.active {
+  @apply block;
+}
+.tabs-tab-content > :first-child {
+  @apply mt-0;
+}
+.tabs-tab-content > :last-child {
+  @apply mb-0;
+}
+
+/* ---------------------------------------------------------------------------
+   @mdit/plugin-tasklist — checkboxes
+   --------------------------------------------------------------------------- */
+.task-list-container {
+  @apply list-none p-0 pl-5 my-4;
+}
+.task-list-item {
+  @apply flex items-start gap-2.5 list-none my-0.5;
+}
+.task-list-item .task-list-item-checkbox {
+  @apply mt-1 h-4 w-4 shrink-0 cursor-pointer;
+  @apply accent-emerald-600 dark:accent-emerald-400;
+}
+.task-list-item-label {
+  @apply cursor-pointer leading-relaxed;
+}
+.prose ul.task-list-container .task-list-item {
+  @apply ml-0;
+}
+.prose ul.task-list-container .task-list-item .task-list-item-label {
+  color: var(--prose-body, inherit);
+}
+.task-list-item .task-list-item-checkbox:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ---------------------------------------------------------------------------
+   Table of contents — scroll-spy active state
+   --------------------------------------------------------------------------- */
+.toc-link {
+  display: block;
+  color: var(--color-sand-500);
+  text-decoration: none;
+  transition: color 0.15s ease;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  padding: 0.125rem 0;
+}
+.dark .toc-link {
+  color: var(--color-sand-400);
+}
+.toc-link:hover {
+  color: var(--color-emerald-600);
+}
+.dark .toc-link:hover {
+  color: var(--color-emerald-400);
+}
+.toc-link.active {
+  color: var(--color-emerald-600);
+  font-weight: 500;
+}
+.dark .toc-link.active {
+  color: var(--color-emerald-400);
+}
+
+.stretched-link {
+  text-decoration: none;
+  color: inherit;
+}
+.stretched-link::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  z-index: 1;
+}

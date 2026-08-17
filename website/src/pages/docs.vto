@@ -1,0 +1,145 @@
+{{ layout "layouts/site.vto" }}
+
+{{ setMetadata('title', 'Documentation') }}
+{{ setMetadata('description', 'Install Elph, connect providers, and run the TUI, headless, or ACP.') }}
+
+<div class="page-shell">
+  <header class="page-head">
+    <div class="max-w-7xl mx-auto px-5 sm:px-8 pt-14 pb-10 md:pt-20 md:pb-12">
+      <p class="page-kicker mb-4">Docs</p>
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12 items-end">
+        <h1 class="lg:col-span-7 text-3xl md:text-4xl font-semibold">Start here</h1>
+        <p class="lg:col-span-5 text-base leading-relaxed">
+          Same harness shape as Pi — session loop, tools, providers — plus Elph’s local store, codegraph, and extra surfaces. Pre-alpha.
+        </p>
+      </div>
+    </div>
+  </header>
+
+  <section class="py-12 md:py-16">
+    <div class="max-w-7xl mx-auto px-5 sm:px-8 space-y-10">
+      <div>
+        <p class="page-kicker mb-4">Start here</p>
+        <ul class="divide-y" style="border-color: var(--chrome-line)">
+          <li style="border-color: var(--chrome-line)">
+            <a href="/docs/start/overview" class="row-link">
+              <span class="font-semibold" style="color: var(--chrome-fg)">Overview</span>
+              <span class="block mt-1 text-sm">What Elph is, how it relates to Pi, what stays on disk.</span>
+            </a>
+          </li>
+          <li style="border-color: var(--chrome-line)">
+            <a href="/docs/start/installation" class="row-link">
+              <span class="font-semibold" style="color: var(--chrome-fg)">Installation</span>
+              <span class="block mt-1 text-sm">Install script, cargo, first launch.</span>
+            </a>
+          </li>
+          <li style="border-color: var(--chrome-line)">
+            <a href="/docs/start/usage" class="row-link">
+              <span class="font-semibold" style="color: var(--chrome-fg)">Using Elph</span>
+              <span class="block mt-1 text-sm">TUI, resume, headless prompts.</span>
+            </a>
+          </li>
+          <li style="border-color: var(--chrome-line)">
+            <a href="/docs/start/providers" class="row-link">
+              <span class="font-semibold" style="color: var(--chrome-fg)">Providers</span>
+              <span class="block mt-1 text-sm">Supported catalogs, API keys, OAuth.</span>
+            </a>
+          </li>
+          <li style="border-color: var(--chrome-line)">
+            <a href="/docs/start/settings" class="row-link">
+              <span class="font-semibold" style="color: var(--chrome-fg)">Settings</span>
+              <span class="block mt-1 text-sm">Paths, settings.json, environment.</span>
+            </a>
+          </li>
+          <li style="border-color: var(--chrome-line)">
+            <a href="/docs/start/keybindings" class="row-link">
+              <span class="font-semibold" style="color: var(--chrome-fg)">Keybindings</span>
+              <span class="block mt-1 text-sm">Common TUI shortcuts.</span>
+            </a>
+          </li>
+          <li style="border-color: var(--chrome-line)">
+            <a href="/docs/start/sessions" class="row-link">
+              <span class="font-semibold" style="color: var(--chrome-fg)">Sessions</span>
+              <span class="block mt-1 text-sm">Resume, store, goals.</span>
+            </a>
+          </li>
+          <li style="border-color: var(--chrome-line)">
+            <a href="/docs/start/plan-mode" class="row-link">
+              <span class="font-semibold" style="color: var(--chrome-fg)">Plan mode</span>
+              <span class="block mt-1 text-sm">Plan vs Build and approvals.</span>
+            </a>
+          </li>
+          <li style="border-color: var(--chrome-line)">
+            <a href="/docs/start/memory" class="row-link">
+              <span class="font-semibold" style="color: var(--chrome-fg)">Memory</span>
+              <span class="block mt-1 text-sm">Floppy store, codegraph, CLI.</span>
+            </a>
+          </li>
+          <li style="border-color: var(--chrome-line)">
+            <a href="/docs/start/permissions" class="row-link">
+              <span class="font-semibold" style="color: var(--chrome-fg)">Permissions</span>
+              <span class="block mt-1 text-sm">Workspace trust and tool policy.</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+      <div>
+        <p class="page-kicker mb-4">Customize</p>
+        <ul class="divide-y" style="border-color: var(--chrome-line)">
+          <li style="border-color: var(--chrome-line)">
+            <a href="/docs/customize/skills" class="row-link">
+              <span class="font-semibold" style="color: var(--chrome-fg)">Skills</span>
+              <span class="block mt-1 text-sm">SKILL.md packages and load order.</span>
+            </a>
+          </li>
+          <li style="border-color: var(--chrome-line)">
+            <a href="/docs/customize/mcp" class="row-link">
+              <span class="font-semibold" style="color: var(--chrome-fg)">MCP</span>
+              <span class="block mt-1 text-sm">Servers, OAuth, cache.</span>
+            </a>
+          </li>
+          <li style="border-color: var(--chrome-line)">
+            <a href="/docs/customize/models" class="row-link">
+              <span class="font-semibold" style="color: var(--chrome-fg)">Custom models</span>
+              <span class="block mt-1 text-sm">Disk overlays for provider catalogs.</span>
+            </a>
+          </li>
+          <li style="border-color: var(--chrome-line)">
+            <a href="/docs/customize/subagents" class="row-link">
+              <span class="font-semibold" style="color: var(--chrome-fg)">Subagents</span>
+              <span class="block mt-1 text-sm">Delegated agents and workers.</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+      <div>
+        <p class="page-kicker mb-4">Integrate</p>
+        <ul class="divide-y" style="border-color: var(--chrome-line)">
+          <li style="border-color: var(--chrome-line)">
+            <a href="/docs/integrate/acp" class="row-link">
+              <span class="font-semibold" style="color: var(--chrome-fg)">ACP</span>
+              <span class="block mt-1 text-sm">Editor protocol over stdio.</span>
+            </a>
+          </li>
+          <li style="border-color: var(--chrome-line)">
+            <a href="/docs/integrate/run" class="row-link">
+              <span class="font-semibold" style="color: var(--chrome-fg)">Headless</span>
+              <span class="block mt-1 text-sm"><code>elph run</code> for scripts and CI.</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+      <div>
+        <p class="page-kicker mb-4">Reference</p>
+        <ul class="divide-y" style="border-color: var(--chrome-line)">
+          <li style="border-color: var(--chrome-line)">
+            <a href="/docs/reference/commands" class="row-link">
+              <span class="font-semibold" style="color: var(--chrome-fg)">Slash commands</span>
+              <span class="block mt-1 text-sm">Palette, skills, templates.</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</div>

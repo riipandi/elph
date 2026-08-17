@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="{{ lang || 'en' }}">
+<head>
+  {{ include "partials/head.vto" }}
+  {{ renderAssets() |> safe }}
+</head>
+<body class="h-full bg-sand-50 dark:bg-sand-900 text-sand-800 dark:text-sand-100">
+  <!-- Skip to main content -->
+  <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-lime-500 text-sand-900 px-4 py-2 rounded-lg z-50 font-medium text-sm">
+    Skip to main content
+  </a>
+
+  {{ content |> safe }}
+
+  <pagefind-config bundle-path="/_pagefind/"></pagefind-config>
+  <pagefind-modal reset-on-close></pagefind-modal>
+
+</body>
+</html>

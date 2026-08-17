@@ -1,0 +1,192 @@
+/* ---------------------------------------------------------------------------
+   Code block wrapper — header bar + copy button
+   --------------------------------------------------------------------------- */
+.code-block {
+  @apply my-5 rounded-md;
+  overflow-x: auto;
+  border: 1px solid var(--chrome-line);
+  background: var(--chrome-raised);
+}
+.dark .code-block {
+  background: var(--chrome-inset);
+  border-color: var(--chrome-line);
+}
+
+.code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.375rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: var(--chrome-raised);
+  color: var(--chrome-muted);
+  border-bottom: 1px solid var(--chrome-line);
+}
+.dark .code-block-header {
+  background: var(--chrome-inset);
+  color: var(--chrome-muted);
+  border-bottom-color: var(--chrome-line);
+}
+
+.code-lang {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Copy button */
+.copy-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: opacity 0.15s ease;
+  color: var(--chrome-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.copy-btn:hover {
+  background: color-mix(in srgb, var(--chrome-fg) 6%, transparent);
+  color: var(--chrome-fg);
+}
+.copy-btn svg {
+  width: 1em;
+  height: 1em;
+}
+
+/* Copy toast — absolutely overlaid inside button */
+.copy-toast {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  @apply text-xs font-medium;
+  color: var(--color-amber-600);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+.dark .copy-toast {
+  color: var(--color-amber-400);
+}
+.copying .copy-toast {
+  opacity: 1;
+}
+.copying svg,
+.copying .copy-label {
+  visibility: hidden;
+}
+
+/* Code <pre> inside wrapper — seamless with header */
+.code-pre {
+  margin: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  padding: 1rem;
+  overflow-x: auto;
+}
+.code-pre code {
+  font-family: inherit;
+  background: none !important;
+  padding: 0;
+}
+
+/* Standalone shiki (outside .code-block, e.g. inside tabs) */
+.shiki {
+  @apply rounded-md;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  padding: 1rem;
+  overflow-x: auto;
+  border: 1px solid var(--chrome-line);
+  background: var(--chrome-raised) !important;
+  color: var(--chrome-fg) !important;
+}
+
+.prose .shiki {
+  @apply my-5;
+}
+.dark .shiki,
+.shiki[data-theme="dark"] {
+  color: var(--shiki-dark, var(--chrome-fg)) !important;
+  background-color: var(--shiki-dark-bg, var(--chrome-inset)) !important;
+}
+
+/* Dual-theme spans: light tokens in `color`, dark tokens in `--shiki-dark`. */
+.dark .shiki span {
+  color: var(--shiki-dark) !important;
+  font-style: var(--shiki-dark-font-style, inherit) !important;
+  font-weight: var(--shiki-dark-font-weight, inherit) !important;
+  text-decoration: var(--shiki-dark-text-decoration, inherit) !important;
+}
+.shiki code {
+  font-family: inherit;
+  background: none !important;
+  padding: 0;
+}
+
+/* Tab content shiki — tighter, no extra border */
+.tabs-tab-content .shiki {
+  @apply my-0;
+  border: none;
+  border-radius: 0;
+  background: transparent !important;
+}
+.tabs-tab-content .code-pre {
+  background: transparent !important;
+}
+.tabs-tab-content pre.shiki {
+  @apply my-1;
+}
+
+/* Fallback pre (non-shiki) */
+.prose pre:not(.shiki):not(.code-pre) {
+  background: var(--chrome-inset);
+  color: #ecebe6;
+  border: 1px solid var(--chrome-line);
+  border-radius: 0.375rem;
+  padding: 1rem;
+  overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.625;
+}
+.prose pre:not(.shiki):not(.code-pre) code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Scrollbar — consistent for all overflow containers
+   --------------------------------------------------------------------------- */
+pre::-webkit-scrollbar,
+.tabs-tabs-header::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.shiki::-webkit-scrollbar {
+  height: 6px;
+}
+.tabs-tabs-header::-webkit-scrollbar {
+  height: 4px;
+}
+.shiki::-webkit-scrollbar-track,
+.tabs-tabs-header::-webkit-scrollbar-track {
+  background: transparent;
+}
+.shiki::-webkit-scrollbar-thumb,
+.tabs-tabs-header::-webkit-scrollbar-thumb {
+  @apply bg-sand-300 dark:bg-sand-600 rounded-full;
+}
+.shiki::-webkit-scrollbar-thumb:hover,
+.tabs-tabs-header::-webkit-scrollbar-thumb:hover {
+  @apply bg-sand-400 dark:bg-sand-500;
+}
