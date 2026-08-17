@@ -23,7 +23,6 @@ pub struct AcpSessionState {
     pub session: Arc<CodingAgentSession>,
     pub ui_rx: Arc<tokio::sync::Mutex<mpsc::UnboundedReceiver<AgentUiEvent>>>,
     pub cwd: PathBuf,
-    #[allow(dead_code)]
     pub additional_directories: Vec<PathBuf>,
     pub running: Arc<AtomicBool>,
     pub cancelled: Arc<AtomicBool>,
@@ -35,6 +34,8 @@ pub struct AcpAgentState {
     pub sessions: HashMap<String, AcpSessionState>,
     pub paths: Paths,
     pub settings: Settings,
+    pub client_fs_read: bool,
+    pub client_elicitation_form: bool,
 }
 
 #[derive(Clone)]

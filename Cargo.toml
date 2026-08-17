@@ -21,7 +21,7 @@ linker_messages = "allow"
 
 [workspace.dependencies]
 aes-gcm = "0.11.0"
-agent-client-protocol = { version = "2.0.0", features = ["unstable_protocol_v2"] }
+agent-client-protocol = { version = "2.0.0", features = ["unstable_protocol_v2", "unstable_elicitation"] }
 anstyle = "1.0.14"
 anstyle-syntect = "1.0.5"
 anyhow = "1.0.104"

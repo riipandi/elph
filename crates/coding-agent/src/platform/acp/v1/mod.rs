@@ -36,19 +36,25 @@ where
         sessions: HashMap::new(),
         paths,
         settings,
+        client_fs_read: false,
+        client_elicitation_form: false,
     }));
 
     Agent
         .builder()
         .name("elph")
         .on_receive_request(
-            async move |_initialize: InitializeRequest, responder, _connection| {
-                let _ = responder.respond(
-                    InitializeResponse::new(ProtocolVersion::V1)
-                        .agent_capabilities(v1_capabilities())
-                        .agent_info(Implementation::new("elph", env!("CARGO_PKG_VERSION")).title("Elph")),
-                );
-                Ok(())
+            {
+                let state = Arc::clone(&state);
+                async move |initialize: InitializeRequest, responder, _connection| {
+                    state.lock().client_fs_read = initialize.client_capabilities.fs.read_text_file;
+                    let _ = responder.respond(
+                        InitializeResponse::new(ProtocolVersion::V1)
+                            .agent_capabilities(v1_capabilities())
+                            .agent_info(Implementation::new("elph", env!("CARGO_PKG_VERSION")).title("Elph")),
+                    );
+                    Ok(())
+                }
             },
             agent_client_protocol::on_receive_request!(),
         )
@@ -417,7 +423,7 @@ fn to_v1_option(select: crate::platform::acp::config::ConfigSelect) -> SessionCo
 fn v1_capabilities() -> AgentCapabilities {
     AgentCapabilities::new()
         .load_session(true)
-        .prompt_capabilities(PromptCapabilities::new().embedded_context(true))
+        .prompt_capabilities(PromptCapabilities::new().embedded_context(true).image(true))
         .mcp_capabilities(
             agent_client_protocol::schema::v1::McpCapabilities::new()
                 .http(true)
@@ -475,6 +481,45 @@ fn extract_text(blocks: &[ContentBlock]) -> anyhow::Result<String> {
     Ok(parts.join("\n"))
 }
 
+fn extra_roots_v1(state: &Arc<Mutex<AcpAgentState>>, key: &str) -> String {
+    let dirs = state
+        .lock()
+        .sessions
+        .get(key)
+        .map(|s| s.additional_directories.clone())
+        .unwrap_or_default();
+    if dirs.is_empty() {
+        return String::new();
+    }
+    let mut lines = vec!["Additional workspace directories:".to_string()];
+    for dir in dirs {
+        lines.push(format!("- {}", dir.display()));
+    }
+    lines.join("\n")
+}
+
+async fn hydrate_v1_files(connection: &ConnectionTo<Client>, session_id: &str, text: String) -> String {
+    let mut out = text.clone();
+    for token in text.split_whitespace() {
+        let Some(raw) = token.strip_prefix("(file://").or_else(|| token.strip_prefix("file://")) else {
+            continue;
+        };
+        let path = raw.trim_end_matches(')');
+        let request = agent_client_protocol::schema::v1::ReadTextFileRequest::new(
+            SessionId::from(session_id.to_string()),
+            std::path::PathBuf::from(path),
+        );
+        if let Ok(response) = connection.send_request(request).block_task().await {
+            let excerpt: String = response.content.chars().take(8_000).collect();
+            out.push_str(&format!("\n\n<resource uri=\"file://{path}\">\n{excerpt}\n</resource>"));
+        } else if let Ok(body) = std::fs::read_to_string(path) {
+            let excerpt: String = body.chars().take(8_000).collect();
+            out.push_str(&format!("\n\n<resource uri=\"file://{path}\">\n{excerpt}\n</resource>"));
+        }
+    }
+    out
+}
+
 async fn run_prompt(
     state: &Arc<Mutex<AcpAgentState>>,
     connection: &ConnectionTo<Client>,
@@ -482,7 +527,14 @@ async fn run_prompt(
 ) -> anyhow::Result<StopReason> {
     let key = request.session_id.0.as_ref().to_string();
     let (session, ui_rx, _) = lookup_session(state, &key)?;
-    let text = extract_text(&request.prompt)?;
+    let mut text = extract_text(&request.prompt)?;
+    if state.lock().client_fs_read {
+        text = hydrate_v1_files(connection, &key, text).await;
+    }
+    let extra = extra_roots_v1(state, &key);
+    if !extra.is_empty() {
+        text = format!("{extra}\n\n{text}");
+    }
     let trimmed = text.trim();
     if crate::platform::acp::commands::is_slash(trimmed) {
         return run_slash_v1(state, connection, &key, trimmed).await;
@@ -690,7 +742,29 @@ async fn stream_v1(
                 }
                 let _ = req.response_tx.send(if approved { "true" } else { "false" }.into());
             }
-            AgentUiEvent::PlanConfirmationRequired(_) => {}
+            AgentUiEvent::PlanConfirmationRequired(req) => {
+                if let Ok((session, _, _)) = lookup_session(state, key) {
+                    let options = vec![
+                        PermissionOption::new("implement", "Implement plan", PermissionOptionKind::AllowOnce),
+                        PermissionOption::new("fresh", "Implement in a fresh context", PermissionOptionKind::AllowOnce),
+                        PermissionOption::new("stay", "Stay in plan mode", PermissionOptionKind::RejectOnce),
+                    ];
+                    let mut fields = agent_client_protocol::schema::v1::ToolCallUpdateFields::new();
+                    fields.title = Some("Approve plan".into());
+                    let _ = req.plan_text;
+                    let request = RequestPermissionRequest::new(
+                        SessionId::from(key.to_string()),
+                        ToolCallUpdate::new("plan_confirm", fields),
+                        options,
+                    );
+                    let choice = match send_v1_permission(connection, request).await.as_deref() {
+                        Some("implement") => elph_agent::PlanConfirmationChoice::Implement,
+                        Some("fresh") => elph_agent::PlanConfirmationChoice::ImplementFresh,
+                        _ => elph_agent::PlanConfirmationChoice::StayInPlan,
+                    };
+                    let _ = session.resolve_plan(choice).await;
+                }
+            }
             _ => {}
         }
     }

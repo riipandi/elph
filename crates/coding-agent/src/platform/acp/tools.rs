@@ -105,7 +105,10 @@ pub fn on_tool_end(
     } else {
         ToolCallStatus::Completed
     };
-    let content = tool_end_content(details, output);
+    let mut content = tool_end_content(details, output);
+    content.push(ToolCallContent::Terminal(agent_client_protocol::schema::v2::Terminal::new(
+        terminals::terminal_id(id),
+    )));
     let update = ToolCallUpdate::new(id)
         .status(status)
         .content(content)
@@ -143,24 +146,34 @@ fn tool_end_content(details: &serde_json::Value, output: &str) -> Vec<ToolCallCo
 }
 
 pub fn diff_from_details(details: &serde_json::Value) -> Option<ToolCallContent> {
+    use agent_client_protocol::schema::v2::{Diff, DiffChange};
+
     let path = details.get("path").and_then(|v| v.as_str())?;
     if !std::path::Path::new(path).is_absolute() {
         return None;
     }
     let old = details.get("old_content").and_then(|v| v.as_str());
     let new = details.get("new_content").and_then(|v| v.as_str());
-    let operation = if old.is_none() && new.is_some() {
-        "add"
+    let change = if old.is_none() && new.is_some() {
+        DiffChange::add(path)
     } else if old.is_some() && new.is_none() {
-        "delete"
+        DiffChange::delete(path)
     } else {
-        "modify"
+        DiffChange::modify(path)
     };
-    Some(ToolCallContent::Content(Box::new(
-        agent_client_protocol::schema::v2::Content::new(ContentBlock::Text(TextContent::new(format!(
-            "diff {operation} {path}"
-        )))),
-    )))
+    let patch = unified_patch(path, old.unwrap_or(""), new.unwrap_or(""));
+    Some(ToolCallContent::Diff(Diff::patch(patch, vec![change])))
+}
+
+fn unified_patch(path: &str, old: &str, new: &str) -> String {
+    let mut out = format!("--- a/{path}\n+++ b/{path}\n");
+    for line in old.lines() {
+        out.push_str(&format!("-{line}\n"));
+    }
+    for line in new.lines() {
+        out.push_str(&format!("+{line}\n"));
+    }
+    out
 }
 
 fn path_from_summary(summary: &str) -> Option<String> {

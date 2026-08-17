@@ -104,6 +104,7 @@ pub fn send_thought_chunk(
 }
 
 /// Run a harness turn while streaming UI events (required for tool approval).
+#[allow(clippy::too_many_arguments)]
 pub async fn drive_turn(
     state: &Arc<Mutex<AcpAgentState>>,
     connection: &ConnectionTo<Client>,
@@ -111,11 +112,12 @@ pub async fn drive_turn(
     session: Arc<crate::agent::CodingAgentSession>,
     text: String,
     steer: bool,
+    images: Option<Vec<elph_ai::ImageContent>>,
     ui_rx: &Arc<tokio::sync::Mutex<mpsc::UnboundedReceiver<AgentUiEvent>>>,
 ) -> anyhow::Result<()> {
     mark_running(state, session_id);
     send_running(connection, session_id)?;
-    let submit = session.submit_prompt(text, steer);
+    let submit = session.submit_prompt_with(text, steer, images);
     tokio::pin!(submit);
     let stream = stream_ui_events(state, connection, session_id, ui_rx);
     tokio::pin!(stream);
@@ -206,12 +208,20 @@ pub async fn stream_ui_events(
             }
             AgentUiEvent::PlanConfirmationRequired(req) => {
                 send_requires_action(connection, session_id)?;
-                plan::confirm_plan(connection, session_id, &req).await?;
+                let session = state
+                    .lock()
+                    .sessions
+                    .get(&session_key(session_id))
+                    .map(|s| Arc::clone(&s.session));
+                if let Some(session) = session {
+                    plan::confirm_plan(connection, session_id, &session, &req).await?;
+                }
                 send_running(connection, session_id)?;
             }
             AgentUiEvent::UserQuestionRequired(req) => {
                 send_requires_action(connection, session_id)?;
-                crate::platform::acp::elicitation::ask_user(connection, session_id, req).await?;
+                let prefer_form = state.lock().client_elicitation_form;
+                crate::platform::acp::elicitation::ask_user(connection, session_id, req, prefer_form).await?;
                 send_running(connection, session_id)?;
             }
             AgentUiEvent::ModeChangeRequired(req) => {

@@ -174,12 +174,21 @@ pub async fn list_sessions(
     let page = rows
         .into_iter()
         .map(|meta| {
+            let extra = state
+                .lock()
+                .sessions
+                .get(&meta.id)
+                .map(|s| s.additional_directories.clone())
+                .unwrap_or_default();
             let mut info = SessionInfo::new(meta.id, PathBuf::from(meta.cwd));
             if let Some(title) = meta.title {
                 info = info.title(title);
             }
             if !meta.updated_at.is_empty() {
                 info = info.updated_at(meta.updated_at);
+            }
+            if !extra.is_empty() {
+                info = info.additional_directories(extra);
             }
             info
         })

@@ -61,7 +61,60 @@ pub async fn handle_prompt(
 
     let (session, ui_rx, _) = lookup_session(&state, &key)?;
     let steer = is_running(&state, &session_id);
-    drive_turn(&state, &connection, &session_id, session, extracted.text, steer, &ui_rx).await
+    let extra = extra_roots_prefix(&state, &key);
+    let mut text = extracted.text;
+    if !extra.is_empty() {
+        text = format!("{extra}\n\n{text}");
+    }
+    text = hydrate_local_file_links(text);
+    let images = extracted
+        .images
+        .into_iter()
+        .map(|(data, mime)| elph_ai::ImageContent::new(data, mime))
+        .collect::<Vec<_>>();
+    drive_turn(
+        &state,
+        &connection,
+        &session_id,
+        session,
+        text,
+        steer,
+        (!images.is_empty()).then_some(images),
+        &ui_rx,
+    )
+    .await
+}
+
+fn extra_roots_prefix(state: &Arc<Mutex<AcpAgentState>>, key: &str) -> String {
+    let dirs = state
+        .lock()
+        .sessions
+        .get(key)
+        .map(|s| s.additional_directories.clone())
+        .unwrap_or_default();
+    if dirs.is_empty() {
+        return String::new();
+    }
+    let mut lines = vec!["Additional workspace directories:".to_string()];
+    for dir in dirs {
+        lines.push(format!("- {}", dir.display()));
+    }
+    lines.join("\n")
+}
+
+fn hydrate_local_file_links(text: String) -> String {
+    let mut out = text.clone();
+    for token in text.split_whitespace() {
+        let Some(raw) = token.strip_prefix("(file://").or_else(|| token.strip_prefix("file://")) else {
+            continue;
+        };
+        let path = raw.trim_end_matches(')');
+        if let Ok(body) = std::fs::read_to_string(path) {
+            let excerpt: String = body.chars().take(8_000).collect();
+            out.push_str(&format!("\n\n<resource uri=\"file://{path}\">\n{excerpt}\n</resource>"));
+        }
+    }
+    out
 }
 
 pub async fn handle_cancel(

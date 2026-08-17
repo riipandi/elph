@@ -65,18 +65,30 @@ where
         sessions: HashMap::new(),
         paths,
         settings,
+        client_fs_read: false,
+        client_elicitation_form: false,
     }));
 
     Agent
         .v2()
         .on_receive_request(
-            async move |initialize: InitializeRequest, responder, _connection| {
-                let _ = initialize;
-                let _ = responder.respond(
-                    InitializeResponse::new(ProtocolVersion::V2, capabilities::implementation())
-                        .capabilities(capabilities::agent_capabilities()),
-                );
-                Ok(())
+            {
+                let state = Arc::clone(&state);
+                async move |initialize: InitializeRequest, responder, _connection| {
+                    {
+                        let mut guard = state.lock();
+                        guard.client_elicitation_form = initialize
+                            .capabilities
+                            .elicitation
+                            .as_ref()
+                            .is_some_and(|e| e.form.is_some());
+                    }
+                    let _ = responder.respond(
+                        InitializeResponse::new(ProtocolVersion::V2, capabilities::implementation())
+                            .capabilities(capabilities::agent_capabilities()),
+                    );
+                    Ok(())
+                }
             },
             agent_client_protocol::on_receive_request!(),
         )

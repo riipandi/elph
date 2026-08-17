@@ -402,7 +402,7 @@ impl CodingAgentSession {
         // task to finish (never injected as a steer, never interrupting), and it
         // sets the intercom flag so this whole turn stays out of the transcript.
         let prompt = self.worker_inbound_prompt(&from_worker, &text, &msg.id);
-        if let Err(err) = self.run_prompt_turn(prompt).await {
+        if let Err(err) = self.run_prompt_turn(prompt, None).await {
             log::warn!("worker answer turn failed: {err:#}");
             self.reply_worker_answer_failed(&msg, &err.to_string()).await;
         }
@@ -633,6 +633,15 @@ impl CodingAgentSession {
     }
 
     pub async fn submit_prompt(&self, text: String, steer: bool) -> Result<()> {
+        self.submit_prompt_with(text, steer, None).await
+    }
+
+    pub async fn submit_prompt_with(
+        &self,
+        text: String,
+        steer: bool,
+        images: Option<Vec<elph_ai::ImageContent>>,
+    ) -> Result<()> {
         if steer {
             // Mid-turn interjection: enqueue only — never wait_for_idle / RunCompleted.
             return self.queue_steer(text).await;
@@ -643,11 +652,11 @@ impl CodingAgentSession {
         if let Err(err) = self.harness.touch_session_timestamp().await {
             log::debug!("touch session timestamp: {err:#}");
         }
-        self.run_prompt_turn(text).await
+        self.run_prompt_turn(text, images).await
     }
 
     /// Start a normal harness turn (blocks until idle, emits `RunCompleted`).
-    async fn run_prompt_turn(&self, text: String) -> Result<()> {
+    async fn run_prompt_turn(&self, text: String, images: Option<Vec<elph_ai::ImageContent>>) -> Result<()> {
         let _guard = self.turn_gate.lock().await;
         // Intercom (worker-message) answer turns — identified by their prompt
         // prefix — set the shared flag for the whole turn: wiring suppresses
@@ -664,7 +673,8 @@ impl CodingAgentSession {
         self.maybe_auto_compact(Some(&text)).await;
 
         let started = Instant::now();
-        let result = self.harness.prompt(text.clone(), None).await;
+        let options = images.map(|images| elph_agent::AgentHarnessPromptOptions { images: Some(images) });
+        let result = self.harness.prompt(text.clone(), options).await;
         match &result {
             Ok(message) => {
                 if message.stop_reason == StopReason::Error {
@@ -905,7 +915,7 @@ impl CodingAgentSession {
             Ok(()) => Ok(()),
             Err(err) if err.code == AgentHarnessErrorCode::InvalidState => {
                 log::debug!("follow_up while idle — starting a normal turn");
-                self.run_prompt_turn(trimmed.to_string()).await
+                self.run_prompt_turn(trimmed.to_string(), None).await
             }
             Err(err) => Err(anyhow::anyhow!("{err}")),
         }
@@ -923,7 +933,7 @@ impl CodingAgentSession {
             Ok(()) => Ok(()),
             Err(err) if err.code == AgentHarnessErrorCode::InvalidState => {
                 log::debug!("steer while idle — starting a normal turn");
-                self.run_prompt_turn(trimmed.to_string()).await
+                self.run_prompt_turn(trimmed.to_string(), None).await
             }
             Err(err) => Err(anyhow::anyhow!("{err}")),
         }

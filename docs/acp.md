@@ -25,16 +25,18 @@ Elph’s wire shape follows the same product conventions as [pi-acp](https://git
 
 - Working directory must be an **absolute** path.
 - Resume `cwd` must match the stored session cwd.
-- No ACP auth methods (credentials stay file/env).
+- No ACP auth methods yet (credentials stay file/env).
 - No audio prompts.
-- No Client `fs/*` or `terminal/*` execution (Elph uses its own tools).
+- File reads: `file://` prompt links are hydrated from disk (v1 also uses client `fs/read_text_file` when advertised). Writes and shell still run locally; client `terminal/*` is not used.
+- Display-only terminals are emitted for shell tool calls (`terminal_update` / `terminal_output_chunk`).
+- Prompt images are accepted and forwarded to the model when the session model supports image input.
 - Slash commands advertised after session setup are a **headless subset** of builtins (no TUI pickers such as `/model`, `/resume`, `/memory`, `/hotkeys`) plus prompt templates and skills.
 - Skills are advertised as `/skill:NAME` so they do not collide with prompt templates. Templates keep their raw name (e.g. `/review`).
 - `configOptions` advertise **model** (full live session catalog plus disk/embedded providers), **thought_level** (reasoning), and **mode** (ask/plan/build/brave).
 - On v1, Zed-style `modes` / `session/set_mode` are thinking levels (`off` … `max`), matching pi-acp. Agent permission mode stays on `configOptions.mode`.
 - Tool approval uses `session/request_permission` (allow once / session / all / reject).
 - Agent `request_mode_change` uses `session/request_permission`, applies the mode, then replies `true`/`false` to the tool (same contract as the TUI).
-- `ask_user_question` walks each step over `session/request_permission` (confirm, single-select, multi-select as per-option include). Free-text is not available on permission buttons; those steps offer default / skip / continue.
+- `ask_user_question` uses v2 `elicitation/create` forms when the client advertises form elicitation; otherwise each step uses `session/request_permission`.
 - Client `mcpServers` on `session/new`, `session/load`, and `session/resume` are overlaid on `mcp.json` (home ← project ← client; same name wins) and bound into the session tool registry.
 - `session/cancel` aborts the harness turn **and** marks in-flight tool calls cancelled (v2 status `cancelled`; v1 `failed` with output `cancelled`).
 
@@ -70,9 +72,10 @@ Updates: `agent_message_chunk` / `agent_thought_chunk`, `tool_call` then `tool_c
 `info`: same implementation fields.
 
 - `capabilities.session` (baseline methods)
-- `session.prompt.embeddedContext`
+- `session.prompt.embeddedContext` / `session.prompt.image`
 - `session.mcp.stdio` / `session.mcp.http`
 - `session.delete`
+- `session.additionalDirectories`
 
 Methods:
 
@@ -106,13 +109,11 @@ Unsupported transports (including ACP-over-MCP) are ignored with a warning. A fa
 3. Every tool id still in the open-tool set gets a terminal `tool_call_update`.
 4. v2 also emits idle `stopReason: cancelled`. v1 completes the held prompt with `stopReason: cancelled` when the stream notices the flag.
 
-## Later (not advertised)
+## Later
 
-- **Elicitation** — structured `session/elicitation` forms. User questions currently fall back to `session/request_permission`.
+- **Authentication** — ACP `authenticate` / `authMethods` not implemented; use file/env credentials.
 - **Extensions** — WASM extension slash commands are not listed in `available_commands_update`.
-- **Images** — not advertised; `submit_prompt` is text-only.
-- **`additionalDirectories`** — accepted on the wire but not applied as extra tool roots.
-- **ACP `fs/*` / `terminal/*`** — not used.
+- **Client `terminal/*` execution** — Elph runs shells locally and streams display-only terminals.
 
 ## Code
 

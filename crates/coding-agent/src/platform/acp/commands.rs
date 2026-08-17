@@ -316,6 +316,7 @@ pub async fn handle_slash(
                 session,
                 crate::agent::RETRY_CONTINUE_PROMPT.to_string(),
                 false,
+                None,
                 &ui_rx,
             )
             .await
@@ -329,6 +330,7 @@ pub async fn handle_slash(
                 session,
                 input.to_string(),
                 false,
+                None,
                 &ui_rx,
             )
             .await

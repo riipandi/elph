@@ -1,12 +1,13 @@
-//! `ask_user_question` via `session/request_permission` (choice UI).
-//!
-//! Free-text fields are not representable as permission options; those steps
-//! fall back to a default, skip, or continue. Structured elicitation forms
-//! remain a later TODO.
+//! `ask_user_question` via elicitation forms when the client supports them,
+//! otherwise `session/request_permission`.
 
 use std::collections::BTreeMap;
 
-use agent_client_protocol::schema::v2::{PermissionOption, PermissionOptionKind, RequestPermissionRequest, SessionId};
+use agent_client_protocol::schema::v2::{
+    CreateElicitationRequest, ElicitationAction, ElicitationFormMode, ElicitationMode, ElicitationSchema,
+    ElicitationScope, ElicitationSessionScope, PermissionOption, PermissionOptionKind, RequestPermissionRequest,
+    SessionId,
+};
 use agent_client_protocol::{Client, ConnectionTo};
 
 use crate::agent::{UserQuestionOption, UserQuestionRequest, UserQuestionStep};
@@ -16,7 +17,12 @@ pub async fn ask_user(
     connection: &ConnectionTo<Client>,
     session_id: &SessionId,
     req: UserQuestionRequest,
+    prefer_form: bool,
 ) -> anyhow::Result<()> {
+    if prefer_form && let Some(answer) = try_form(connection, session_id, &req.steps).await {
+        let _ = req.response_tx.send(answer);
+        return Ok(());
+    }
     let mut collected = BTreeMap::new();
     let total = req.steps.len().max(1);
     for (index, step) in req.steps.iter().enumerate() {
@@ -34,6 +40,54 @@ pub async fn ask_user(
     }
     let _ = req.response_tx.send(finalize_answers(&req.steps, &collected));
     Ok(())
+}
+
+async fn try_form(
+    connection: &ConnectionTo<Client>,
+    session_id: &SessionId,
+    steps: &[UserQuestionStep],
+) -> Option<String> {
+    let mut schema = ElicitationSchema::new().title("Questions");
+    for step in steps {
+        schema = schema.string(&step.id, step.required);
+    }
+    let message = steps
+        .iter()
+        .map(|s| format!("{}: {}", s.id, s.question))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let mode = ElicitationMode::Form(ElicitationFormMode::new(
+        ElicitationScope::Session(ElicitationSessionScope::new(session_id.clone())),
+        schema,
+    ));
+    let request = CreateElicitationRequest::new(mode, message);
+    let response = connection.send_request(request).block_task().await.ok()?;
+    match response.action {
+        ElicitationAction::Accept(accept) => {
+            let mut collected = BTreeMap::new();
+            if let Some(content) = accept.content {
+                for step in steps {
+                    if let Some(value) = content.get(&step.id) {
+                        collected.insert(step.id.clone(), elicitation_to_string(value));
+                    }
+                }
+            }
+            Some(finalize_answers(steps, &collected))
+        }
+        ElicitationAction::Decline | ElicitationAction::Cancel | _ => Some(String::new()),
+    }
+}
+
+fn elicitation_to_string(value: &agent_client_protocol::schema::v2::ElicitationContentValue) -> String {
+    use agent_client_protocol::schema::v2::ElicitationContentValue;
+    match value {
+        ElicitationContentValue::String(s) => s.clone(),
+        ElicitationContentValue::Boolean(b) => b.to_string(),
+        ElicitationContentValue::Integer(n) => n.to_string(),
+        ElicitationContentValue::Number(n) => n.to_string(),
+        ElicitationContentValue::StringArray(items) => serde_json::to_string(items).unwrap_or_default(),
+        _ => String::new(),
+    }
 }
 
 async fn ask_step(
