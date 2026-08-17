@@ -1,7 +1,15 @@
 //! ACP connection authentication (`authenticate` / `auth/login` + logout).
 //!
-//! Connection-scoped: logout does not delete `auth.json`. After logout, session
-//! operations fail with `auth_required` until the client logs in again.
+//! Connection-scoped: logout does not delete `auth.json`.
+//!
+//! Privileged (need credentials): `session/new`, `session/load`, `session/resume`,
+//! `session/prompt`, `session/set_mode`, `session/set_config_option`.
+//! Unprivileged: `initialize`, authenticate/login, logout, `session/list`,
+//! `session/close`, `session/delete`, `session/cancel`.
+//!
+//! If the connection is still anonymous and env/`auth.json` already has keys,
+//! privileged ops succeed without an extra authenticate call. After logout,
+//! those ops require an explicit login even if credentials remain on disk.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -9,7 +17,7 @@ use std::sync::Arc;
 use parking_lot::Mutex;
 
 use crate::agent::provider_api_key_env;
-use crate::platform::acp::state::AcpAgentState;
+use crate::platform::acp::state::{AcpAgentState, ConnectionAuth};
 use crate::utils::path::AppPaths;
 
 /// Accepts any env / `auth.json` credential already present on the machine.
@@ -66,17 +74,31 @@ pub fn is_known_method(method_id: &str) -> bool {
     method_id == METHOD_EXISTING || PROVIDER_METHODS.iter().any(|(id, _, _)| *id == method_id)
 }
 
+/// Gate for session create / resume / prompt / config — not list, close, cancel, or auth itself.
 pub fn require(state: &Arc<Mutex<AcpAgentState>>) -> Result<(), agent_client_protocol::Error> {
-    if state.lock().authenticated {
-        Ok(())
-    } else {
-        Err(agent_client_protocol::Error::auth_required().data(serde_json::json!(
-            "authentication required: call authenticate (v1) or auth/login (v2) with an advertised methodId"
-        )))
+    let (status, paths) = {
+        let guard = state.lock();
+        (guard.auth, guard.paths.clone())
+    };
+    match status {
+        ConnectionAuth::SignedIn => Ok(()),
+        ConnectionAuth::SignedOut => Err(auth_required_error(
+            "logged out: call authenticate (v1) or auth/login (v2) with an advertised methodId",
+        )),
+        ConnectionAuth::Anonymous => {
+            if has_any_credentials(&paths) {
+                state.lock().auth = ConnectionAuth::SignedIn;
+                Ok(())
+            } else {
+                Err(auth_required_error(
+                    "authentication required: call authenticate (v1) or auth/login (v2) with an advertised methodId",
+                ))
+            }
+        }
     }
 }
 
-/// Mark the connection authenticated when `method_id` has usable credentials.
+/// Mark the connection signed-in when `method_id` has usable credentials.
 pub fn login(state: &Arc<Mutex<AcpAgentState>>, method_id: &str) -> Result<(), agent_client_protocol::Error> {
     if !is_known_method(method_id) {
         return Err(agent_client_protocol::Error::invalid_params()
@@ -89,24 +111,28 @@ pub fn login(state: &Arc<Mutex<AcpAgentState>>, method_id: &str) -> Result<(), a
         has_provider_credentials(&paths, method_id)
     };
     if !ok {
-        return Err(agent_client_protocol::Error::auth_required().data(serde_json::json!(format!(
+        return Err(auth_required_error(&format!(
             "no credentials for `{method_id}`: set the provider env var or run `elph provider connect`, then retry"
-        ))));
+        )));
     }
-    state.lock().authenticated = true;
+    state.lock().auth = ConnectionAuth::SignedIn;
     Ok(())
 }
 
-/// End the connection's authenticated state and abort open sessions.
+/// End the connection's signed-in state and abort open sessions.
 pub async fn logout(state: &Arc<Mutex<AcpAgentState>>) {
     let keys: Vec<String> = {
         let mut guard = state.lock();
-        guard.authenticated = false;
+        guard.auth = ConnectionAuth::SignedOut;
         guard.sessions.keys().cloned().collect()
     };
     for key in keys {
         let _ = crate::platform::acp::session::close_by_id(state, &key).await;
     }
+}
+
+fn auth_required_error(message: &str) -> agent_client_protocol::Error {
+    agent_client_protocol::Error::auth_required().data(serde_json::json!(message))
 }
 
 pub fn has_any_credentials(paths: &crate::platform::Paths) -> bool {
@@ -172,5 +198,35 @@ mod tests {
     #[test]
     fn env_nonempty_rejects_blank() {
         assert!(!env_nonempty("ELPH_ACP_AUTH_TEST_UNSET_VAR_XYZ"));
+    }
+
+    fn test_state(auth: ConnectionAuth) -> Arc<Mutex<AcpAgentState>> {
+        let dir = std::env::temp_dir().join("elph-acp-auth-test");
+        Arc::new(Mutex::new(AcpAgentState {
+            sessions: std::collections::HashMap::new(),
+            paths: crate::platform::Paths::from_dirs(dir.clone(), dir.clone(), dir),
+            settings: crate::platform::Settings::defaults(),
+            client_fs_read: false,
+            client_elicitation_form: false,
+            auth,
+        }))
+    }
+
+    #[test]
+    fn require_after_logout_fails_even_if_env_has_keys() {
+        let state = test_state(ConnectionAuth::SignedOut);
+        assert!(require(&state).is_err());
+    }
+
+    #[test]
+    fn require_signed_in_ok() {
+        let state = test_state(ConnectionAuth::SignedIn);
+        assert!(require(&state).is_ok());
+    }
+
+    #[test]
+    fn login_unknown_method_is_invalid_params() {
+        let state = test_state(ConnectionAuth::Anonymous);
+        assert!(login(&state, "not-a-method").is_err());
     }
 }

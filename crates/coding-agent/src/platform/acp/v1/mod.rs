@@ -39,7 +39,7 @@ where
         settings,
         client_fs_read: false,
         client_elicitation_form: false,
-        authenticated: false,
+        auth: crate::platform::acp::state::ConnectionAuth::Anonymous,
     }));
 
     Agent

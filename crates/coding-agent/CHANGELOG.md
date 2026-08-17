@@ -19,7 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cancels in-flight tool calls. v2 keeps accept-then-`state_update`. Local shell is
   mirrored as display-only ACP terminals (not client `terminal/*`). ACP **auth**
   advertises `authMethods` and implements v1 `authenticate`/`logout` and v2
-  `auth/login`/`auth/logout`. After logout, session operations return `auth_required`.
+  `auth/login`/`auth/logout`. Privileged methods (`session/new`/`load`/`resume`/`prompt`,
+  set mode/config) require credentials; list/close/delete/cancel and initialize do not.
+  Existing env/`auth.json` keys allow privileged methods without an extra authenticate
+  call. After logout, those methods return `auth_required` until an explicit login.
   See `docs/acp.md`.
 
 ### Added

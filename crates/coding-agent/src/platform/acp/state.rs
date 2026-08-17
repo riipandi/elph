@@ -38,8 +38,20 @@ pub struct AcpAgentState {
     pub settings: Settings,
     pub client_fs_read: bool,
     pub client_elicitation_form: bool,
-    /// Connection-scoped ACP login. Cleared by logout; does not delete `auth.json`.
-    pub authenticated: bool,
+    /// Connection-scoped ACP login. Logout does not delete `auth.json`.
+    pub auth: ConnectionAuth,
+}
+
+/// Who may create sessions / prompt / change config on this connection.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum ConnectionAuth {
+    /// No login yet. Privileged ops may succeed via existing env/`auth.json`.
+    #[default]
+    Anonymous,
+    /// Explicit `authenticate`/`auth/login` or implicit existing-credentials.
+    SignedIn,
+    /// Client called logout. Privileged ops need an explicit login again.
+    SignedOut,
 }
 
 #[derive(Clone)]
