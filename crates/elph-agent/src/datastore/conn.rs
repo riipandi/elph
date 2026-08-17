@@ -63,13 +63,36 @@ pub fn is_lock_err(msg: &str) -> bool {
     lower.contains("locked") || lower.contains("locking") || lower.contains("busy")
 }
 
-/// Check if an external Turso error resembles an MVCC conflict.
+/// Check if a Turso open/build error is transient and worth retrying.
 ///
-/// Multiprocess WAL writes use serialized `BEGIN IMMEDIATE` transactions and do
-/// not enable MVCC; this classifier remains useful for diagnostics.
-pub fn is_mvcc_conflict_err(msg: &str) -> bool {
+/// A second Elph instance opening the same `.elph/store.db` under
+/// multiprocess WAL will either hit a lock error or one of Turso's
+/// "already open" authority messages. Both are transient: the opener
+/// releases the writer slot on its own schedule, and the retry loop
+/// absorbs the contention instead of failing fast.
+pub fn is_open_retryable(msg: &str) -> bool {
     let lower = msg.to_ascii_lowercase();
-    lower.contains("conflict") || lower.contains("busy snapshot")
+    is_lock_err(msg)
+        || lower.contains("already open")
+        || lower.contains("multiprocess wal")
+        || lower.contains("schema changed")
+        || lower.contains("schemaupdated")
+}
+
+/// Check if an external Turso error represents a multiprocess-WAL write conflict.
+///
+/// Under `experimental_multiprocess_wal(true)` writers across processes are
+/// serialized via a single cluster-wide writer slot. A second process that
+/// attempts to open or acquire the writer while the first holds it receives one
+/// of these messages. Turso MVCC (`BEGIN CONCURRENT`) is intentionally NOT
+/// enabled — it is incompatible with multiprocess WAL — so the only conflict
+/// surface is the serialized `BEGIN IMMEDIATE` writer slot.
+///
+/// This classifier is used to decide whether a write (or open) is worth
+/// retrying instead of failing through to the caller.
+pub fn is_write_conflict_err(msg: &str) -> bool {
+    let lower = msg.to_ascii_lowercase();
+    lower.contains("conflict") || lower.contains("busy snapshot") || lower.contains("busy")
 }
 
 /// Jittered exponential backoff: `BASE_DELAY * (1 + jitter) * min(attempt+1, 5)`.
@@ -95,7 +118,7 @@ pub async fn open_local_internal(path: &Path, configure: impl Fn(Builder) -> Bui
             }
             Err(e) => {
                 let msg = e.to_string();
-                if attempt >= MAX_RETRIES || !is_lock_err(&msg) {
+                if attempt >= MAX_RETRIES || !is_open_retryable(&msg) {
                     log::error!(
                         "Failed to open database after {attempt} attempts (database path: {}): {msg}",
                         path.display()
@@ -407,12 +430,22 @@ mod tests {
     }
 
     #[test]
-    fn is_mvcc_conflict_err_detects_conflicts() {
-        assert!(is_mvcc_conflict_err("conflict"));
-        assert!(is_mvcc_conflict_err("Busy snapshot"));
-        assert!(is_mvcc_conflict_err("transaction conflict"));
-        assert!(!is_mvcc_conflict_err("syntax error"));
-        assert!(!is_mvcc_conflict_err("no such table"));
+    fn is_write_conflict_err_detects_conflicts() {
+        assert!(is_write_conflict_err("conflict"));
+        assert!(is_write_conflict_err("Busy snapshot"));
+        assert!(is_write_conflict_err("transaction conflict"));
+        assert!(!is_write_conflict_err("syntax error"));
+        assert!(!is_write_conflict_err("no such table"));
+    }
+
+    #[test]
+    fn is_open_retryable_detects_transient_open_errors() {
+        assert!(is_open_retryable("Database is already open with experimental multiprocess WAL in another process"));
+        assert!(is_open_retryable("database is locked"));
+        assert!(is_open_retryable("Locking error"));
+        assert!(is_open_retryable("database is busy"));
+        assert!(!is_open_retryable("malformed database schema"));
+        assert!(!is_open_retryable("no such table"));
     }
 
     #[tokio::test]

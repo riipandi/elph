@@ -23,6 +23,21 @@ pub fn is_lock_err(msg: &str) -> bool {
     lower.contains("locked") || lower.contains("locking") || lower.contains("busy")
 }
 
+/// Check if a Turso open/build error is transient and worth retrying.
+///
+/// Mirrors `elph_agent::datastore::is_open_retryable`: a second process opening
+/// the same database under multiprocess WAL hits either a lock error or one of
+/// Turso's "already open" authority messages. Both clear once the opener
+/// releases the cluster writer slot, so the retry loop absorbs them.
+pub fn is_open_retryable(msg: &str) -> bool {
+    let lower = msg.to_ascii_lowercase();
+    is_lock_err(msg)
+        || lower.contains("already open")
+        || lower.contains("multiprocess wal")
+        || lower.contains("schema changed")
+        || lower.contains("schemaupdated")
+}
+
 fn jitter_delay(attempt: u32) -> u64 {
     let jitter: f64 = rand::rng().random();
     (BASE_DELAY_MS as f64 * (1.0 + jitter) * (attempt as f64 + 1.0).min(5.0)) as u64
@@ -56,10 +71,6 @@ fn validate_local_database_path(path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn multiprocess_wal_memory(b: Builder) -> Builder {
-    b.experimental_multiprocess_wal(true).experimental_index_method(true)
-}
-
 async fn open_local_internal(path: &Path, configure: impl Fn(Builder) -> Builder) -> Result<Database> {
     validate_local_database_path(path)?;
     let mut attempt = 0u32;
@@ -71,7 +82,7 @@ async fn open_local_internal(path: &Path, configure: impl Fn(Builder) -> Builder
             Ok(db) => return Ok(db),
             Err(error) => {
                 let message = error.to_string();
-                if attempt >= MAX_RETRIES || !is_lock_err(&message) {
+                if attempt >= MAX_RETRIES || !is_open_retryable(&message) {
                     return Err(error).with_context(|| format!("open_local: {}", path.display()));
                 }
                 log::warn!("Database open attempt {} failed with lock error: {message}", attempt + 1);
@@ -89,7 +100,7 @@ async fn connect_retry(db: &Database) -> Result<Connection> {
             Ok(conn) => return Ok(conn),
             Err(error) => {
                 let message = error.to_string();
-                if attempt >= MAX_RETRIES || !is_lock_err(&message) {
+                if attempt >= MAX_RETRIES || !is_open_retryable(&message) {
                     return Err(error).context("connect: connection failed");
                 }
                 log::warn!("Database connection attempt {} failed: {message}", attempt + 1);
@@ -130,7 +141,7 @@ pub async fn open_memory_db(db_path: &str) -> Result<Database> {
     ensure_parent(db_path)?;
     timeout(
         Duration::from_millis(DB_OPEN_TIMEOUT_MS),
-        open_local_internal(Path::new(db_path), multiprocess_wal_memory),
+        open_local_internal(Path::new(db_path), multiprocess_wal),
     )
     .await
     .map_err(|_| anyhow::anyhow!("database open timeout after {DB_OPEN_TIMEOUT_MS}ms"))?

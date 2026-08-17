@@ -18,7 +18,7 @@ The integration is not yet safe to classify as production-ready for concurrent O
 
 1. Sidecar cleanup uses WAL modification time as a proxy for process liveness.
 2. WAL recovery can remove an active `-wal` file and treats generic open errors as WAL corruption.
-3. The transaction helper is named and documented as MVCC but uses serialized `BEGIN IMMEDIATE`.
+3. ~~The transaction helper is named and documented as MVCC but uses serialized `BEGIN IMMEDIATE`.~~ **Resolved:** the helper is `with_write_transaction` and the conflict classifier is `is_write_conflict_err`; no Turso MVCC is enabled (MVCC is incompatible with multiprocess WAL).
 4. Lock retry does not cover all transaction phases, especially `BEGIN IMMEDIATE`.
 5. No true two-process integration test proves that the Rust SDK can open and write the same file concurrently.
 6. Session indexes are cached in memory and can become stale when another process writes the same session.
@@ -158,7 +158,7 @@ The classifier also treats the generic message `unable to open database file` as
 
 ### The helper is not MVCC
 
-`with_mvcc_transaction` issues:
+Previous revisions used a `with_mvcc_transaction` name and a public `is_mvcc_conflict_err` classifier that implied Turso MVCC. Both were renamed to reflect the actual model:
 
 ```sql
 BEGIN IMMEDIATE
@@ -172,7 +172,7 @@ The current behavior is therefore:
 multiprocess WAL + serialized BEGIN IMMEDIATE
 ```
 
-It is not MVCC. The helper name and comments should not claim MVCC or `BEGIN CONCURRENT` semantics.
+The transaction helper is now `with_write_transaction`, and the conflict classifier is `is_write_conflict_err` (classifies the serialized-writer-slot conflict surface, since MVCC is intentionally not enabled). The open path uses `is_open_retryable`, which retries on lock errors and Turso's "already open" multiprocess-WAL authority messages so a second Elph instance can absorb contention instead of failing fast.
 
 ### Retry coverage is incomplete
 

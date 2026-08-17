@@ -526,7 +526,7 @@ fn maybe_heal_stale_leaves(index: SessionIndex) -> Result<(SessionIndex, Vec<Str
     Ok((healed, stale_ids))
 }
 
-/// Delete the given stale `Leaf` rows from `session_entries` in one MVCC transaction.
+/// Delete the given stale `Leaf` rows from `session_entries` in one serialized WAL transaction.
 ///
 /// Called only after `maybe_heal_stale_leaves` decided to heal (>= threshold).
 /// Best-effort but transactional: if the delete fails the open still succeeds

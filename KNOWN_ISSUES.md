@@ -34,8 +34,7 @@ Use one long-lived `Arc<Database>` per process and avoid opening the same sessio
 1. Verify the pinned Turso version includes the upstream multiprocess WAL Rust SDK lock fixes.
 2. Add a two-process test harness for open, concurrent writes, snapshots, checkpointing, and crash/reopen recovery.
 3. Replace mtime-based sidecar liveness and automatic deletion with an ownership-safe recovery policy.
-4. Define serialized WAL transaction semantics explicitly and correct the misleading MVCC naming/comments.
-5. Make migration startup and session-level read-modify-write behavior safe under concurrent processes.
+4. Make migration startup and session-level read-modify-write behavior safe under concurrent processes.
 
 ## 2026-07-04
 
