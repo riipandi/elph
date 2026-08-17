@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** `elph acp` is ACP **v2 only**. The previous thin v1 adapter (`initialize` +
+  `session/new` + blocking `session/prompt`) is removed. Clients must negotiate
+  `protocolVersion: 2`. Prompt acceptance is immediate (`{}`); completion is an idle
+  `state_update`. The agent now implements session list/resume/close/delete, cancel,
+  tool-call updates, display terminals, plans, permissions, slash advertisement, and
+  config options. See `docs/acp.md`.
+
 ### Added
 
 - Coding agent now follows a `<response_style>` section (Simplified Technical English,

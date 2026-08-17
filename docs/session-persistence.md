@@ -100,7 +100,7 @@ This is separate from retention GC and is best-effort: a session with `turn_coun
 | `/export [path]` | Writes the **full** session DAG as JSONL (`SessionTreeEntry` per line). Default path: `./elph-session-<shortid>.jsonl`. |
 | `/import <path.jsonl>` | Creates a **new** Turso session for the current project, appends all lines, then switches the TUI to that session (`/resume` equivalent). CLI: `elph import <file>`. |
 | `/tree` | **Interactive picker** (Pi TreeSelector modes). ↑↓, type-to-search, **Tab** / **Ctrl+O** cycle mode, **Enter** jump, **Ctrl+Enter** jump+summary, **Esc** cancel. |
-| `/tree <entry_id> [--summary]` | Non-interactive navigate (scriptable / ACP). Reloads transcript for the new leaf. |
+| `/tree <entry_id> [--summary]` | Non-interactive navigate (scriptable / ACP v2 `session/prompt`). Reloads transcript for the new leaf. |
 | `/tree --branch` | Interactive picker limited to the active branch path. |
 | `/resume` | **Interactive session picker** for this project. ↑↓ / filter / Enter to switch. |
 | `/resume <session_id>` | Switch directly without the picker. |
