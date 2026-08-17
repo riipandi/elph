@@ -28,6 +28,8 @@ pub struct AcpSessionState {
     pub cancelled: Arc<AtomicBool>,
     pub ids: MessageIds,
     pub open_tools: Arc<Mutex<HashSet<String>>>,
+    /// Tool-call ids whose local shell is mirrored as a display-only ACP terminal.
+    pub open_shells: Arc<Mutex<HashSet<String>>>,
 }
 
 pub struct AcpAgentState {

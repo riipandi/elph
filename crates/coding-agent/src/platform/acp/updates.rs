@@ -232,11 +232,14 @@ pub async fn stream_ui_events(
             AgentUiEvent::ToolStart {
                 id, name, args_summary, ..
             } => {
-                tools::track_tool_start(state, session_id, &id);
+                tools::track_tool_start(state, session_id, &id, &name);
                 tools::on_tool_start(connection, session_id, &id, &name, &args_summary)?;
+                if super::terminals::is_local_shell_tool(&name) {
+                    tools::on_shell_start(state, connection, session_id, &id, &args_summary)?;
+                }
             }
             AgentUiEvent::ToolUpdate { id, output } => {
-                tools::on_tool_update(connection, session_id, &id, &output)?;
+                tools::on_tool_update(state, connection, session_id, &id, &output)?;
             }
             AgentUiEvent::ToolEnd {
                 id,
@@ -244,8 +247,8 @@ pub async fn stream_ui_events(
                 output,
                 details,
             } => {
+                tools::on_tool_end(state, connection, session_id, &id, is_error, &output, &details)?;
                 tools::track_tool_end(state, session_id, &id);
-                tools::on_tool_end(connection, session_id, &id, is_error, &output, &details)?;
             }
             AgentUiEvent::TodoUpdated { items } => {
                 plan::on_todos(connection, session_id, &items)?;

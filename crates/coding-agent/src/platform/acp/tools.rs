@@ -29,16 +29,36 @@ pub fn kind_for_tool(name: &str) -> ToolKind {
     }
 }
 
-pub fn track_tool_start(state: &Arc<Mutex<AcpAgentState>>, session_id: &SessionId, id: &str) {
+pub fn track_tool_start(state: &Arc<Mutex<AcpAgentState>>, session_id: &SessionId, id: &str, name: &str) {
     if let Some(entry) = state.lock().sessions.get(&session_key(session_id)) {
         entry.open_tools.lock().insert(id.to_string());
+        if terminals::is_local_shell_tool(name) {
+            entry.open_shells.lock().insert(id.to_string());
+        }
     }
 }
 
 pub fn track_tool_end(state: &Arc<Mutex<AcpAgentState>>, session_id: &SessionId, id: &str) {
     if let Some(entry) = state.lock().sessions.get(&session_key(session_id)) {
         entry.open_tools.lock().remove(id);
+        entry.open_shells.lock().remove(id);
     }
+}
+
+fn session_cwd(state: &Arc<Mutex<AcpAgentState>>, session_id: &SessionId) -> Option<std::path::PathBuf> {
+    state
+        .lock()
+        .sessions
+        .get(&session_key(session_id))
+        .map(|entry| entry.cwd.clone())
+}
+
+fn is_tracked_shell(state: &Arc<Mutex<AcpAgentState>>, session_id: &SessionId, id: &str) -> bool {
+    state
+        .lock()
+        .sessions
+        .get(&session_key(session_id))
+        .is_some_and(|entry| entry.open_shells.lock().contains(id))
 }
 
 pub fn take_open_tools(state: &Arc<Mutex<AcpAgentState>>, session_id: &str) -> Vec<String> {
@@ -67,13 +87,22 @@ pub fn on_tool_start(
         update = update.locations(vec![ToolCallLocation::new(path)]);
     }
     send_update(connection, session_id, SessionUpdate::ToolCallUpdate(update))?;
-    if matches!(kind, ToolKind::Execute) {
-        terminals::on_shell_start(connection, session_id, id, args_summary)?;
-    }
     Ok(())
 }
 
+pub fn on_shell_start(
+    state: &Arc<Mutex<AcpAgentState>>,
+    connection: &ConnectionTo<Client>,
+    session_id: &SessionId,
+    id: &str,
+    command: &str,
+) -> anyhow::Result<()> {
+    let cwd = session_cwd(state, session_id);
+    terminals::on_shell_start(connection, session_id, id, command, cwd.as_deref())
+}
+
 pub fn on_tool_update(
+    state: &Arc<Mutex<AcpAgentState>>,
     connection: &ConnectionTo<Client>,
     session_id: &SessionId,
     id: &str,
@@ -89,10 +118,14 @@ pub fn on_tool_update(
             )))),
         )),
     )?;
-    terminals::on_shell_output(connection, session_id, id, output)
+    if is_tracked_shell(state, session_id, id) {
+        terminals::on_shell_output(connection, session_id, id, output)?;
+    }
+    Ok(())
 }
 
 pub fn on_tool_end(
+    state: &Arc<Mutex<AcpAgentState>>,
     connection: &ConnectionTo<Client>,
     session_id: &SessionId,
     id: &str,
@@ -106,15 +139,21 @@ pub fn on_tool_end(
         ToolCallStatus::Completed
     };
     let mut content = tool_end_content(details, output);
-    content.push(ToolCallContent::Terminal(agent_client_protocol::schema::v2::Terminal::new(
-        terminals::terminal_id(id),
-    )));
+    let shell = is_tracked_shell(state, session_id, id);
+    if shell {
+        content.push(ToolCallContent::Terminal(agent_client_protocol::schema::v2::Terminal::new(
+            terminals::terminal_id(id),
+        )));
+    }
     let update = ToolCallUpdate::new(id)
         .status(status)
         .content(content)
         .raw_output(json!({ "output": output, "details": details }));
     send_update(connection, session_id, SessionUpdate::ToolCallUpdate(update))?;
-    terminals::on_shell_exit(connection, session_id, id, is_error)
+    if shell {
+        terminals::on_shell_exit(connection, session_id, id, is_error)?;
+    }
+    Ok(())
 }
 
 pub fn cancel_open_tools(
@@ -122,16 +161,33 @@ pub fn cancel_open_tools(
     connection: &ConnectionTo<Client>,
     session_id: &SessionId,
 ) -> anyhow::Result<()> {
-    let ids = take_open_tools(state, &session_key(session_id));
+    let key = session_key(session_id);
+    let shells = state
+        .lock()
+        .sessions
+        .get(&key)
+        .map(|entry| entry.open_shells.lock().drain().collect::<Vec<_>>())
+        .unwrap_or_default();
+    let ids = take_open_tools(state, &key);
     for id in ids {
-        let update = ToolCallUpdate::new(id)
+        let was_shell = shells.iter().any(|s| s == &id);
+        let mut content = vec![ToolCallContent::Content(Box::new(
+            agent_client_protocol::schema::v2::Content::new(ContentBlock::Text(TextContent::new(
+                "cancelled".to_string(),
+            ))),
+        ))];
+        if was_shell {
+            content.push(ToolCallContent::Terminal(agent_client_protocol::schema::v2::Terminal::new(
+                terminals::terminal_id(&id),
+            )));
+        }
+        let update = ToolCallUpdate::new(id.clone())
             .status(ToolCallStatus::Other("cancelled".into()))
-            .content(vec![ToolCallContent::Content(Box::new(
-                agent_client_protocol::schema::v2::Content::new(ContentBlock::Text(TextContent::new(
-                    "cancelled".to_string(),
-                ))),
-            ))]);
+            .content(content);
         send_update(connection, session_id, SessionUpdate::ToolCallUpdate(update))?;
+        if was_shell {
+            terminals::on_shell_cancelled(connection, session_id, &id)?;
+        }
     }
     Ok(())
 }

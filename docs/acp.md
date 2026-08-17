@@ -27,8 +27,8 @@ Elph’s wire shape follows the same product conventions as [pi-acp](https://git
 - Resume `cwd` must match the stored session cwd.
 - No ACP auth methods yet (credentials stay file/env).
 - No audio prompts.
-- File reads: `file://` prompt links are hydrated from disk (v1 also uses client `fs/read_text_file` when advertised). Writes and shell still run locally; client `terminal/*` is not used.
-- Display-only terminals are emitted for shell tool calls (`terminal_update` / `terminal_output_chunk`).
+- File reads: `file://` prompt links are hydrated from disk (v1 also uses client `fs/read_text_file` when advertised). Writes stay local. Elph does **not** call client `fs/write_text_file`.
+- Shell runs **locally** (`shell_exec` / `shell_use`). The agent streams display-only `terminal_update` / `terminal_output_chunk` (command, cwd, base64 output, exit code or `SIGINT` on cancel). It does **not** advertise or call client `terminal/*`. Non-shell tools never get a terminal id.
 - Prompt images are accepted and forwarded to the model when the session model supports image input.
 - Slash commands advertised after session setup are a **headless subset** of builtins (no TUI pickers such as `/model`, `/resume`, `/memory`, `/hotkeys`) plus prompt templates and skills.
 - Skills are advertised as `/skill:NAME` so they do not collide with prompt templates. Templates keep their raw name (e.g. `/review`). Invoking a skill runs `harness.skill` (full SKILL.md), not a raw `/skill:…` user prompt.
@@ -83,7 +83,7 @@ Methods:
 | Method | Notes |
 |---|---|
 | `initialize` | Protocol version 2 only |
-| `session/new` | Answered first; `available_commands_update` + MCP attach after |
+| `session/new` | Answered first; MCP attach, then catalog refresh, then `available_commands_update` |
 | `session/list` | Same listing as v1 |
 | `session/resume` | Optional `replayFrom: start` |
 | `session/close` / `session/delete` | Same host as v1 |
@@ -110,11 +110,13 @@ Unsupported transports (including ACP-over-MCP) are ignored with a warning. A fa
 3. Every tool id still in the open-tool set gets a terminal `tool_call_update`.
 4. v2 also emits idle `stopReason: cancelled`. v1 completes the held prompt with `stopReason: cancelled` when the stream notices the flag.
 
-## Later
+## Later / client limitations
 
-- **Authentication** — ACP `authenticate` / `authMethods` not implemented; use file/env credentials.
+- **Authentication** — ACP `authenticate` / `authMethods` / `logout` are **not** implemented and **not** advertised. Clients that require in-protocol login will not work; use file/env credentials (`auth.json`, provider env vars).
 - **Extensions** — WASM extension slash commands are not listed in `available_commands_update`.
-- **Client `terminal/*` execution** — Elph runs shells locally and streams display-only terminals.
+- **Client `terminal/*`** — not used. Local shell + display-only terminal updates only.
+
+Wire tests: `crates/coding-agent/tests/acp_wire.rs` (initialize, capability ads, relative-cwd, cancel-then-new). Unit tests cover slash catalog, permission option mapping, and display-only terminal encoding. A full in-process `session/new` + prompt turn is not in CI (needs a live session store / multi-thread runtime). CLI flag tests: `tests/acp.rs`. There is no automated Zed UI smoke.
 
 ## Code
 
@@ -132,4 +134,4 @@ Unsupported transports (including ACP-over-MCP) are ignored with a warning. A fa
 | `prompt.rs` | v2 prompt ack + cancel |
 | `updates.rs` | v2 `session/update` stream |
 
-Wire tests: `crates/coding-agent/tests/acp_wire.rs` (initialize + capability ads + relative-cwd error + cancel-then-new). CLI flag tests: `tests/acp.rs`.
+Wire tests: `crates/coding-agent/tests/acp_wire.rs`. CLI flag tests: `tests/acp.rs`.

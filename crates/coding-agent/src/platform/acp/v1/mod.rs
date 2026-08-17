@@ -93,26 +93,34 @@ where
             {
                 let state = Arc::clone(&state);
                 async move |request: LoadSessionRequest, responder, connection| {
-                    match open_or_create(
-                        &state,
-                        &request.cwd,
-                        request.additional_directories.clone(),
-                        Some(request.session_id.0.as_ref()),
-                    )
-                    .await
-                    {
-                        Ok(id) => {
-                            let (modes, options) = v1_config_extras(&state, &id).await;
-                            let _ = responder.respond(LoadSessionResponse::new().modes(modes).config_options(options));
-                            if let Ok((session, _, _)) = lookup_session(&state, &id) {
-                                let _ = replay_v1(&connection, &id, &session).await;
+                    let state = Arc::clone(&state);
+                    let conn = connection.clone();
+                    if let Err(error) = connection.spawn(async move {
+                        match open_or_create(
+                            &state,
+                            &request.cwd,
+                            request.additional_directories.clone(),
+                            Some(request.session_id.0.as_ref()),
+                        )
+                        .await
+                        {
+                            Ok(id) => {
+                                let (modes, options) = v1_config_extras(&state, &id).await;
+                                let _ =
+                                    responder.respond(LoadSessionResponse::new().modes(modes).config_options(options));
+                                if let Ok((session, _, _)) = lookup_session(&state, &id) {
+                                    let _ = replay_v1(&conn, &id, &session).await;
+                                }
+                                v1_after_open(&state, &conn, &id, mcp::map_v1_servers(&request.mcp_servers)).await;
                             }
-                            v1_after_open(&state, &connection, &id, mcp::map_v1_servers(&request.mcp_servers)).await;
+                            Err(error) => {
+                                let _ = responder
+                                    .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                            }
                         }
-                        Err(error) => {
-                            let _ = responder
-                                .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
-                        }
+                        Ok(())
+                    }) {
+                        log::warn!("ACP v1 session/load spawn failed: {error}");
                     }
                     Ok(())
                 }
@@ -123,24 +131,31 @@ where
             {
                 let state = Arc::clone(&state);
                 async move |request: ResumeSessionRequest, responder, connection| {
-                    match open_or_create(
-                        &state,
-                        &request.cwd,
-                        request.additional_directories.clone(),
-                        Some(request.session_id.0.as_ref()),
-                    )
-                    .await
-                    {
-                        Ok(id) => {
-                            let (modes, options) = v1_config_extras(&state, &id).await;
-                            let _ =
-                                responder.respond(ResumeSessionResponse::new().modes(modes).config_options(options));
-                            v1_after_open(&state, &connection, &id, mcp::map_v1_servers(&request.mcp_servers)).await;
+                    let state = Arc::clone(&state);
+                    let conn = connection.clone();
+                    if let Err(error) = connection.spawn(async move {
+                        match open_or_create(
+                            &state,
+                            &request.cwd,
+                            request.additional_directories.clone(),
+                            Some(request.session_id.0.as_ref()),
+                        )
+                        .await
+                        {
+                            Ok(id) => {
+                                let (modes, options) = v1_config_extras(&state, &id).await;
+                                let _ = responder
+                                    .respond(ResumeSessionResponse::new().modes(modes).config_options(options));
+                                v1_after_open(&state, &conn, &id, mcp::map_v1_servers(&request.mcp_servers)).await;
+                            }
+                            Err(error) => {
+                                let _ = responder
+                                    .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                            }
                         }
-                        Err(error) => {
-                            let _ = responder
-                                .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
-                        }
+                        Ok(())
+                    }) {
+                        log::warn!("ACP v1 session/resume spawn failed: {error}");
                     }
                     Ok(())
                 }
@@ -705,6 +720,7 @@ async fn stream_v1(
                     state,
                     &agent_client_protocol::schema::v2::SessionId::from(key.to_string()),
                     &id,
+                    &name,
                 );
                 let call = ToolCall::new(id, name.clone())
                     .kind(map_kind(&name))

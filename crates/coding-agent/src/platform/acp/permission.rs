@@ -83,3 +83,17 @@ fn map_choice(option_id: Option<String>) -> ToolApprovalChoice {
         _ => ToolApprovalChoice::Reject,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn maps_permission_option_ids() {
+        assert_eq!(map_choice(Some("allow-once".into())), ToolApprovalChoice::Approve);
+        assert_eq!(map_choice(Some("allow-session".into())), ToolApprovalChoice::AllowSession);
+        assert_eq!(map_choice(Some("allow-all".into())), ToolApprovalChoice::AllowAllTools);
+        assert_eq!(map_choice(Some("reject".into())), ToolApprovalChoice::Reject);
+        assert_eq!(map_choice(None), ToolApprovalChoice::Reject);
+    }
+}

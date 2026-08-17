@@ -1,4 +1,10 @@
-//! Display-only terminal updates for shell tools.
+//! Display-only terminal updates for **local** shell tools.
+//!
+//! Elph runs `shell_exec` / `shell_use` in-process and streams
+//! `terminal_update` / `terminal_output_chunk` so a client can render output.
+//! It does **not** call client `terminal/*` (create / exec / wait / kill).
+
+use std::path::Path;
 
 use agent_client_protocol::schema::v2::{
     SessionId, SessionUpdate, TerminalExitStatus, TerminalOutputChunk, TerminalUpdate,
@@ -6,6 +12,10 @@ use agent_client_protocol::schema::v2::{
 use agent_client_protocol::{Client, ConnectionTo};
 
 use crate::platform::acp::updates::send_update;
+
+pub fn is_local_shell_tool(name: &str) -> bool {
+    matches!(name, "shell_exec" | "shell_use")
+}
 
 pub fn terminal_id(tool_call_id: &str) -> String {
     format!("term_{tool_call_id}")
@@ -16,8 +26,12 @@ pub fn on_shell_start(
     session_id: &SessionId,
     tool_call_id: &str,
     command: &str,
+    cwd: Option<&Path>,
 ) -> anyhow::Result<()> {
-    let update = TerminalUpdate::new(terminal_id(tool_call_id)).command(command.to_string());
+    let mut update = TerminalUpdate::new(terminal_id(tool_call_id)).command(command.to_string());
+    if let Some(cwd) = cwd.filter(|p| p.is_absolute()) {
+        update = update.cwd(cwd.to_path_buf());
+    }
     send_update(connection, session_id, SessionUpdate::TerminalUpdate(update))
 }
 
@@ -27,6 +41,9 @@ pub fn on_shell_output(
     tool_call_id: &str,
     output: &str,
 ) -> anyhow::Result<()> {
+    if output.is_empty() {
+        return Ok(());
+    }
     send_update(
         connection,
         session_id,
@@ -43,7 +60,28 @@ pub fn on_shell_exit(
     tool_call_id: &str,
     is_error: bool,
 ) -> anyhow::Result<()> {
-    let status = TerminalExitStatus::new().exit_code(if is_error { 1 } else { 0 });
+    emit_exit(
+        connection,
+        session_id,
+        tool_call_id,
+        TerminalExitStatus::new().exit_code(if is_error { 1 } else { 0 }),
+    )
+}
+
+pub fn on_shell_cancelled(
+    connection: &ConnectionTo<Client>,
+    session_id: &SessionId,
+    tool_call_id: &str,
+) -> anyhow::Result<()> {
+    emit_exit(connection, session_id, tool_call_id, TerminalExitStatus::new().signal("SIGINT"))
+}
+
+fn emit_exit(
+    connection: &ConnectionTo<Client>,
+    session_id: &SessionId,
+    tool_call_id: &str,
+    status: TerminalExitStatus,
+) -> anyhow::Result<()> {
     send_update(
         connection,
         session_id,
@@ -74,4 +112,26 @@ fn encode_base64(bytes: &[u8]) -> String {
         i += 3;
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn shell_tools_are_local_only() {
+        assert!(is_local_shell_tool("shell_exec"));
+        assert!(is_local_shell_tool("shell_use"));
+        assert!(!is_local_shell_tool("read_file"));
+        assert!(!is_local_shell_tool("mcp_x__run"));
+    }
+
+    #[test]
+    fn base64_encodes_padding() {
+        assert_eq!(encode_base64(b""), "");
+        assert_eq!(encode_base64(b"f"), "Zg==");
+        assert_eq!(encode_base64(b"fo"), "Zm8=");
+        assert_eq!(encode_base64(b"foo"), "Zm9v");
+        assert_eq!(encode_base64(b"hello"), "aGVsbG8=");
+    }
 }

@@ -296,6 +296,7 @@ pub(super) async fn open_or_create(
             cancelled: Arc::new(AtomicBool::new(false)),
             ids: MessageIds::new(),
             open_tools: Arc::new(Mutex::new(std::collections::HashSet::new())),
+            open_shells: Arc::new(Mutex::new(std::collections::HashSet::new())),
         },
     );
     Ok(key)

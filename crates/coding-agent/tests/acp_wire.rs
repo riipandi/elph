@@ -94,6 +94,7 @@ async fn spawn_agent(mode: AcpMode) -> (BufReader<tokio::io::DuplexStream>, toki
     let (server_writer, client_reader) = tokio::io::duplex(64 * 1024);
 
     tokio::spawn(async move {
+        let _tmp = tmp;
         let _ = run_agent_on(
             paths,
             settings,
