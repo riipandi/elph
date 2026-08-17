@@ -4,7 +4,7 @@ set -euo pipefail
 
 app="${APP:?APP is required (elph)}"
 target="${TARGET_VERSION:?TARGET_VERSION is required}"
-manifest="${app}/Cargo.toml"
+manifest="$("$(dirname "$0")/ci-app-manifest.sh" "$app")"
 
 if [[ ! -f "$manifest" ]]; then
     echo "Manifest not found: $manifest" >&2

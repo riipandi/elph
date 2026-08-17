@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+name: CI Elph
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "crates/coding-agent/**"
+      - "crates/elph-agent/**"
+      - "crates/elph-ai/**"
+      - "crates/elph-tui/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - "Makefile"
+      - ".github/**"
+  pull_request:
+    paths:
+      - "crates/coding-agent/**"
+      - "crates/elph-agent/**"
+      - "crates/elph-ai/**"
+      - "crates/elph-tui/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - "Makefile"
+      - ".github/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-elph-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    uses: ./.github/workflows/_ci-app.yml
+    secrets: inherit
+    with:
+      app: elph
+      mode: full

@@ -5,7 +5,7 @@
 set -euo pipefail
 
 app="${APP:?APP is required (elph)}"
-manifest="${app}/Cargo.toml"
+manifest="$("$(dirname "$0")/ci-app-manifest.sh" "$app")"
 output="${GITHUB_OUTPUT:?GITHUB_OUTPUT is required}"
 
 if [[ ! -f "$manifest" ]]; then

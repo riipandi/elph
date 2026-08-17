@@ -15,10 +15,15 @@ on:
         type: string
         default: ci
       mode:
-        description: Quality gate mode (full = all steps, check = fmt+check+lint only)
+        description: Quality gate mode (full = fmt+check+lint+test+debug build; check = fmt+check+lint)
         required: false
         type: string
         default: full
+    secrets:
+      SCCACHE_R2_ACCESS_KEY_ID:
+        required: false
+      SCCACHE_R2_SECRET_ACCESS_KEY:
+        required: false
 
 permissions:
   contents: read
@@ -26,6 +31,11 @@ permissions:
 env:
   CI: true
   BINSTALL_DISABLE_TELEMETRY: true
+  AWS_ACCESS_KEY_ID: ${{ secrets.SCCACHE_R2_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.SCCACHE_R2_SECRET_ACCESS_KEY }}
+  SCCACHE_BUCKET: ${{ vars.SCCACHE_R2_BUCKET }}
+  SCCACHE_ENDPOINT: ${{ vars.SCCACHE_R2_ENDPOINT }}
+  SCCACHE_REGION: ${{ vars.SCCACHE_R2_REGION || 'auto' }}
 
 jobs:
   quality:
@@ -33,9 +43,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-14]
-        # os: [depot-ubuntu-24.04, depot-macos-26]
-        # os: [namespace-profile-macos-base-arm64, namespace-profile-linux-base-amd64]
+        os:
+          - namespace-profile-linux-base-amd64
+          - namespace-profile-macos-base-arm64
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:
@@ -45,10 +55,8 @@ jobs:
         uses: ./.github/setup-rust
         with:
           sharedKey: ${{ inputs.sharedKeyPrefix }}-${{ inputs.app }}-${{ matrix.os }}
+          cacheBackend: namespace
           saveCache: ${{ github.ref == 'refs/heads/main' }}
-
-      - name: Configure sccache (namespace)
-        run: nsc cache sccache setup --cache_name default >> "$GITHUB_ENV"
 
       - name: Check formatting
         run: cargo fmt --all --check
@@ -63,7 +71,7 @@ jobs:
         if: inputs.mode == 'full'
         run: make test-${{ inputs.app }}
 
-      - name: Build release binary
+      - name: Build debug binary
         if: inputs.mode == 'full'
         run: make build-${{ inputs.app }}
         env:

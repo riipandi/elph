@@ -10,6 +10,12 @@ on:
         required: true
         type: string
 
+    secrets:
+      SCCACHE_R2_ACCESS_KEY_ID:
+        required: false
+      SCCACHE_R2_SECRET_ACCESS_KEY:
+        required: false
+
 permissions:
   contents: write
 
@@ -17,6 +23,11 @@ env:
   CI: true
   BINSTALL_DISABLE_TELEMETRY: true
   RELEASE_ALLOWED_ACTORS: ${{ vars.RELEASE_ALLOWED_ACTORS }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.SCCACHE_R2_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.SCCACHE_R2_SECRET_ACCESS_KEY }}
+  SCCACHE_BUCKET: ${{ vars.SCCACHE_R2_BUCKET }}
+  SCCACHE_ENDPOINT: ${{ vars.SCCACHE_R2_ENDPOINT }}
+  SCCACHE_REGION: ${{ vars.SCCACHE_R2_REGION || 'auto' }}
 
 jobs:
   release-auth:
@@ -39,6 +50,7 @@ jobs:
     needs: version-gate
     if: needs.version-gate.outputs.should_continue == 'true'
     uses: ./.github/workflows/_ci-app.yml
+    secrets: inherit
     with:
       app: ${{ inputs.app }}
       sharedKeyPrefix: release
@@ -48,7 +60,7 @@ jobs:
     name: Build Linux (${{ inputs.app }})
     needs: [version-gate, quality-gate]
     if: needs.version-gate.outputs.should_continue == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: namespace-profile-linux-base-amd64
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
@@ -63,10 +75,8 @@ jobs:
         uses: ./.github/setup-rust
         with:
           sharedKey: release-linux
+          cacheBackend: namespace
           installNextest: "false"
-
-      - name: Configure sccache (namespace)
-        run: nsc cache sccache setup --cache_name default >> "$GITHUB_ENV"
 
       - name: Build Linux release
         run: cargo build --release --bin ${{ inputs.app }}
@@ -101,7 +111,7 @@ jobs:
     name: Build macOS (${{ inputs.app }})
     needs: [version-gate, quality-gate]
     if: needs.version-gate.outputs.should_continue == 'true'
-    runs-on: macos-14
+    runs-on: namespace-profile-macos-base-arm64
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
@@ -116,10 +126,8 @@ jobs:
         uses: ./.github/setup-rust
         with:
           sharedKey: release-macos
+          cacheBackend: namespace
           installNextest: "false"
-
-      - name: Configure sccache (namespace)
-        run: nsc cache sccache setup --cache_name default >> "$GITHUB_ENV"
 
       - name: Build macOS release
         run: make release-macos
@@ -144,7 +152,7 @@ jobs:
     name: Build Windows (${{ inputs.app }})
     needs: [version-gate, quality-gate]
     if: needs.version-gate.outputs.should_continue == 'true'
-    runs-on: windows-2024
+    runs-on: namespace-profile-windows-base-amd64
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
@@ -160,10 +168,8 @@ jobs:
         uses: ./.github/setup-rust
         with:
           sharedKey: release-windows
+          cacheBackend: namespace
           installNextest: "false"
-
-      - name: Configure sccache (namespace)
-        run: nsc cache sccache setup --cache_name default >> "$GITHUB_ENV"
 
       - name: Build Windows release
         shell: bash
@@ -279,7 +285,7 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "${APP}/Cargo.toml" Cargo.lock
+          git add crates/coding-agent/Cargo.toml Cargo.lock
           if git diff --cached --quiet; then
             echo "No version changes to commit"
             exit 0

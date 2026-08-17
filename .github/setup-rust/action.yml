@@ -5,8 +5,13 @@ description: Prepare Rust toolchain, caches, and CI tools
 
 inputs:
   sharedKey:
-    description: Cache key prefix (e.g. ci-ubuntu-24.04)
-    required: true
+    description: Cache key prefix (e.g. ci-ubuntu-24.04). Ignored when cacheBackend is namespace.
+    required: false
+    default: ci
+  cacheBackend:
+    description: rust-cache (GitHub Actions cache) or namespace (Cache Volume). sccache always uses Cloudflare R2 when SCCACHE_BUCKET is set.
+    required: false
+    default: rust-cache
   installNextest:
     description: Install cargo-nextest for running tests
     required: false
@@ -15,12 +20,16 @@ inputs:
     description: Install cross and rustup targets for release builds
     required: false
     default: "false"
+  installSccache:
+    description: Install sccache (needed when cacheBackend is namespace)
+    required: false
+    default: "false"
   crossPlatform:
     description: Limit rustup targets to a release platform (linux, macos, windows)
     required: false
     default: ""
   saveCache:
-    description: "Whether to save the cargo cache (default: true)"
+    description: "Whether to save the cargo cache (default: true). Ignored for namespace."
     required: false
     default: "true"
 
@@ -34,7 +43,7 @@ runs:
         components: clippy, rustfmt
 
     - name: Install CI tools with cargo-binstall
-      if: inputs.installNextest == 'true' || inputs.installCross == 'true'
+      if: inputs.installNextest == 'true' || inputs.installCross == 'true' || inputs.installSccache == 'true' || inputs.cacheBackend == 'namespace'
       shell: bash
       run: |
         set -euo pipefail
@@ -45,6 +54,11 @@ runs:
         fi
         if [ "${{ inputs.installNextest }}" = "true" ] && ! command -v cargo-nextest >/dev/null 2>&1; then
           cargo binstall --locked -y cargo-nextest
+        fi
+        if [ "${{ inputs.installSccache }}" = "true" ] || [ "${{ inputs.cacheBackend }}" = "namespace" ]; then
+          if ! command -v sccache >/dev/null 2>&1; then
+            cargo binstall --locked -y sccache
+          fi
         fi
         if [ "${{ inputs.installCross }}" = "true" ]; then
           if ! command -v cross >/dev/null 2>&1; then
@@ -60,12 +74,8 @@ runs:
           done
         fi
 
-    - name: Setup sccache
-      uses: mozilla-actions/sccache-action@v0.0.10
-      with:
-        version: "v0.10.0"
-
     - name: Setup Cargo cache
+      if: inputs.cacheBackend == 'rust-cache'
       uses: swatinem/rust-cache@v2.9.1
       with:
         cache-on-failure: true
@@ -73,12 +83,26 @@ runs:
         cache-bin: false
         save-if: ${{ inputs.saveCache }}
 
-    - name: Export Rust CI environment
+    - name: Setup Cargo cache (Namespace volume)
+      if: inputs.cacheBackend == 'namespace'
+      uses: namespacelabs/nscloud-cache-action@v1
+      with:
+        cache: rust
+
+    - name: Configure sccache (Cloudflare R2)
       shell: bash
       run: |
+        set -euo pipefail
         {
           echo "RUSTC_WRAPPER=sccache"
-          echo "SCCACHE_GHA_ENABLED=true"
           echo "CARGO_TERM_COLOR=always"
           echo "CARGO_INCREMENTAL=0"
+          echo "SCCACHE_DIRECT=true"
+          echo "SCCACHE_MAXSIZE=50G"
+          echo "SCCACHE_S3_USE_SSL=true"
         } >> "$GITHUB_ENV"
+        if [ -n "${SCCACHE_BUCKET:-}" ]; then
+          echo "SCCACHE_REGION=${SCCACHE_REGION:-auto}" >> "$GITHUB_ENV"
+        else
+          echo "SCCACHE_BUCKET is unset; sccache will run without a remote cache" >&2
+        fi

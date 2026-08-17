@@ -6,7 +6,7 @@ set -euo pipefail
 
 app="${APP:?APP is required (elph)}"
 tag="${GITHUB_REF_NAME:?GITHUB_REF_NAME is required (e.g. elph-v0.0.28)}"
-manifest="${app}/Cargo.toml"
+manifest="$("$(dirname "$0")/ci-app-manifest.sh" "$app")"
 output="${GITHUB_OUTPUT:?GITHUB_OUTPUT is required}"
 prefix="${app}-v"
 
