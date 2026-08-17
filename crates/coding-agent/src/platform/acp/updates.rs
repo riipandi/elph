@@ -124,7 +124,7 @@ pub async fn stream_ui_events(
 
     while let Some(event) = rx.recv().await {
         if cancelled(state, session_id) {
-            tools::cancel_open_tools(connection, session_id)?;
+            tools::cancel_open_tools(state, connection, session_id)?;
             send_idle(connection, session_id, StopReason::Cancelled)?;
             return Ok(());
         }
@@ -143,6 +143,7 @@ pub async fn stream_ui_events(
             AgentUiEvent::ToolStart {
                 id, name, args_summary, ..
             } => {
+                tools::track_tool_start(state, session_id, &id);
                 tools::on_tool_start(connection, session_id, &id, &name, &args_summary)?;
             }
             AgentUiEvent::ToolUpdate { id, output } => {
@@ -154,6 +155,7 @@ pub async fn stream_ui_events(
                 output,
                 details,
             } => {
+                tools::track_tool_end(state, session_id, &id);
                 tools::on_tool_end(connection, session_id, &id, is_error, &output, &details)?;
             }
             AgentUiEvent::TodoUpdated { items } => {

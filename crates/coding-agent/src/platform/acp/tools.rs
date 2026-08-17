@@ -1,12 +1,16 @@
 //! Tool-call updates, kinds, locations, diffs, and shell terminals.
 
+use std::sync::Arc;
+
 use agent_client_protocol::schema::v2::{
     ContentBlock, SessionId, SessionUpdate, TextContent, ToolCallContent, ToolCallContentChunk, ToolCallLocation,
     ToolCallStatus, ToolCallUpdate, ToolKind,
 };
 use agent_client_protocol::{Client, ConnectionTo};
+use parking_lot::Mutex;
 use serde_json::json;
 
+use crate::platform::acp::state::{AcpAgentState, session_key};
 use crate::platform::acp::terminals;
 use crate::platform::acp::updates::send_update;
 
@@ -23,6 +27,27 @@ pub fn kind_for_tool(name: &str) -> ToolKind {
         other if other.starts_with("mcp_") => ToolKind::Other,
         _ => ToolKind::Other,
     }
+}
+
+pub fn track_tool_start(state: &Arc<Mutex<AcpAgentState>>, session_id: &SessionId, id: &str) {
+    if let Some(entry) = state.lock().sessions.get(&session_key(session_id)) {
+        entry.open_tools.lock().insert(id.to_string());
+    }
+}
+
+pub fn track_tool_end(state: &Arc<Mutex<AcpAgentState>>, session_id: &SessionId, id: &str) {
+    if let Some(entry) = state.lock().sessions.get(&session_key(session_id)) {
+        entry.open_tools.lock().remove(id);
+    }
+}
+
+pub fn take_open_tools(state: &Arc<Mutex<AcpAgentState>>, session_id: &str) -> Vec<String> {
+    state
+        .lock()
+        .sessions
+        .get(session_id)
+        .map(|entry| entry.open_tools.lock().drain().collect())
+        .unwrap_or_default()
 }
 
 pub fn on_tool_start(
@@ -89,8 +114,22 @@ pub fn on_tool_end(
     terminals::on_shell_exit(connection, session_id, id, is_error)
 }
 
-pub fn cancel_open_tools(connection: &ConnectionTo<Client>, _session_id: &SessionId) -> anyhow::Result<()> {
-    let _ = connection;
+pub fn cancel_open_tools(
+    state: &Arc<Mutex<AcpAgentState>>,
+    connection: &ConnectionTo<Client>,
+    session_id: &SessionId,
+) -> anyhow::Result<()> {
+    let ids = take_open_tools(state, &session_key(session_id));
+    for id in ids {
+        let update = ToolCallUpdate::new(id)
+            .status(ToolCallStatus::Other("cancelled".into()))
+            .content(vec![ToolCallContent::Content(Box::new(
+                agent_client_protocol::schema::v2::Content::new(ContentBlock::Text(TextContent::new(
+                    "cancelled".to_string(),
+                ))),
+            ))]);
+        send_update(connection, session_id, SessionUpdate::ToolCallUpdate(update))?;
+    }
     Ok(())
 }
 

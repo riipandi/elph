@@ -18,16 +18,20 @@ use agent_client_protocol::schema::v1::{
     SetSessionConfigOptionResponse, SetSessionModeRequest, SetSessionModeResponse, StopReason, TextContent, ToolCall,
     ToolCallStatus, ToolCallUpdate, ToolKind,
 };
-use agent_client_protocol::{Agent, Client, ConnectionTo, Result as AcpResult, Stdio};
+use agent_client_protocol::{Agent, Client, ConnectionTo, Result as AcpResult};
 use parking_lot::Mutex;
 
 use crate::agent::AgentUiEvent;
 use crate::platform::acp::config::{ConfigCategory, apply_config_value, parse_thought, session_config};
+use crate::platform::acp::mcp;
 use crate::platform::acp::session::{close_by_id, list_session_rows, open_or_create};
 use crate::platform::acp::state::{AcpAgentState, lookup_session};
 use crate::platform::{Paths, Settings};
 
-pub async fn run(paths: Paths, settings: Settings) -> AcpResult<()> {
+pub async fn run_with<T>(paths: Paths, settings: Settings, transport: T) -> AcpResult<()>
+where
+    T: agent_client_protocol::ConnectTo<Agent> + 'static,
+{
     let state = Arc::new(Mutex::new(AcpAgentState {
         sessions: HashMap::new(),
         paths,
@@ -54,6 +58,7 @@ pub async fn run(paths: Paths, settings: Settings) -> AcpResult<()> {
                 async move |request: NewSessionRequest, responder, connection| {
                     match open_or_create(&state, &request.cwd, request.additional_directories.clone(), None).await {
                         Ok(id) => {
+                            attach_v1_mcp(&state, &id, mcp::map_v1_servers(&request.mcp_servers)).await;
                             let (modes, options) = advertise_v1(&state, &connection, &id).await;
                             let _ = responder.respond(
                                 NewSessionResponse::new(SessionId::from(id))
@@ -84,6 +89,7 @@ pub async fn run(paths: Paths, settings: Settings) -> AcpResult<()> {
                     .await
                     {
                         Ok(id) => {
+                            attach_v1_mcp(&state, &id, mcp::map_v1_servers(&request.mcp_servers)).await;
                             if let Ok((session, _, _)) = lookup_session(&state, &id) {
                                 let _ = replay_v1(&connection, &id, &session).await;
                             }
@@ -113,6 +119,7 @@ pub async fn run(paths: Paths, settings: Settings) -> AcpResult<()> {
                     .await
                     {
                         Ok(id) => {
+                            attach_v1_mcp(&state, &id, mcp::map_v1_servers(&request.mcp_servers)).await;
                             let (modes, options) = advertise_v1(&state, &connection, &id).await;
                             let _ =
                                 responder.respond(ResumeSessionResponse::new().modes(modes).config_options(options));
@@ -263,21 +270,54 @@ pub async fn run(paths: Paths, settings: Settings) -> AcpResult<()> {
         .on_receive_notification(
             {
                 let state = Arc::clone(&state);
-                async move |notification: CancelNotification, _connection| {
+                async move |notification: CancelNotification, connection| {
                     let key = notification.session_id.0.as_ref().to_string();
                     if let Ok((session, _, _)) = lookup_session(&state, &key) {
                         if let Some(entry) = state.lock().sessions.get(&key) {
                             entry.cancelled.store(true, Ordering::Relaxed);
                         }
                         let _ = session.abort().await;
+                        let _ = cancel_v1_open_tools(&state, &connection, &key);
                     }
                     Ok(())
                 }
             },
             agent_client_protocol::on_receive_notification!(),
         )
-        .connect_to(Stdio::new())
+        .connect_to(transport)
         .await
+}
+
+async fn attach_v1_mcp(
+    state: &Arc<Mutex<AcpAgentState>>,
+    session_id: &str,
+    servers: Vec<(String, elph_agent::McpServerConfig)>,
+) {
+    if servers.is_empty() {
+        return;
+    }
+    let paths = state.lock().paths.clone();
+    if let Ok((session, _, _)) = lookup_session(state, session_id)
+        && let Err(error) = mcp::attach_client_servers(&session, &paths, servers).await
+    {
+        log::warn!("ACP v1 mcpServers attach: {error:#}");
+    }
+}
+
+fn cancel_v1_open_tools(
+    state: &Arc<Mutex<AcpAgentState>>,
+    connection: &ConnectionTo<Client>,
+    session_id: &str,
+) -> anyhow::Result<()> {
+    let ids = crate::platform::acp::tools::take_open_tools(state, session_id);
+    for id in ids {
+        notify(
+            connection,
+            session_id,
+            SessionUpdate::ToolCallUpdate(v1_tool_update(id, ToolCallStatus::Failed, "cancelled".into())),
+        )?;
+    }
+    Ok(())
 }
 
 async fn advertise_v1(
@@ -346,6 +386,11 @@ fn v1_capabilities() -> AgentCapabilities {
     AgentCapabilities::new()
         .load_session(true)
         .prompt_capabilities(PromptCapabilities::new().embedded_context(true))
+        .mcp_capabilities(
+            agent_client_protocol::schema::v1::McpCapabilities::new()
+                .http(true)
+                .sse(true),
+        )
         .session_capabilities(
             agent_client_protocol::schema::v1::SessionCapabilities::new()
                 .list(SessionListCapabilities::new())
@@ -501,6 +546,11 @@ async fn stream_v1(
             AgentUiEvent::ToolStart {
                 id, name, args_summary, ..
             } => {
+                crate::platform::acp::tools::track_tool_start(
+                    state,
+                    &agent_client_protocol::schema::v2::SessionId::from(key.to_string()),
+                    &id,
+                );
                 let call = ToolCall::new(id, name.clone())
                     .kind(map_kind(&name))
                     .status(ToolCallStatus::InProgress)
@@ -517,6 +567,11 @@ async fn stream_v1(
             AgentUiEvent::ToolEnd {
                 id, is_error, output, ..
             } => {
+                crate::platform::acp::tools::track_tool_end(
+                    state,
+                    &agent_client_protocol::schema::v2::SessionId::from(key.to_string()),
+                    &id,
+                );
                 let status = if is_error {
                     ToolCallStatus::Failed
                 } else {

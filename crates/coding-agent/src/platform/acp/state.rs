@@ -1,6 +1,6 @@
 //! Shared ACP connection state.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -28,6 +28,7 @@ pub struct AcpSessionState {
     pub running: Arc<AtomicBool>,
     pub cancelled: Arc<AtomicBool>,
     pub ids: MessageIds,
+    pub open_tools: Arc<Mutex<HashSet<String>>>,
 }
 
 pub struct AcpAgentState {

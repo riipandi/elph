@@ -35,7 +35,7 @@ use agent_client_protocol::schema::v2::{
     ListSessionsRequest, NewSessionRequest, PromptRequest, ResumeSessionRequest, SetSessionConfigOptionRequest,
     SetSessionConfigOptionResponse,
 };
-use agent_client_protocol::{Agent, Result as AcpResult, Stdio};
+use agent_client_protocol::{Agent, ConnectTo, Result as AcpResult, Stdio};
 use parking_lot::Mutex;
 
 use crate::platform::acp::state::{AcpAgentState, lookup_session, session_key};
@@ -43,13 +43,24 @@ use crate::platform::{Paths, Settings};
 
 /// Run Elph as an ACP agent on stdio.
 pub async fn run_agent_stdio(paths: Paths, settings: Settings, mode: AcpMode) -> AcpResult<()> {
+    run_agent_on(paths, settings, mode, Stdio::new()).await
+}
+
+/// Run the ACP agent on an arbitrary transport (stdio or in-process streams).
+pub async fn run_agent_on<T>(paths: Paths, settings: Settings, mode: AcpMode, transport: T) -> AcpResult<()>
+where
+    T: ConnectTo<Agent> + 'static,
+{
     match mode {
-        AcpMode::V1 => v1::run(paths, settings).await,
-        AcpMode::V2 => run_v2(paths, settings).await,
+        AcpMode::V1 => v1::run_with(paths, settings, transport).await,
+        AcpMode::V2 => run_v2_with(paths, settings, transport).await,
     }
 }
 
-async fn run_v2(paths: Paths, settings: Settings) -> AcpResult<()> {
+async fn run_v2_with<T>(paths: Paths, settings: Settings, transport: T) -> AcpResult<()>
+where
+    T: ConnectTo<Agent> + 'static,
+{
     let state = Arc::new(Mutex::new(AcpAgentState {
         sessions: HashMap::new(),
         paths,
@@ -208,7 +219,7 @@ async fn run_v2(paths: Paths, settings: Settings) -> AcpResult<()> {
             },
             agent_client_protocol::on_receive_notification!(),
         )
-        .connect_to(Stdio::new())
+        .connect_to(transport)
         .await
 }
 

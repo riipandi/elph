@@ -1,4 +1,7 @@
-//! User questions via permission fallback (elicitation form when types exist).
+//! User questions via permission fallback.
+//!
+//! TODO(later): ACP elicitation forms (`session/elicitation`) — not advertised yet.
+//! TODO(later): WASM extension slash commands in `available_commands_update`.
 
 use agent_client_protocol::schema::v2::{PermissionOption, PermissionOptionKind, RequestPermissionRequest, SessionId};
 use agent_client_protocol::{Client, ConnectionTo};

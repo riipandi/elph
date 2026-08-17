@@ -30,12 +30,16 @@ pub async fn create_session(
         anyhow::bail!("cwd must be an absolute path");
     }
     let additional: Vec<PathBuf> = request.additional_directories.iter().map(|p| p.0.clone()).collect();
-    let _ = mcp::map_servers(&request.mcp_servers);
+    let client_mcp = mcp::map_servers(&request.mcp_servers);
 
     let session_id = open_or_create(state, &cwd, additional, None).await?;
     let sid = SessionId::from(session_id.clone());
     after_open(state, connection, &sid).await?;
     let (session, _, _) = lookup_session(state, &session_id)?;
+    let paths = state.lock().paths.clone();
+    if let Err(error) = mcp::attach_client_servers(&session, &paths, client_mcp).await {
+        log::warn!("ACP mcpServers attach: {error:#}");
+    }
     let settings = state.lock().settings.clone();
     Ok(NewSessionResponse::new(sid).config_options(config::config_options(&session, &settings).await))
 }
@@ -50,7 +54,7 @@ pub async fn resume_session(
         anyhow::bail!("cwd must be an absolute path");
     }
     let additional: Vec<PathBuf> = request.additional_directories.iter().map(|p| p.0.clone()).collect();
-    let _ = mcp::map_servers(&request.mcp_servers);
+    let client_mcp = mcp::map_servers(&request.mcp_servers);
     let resume_id = request.session_id.0.to_string();
     let session_id = open_or_create(state, &cwd, additional, Some(&resume_id)).await?;
     let sid = SessionId::from(session_id.clone());
@@ -62,6 +66,10 @@ pub async fn resume_session(
 
     after_open(state, connection, &sid).await?;
     let (session, _, _) = lookup_session(state, &session_id)?;
+    let paths = state.lock().paths.clone();
+    if let Err(error) = mcp::attach_client_servers(&session, &paths, client_mcp).await {
+        log::warn!("ACP mcpServers attach: {error:#}");
+    }
     let settings = state.lock().settings.clone();
     Ok(ResumeSessionResponse::new().config_options(config::config_options(&session, &settings).await))
 }
@@ -231,6 +239,7 @@ pub(super) async fn open_or_create(
             running: Arc::new(AtomicBool::new(false)),
             cancelled: Arc::new(AtomicBool::new(false)),
             ids: MessageIds::new(),
+            open_tools: Arc::new(Mutex::new(std::collections::HashSet::new())),
         },
     );
     Ok(key)

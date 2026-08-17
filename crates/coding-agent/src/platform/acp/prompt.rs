@@ -71,6 +71,7 @@ pub async fn handle_cancel(
         entry.cancelled.store(true, Ordering::Relaxed);
     }
     let _ = session.abort().await;
+    crate::platform::acp::tools::cancel_open_tools(state, connection, &notification.session_id)?;
     send_idle(connection, &notification.session_id, StopReason::Cancelled)?;
     Ok(())
 }
