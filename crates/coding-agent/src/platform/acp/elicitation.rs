@@ -18,8 +18,9 @@ pub async fn ask_user(
     session_id: &SessionId,
     req: UserQuestionRequest,
     prefer_form: bool,
+    cancel: Option<std::sync::Arc<tokio::sync::Notify>>,
 ) -> anyhow::Result<()> {
-    if prefer_form && let Some(answer) = try_form(connection, session_id, &req.steps).await {
+    if prefer_form && let Some(answer) = try_form(connection, session_id, &req.steps, cancel.clone()).await {
         let _ = req.response_tx.send(answer);
         return Ok(());
     }
@@ -31,7 +32,7 @@ pub async fn ask_user(
         } else {
             step.question.clone()
         };
-        let answer = ask_step(connection, session_id, &title, step).await;
+        let answer = ask_step(connection, session_id, &title, step, cancel.clone()).await;
         if answer.is_none() && step.required {
             let _ = req.response_tx.send(String::new());
             return Ok(());
@@ -46,6 +47,7 @@ async fn try_form(
     connection: &ConnectionTo<Client>,
     session_id: &SessionId,
     steps: &[UserQuestionStep],
+    cancel: Option<std::sync::Arc<tokio::sync::Notify>>,
 ) -> Option<String> {
     let mut schema = ElicitationSchema::new().title("Questions");
     for step in steps {
@@ -61,7 +63,16 @@ async fn try_form(
         schema,
     ));
     let request = CreateElicitationRequest::new(mode, message);
-    let response = connection.send_request(request).block_task().await.ok()?;
+    let pending = connection.send_request(request).block_task();
+    tokio::pin!(pending);
+    let response = if let Some(cancel) = cancel {
+        tokio::select! {
+            result = &mut pending => result.ok()?,
+            _ = cancel.notified() => return Some(String::new()),
+        }
+    } else {
+        pending.await.ok()?
+    };
     match response.action {
         ElicitationAction::Accept(accept) => {
             let mut collected = BTreeMap::new();
@@ -95,17 +106,18 @@ async fn ask_step(
     session_id: &SessionId,
     title: &str,
     step: &UserQuestionStep,
+    cancel: Option<std::sync::Arc<tokio::sync::Notify>>,
 ) -> Option<String> {
     if step.allow_multiple {
-        return ask_multi(connection, session_id, title, step).await;
+        return ask_multi(connection, session_id, title, step, cancel).await;
     }
     if is_confirm(step) {
-        return ask_confirm(connection, session_id, title, step).await;
+        return ask_confirm(connection, session_id, title, step, cancel).await;
     }
     if let Some(options) = step.options.as_ref().filter(|opts| !opts.is_empty()) {
-        return ask_select(connection, session_id, title, step, options).await;
+        return ask_select(connection, session_id, title, step, options, cancel).await;
     }
-    ask_text_fallback(connection, session_id, title, step).await
+    ask_text_fallback(connection, session_id, title, step, cancel).await
 }
 
 async fn ask_confirm(
@@ -113,6 +125,7 @@ async fn ask_confirm(
     session_id: &SessionId,
     title: &str,
     step: &UserQuestionStep,
+    cancel: Option<std::sync::Arc<tokio::sync::Notify>>,
 ) -> Option<String> {
     let mut options = vec![
         PermissionOption::new("true", "Yes", PermissionOptionKind::AllowOnce),
@@ -121,7 +134,7 @@ async fn ask_confirm(
     if !step.required {
         options.push(PermissionOption::new("skip", "Skip", PermissionOptionKind::RejectOnce));
     }
-    match send_choice(connection, session_id, title, step_description(step), options).await {
+    match send_choice(connection, session_id, title, step_description(step), options, cancel).await {
         Some(id) if id != "skip" => Some(id),
         Some(_) => Some(String::new()),
         None => None,
@@ -134,6 +147,7 @@ async fn ask_select(
     title: &str,
     step: &UserQuestionStep,
     choices: &[UserQuestionOption],
+    cancel: Option<std::sync::Arc<tokio::sync::Notify>>,
 ) -> Option<String> {
     let mut options: Vec<PermissionOption> = choices
         .iter()
@@ -157,7 +171,7 @@ async fn ask_select(
     if !step.required {
         options.push(PermissionOption::new("skip", "Skip", PermissionOptionKind::RejectOnce));
     }
-    match send_choice(connection, session_id, title, step_description(step), options).await {
+    match send_choice(connection, session_id, title, step_description(step), options, cancel).await {
         Some(id) if id != "skip" => Some(id),
         Some(_) => Some(String::new()),
         None => None,
@@ -169,9 +183,10 @@ async fn ask_multi(
     session_id: &SessionId,
     title: &str,
     step: &UserQuestionStep,
+    cancel: Option<std::sync::Arc<tokio::sync::Notify>>,
 ) -> Option<String> {
     let Some(choices) = step.options.as_ref().filter(|opts| !opts.is_empty()) else {
-        return ask_text_fallback(connection, session_id, title, step).await;
+        return ask_text_fallback(connection, session_id, title, step, cancel).await;
     };
     let mut selected = Vec::new();
     for (i, opt) in choices.iter().enumerate() {
@@ -181,7 +196,7 @@ async fn ask_multi(
             PermissionOption::new("no", "Do not include", PermissionOptionKind::RejectOnce),
         ];
         let desc = format!("Option {}/{}: {}", i + 1, choices.len(), opt.hint.clone().unwrap_or_default());
-        if send_choice(connection, session_id, &opt_title, desc, options)
+        if send_choice(connection, session_id, &opt_title, desc, options, cancel.clone())
             .await
             .as_deref()
             == Some("yes")
@@ -200,6 +215,7 @@ async fn ask_text_fallback(
     session_id: &SessionId,
     title: &str,
     step: &UserQuestionStep,
+    cancel: Option<std::sync::Arc<tokio::sync::Notify>>,
 ) -> Option<String> {
     let mut options = Vec::new();
     if let Some(default) = step.default.as_ref().filter(|d| !d.is_empty()) {
@@ -221,7 +237,7 @@ async fn ask_text_fallback(
         "{}\nACP clients can only pick options here; type a follow-up message for free text.",
         step_description(step)
     );
-    match send_choice(connection, session_id, title, desc, options).await {
+    match send_choice(connection, session_id, title, desc, options, cancel).await {
         Some(id) if id == "ok" => Some(step.default.clone().unwrap_or_default()),
         Some(id) if id != "skip" => Some(id),
         Some(_) => Some(String::new()),
@@ -235,13 +251,14 @@ async fn send_choice(
     title: &str,
     description: String,
     options: Vec<PermissionOption>,
+    cancel: Option<std::sync::Arc<tokio::sync::Notify>>,
 ) -> Option<String> {
     if options.is_empty() {
         return None;
     }
     let request =
         RequestPermissionRequest::new(session_id.clone(), title.to_string(), options).description(description);
-    send_permission(connection, request).await
+    send_permission(connection, request, cancel).await
 }
 
 fn is_confirm(step: &UserQuestionStep) -> bool {

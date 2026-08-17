@@ -12,9 +12,11 @@ use parking_lot::Mutex;
 use tokio::sync::mpsc;
 
 use crate::agent::{AgentUiEvent, ToolApprovalChoice};
+use crate::platform::acp::limits::truncate_text;
 use crate::platform::acp::permission;
 use crate::platform::acp::plan;
-use crate::platform::acp::state::{AcpAgentState, session_key};
+use crate::platform::acp::state::MessageIds;
+use crate::platform::acp::state::{AcpAgentState, session_cancel_notify, session_key, session_stream_gate};
 use crate::platform::acp::tools;
 
 pub fn send_update(
@@ -117,7 +119,7 @@ pub async fn drive_turn(
 ) -> anyhow::Result<()> {
     mark_running(state, session_id);
     send_running(connection, session_id)?;
-    let submit = session.submit_prompt_with(text, steer, images);
+    let submit = async move { session.submit_prompt_with(text, steer, images).await };
     race_submit_and_stream(state, connection, session_id, submit, ui_rx).await
 }
 
@@ -132,7 +134,7 @@ pub async fn drive_skill(
 ) -> anyhow::Result<()> {
     mark_running(state, session_id);
     send_running(connection, session_id)?;
-    let submit = session.invoke_skill(&name, &args);
+    let submit = async move { session.invoke_skill(&name, &args).await };
     race_submit_and_stream(state, connection, session_id, submit, ui_rx).await
 }
 
@@ -147,7 +149,7 @@ pub async fn drive_template(
 ) -> anyhow::Result<()> {
     mark_running(state, session_id);
     send_running(connection, session_id)?;
-    let submit = session.prompt_from_template(&name, &args);
+    let submit = async move { session.prompt_from_template(&name, &args).await };
     race_submit_and_stream(state, connection, session_id, submit, ui_rx).await
 }
 
@@ -159,28 +161,38 @@ async fn race_submit_and_stream<F>(
     ui_rx: &Arc<tokio::sync::Mutex<mpsc::UnboundedReceiver<AgentUiEvent>>>,
 ) -> anyhow::Result<()>
 where
-    F: std::future::Future<Output = anyhow::Result<()>>,
+    F: std::future::Future<Output = anyhow::Result<()>> + Send + 'static,
 {
+    let key = session_key(session_id);
+    let cancel = session_cancel_notify(state, &key);
+    let gate = session_stream_gate(state, &key);
+    let submit = tokio::spawn(submit);
+
+    let Some(gate) = gate else {
+        return submit.await.unwrap_or_else(|e| Err(anyhow::anyhow!("{e}")));
+    };
+    let Ok(_stream_permit) = gate.try_lock() else {
+        // Another turn owns the UI stream; this submit (steer) still runs.
+        return submit.await.unwrap_or_else(|e| Err(anyhow::anyhow!("{e}")));
+    };
+
     let ids = {
         let guard = state.lock();
-        guard
-            .sessions
-            .get(&session_key(session_id))
-            .map(|s| s.ids.clone())
-            .unwrap_or_default()
+        guard.sessions.get(&key).map(|s| s.ids.clone()).unwrap_or_default()
     };
     let mut ctx = StreamCtx {
-        agent_msg: ids.next("msg_agent"),
-        thought_msg: ids.next("msg_thought"),
+        ids,
+        agent_msg: String::new(),
+        thought_msg: String::new(),
         saw_text: false,
         agent_text: String::new(),
     };
-    let mut rx = ui_rx.lock().await;
-    while rx.try_recv().is_ok() {}
+    ctx.rotate_messages();
 
-    tokio::pin!(submit);
+    let mut submit = submit;
     let mut submit_done = false;
     let mut submit_err = None;
+    let mut pending: std::collections::VecDeque<AgentUiEvent> = std::collections::VecDeque::new();
 
     loop {
         if cancelled(state, session_id) {
@@ -189,22 +201,51 @@ where
             let _ = send_idle(connection, session_id, StopReason::Cancelled);
             return Ok(());
         }
-        tokio::select! {
-            biased;
-            event = rx.recv() => {
-                let Some(event) = event else { break };
-                apply_ui_event(state, connection, session_id, &mut ctx, event).await;
-            }
-            result = &mut submit, if !submit_done => {
-                submit_done = true;
-                if let Err(error) = result {
-                    let _ = send_agent_text(connection, session_id, &format!("Prompt failed: {error:#}"));
-                    submit_err = Some(error);
+
+        let next = if let Some(event) = pending.pop_front() {
+            Some(event)
+        } else {
+            let mut rx = ui_rx.lock().await;
+            drain_stale(&mut rx, &mut pending);
+            if let Some(event) = pending.pop_front() {
+                Some(event)
+            } else {
+                tokio::select! {
+                    biased;
+                    event = rx.recv() => event,
+                    result = &mut submit, if !submit_done => {
+                        submit_done = true;
+                        match result {
+                            Ok(Ok(())) => {}
+                            Ok(Err(error)) => {
+                                let _ = send_agent_text(connection, session_id, &format!("Prompt failed: {error:#}"));
+                                submit_err = Some(error);
+                            }
+                            Err(error) => submit_err = Some(anyhow::anyhow!("{error}")),
+                        }
+                        None
+                    }
+                    _ = tokio::time::sleep(std::time::Duration::from_millis(400)), if submit_done => {
+                        break;
+                    }
+                    _ = async {
+                        if let Some(cancel) = &cancel {
+                            cancel.notified().await;
+                        } else {
+                            std::future::pending::<()>().await;
+                        }
+                    } => {
+                        let _ = tools::cancel_open_tools(state, connection, session_id);
+                        mark_idle(state, session_id);
+                        let _ = send_idle(connection, session_id, StopReason::Cancelled);
+                        return Ok(());
+                    }
                 }
             }
-            _ = tokio::time::sleep(std::time::Duration::from_millis(400)), if submit_done => {
-                break;
-            }
+        };
+
+        if let Some(event) = next {
+            apply_ui_event(state, connection, session_id, &mut ctx, event, cancel.clone()).await;
         }
     }
 
@@ -216,11 +257,42 @@ where
     }
 }
 
+pub(crate) fn is_interactive_event(event: &AgentUiEvent) -> bool {
+    matches!(
+        event,
+        AgentUiEvent::ToolApprovalRequired(_)
+            | AgentUiEvent::PlanConfirmationRequired(_)
+            | AgentUiEvent::UserQuestionRequired(_)
+            | AgentUiEvent::ModeChangeRequired(_)
+    )
+}
+
+pub(crate) fn drain_stale(
+    rx: &mut mpsc::UnboundedReceiver<AgentUiEvent>,
+    pending: &mut std::collections::VecDeque<AgentUiEvent>,
+) {
+    while let Ok(event) = rx.try_recv() {
+        if is_interactive_event(&event) {
+            pending.push_back(event);
+        }
+    }
+}
+
 struct StreamCtx {
+    ids: MessageIds,
     agent_msg: String,
     thought_msg: String,
     saw_text: bool,
     agent_text: String,
+}
+
+impl StreamCtx {
+    fn rotate_messages(&mut self) {
+        self.agent_msg = self.ids.next("msg_agent");
+        self.thought_msg = self.ids.next("msg_thought");
+        self.saw_text = false;
+        self.agent_text.clear();
+    }
 }
 
 async fn apply_ui_event(
@@ -229,6 +301,7 @@ async fn apply_ui_event(
     session_id: &SessionId,
     ctx: &mut StreamCtx,
     event: AgentUiEvent,
+    cancel: Option<Arc<tokio::sync::Notify>>,
 ) {
     match event {
         AgentUiEvent::TextDelta(text) if !text.is_empty() => {
@@ -237,12 +310,12 @@ async fn apply_ui_event(
                 ctx.saw_text = true;
             }
             ctx.agent_text.push_str(&text);
-            if let Err(error) = send_agent_chunk(connection, session_id, &ctx.agent_msg, text) {
+            if let Err(error) = send_agent_chunk(connection, session_id, &ctx.agent_msg, truncate_text(&text)) {
                 log::warn!("ACP agent chunk: {error:#}");
             }
         }
         AgentUiEvent::ThinkingDelta(text) if !text.is_empty() => {
-            if let Err(error) = send_thought_chunk(connection, session_id, &ctx.thought_msg, text) {
+            if let Err(error) = send_thought_chunk(connection, session_id, &ctx.thought_msg, truncate_text(&text)) {
                 log::warn!("ACP thought chunk: {error:#}");
             }
         }
@@ -288,7 +361,7 @@ async fn apply_ui_event(
         }
         AgentUiEvent::ToolApprovalRequired(req) => {
             let _ = send_requires_action(connection, session_id);
-            let choice = permission::request_tool_approval(connection, session_id, &req).await;
+            let choice = permission::request_tool_approval(connection, session_id, &req, cancel).await;
             let _ = req.response_tx.send(choice);
             if !matches!(choice, ToolApprovalChoice::Reject) {
                 let _ = send_running(connection, session_id);
@@ -302,7 +375,7 @@ async fn apply_ui_event(
                 .get(&session_key(session_id))
                 .map(|s| Arc::clone(&s.session));
             if let Some(session) = session
-                && let Err(error) = plan::confirm_plan(connection, session_id, &session, &req).await
+                && let Err(error) = plan::confirm_plan(connection, session_id, &session, &req, cancel).await
             {
                 log::warn!("ACP plan confirm: {error:#}");
             }
@@ -312,7 +385,7 @@ async fn apply_ui_event(
             let _ = send_requires_action(connection, session_id);
             let prefer_form = state.lock().client_elicitation_form;
             if let Err(error) =
-                crate::platform::acp::elicitation::ask_user(connection, session_id, req, prefer_form).await
+                crate::platform::acp::elicitation::ask_user(connection, session_id, req, prefer_form, cancel).await
             {
                 log::warn!("ACP ask_user: {error:#}");
             }
@@ -326,7 +399,8 @@ async fn apply_ui_event(
                 .get(&session_key(session_id))
                 .map(|s| Arc::clone(&s.session));
             if let Some(session) = session {
-                if let Err(error) = permission::request_mode_change(connection, session_id, &session, req).await {
+                if let Err(error) = permission::request_mode_change(connection, session_id, &session, req, cancel).await
+                {
                     log::warn!("ACP mode change: {error:#}");
                 }
             } else {
@@ -354,6 +428,7 @@ async fn apply_ui_event(
                     SessionUpdate::UsageUpdate(UsageUpdate::new(used, used.max(1))),
                 );
             }
+            ctx.rotate_messages();
             let _ = send_running(connection, session_id);
         }
         AgentUiEvent::AsideFinished { answer, question, .. } => {
@@ -395,4 +470,49 @@ pub fn is_running(state: &Arc<Mutex<AcpAgentState>>, session_id: &SessionId) -> 
         .get(&session_key(session_id))
         .map(|s| s.running.load(Ordering::Relaxed))
         .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::sync::mpsc;
+
+    #[test]
+    fn interactive_events_are_kept() {
+        assert!(is_interactive_event(&AgentUiEvent::ToolApprovalRequired(
+            crate::agent::ToolApprovalRequest {
+                tool_call_id: "t".into(),
+                tool_name: "read_file".into(),
+                args_summary: String::new(),
+                response_tx: tokio::sync::oneshot::channel().0,
+            }
+        )));
+        assert!(!is_interactive_event(&AgentUiEvent::TextDelta("x".into())));
+        assert!(!is_interactive_event(&AgentUiEvent::RunCompleted {
+            elapsed_secs: 0.0,
+            usage: None,
+            provider_id: None,
+            model_id: None,
+        }));
+    }
+
+    #[test]
+    fn drain_keeps_approval_drops_text() {
+        let (tx, rx) = mpsc::unbounded_channel();
+        let _ = tx.send(AgentUiEvent::TextDelta("gone".into()));
+        let (response_tx, _rx) = tokio::sync::oneshot::channel();
+        let _ = tx.send(AgentUiEvent::ToolApprovalRequired(crate::agent::ToolApprovalRequest {
+            tool_call_id: "t1".into(),
+            tool_name: "shell_exec".into(),
+            args_summary: "ls".into(),
+            response_tx,
+        }));
+        let _ = tx.send(AgentUiEvent::Status("nope".into()));
+        drop(tx);
+        let mut rx = rx;
+        let mut pending = std::collections::VecDeque::new();
+        drain_stale(&mut rx, &mut pending);
+        assert_eq!(pending.len(), 1);
+        assert!(matches!(pending[0], AgentUiEvent::ToolApprovalRequired(_)));
+    }
 }

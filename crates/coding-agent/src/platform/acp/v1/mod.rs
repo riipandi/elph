@@ -81,9 +81,15 @@ where
         .on_receive_request(
             {
                 let state = Arc::clone(&state);
-                async move |_request: LogoutRequest, responder, _connection| {
-                    crate::platform::acp::auth::logout(&state).await;
-                    let _ = responder.respond(LogoutResponse::new());
+                async move |_request: LogoutRequest, responder, connection| {
+                    let state = Arc::clone(&state);
+                    if let Err(error) = connection.spawn(async move {
+                        crate::platform::acp::auth::logout(&state).await;
+                        let _ = responder.respond(LogoutResponse::new());
+                        Ok(())
+                    }) {
+                        log::warn!("ACP v1 logout spawn failed: {error}");
+                    }
                     Ok(())
                 }
             },
@@ -102,13 +108,13 @@ where
                     if let Err(error) = connection.spawn(async move {
                         match open_or_create(&state, &request.cwd, request.additional_directories.clone(), None).await {
                             Ok(id) => {
+                                v1_after_open(&state, &conn, &id, mcp::map_v1_servers(&request.mcp_servers)).await;
                                 let (modes, options) = v1_config_extras(&state, &id).await;
                                 let _ = responder.respond(
                                     NewSessionResponse::new(SessionId::from(id.clone()))
                                         .modes(modes)
                                         .config_options(options),
                                 );
-                                v1_after_open(&state, &conn, &id, mcp::map_v1_servers(&request.mcp_servers)).await;
                             }
                             Err(error) => {
                                 let _ = responder
@@ -144,13 +150,13 @@ where
                         .await
                         {
                             Ok(id) => {
+                                v1_after_open(&state, &conn, &id, mcp::map_v1_servers(&request.mcp_servers)).await;
                                 let (modes, options) = v1_config_extras(&state, &id).await;
                                 let _ =
                                     responder.respond(LoadSessionResponse::new().modes(modes).config_options(options));
                                 if let Ok((session, _, _)) = lookup_session(&state, &id) {
                                     let _ = replay_v1(&conn, &id, &session).await;
                                 }
-                                v1_after_open(&state, &conn, &id, mcp::map_v1_servers(&request.mcp_servers)).await;
                             }
                             Err(error) => {
                                 let _ = responder
@@ -186,10 +192,10 @@ where
                         .await
                         {
                             Ok(id) => {
+                                v1_after_open(&state, &conn, &id, mcp::map_v1_servers(&request.mcp_servers)).await;
                                 let (modes, options) = v1_config_extras(&state, &id).await;
                                 let _ = responder
                                     .respond(ResumeSessionResponse::new().modes(modes).config_options(options));
-                                v1_after_open(&state, &conn, &id, mcp::map_v1_servers(&request.mcp_servers)).await;
                             }
                             Err(error) => {
                                 let _ = responder
@@ -208,27 +214,33 @@ where
         .on_receive_request(
             {
                 let state = Arc::clone(&state);
-                async move |request: ListSessionsRequest, responder, _connection| {
-                    let filter = request.cwd.clone();
-                    let cursor = request.cursor.clone();
-                    match list_session_rows(&state, filter, cursor.as_deref()).await {
-                        Ok((rows, _)) => {
-                            let sessions = rows
-                                .into_iter()
-                                .map(|row| {
-                                    let mut info = SessionInfo::new(row.id, PathBuf::from(row.cwd));
-                                    if let Some(title) = row.title {
-                                        info = info.title(title);
-                                    }
-                                    info
-                                })
-                                .collect();
-                            let _ = responder.respond(ListSessionsResponse::new(sessions));
+                async move |request: ListSessionsRequest, responder, connection| {
+                    let state = Arc::clone(&state);
+                    if let Err(error) = connection.spawn(async move {
+                        let filter = request.cwd.clone();
+                        let cursor = request.cursor.clone();
+                        match list_session_rows(&state, filter, cursor.as_deref()).await {
+                            Ok((rows, _)) => {
+                                let sessions = rows
+                                    .into_iter()
+                                    .map(|row| {
+                                        let mut info = SessionInfo::new(row.id, PathBuf::from(row.cwd));
+                                        if let Some(title) = row.title {
+                                            info = info.title(title);
+                                        }
+                                        info
+                                    })
+                                    .collect();
+                                let _ = responder.respond(ListSessionsResponse::new(sessions));
+                            }
+                            Err(error) => {
+                                let _ = responder
+                                    .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                            }
                         }
-                        Err(error) => {
-                            let _ = responder
-                                .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
-                        }
+                        Ok(())
+                    }) {
+                        log::warn!("ACP v1 session/list spawn failed: {error}");
                     }
                     Ok(())
                 }
@@ -238,21 +250,24 @@ where
         .on_receive_request(
             {
                 let state = Arc::clone(&state);
-                async move |request: CloseSessionRequest, responder, _connection| match close_by_id(
-                    &state,
-                    request.session_id.0.as_ref(),
-                )
-                .await
-                {
-                    Ok(()) => {
-                        let _ = responder.respond(agent_client_protocol::schema::v1::CloseSessionResponse::new());
+                async move |request: CloseSessionRequest, responder, connection| {
+                    let state = Arc::clone(&state);
+                    if let Err(error) = connection.spawn(async move {
+                        match close_by_id(&state, request.session_id.0.as_ref()).await {
+                            Ok(()) => {
+                                let _ =
+                                    responder.respond(agent_client_protocol::schema::v1::CloseSessionResponse::new());
+                            }
+                            Err(error) => {
+                                let _ = responder
+                                    .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                            }
+                        }
                         Ok(())
+                    }) {
+                        log::warn!("ACP v1 session/close spawn failed: {error}");
                     }
-                    Err(error) => {
-                        let _ = responder
-                            .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
-                        Ok(())
-                    }
+                    Ok(())
                 }
             },
             agent_client_protocol::on_receive_request!(),
@@ -260,15 +275,21 @@ where
         .on_receive_request(
             {
                 let state = Arc::clone(&state);
-                async move |request: DeleteSessionRequest, responder, _connection| {
-                    let key = request.session_id.0.as_ref().to_string();
-                    let _ = close_by_id(&state, &key).await;
-                    let paths = state.lock().paths.clone();
-                    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("/"));
-                    if let Ok(manager) = crate::agent::SessionManager::new(&paths, &cwd) {
-                        let _ = manager.delete_by_id(&key).await;
+                async move |request: DeleteSessionRequest, responder, connection| {
+                    let state = Arc::clone(&state);
+                    if let Err(error) = connection.spawn(async move {
+                        let key = request.session_id.0.as_ref().to_string();
+                        let _ = close_by_id(&state, &key).await;
+                        let paths = state.lock().paths.clone();
+                        let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("/"));
+                        if let Ok(manager) = crate::agent::SessionManager::new(&paths, &cwd) {
+                            let _ = manager.delete_by_id(&key).await;
+                        }
+                        let _ = responder.respond(agent_client_protocol::schema::v1::DeleteSessionResponse::new());
+                        Ok(())
+                    }) {
+                        log::warn!("ACP v1 session/delete spawn failed: {error}");
                     }
-                    let _ = responder.respond(agent_client_protocol::schema::v1::DeleteSessionResponse::new());
                     Ok(())
                 }
             },
@@ -282,17 +303,23 @@ where
                         let _ = responder.respond_with_error(error);
                         return Ok(());
                     }
-                    match set_mode(&state, &connection, &request).await {
-                        Ok(response) => {
-                            let _ = responder.respond(response);
-                            Ok(())
+                    let state = Arc::clone(&state);
+                    let conn = connection.clone();
+                    if let Err(error) = connection.spawn(async move {
+                        match set_mode(&state, &conn, &request).await {
+                            Ok(response) => {
+                                let _ = responder.respond(response);
+                            }
+                            Err(error) => {
+                                let _ = responder
+                                    .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                            }
                         }
-                        Err(error) => {
-                            let _ = responder
-                                .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
-                            Ok(())
-                        }
+                        Ok(())
+                    }) {
+                        log::warn!("ACP v1 set_mode spawn failed: {error}");
                     }
+                    Ok(())
                 }
             },
             agent_client_protocol::on_receive_request!(),
@@ -305,14 +332,21 @@ where
                         let _ = responder.respond_with_error(error);
                         return Ok(());
                     }
-                    match set_config_v1(&state, &connection, &request).await {
-                        Ok(response) => {
-                            let _ = responder.respond(response);
+                    let state = Arc::clone(&state);
+                    let conn = connection.clone();
+                    if let Err(error) = connection.spawn(async move {
+                        match set_config_v1(&state, &conn, &request).await {
+                            Ok(response) => {
+                                let _ = responder.respond(response);
+                            }
+                            Err(error) => {
+                                let _ = responder
+                                    .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                            }
                         }
-                        Err(error) => {
-                            let _ = responder
-                                .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
-                        }
+                        Ok(())
+                    }) {
+                        log::warn!("ACP v1 set_config spawn failed: {error}");
                     }
                     Ok(())
                 }
@@ -353,12 +387,17 @@ where
                 let state = Arc::clone(&state);
                 async move |notification: CancelNotification, connection| {
                     let key = notification.session_id.0.as_ref().to_string();
-                    if let Ok((session, _, _)) = lookup_session(&state, &key) {
-                        if let Some(entry) = state.lock().sessions.get(&key) {
-                            entry.cancelled.store(true, Ordering::Relaxed);
+                    crate::platform::acp::state::mark_session_cancelled(&state, &key);
+                    let state = Arc::clone(&state);
+                    let conn = connection.clone();
+                    if let Err(error) = connection.spawn(async move {
+                        if let Ok((session, _, _)) = lookup_session(&state, &key) {
+                            let _ = session.abort().await;
+                            let _ = cancel_v1_open_tools(&state, &conn, &key);
                         }
-                        let _ = session.abort().await;
-                        let _ = cancel_v1_open_tools(&state, &connection, &key);
+                        Ok(())
+                    }) {
+                        log::warn!("ACP v1 cancel spawn failed: {error}");
                     }
                     Ok(())
                 }
@@ -625,7 +664,14 @@ async fn submit_and_stream_v1(
         state,
         &agent_client_protocol::schema::v2::SessionId::from(key.to_string()),
     );
-    race_v1(state, connection, key, session.submit_prompt(text, steer), ui_rx).await
+    race_v1(
+        state,
+        connection,
+        key,
+        async move { session.submit_prompt(text, steer).await },
+        ui_rx,
+    )
+    .await
 }
 
 async fn race_v1<F>(
@@ -636,13 +682,27 @@ async fn race_v1<F>(
     ui_rx: &Arc<tokio::sync::Mutex<tokio::sync::mpsc::UnboundedReceiver<AgentUiEvent>>>,
 ) -> anyhow::Result<StopReason>
 where
-    F: std::future::Future<Output = anyhow::Result<()>>,
+    F: std::future::Future<Output = anyhow::Result<()>> + Send + 'static,
 {
-    tokio::pin!(submit);
+    let cancel = crate::platform::acp::state::session_cancel_notify(state, key);
+    let gate = crate::platform::acp::state::session_stream_gate(state, key);
+    let mut submit = tokio::spawn(submit);
+    let Some(gate) = gate else {
+        return submit
+            .await
+            .unwrap_or_else(|e| Err(anyhow::anyhow!("{e}")))
+            .map(|()| StopReason::EndTurn);
+    };
+    let Ok(_permit) = gate.try_lock() else {
+        return submit
+            .await
+            .unwrap_or_else(|e| Err(anyhow::anyhow!("{e}")))
+            .map(|()| StopReason::EndTurn);
+    };
+
     let mut submit_done = false;
     let mut submit_err = None;
-    let mut rx = ui_rx.lock().await;
-    while rx.try_recv().is_ok() {}
+    let mut pending = std::collections::VecDeque::new();
 
     loop {
         if state
@@ -653,30 +713,54 @@ where
         {
             return Ok(StopReason::Cancelled);
         }
-        tokio::select! {
-            biased;
-            event = rx.recv() => {
-                let Some(event) = event else { break };
-                if let Err(error) = apply_v1_event(state, connection, key, event).await {
-                    log::warn!("ACP v1 session update: {error:#}");
+        let next = if let Some(event) = pending.pop_front() {
+            Some(event)
+        } else {
+            let mut rx = ui_rx.lock().await;
+            crate::platform::acp::updates::drain_stale(&mut rx, &mut pending);
+            if let Some(event) = pending.pop_front() {
+                Some(event)
+            } else {
+                tokio::select! {
+                    biased;
+                    event = rx.recv() => event,
+                    result = &mut submit, if !submit_done => {
+                        submit_done = true;
+                        match result {
+                            Ok(Ok(())) => {}
+                            Ok(Err(error)) => {
+                                let _ = notify(
+                                    connection,
+                                    key,
+                                    SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::Text(
+                                        TextContent::new(format!("Prompt failed: {error:#}")),
+                                    ))),
+                                );
+                                submit_err = Some(error);
+                            }
+                            Err(error) => submit_err = Some(anyhow::anyhow!("{error}")),
+                        }
+                        None
+                    }
+                    _ = tokio::time::sleep(std::time::Duration::from_millis(400)), if submit_done => {
+                        break;
+                    }
+                    _ = async {
+                        if let Some(cancel) = &cancel {
+                            cancel.notified().await;
+                        } else {
+                            std::future::pending::<()>().await;
+                        }
+                    } => {
+                        return Ok(StopReason::Cancelled);
+                    }
                 }
             }
-            result = &mut submit, if !submit_done => {
-                submit_done = true;
-                if let Err(error) = result {
-                    let _ = notify(
-                        connection,
-                        key,
-                        SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::Text(TextContent::new(
-                            format!("Prompt failed: {error:#}"),
-                        )))),
-                    );
-                    submit_err = Some(error);
-                }
-            }
-            _ = tokio::time::sleep(std::time::Duration::from_millis(400)), if submit_done => {
-                break;
-            }
+        };
+        if let Some(event) = next
+            && let Err(error) = apply_v1_event(state, connection, key, event, cancel.clone()).await
+        {
+            log::warn!("ACP v1 session update: {error:#}");
         }
     }
 
@@ -719,11 +803,25 @@ async fn run_slash_v1(
         }
         crate::platform::acp::commands::SlashOutcome::Skill { name, args } => {
             let (session, ui_rx, _) = lookup_session(state, key)?;
-            race_v1(state, connection, key, session.invoke_skill(&name, &args), &ui_rx).await
+            race_v1(
+                state,
+                connection,
+                key,
+                async move { session.invoke_skill(&name, &args).await },
+                &ui_rx,
+            )
+            .await
         }
         crate::platform::acp::commands::SlashOutcome::PromptTemplate { name, args } => {
             let (session, ui_rx, _) = lookup_session(state, key)?;
-            race_v1(state, connection, key, session.prompt_from_template(&name, &args), &ui_rx).await
+            race_v1(
+                state,
+                connection,
+                key,
+                async move { session.prompt_from_template(&name, &args).await },
+                &ui_rx,
+            )
+            .await
         }
         crate::platform::acp::commands::SlashOutcome::Reloaded(text) => {
             if let Ok((session, _, _)) = lookup_session(state, key) {
@@ -740,6 +838,7 @@ async fn run_slash_v1(
 }
 
 fn v1_tool_update(id: String, status: ToolCallStatus, output: String) -> ToolCallUpdate {
+    let output = crate::platform::acp::limits::truncate_text(&output);
     let mut fields = agent_client_protocol::schema::v1::ToolCallUpdateFields::new();
     fields.status = Some(status);
     fields.content = Some(vec![agent_client_protocol::schema::v1::ToolCallContent::from(
@@ -767,20 +866,25 @@ async fn apply_v1_event(
     connection: &ConnectionTo<Client>,
     key: &str,
     event: AgentUiEvent,
+    cancel: Option<Arc<tokio::sync::Notify>>,
 ) -> anyhow::Result<()> {
     match event {
         AgentUiEvent::TextDelta(text) if !text.is_empty() => {
             notify(
                 connection,
                 key,
-                SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::Text(TextContent::new(text)))),
+                SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::Text(TextContent::new(
+                    crate::platform::acp::limits::truncate_text(&text),
+                )))),
             )?;
         }
         AgentUiEvent::ThinkingDelta(text) if !text.is_empty() => {
             notify(
                 connection,
                 key,
-                SessionUpdate::AgentThoughtChunk(ContentChunk::new(ContentBlock::Text(TextContent::new(text)))),
+                SessionUpdate::AgentThoughtChunk(ContentChunk::new(ContentBlock::Text(TextContent::new(
+                    crate::platform::acp::limits::truncate_text(&text),
+                )))),
             )?;
         }
         AgentUiEvent::Retrying { .. } | AgentUiEvent::Status(_) => {}
@@ -844,14 +948,14 @@ async fn apply_v1_event(
         }
         AgentUiEvent::RunCompleted { .. } => {}
         AgentUiEvent::ToolApprovalRequired(req) => {
-            let choice = request_v1_tool_approval(connection, key, &req).await;
+            let choice = request_v1_tool_approval(connection, key, &req, cancel).await;
             let _ = req.response_tx.send(choice);
         }
         AgentUiEvent::UserQuestionRequired(req) => {
-            ask_user_v1(connection, key, req).await?;
+            ask_user_v1(connection, key, req, cancel).await?;
         }
         AgentUiEvent::ModeChangeRequired(req) => {
-            let approved = request_v1_mode_change(connection, key, &req).await;
+            let approved = request_v1_mode_change(connection, key, &req, cancel).await;
             if approved && let Ok((session, _, _)) = lookup_session(state, key) {
                 let mode = crate::agent::agent_mode_from_setting(&req.target_mode);
                 session.invalidate_system_prompt_cache();
@@ -879,7 +983,7 @@ async fn apply_v1_event(
                     ToolCallUpdate::new("plan_confirm", fields),
                     options,
                 );
-                let choice = match send_v1_permission(connection, request).await.as_deref() {
+                let choice = match send_v1_permission(connection, request, cancel.clone()).await.as_deref() {
                     Some("implement") => elph_agent::PlanConfirmationChoice::Implement,
                     Some("fresh") => elph_agent::PlanConfirmationChoice::ImplementFresh,
                     _ => elph_agent::PlanConfirmationChoice::StayInPlan,
@@ -913,6 +1017,7 @@ async fn ask_user_v1(
     connection: &ConnectionTo<Client>,
     session_id: &str,
     req: crate::agent::UserQuestionRequest,
+    cancel: Option<Arc<tokio::sync::Notify>>,
 ) -> anyhow::Result<()> {
     let mut collected = std::collections::BTreeMap::new();
     let total = req.steps.len().max(1);
@@ -957,7 +1062,7 @@ async fn ask_user_v1(
             ToolCallUpdate::new(format!("ask_{}", step.id), fields),
             options,
         );
-        match send_v1_permission(connection, request).await.as_deref() {
+        match send_v1_permission(connection, request, cancel.clone()).await.as_deref() {
             Some("skip") => {
                 collected.insert(step.id.clone(), String::new());
             }
@@ -989,6 +1094,7 @@ async fn request_v1_tool_approval(
     connection: &ConnectionTo<Client>,
     session_id: &str,
     req: &crate::agent::ToolApprovalRequest,
+    cancel: Option<Arc<tokio::sync::Notify>>,
 ) -> crate::agent::ToolApprovalChoice {
     let options = vec![
         PermissionOption::new("allow-once", "Allow once", PermissionOptionKind::AllowOnce),
@@ -1003,7 +1109,7 @@ async fn request_v1_tool_approval(
         ToolCallUpdate::new(req.tool_call_id.clone(), fields),
         options,
     );
-    match send_v1_permission(connection, request).await.as_deref() {
+    match send_v1_permission(connection, request, cancel.clone()).await.as_deref() {
         Some("allow-once") => crate::agent::ToolApprovalChoice::Approve,
         Some("allow-session") => crate::agent::ToolApprovalChoice::AllowSession,
         Some("allow-all") => crate::agent::ToolApprovalChoice::AllowAllTools,
@@ -1015,6 +1121,7 @@ async fn request_v1_mode_change(
     connection: &ConnectionTo<Client>,
     session_id: &str,
     req: &crate::agent::ModeChangeRequest,
+    cancel: Option<Arc<tokio::sync::Notify>>,
 ) -> bool {
     let options = vec![
         PermissionOption::new(
@@ -1031,11 +1138,24 @@ async fn request_v1_mode_change(
         ToolCallUpdate::new("mode_change", fields),
         options,
     );
-    matches!(send_v1_permission(connection, request).await.as_deref(), Some("allow"))
+    matches!(send_v1_permission(connection, request, cancel).await.as_deref(), Some("allow"))
 }
 
-async fn send_v1_permission(connection: &ConnectionTo<Client>, request: RequestPermissionRequest) -> Option<String> {
-    let response = connection.send_request(request).block_task().await.ok()?;
+async fn send_v1_permission(
+    connection: &ConnectionTo<Client>,
+    request: RequestPermissionRequest,
+    cancel: Option<Arc<tokio::sync::Notify>>,
+) -> Option<String> {
+    let pending = connection.send_request(request).block_task();
+    tokio::pin!(pending);
+    let response = if let Some(cancel) = cancel {
+        tokio::select! {
+            result = &mut pending => result.ok()?,
+            _ = cancel.notified() => return None,
+        }
+    } else {
+        pending.await.ok()?
+    };
     match response.outcome {
         RequestPermissionOutcome::Selected(selected) => Some(selected.option_id.0.to_string()),
         RequestPermissionOutcome::Cancelled | _ => None,

@@ -1,10 +1,13 @@
 //! `session/request_permission` for tools and agent mode changes.
 
+use std::sync::Arc;
+
 use agent_client_protocol::schema::v2::{
     PermissionOption, PermissionOptionKind, RequestPermissionOutcome, RequestPermissionRequest,
     RequestPermissionSubject, SessionId, ToolCallUpdate,
 };
 use agent_client_protocol::{Client, ConnectionTo};
+use tokio::sync::Notify;
 
 use crate::agent::{CodingAgentSession, ModeChangeRequest, ToolApprovalChoice, ToolApprovalRequest};
 use crate::platform::acp::tools;
@@ -13,6 +16,7 @@ pub async fn request_tool_approval(
     connection: &ConnectionTo<Client>,
     session_id: &SessionId,
     req: &ToolApprovalRequest,
+    cancel: Option<Arc<Notify>>,
 ) -> ToolApprovalChoice {
     let options = vec![
         PermissionOption::new("allow-once", "Allow once", PermissionOptionKind::AllowOnce),
@@ -29,7 +33,7 @@ pub async fn request_tool_approval(
         .description(req.args_summary.clone())
         .subject(subject);
 
-    map_choice(send_permission(connection, request).await)
+    map_choice(send_permission(connection, request, cancel).await)
 }
 
 pub async fn request_mode_change(
@@ -37,6 +41,7 @@ pub async fn request_mode_change(
     session_id: &SessionId,
     session: &CodingAgentSession,
     req: ModeChangeRequest,
+    cancel: Option<Arc<Notify>>,
 ) -> anyhow::Result<()> {
     let options = vec![
         PermissionOption::new(
@@ -50,7 +55,7 @@ pub async fn request_mode_change(
         RequestPermissionRequest::new(session_id.clone(), format!("Switch to {} mode?", req.target_mode), options)
             .description(req.reason.clone());
     let approved = matches!(
-        send_permission(connection, request).await,
+        send_permission(connection, request, cancel).await,
         Some(id) if id == "allow"
     );
     if approved {
@@ -67,8 +72,21 @@ pub async fn request_mode_change(
     Ok(())
 }
 
-pub async fn send_permission(connection: &ConnectionTo<Client>, request: RequestPermissionRequest) -> Option<String> {
-    let response = connection.send_request(request).block_task().await.ok()?;
+pub async fn send_permission(
+    connection: &ConnectionTo<Client>,
+    request: RequestPermissionRequest,
+    cancel: Option<Arc<Notify>>,
+) -> Option<String> {
+    let pending = connection.send_request(request).block_task();
+    tokio::pin!(pending);
+    let response = if let Some(cancel) = cancel {
+        tokio::select! {
+            result = &mut pending => result.ok()?,
+            _ = cancel.notified() => return None,
+        }
+    } else {
+        pending.await.ok()?
+    };
     match response.outcome {
         RequestPermissionOutcome::Selected(selected) => Some(selected.option_id.0.to_string()),
         RequestPermissionOutcome::Cancelled | RequestPermissionOutcome::Other(_) | _ => None,

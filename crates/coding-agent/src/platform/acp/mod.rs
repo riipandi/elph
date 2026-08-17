@@ -6,6 +6,7 @@ mod commands;
 mod config;
 mod content;
 mod elicitation;
+mod limits;
 mod mcp;
 mod permission;
 mod plan;
@@ -115,9 +116,15 @@ where
         .on_receive_request(
             {
                 let state = Arc::clone(&state);
-                async move |_request: LogoutAuthRequest, responder, _connection| {
-                    auth::logout(&state).await;
-                    let _ = responder.respond(LogoutAuthResponse::new());
+                async move |_request: LogoutAuthRequest, responder, connection| {
+                    let state = Arc::clone(&state);
+                    if let Err(error) = connection.spawn(async move {
+                        auth::logout(&state).await;
+                        let _ = responder.respond(LogoutAuthResponse::new());
+                        Ok(())
+                    }) {
+                        log::warn!("ACP logout spawn failed: {error}");
+                    }
                     Ok(())
                 }
             },
@@ -188,15 +195,21 @@ where
         .on_receive_request(
             {
                 let state = Arc::clone(&state);
-                async move |request: ListSessionsRequest, responder, _connection| {
-                    match session::list_sessions(&state, &request).await {
-                        Ok(response) => {
-                            let _ = responder.respond(response);
+                async move |request: ListSessionsRequest, responder, connection| {
+                    let state = Arc::clone(&state);
+                    if let Err(error) = connection.spawn(async move {
+                        match session::list_sessions(&state, &request).await {
+                            Ok(response) => {
+                                let _ = responder.respond(response);
+                            }
+                            Err(error) => {
+                                let _ = responder
+                                    .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                            }
                         }
-                        Err(error) => {
-                            let _ = responder
-                                .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
-                        }
+                        Ok(())
+                    }) {
+                        log::warn!("ACP session/list spawn failed: {error}");
                     }
                     Ok(())
                 }
@@ -206,15 +219,21 @@ where
         .on_receive_request(
             {
                 let state = Arc::clone(&state);
-                async move |request: CloseSessionRequest, responder, _connection| {
-                    match session::close_session(&state, &request).await {
-                        Ok(response) => {
-                            let _ = responder.respond(response);
+                async move |request: CloseSessionRequest, responder, connection| {
+                    let state = Arc::clone(&state);
+                    if let Err(error) = connection.spawn(async move {
+                        match session::close_session(&state, &request).await {
+                            Ok(response) => {
+                                let _ = responder.respond(response);
+                            }
+                            Err(error) => {
+                                let _ = responder
+                                    .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                            }
                         }
-                        Err(error) => {
-                            let _ = responder
-                                .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
-                        }
+                        Ok(())
+                    }) {
+                        log::warn!("ACP session/close spawn failed: {error}");
                     }
                     Ok(())
                 }
@@ -224,15 +243,21 @@ where
         .on_receive_request(
             {
                 let state = Arc::clone(&state);
-                async move |request: DeleteSessionRequest, responder, _connection| {
-                    match session::delete_session(&state, &request).await {
-                        Ok(response) => {
-                            let _ = responder.respond(response);
+                async move |request: DeleteSessionRequest, responder, connection| {
+                    let state = Arc::clone(&state);
+                    if let Err(error) = connection.spawn(async move {
+                        match session::delete_session(&state, &request).await {
+                            Ok(response) => {
+                                let _ = responder.respond(response);
+                            }
+                            Err(error) => {
+                                let _ = responder
+                                    .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                            }
                         }
-                        Err(error) => {
-                            let _ = responder
-                                .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
-                        }
+                        Ok(())
+                    }) {
+                        log::warn!("ACP session/delete spawn failed: {error}");
                     }
                     Ok(())
                 }
@@ -247,14 +272,21 @@ where
                         let _ = responder.respond_with_error(error);
                         return Ok(());
                     }
-                    match set_config(&state, &request, &connection).await {
-                        Ok(response) => {
-                            let _ = responder.respond(response);
+                    let state = Arc::clone(&state);
+                    let conn = connection.clone();
+                    if let Err(error) = connection.spawn(async move {
+                        match set_config(&state, &request, &conn).await {
+                            Ok(response) => {
+                                let _ = responder.respond(response);
+                            }
+                            Err(error) => {
+                                let _ = responder
+                                    .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                            }
                         }
-                        Err(error) => {
-                            let _ = responder
-                                .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
-                        }
+                        Ok(())
+                    }) {
+                        log::warn!("ACP set_config spawn failed: {error}");
                     }
                     Ok(())
                 }
@@ -288,8 +320,16 @@ where
             {
                 let state = Arc::clone(&state);
                 async move |notification: CancelSessionNotification, connection| {
-                    if let Err(error) = prompt::handle_cancel(&state, &connection, notification).await {
-                        log::warn!("ACP cancel failed: {error:#}");
+                    crate::platform::acp::state::mark_session_cancelled(&state, &session_key(&notification.session_id));
+                    let state = Arc::clone(&state);
+                    let conn = connection.clone();
+                    if let Err(error) = connection.spawn(async move {
+                        if let Err(error) = prompt::handle_cancel(&state, &conn, notification).await {
+                            log::warn!("ACP cancel failed: {error:#}");
+                        }
+                        Ok(())
+                    }) {
+                        log::warn!("ACP cancel spawn failed: {error}");
                     }
                     Ok(())
                 }

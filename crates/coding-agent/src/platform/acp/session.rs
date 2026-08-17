@@ -33,23 +33,22 @@ pub async fn create_session(
 
     let session_id = open_or_create(state, &cwd, additional, None).await?;
     let sid = SessionId::from(session_id.clone());
+    attach_session_mcp(state, &sid, mcp::map_servers(&request.mcp_servers)).await;
+    if let Err(error) = after_open(state, connection, &sid).await {
+        log::warn!("ACP after session/new: {error:#}");
+    }
     let (session, _, _) = lookup_session(state, &session_id)?;
     let settings = state.lock().settings.clone();
-    let _ = connection;
     Ok(NewSessionResponse::new(sid).config_options(config::config_options_initial(&session, &settings).await))
 }
 
 /// Side effects after `session/new` has been answered (must not run on the I/O task).
 pub async fn finish_create_session(
     state: &Arc<Mutex<AcpAgentState>>,
-    request: &NewSessionRequest,
+    _request: &NewSessionRequest,
     connection: &ConnectionTo<Client>,
     session_id: &SessionId,
 ) {
-    attach_session_mcp(state, session_id, mcp::map_servers(&request.mcp_servers)).await;
-    if let Err(error) = after_open(state, connection, session_id).await {
-        log::warn!("ACP after session/new: {error:#}");
-    }
     emit_full_config(state, connection, session_id).await;
 }
 
@@ -96,9 +95,12 @@ pub async fn resume_session(
     let resume_id = request.session_id.0.to_string();
     let session_id = open_or_create(state, &cwd, additional, Some(&resume_id)).await?;
     let sid = SessionId::from(session_id.clone());
+    attach_session_mcp(state, &sid, mcp::map_servers(&request.mcp_servers)).await;
+    if let Err(error) = after_open(state, connection, &sid).await {
+        log::warn!("ACP after session/resume: {error:#}");
+    }
     let (session, _, _) = lookup_session(state, &session_id)?;
     let settings = state.lock().settings.clone();
-    let _ = (connection, sid);
     Ok(ResumeSessionResponse::new().config_options(config::config_options_initial(&session, &settings).await))
 }
 
@@ -113,10 +115,6 @@ pub async fn finish_resume_session(
         && let Err(error) = replay::replay_from_start(connection, session_id, &session).await
     {
         log::warn!("ACP resume replay: {error:#}");
-    }
-    attach_session_mcp(state, session_id, mcp::map_servers(&request.mcp_servers)).await;
-    if let Err(error) = after_open(state, connection, session_id).await {
-        log::warn!("ACP after session/resume: {error:#}");
     }
     emit_full_config(state, connection, session_id).await;
 }
@@ -201,6 +199,7 @@ pub async fn list_sessions(
 }
 
 pub async fn close_by_id(state: &Arc<Mutex<AcpAgentState>>, key: &str) -> anyhow::Result<()> {
+    crate::platform::acp::state::mark_session_cancelled(state, key);
     if let Ok((session, _, _)) = lookup_session(state, key) {
         let _ = session.abort().await;
         let _ = session
@@ -277,7 +276,7 @@ pub(super) async fn open_or_create(
         system_prompt_override: None,
         preloaded_resources: None,
         defer_mcp_load: true,
-        headless: false,
+        headless: true,
     })
     .await?;
 
@@ -294,6 +293,8 @@ pub(super) async fn open_or_create(
             additional_directories: additional,
             running: Arc::new(AtomicBool::new(false)),
             cancelled: Arc::new(AtomicBool::new(false)),
+            cancel_notify: Arc::new(tokio::sync::Notify::new()),
+            stream_gate: Arc::new(tokio::sync::Mutex::new(())),
             ids: MessageIds::new(),
             open_tools: Arc::new(Mutex::new(std::collections::HashSet::new())),
             open_shells: Arc::new(Mutex::new(std::collections::HashSet::new())),

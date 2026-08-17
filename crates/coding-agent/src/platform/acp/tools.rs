@@ -10,6 +10,7 @@ use agent_client_protocol::{Client, ConnectionTo};
 use parking_lot::Mutex;
 use serde_json::json;
 
+use crate::platform::acp::limits::truncate_text;
 use crate::platform::acp::state::{AcpAgentState, session_key};
 use crate::platform::acp::terminals;
 use crate::platform::acp::updates::send_update;
@@ -82,7 +83,7 @@ pub fn on_tool_start(
         .title(name.to_string())
         .kind(kind.clone())
         .status(ToolCallStatus::InProgress)
-        .raw_input(json!({ "summary": args_summary }));
+        .raw_input(json!({ "summary": truncate_text(args_summary) }));
     if let Some(path) = path_from_summary(args_summary) {
         update = update.locations(vec![ToolCallLocation::new(path)]);
     }
@@ -108,18 +109,19 @@ pub fn on_tool_update(
     id: &str,
     output: &str,
 ) -> anyhow::Result<()> {
+    let output = truncate_text(output);
     send_update(
         connection,
         session_id,
         SessionUpdate::ToolCallContentChunk(ToolCallContentChunk::new(
             id,
             ToolCallContent::Content(Box::new(agent_client_protocol::schema::v2::Content::new(ContentBlock::Text(
-                TextContent::new(output.to_string()),
+                TextContent::new(output.clone()),
             )))),
         )),
     )?;
     if is_tracked_shell(state, session_id, id) {
-        terminals::on_shell_output(connection, session_id, id, output)?;
+        terminals::on_shell_output(connection, session_id, id, &output)?;
     }
     Ok(())
 }
@@ -138,7 +140,8 @@ pub fn on_tool_end(
     } else {
         ToolCallStatus::Completed
     };
-    let mut content = tool_end_content(details, output);
+    let output = truncate_text(output);
+    let mut content = tool_end_content(details, &output);
     let shell = is_tracked_shell(state, session_id, id);
     if shell {
         content.push(ToolCallContent::Terminal(agent_client_protocol::schema::v2::Terminal::new(
@@ -148,7 +151,7 @@ pub fn on_tool_end(
     let update = ToolCallUpdate::new(id)
         .status(status)
         .content(content)
-        .raw_output(json!({ "output": output, "details": details }));
+        .raw_output(json!({ "output": output, "details": truncate_details(details) }));
     send_update(connection, session_id, SessionUpdate::ToolCallUpdate(update))?;
     if shell {
         terminals::on_shell_exit(connection, session_id, id, is_error)?;
@@ -221,6 +224,24 @@ pub fn diff_from_details(details: &serde_json::Value) -> Option<ToolCallContent>
     Some(ToolCallContent::Diff(Diff::patch(patch, vec![change])))
 }
 
+fn truncate_details(details: &serde_json::Value) -> serde_json::Value {
+    match details {
+        serde_json::Value::String(s) => serde_json::Value::String(truncate_text(s)),
+        serde_json::Value::Object(map) => {
+            let mut out = serde_json::Map::new();
+            for (k, v) in map {
+                let clipped = match v {
+                    serde_json::Value::String(s) => serde_json::Value::String(truncate_text(s)),
+                    other => other.clone(),
+                };
+                out.insert(k.clone(), clipped);
+            }
+            serde_json::Value::Object(out)
+        }
+        other => other.clone(),
+    }
+}
+
 fn unified_patch(path: &str, old: &str, new: &str) -> String {
     let mut out = format!("--- a/{path}\n+++ b/{path}\n");
     for line in old.lines() {
@@ -229,7 +250,7 @@ fn unified_patch(path: &str, old: &str, new: &str) -> String {
     for line in new.lines() {
         out.push_str(&format!("+{line}\n"));
     }
-    out
+    truncate_text(&out)
 }
 
 fn path_from_summary(summary: &str) -> Option<String> {

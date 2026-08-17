@@ -44,6 +44,7 @@ pub fn on_shell_output(
     if output.is_empty() {
         return Ok(());
     }
+    let output = crate::platform::acp::limits::truncate_text(output);
     send_update(
         connection,
         session_id,

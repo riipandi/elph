@@ -273,24 +273,13 @@ pub async fn resolve_slash(state: &Arc<Mutex<AcpAgentState>>, key: &str, input: 
             if question.is_empty() {
                 "Usage: /aside <question>".into()
             } else {
-                let (session, ui_rx, _) = lookup_session(state, key)?;
-                let _ = crate::agent::spawn_aside(session, question);
-                let mut rx = ui_rx.lock().await;
-                loop {
-                    let Some(event) = rx.recv().await else {
-                        break;
-                    };
-                    match event {
-                        crate::agent::AgentUiEvent::AsideFinished { answer, question, .. } => {
-                            return Ok(SlashOutcome::Text(format!("/aside {question}\n\n{answer}")));
-                        }
-                        crate::agent::AgentUiEvent::AsideFailed { error, .. } => {
-                            return Ok(SlashOutcome::Text(format!("/aside error: {error}")));
-                        }
-                        _ => {}
-                    }
-                }
-                return Ok(SlashOutcome::Text("/aside ended without a reply.".into()));
+                let (session, _, _) = lookup_session(state, key)?;
+                return Ok(SlashOutcome::Text(
+                    match crate::agent::aside_answer(&session, &question).await {
+                        Ok(answer) => format!("/aside {question}\n\n{answer}"),
+                        Err(error) => format!("/aside error: {error}"),
+                    },
+                ));
             }
         }
         Some(SlashDispatch::Skill { name, args }) => return Ok(SlashOutcome::Skill { name, args }),

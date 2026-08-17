@@ -1,11 +1,9 @@
 //! `session/prompt` accept-immediately + `session/cancel`.
 
-use std::sync::Arc;
-use std::sync::atomic::Ordering;
-
 use agent_client_protocol::schema::v2::{CancelSessionNotification, PromptRequest, PromptResponse, StopReason};
 use agent_client_protocol::{Client, ConnectionTo};
 use parking_lot::Mutex;
+use std::sync::Arc;
 
 use crate::platform::acp::commands;
 use crate::platform::acp::content::extract_prompt;
@@ -55,11 +53,20 @@ pub async fn handle_prompt(
     let trimmed = extracted.text.trim();
     if commands::is_slash(trimmed) {
         send_running(&connection, &session_id)?;
-        commands::handle_slash(&state, &connection, &session_id, trimmed).await?;
+        if let Err(error) = commands::handle_slash(&state, &connection, &session_id, trimmed).await {
+            let _ = send_idle(&connection, &session_id, StopReason::EndTurn);
+            return Err(error);
+        }
         return Ok(());
     }
 
-    let (session, ui_rx, _) = lookup_session(&state, &key)?;
+    let (session, ui_rx, _) = match lookup_session(&state, &key) {
+        Ok(ctx) => ctx,
+        Err(error) => {
+            let _ = send_idle(&connection, &session_id, StopReason::EndTurn);
+            return Err(error);
+        }
+    };
     let steer = is_running(&state, &session_id);
     let extra = extra_roots_prefix(&state, &key);
     let mut text = extracted.text;
@@ -72,7 +79,7 @@ pub async fn handle_prompt(
         .into_iter()
         .map(|(data, mime)| elph_ai::ImageContent::new(data, mime))
         .collect::<Vec<_>>();
-    drive_turn(
+    if let Err(error) = drive_turn(
         &state,
         &connection,
         &session_id,
@@ -83,6 +90,11 @@ pub async fn handle_prompt(
         &ui_rx,
     )
     .await
+    {
+        let _ = send_idle(&connection, &session_id, StopReason::EndTurn);
+        return Err(error);
+    }
+    Ok(())
 }
 
 fn extra_roots_prefix(state: &Arc<Mutex<AcpAgentState>>, key: &str) -> String {
@@ -127,9 +139,7 @@ pub async fn handle_cancel(
         Ok(ctx) => ctx,
         Err(_) => return Ok(()),
     };
-    if let Some(entry) = state.lock().sessions.get(&key) {
-        entry.cancelled.store(true, Ordering::Relaxed);
-    }
+    crate::platform::acp::state::mark_session_cancelled(state, &key);
     let _ = session.abort().await;
     crate::platform::acp::tools::cancel_open_tools(state, connection, &notification.session_id)?;
     send_idle(connection, &notification.session_id, StopReason::Cancelled)?;

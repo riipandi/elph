@@ -202,6 +202,11 @@ async fn run_aside_inner(session: &CodingAgentSession, question: &str) -> Result
     side_completion(session, side_question_user_text(question), None).await
 }
 
+/// Answer `/aside` without reading the session UI event channel.
+pub async fn aside_answer(session: &CodingAgentSession, question: &str) -> Result<String, String> {
+    run_aside_inner(session, question).await
+}
+
 /// Spawn `/aside` work without blocking the UI or the main turn.
 pub fn spawn_aside(session: std::sync::Arc<CodingAgentSession>, question: String) -> AsideRequestId {
     let request_id = next_aside_request_id();

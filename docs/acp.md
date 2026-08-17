@@ -41,6 +41,14 @@ Elph’s wire shape follows the same product conventions as [pi-acp](https://git
 - Client `mcpServers` on `session/new`, `session/load`, and `session/resume` are overlaid on `mcp.json` (home ← project ← client; same name wins) and bound into the session tool registry.
 - `session/cancel` aborts the harness turn **and** marks in-flight tool calls cancelled (v2 status `cancelled`; v1 `failed` with output `cancelled`).
 - A harness `RunCompleted` mid-turn (auto-retry after a stream cut, compact-then-resume) does **not** end the ACP prompt. The client stays in `running` until `submit_prompt` finishes. A failed `session/update` (tool chunk, terminal) is logged and ignored so the turn does not die mid tool-call.
+- One turn owns the UI stream (`stream_gate`). A second `session/prompt` while a turn is running still **submits immediately** (steer) and does not steal `ui_rx`. `/aside` answers via a side completion and does not lock the event channel.
+- `session/cancel`, `session/close`, and logout notify in-flight `request_permission` / elicitation so the harness is not left waiting. Stale UI drain keeps `*Required` events (never drops a pending tool approval).
+- `session/list`, `session/close`, `session/delete`, `set_config`/`set_mode`, and logout run on a spawned task (same as `session/new`). MCP attach and slash catalog run **before** the `session/new` / `session/resume` / `session/load` response.
+- ACP sessions are created `headless: true` (no TUI worker-inbox noise on the event channel).
+- Agent/tool/terminal `session/update` text is capped (~16k characters) so a large dump cannot drop the client.
+- Auto-retry after `RunCompleted` uses a new agent/thought message id.
+- `session/cancel` notifies waiters on the I/O task, then aborts the harness on a spawned task.
+- After a v2 prompt has been acked, a later failure still emits `idle` so the client is not left in `running`.
 
 ## v1 capabilities
 

@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use agent_client_protocol::schema::v2::SessionId;
 use parking_lot::Mutex;
-use tokio::sync::mpsc;
+use tokio::sync::{Notify, mpsc};
 
 use crate::agent::{AgentUiEvent, CodingAgentSession};
 use crate::platform::{Paths, Settings};
@@ -26,6 +26,10 @@ pub struct AcpSessionState {
     pub additional_directories: Vec<PathBuf>,
     pub running: Arc<AtomicBool>,
     pub cancelled: Arc<AtomicBool>,
+    /// Wakes in-flight `request_permission` / elicitation when the session is cancelled.
+    pub cancel_notify: Arc<Notify>,
+    /// Only one ACP turn streams `ui_rx`. Concurrent prompts still submit (steer).
+    pub stream_gate: Arc<tokio::sync::Mutex<()>>,
     pub ids: MessageIds,
     pub open_tools: Arc<Mutex<HashSet<String>>>,
     /// Tool-call ids whose local shell is mirrored as a display-only ACP terminal.
@@ -82,6 +86,21 @@ pub fn session_key(session_id: &SessionId) -> String {
     session_id.0.as_ref().to_owned()
 }
 
+pub fn mark_session_cancelled(state: &Arc<Mutex<AcpAgentState>>, key: &str) {
+    if let Some(entry) = state.lock().sessions.get(key) {
+        entry.cancelled.store(true, Ordering::Relaxed);
+        entry.cancel_notify.notify_waiters();
+    }
+}
+
+pub fn session_cancel_notify(state: &Arc<Mutex<AcpAgentState>>, key: &str) -> Option<Arc<Notify>> {
+    state.lock().sessions.get(key).map(|s| Arc::clone(&s.cancel_notify))
+}
+
+pub fn session_stream_gate(state: &Arc<Mutex<AcpAgentState>>, key: &str) -> Option<Arc<tokio::sync::Mutex<()>>> {
+    state.lock().sessions.get(key).map(|s| Arc::clone(&s.stream_gate))
+}
+
 pub fn lookup_session(state: &Arc<Mutex<AcpAgentState>>, key: &str) -> anyhow::Result<SessionContext> {
     let guard = state.lock();
     let entry = guard
@@ -93,4 +112,20 @@ pub fn lookup_session(state: &Arc<Mutex<AcpAgentState>>, key: &str) -> anyhow::R
 
 pub fn current_mode(session: &CodingAgentSession) -> AgentMode {
     session.mode_state().try_lock().map(|g| *g).unwrap_or(AgentMode::Build)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn cancel_notify_wakes_waiters() {
+        let notify = Arc::new(Notify::new());
+        let pending = notify.notified();
+        tokio::pin!(pending);
+        notify.notify_waiters();
+        tokio::time::timeout(std::time::Duration::from_secs(1), pending)
+            .await
+            .expect("cancel notify must wake");
+    }
 }

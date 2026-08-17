@@ -24,7 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Existing env/`auth.json` keys allow privileged methods without an extra authenticate
   call. After logout, those methods return `auth_required` until an explicit login.
   ACP turns no longer stop on an intermediate `RunCompleted` (retry/compact) or a
-  failed tool `session/update`.
+  failed tool `session/update`. Concurrent prompt submit is not blocked on `ui_rx`;
+  cancel/close/logout abort in-flight permission RPC; list/close/config/logout are
+  spawned off the I/O loop; MCP is attached before `session/new` answers.
+  ACP update payloads are truncated; retry text uses a new message id; cancel
+  aborts off the I/O loop; v2 prompt failures after ack still emit idle.
   See `docs/acp.md`.
 
 ### Added
