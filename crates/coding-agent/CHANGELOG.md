@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   spawned off the I/O loop; MCP is attached before `session/new` answers.
   ACP update payloads are truncated; retry text uses a new message id; cancel
   aborts off the I/O loop; v2 prompt failures after ack still emit idle.
+  Terminal Auth (`elph acp --setup`) is advertised for the ACP Registry.
+  Registry submission files live in `docs/acp-registry/`.
   See `docs/acp.md`.
 
 ### Added

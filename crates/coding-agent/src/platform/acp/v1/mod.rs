@@ -103,6 +103,12 @@ where
                         let _ = responder.respond_with_error(error);
                         return Ok(());
                     }
+                    if !request.cwd.is_absolute() {
+                        let _ = responder.respond_with_error(agent_client_protocol::util::internal_error(
+                            "cwd must be an absolute path",
+                        ));
+                        return Ok(());
+                    }
                     let state = Arc::clone(&state);
                     let conn = connection.clone();
                     if let Err(error) = connection.spawn(async move {

@@ -23,6 +23,9 @@ use crate::utils::path::AppPaths;
 /// Accepts any env / `auth.json` credential already present on the machine.
 pub const METHOD_EXISTING: &str = "existing-credentials";
 
+/// Client launches `elph acp --setup` (interactive `elph provider connect`).
+pub const METHOD_TERMINAL: &str = "elph-provider-connect";
+
 /// Provider-specific `type: agent` methods advertised to clients.
 const PROVIDER_METHODS: &[(&str, &str, &str)] = &[
     ("openai", "OpenAI API key", "Use OPENAI_API_KEY or a stored OpenAI credential."),
@@ -45,12 +48,17 @@ const PROVIDER_METHODS: &[(&str, &str, &str)] = &[
 ];
 
 pub fn v2_auth_methods() -> Vec<agent_client_protocol::schema::v2::AuthMethod> {
-    use agent_client_protocol::schema::v2::{AuthMethod, AuthMethodAgent};
-    let mut out = vec![AuthMethod::Agent(
-        AuthMethodAgent::new(METHOD_EXISTING, "Existing credentials").description(
-            "Use API keys already in the environment or Elph auth.json. Call auth/login after setting them.",
+    use agent_client_protocol::schema::v2::{AuthMethod, AuthMethodAgent, AuthMethodTerminal};
+    let mut out = vec![
+        AuthMethod::Terminal(
+            AuthMethodTerminal::new(METHOD_TERMINAL, "Sign in with Elph")
+                .description("Opens an interactive terminal: pick a provider and save an API key or complete OAuth.")
+                .args(vec!["acp".into(), "--setup".into()]),
         ),
-    )];
+        AuthMethod::Agent(AuthMethodAgent::new(METHOD_EXISTING, "Existing credentials").description(
+            "Use API keys already in the environment or Elph auth.json. Call auth/login after setting them.",
+        )),
+    ];
     for (id, name, desc) in PROVIDER_METHODS {
         out.push(AuthMethod::Agent(AuthMethodAgent::new(*id, *name).description(*desc)));
     }
@@ -58,12 +66,17 @@ pub fn v2_auth_methods() -> Vec<agent_client_protocol::schema::v2::AuthMethod> {
 }
 
 pub fn v1_auth_methods() -> Vec<agent_client_protocol::schema::v1::AuthMethod> {
-    use agent_client_protocol::schema::v1::{AuthMethod, AuthMethodAgent};
-    let mut out = vec![AuthMethod::Agent(
-        AuthMethodAgent::new(METHOD_EXISTING, "Existing credentials").description(
-            "Use API keys already in the environment or Elph auth.json. Call authenticate after setting them.",
+    use agent_client_protocol::schema::v1::{AuthMethod, AuthMethodAgent, AuthMethodTerminal};
+    let mut out = vec![
+        AuthMethod::Terminal(
+            AuthMethodTerminal::new(METHOD_TERMINAL, "Sign in with Elph")
+                .description("Opens an interactive terminal: pick a provider and save an API key or complete OAuth.")
+                .args(vec!["acp".into(), "--setup".into()]),
         ),
-    )];
+        AuthMethod::Agent(AuthMethodAgent::new(METHOD_EXISTING, "Existing credentials").description(
+            "Use API keys already in the environment or Elph auth.json. Call authenticate after setting them.",
+        )),
+    ];
     for (id, name, desc) in PROVIDER_METHODS {
         out.push(AuthMethod::Agent(AuthMethodAgent::new(*id, *name).description(*desc)));
     }
@@ -71,7 +84,9 @@ pub fn v1_auth_methods() -> Vec<agent_client_protocol::schema::v1::AuthMethod> {
 }
 
 pub fn is_known_method(method_id: &str) -> bool {
-    method_id == METHOD_EXISTING || PROVIDER_METHODS.iter().any(|(id, _, _)| *id == method_id)
+    method_id == METHOD_EXISTING
+        || method_id == METHOD_TERMINAL
+        || PROVIDER_METHODS.iter().any(|(id, _, _)| *id == method_id)
 }
 
 /// Gate for session create / resume / prompt / config — not list, close, cancel, or auth itself.
@@ -100,6 +115,11 @@ pub fn require(state: &Arc<Mutex<AcpAgentState>>) -> Result<(), agent_client_pro
 
 /// Mark the connection signed-in when `method_id` has usable credentials.
 pub fn login(state: &Arc<Mutex<AcpAgentState>>, method_id: &str) -> Result<(), agent_client_protocol::Error> {
+    if method_id == METHOD_TERMINAL {
+        return Err(auth_required_error(
+            "terminal auth is not an in-band login: the client must run `elph acp --setup` (or `elph provider connect`), then call authenticate with existing-credentials",
+        ));
+    }
     if !is_known_method(method_id) {
         return Err(agent_client_protocol::Error::invalid_params()
             .data(serde_json::json!(format!("unknown auth method `{method_id}`"))));
@@ -190,9 +210,16 @@ mod tests {
     #[test]
     fn known_methods_include_existing_and_providers() {
         assert!(is_known_method(METHOD_EXISTING));
+        assert!(is_known_method(METHOD_TERMINAL));
         assert!(is_known_method("openai"));
         assert!(is_known_method("anthropic"));
         assert!(!is_known_method("not-a-method"));
+    }
+
+    #[test]
+    fn terminal_method_is_not_in_band_login() {
+        let state = test_state(ConnectionAuth::Anonymous);
+        assert!(login(&state, METHOD_TERMINAL).is_err());
     }
 
     #[test]

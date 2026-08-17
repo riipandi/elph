@@ -14,9 +14,16 @@ pub struct AcpArgs {
     /// Use experimental ACP v2 (requires `--stdio`).
     #[arg(long, requires = "stdio")]
     pub experimental: bool,
+
+    /// Interactive provider login (ACP Terminal Auth). Does not start stdio.
+    #[arg(long, conflicts_with_all = ["stdio", "experimental"])]
+    pub setup: bool,
 }
 
 pub fn handle(args: &AcpArgs) -> ExitCode {
+    if args.setup {
+        return crate::cli::provider::run_interactive_connect();
+    }
     let mode = if args.experimental { AcpMode::V2 } else { AcpMode::V1 };
     let paths = match ensure_home_blocking(env!("CARGO_PKG_VERSION")) {
         Ok(paths) => paths,

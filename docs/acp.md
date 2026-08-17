@@ -6,6 +6,7 @@ Elph speaks ACP JSON-RPC 2.0 over stdio. **One process = one protocol version.**
 elph acp --stdio                  # ACP v1 (stable)
 elph acp --stdio --experimental   # ACP v2 (draft)
 elph acp                          # alias of `elph acp --stdio`
+elph acp --setup                  # Terminal Auth: interactive provider login
 ```
 
 `--experimental` requires `--stdio`. There is no mixed-version stream and no `protocol_router` on one connection.
@@ -64,7 +65,7 @@ Methods:
 | Method | Notes |
 |---|---|
 | `initialize` | Echoes protocol version 1 |
-| `session/new` | Answered first, then commands/MCP attach (keeps stdio alive) |
+| `session/new` | Spawned off I/O. MCP attach and slash catalog run **before** the response; `config_option_update` may follow. |
 | `session/load` | Replays history, then same extras as new |
 | `session/resume` | Reattach without full replay |
 | `session/list` | Cursor pagination (page size 50) |
@@ -92,7 +93,7 @@ Methods:
 | Method | Notes |
 |---|---|
 | `initialize` | Protocol version 2 only |
-| `session/new` | Answered first; MCP attach, then catalog refresh, then `available_commands_update` |
+| `session/new` | Spawned off I/O. MCP attach and slash catalog run **before** the response; full `config_option_update` may follow. |
 | `session/list` | Same listing as v1 |
 | `session/resume` | Optional `replayFrom: start` |
 | `session/close` / `session/delete` | Same host as v1 |
@@ -123,9 +124,11 @@ Unsupported transports (including ACP-over-MCP) are ignored with a warning. A fa
 
 - **Extensions** — WASM extension slash commands are not listed in `available_commands_update`.
 - **Client `terminal/*`** — not used. Local shell + display-only terminal updates only.
-- **Interactive OAuth inside `authenticate`** — ACP login checks existing env/`auth.json` credentials. Device/OAuth still uses `elph provider connect` (or a terminal outside this connection).
+- **In-band OAuth on `authenticate`** — not used. First-run uses **Terminal Auth** (`elph acp --setup` → `elph provider connect`). After that, `authenticate` / `auth/login` with `existing-credentials` (or a provider id) checks env/`auth.json`.
 
-Wire tests: `crates/coding-agent/tests/acp_wire.rs` (initialize, capability ads, relative-cwd, cancel-then-new). Unit tests cover slash catalog, permission option mapping, and display-only terminal encoding. A full in-process `session/new` + prompt turn is not in CI (needs a live session store / multi-thread runtime). CLI flag tests: `tests/acp.rs`. There is no automated Zed UI smoke.
+Wire tests: `crates/coding-agent/tests/acp_wire.rs` (initialize, capability ads, relative-cwd, login, `session/new` list/close). Unit tests cover slash catalog, permission option mapping, and display-only terminal encoding. CLI flag tests: `tests/acp.rs`. There is no automated Zed UI smoke.
+
+Registry submission: `docs/acp-registry/`.
 
 ## Code
 

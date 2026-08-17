@@ -43,9 +43,23 @@ fn stdio_experimental_is_v2() {
     let cli = Cli::try_parse_from(["elph", "acp", "--stdio", "--experimental"]).expect("parse");
     match cli.command {
         Some(Commands::Acp(args)) => {
-            assert!(args.stdio && args.experimental);
+            assert!(args.stdio && args.experimental && !args.setup);
             assert_eq!(mode(&args), AcpMode::V2);
         }
+        _ => panic!("expected Commands::Acp"),
+    }
+}
+
+#[test]
+fn setup_conflicts_with_stdio() {
+    assert!(Cli::try_parse_from(["elph", "acp", "--setup", "--stdio"]).is_err());
+}
+
+#[test]
+fn setup_is_terminal_auth() {
+    let cli = Cli::try_parse_from(["elph", "acp", "--setup"]).expect("parse");
+    match cli.command {
+        Some(Commands::Acp(args)) => assert!(args.setup && !args.stdio),
         _ => panic!("expected Commands::Acp"),
     }
 }
