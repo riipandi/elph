@@ -171,9 +171,6 @@ pub fn handle(args: &RunArgs) -> ExitCode {
     // Initialize resilience manager with CLI overrides
     init_resilience_from_args(args);
 
-    // Spinner tick threads observe SIGINT via this guard (same as codegraph / boot).
-    let _interrupt = super::CliProgressInterruptGuard::new();
-
     let paths = match Paths::resolve() {
         Ok(p) => p,
         Err(err) => {
