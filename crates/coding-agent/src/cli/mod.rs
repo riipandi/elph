@@ -73,6 +73,7 @@ impl Drop for CliProgressInterruptGuard {
     }
 }
 
+pub use acp::AcpArgs;
 pub use codegraph::{CodegraphArgs, CodegraphCommands};
 pub use completions::CompletionsArgs;
 pub use doctor::DoctorArgs;
@@ -122,8 +123,8 @@ pub struct Cli {
 #[derive(Subcommand)]
 #[allow(clippy::large_enum_variant)] // clap subcommand payloads; boxing changes CLI parse ergonomics
 pub enum Commands {
-    /// Run Elph as an Agent Client Protocol (ACP) server over stdio
-    Acp,
+    /// Run Elph as an Agent Client Protocol (ACP) server
+    Acp(AcpArgs),
     /// Semantic code index + thin impact graph
     Codegraph(CodegraphArgs),
     /// Generate shell completion scripts (bash, zsh, fish, powershell, etc)
@@ -256,7 +257,7 @@ pub fn run(cli: &Cli) -> ExitCode {
     drop(_progress_interrupt);
 
     match cmd {
-        Commands::Acp => acp::handle(),
+        Commands::Acp(args) => acp::handle(args),
         Commands::Codegraph(args) => codegraph::handle(args),
         Commands::Completions(args) => completions::handle(args),
         Commands::Doctor(args) => doctor::handle(args),

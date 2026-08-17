@@ -62,13 +62,17 @@ pub fn send_available_commands(connection: &ConnectionTo<Client>, session_id: &S
     )
 }
 
-pub async fn handle_slash(
-    state: &Arc<Mutex<AcpAgentState>>,
-    connection: &ConnectionTo<Client>,
-    session_id: &SessionId,
-    input: &str,
-) -> anyhow::Result<()> {
-    let key = session_id.0.as_ref();
+/// Outcome of an ACP-safe slash command (no wire types).
+pub enum SlashOutcome {
+    /// Reply with this text and end the turn.
+    Text(String),
+    /// Submit `input` as a model prompt.
+    SubmitPrompt,
+    /// Continue the interrupted task (`/continue`).
+    Continue,
+}
+
+pub async fn resolve_slash(state: &Arc<Mutex<AcpAgentState>>, key: &str, input: &str) -> anyhow::Result<SlashOutcome> {
     let dispatch = dispatch_slash_command(input, None, None, None);
 
     let text = match dispatch {
@@ -111,7 +115,6 @@ pub async fn handle_slash(
                 .await;
             let mut parts = vec![report.summary_text()];
             parts.extend(report.notices);
-            let _ = send_available_commands(connection, session_id);
             parts.join("\n\n")
         }
         Some(SlashDispatch::Goal { args }) => {
@@ -120,14 +123,7 @@ pub async fn handle_slash(
                 .await
                 .map_err(|e| anyhow::anyhow!("{e}"))?
         }
-        Some(SlashDispatch::Continue) => {
-            let (session, ui_rx, _) = lookup_session(state, key)?;
-            session
-                .submit_prompt(crate::agent::RETRY_CONTINUE_PROMPT.to_string(), false)
-                .await?;
-            crate::platform::acp::updates::stream_ui_events(state, connection, session_id, &ui_rx).await?;
-            return Ok(());
-        }
+        Some(SlashDispatch::Continue) => return Ok(SlashOutcome::Continue),
         Some(SlashDispatch::Quit) => "Goodbye! Close the ACP session from the client.".into(),
         Some(SlashDispatch::NewSession) => "Create a new conversation with session/new instead of /new.".into(),
         Some(SlashDispatch::Resume { args }) => {
@@ -223,53 +219,53 @@ pub async fn handle_slash(
                     };
                     match event {
                         crate::agent::AgentUiEvent::AsideFinished { answer, question, .. } => {
-                            send_agent_text(connection, session_id, &format!("/aside {question}\n\n{answer}"))?;
-                            send_idle(connection, session_id, agent_client_protocol::schema::v2::StopReason::EndTurn)?;
-                            return Ok(());
+                            return Ok(SlashOutcome::Text(format!("/aside {question}\n\n{answer}")));
                         }
                         crate::agent::AgentUiEvent::AsideFailed { error, .. } => {
-                            send_agent_text(connection, session_id, &format!("/aside error: {error}"))?;
-                            send_idle(connection, session_id, agent_client_protocol::schema::v2::StopReason::EndTurn)?;
-                            return Ok(());
+                            return Ok(SlashOutcome::Text(format!("/aside error: {error}")));
                         }
                         _ => {}
                     }
                 }
-                return Ok(());
+                return Ok(SlashOutcome::Text("/aside ended without a reply.".into()));
             }
         }
-        Some(SlashDispatch::Skill { .. }) => {
-            let (session, ui_rx, _) = lookup_session(state, key)?;
-            session.submit_prompt(input.to_string(), false).await?;
-            crate::platform::acp::updates::stream_ui_events(state, connection, session_id, &ui_rx).await?;
-            return Ok(());
-        }
-        Some(SlashDispatch::PromptTemplate { name, .. }) => {
-            let _ = name;
-            let (session, ui_rx, _) = lookup_session(state, key)?;
-            session.submit_prompt(input.to_string(), false).await?;
-            crate::platform::acp::updates::stream_ui_events(state, connection, session_id, &ui_rx).await?;
-            return Ok(());
-        }
-        Some(SlashDispatch::Extension { name, .. }) => {
-            let _ = name;
-            let (session, ui_rx, _) = lookup_session(state, key)?;
-            session.submit_prompt(input.to_string(), false).await?;
-            crate::platform::acp::updates::stream_ui_events(state, connection, session_id, &ui_rx).await?;
-            return Ok(());
-        }
+        Some(SlashDispatch::Skill { .. })
+        | Some(SlashDispatch::PromptTemplate { .. })
+        | Some(SlashDispatch::Extension { .. })
+        | None => return Ok(SlashOutcome::SubmitPrompt),
         Some(other) => tui_only_message(&other),
-        None => {
-            let (session, ui_rx, _) = lookup_session(state, key)?;
-            session.submit_prompt(input.to_string(), false).await?;
-            crate::platform::acp::updates::stream_ui_events(state, connection, session_id, &ui_rx).await?;
-            return Ok(());
-        }
     };
 
-    send_agent_text(connection, session_id, &text)?;
-    send_idle(connection, session_id, agent_client_protocol::schema::v2::StopReason::EndTurn)?;
-    Ok(())
+    Ok(SlashOutcome::Text(text))
+}
+
+pub async fn handle_slash(
+    state: &Arc<Mutex<AcpAgentState>>,
+    connection: &ConnectionTo<Client>,
+    session_id: &SessionId,
+    input: &str,
+) -> anyhow::Result<()> {
+    let key = session_id.0.as_ref();
+    match resolve_slash(state, key, input).await? {
+        SlashOutcome::Text(text) => {
+            send_agent_text(connection, session_id, &text)?;
+            send_idle(connection, session_id, agent_client_protocol::schema::v2::StopReason::EndTurn)?;
+            Ok(())
+        }
+        SlashOutcome::Continue => {
+            let (session, ui_rx, _) = lookup_session(state, key)?;
+            session
+                .submit_prompt(crate::agent::RETRY_CONTINUE_PROMPT.to_string(), false)
+                .await?;
+            crate::platform::acp::updates::stream_ui_events(state, connection, session_id, &ui_rx).await
+        }
+        SlashOutcome::SubmitPrompt => {
+            let (session, ui_rx, _) = lookup_session(state, key)?;
+            session.submit_prompt(input.to_string(), false).await?;
+            crate::platform::acp::updates::stream_ui_events(state, connection, session_id, &ui_rx).await
+        }
+    }
 }
 
 fn tui_only_message(dispatch: &SlashDispatch) -> String {
@@ -294,4 +290,17 @@ fn tui_only_message(dispatch: &SlashDispatch) -> String {
 pub fn is_slash(input: &str) -> bool {
     let trimmed = input.trim();
     trimmed.starts_with('/') && trimmed.len() > 1
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn detects_slash_commands() {
+        assert!(is_slash("/help"));
+        assert!(is_slash("  /tools  "));
+        assert!(!is_slash("/"));
+        assert!(!is_slash("hello"));
+    }
 }

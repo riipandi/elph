@@ -9,12 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Breaking:** `elph acp` is ACP **v2 only**. The previous thin v1 adapter (`initialize` +
-  `session/new` + blocking `session/prompt`) is removed. Clients must negotiate
-  `protocolVersion: 2`. Prompt acceptance is immediate (`{}`); completion is an idle
-  `state_update`. The agent now implements session list/resume/close/delete, cancel,
-  tool-call updates, display terminals, plans, permissions, slash advertisement, and
-  config options. See `docs/acp.md`.
+- **ACP:** `elph acp --stdio` speaks **v1 (stable)**; `elph acp --stdio --experimental`
+  speaks **v2 (draft)**. Bare `elph acp` aliases `--stdio`. Each process speaks one
+  version. v1 holds `session/prompt` until `stopReason` and supports `session/load` /
+  `session/set_mode`. v2 keeps accept-then-`state_update`. See `docs/acp.md`.
 
 ### Added
 

@@ -14,18 +14,23 @@ use crate::platform::acp::updates::{
     is_running, mark_running, send_idle, send_running, send_user_message, stream_ui_events,
 };
 
-pub fn accept_prompt(responder: agent_client_protocol::Responder<PromptResponse>) {
-    let _ = responder.respond(PromptResponse::new());
-}
-
 pub async fn handle_prompt(
     state: Arc<Mutex<AcpAgentState>>,
     connection: ConnectionTo<Client>,
     request: PromptRequest,
+    responder: agent_client_protocol::Responder<PromptResponse>,
 ) -> anyhow::Result<()> {
     let session_id = request.session_id.clone();
+    let key = session_key(&session_id);
+    lookup_session(&state, &key)?;
     let extracted = extract_prompt(&request.prompt).map_err(|e| anyhow::anyhow!("{e}"))?;
-    let _image_count = extracted.images.len();
+    if !extracted.images.is_empty() {
+        let (session, _, _) = lookup_session(&state, &key)?;
+        if !session.supports_image_input() {
+            anyhow::bail!("this model does not accept image prompt content");
+        }
+    }
+    let _ = responder.respond(PromptResponse::new());
     let user_id = {
         let guard = state.lock();
         guard
@@ -44,7 +49,6 @@ pub async fn handle_prompt(
         return Ok(());
     }
 
-    let key = session_key(&session_id);
     let (session, ui_rx, _) = lookup_session(&state, &key)?;
     let steer = is_running(&state, &session_id);
     mark_running(&state, &session_id);

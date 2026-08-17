@@ -33,9 +33,10 @@ pub async fn create_session(
     let _ = mcp::map_servers(&request.mcp_servers);
 
     let session_id = open_or_create(state, &cwd, additional, None).await?;
-    after_open(state, connection, &session_id).await?;
-    let (session, _, _) = lookup_session(state, session_id.0.as_ref())?;
-    Ok(NewSessionResponse::new(session_id).config_options(config::config_options(&session)))
+    let sid = SessionId::from(session_id.clone());
+    after_open(state, connection, &sid).await?;
+    let (session, _, _) = lookup_session(state, &session_id)?;
+    Ok(NewSessionResponse::new(sid).config_options(config::config_options(&session)))
 }
 
 pub async fn resume_session(
@@ -51,44 +52,44 @@ pub async fn resume_session(
     let _ = mcp::map_servers(&request.mcp_servers);
     let resume_id = request.session_id.0.to_string();
     let session_id = open_or_create(state, &cwd, additional, Some(&resume_id)).await?;
+    let sid = SessionId::from(session_id.clone());
 
     if matches!(request.replay_from, Some(ReplayFrom::Start(_))) {
-        let (session, _, _) = lookup_session(state, session_id.0.as_ref())?;
-        replay::replay_from_start(connection, &session_id, &session).await?;
+        let (session, _, _) = lookup_session(state, &session_id)?;
+        replay::replay_from_start(connection, &sid, &session).await?;
     }
 
-    after_open(state, connection, &session_id).await?;
-    let (session, _, _) = lookup_session(state, session_id.0.as_ref())?;
+    after_open(state, connection, &sid).await?;
+    let (session, _, _) = lookup_session(state, &session_id)?;
     Ok(ResumeSessionResponse::new().config_options(config::config_options(&session)))
 }
 
-pub async fn list_sessions(
+pub struct ListedSession {
+    pub id: String,
+    pub cwd: String,
+    pub title: Option<String>,
+    pub updated_at: String,
+}
+
+pub async fn list_session_rows(
     state: &Arc<Mutex<AcpAgentState>>,
-    request: &ListSessionsRequest,
-) -> anyhow::Result<ListSessionsResponse> {
-    let (paths, settings) = {
-        let guard = state.lock();
-        (guard.paths.clone(), guard.settings.clone())
-    };
-    let cwd = request
-        .cwd
-        .as_ref()
-        .map(|p| p.0.clone())
+    cwd_filter: Option<PathBuf>,
+    cursor: Option<&str>,
+) -> anyhow::Result<(Vec<ListedSession>, Option<String>)> {
+    let paths = state.lock().paths.clone();
+    let cwd = cwd_filter
+        .clone()
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from("/")));
     let manager = crate::agent::SessionManager::new(&paths, &cwd)?;
     let mut sessions = manager.list().await?;
-    if let Some(filter) = request.cwd.as_ref() {
-        let filter = filter.0.to_string_lossy().to_string();
+    if let Some(filter) = cwd_filter {
+        let filter = filter.to_string_lossy().to_string();
         sessions.retain(|s| s.cwd == filter);
     }
-    let offset = request
-        .cursor
-        .as_ref()
-        .and_then(|c| c.0.parse::<usize>().ok())
-        .unwrap_or(0);
+    let offset = cursor.and_then(|c| c.parse::<usize>().ok()).unwrap_or(0);
     let page_size = 50;
     let next = if offset + page_size < sessions.len() {
-        Some(SessionListCursor::new((offset + page_size).to_string()))
+        Some((offset + page_size).to_string())
     } else {
         None
     };
@@ -96,9 +97,28 @@ pub async fn list_sessions(
         .into_iter()
         .skip(offset)
         .take(page_size)
+        .map(|meta| ListedSession {
+            id: meta.id,
+            cwd: meta.cwd,
+            title: meta.name,
+            updated_at: meta.updated_at,
+        })
+        .collect();
+    Ok((page, next))
+}
+
+pub async fn list_sessions(
+    state: &Arc<Mutex<AcpAgentState>>,
+    request: &ListSessionsRequest,
+) -> anyhow::Result<ListSessionsResponse> {
+    let filter = request.cwd.as_ref().map(|p| p.0.clone());
+    let cursor = request.cursor.as_ref().map(|c| c.0.as_ref().to_string());
+    let (rows, next) = list_session_rows(state, filter, cursor.as_deref()).await?;
+    let page = rows
+        .into_iter()
         .map(|meta| {
             let mut info = SessionInfo::new(meta.id, PathBuf::from(meta.cwd));
-            if let Some(title) = meta.name {
+            if let Some(title) = meta.title {
                 info = info.title(title);
             }
             if !meta.updated_at.is_empty() {
@@ -109,25 +129,28 @@ pub async fn list_sessions(
         .collect();
     let mut response = ListSessionsResponse::new(page);
     if let Some(cursor) = next {
-        response = response.next_cursor(cursor);
+        response = response.next_cursor(SessionListCursor::new(cursor));
     }
-    let _ = settings;
     Ok(response)
 }
 
-pub async fn close_session(
-    state: &Arc<Mutex<AcpAgentState>>,
-    request: &CloseSessionRequest,
-) -> anyhow::Result<CloseSessionResponse> {
-    let key = session_key(&request.session_id);
-    if let Ok((session, _, _)) = lookup_session(state, &key) {
+pub async fn close_by_id(state: &Arc<Mutex<AcpAgentState>>, key: &str) -> anyhow::Result<()> {
+    if let Ok((session, _, _)) = lookup_session(state, key) {
         let _ = session.abort().await;
         let _ = session
             .session_manager()
             .release_session_lease(session.session_id())
             .await;
     }
-    state.lock().sessions.remove(&key);
+    state.lock().sessions.remove(key);
+    Ok(())
+}
+
+pub async fn close_session(
+    state: &Arc<Mutex<AcpAgentState>>,
+    request: &CloseSessionRequest,
+) -> anyhow::Result<CloseSessionResponse> {
+    close_by_id(state, &session_key(&request.session_id)).await?;
     Ok(CloseSessionResponse::new())
 }
 
@@ -136,7 +159,7 @@ pub async fn delete_session(
     request: &DeleteSessionRequest,
 ) -> anyhow::Result<DeleteSessionResponse> {
     let key = session_key(&request.session_id);
-    let _ = close_session(state, &CloseSessionRequest::new(request.session_id.clone())).await;
+    let _ = close_by_id(state, &key).await;
     let (paths, cwd) = {
         let guard = state.lock();
         (
@@ -154,16 +177,26 @@ pub async fn delete_session(
     Ok(DeleteSessionResponse::new())
 }
 
-async fn open_or_create(
+pub(super) async fn open_or_create(
     state: &Arc<Mutex<AcpAgentState>>,
     cwd: &PathBuf,
     additional: Vec<PathBuf>,
     resume_id: Option<&str>,
-) -> anyhow::Result<SessionId> {
+) -> anyhow::Result<String> {
     let (paths, settings) = {
         let guard = state.lock();
         (guard.paths.clone(), guard.settings.clone())
     };
+
+    if let Some(id) = resume_id {
+        let manager = crate::agent::SessionManager::new(&paths, cwd)?;
+        if let Some(meta) = manager.find_metadata(id).await? {
+            let stored = PathBuf::from(&meta.cwd);
+            if stored != *cwd && !stored.as_os_str().is_empty() {
+                anyhow::bail!("session cwd mismatch: stored {} vs request {}", stored.display(), cwd.display());
+            }
+        }
+    }
 
     let (session, ui_rx) = create_coding_session_with_events(CreateSessionOptions {
         paths: &paths,
@@ -182,13 +215,12 @@ async fn open_or_create(
     })
     .await?;
 
-    let session_id = SessionId::from(session.session_id().to_string());
     let key = session.session_id().to_string();
     let session = Arc::new(session);
     session.start_worker_inbox_poller();
 
     state.lock().sessions.insert(
-        key,
+        key.clone(),
         AcpSessionState {
             session,
             ui_rx: Arc::new(tokio::sync::Mutex::new(ui_rx)),
@@ -199,7 +231,7 @@ async fn open_or_create(
             ids: MessageIds::new(),
         },
     );
-    Ok(session_id)
+    Ok(key)
 }
 
 async fn after_open(

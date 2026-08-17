@@ -11,25 +11,17 @@ use crate::platform::acp::terminals;
 use crate::platform::acp::updates::send_update;
 
 pub fn kind_for_tool(name: &str) -> ToolKind {
-    let n = name.to_ascii_lowercase();
-    if n.contains("read") || n.contains("list_dir") || n.contains("list_dir") {
-        ToolKind::Read
-    } else if n.contains("edit") || n.contains("write") {
-        ToolKind::Edit
-    } else if n.contains("delete") {
-        ToolKind::Delete
-    } else if n.contains("move") || n.contains("copy") {
-        ToolKind::Move
-    } else if n.contains("grep") || n.contains("find") || n.contains("search") {
-        ToolKind::Search
-    } else if n.contains("shell") || n.contains("exec") {
-        ToolKind::Execute
-    } else if n.contains("fetch") || n.contains("extract") {
-        ToolKind::Fetch
-    } else if n.contains("todo") || n.contains("plan") {
-        ToolKind::Think
-    } else {
-        ToolKind::Other
+    match name {
+        "read_file" | "list_dir" | "list_available_tools" => ToolKind::Read,
+        "edit_file" | "write_file" => ToolKind::Edit,
+        "delete_path" => ToolKind::Delete,
+        "move_path" | "copy_path" => ToolKind::Move,
+        "grep" | "find_path" | "web_search" => ToolKind::Search,
+        "shell_exec" | "shell_use" => ToolKind::Execute,
+        "web_fetch" | "web_extract" => ToolKind::Fetch,
+        "todo_write" | "todo_read" => ToolKind::Think,
+        other if other.starts_with("mcp_") => ToolKind::Other,
+        _ => ToolKind::Other,
     }
 }
 

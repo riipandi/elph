@@ -1,4 +1,4 @@
-//! ACP v2 agent server over stdio.
+//! ACP agent server over stdio (v1 stable, v2 experimental).
 
 mod capabilities;
 mod commands;
@@ -15,6 +15,16 @@ mod state;
 mod terminals;
 mod tools;
 mod updates;
+mod v1;
+
+/// Which ACP protocol this process speaks (one version per process).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AcpMode {
+    /// ACP v1 (stable). `elph acp --stdio`
+    V1,
+    /// ACP v2 draft. `elph acp --stdio --experimental`
+    V2,
+}
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -31,8 +41,15 @@ use parking_lot::Mutex;
 use crate::platform::acp::state::{AcpAgentState, lookup_session, session_key};
 use crate::platform::{Paths, Settings};
 
-/// Run Elph as an ACP v2 agent on stdio (for IDE / CLI clients).
-pub async fn run_agent_stdio(paths: Paths, settings: Settings) -> AcpResult<()> {
+/// Run Elph as an ACP agent on stdio.
+pub async fn run_agent_stdio(paths: Paths, settings: Settings, mode: AcpMode) -> AcpResult<()> {
+    match mode {
+        AcpMode::V1 => v1::run(paths, settings).await,
+        AcpMode::V2 => run_v2(paths, settings).await,
+    }
+}
+
+async fn run_v2(paths: Paths, settings: Settings) -> AcpResult<()> {
     let state = Arc::new(Mutex::new(AcpAgentState {
         sessions: HashMap::new(),
         paths,
@@ -44,27 +61,28 @@ pub async fn run_agent_stdio(paths: Paths, settings: Settings) -> AcpResult<()> 
         .on_receive_request(
             async move |initialize: InitializeRequest, responder, _connection| {
                 let _ = initialize;
-                responder.respond(
+                let _ = responder.respond(
                     InitializeResponse::new(ProtocolVersion::V2, capabilities::implementation())
                         .capabilities(capabilities::agent_capabilities()),
-                )
+                );
+                Ok(())
             },
             agent_client_protocol::on_receive_request!(),
         )
         .on_receive_request(
             {
                 let state = Arc::clone(&state);
-                async move |request: NewSessionRequest, responder, connection| match session::create_session(
-                    &state,
-                    &request,
-                    &connection,
-                )
-                .await
-                {
-                    Ok(response) => responder.respond(response),
-                    Err(error) => {
-                        responder.respond_with_error(agent_client_protocol::util::internal_error(error.to_string()))
+                async move |request: NewSessionRequest, responder, connection| {
+                    match session::create_session(&state, &request, &connection).await {
+                        Ok(response) => {
+                            let _ = responder.respond(response);
+                        }
+                        Err(error) => {
+                            let _ = responder
+                                .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                        }
                     }
+                    Ok(())
                 }
             },
             agent_client_protocol::on_receive_request!(),
@@ -72,17 +90,17 @@ pub async fn run_agent_stdio(paths: Paths, settings: Settings) -> AcpResult<()> 
         .on_receive_request(
             {
                 let state = Arc::clone(&state);
-                async move |request: ResumeSessionRequest, responder, connection| match session::resume_session(
-                    &state,
-                    &request,
-                    &connection,
-                )
-                .await
-                {
-                    Ok(response) => responder.respond(response),
-                    Err(error) => {
-                        responder.respond_with_error(agent_client_protocol::util::internal_error(error.to_string()))
+                async move |request: ResumeSessionRequest, responder, connection| {
+                    match session::resume_session(&state, &request, &connection).await {
+                        Ok(response) => {
+                            let _ = responder.respond(response);
+                        }
+                        Err(error) => {
+                            let _ = responder
+                                .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                        }
                     }
+                    Ok(())
                 }
             },
             agent_client_protocol::on_receive_request!(),
@@ -90,15 +108,17 @@ pub async fn run_agent_stdio(paths: Paths, settings: Settings) -> AcpResult<()> 
         .on_receive_request(
             {
                 let state = Arc::clone(&state);
-                async move |request: ListSessionsRequest, responder, _connection| match session::list_sessions(
-                    &state, &request,
-                )
-                .await
-                {
-                    Ok(response) => responder.respond(response),
-                    Err(error) => {
-                        responder.respond_with_error(agent_client_protocol::util::internal_error(error.to_string()))
+                async move |request: ListSessionsRequest, responder, _connection| {
+                    match session::list_sessions(&state, &request).await {
+                        Ok(response) => {
+                            let _ = responder.respond(response);
+                        }
+                        Err(error) => {
+                            let _ = responder
+                                .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                        }
                     }
+                    Ok(())
                 }
             },
             agent_client_protocol::on_receive_request!(),
@@ -106,15 +126,17 @@ pub async fn run_agent_stdio(paths: Paths, settings: Settings) -> AcpResult<()> 
         .on_receive_request(
             {
                 let state = Arc::clone(&state);
-                async move |request: CloseSessionRequest, responder, _connection| match session::close_session(
-                    &state, &request,
-                )
-                .await
-                {
-                    Ok(response) => responder.respond(response),
-                    Err(error) => {
-                        responder.respond_with_error(agent_client_protocol::util::internal_error(error.to_string()))
+                async move |request: CloseSessionRequest, responder, _connection| {
+                    match session::close_session(&state, &request).await {
+                        Ok(response) => {
+                            let _ = responder.respond(response);
+                        }
+                        Err(error) => {
+                            let _ = responder
+                                .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                        }
                     }
+                    Ok(())
                 }
             },
             agent_client_protocol::on_receive_request!(),
@@ -122,15 +144,17 @@ pub async fn run_agent_stdio(paths: Paths, settings: Settings) -> AcpResult<()> 
         .on_receive_request(
             {
                 let state = Arc::clone(&state);
-                async move |request: DeleteSessionRequest, responder, _connection| match session::delete_session(
-                    &state, &request,
-                )
-                .await
-                {
-                    Ok(response) => responder.respond(response),
-                    Err(error) => {
-                        responder.respond_with_error(agent_client_protocol::util::internal_error(error.to_string()))
+                async move |request: DeleteSessionRequest, responder, _connection| {
+                    match session::delete_session(&state, &request).await {
+                        Ok(response) => {
+                            let _ = responder.respond(response);
+                        }
+                        Err(error) => {
+                            let _ = responder
+                                .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                        }
                     }
+                    Ok(())
                 }
             },
             agent_client_protocol::on_receive_request!(),
@@ -138,17 +162,17 @@ pub async fn run_agent_stdio(paths: Paths, settings: Settings) -> AcpResult<()> 
         .on_receive_request(
             {
                 let state = Arc::clone(&state);
-                async move |request: SetSessionConfigOptionRequest, responder, connection| match set_config(
-                    &state,
-                    &request,
-                    &connection,
-                )
-                .await
-                {
-                    Ok(response) => responder.respond(response),
-                    Err(error) => {
-                        responder.respond_with_error(agent_client_protocol::util::internal_error(error.to_string()))
+                async move |request: SetSessionConfigOptionRequest, responder, connection| {
+                    match set_config(&state, &request, &connection).await {
+                        Ok(response) => {
+                            let _ = responder.respond(response);
+                        }
+                        Err(error) => {
+                            let _ = responder
+                                .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                        }
                     }
+                    Ok(())
                 }
             },
             agent_client_protocol::on_receive_request!(),
@@ -157,11 +181,10 @@ pub async fn run_agent_stdio(paths: Paths, settings: Settings) -> AcpResult<()> 
             {
                 let state = Arc::clone(&state);
                 async move |request: PromptRequest, responder, connection| {
-                    prompt::accept_prompt(responder);
                     let state = Arc::clone(&state);
                     let conn = connection.clone();
                     if let Err(error) = connection.spawn(async move {
-                        if let Err(error) = prompt::handle_prompt(state, conn, request).await {
+                        if let Err(error) = prompt::handle_prompt(state, conn, request, responder).await {
                             log::warn!("ACP prompt failed: {error:#}");
                         }
                         Ok(())
