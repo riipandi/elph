@@ -440,7 +440,9 @@ mod tests {
 
     #[test]
     fn is_open_retryable_detects_transient_open_errors() {
-        assert!(is_open_retryable("Database is already open with experimental multiprocess WAL in another process"));
+        assert!(is_open_retryable(
+            "Database is already open with experimental multiprocess WAL in another process"
+        ));
         assert!(is_open_retryable("database is locked"));
         assert!(is_open_retryable("Locking error"));
         assert!(is_open_retryable("database is busy"));
