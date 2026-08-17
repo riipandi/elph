@@ -1,0 +1,471 @@
+@import "tailwindcss";
+@import "./pagefind.css";
+@import "./markdown.css";
+@import "./shiki.css";
+/* ---------------------------------------------------------------------------
+   Vitto Design System — Creative Minimalist
+   --------------------------------------------------------------------------- */
+
+@theme {
+  --color-sand-50: #f6f5f1;
+  --color-sand-100: #eceae4;
+  --color-sand-200: #ddd9d0;
+  --color-sand-300: #c4bfb4;
+  --color-sand-400: #9b9589;
+  --color-sand-500: #7a756b;
+  --color-sand-600: #5c5850;
+  --color-sand-700: #3f3c37;
+  --color-sand-800: #252320;
+  --color-sand-900: #111110;
+
+  --color-emerald-50: #f3f4ee;
+  --color-emerald-100: #e4e6dc;
+  --color-emerald-200: #cdd1c2;
+  --color-emerald-300: #a8ae96;
+  --color-emerald-400: #7d8468;
+  --color-emerald-500: #5e644c;
+  --color-emerald-600: #454a38;
+  --color-indigo-400: #9b9589;
+  --color-indigo-500: #7a756b;
+  --color-indigo-600: #5c5850;
+
+  --color-lime-300: #d4f06a;
+  --color-lime-400: #c6ff00;
+  --color-lime-500: #a8e219;
+  --color-lime-600: #71dd42;
+  --color-lime-700: #4a6b22;
+
+  --chrome-bg: #f3f1ea;
+  --chrome-fg: #191816;
+  --chrome-muted: #5c5a54;
+  --chrome-line: rgba(25, 24, 22, 0.1);
+  --chrome-accent: #3a4030;
+  --chrome-raised: #faf8f3;
+  --chrome-inset: #ece9e1;
+
+  --font-sans:
+    "Sora", "Space Grotesk", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  --font-mono:
+    "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
+    monospace;
+}
+
+/* ---------------------------------------------------------------------------
+   Base
+   --------------------------------------------------------------------------- */
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
+  }
+
+  html,
+  body {
+    @apply antialiased min-h-screen font-sans;
+    letter-spacing: 0.018em;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    letter-spacing: 0.03em;
+  }
+
+  ::selection {
+    @apply bg-sand-200 text-sand-900 dark:bg-sand-700 dark:text-sand-50;
+  }
+
+  pre,
+  code {
+    @apply font-mono;
+  }
+}
+
+/* Mobile menu panel — slide-in from right */
+#mobile-menu {
+  transition: opacity 0.2s ease;
+}
+#mobile-menu > div {
+  transform: translateX(100%);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+#mobile-menu.open > div {
+  transform: translateX(0);
+}
+
+.dark {
+  --chrome-bg: #111110;
+  --chrome-fg: #ecebe6;
+  --chrome-muted: #9a9890;
+  --chrome-line: rgba(236, 235, 230, 0.08);
+  --chrome-accent: #c6ff00;
+  --chrome-raised: #1a1a17;
+  --chrome-inset: #1a1a17;
+}
+
+header.site-nav {
+  background: color-mix(in srgb, var(--chrome-bg) 82%, transparent);
+  border-bottom: 1px solid var(--chrome-line);
+}
+
+.nav-link {
+  color: var(--chrome-muted);
+}
+
+.nav-link:hover {
+  color: var(--chrome-fg);
+}
+
+.nav-link.is-active {
+  color: var(--chrome-accent);
+}
+
+header.site-nav .nav-link {
+  font-size: 0.8125rem;
+  letter-spacing: 0.04em;
+}
+
+header.menu-open {
+  background-color: var(--chrome-bg);
+}
+
+footer.site-foot {
+  background: var(--chrome-bg);
+  border-top: 1px solid var(--chrome-line);
+  color: var(--chrome-muted);
+}
+
+footer.site-foot a:hover {
+  color: var(--chrome-accent);
+}
+
+.page-shell {
+  background: var(--chrome-bg);
+  color: var(--chrome-muted);
+}
+
+.page-shell h1,
+.page-shell h2,
+.page-shell h3 {
+  color: var(--chrome-fg);
+}
+
+.page-kicker {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--chrome-muted);
+}
+
+.page-head {
+  border-bottom: 1px solid var(--chrome-line);
+}
+
+.faq {
+  margin-inline: -0.75rem;
+  padding: 1.25rem 0.75rem;
+  border-bottom: 1px solid var(--chrome-line);
+  transition: background-color 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.faq:hover,
+.faq:focus-within {
+  background: color-mix(in srgb, var(--chrome-fg) 3.5%, transparent);
+}
+
+.faq summary {
+  cursor: pointer;
+  list-style: none;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--chrome-fg);
+}
+
+.faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq summary::after {
+  content: "+";
+  float: right;
+  font-family: var(--font-mono);
+  color: var(--chrome-muted);
+  transition: color 160ms ease;
+}
+
+.faq[open] summary::after {
+  content: "−";
+}
+
+.faq:hover summary::after,
+.faq[open] summary::after {
+  color: var(--chrome-accent);
+}
+
+.row-link {
+  display: block;
+  margin-inline: -0.75rem;
+  padding: 1rem 0.75rem;
+  border-radius: 0.25rem;
+  transition: background-color 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.row-link:hover {
+  background: color-mix(in srgb, var(--chrome-fg) 3.5%, transparent);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .faq:hover,
+  .row-link:hover {
+    background: color-mix(in srgb, var(--chrome-fg) 3.5%, transparent);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Utilities
+   --------------------------------------------------------------------------- */
+
+@utility fade-in {
+  animation: fadeIn 0.5s ease-out both;
+}
+
+@utility slide-up {
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@utility slide-up-delay-1 {
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
+@utility slide-up-delay-2 {
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+}
+
+@utility slide-up-delay-3 {
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .slide-up,
+  .slide-up-delay-1,
+  .slide-up-delay-2,
+  .slide-up-delay-3,
+  .fade-in,
+  .reveal {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+@utility debug {
+  border-width: 1px;
+  border-style: dashed;
+  border-color: #f87171;
+}
+
+/* ---------------------------------------------------------------------------
+   Animations
+   --------------------------------------------------------------------------- */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Intersection observer reveal */
+.reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ---------------------------------------------------------------------------
+   Homepage — light / dark
+   --------------------------------------------------------------------------- */
+
+html:has(.home) body,
+html:has(.page-shell) body {
+  background: var(--chrome-bg);
+}
+
+.home {
+  --home-bg: var(--chrome-bg);
+  --home-fg: var(--chrome-fg);
+  --home-muted: var(--chrome-muted);
+  --home-line: var(--chrome-line);
+  --home-accent: var(--chrome-accent);
+  --home-grid: rgba(25, 24, 22, 0.055);
+  --home-glow: rgba(58, 64, 48, 0.06);
+  position: relative;
+  isolation: isolate;
+  background: var(--home-bg);
+  color: var(--home-muted);
+}
+
+.dark .home {
+  --home-grid: rgba(236, 235, 230, 0.04);
+  --home-glow: rgba(198, 255, 0, 0.045);
+}
+
+.home::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image:
+    linear-gradient(var(--home-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--home-grid) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 20%, transparent 75%);
+}
+
+.home::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: radial-gradient(ellipse 70% 45% at 70% 8%, var(--home-glow), transparent 55%);
+}
+
+.home > * {
+  position: relative;
+  z-index: 1;
+}
+
+.home-fg {
+  color: var(--home-fg);
+}
+
+.home-muted {
+  color: var(--home-muted);
+}
+
+.home-accent {
+  color: var(--home-accent);
+}
+
+.home-label {
+  color: var(--home-muted);
+}
+
+.home-rule {
+  border-color: var(--home-line);
+}
+
+.home-cmd {
+  box-shadow: 0 0 0 1px var(--home-line);
+  transition: box-shadow 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.home-cmd:hover {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--home-fg) 22%, transparent);
+}
+
+.home-tui {
+  background: linear-gradient(180deg, #1c1c19 0%, #141412 100%);
+  color: #d8d6cf;
+  box-shadow:
+    0 0 0 1px var(--home-line),
+    0 24px 64px -28px rgba(17, 17, 16, 0.5);
+}
+
+.home-tui::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 2px,
+    rgba(0, 0, 0, 0.12) 2px,
+    rgba(0, 0, 0, 0.12) 3px
+  );
+  opacity: 0.35;
+}
+
+.home-cursor {
+  display: inline-block;
+  width: 0.55ch;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: #c6ff00;
+  animation: homeBlink 1.05s steps(1) infinite;
+}
+
+@keyframes homeBlink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.home-scan {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 28%;
+  background: linear-gradient(to bottom, transparent, rgba(236, 235, 230, 0.04), transparent);
+  animation: homeScan 7s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes homeScan {
+  from {
+    transform: translateY(-40%);
+  }
+  to {
+    transform: translateY(280%);
+  }
+}
+
+.theme-icon-sun {
+  display: none;
+}
+.dark .theme-icon-sun {
+  display: block;
+}
+.dark .theme-icon-moon {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-cursor,
+  .home-scan {
+    animation: none;
+  }
+}

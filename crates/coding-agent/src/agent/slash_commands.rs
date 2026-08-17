@@ -1,6 +1,6 @@
 //! Built-in slash command registry and dispatch.
 
-use crate::agent::{parse_skill_slash, skill_slash_name, truncate_palette_description};
+use crate::agent::{MAX_PALETTE_DESCRIPTION_CHARS, parse_skill_slash, skill_slash_name, truncate_palette_description};
 use crate::types::{SlashCommand, SlashCommandKind};
 use elph_agent::{ExtensionRegistry, PromptTemplate, Skill};
 
@@ -70,11 +70,14 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin_with_args("compact", "Compact conversation history"),
         builtin("continue", "Resume the interrupted task"),
         builtin("resume", "Resume a different session"),
+        builtin("workers", "List live multi-worker peers"),
+        builtin("intercom", "Open worker chat (Alt+M)"),
         builtin("reload", "Reload providers, settings, skills, templates, extensions"),
         builtin("quit", "Quit Elph"),
         builtin_with_args("memory", "Agent memory store (floppy)"),
         builtin("feedback", "Report a bug or join community"),
         builtin("help", "List commands"),
+        builtin_with_args("aside", "Ask a side question without interrupting"),
         builtin("tools", "Show active tools"),
         builtin("system-prompt", "Show compiled system prompt"),
         builtin("exit", "Quit Elph"),
@@ -95,7 +98,7 @@ pub fn slash_commands_for_palette(
     let mut commands: Vec<SlashCommand> = builtin_slash_commands()
         .into_iter()
         .map(|cmd| {
-            let mut entry = SlashCommand::new(cmd.name, truncate_palette_description(cmd.description));
+            let mut entry = SlashCommand::new(cmd.name, truncate_palette_description(cmd.description, None));
             if let Some(hint) = cmd.args_hint {
                 entry = entry.with_args_hint(hint);
             }
@@ -110,7 +113,10 @@ pub fn slash_commands_for_palette(
     if let Some(registry) = extensions {
         for cmd in registry.commands() {
             if !builtin_names.contains(&cmd.name) {
-                commands.push(SlashCommand::new(cmd.name, truncate_palette_description(&cmd.description)));
+                commands.push(SlashCommand::new(
+                    cmd.name,
+                    truncate_palette_description(&cmd.description, None),
+                ));
             }
         }
     }
@@ -119,7 +125,7 @@ pub fn slash_commands_for_palette(
             if !builtin_names.contains(&template.name) {
                 let mut cmd = SlashCommand::new(
                     &template.name,
-                    format!("[prompt] {}", truncate_palette_description(&template.description)),
+                    format!("[prompt] {}", truncate_palette_description(&template.description, None)),
                 )
                 .with_kind(SlashCommandKind::PromptTemplate);
                 if let Some(hint) = &template.argument_hint {
@@ -133,9 +139,11 @@ pub fn slash_commands_for_palette(
         for skill in skills {
             let name = skill_slash_name(&skill.name);
             if !builtin_names.contains(&name) {
-                let mut cmd =
-                    SlashCommand::new(name, format!("[skill] {}", truncate_palette_description(&skill.description)))
-                        .with_kind(SlashCommandKind::Skill);
+                let mut cmd = SlashCommand::new(
+                    name,
+                    format!("[skill] {}", truncate_palette_description(&skill.description, None)),
+                )
+                .with_kind(SlashCommandKind::Skill);
                 if let Some(hint) = &skill.argument_hint {
                     cmd = cmd.with_args_hint(hint);
                 }
@@ -249,6 +257,42 @@ pub enum SlashDispatch {
     Handover {
         args: String,
     },
+    /// Live multi-worker peers (`/workers`).
+    Workers,
+    /// Open worker chat (`/intercom`, Alt+M).
+    WorkerChat,
+    /// Keyboard shortcut reference (`/hotkeys`).
+    Hotkeys,
+    /// Changelog text (`/changelog`).
+    Changelog,
+    /// Settings paths and tips (`/settings`).
+    Settings,
+    /// Export session branch as JSONL (`/export [path]`).
+    Export {
+        args: String,
+    },
+    /// Import session JSONL (`/import [path]`).
+    Import {
+        args: String,
+    },
+    /// Mark project trusted (`/trust`).
+    Trust,
+    /// Fork current session (`/fork`).
+    Fork,
+    /// Clone current session (`/clone`).
+    CloneSession,
+    /// Session tree inspect / navigate (`/tree [entry_id] [--summary]`).
+    Tree {
+        args: String,
+    },
+    /// List sessions or switch (`/resume [id]`).
+    Resume {
+        args: String,
+    },
+    /// Side question that does not interrupt the main turn (`/aside <question>`).
+    Aside {
+        question: String,
+    },
     Unimplemented(String),
 }
 
@@ -265,7 +309,9 @@ pub fn format_help_message(
     let commands = slash_commands_for_palette(extensions, prompt_templates, skills);
     let mut lines = vec!["Slash commands:".to_string()];
     for cmd in commands.into_iter().filter(|cmd| !cmd.hidden) {
-        lines.push(format!("  {} — {}", cmd.palette_command_label(), cmd.description));
+        // `/help` is rendered as plain text (no box), so cap the description here.
+        let desc = truncate_palette_description(&cmd.description, Some(MAX_PALETTE_DESCRIPTION_CHARS));
+        lines.push(format!("  {} — {}", cmd.palette_command_label(), desc));
     }
     lines.join("\n")
 }
@@ -557,7 +603,22 @@ mod compact_args_tests {
 pub fn slash_palette_submit_on_enter(command_name: &str) -> bool {
     matches!(
         command_name,
-        "model" | "scoped-models" | "tree" | "resume" | "session" | "rename" | "system-prompt" | "feedback"
+        "model"
+            | "scoped-models"
+            | "tree"
+            | "resume"
+            | "session"
+            | "rename"
+            | "system-prompt"
+            | "feedback"
+            | "workers"
+            | "intercom"
+            | "hotkeys"
+            | "changelog"
+            | "settings"
+            | "trust"
+            | "fork"
+            | "clone"
     )
 }
 
@@ -570,6 +631,7 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
         "continue" | "cont" => Some(SlashDispatch::Continue),
         "goal" | "goals" => Some(SlashDispatch::Goal { args }),
         "help" | "h" | "?" => Some(SlashDispatch::Help),
+        "aside" => Some(SlashDispatch::Aside { question: args }),
         "tools" => Some(SlashDispatch::Tools { args }),
         "system-prompt" | "systemprompt" | "prompt" => Some(SlashDispatch::SystemPrompt),
         "session" => Some(SlashDispatch::SessionInfo),
@@ -580,16 +642,24 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
         "scoped-models" | "scoped_models" | "scopedmodels" => {
             Some(SlashDispatch::OverlayNeeded(OverlayCommand::ScopedModels))
         }
-        "tree" => Some(SlashDispatch::OverlayNeeded(OverlayCommand::Tree)),
-        "resume" => Some(SlashDispatch::OverlayNeeded(OverlayCommand::Resume)),
+        "tree" => Some(SlashDispatch::Tree { args }),
+        "resume" => Some(SlashDispatch::Resume { args }),
         "new" => Some(SlashDispatch::NewSession),
         "feedback" => Some(SlashDispatch::Feedback),
         "memory" | "mem" => Some(SlashDispatch::Memory { args }),
         "login" => Some(SlashDispatch::ProviderConnect { provider_id: None }),
         "logout" => Some(SlashDispatch::ProviderDisconnect { provider_id: None }),
-        "settings" | "export" | "import" | "copy" | "changelog" | "hotkeys" | "fork" | "clone" | "trust" => {
-            Some(SlashDispatch::Unimplemented(format!("/{name}")))
-        }
+        "workers" => Some(SlashDispatch::Workers),
+        "intercom" | "ic" => Some(SlashDispatch::WorkerChat),
+        "hotkeys" | "keys" | "shortcuts" => Some(SlashDispatch::Hotkeys),
+        "changelog" | "changes" => Some(SlashDispatch::Changelog),
+        "settings" | "config" => Some(SlashDispatch::Settings),
+        "export" => Some(SlashDispatch::Export { args }),
+        "import" => Some(SlashDispatch::Import { args }),
+        "trust" => Some(SlashDispatch::Trust),
+        "fork" => Some(SlashDispatch::Fork),
+        "clone" => Some(SlashDispatch::CloneSession),
+        "copy" => Some(SlashDispatch::CloneSession),
         "provider" => {
             if args.trim().is_empty() {
                 Some(SlashDispatch::ProviderConnect { provider_id: None })
@@ -811,6 +881,18 @@ mod tests {
         );
         assert_eq!(dispatch_slash_command("/help", None, None, None), Some(SlashDispatch::Help));
         assert_eq!(
+            dispatch_slash_command("/aside is this safe?", None, None, None),
+            Some(SlashDispatch::Aside {
+                question: "is this safe?".into()
+            })
+        );
+        assert_eq!(
+            dispatch_slash_command("/aside", None, None, None),
+            Some(SlashDispatch::Aside {
+                question: String::new()
+            })
+        );
+        assert_eq!(
             dispatch_slash_command("/tools", None, None, None),
             Some(SlashDispatch::Tools { args: String::new() })
         );
@@ -853,7 +935,33 @@ mod tests {
         );
         assert_eq!(
             dispatch_slash_command("/tree", None, None, None),
-            Some(SlashDispatch::OverlayNeeded(OverlayCommand::Tree))
+            Some(SlashDispatch::Tree { args: String::new() })
+        );
+        assert_eq!(
+            dispatch_slash_command("/tree abc --summary", None, None, None),
+            Some(SlashDispatch::Tree {
+                args: "abc --summary".into()
+            })
+        );
+        assert_eq!(
+            dispatch_slash_command("/resume", None, None, None),
+            Some(SlashDispatch::Resume { args: String::new() })
+        );
+        assert_eq!(
+            dispatch_slash_command("/resume abc123", None, None, None),
+            Some(SlashDispatch::Resume { args: "abc123".into() })
+        );
+        assert_eq!(
+            dispatch_slash_command("/workers", None, None, None),
+            Some(SlashDispatch::Workers)
+        );
+        assert_eq!(
+            dispatch_slash_command("/intercom", None, None, None),
+            Some(SlashDispatch::WorkerChat)
+        );
+        assert_eq!(
+            dispatch_slash_command("/intercom calm-fox", None, None, None),
+            Some(SlashDispatch::WorkerChat)
         );
     }
 

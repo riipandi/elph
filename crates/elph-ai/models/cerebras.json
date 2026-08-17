@@ -13,19 +13,22 @@
             "input": 0.99,
             "output": 1.49
         },
+        "description": "Largest Gemma 4 instruction model for open, self-hosted chat and reasoning",
         "id": "gemma-4-31b",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 40960,
         "name": "Gemma 4 31B IT",
         "provider": "cerebras",
         "reasoning": true,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": "none",
+            "off": "off",
             "xhigh": null
         }
     },
@@ -43,12 +46,15 @@
             "input": 0.35,
             "output": 0.75
         },
+        "description": "Open GPT reasoning model for self-hosted agents and controllable deployments",
         "id": "gpt-oss-120b",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 40960,
         "name": "GPT OSS 120B",
         "provider": "cerebras",
         "reasoning": true,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -73,19 +79,22 @@
             "input": 2.25,
             "output": 2.75
         },
+        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "zai-glm-4.7",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 40960,
         "name": "Z.AI GLM-4.7",
         "provider": "cerebras",
         "reasoning": true,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": "none",
+            "off": "off",
             "xhigh": null
         }
     }

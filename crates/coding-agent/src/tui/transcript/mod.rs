@@ -7,11 +7,12 @@ pub mod ephemeral;
 mod layout;
 pub(crate) mod markdown;
 mod panel;
+pub(crate) mod retention;
 mod types;
 
-pub use archive::{
-    TRANSCRIPT_SNAPSHOT_CUSTOM_TYPE, build_snapshot_data, duration_from_tool_details, messages_from_snapshot_data,
-};
+#[cfg(test)]
+pub use archive::messages_from_snapshot_data;
+pub use archive::{TRANSCRIPT_SNAPSHOT_CUSTOM_TYPE, build_snapshot_data, duration_from_tool_details};
 pub use cache::TranscriptCache;
 pub use ephemeral::{
     AGENT_MODE_NOTICE_TTL, EphemeralBanner, EphemeralBannerGeneration, EphemeralBannerKind,
@@ -22,6 +23,7 @@ pub use ephemeral::{
     select_mode_on_banner, theme_mode_banner,
 };
 pub use panel::TranscriptPanel;
+pub use retention::apply_transcript_retention;
 pub use types::{
     LogDensity, QUIT_BUSY_NOTICE_KEY, TranscriptMessage, TranscriptStyle, set_log_density,
     toggle_latest_collapsible_detail,

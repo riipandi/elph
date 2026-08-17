@@ -32,6 +32,11 @@ use crate::types::{AgentTool, AgentToolResult, ToolContext, ToolExecuteFn};
 /// token-efficient for the model; full scrollback is available on demand).
 const MAX_RENDERED_CHARS: usize = 16 * 1024;
 
+/// Max concurrent `shell_use` sessions kept in the process-global registry.
+/// When exceeded, the oldest session (first returned by `registry.sessions()`)
+/// is closed to prevent unbounded PTY buffer growth.
+const MAX_SHELL_USE_SESSIONS: usize = 5;
+
 /// Create the `shell_use` tool using a process-global session registry.
 pub fn create_shell_use_tool(_env: Arc<LocalExecutionEnv>) -> AgentTool {
     AgentTool {
@@ -235,6 +240,21 @@ pub fn shell_use_open_sessions() -> Vec<String> {
     shell_use_registry().sessions()
 }
 
+/// Evict the oldest idle `shell_use` sessions when the registry exceeds
+/// `MAX_SHELL_USE_SESSIONS`. Called after `open` / `run` to bound PTY buffer
+/// memory growth across the process lifetime.
+fn evict_excess_sessions() {
+    let registry = shell_use_registry();
+    let mut names = registry.sessions();
+    while names.len() > MAX_SHELL_USE_SESSIONS {
+        if let Some(oldest) = names.pop() {
+            let _ = registry.close(&oldest);
+        } else {
+            break;
+        }
+    }
+}
+
 fn opt_string(args: &Value, key: &str) -> Option<String> {
     args.get(key).and_then(Value::as_str).map(str::to_string)
 }
@@ -369,6 +389,7 @@ async fn execute_shell_use(
             };
             let handle = registry.session(&session_name);
             handle.open(opts).map_err(|e| anyhow::anyhow!(error_text(&e)))?;
+            evict_excess_sessions();
             AgentToolResult::text(format!("Session \"{session_name}\" open."))
         }
         "run" => {
@@ -387,6 +408,7 @@ async fn execute_shell_use(
             };
             let handle = registry.session(&session_name);
             handle.run(opts).map_err(|e| anyhow::anyhow!(error_text(&e)))?;
+            evict_excess_sessions();
             AgentToolResult::text(format!("Session \"{session_name}\" running {program_label}."))
         }
         "sessions" => {

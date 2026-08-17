@@ -35,7 +35,7 @@ serde.workspace = true
 serde_json.workspace = true
 similar.workspace = true
 # iocraft `use_future` runs on smol; use smol timers so mock tests (no Tokio RT) work.
-smol = "2.0.2"
+smol.workspace = true
 supports-color.workspace = true
 syntect.workspace = true
 textwrap.workspace = true
@@ -52,10 +52,10 @@ clipboard-rs = { workspace = true, features = ["wayland"] }
 
 [dev-dependencies]
 futures.workspace = true
-lipsum = "0.9.1"
-macro_rules_attribute = "0.2.0"
-mexprp = { version = "0.3.1", default-features = false }
-smol-macros = "0.1.1"
+lipsum.workspace = true
+macro_rules_attribute.workspace = true
+mexprp = { workspace = true, default-features = false }
+smol-macros.workspace = true
 
 [[example]]
 name = "basic_context"

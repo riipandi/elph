@@ -6,11 +6,13 @@ use std::sync::Arc;
 use elph_agent::{ExtensionRegistry, PromptTemplate, Skill};
 
 use crate::agent::RETRY_CONTINUE_PROMPT;
-use crate::agent::{HandoverError, HandoverSession, OverlayCommand, SlashDispatch};
 use crate::agent::{
-    confetti_mode_from_args, dispatch_slash_command, format_help_message, session_info_slash_message,
-    session_title_for_rename, slash_unimplemented_message, system_prompt_slash_message, tools_slash_message,
+    HOTKEYS_TEXT, changelog_text, clone_session_message, confetti_mode_from_args, dispatch_slash_command,
+    export_session_message, fork_session_message, format_help_message, import_session_from_jsonl, import_slash_message,
+    session_info_slash_message, session_title_for_rename, settings_slash_message, slash_unimplemented_message,
+    system_prompt_slash_message, tools_slash_message, tree_slash_message, trust_slash_message, workers_slash_message,
 };
+use crate::agent::{HandoverError, HandoverSession, OverlayCommand, SlashDispatch, spawn_aside};
 use crate::extensions::ExtensionHost;
 use crate::platform::Paths;
 use crate::tui::confetti::confetti_mode_from_slash_args;
@@ -66,7 +68,7 @@ fn handle_memory_slash(ctx: SlashContext<'_>, args: &str) -> SlashOutcome {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SlashOutcome {
     Quit,
     NewSession,
@@ -74,6 +76,14 @@ pub enum SlashOutcome {
     Status(String),
     Unimplemented(String),
     SpawnAgentTurn,
+    /// Spawn agent turn from a skill (transcript echoes `/skill:name`).
+    SpawnAgentTurnSkill {
+        name: String,
+    },
+    /// Spawn agent turn from a prompt template (echoed as `/name` in transcript).
+    SpawnAgentTurnPromptTemplate {
+        name: String,
+    },
     /// Like [`SlashOutcome::SpawnAgentTurn`], but the slash input is NOT echoed as a
     /// user prompt card (e.g. `/compact` — the compaction notice already communicates it).
     SpawnAgentTurnQuiet,
@@ -139,6 +149,23 @@ pub enum SlashOutcome {
     /// a no-op; the task drives busy UI through normal stream events, so a read
     /// failure never leaves the host stuck "busy".
     BackgroundTaskQuiet,
+    /// Reload TUI bootstrap against another session id (`/resume <id>`).
+    ResumeSession {
+        session_id: String,
+    },
+    /// Interactive list picker (`/resume`, `/tree` without a direct id).
+    OpenItemSelector {
+        purpose: crate::tui::item_selector::ItemSelectorPurpose,
+        title: String,
+        items: Vec<crate::types::SelectItem>,
+        preferred_value: Option<String>,
+        footer_hint: String,
+    },
+    /// Open the worker chat overlay (`/intercom`). `peers` seeds the picker; the
+    /// shell loads inbox history from the live session on the same open path as Alt+M.
+    OpenWorkerChat {
+        peers: Vec<elph_agent::LiveWorker>,
+    },
 }
 
 pub struct SlashContext<'a> {
@@ -348,6 +375,18 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
     match dispatch {
         SlashDispatch::Quit => SlashOutcome::Quit,
         SlashDispatch::NewSession => SlashOutcome::NewSession,
+        SlashDispatch::Aside { question } => {
+            let question = question.trim().to_string();
+            if question.is_empty() {
+                return SlashOutcome::Status("Usage: /aside <question>".into());
+            }
+            let Some(session) = ctx.agent_session.clone() else {
+                return SlashOutcome::Status("No active session for /aside".into());
+            };
+            let _request_id = spawn_aside(session, question);
+            // Quiet: do not echo `/aside …` as a user prompt card.
+            SlashOutcome::BackgroundTaskQuiet
+        }
         SlashDispatch::Help => {
             SlashOutcome::Status(format_help_message(ctx.extensions, ctx.prompt_templates, ctx.skills))
         }
@@ -423,12 +462,142 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
         // Handled by early return above — unreachable here.
         SlashDispatch::Memory { .. } => unreachable!(),
         SlashDispatch::Handover { .. } => unreachable!(),
+        SlashDispatch::Hotkeys => SlashOutcome::OpenSessionInfoDialog {
+            text: HOTKEYS_TEXT.to_string(),
+        },
+        SlashDispatch::Changelog => SlashOutcome::OpenSessionInfoDialog { text: changelog_text() },
+        SlashDispatch::Settings => {
+            let Some(paths) = ctx.paths else {
+                return SlashOutcome::Status("Paths required for /settings.".into());
+            };
+            SlashOutcome::OpenSessionInfoDialog {
+                text: settings_slash_message(paths),
+            }
+        }
+        SlashDispatch::Import { args } => {
+            if args.trim().is_empty() {
+                return SlashOutcome::OpenSessionInfoDialog {
+                    text: import_slash_message(&args),
+                };
+            }
+            let Some(session) = ctx.agent_session.as_ref() else {
+                return SlashOutcome::Status("Agent session required for /import.".into());
+            };
+            let Some(cwd) = ctx.cwd else {
+                return SlashOutcome::Status("Working directory required for /import.".into());
+            };
+            let session = Arc::clone(session);
+            let cwd = cwd.to_path_buf();
+            match elph_agent::try_block_on(import_session_from_jsonl(&session, &cwd, &args)) {
+                Ok(Ok((_msg, new_id))) => SlashOutcome::ResumeSession { session_id: new_id },
+                Ok(Err(message)) => SlashOutcome::Status(message),
+                Err(e) => SlashOutcome::Status(format!("/import failed: {e}")),
+            }
+        }
+        SlashDispatch::Trust => {
+            let Some(paths) = ctx.paths else {
+                return SlashOutcome::Status("Paths required for /trust.".into());
+            };
+            let Some(cwd) = ctx.cwd else {
+                return SlashOutcome::Status("Working directory required for /trust.".into());
+            };
+            match trust_slash_message(paths, cwd) {
+                Ok(text) => SlashOutcome::Status(text),
+                Err(message) => SlashOutcome::Status(message),
+            }
+        }
+        SlashDispatch::Workers => {
+            let Some(session) = ctx.agent_session.as_ref() else {
+                return SlashOutcome::Status("Agent session required for /workers.".into());
+            };
+            let session = Arc::clone(session);
+            match elph_agent::try_block_on(workers_slash_message(Some(&session))) {
+                Ok(Ok(text)) => SlashOutcome::OpenSessionInfoDialog { text },
+                Ok(Err(message)) => SlashOutcome::Status(message),
+                Err(e) => SlashOutcome::Status(format!("/workers failed: {e}")),
+            }
+        }
+        SlashDispatch::WorkerChat => open_worker_chat_slash(ctx.agent_session.as_ref()),
+        SlashDispatch::Tree { args } => {
+            let Some(session) = ctx.agent_session.as_ref() else {
+                return SlashOutcome::Status("Agent session required for /tree.".into());
+            };
+            let session = Arc::clone(session);
+            let args = args.clone();
+            let trimmed = args.trim();
+            // Interactive picker when no target id (optional --branch filter).
+            if trimmed.is_empty() || trimmed == "--branch" || trimmed == "branch" {
+                let branch_only = trimmed == "--branch" || trimmed == "branch";
+                return open_tree_item_selector(Some(&session), branch_only);
+            }
+            match elph_agent::try_block_on(tree_slash_message(&session, &args)) {
+                Ok(Ok(_text)) => {
+                    // Reload transcript so the TUI matches the new leaf (Pi chat re-render).
+                    SlashOutcome::ResumeSession {
+                        session_id: session.session_id().to_string(),
+                    }
+                }
+                Ok(Err(message)) => SlashOutcome::Status(message),
+                Err(e) => SlashOutcome::Status(format!("/tree failed: {e}")),
+            }
+        }
+        SlashDispatch::Resume { args } => {
+            let Some(session) = ctx.agent_session.as_ref() else {
+                return SlashOutcome::Status("Agent session required for /resume.".into());
+            };
+            let id = args.trim();
+            if !id.is_empty() {
+                return SlashOutcome::ResumeSession {
+                    session_id: id.to_string(),
+                };
+            }
+            open_resume_item_selector(Some(session))
+        }
+        SlashDispatch::Export { args } => {
+            let Some(session) = ctx.agent_session.as_ref() else {
+                return SlashOutcome::Status("Agent session required for /export.".into());
+            };
+            let Some(cwd) = ctx.cwd else {
+                return SlashOutcome::Status("Working directory required for /export.".into());
+            };
+            let session = Arc::clone(session);
+            let cwd = cwd.to_path_buf();
+            match elph_agent::try_block_on(export_session_message(&session, &cwd, &args)) {
+                Ok(Ok(text)) => SlashOutcome::Status(text),
+                Ok(Err(message)) => SlashOutcome::Status(message),
+                Err(e) => SlashOutcome::Status(format!("/export failed: {e}")),
+            }
+        }
+        SlashDispatch::Fork => {
+            let Some(session) = ctx.agent_session.as_ref() else {
+                return SlashOutcome::Status("Agent session required for /fork.".into());
+            };
+            let session = Arc::clone(session);
+            match elph_agent::try_block_on(fork_session_message(&session)) {
+                Ok(Ok(text)) => SlashOutcome::Status(text),
+                Ok(Err(message)) => SlashOutcome::Status(message),
+                Err(e) => SlashOutcome::Status(format!("/fork failed: {e}")),
+            }
+        }
+        SlashDispatch::CloneSession => {
+            let Some(session) = ctx.agent_session.as_ref() else {
+                return SlashOutcome::Status("Agent session required for /clone.".into());
+            };
+            let session = Arc::clone(session);
+            match elph_agent::try_block_on(clone_session_message(&session)) {
+                Ok(Ok(text)) => SlashOutcome::Status(text),
+                Ok(Err(message)) => SlashOutcome::Status(message),
+                Err(e) => SlashOutcome::Status(format!("/clone failed: {e}")),
+            }
+        }
         SlashDispatch::Unimplemented(command) => SlashOutcome::Unimplemented(slash_unimplemented_message(&command)),
         SlashDispatch::OverlayNeeded(overlay) => match overlay {
             OverlayCommand::ProviderConnect { .. } => SlashOutcome::OverlayDeferred(overlay),
             OverlayCommand::Model { filter } => SlashOutcome::OpenModelSelector { filter },
             OverlayCommand::ScopedModels => SlashOutcome::OpenScopedModels,
-            other => SlashOutcome::OverlayDeferred(other),
+            // Tree/Resume now have first-class dispatch; keep OverlayCommand for API compat.
+            OverlayCommand::Tree => open_tree_item_selector(ctx.agent_session.as_ref(), false),
+            OverlayCommand::Resume => open_resume_item_selector(ctx.agent_session.as_ref()),
         },
         SlashDispatch::Continue => {
             if ctx.agent_session.is_none() {
@@ -446,8 +615,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             TurnDispatcher::spawn_turn(session, RETRY_CONTINUE_PROMPT.to_string(), false);
             SlashOutcome::SpawnAgentTurnQuiet
         }
-        SlashDispatch::Compact { .. } | SlashDispatch::PromptTemplate { .. } => {
-            let is_compact = matches!(dispatch, SlashDispatch::Compact { .. });
+        SlashDispatch::Compact { .. } => {
             if ctx.agent_session.is_none() {
                 return SlashOutcome::Status("Agent session required for this command.".into());
             }
@@ -457,12 +625,20 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             let extension_host = ctx.extension_host.cloned();
             SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
             // `/compact` must not echo a "/compact" user prompt card — the compaction
-            // notice already communicates it. Other turn-spawning slash commands do echo.
-            if is_compact {
-                SlashOutcome::SpawnAgentTurnQuiet
-            } else {
-                SlashOutcome::SpawnAgentTurn
+            // notice already communicates it.
+            SlashOutcome::SpawnAgentTurnQuiet
+        }
+        SlashDispatch::PromptTemplate { ref name, .. } => {
+            if ctx.agent_session.is_none() {
+                return SlashOutcome::Status("Agent session required for this command.".into());
             }
+            let session = ctx.agent_session.clone().expect("checked above");
+            let paths = ctx.paths.cloned();
+            let cwd = ctx.cwd.map(|path| path.to_path_buf());
+            let extension_host = ctx.extension_host.cloned();
+            let name = name.clone();
+            SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
+            SlashOutcome::SpawnAgentTurnPromptTemplate { name }
         }
         SlashDispatch::Goal { .. } | SlashDispatch::Reload | SlashDispatch::Extension { .. } => {
             if ctx.agent_session.is_none() {
@@ -492,8 +668,9 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             let paths = ctx.paths.cloned();
             let cwd = ctx.cwd.map(|path| path.to_path_buf());
             let extension_host = ctx.extension_host.cloned();
+            let name = name.clone();
             SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
-            SlashOutcome::SpawnAgentTurn
+            SlashOutcome::SpawnAgentTurnSkill { name }
         }
     }
 }
@@ -526,20 +703,106 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
             | SlashOutcome::OpenProviderUpdateDialog { .. }
             | SlashOutcome::OpenMcpAuthDialog { .. }
             | SlashOutcome::OpenMemoryResultDialog { .. }
+            | SlashOutcome::ResumeSession { .. }
+            | SlashOutcome::OpenItemSelector { .. }
     )
+}
+
+fn open_resume_item_selector(session: Option<&Arc<crate::agent::CodingAgentSession>>) -> SlashOutcome {
+    let Some(session) = session else {
+        return SlashOutcome::Status("Agent session required for /resume.".into());
+    };
+    let current = session.session_id().to_string();
+    match elph_agent::try_block_on(async {
+        let sm = session.session_manager();
+        crate::agent::list_session_select_items(sm)
+            .await
+            .map_err(|e| format!("list sessions: {e:#}"))
+    }) {
+        Ok(Ok(items)) if items.is_empty() => SlashOutcome::Status("No sessions for this project yet.".into()),
+        Ok(Ok(items)) => SlashOutcome::OpenItemSelector {
+            purpose: crate::tui::item_selector::ItemSelectorPurpose::ResumeSession,
+            title: "Resume session".into(),
+            items,
+            preferred_value: Some(current),
+            footer_hint: crate::tui::item_selector::default_resume_footer_hint(),
+        },
+        Ok(Err(message)) => SlashOutcome::Status(message),
+        Err(e) => SlashOutcome::Status(format!("/resume failed: {e}")),
+    }
+}
+
+/// Open the worker chat overlay from `/intercom` (loads peers + history, then the
+/// shell renders `WorkerChatOverlay` with the state stored under `pending_worker_chat`).
+fn open_worker_chat_slash(session: Option<&Arc<crate::agent::CodingAgentSession>>) -> SlashOutcome {
+    let Some(session) = session else {
+        return SlashOutcome::Status("Agent session required for /intercom.".into());
+    };
+    let session = Arc::clone(session);
+    match elph_agent::try_block_on(session.tui_worker_peers()) {
+        Ok(Ok(peers)) => SlashOutcome::OpenWorkerChat { peers },
+        Ok(Err(e)) => SlashOutcome::Status(format!("/intercom failed: {e:#}")),
+        Err(e) => SlashOutcome::Status(format!("/intercom failed: {e:#}")),
+    }
+}
+
+fn open_tree_item_selector(session: Option<&Arc<crate::agent::CodingAgentSession>>, branch_only: bool) -> SlashOutcome {
+    let Some(session) = session else {
+        return SlashOutcome::Status("Agent session required for /tree.".into());
+    };
+    let session = Arc::clone(session);
+    match elph_agent::try_block_on(async {
+        let leaf = session.leaf_id().await.ok().flatten();
+        let entries = if branch_only {
+            session
+                .branch_entries()
+                .await
+                .map_err(|e| format!("branch entries: {e:#}"))?
+        } else {
+            session
+                .session_tree_entries()
+                .await
+                .map_err(|e| format!("session entries: {e:#}"))?
+        };
+        let items = crate::agent::list_tree_select_items_with_leaf(&entries, leaf.as_deref());
+        Ok::<_, String>((items, leaf))
+    }) {
+        Ok(Ok((items, _leaf))) if items.is_empty() => {
+            SlashOutcome::Status("Session tree is empty — nothing to navigate.".into())
+        }
+        Ok(Ok((items, leaf))) => SlashOutcome::OpenItemSelector {
+            purpose: crate::tui::item_selector::ItemSelectorPurpose::NavigateTree,
+            title: if branch_only {
+                "Session tree (branch)".into()
+            } else {
+                "Session tree".into()
+            },
+            items,
+            preferred_value: leaf,
+            footer_hint: crate::tui::item_selector::default_tree_footer_hint(),
+        },
+        Ok(Err(message)) => SlashOutcome::Status(message),
+        Err(e) => SlashOutcome::Status(format!("/tree failed: {e}")),
+    }
 }
 
 /// Whether the slash outcome should show an agent turn indicator.
 pub fn slash_echoes_prompt_in_transcript(outcome: &SlashOutcome) -> bool {
-    matches!(outcome, SlashOutcome::SpawnAgentTurn | SlashOutcome::BackgroundTask)
+    matches!(
+        outcome,
+        SlashOutcome::SpawnAgentTurn
+            | SlashOutcome::SpawnAgentTurnSkill { .. }
+            | SlashOutcome::SpawnAgentTurnPromptTemplate { .. }
+            | SlashOutcome::BackgroundTask
+    )
 }
 
 pub fn overlay_deferred_message(overlay: &OverlayCommand) -> String {
     match overlay {
         OverlayCommand::Model { .. } => "/model overlay not yet implemented".into(),
         OverlayCommand::ScopedModels => "/scoped-models overlay not yet implemented".into(),
-        OverlayCommand::Tree => "/tree overlay not yet implemented".into(),
-        OverlayCommand::Resume => "/resume overlay not yet implemented".into(),
+        OverlayCommand::Tree => "Use /tree for the interactive session tree picker.".into(),
+        OverlayCommand::Resume => "Use /resume for the interactive session picker.".into(),
         OverlayCommand::ProviderConnect { .. } => "/provider connect overlay not yet implemented".into(),
     }
 }
@@ -712,6 +975,12 @@ mod tests {
             mode: crate::tui::confetti::ConfettiMode::Confetti
         }));
         assert!(slash_echoes_prompt_in_transcript(&SlashOutcome::SpawnAgentTurn));
+        assert!(slash_echoes_prompt_in_transcript(&SlashOutcome::SpawnAgentTurnSkill {
+            name: "test".into()
+        }));
+        assert!(slash_echoes_prompt_in_transcript(&SlashOutcome::SpawnAgentTurnPromptTemplate {
+            name: "test".into()
+        }));
         // `/compact` spawns a turn but must NOT echo a "/compact" user prompt card.
         assert!(!slash_echoes_prompt_in_transcript(&SlashOutcome::SpawnAgentTurnQuiet));
     }
@@ -845,6 +1114,12 @@ mod tests {
             text: "tools".into()
         }));
         assert!(!slash_outcome_is_ui_only(&SlashOutcome::SpawnAgentTurn));
+        assert!(!slash_outcome_is_ui_only(&SlashOutcome::SpawnAgentTurnSkill {
+            name: "test".into()
+        }));
+        assert!(!slash_outcome_is_ui_only(&SlashOutcome::SpawnAgentTurnPromptTemplate {
+            name: "test".into()
+        }));
     }
 
     #[test]
@@ -1093,5 +1368,12 @@ mod tests {
         assert!(!slash_echoes_prompt_in_transcript(&outcome));
         // Contrast with the regular background task, which does echo.
         assert!(slash_echoes_prompt_in_transcript(&SlashOutcome::BackgroundTask));
+        // Skills and prompt templates do echo (with custom formatting).
+        assert!(slash_echoes_prompt_in_transcript(&SlashOutcome::SpawnAgentTurnSkill {
+            name: "test".into()
+        }));
+        assert!(slash_echoes_prompt_in_transcript(&SlashOutcome::SpawnAgentTurnPromptTemplate {
+            name: "test".into()
+        }));
     }
 }

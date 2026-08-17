@@ -158,16 +158,18 @@ mod tests {
         let Some(model) = get_builtin_model("xai", "grok-4.5") else {
             return;
         };
+        // xAI grok-4.5 supports low / medium / high (from models.dev reasoning_options)
         assert_eq!(
             map_thinking_level_for_api(&model, ThinkingLevel::Medium).as_deref(),
-            Some("high"),
-            "medium should clamp to a supported xAI effort"
+            Some("medium"),
+            "medium is a supported xAI effort per models.dev"
         );
         assert_eq!(map_thinking_level_for_api(&model, ThinkingLevel::Low).as_deref(), Some("low"));
-        assert_eq!(map_thinking_level_for_api(&model, ThinkingLevel::Max).as_deref(), Some("max"));
+        // xAI does not support max — clamps to high
+        assert_eq!(map_thinking_level_for_api(&model, ThinkingLevel::Max).as_deref(), Some("high"));
         let wire = map_thinking_level_for_api(&model, ThinkingLevel::High).unwrap();
         assert!(
-            matches!(wire.as_str(), "low" | "high" | "max"),
+            matches!(wire.as_str(), "low" | "medium" | "high"),
             "wire effort must be xAI-legal: {wire}"
         );
     }

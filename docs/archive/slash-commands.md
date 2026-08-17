@@ -15,6 +15,7 @@ Built-in commands always win over extension and template names.
 | Command                     | Aliases       | Description                                                                                                                           |
 | --------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `/help`                     | —             | List all commands                                                                                                                     |
+| `/aside`                    | —             | Side question without interrupting the main turn (tool-free one-shot; inline panel above prompt, Esc dismisses)                    |
 | `/model`                    | —             | Open model selector (optional filter args)                                                                                            |
 | `/goal`                     | `/goals`      | Manage session goals                                                                                                                  |
 | `/exit`                     | `/quit`, `/q` | Quit                                                                                                                                  |
@@ -30,6 +31,21 @@ Built-in commands always win over extension and template names.
 | `/settings`                 | `/config`     | Open settings (planned)                                                                                                               |
 | `/diff`                     | —             | Diff view (planned)                                                                                                                   |
 | `/diagnostic:debug`         | —             | Debug info (planned)                                                                                                                  |
+| `/resume`                   | —             | **Interactive** session picker (empty args); `/resume <id>` switches directly                                                       |
+| `/tree`                     | —             | **Interactive** session-tree navigator; `/tree <entry_id> [--summary]` jumps without picker                                           |
+| `/import`                   | —             | Import session JSONL into a new session (path required)                                                                               |
+| `/export`                   | —             | Export full session tree as JSONL                                                                                                     |
+| `/trust`                    | —             | Trust cwd in `CONFIG_DIR/trust.json`                                                                                                  |
+
+### Interactive vs text-only
+
+| Kind | Examples | UX |
+| --- | --- | --- |
+| Interactive (inline selector / editor) | `/model`, `/resume`, `/tree`, `/rename`, tool approval | Focus status zone; ↑↓ / type / Enter / Esc |
+| Scroll text dialog | `/session`, `/tools`, `/system-prompt`, `/settings` | Read-only report; copy optional |
+| Status line | `/trust`, `/export`, `/fork` | One-shot result in transcript |
+
+When adding a new slash that needs a choice, open an interactive overlay (`SlashOutcome::OpenItemSelector` or a dedicated dialog) rather than dumping a numbered list for the user to retype.
 
 ### `/goal` subcommands
 
@@ -78,6 +94,12 @@ On submit:
 - Slash input appears as the user message
 - Expanded content appears in a collapsible detail block
 - Expanded text is sent as the agent turn
+
+## Skills
+
+Skills are loaded from SKILL.md files in `~/.agents/skills/`, `~/.elph/skills/`, and `<project>/.agents/skills/` (or `.elph/skills/`). Each skill becomes an auto-completed slash command by its raw name — no prefix required. Legacy `/skill:name` dispatch still works.
+
+A skill's full content (frontmatter + body) is injected as the turn prompt via [`format_skill_invocation`](../../crates/elph-agent/src/skills/format.rs). See [`docs/skill-tool-schema.md`](../skill-tool-schema.md) for the XML format.
 
 ## Input prefixes (not slash commands)
 
@@ -130,3 +152,4 @@ Paths: `<workDir>/.elph/metadata/<sess_id>/` — see [configuration.md](./config
 - [prompt-templates.md](./prompt-templates.md)
 - [tui.md](./tui.md)
 - [tools.md](./tools.md)
+- [skill-tool-schema.md](../skill-tool-schema.md) — XML schema for skill/tool catalogs

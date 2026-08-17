@@ -2,7 +2,7 @@
 name = "rendown"
 version = "0.0.1"
 license = "MIT"
-description = "Markdown renderer with streaming support."
+description = "Streaming CommonMark/markdown renderer for terminal (ANSI)."
 homepage.workspace = true
 repository.workspace = true
 rust-version.workspace = true
@@ -14,12 +14,19 @@ name = "rendown"
 path = "src/lib.rs"
 
 [dependencies]
-anyhow.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-
-[dev-dependencies]
-tempfile.workspace = true
+anstyle.workspace = true
+anstyle-syntect.workspace = true
+crossterm = { workspace = true, default-features = false }
+html-escape.workspace = true
+linkify.workspace = true
+pulldown-cmark.workspace = true
+supports-color.workspace = true
+syntect.workspace = true
+two-face = { workspace = true, default-features = false, features = ["syntect-fancy"] }
+unicode-linebreak.workspace = true
+unicode-segmentation.workspace = true
+unicode-width.workspace = true
+url.workspace = true
 
 [lints.rust]
 linker_messages = "allow"

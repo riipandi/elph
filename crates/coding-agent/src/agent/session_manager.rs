@@ -3,8 +3,8 @@
 use crate::utils::path::AppPaths;
 use anyhow::{Context, Result};
 use elph_agent::{
-    Session, TursoSessionListOptions, TursoSessionMetadata, TursoSessionRepo, TursoSessionRepoCreateOptions,
-    TursoSessionStorage, derive_session_context_state, reconcile_session,
+    Session, SessionLeaseStore, TursoSessionListOptions, TursoSessionMetadata, TursoSessionRepo,
+    TursoSessionRepoCreateOptions, TursoSessionStorage, derive_session_context_state, reconcile_session,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -18,6 +18,11 @@ pub struct SessionManager {
     cwd: String,
     /// `APP_DATA` root — used for `sessions/<SESSION_ID>/` artifacts.
     data_dir: PathBuf,
+    db_path: PathBuf,
+    database: Option<Arc<Database>>,
+    /// When set, acquire exclusive session lease after open/create.
+    lease_worker_id: Option<String>,
+    lease_stale_secs: u64,
 }
 
 impl SessionManager {
@@ -26,6 +31,10 @@ impl SessionManager {
             repo: TursoSessionRepo::new(paths.memory_db_path()),
             cwd: normalize_cwd(cwd),
             data_dir: paths.data_dir().clone(),
+            db_path: paths.memory_db_path(),
+            database: None,
+            lease_worker_id: None,
+            lease_stale_secs: 30,
         })
     }
 
@@ -33,14 +42,75 @@ impl SessionManager {
     /// database handle instead of opening the store file on every operation.
     pub fn new_with_database(paths: &Paths, cwd: &Path, database: Arc<Database>) -> Result<Self> {
         Ok(Self {
-            repo: TursoSessionRepo::new(paths.memory_db_path()).with_database(database),
+            repo: TursoSessionRepo::new(paths.memory_db_path()).with_database(database.clone()),
             cwd: normalize_cwd(cwd),
             data_dir: paths.data_dir().clone(),
+            db_path: paths.memory_db_path(),
+            database: Some(database),
+            lease_worker_id: None,
+            lease_stale_secs: 30,
         })
+    }
+
+    /// Enable exclusive session leases for multi-worker safety.
+    pub fn with_session_lease(mut self, worker_id: impl Into<String>, stale_secs: u64) -> Self {
+        self.lease_worker_id = Some(worker_id.into());
+        self.lease_stale_secs = stale_secs.max(1);
+        self
+    }
+
+    fn lease_store(&self) -> SessionLeaseStore {
+        let store = SessionLeaseStore::new(&self.db_path);
+        match &self.database {
+            Some(db) => store.with_database(db.clone()),
+            None => store,
+        }
+    }
+
+    async fn acquire_lease_if_configured(&self, session_id: &str) -> Result<()> {
+        let Some(worker_id) = self.lease_worker_id.as_deref() else {
+            return Ok(());
+        };
+        match self
+            .lease_store()
+            .try_acquire(session_id, worker_id, self.lease_stale_secs)
+            .await
+        {
+            Ok(_) => Ok(()),
+            Err(elph_agent::LeaseError::Conflict(c)) => {
+                anyhow::bail!("{}", c.message);
+            }
+            Err(elph_agent::LeaseError::Other(e)) => Err(e),
+        }
     }
 
     pub fn data_dir(&self) -> &Path {
         &self.data_dir
+    }
+
+    /// Normalized project cwd key (same string stored on sessions / workers).
+    pub fn project_key(&self) -> &str {
+        &self.cwd
+    }
+
+    pub fn db_path(&self) -> &Path {
+        &self.db_path
+    }
+
+    pub fn database(&self) -> Option<Arc<Database>> {
+        self.database.clone()
+    }
+
+    pub fn lease_worker_id(&self) -> Option<&str> {
+        self.lease_worker_id.as_deref()
+    }
+
+    /// Best-effort release of the exclusive session lease (call on clean exit).
+    pub async fn release_session_lease(&self, session_id: &str) -> Result<()> {
+        let Some(worker_id) = self.lease_worker_id.as_deref() else {
+            return Ok(());
+        };
+        self.lease_store().release(session_id, worker_id).await
     }
 
     pub fn artifact_dir_for(&self, session_id: &str) -> PathBuf {
@@ -68,20 +138,46 @@ impl SessionManager {
     }
 
     pub async fn create(&self, resume_id: Option<&str>) -> Result<Session<TursoSessionStorage>> {
+        self.create_with_options(resume_id, false, None).await
+    }
+
+    /// Open or create a session.
+    ///
+    /// - `resume_id` + `create_if_missing=false` → open only (error if missing).
+    /// - `resume_id` + `create_if_missing=true` → open if present, else create with that id.
+    /// - `resume_id=None` → mint a new session id.
+    /// - `name` is stored on create when provided.
+    pub async fn create_with_options(
+        &self,
+        resume_id: Option<&str>,
+        create_if_missing: bool,
+        name: Option<&str>,
+    ) -> Result<Session<TursoSessionStorage>> {
         if let Some(id) = resume_id {
             if let Some(meta) = self.find_metadata(id).await? {
                 return self.open(&meta).await;
             }
-            anyhow::bail!(
-                "session not found: {id} (use `elph session list` or `elph --continue` for the latest in this project)"
-            );
+            if !create_if_missing {
+                anyhow::bail!(
+                    "session not found: {id} (use `elph session list` or `elph --continue` for the latest in this project)"
+                );
+            }
+            return self
+                .create_new_session(Some(id), name)
+                .await
+                .with_context(|| format!("create session with id {id}"));
         }
+        self.create_new_session(None, name).await
+    }
+
+    async fn create_new_session(&self, id: Option<&str>, name: Option<&str>) -> Result<Session<TursoSessionStorage>> {
         let mut session = self
             .repo
             .create(TursoSessionRepoCreateOptions {
                 cwd: self.cwd.clone(),
-                id: None,
+                id: id.map(|s| s.to_string()),
                 parent_session_id: None,
+                name: name.map(|s| s.to_string()),
                 system_prompt: None,
                 ..Default::default()
             })
@@ -93,6 +189,7 @@ impl SessionManager {
         if let Err(err) = reconcile_session(&mut session).await {
             log::warn!("session recovery: {err}");
         }
+        self.acquire_lease_if_configured(&id).await?;
         Ok(session)
     }
 
@@ -186,6 +283,7 @@ impl SessionManager {
             Err(err) => log::warn!("session recovery: {err}"),
             _ => {}
         }
+        self.acquire_lease_if_configured(&metadata.id).await?;
         Ok(session)
     }
 
@@ -199,6 +297,139 @@ impl SessionManager {
         self.repo.delete(session_id).await.context("delete session")?;
         self.remove_artifact_dirs(session_id);
         Ok(())
+    }
+
+    /// Persisted turn count for a session (from `sessions.turn_count` rollup).
+    /// Returns `None` when the session row is missing.
+    pub async fn turn_count(&self, session_id: &str) -> Result<Option<u32>> {
+        let conn = open_session_conn(&self.db_path, self.database.as_ref())
+            .await
+            .context("open connection for turn_count")?;
+        let mut rows = conn
+            .query("SELECT turn_count FROM sessions WHERE id = ?", turso::params![session_id])
+            .await
+            .context("query turn_count")?;
+        let row = rows.next().await.context("read turn_count row")?;
+        match row {
+            Some(r) => {
+                let count: i64 = r.get(0).context("read turn_count column")?;
+                Ok(Some(count.max(0) as u32))
+            }
+            None => Ok(None),
+        }
+    }
+
+    /// Delete the session record when it has zero turns (user never sent a prompt
+    /// that produced a persisted turn). Best-effort: no-op when the session already
+    /// has turns or is already gone. Cleans up artifact dirs on successful delete.
+    pub async fn delete_if_no_turns(&self, session_id: &str) -> Result<bool> {
+        let Some(count) = self.turn_count(session_id).await? else {
+            // Session row already gone — make sure artifact dirs are cleaned up.
+            self.remove_artifact_dirs(session_id);
+            return Ok(false);
+        };
+        if count > 0 {
+            return Ok(false);
+        }
+        log::info!("deleting empty session {session_id} (no turns)");
+        self.delete_by_id(session_id).await?;
+        Ok(true)
+    }
+
+    /// Fork the given session into a new session (full branch copy by default).
+    pub async fn fork_session(
+        &self,
+        source_id: &str,
+        fork_options: elph_agent::ForkEntriesOptions,
+    ) -> Result<elph_agent::Session<elph_agent::TursoSessionStorage>> {
+        self.repo
+            .fork(
+                source_id,
+                elph_agent::TursoSessionRepoCreateOptions {
+                    cwd: self.cwd.clone(),
+                    parent_session_id: Some(source_id.to_string()),
+                    ..Default::default()
+                },
+                fork_options,
+            )
+            .await
+            .context("fork session")
+    }
+
+    /// Import a JSONL session export (one `SessionTreeEntry` per line) into a **new** session.
+    ///
+    /// Mirrors Pi `/import`: load exported entries, create a session in the current project,
+    /// append entries in order. Caller switches the live UI via `/resume <new_id>`.
+    pub async fn import_from_jsonl(&self, path: &Path) -> Result<(String, usize), anyhow::Error> {
+        let entries = load_session_tree_jsonl(path)?;
+        if entries.is_empty() {
+            anyhow::bail!("import file has no session entries: {}", path.display());
+        }
+        let mut session = self
+            .repo
+            .create(TursoSessionRepoCreateOptions {
+                cwd: self.cwd.clone(),
+                id: None,
+                parent_session_id: None,
+                system_prompt: None,
+                ..Default::default()
+            })
+            .await
+            .context("create session for import")?;
+        let id = session.metadata().await.id;
+        self.ensure_artifact_dirs(&id)?;
+        let n = entries.len();
+        for entry in entries {
+            elph_agent::SessionStorage::append_entry(session.storage_mut(), entry)
+                .await
+                .with_context(|| format!("append imported entry into session {id}"))?;
+        }
+        if let Err(err) = reconcile_session(&mut session).await {
+            log::warn!("session recovery after import: {err}");
+        }
+        self.acquire_lease_if_configured(&id).await?;
+        Ok((id, n))
+    }
+}
+
+/// Parse newline-delimited [`SessionTreeEntry`] JSON (Elph `/export` format).
+pub fn load_session_tree_jsonl(path: &Path) -> Result<Vec<elph_agent::SessionTreeEntry>> {
+    let raw = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
+    let mut entries = Vec::new();
+    for (line_no, line) in raw.lines().enumerate() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        let entry: elph_agent::SessionTreeEntry = serde_json::from_str(line)
+            .with_context(|| format!("parse JSONL line {} in {}", line_no + 1, path.display()))?;
+        entries.push(entry);
+    }
+    Ok(entries)
+}
+
+/// Open a connection to the session store, running migrations when opening the
+/// file directly (shared database handles are already migrated by the host).
+async fn open_session_conn(db_path: &Path, database: Option<&Arc<Database>>) -> Result<turso::Connection> {
+    match database {
+        Some(db) => elph_agent::datastore::connect(db)
+            .await
+            .context("connect from shared database"),
+        None => {
+            if let Some(parent) = db_path.parent() {
+                fs::create_dir_all(parent).context("create db parent dir")?;
+            }
+            let db = elph_agent::datastore::open_local(db_path)
+                .await
+                .context("open local database")?;
+            let conn = elph_agent::datastore::connect(&db)
+                .await
+                .context("connect to database")?;
+            elph_agent::datastore::run_migrations(&conn, &elph_agent::session::migrations::SESSION_TREE_MIGRATIONS)
+                .await
+                .context("run session migrations")?;
+            Ok(conn)
+        }
     }
 }
 

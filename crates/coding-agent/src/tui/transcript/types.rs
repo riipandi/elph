@@ -18,8 +18,9 @@ use super::card::{
 use crate::tui::ask_user_tool_card::format_ask_user_tool_layout_text;
 
 use super::card::{
-    format_thinking_body_display, format_thinking_stream_body_display, format_tool_args_display,
-    format_tool_output_display, tool_status_marker,
+    ShellExecArgs, format_shell_header, format_thinking_body_display, format_thinking_stream_body_display,
+    format_tool_args_display, format_tool_output_display, format_tool_output_display_full, is_shell_exec_tool,
+    tool_status_marker,
 };
 use super::markdown::AssistantMarkdownBuffer;
 
@@ -371,6 +372,17 @@ impl TranscriptMessage {
             && !self.markdown.as_ref().is_some_and(|md| md.stream_complete)
     }
 
+    /// A settled (finished) assistant reply that has no visible content.
+    ///
+    /// These messages are layout-ghosts: their measurement is forced to zero rows and
+    /// their position in the transcript is invisible, so they must also contribute zero
+    /// inter-message margin. This happens when a model streams only whitespace or
+    /// stripped protocol tags between tool calls — the reply card opens, settles empty,
+    /// and must not leave a phantom gap between tool rows.
+    pub fn is_settled_empty_assistant(&self) -> bool {
+        self.style == TranscriptStyle::Assistant && !self.is_assistant_streaming() && self.content.trim().is_empty()
+    }
+
     /// Display text for the empty-live-reply placeholder: a soft ellipsis row painted so a
     /// just-opened streaming response (which may start with blank / tag-only payload) shows a
     /// visible card instead of a phantom blank box. `None` when the message renders real content.
@@ -471,6 +483,13 @@ impl TranscriptMessage {
     /// [`LOG_ROW_GAP`] regardless of collapse state — density must not shrink when the
     /// previous row is collapsed (that glued expanded bodies under folded headers).
     pub fn transcript_margin_bottom(&self, next: Option<&TranscriptMessage>) -> u16 {
+        // Renderless settled-empty assistant replies are invisible: they must not
+        // contribute any spacing to either side, otherwise two collapsed tool rows
+        // get torn apart by a phantom double-row gap (models that stream whitespace
+        // between tool calls open an empty reply card that settles with no content).
+        if self.is_settled_empty_assistant() || next.is_some_and(TranscriptMessage::is_settled_empty_assistant) {
+            return 0;
+        }
         if self.is_quit_busy_notice() {
             let next_style = next.map(|m| m.style);
             return self
@@ -541,11 +560,20 @@ impl TranscriptMessage {
     /// Process-phase cards share a one-line header shape (`● Label · 1.2s`) for measurement;
     /// the TUI paints duration on the right rail, not as an inline suffix.
     pub fn layout_text(&self) -> String {
+        // No screen context here (tests / sticky placeholders): use a representative width.
+        // Layout measurement always calls `layout_text_at` with the real inner width.
+        self.layout_text_at(80)
+    }
+
+    /// Layout text at the card's real inner wrap width — the scroll layout measures a
+    /// streaming thinking card with the same width the renderer and body cap use, so the
+    /// measured height matches the painted height exactly.
+    pub fn layout_text_at(&self, wrap_width: u16) -> String {
         if let Some(tool) = &self.tool {
             return tool.layout_text(self.style, self.duration_secs, self.detail_expanded);
         }
         match self.style {
-            TranscriptStyle::Thinking => self.process_phase_layout_text("Thinking"),
+            TranscriptStyle::Thinking => self.process_phase_layout_text("Thinking", wrap_width),
             // AI chat responses render as plain log lines — no `Response` phase header.
             TranscriptStyle::Assistant => self.content.clone(),
             _ if self.style.is_status_line() => {
@@ -596,7 +624,9 @@ impl TranscriptMessage {
     }
 
     /// Header (+ optional body) for a thinking phase (glyph matches process indicator).
-    fn process_phase_layout_text(&self, label: &str) -> String {
+    /// `wrap_width` is the card's inner paint width — the streaming body cap is measured in
+    /// wrapped rows at this exact width so measured layout matches the painted height.
+    fn process_phase_layout_text(&self, label: &str, wrap_width: u16) -> String {
         use elph_tui::{GLYPH_META_SEP, ProcessStatus, process_status_glyph, process_status_word};
         let streaming = self.duration_secs.is_none();
         let status = if streaming {
@@ -614,9 +644,9 @@ impl TranscriptMessage {
         let show_body = streaming || (self.detail_expanded && !self.content.is_empty());
         if show_body {
             let body = if streaming {
-                // Streaming thinking: 20-line cap so the collapse-on-finish transition
-                // does not cause a large layout jump.
-                format_thinking_stream_body_display(&self.content)
+                // Streaming thinking: fixed 8 wrapped-row cap (header + gap + body ≤ 10 rows)
+                // so the collapse-on-finish transition does not cause a large layout jump.
+                format_thinking_stream_body_display(&self.content, wrap_width)
             } else {
                 format_thinking_body_display(&self.content)
             };
@@ -717,10 +747,23 @@ impl ToolCardDetail {
         } else {
             tool_display_verb(&self.name)
         };
-        let mut header = format!("{} {label}", tool_status_marker(style));
-        if let Some(secs) = duration_secs {
-            header.push_str(&crate::tui::activity::format_duration_label_suffix(secs));
-        }
+        // shell_exec: build header with description + timeout inline (matches kinds.rs render).
+        let shell_args = if is_shell_exec_tool(&self.name) {
+            Some(ShellExecArgs::parse(&self.args_summary))
+        } else {
+            None
+        };
+        let header = if let Some(ref sa) = shell_args {
+            let body_label = format_shell_header(&label, sa);
+            format!("{} {body_label}", tool_status_marker(style))
+        } else {
+            format!("{} {label}", tool_status_marker(style))
+        };
+        let header = if let Some(secs) = duration_secs {
+            format!("{}{}", header, crate::tui::activity::format_duration_label_suffix(secs))
+        } else {
+            header
+        };
         if collapsed {
             return header;
         }
@@ -739,6 +782,38 @@ impl ToolCardDetail {
         }
 
         let mut lines = vec![header];
+        // shell_exec uses a custom layout: command block + optional metadata + output.
+        if is_shell_exec_tool(&self.name) {
+            let args = ShellExecArgs::parse(&self.args_summary);
+            // Command block: single `$ prefix` line (cap like generic tool output).
+            let cmd = if args.command.is_empty() {
+                format_tool_args_display(&self.args_summary)
+            } else {
+                format!("$ {}", args.command)
+            };
+            lines.push(String::new());
+            lines.push(cmd);
+            // Optional description.
+            if !args.description.is_empty() {
+                lines.push(String::new());
+                lines.push(args.description);
+            }
+            // Optional timeout.
+            if args.timeout > 0 {
+                lines.push(String::new());
+                lines.push(format!("timeout: {}s", args.timeout));
+            }
+            let output = if style == TranscriptStyle::ToolRunning {
+                format_tool_output_display(&self.output)
+            } else {
+                format_tool_output_display_full(&self.output)
+            };
+            if !output.is_empty() {
+                lines.push(String::new());
+                lines.extend(output.lines().map(str::to_string));
+            }
+            return lines.join("\n");
+        }
         let args = if self.name == "ask_user_question" {
             format_ask_user_tool_layout_text(&self.args_summary)
         } else {
@@ -749,7 +824,11 @@ impl ToolCardDetail {
             lines.push(String::new());
             lines.extend(args.lines().map(str::to_string));
         }
-        let output = format_tool_output_display(&self.output);
+        let output = if style == TranscriptStyle::ToolRunning {
+            format_tool_output_display(&self.output)
+        } else {
+            format_tool_output_display_full(&self.output)
+        };
         if !output.is_empty() {
             // Match TOOL_OUTPUT_SECTION_GAP / ASK_USER_ANSWER_SECTION_GAP row counts.
             lines.push(String::new());
@@ -1404,6 +1483,40 @@ mod tests {
     }
 
     #[test]
+    fn settled_empty_assistant_is_spacing_transparent() {
+        // A model that streams whitespace between tool calls opens an assistant reply that
+        // settles empty (e.g. deepseek-v4-flash "\n\n" deltas). That ghost message is
+        // invisible in the transcript and must not add spacing on either side — otherwise
+        // two collapsed tool rows get torn apart by a phantom double-row gap.
+        let collapsed_tool =
+            TranscriptMessage::tool_call("read_file", r#"{"path":"a.rs"}"#, TranscriptStyle::ToolSuccess);
+        let mut ghost = TranscriptMessage::assistant_markdown("\n\n   ");
+        ghost.duration_secs = Some(0.3); // settled, no live stream
+        assert!(ghost.is_settled_empty_assistant());
+
+        // Ghost -> ghost: zero rows, zero margin.
+        let ghost2 = {
+            let mut g = ghost.clone();
+            g.duration_secs = Some(0.4);
+            g
+        };
+        assert_eq!(ghost.transcript_margin_bottom(Some(&ghost2)), 0);
+        // Collapsed tool -> ghost -> collapsed tool: neighbor margins are skipped, so the two
+        // tools keep their normal compact rhythm (this is the reported double-blank bug).
+        assert_eq!(ghost.transcript_margin_bottom(Some(&collapsed_tool)), 0);
+        assert_eq!(collapsed_tool.transcript_margin_bottom(Some(&ghost)), 0);
+        // The ghost must not look like a live stream (no ellipsis placeholder).
+        assert_eq!(ghost.assistant_placeholder(), None);
+        // A settled reply WITH text is still a normal process row (keeps the log rhythm).
+        let mut texted = TranscriptMessage::assistant_markdown("real answer");
+        texted.duration_secs = Some(1.0);
+        assert!(!texted.is_settled_empty_assistant());
+        set_log_density(LogDensity::Compact);
+        assert_eq!(collapsed_tool.transcript_margin_bottom(Some(&texted)), LOG_ROW_GAP);
+        assert_eq!(texted.transcript_margin_bottom(Some(&collapsed_tool)), LOG_ROW_GAP);
+    }
+
+    #[test]
     fn wait_agent_is_flush_status_style_row() {
         let wait =
             TranscriptMessage::tool_call("wait_agent", r#"{"agent_id":"worker-1"}"#, TranscriptStyle::ToolRunning);
@@ -1432,6 +1545,39 @@ mod tests {
         let shell = TranscriptMessage::tool_call("shell_exec", r#"{"command":"ls"}"#, TranscriptStyle::ToolRunning);
         assert!(!shell.is_tool_collapsed());
         assert_eq!(shell.transcript_padding_top(), COLORED_CARD_PAD);
+    }
+
+    #[test]
+    fn shell_exec_layout_shows_command_description_timeout_and_output() {
+        let args = r#"{"command":"cargo fmt -p elph-agent && cargo clippy --all-targets","description":"Final fmt+clippy+test pass","timeout":600}"#;
+        let mut msg = TranscriptMessage::tool_call("shell_exec", args, TranscriptStyle::ToolSuccess);
+        msg.duration_secs = Some(3.2);
+        msg.tool.as_mut().unwrap().output = "---tests---\ntest result: ok.\n".to_string();
+
+        let layout = msg.layout_text();
+        // Header with description and timeout.
+        assert!(
+            layout.starts_with("✓ Shell Final fmt+clippy+test pass 10m00s · 3.2s"),
+            "{layout}"
+        );
+        // Command block with $ prefix.
+        assert!(layout.contains("\n$ cargo fmt"), "{layout}");
+        // Description line.
+        assert!(layout.contains("Final fmt+clippy+test pass"), "{layout}");
+        // Timeout line.
+        assert!(layout.contains("timeout: 600s"), "{layout}");
+        // Output tail (truncated for non-user-shell).
+        assert!(layout.contains("test result: ok."), "{layout}");
+    }
+
+    #[test]
+    fn shell_exec_layout_without_optional_fields_still_works() {
+        let msg = TranscriptMessage::tool_call("shell_exec", r#"{"command":"echo hi"}"#, TranscriptStyle::ToolRunning);
+        let layout = msg.layout_text();
+        assert!(layout.starts_with("◌ Shell"), "{layout}");
+        assert!(layout.contains("$ echo hi"), "{layout}");
+        assert!(!layout.contains("description"), "{layout}");
+        assert!(!layout.contains("timeout"), "{layout}");
     }
 
     #[test]

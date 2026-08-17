@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use anyhow::anyhow;
+use rand::RngExt;
 use reqwest::Client;
 use serde_json::Value;
 
@@ -39,13 +40,40 @@ pub fn build_http_client_for_target(
 }
 
 pub fn get_client_api_key(provider: &str, api_key: Option<&str>, headers: &HashMap<String, String>) -> Result<String> {
+    get_client_api_key_for_url(provider, api_key, headers, None)
+}
+
+/// Resolve the bearer/API key for a request.
+///
+/// - Explicit `api_key` (including empty string for no-auth local servers) wins.
+/// - Authorization headers already present → synthetic `"unused"` key (caller uses headers).
+/// - Local/loopback `base_url` without a key → empty string (local LLM / Ollama / LM Studio).
+/// - Otherwise error with a clear re-auth hint.
+pub fn get_client_api_key_for_url(
+    provider: &str,
+    api_key: Option<&str>,
+    headers: &HashMap<String, String>,
+    base_url: Option<&str>,
+) -> Result<String> {
     if let Some(key) = api_key {
+        // Empty string is intentional for optional/no-auth local providers.
         return Ok(key.to_string());
     }
     if has_header(headers, "authorization") || has_header(headers, "cf-aig-authorization") {
         return Ok("unused".to_string());
     }
-    Err(anyhow!("No API key for provider: {provider}"))
+    if base_url.is_some_and(crate::auth::is_local_or_loopback_base_url) {
+        return Ok(String::new());
+    }
+    // Common local provider id conventions even when base_url is missing from the request path.
+    let id = provider.to_ascii_lowercase();
+    if id.contains("local") || id.contains("ollama") || id.contains("lmstudio") || id.contains("vllm") {
+        return Ok(String::new());
+    }
+    Err(anyhow!(
+        "No API key for provider: {provider}. Set the provider API key env var, run `/provider connect`, \
+         or configure auth.json. Local OpenAI-compatible servers need no key when baseUrl is localhost."
+    ))
 }
 
 pub async fn apply_on_payload(callback: Option<&OnPayloadCallback>, payload: Value, model: &Model) -> Value {
@@ -267,8 +295,11 @@ pub async fn send_with_resilience_retry(
     let mut last_err: Option<anyhow::Error> = None;
     for attempt in 0..=max_retries {
         if attempt > 0 {
-            // Exponential backoff: 500ms, 1s, 2s, 4s, ...
-            let delay = Duration::from_millis(500 * 2u64.pow(attempt.saturating_sub(1)));
+            // Exponential backoff with jitter: 500ms, 1s, 2s, 4s, ...
+            let base_delay = Duration::from_millis(500 * 2u64.pow(attempt.saturating_sub(1)));
+            // Add jitter (±12.5%) to avoid thundering herd
+            let jitter = rand::rng().random_range(0..=base_delay.as_millis() as u64 / 8);
+            let delay = base_delay + Duration::from_millis(jitter);
             tokio::time::sleep(delay).await;
             log::debug!("resilience: retrying {provider_id} (attempt {attempt}/{max_retries})");
         }
@@ -359,4 +390,38 @@ pub async fn send_with_resilience_retry(
 
     // All retries exhausted
     Err(last_err.unwrap_or_else(|| anyhow!("max retries exhausted for {provider_id}")))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn local_base_url_allows_missing_key() {
+        let h = HashMap::new();
+        let key = get_client_api_key_for_url("local-llm", None, &h, Some("http://localhost:11434/v1")).unwrap();
+        assert!(key.is_empty());
+    }
+
+    #[test]
+    fn local_provider_id_allows_missing_key() {
+        let h = HashMap::new();
+        let key = get_client_api_key_for_url("local-llm", None, &h, None).unwrap();
+        assert!(key.is_empty());
+    }
+
+    #[test]
+    fn cloud_provider_requires_key() {
+        let h = HashMap::new();
+        let err = get_client_api_key_for_url("xai", None, &h, Some("https://api.x.ai/v1")).unwrap_err();
+        assert!(err.to_string().contains("No API key"));
+    }
+
+    #[test]
+    fn empty_key_is_allowed() {
+        let h = HashMap::new();
+        let key = get_client_api_key_for_url("xai", Some(""), &h, Some("https://api.x.ai/v1")).unwrap();
+        assert_eq!(key, "");
+    }
 }

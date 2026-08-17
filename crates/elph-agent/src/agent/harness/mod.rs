@@ -127,6 +127,7 @@ use crate::goals::GoalRuntime;
 use crate::messages::default_convert_to_llm_fn;
 use crate::prompt::encoding::PromptEncodingConfig;
 use crate::runtime::local_env::LocalExecutionEnv;
+use crate::turns::TurnStore;
 
 use crate::agent::subagent::generate_agent_name;
 use crate::agent::subagent::{AgentControl, AgentRegistry, SubagentLimits, SubagentSpawnConfig};
@@ -205,6 +206,7 @@ where
     /// TOON prompt-encoding config; `None` falls back to `ELPH_PROMPT_ENCODING*` env vars.
     prompt_encoding: std::sync::Mutex<Option<PromptEncodingConfig>>,
     goal_runtime: Option<Arc<GoalRuntime>>,
+    turn_store: Option<Arc<TurnStore>>,
     subagent_bootstrap: Option<crate::agent::subagent::SubagentBootstrap>,
     /// Whether the harness runs in headless mode (`elph run`).
     headless: bool,
@@ -351,6 +353,7 @@ where
                 compaction_settings: options.compaction_settings,
                 prompt_encoding: std::sync::Mutex::new(None),
                 goal_runtime: options.goal_runtime,
+                turn_store: options.turn_store,
                 subagent_bootstrap: options.subagent_bootstrap,
                 headless: options.headless,
                 terminals_dir: options.terminals_dir,

@@ -1,10 +1,11 @@
 //! Select-list data for TUI slash-command overlays.
 
-use crate::types::SelectItem;
+use crate::types::{SelectItem, SelectItemKind};
 use anyhow::{Context, Result};
 use elph_agent::{CustomMessageEntryBlock, CustomMessageEntryContent, SessionTreeEntry};
 use elph_ai::{AssistantContentBlock, Message, UserContent};
 use elph_ai::{get_builtin_model, get_builtin_providers};
+use std::collections::HashSet;
 
 use super::session_manager::SessionManager;
 
@@ -31,31 +32,86 @@ pub async fn list_session_select_items(session_manager: &SessionManager) -> Resu
     let items: Vec<SelectItem> = sessions
         .into_iter()
         .map(|meta| {
-            let short_id = meta.id.chars().take(8).collect::<String>();
-            SelectItem::new(meta.id, short_id).with_description(meta.updated_at)
+            let short_id: String = meta.id.chars().take(8).collect();
+            let label = meta
+                .name
+                .as_deref()
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(|n| format!("{n} ({short_id})"))
+                .unwrap_or(short_id);
+            SelectItem::new(meta.id, label).with_description(meta.updated_at)
         })
         .collect();
     Ok(items)
 }
 
 pub fn list_tree_select_items(entries: &[SessionTreeEntry]) -> Vec<SelectItem> {
-    entries.iter().filter_map(tree_entry_to_select_item).collect()
+    list_tree_select_items_with_leaf(entries, None)
 }
 
-fn tree_entry_to_select_item(entry: &SessionTreeEntry) -> Option<SelectItem> {
+/// Selectable tree points for `/tree` interactive picker.
+///
+/// Builds a **full** candidate list (including tools/settings). UI filter modes
+/// (Pi TreeSelector) decide what is visible: default / no-tools / user-only /
+/// labeled-only / all.
+pub fn list_tree_select_items_with_leaf(entries: &[SessionTreeEntry], leaf_id: Option<&str>) -> Vec<SelectItem> {
+    let labeled_targets: HashSet<&str> = entries
+        .iter()
+        .filter_map(|e| match e {
+            SessionTreeEntry::Label {
+                target_id,
+                label: Some(l),
+                ..
+            } if !l.is_empty() => Some(target_id.as_str()),
+            _ => None,
+        })
+        .collect();
+
+    entries
+        .iter()
+        .filter_map(|e| tree_entry_to_select_item(e, leaf_id, &labeled_targets))
+        .collect()
+}
+
+fn tree_entry_to_select_item(
+    entry: &SessionTreeEntry,
+    leaf_id: Option<&str>,
+    labeled_targets: &HashSet<&str>,
+) -> Option<SelectItem> {
     let id = entry.id().to_string();
+    let leaf_mark = if leaf_id == Some(entry.id()) { "● " } else { "" };
+    let is_labeled = labeled_targets.contains(entry.id());
+    let label_badge = if is_labeled { " ★" } else { "" };
+    let short: String = id.chars().take(8).collect();
+
     match entry {
         SessionTreeEntry::Message { message, timestamp, .. } => {
             let role = message.role();
-            if role != "user" && role != "assistant" {
-                return None;
-            }
+            let (kind, role_label) = match role {
+                "user" => (SelectItemKind::UserMessage, "user"),
+                "assistant" => (SelectItemKind::AssistantMessage, "assistant"),
+                "toolResult" | "tool_result" | "tool" => (SelectItemKind::ToolResult, "tool"),
+                _ => {
+                    // Other message roles treated as tools/settings bookkeeping.
+                    (SelectItemKind::ToolResult, role)
+                }
+            };
             let preview = message_preview(message);
-            if preview.is_empty() {
+            if preview.is_empty() && kind != SelectItemKind::ToolResult {
                 return None;
             }
-            let label = format!("{role}: {preview}");
-            Some(SelectItem::new(id, label).with_description(timestamp.clone()))
+            let preview = if preview.is_empty() {
+                "(empty)".to_string()
+            } else {
+                preview
+            };
+            Some(
+                SelectItem::new(id, format!("{leaf_mark}{role_label}: {preview}{label_badge}"))
+                    .with_description(format!("{short} · {timestamp}"))
+                    .with_kind(kind)
+                    .with_labeled(is_labeled),
+            )
         }
         SessionTreeEntry::CustomMessage {
             content,
@@ -68,12 +124,100 @@ fn tree_entry_to_select_item(entry: &SessionTreeEntry) -> Option<SelectItem> {
             if preview.is_empty() {
                 return None;
             }
-            let label = format!("{custom_type}: {preview}");
-            Some(SelectItem::new(id, label).with_description(timestamp.clone()))
+            Some(
+                SelectItem::new(id, format!("{leaf_mark}{custom_type}: {preview}{label_badge}"))
+                    .with_description(format!("{short} · {timestamp}"))
+                    .with_kind(SelectItemKind::Generic)
+                    .with_labeled(is_labeled),
+            )
         }
         SessionTreeEntry::BranchSummary { summary, timestamp, .. } => {
-            Some(SelectItem::new(id, format!("branch: {summary}")).with_description(timestamp.clone()))
+            let preview: String = summary.chars().take(60).collect();
+            Some(
+                SelectItem::new(id, format!("{leaf_mark}branch: {preview}{label_badge}"))
+                    .with_description(format!("{short} · {timestamp}"))
+                    .with_kind(SelectItemKind::BranchSummary)
+                    .with_labeled(is_labeled),
+            )
         }
+        SessionTreeEntry::Compaction { summary, timestamp, .. } => {
+            let preview: String = summary.chars().take(60).collect();
+            Some(
+                SelectItem::new(id, format!("{leaf_mark}compaction: {preview}{label_badge}"))
+                    .with_description(format!("{short} · {timestamp}"))
+                    .with_kind(SelectItemKind::Compaction)
+                    .with_labeled(is_labeled),
+            )
+        }
+        SessionTreeEntry::Label {
+            target_id,
+            label,
+            timestamp,
+            ..
+        } => {
+            let name = label.as_deref().filter(|s| !s.is_empty()).unwrap_or("(cleared)");
+            let tshort: String = target_id.chars().take(8).collect();
+            Some(
+                SelectItem::new(id, format!("{leaf_mark}label: {name} → {tshort}"))
+                    .with_description(format!("{short} · {timestamp}"))
+                    .with_kind(SelectItemKind::Label)
+                    .with_labeled(true),
+            )
+        }
+        SessionTreeEntry::ModelChange {
+            provider,
+            model_id,
+            timestamp,
+            ..
+        } => Some(
+            SelectItem::new(id, format!("{leaf_mark}model: {provider}/{model_id}"))
+                .with_description(format!("{short} · {timestamp}"))
+                .with_kind(SelectItemKind::Settings)
+                .with_labeled(is_labeled),
+        ),
+        SessionTreeEntry::ThinkingLevelChange {
+            thinking_level,
+            timestamp,
+            ..
+        } => Some(
+            SelectItem::new(id, format!("{leaf_mark}thinking: {thinking_level}"))
+                .with_description(format!("{short} · {timestamp}"))
+                .with_kind(SelectItemKind::Settings)
+                .with_labeled(is_labeled),
+        ),
+        SessionTreeEntry::SessionInfo { name, timestamp, .. } => {
+            let n = name.as_deref().unwrap_or("(unnamed)");
+            Some(
+                SelectItem::new(id, format!("{leaf_mark}session: {n}"))
+                    .with_description(format!("{short} · {timestamp}"))
+                    .with_kind(SelectItemKind::Settings)
+                    .with_labeled(is_labeled),
+            )
+        }
+        SessionTreeEntry::ActiveToolsChange { timestamp, .. } => Some(
+            SelectItem::new(id, format!("{leaf_mark}tools change"))
+                .with_description(format!("{short} · {timestamp}"))
+                .with_kind(SelectItemKind::Settings)
+                .with_labeled(is_labeled),
+        ),
+        SessionTreeEntry::CollaborationModeChange { mode, timestamp, .. } => Some(
+            SelectItem::new(id, format!("{leaf_mark}mode: {mode:?}"))
+                .with_description(format!("{short} · {timestamp}"))
+                .with_kind(SelectItemKind::Settings)
+                .with_labeled(is_labeled),
+        ),
+        SessionTreeEntry::Custom {
+            custom_type, timestamp, ..
+        } => Some(
+            SelectItem::new(id, format!("{leaf_mark}custom: {custom_type}"))
+                .with_description(format!("{short} · {timestamp}"))
+                .with_kind(SelectItemKind::Settings)
+                .with_labeled(is_labeled),
+        ),
+        SessionTreeEntry::Leaf { .. } => None,
+        SessionTreeEntry::CustomMessage { display: false, .. } => None,
+        // Exhaustive: non-display custom messages already covered; any future variant stays hidden.
+        #[allow(unreachable_patterns)]
         _ => None,
     }
 }
@@ -142,10 +286,12 @@ fn truncate_preview(text: &str) -> String {
     if collapsed.chars().count() <= 80 {
         collapsed
     } else {
-        collapsed.chars().take(77).collect::<String>() + "..."
+        let truncated: String = collapsed.chars().take(77).collect();
+        format!("{truncated}…")
     }
 }
 
+/// Parse `provider/model` selection values from the model selector.
 pub fn parse_model_value(value: &str) -> Result<(String, String)> {
     value
         .split_once('/')
@@ -156,4 +302,39 @@ pub fn parse_model_value(value: &str) -> Result<(String, String)> {
 pub fn resolve_model_from_value(value: &str) -> Result<elph_ai::Model> {
     let (provider, model_id) = parse_model_value(value)?;
     get_builtin_model(&provider, &model_id).with_context(|| format!("Model not found: {value}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use elph_agent::llm_message_to_agent;
+
+    #[test]
+    fn tree_items_mark_labeled_targets() {
+        let entries = vec![
+            SessionTreeEntry::Message {
+                id: "m1".into(),
+                parent_id: None,
+                timestamp: "t".into(),
+                message: llm_message_to_agent(Message::User {
+                    content: UserContent::Text("hello".into()),
+                    timestamp: 0,
+                }),
+                prompt_title: String::new(),
+                prompt_kind: String::new(),
+            },
+            SessionTreeEntry::Label {
+                id: "l1".into(),
+                parent_id: Some("m1".into()),
+                timestamp: "t".into(),
+                target_id: "m1".into(),
+                label: Some("bookmark".into()),
+            },
+        ];
+        let items = list_tree_select_items_with_leaf(&entries, Some("m1"));
+        let msg = items.iter().find(|i| i.value == "m1").expect("message item");
+        assert!(msg.labeled);
+        assert_eq!(msg.kind, SelectItemKind::UserMessage);
+        assert!(items.iter().any(|i| i.kind == SelectItemKind::Label));
+    }
 }

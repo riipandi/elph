@@ -16,6 +16,7 @@ pub enum SessionErrorCode {
     InvalidSession,
     InvalidEntry,
     Storage,
+    Conflict,
     Unknown,
 }
 
@@ -263,6 +264,41 @@ impl SessionTreeEntry {
             | Self::Leaf { timestamp, .. } => timestamp,
         }
     }
+
+    /// Denormalized role for `session_entries.role` (messages only).
+    pub fn message_role(&self) -> Option<&str> {
+        match self {
+            Self::Message { message, .. } => Some(message.role()),
+            _ => None,
+        }
+    }
+
+    /// Extract compaction entry fields when this entry is a compaction.
+    pub fn as_compaction(&self) -> Option<CompactionFields<'_>> {
+        match self {
+            Self::Compaction {
+                summary,
+                first_kept_entry_id,
+                tokens_before,
+                details,
+                ..
+            } => Some(CompactionFields {
+                summary,
+                first_kept_entry_id,
+                tokens_before: *tokens_before,
+                details: details.as_ref(),
+            }),
+            _ => None,
+        }
+    }
+}
+
+/// Borrowed view of a [`SessionTreeEntry::Compaction`] variant.
+pub struct CompactionFields<'a> {
+    pub summary: &'a str,
+    pub first_kept_entry_id: &'a str,
+    pub tokens_before: u64,
+    pub details: Option<&'a Value>,
 }
 
 /// Session metadata with a stable identifier.
@@ -477,6 +513,12 @@ pub trait SessionStorage: Send + Sync {
         async { None }
     }
 
+    /// Bump the session's activity timestamp (e.g. `updated_at`) without appending
+    /// a tree entry. Backends without a mutable timestamp are a no-op.
+    fn touch_timestamp<'a>(&'a mut self) -> impl Future<Output = Result<(), SessionError>> + Send + use<'a, Self> {
+        async { Ok(()) }
+    }
+
     // ---------------------------------------------------------------------------
     // Default implementations for backward compatibility
     // ---------------------------------------------------------------------------
@@ -487,5 +529,16 @@ pub trait SessionStorage: Send + Sync {
         leaf_id: Option<&'a str>,
     ) -> impl Future<Output = Result<Vec<SessionTreeEntry>, SessionError>> + Send + use<'a, Self> {
         self.get_path_to_root_or_compaction(leaf_id)
+    }
+
+    /// Physically delete entries whose ids are **not** in `keep_ids`.
+    ///
+    /// Used after compaction to reclaim disk. Default is a no-op (0 deleted).
+    /// Implementations must rebuild any in-memory index and keep leaf consistency.
+    fn physical_prune_except<'a>(
+        &'a mut self,
+        _keep_ids: &'a [String],
+    ) -> impl Future<Output = Result<usize, SessionError>> + Send + use<'a, Self> {
+        async { Ok(0) }
     }
 }

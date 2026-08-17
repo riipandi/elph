@@ -10,7 +10,10 @@ pub use context::DefaultAuthContext;
 pub use context::default_auth_context;
 pub use credential_store::InMemoryCredentialStore;
 pub use helpers::OAuthLoader;
-pub use helpers::{env_api_key_auth, flexible_api_key_auth, lazy_oauth};
+pub use helpers::{
+    env_api_key_auth, flexible_api_key_auth, github_copilot_api_key_auth, is_local_or_loopback_base_url, lazy_oauth,
+    optional_env_api_key_auth,
+};
 pub use models_store::{InMemoryModelsStore, ModelsStore, ModelsStoreEntry, ProviderStore};
 pub use oauth::OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD;
 pub use oauth::{OAuthApiKeyResult, OAuthProviderInterface, OPENAI_CODEX_BROWSER_LOGIN_METHOD};

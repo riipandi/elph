@@ -1,4 +1,40 @@
 {
+    "auto": {
+        "api": "openai-responses",
+        "baseUrl": "https://api.individual.githubcopilot.com",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.025,
+            "cacheWrite": 0.0,
+            "input": 0.25,
+            "output": 2.0
+        },
+        "description": "Automatic model router for matching prompts to suitable backends and budgets",
+        "headers": {
+            "Copilot-Integration-Id": "vscode-chat",
+            "Editor-Plugin-Version": "copilot-chat/0.35.0",
+            "Editor-Version": "vscode/1.107.0",
+            "User-Agent": "GitHubCopilotChat/0.35.0"
+        },
+        "id": "auto",
+        "input": ["text", "image"],
+        "maxTokens": 16384,
+        "name": "Auto Route",
+        "provider": "github-copilot",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "claude-fable-5": {
         "api": "openai-completions",
         "baseUrl": "https://api.individual.githubcopilot.com",
@@ -14,6 +50,7 @@
             "input": 10.0,
             "output": 50.0
         },
+        "description": "Claude model for creative writing, analysis, and controlled agent workflows",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -27,10 +64,10 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
@@ -49,6 +86,7 @@
             "input": 1.0,
             "output": 5.0
         },
+        "description": "Fast Claude lane for lightweight agents, office tasks, and responsive chat",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -64,7 +102,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -81,6 +119,7 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -94,13 +133,13 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "claude-opus-4.6": {
@@ -116,6 +155,7 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "High-end Claude for difficult coding, planning, and slower expert reasoning",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -129,10 +169,10 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -152,6 +192,7 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "Stronger Opus tier for advanced software work and high-stakes reasoning",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -165,11 +206,11 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
-            "minimal": "low",
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -188,6 +229,7 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "Top Claude Opus tier for the hardest reasoning, coding, and long-horizon agents",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -201,11 +243,11 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
-            "minimal": "low",
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -224,6 +266,7 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "Strongest Claude Opus model for coding, agents, and professional work",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -237,11 +280,11 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
-            "minimal": "minimal",
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -259,6 +302,7 @@
             "input": 3.0,
             "output": 15.0
         },
+        "description": "Balanced Claude model for coding, analysis, agent workflows, and cost control",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -294,6 +338,7 @@
             "input": 3.0,
             "output": 15.0
         },
+        "description": "Balanced Claude model for coding, analysis, agent workflows, and cost control",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -309,7 +354,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -329,6 +374,7 @@
             "input": 3.0,
             "output": 15.0
         },
+        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -342,11 +388,11 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
-            "minimal": "low",
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": null
         }
@@ -364,6 +410,7 @@
             "input": 2.0,
             "output": 10.0
         },
+        "description": "Everyday Claude agent model for coding, planning, browsing, and general work",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -377,10 +424,10 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
@@ -401,6 +448,7 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "Advanced Gemini model for complex reasoning, coding, and multimodal analysis",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -412,7 +460,7 @@
         "maxTokens": 65536,
         "name": "gemini-2.5-pro",
         "provider": "github-copilot",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -438,6 +486,7 @@
             "input": 0.5,
             "output": 3.0
         },
+        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -449,7 +498,7 @@
         "maxTokens": 65536,
         "name": "gemini-3-flash-preview",
         "provider": "github-copilot",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -475,6 +524,7 @@
             "input": 2.0,
             "output": 12.0
         },
+        "description": "Reasoning-first Gemini preview for agentic coding and complex problem solving",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -512,6 +562,7 @@
             "input": 1.5,
             "output": 9.0
         },
+        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -549,6 +600,7 @@
             "input": 2.0,
             "output": 8.0
         },
+        "description": "Long-lived GPT workhorse for coding, instruction following, and production apps",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -584,6 +636,7 @@
             "input": 0.25,
             "output": 2.0
         },
+        "description": "Small GPT-5 for responsive agents, coding help, and everyday automation",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -601,7 +654,7 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": "low",
+            "minimal": null,
             "off": null,
             "xhigh": null
         }
@@ -619,6 +672,7 @@
             "input": 1.75,
             "output": 14.0
         },
+        "description": "Reliable GPT generation for broad coding, writing, and tool-assisted product work",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -632,12 +686,12 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": "low",
-            "off": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -654,6 +708,7 @@
             "input": 1.75,
             "output": 14.0
         },
+        "description": "Code-specialist GPT for repository edits, reviews, and long-running software agents",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -667,12 +722,12 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": "low",
-            "off": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -689,6 +744,7 @@
             "input": 1.75,
             "output": 14.0
         },
+        "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -706,7 +762,7 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": "low",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -724,6 +780,7 @@
             "input": 2.5,
             "output": 15.0
         },
+        "description": "Agent-ready GPT for coding and computer-use workflows at a lower cost",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -741,8 +798,8 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": "low",
-            "off": null,
+            "minimal": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -759,6 +816,7 @@
             "input": 0.75,
             "output": 4.5
         },
+        "description": "Strong small GPT for coding subagents, quick tool use, and high-volume work",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -776,8 +834,8 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": "low",
-            "off": null,
+            "minimal": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -794,6 +852,7 @@
             "input": 0.2,
             "output": 1.25
         },
+        "description": "Cheapest GPT-5.4 lane for simple routing, extraction, and bulk automation",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -807,12 +866,12 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": "low",
-            "off": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -829,6 +888,7 @@
             "input": 5.0,
             "output": 30.0
         },
+        "description": "Default frontier GPT for coding, computer use, research, and knowledge work",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -846,8 +906,8 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": "low",
-            "off": null,
+            "minimal": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -864,6 +924,7 @@
             "input": 0.2,
             "output": 1.2
         },
+        "description": "Cost-efficient GPT-5.6 model for fast, high-volume workloads",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -881,8 +942,8 @@
             "low": "low",
             "max": "max",
             "medium": "medium",
-            "minimal": "low",
-            "off": null,
+            "minimal": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -899,6 +960,7 @@
             "input": 5.0,
             "output": 30.0
         },
+        "description": "Frontier GPT-5.6 model for complex professional work, coding, and agentic workflows",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -916,8 +978,8 @@
             "low": "low",
             "max": "max",
             "medium": "medium",
-            "minimal": "low",
-            "off": null,
+            "minimal": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -934,6 +996,7 @@
             "input": 2.0,
             "output": 12.0
         },
+        "description": "Balanced GPT-5.6 model for capable, cost-efficient everyday work",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -951,8 +1014,8 @@
             "low": "low",
             "max": "max",
             "medium": "medium",
-            "minimal": "low",
-            "off": null,
+            "minimal": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -971,6 +1034,7 @@
             "input": 0.95,
             "output": 4.0
         },
+        "description": "Coding-focused Kimi model, stronger on long-horizon repo work with less overthinking",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",
@@ -989,8 +1053,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "mai-code-1-flash-picker": {
@@ -1003,6 +1067,7 @@
             "input": 0.75,
             "output": 4.5
         },
+        "description": "Microsoft coding model built for fast, efficient assistance in everyday developer workflows",
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
             "Editor-Plugin-Version": "copilot-chat/0.35.0",

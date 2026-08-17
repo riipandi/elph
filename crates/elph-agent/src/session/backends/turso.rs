@@ -8,8 +8,14 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::datastore::migrations::run as run_migrations;
+use crate::datastore::with_write_transaction;
 use crate::session::id::{generate_entry_id, generate_session_id};
 use crate::session::migrations::SESSION_TREE_MIGRATIONS;
+
+/// Get a properly configured connection (with busy_timeout + foreign_keys pragmas).
+async fn connect_configured(db: &turso::Database) -> Result<turso::Connection, SessionError> {
+    crate::datastore::connect(db).await.map_err(map_storage_error)
+}
 use crate::session::storage_utils::{
     append_to_index, build_index, compute_statistics, create_leaf_entry, find_entries, get_entries_cursor,
     get_path_to_root, get_path_to_root_or_compaction,
@@ -63,20 +69,46 @@ impl TursoSessionStorage {
     ) -> Result<Self, SessionError> {
         let db_path = db_path.as_ref().to_path_buf();
         let session_id = session_id.into();
-        let conn = match &database {
-            Some(db) => db.connect().map_err(map_storage_error)?,
-            None => {
-                let db = open_db(&db_path).await?;
-                db.connect().map_err(map_storage_error)?
-            }
+        let database = match database {
+            Some(db) => Some(db),
+            None => Some(Arc::new(open_db(&db_path).await?)),
         };
+        let conn = connect_configured(
+            database
+                .as_ref()
+                .ok_or_else(|| SessionError::new(SessionErrorCode::Storage, "database initialization failed"))?,
+        )
+        .await?;
         let metadata = load_metadata(&conn, &session_id, &db_path).await?;
         let entries = load_entries(&conn, &session_id).await?;
         // Resolve the leaf with tolerance for stale pointers (crash ordering,
         // rows pruned by snapshot cleanup, partial recovery writes). Failing
         // open here would make every `--continue`/`--resume` unrecoverable.
         let persisted = load_leaf_id(&conn, &session_id).await?;
+        let persisted_snapshot = persisted.clone();
         let index = build_index(entries, persisted)?;
+        // Sync resolved leaf back to the DB when the persisted pointer was
+        // stale/phantom — without this the first write's CAS on
+        // `active_leaf_id` would see a mismatch and roll back the transaction.
+        if index.leaf_id.as_deref() != persisted_snapshot.as_deref() {
+            let updated_at = crate::messages::now_iso_timestamp();
+            if let Err(error) = conn
+                .execute(
+                    "UPDATE sessions SET active_leaf_id = ?, updated_at = ? WHERE id = ?",
+                    turso::params![
+                        index.leaf_id.as_deref().unwrap_or(""),
+                        updated_at.as_str(),
+                        session_id.as_str(),
+                    ],
+                )
+                .await
+                .map_err(map_storage_error)
+            {
+                log::warn!(
+                    "session {session_id}: resolved phantom leaf in memory but could not persist active_leaf_id update: {error}"
+                );
+            }
+        }
         // Best-effort auto-heal: if the tree is riddled with phantom leaves
         // (>= 16), drop stale `Leaf` entries and re-resolve so a single corrupt
         // row can't keep poisoning the leaf forever. When we heal, ALSO persist
@@ -137,13 +169,11 @@ impl TursoSessionStorage {
             std::fs::create_dir_all(parent).map_err(map_storage_error)?;
         }
         let session_id = options.session_id.unwrap_or_else(generate_session_id);
-        let conn = match &database {
-            Some(db) => db.connect().map_err(map_storage_error)?,
-            None => {
-                let db = open_db(&db_path).await?;
-                db.connect().map_err(map_storage_error)?
-            }
+        let database = match database {
+            Some(db) => db,
+            None => Arc::new(open_db(&db_path).await?),
         };
+        let conn = connect_configured(&database).await?;
         let created_at = crate::messages::now_iso_timestamp();
         let cwd = options.cwd.unwrap_or_default();
         let agent_mode = options.agent_mode.unwrap_or_else(|| "build".to_string());
@@ -160,32 +190,39 @@ impl TursoSessionStorage {
             db_path: db_path.to_string_lossy().to_string(),
         };
 
-        conn.execute(
-            "INSERT INTO sessions (
-                id, created_at, updated_at, cwd, parent_session_id,
-                provider_id, model_id, agent_mode, name, system_prompt, metadata, active_leaf_id
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)",
-            turso::params![
-                session_id.as_str(),
-                created_at.as_str(),
-                created_at.as_str(),
-                cwd.as_str(),
-                options.parent_session_id.as_deref(),
-                options.provider_id.as_deref(),
-                options.model_id.as_deref(),
-                agent_mode.as_str(),
-                options.name.as_deref(),
-                options.system_prompt.as_deref(),
-                options.metadata_json.as_deref(),
-            ],
-        )
-        .await
-        .map_err(map_storage_error)?;
+        // Serialized WAL transaction: atomic creation, not MVCC.
+        with_write_transaction(&conn, || async {
+            conn.execute(
+                "INSERT INTO sessions (
+                    id, created_at, updated_at, cwd, parent_session_id,
+                    provider_id, model_id, agent_mode, name, system_prompt, metadata, active_leaf_id
+                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)",
+                turso::params![
+                    session_id.as_str(),
+                    created_at.as_str(),
+                    created_at.as_str(),
+                    cwd.as_str(),
+                    options.parent_session_id.as_deref(),
+                    options.provider_id.as_deref(),
+                    options.model_id.as_deref(),
+                    agent_mode.as_str(),
+                    options.name.as_deref(),
+                    options.system_prompt.as_deref(),
+                    options.metadata_json.as_deref(),
+                ],
+            )
+            .await
+            .map_err(map_storage_error)?;
 
-        conn.execute(
-            "INSERT INTO session_sequences (session_id, next_seq) VALUES (?, 0)",
-            turso::params![session_id.as_str()],
-        )
+            conn.execute(
+                "INSERT INTO session_sequences (session_id, next_seq) VALUES (?, 0)",
+                turso::params![session_id.as_str()],
+            )
+            .await
+            .map_err(map_storage_error)?;
+
+            Ok::<(), anyhow::Error>(())
+        })
         .await
         .map_err(map_storage_error)?;
 
@@ -194,7 +231,7 @@ impl TursoSessionStorage {
             session_id,
             metadata,
             index: build_index(Vec::new(), None)?,
-            database,
+            database: Some(database),
         })
     }
 
@@ -206,24 +243,65 @@ impl TursoSessionStorage {
         &self.session_id
     }
 
+    /// Bump `updated_at` on the `sessions` row (and cached metadata) to now.
+    ///
+    /// Used to keep the session visible at the top of the resume list and
+    /// protected from retention eviction even when no tree entry is appended
+    /// (e.g. opening a session with no writes during that visit).
+    pub async fn touch(&mut self) -> Result<(), SessionError> {
+        let conn = self.connection().await?;
+        let now = crate::messages::now_iso_timestamp();
+        conn.execute(
+            "UPDATE sessions SET updated_at = ? WHERE id = ?",
+            turso::params![now.as_str(), self.session_id.as_str()],
+        )
+        .await
+        .map_err(map_storage_error)?;
+        self.metadata.updated_at = now;
+        Ok(())
+    }
+
     async fn connection(&self) -> Result<turso::Connection, SessionError> {
         match &self.database {
-            Some(db) => db.connect().map_err(map_storage_error),
+            Some(db) => connect_configured(db).await,
             None => {
                 let db = open_db(&self.db_path).await?;
-                db.connect().map_err(map_storage_error)
+                connect_configured(&db).await
             }
         }
     }
 
-    async fn persist_leaf_id(&self, conn: &turso::Connection, leaf_id: Option<&str>) -> Result<(), SessionError> {
+    async fn persist_leaf_id(
+        &self,
+        conn: &turso::Connection,
+        expected_leaf_id: Option<&str>,
+        leaf_id: Option<&str>,
+    ) -> Result<(), SessionError> {
         let updated_at = crate::messages::now_iso_timestamp();
-        conn.execute(
-            "UPDATE sessions SET active_leaf_id = ?, updated_at = ? WHERE id = ?",
-            turso::params![leaf_id, updated_at.as_str(), self.session_id.as_str()],
-        )
-        .await
-        .map_err(map_storage_error)?;
+        let changed = match expected_leaf_id {
+            Some(expected) => conn
+                .execute(
+                    "UPDATE sessions SET active_leaf_id = ?, updated_at = ?
+                     WHERE id = ? AND active_leaf_id = ?",
+                    turso::params![leaf_id, updated_at.as_str(), self.session_id.as_str(), expected],
+                )
+                .await
+                .map_err(map_storage_error)?,
+            None => conn
+                .execute(
+                    "UPDATE sessions SET active_leaf_id = ?, updated_at = ?
+                     WHERE id = ? AND active_leaf_id IS NULL",
+                    turso::params![leaf_id, updated_at.as_str(), self.session_id.as_str()],
+                )
+                .await
+                .map_err(map_storage_error)?,
+        };
+        if changed == 0 {
+            return Err(SessionError::new(
+                SessionErrorCode::Conflict,
+                format!("session {} changed in another process; reload before writing", self.session_id),
+            ));
+        }
         Ok(())
     }
 
@@ -240,10 +318,21 @@ impl TursoSessionStorage {
             .await
             .map_err(map_storage_error)?;
         let Some(row) = rows.next().await.map_err(map_storage_error)? else {
-            return Err(SessionError::new(
-                SessionErrorCode::InvalidSession,
-                format!("session_sequences missing for {}", self.session_id),
-            ));
+            // Recovery: if session_sequences row is missing (due to previous failed
+            // session creation), insert it with next_seq=0 and return 0. This handles
+            // the case where a session row exists but session_sequences was never created.
+            conn.execute(
+                "INSERT INTO session_sequences (session_id, next_seq) VALUES (?, 0)",
+                turso::params![self.session_id.as_str()],
+            )
+            .await
+            .map_err(|e| {
+                SessionError::new(
+                    SessionErrorCode::Storage,
+                    format!("failed to recover missing session_sequences for {}: {e}", self.session_id),
+                )
+            })?;
+            return Ok(0);
         };
         row.get::<i64>(0).map_err(map_storage_error)
     }
@@ -251,11 +340,13 @@ impl TursoSessionStorage {
     async fn persist_entry(&self, conn: &turso::Connection, entry: &SessionTreeEntry) -> Result<(), SessionError> {
         let seq = self.allocate_seq(conn).await?;
         let payload = serde_json::to_string(entry).map_err(map_storage_error)?;
+        let payload_bytes = payload.len() as i64;
         let updated_at = crate::messages::now_iso_timestamp();
         conn.execute(
             "INSERT INTO session_entries (
-                session_id, id, entry_seq, parent_id, type, timestamp, payload
-             ) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                session_id, id, entry_seq, parent_id, type, timestamp,
+                turn_id, role, payload_bytes, payload
+             ) VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)",
             turso::params![
                 self.session_id.as_str(),
                 entry.id(),
@@ -263,16 +354,22 @@ impl TursoSessionStorage {
                 entry.parent_id(),
                 entry.entry_type(),
                 entry.timestamp(),
+                entry.message_role(),
+                payload_bytes,
                 payload.as_str(),
             ],
         )
         .await
         .map_err(map_storage_error)?;
 
-        // Touch updated_at so list ordering advances even when the leaf is unchanged.
+        // Touch updated_at + size rollups so list ordering and retention budgets stay current.
         conn.execute(
-            "UPDATE sessions SET updated_at = ? WHERE id = ?",
-            turso::params![updated_at.as_str(), self.session_id.as_str()],
+            "UPDATE sessions SET
+                updated_at = ?,
+                entry_count = entry_count + 1,
+                approx_bytes = approx_bytes + ?
+             WHERE id = ?",
+            turso::params![updated_at.as_str(), payload_bytes, self.session_id.as_str()],
         )
         .await
         .map_err(map_storage_error)?;
@@ -280,29 +377,19 @@ impl TursoSessionStorage {
     }
 
     /// Open one connection and persist `entry` + the new `leaf_id` inside a single
-    /// `BEGIN IMMEDIATE` … `COMMIT` transaction, rolling back on error. Using one
-    /// connection per call (instead of one per write) avoids re-opening the
-    /// multiprocess-WAL database on every append and removes the sequence-allocation
-    /// race under concurrent, multi-process writers.
+    /// serialized WAL transaction with automatic retry on lock contention.
+    /// Using one connection per call keeps the database owner alive through the
+    /// entire operation and avoids sequence-allocation races.
     async fn persist_txn(&self, entry: &SessionTreeEntry, leaf_id: Option<&str>) -> Result<(), SessionError> {
         let conn = self.connection().await?;
-        conn.execute("BEGIN IMMEDIATE", ()).await.map_err(map_storage_error)?;
-        let outcome = async {
+        let expected_leaf_id = self.index.leaf_id.as_deref();
+        with_write_transaction(&conn, || async {
             self.persist_entry(&conn, entry).await?;
-            self.persist_leaf_id(&conn, leaf_id).await?;
-            Ok::<(), SessionError>(())
-        }
-        .await;
-        match outcome {
-            Ok(()) => {
-                conn.execute("COMMIT", ()).await.map_err(map_storage_error)?;
-                Ok(())
-            }
-            Err(error) => {
-                let _ = conn.execute("ROLLBACK", ()).await;
-                Err(error)
-            }
-        }
+            self.persist_leaf_id(&conn, expected_leaf_id, leaf_id).await?;
+            Ok::<(), anyhow::Error>(())
+        })
+        .await
+        .map_err(map_storage_error)
     }
 }
 
@@ -439,7 +526,7 @@ fn maybe_heal_stale_leaves(index: SessionIndex) -> Result<(SessionIndex, Vec<Str
     Ok((healed, stale_ids))
 }
 
-/// Delete the given stale `Leaf` rows from `session_entries` in one transaction.
+/// Delete the given stale `Leaf` rows from `session_entries` in one serialized WAL transaction.
 ///
 /// Called only after `maybe_heal_stale_leaves` decided to heal (>= threshold).
 /// Best-effort but transactional: if the delete fails the open still succeeds
@@ -452,10 +539,7 @@ async fn persist_heal_stale_leaves(
     if stale_ids.is_empty() {
         return Ok(());
     }
-    conn.execute("BEGIN IMMEDIATE", ())
-        .await
-        .map_err(|e| SessionError::new(SessionErrorCode::Storage, format!("heal begin: {e}")))?;
-    let outcome = async {
+    with_write_transaction(conn, || async {
         for id in stale_ids {
             conn.execute(
                 "DELETE FROM session_entries WHERE session_id = ? AND id = ?",
@@ -464,21 +548,10 @@ async fn persist_heal_stale_leaves(
             .await
             .map_err(|e| SessionError::new(SessionErrorCode::Storage, format!("heal delete {id}: {e}")))?;
         }
-        Ok::<(), SessionError>(())
-    }
-    .await;
-    match outcome {
-        Ok(()) => {
-            conn.execute("COMMIT", ())
-                .await
-                .map_err(|e| SessionError::new(SessionErrorCode::Storage, format!("heal commit: {e}")))?;
-            Ok(())
-        }
-        Err(error) => {
-            let _ = conn.execute("ROLLBACK", ()).await;
-            Err(error)
-        }
-    }
+        Ok::<(), anyhow::Error>(())
+    })
+    .await
+    .map_err(map_storage_error)
 }
 
 fn map_storage_error(error: impl std::fmt::Display) -> SessionError {
@@ -539,6 +612,10 @@ impl SessionStorage for TursoSessionStorage {
         self.index.by_id.get(id).cloned()
     }
 
+    async fn touch_timestamp(&mut self) -> Result<(), SessionError> {
+        self.touch().await
+    }
+
     async fn find_entries(&self, entry_type: &str) -> Vec<SessionTreeEntry> {
         find_entries(&self.index.entries, entry_type)
     }
@@ -586,6 +663,89 @@ impl SessionStorage for TursoSessionStorage {
 
     async fn get_name(&self) -> Option<String> {
         self.index.name.clone().or_else(|| self.metadata.name.clone())
+    }
+
+    async fn physical_prune_except(&mut self, keep_ids: &[String]) -> Result<usize, SessionError> {
+        if keep_ids.is_empty() {
+            return Ok(0);
+        }
+        let keep: std::collections::HashSet<&str> = keep_ids.iter().map(String::as_str).collect();
+        let to_delete: Vec<String> = self
+            .index
+            .entries
+            .iter()
+            .map(|e| e.id().to_string())
+            .filter(|id| !keep.contains(id.as_str()))
+            .collect();
+        if to_delete.is_empty() {
+            return Ok(0);
+        }
+
+        let conn = self.connection().await?;
+        let (deleted, leaf_id) = with_write_transaction(&conn, || async {
+            let mut deleted = 0usize;
+            let mut freed_bytes: i64 = 0;
+            for id in &to_delete {
+                let mut rows = conn
+                    .query(
+                        "SELECT payload_bytes FROM session_entries WHERE session_id = ? AND id = ?",
+                        turso::params![self.session_id.as_str(), id.as_str()],
+                    )
+                    .await
+                    .map_err(map_storage_error)?;
+                if let Some(row) = rows.next().await.map_err(map_storage_error)? {
+                    let bytes: i64 = row.get(0).unwrap_or(0);
+                    freed_bytes += bytes;
+                }
+                while rows.next().await.map_err(map_storage_error)?.is_some() {}
+
+                conn.execute(
+                    "DELETE FROM session_entries WHERE session_id = ? AND id = ?",
+                    turso::params![self.session_id.as_str(), id.as_str()],
+                )
+                .await
+                .map_err(map_storage_error)?;
+                deleted += 1;
+            }
+            let remaining: Vec<SessionTreeEntry> = self
+                .index
+                .entries
+                .iter()
+                .filter(|e| keep.contains(e.id()))
+                .cloned()
+                .collect();
+            let leaf = self.index.leaf_id.clone().filter(|id| keep.contains(id.as_str()));
+            let updated_at = crate::messages::now_iso_timestamp();
+            conn.execute(
+                "UPDATE sessions SET
+                    entry_count = MAX(0, entry_count - ?),
+                    approx_bytes = MAX(0, approx_bytes - ?),
+                    active_leaf_id = ?,
+                    updated_at = ?
+                 WHERE id = ?",
+                turso::params![
+                    deleted as i64,
+                    freed_bytes,
+                    leaf.as_deref(),
+                    updated_at.as_str(),
+                    self.session_id.as_str()
+                ],
+            )
+            .await
+            .map_err(map_storage_error)?;
+            Ok::<(usize, (Vec<SessionTreeEntry>, Option<String>)), anyhow::Error>((deleted, (remaining, leaf)))
+        })
+        .await
+        .map_err(map_storage_error)?;
+
+        let (remaining, leaf) = leaf_id;
+        self.index = build_index(remaining, leaf)?;
+        log::info!(
+            "session {}: physical_prune deleted {deleted} entries (kept {})",
+            self.session_id,
+            keep_ids.len()
+        );
+        Ok(deleted)
     }
 }
 

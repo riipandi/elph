@@ -262,6 +262,27 @@ where
             .await
             .map_err(session_error)?;
 
+        // Physical prune: drop tree rows no longer on the active post-compaction branch.
+        if self.shared.compaction_settings.physical_prune {
+            let mut session = self.shared.session.lock().await;
+            match session.branch(None).await {
+                Ok(branch) => {
+                    let keep_ids: Vec<String> = branch.iter().map(|e| e.id().to_string()).collect();
+                    match session.storage_mut().physical_prune_except(&keep_ids).await {
+                        Ok(n) if n > 0 => {
+                            log::info!("compaction physical_prune removed {n} session_entries");
+                        }
+                        Ok(_) => {}
+                        Err(err) => {
+                            // Non-fatal: context is already compacted; reclaim can retry later.
+                            log::warn!("compaction physical_prune failed: {err}");
+                        }
+                    }
+                }
+                Err(err) => log::warn!("compaction physical_prune: branch load failed: {err}"),
+            }
+        }
+
         if let Some(entry) = self.shared.session.lock().await.entry(&entry_id).await
             && matches!(entry, SessionTreeEntry::Compaction { .. })
         {

@@ -2,6 +2,7 @@
 
 use elph_agent::WebSearchEngine;
 use elph_tui::components::UiTheme;
+use elph_tui::utils::truncate_with_ellipsis;
 use elph_tui::wrapped_text_row_count;
 use iocraft::prelude::*;
 use serde_json::Value;
@@ -176,7 +177,7 @@ fn collapse_whitespace(text: &str) -> String {
 }
 
 /// Max display width for collapsed path / target segments.
-const COLLAPSED_TARGET_MAX_CHARS: usize = 44;
+const COLLAPSED_TARGET_MAX_WIDTH: usize = 44;
 /// Approval / summary path budget (slightly wider than collapsed headers).
 const SUMMARY_PATH_MAX_CHARS: usize = 52;
 
@@ -256,19 +257,13 @@ fn title_case_snake(name: &str) -> String {
         .join(" ")
 }
 
-/// Display path: abbreviated leading components inside the project directory,
-/// full path everywhere else.
+/// Display path: full path with `~` for home directory, truncated via
+/// `.../parent/file` when over budget. Consistent across all tools.
 ///
-/// Inside the project directory, leading path components are abbreviated to
-/// their first character so the project context is clear with minimal space:
-///
-/// - `/Users/me/elph/crates/coding-agent/src/tui/shell/mod.rs`
-///   → `/U/m/e/crates/coding-agent/src/tui/shell/mod.rs`
-///
-/// Outside the project directory the path is shown in full with `~` for home:
-///
-/// - `/Users/me/dev/crates/coding-agent/src/main.rs` → `~/dev/crates/coding-agent/src/main.rs`
+/// - `/Users/me/Developer/elph/crates/coding-agent/src/main.rs`
+///   → `~/Developer/elph/crates/coding-agent/src/main.rs`
 /// - `/opt/vendor/lib.rs` → `/opt/vendor/lib.rs`
+/// - Long paths → `.../parent/file.rs`
 pub fn abbreviate_path(path: &str, max_chars: usize) -> String {
     let max_chars = max_chars.max(12);
     let normalized = normalize_display_path(path);
@@ -279,22 +274,9 @@ pub fn abbreviate_path(path: &str, max_chars: usize) -> String {
         return normalized;
     }
 
-    // For absolute paths under the project directory: abbreviate leading
-    // path components (first letter each) + full path from project dir onward.
-    let trimmed = path.trim();
-    if trimmed.starts_with('/')
-        && let Some(abbr) = try_abbreviate_project_path(trimmed)
-    {
-        if char_len(&abbr) <= max_chars {
-            return abbr;
-        }
-        // Still too long even after abbreviation: truncate from the end
-        // while preserving the abbreviated project prefix.
-        return truncate_chars(&abbr, max_chars);
-    }
-
-    // Fallback: existing logic for paths outside the project directory.
-    let (_prefix, segments) = split_display_path(&normalized);
+    // Shared truncation: `.../parent/file.rs` (preserves file extension).
+    // Paths under CWD already use `~/Developer/...` style via normalize_display_path.
+    let segments = split_display_path(&normalized);
     if segments.len() <= 1 {
         return truncate_filename(&normalized, max_chars);
     }
@@ -308,43 +290,6 @@ pub fn abbreviate_path(path: &str, max_chars: usize) -> String {
     let file_budget = max_chars.saturating_sub(char_len(parent) + 4).max(6);
     let short_file = truncate_filename(file, file_budget);
     format!("…/{parent}/{short_file}")
-}
-
-/// Abbreviate an absolute path under the current project directory.
-///
-/// Each leading path component before the project directory is reduced to
-/// its first character; the project directory name and everything after it
-/// are shown in full.
-///
-/// Returns `None` when the path is not under the current working directory.
-fn try_abbreviate_project_path(path: &str) -> Option<String> {
-    let cwd = std::env::current_dir().ok()?;
-    let cwd_str = cwd.to_string_lossy();
-    let cwd_str: &str = cwd_str.as_ref();
-
-    if !path.starts_with(cwd_str) {
-        return None;
-    }
-
-    let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
-    let cwd_segments: Vec<&str> = cwd_str.split('/').filter(|s| !s.is_empty()).collect();
-    let project_name = cwd_segments.last()?;
-
-    // Find where the project directory name appears in the path.
-    let project_idx = segments.iter().position(|s| *s == *project_name)?;
-
-    let mut result = String::new();
-    for (i, seg) in segments.iter().enumerate() {
-        result.push('/');
-        if i < project_idx {
-            // Abbreviate to first character.
-            result.push(seg.chars().next()?);
-        } else {
-            // Show full component from the project directory onward.
-            result.push_str(seg);
-        }
-    }
-    Some(result)
 }
 
 fn shorten_path(path: &str) -> String {
@@ -403,28 +348,14 @@ fn replace_home_with_tilde(path: &str) -> String {
     path.to_string()
 }
 
-/// Split into optional leading marker (`~` or absolute root) and path segments.
-fn split_display_path(path: &str) -> (PathPrefix, Vec<&str>) {
+/// Split a display path into non-empty segments (skipping the leading `~` or `/`).
+fn split_display_path(path: &str) -> Vec<&str> {
     if path == "~" {
-        return (PathPrefix::Home, Vec::new());
+        return Vec::new();
     }
-    if let Some(rest) = path.strip_prefix("~/") {
-        let segments: Vec<&str> = rest.split('/').filter(|s| !s.is_empty()).collect();
-        return (PathPrefix::Home, segments);
-    }
-    if path.starts_with('/') {
-        let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
-        return (PathPrefix::Root, segments);
-    }
-    let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
-    (PathPrefix::Relative, segments)
-}
-
-#[derive(Clone, Copy)]
-enum PathPrefix {
-    Home,
-    Root,
-    Relative,
+    let rest = path.strip_prefix("~/").or_else(|| path.strip_prefix('/'));
+    let body = rest.unwrap_or(path);
+    body.split('/').filter(|s| !s.is_empty()).collect()
 }
 
 /// Truncate a file name, keeping the extension when possible (`very-long-name….rs`).
@@ -471,11 +402,11 @@ fn web_search_engine_label(params: &[ToolParam]) -> String {
     }
 }
 
-fn collapsed_tool_target(tool_name: &str, params: &[ToolParam], args_raw: &str, max_detail_chars: usize) -> String {
+fn collapsed_tool_target(tool_name: &str, params: &[ToolParam], args_raw: &str, max_detail_width: usize) -> String {
     match tool_base_name(tool_name) {
         "read_file" | "edit_file" | "write_file" | "list_dir" | "delete_path" | "create_dir" => {
             find_param(params, &["path", "file"])
-                .map(|path| abbreviate_path(path, max_detail_chars))
+                .map(|path| abbreviate_path(path, max_detail_width))
                 .unwrap_or_default()
         }
         "shell_exec" => find_param(params, &["command", "cmd"])
@@ -497,7 +428,7 @@ fn collapsed_tool_target(tool_name: &str, params: &[ToolParam], args_raw: &str, 
         }
         "grep" => {
             let pattern = find_param(params, &["pattern", "query"]).map(|p| truncate_chars(p, 24));
-            let path = find_param(params, &["path", "glob", "file"]).map(|p| abbreviate_path(p, 28));
+            let path = find_param(params, &["path", "glob", "file"]).map(|p| abbreviate_path(p, max_detail_width));
             match (pattern, path) {
                 (Some(pattern), Some(path)) => format!("{pattern} in {path}"),
                 (Some(pattern), None) => pattern,
@@ -507,7 +438,7 @@ fn collapsed_tool_target(tool_name: &str, params: &[ToolParam], args_raw: &str, 
         }
         "find_path" => {
             let pattern = find_param(params, &["pattern", "glob", "query"]).map(|p| truncate_chars(p, 24));
-            let root = find_param(params, &["path", "root", "directory"]).map(|p| abbreviate_path(p, 28));
+            let root = find_param(params, &["path", "root", "directory"]).map(|p| abbreviate_path(p, max_detail_width));
             match (pattern, root) {
                 (Some(pattern), Some(root)) => format!("{pattern} in {root}"),
                 (Some(pattern), None) => pattern,
@@ -516,11 +447,12 @@ fn collapsed_tool_target(tool_name: &str, params: &[ToolParam], args_raw: &str, 
             }
         }
         "copy_path" | "move_path" => {
+            let half = max_detail_width.saturating_sub(3).max(8) / 2;
             let from = find_param(params, &["from", "source", "src", "path"])
-                .map(|p| abbreviate_path(p, 18))
+                .map(|p| abbreviate_path(p, half))
                 .unwrap_or_default();
             let to = find_param(params, &["to", "destination", "dest", "target"])
-                .map(|p| abbreviate_path(p, 18))
+                .map(|p| abbreviate_path(p, half))
                 .unwrap_or_default();
             if from.is_empty() && to.is_empty() {
                 String::new()
@@ -541,10 +473,10 @@ fn collapsed_tool_target(tool_name: &str, params: &[ToolParam], args_raw: &str, 
             } else {
                 format!("{engine} · {query}")
             };
-            truncate_chars(&combined, max_detail_chars)
+            truncate_chars(&combined, max_detail_width)
         }
         "web_fetch" => find_param(params, &["url", "uri"])
-            .map(|url| truncate_chars(url, max_detail_chars))
+            .map(|url| truncate_chars(url, max_detail_width))
             .unwrap_or_default(),
         "wait_agent" => find_param(params, &["agent_id", "agent", "id"])
             .map(short_agent_display)
@@ -561,43 +493,43 @@ fn collapsed_tool_target(tool_name: &str, params: &[ToolParam], args_raw: &str, 
             }
         }
         "spawn_agent" => find_param(params, &["task_name", "prompt", "task", "message", "goal"])
-            .map(|text| truncate_chars(&collapse_whitespace(text), max_detail_chars))
+            .map(|text| truncate_chars(&collapse_whitespace(text), max_detail_width))
             .unwrap_or_default(),
         "ask_user" | "ask_user_question" => {
             // Parse raw JSON directly to extract question text (bypasses array flattening)
             if let Ok(Value::Object(map)) = serde_json::from_str::<Value>(args_raw) {
                 // Try "question" field first
                 if let Some(q) = map.get("question").and_then(|v| v.as_str()) {
-                    truncate_chars(&collapse_whitespace(q), max_detail_chars)
+                    truncate_chars(&collapse_whitespace(q), max_detail_width)
                 } else if let Some(Value::Array(items)) = map.get("questions")
                     && let Some(first) = items.first()
                     && let Some(q) = first.get("question").and_then(|v| v.as_str())
                 {
                     // Try "questions" array (first entry's question).
-                    truncate_chars(&collapse_whitespace(q), max_detail_chars)
+                    truncate_chars(&collapse_whitespace(q), max_detail_width)
                 } else {
                     String::new()
                 }
             } else {
                 // Fallback: use params
                 find_param(params, &["question", "questions"])
-                    .map(|text| truncate_chars(&collapse_whitespace(text), max_detail_chars))
+                    .map(|text| truncate_chars(&collapse_whitespace(text), max_detail_width))
                     .unwrap_or_default()
             }
         }
         _ => {
             // Prefer a known summary path; otherwise first scalar value.
             if let Some(summary) = summarize_known_tool(tool_name, params) {
-                truncate_chars(&summary, max_detail_chars)
+                truncate_chars(&summary, max_detail_width)
             } else {
                 params
                     .first()
                     .map(|param| {
                         let value = param.value.as_str();
                         if value.contains('/') || value.contains('\\') {
-                            abbreviate_path(value, max_detail_chars)
+                            abbreviate_path(value, max_detail_width)
                         } else {
-                            truncate_chars(value, max_detail_chars)
+                            truncate_chars(value, max_detail_width)
                         }
                     })
                     .unwrap_or_default()
@@ -626,19 +558,20 @@ pub fn format_collapsed_tool_parts(tool_name: &str, args_raw: &str) -> (String, 
 
 /// Like [`format_collapsed_tool_parts`], but keeps the original path for clickable headers.
 pub fn format_collapsed_tool_parts_linked(tool_name: &str, args_raw: &str) -> CollapsedToolParts {
-    format_collapsed_tool_parts_linked_w(tool_name, args_raw, COLLAPSED_TARGET_MAX_CHARS)
+    format_collapsed_tool_parts_linked_w(tool_name, args_raw, COLLAPSED_TARGET_MAX_WIDTH)
 }
 
-/// Like [`format_collapsed_tool_parts_linked`], but truncates the detail to `max_detail_chars`
-/// so the caller can size it to the available terminal width instead of a fixed cap.
+/// Like [`format_collapsed_tool_parts_linked`], but truncates the detail to
+/// `max_detail_width` display columns so the caller can size it to the available
+/// terminal width instead of a fixed cap.
 pub fn format_collapsed_tool_parts_linked_w(
     tool_name: &str,
     args_raw: &str,
-    max_detail_chars: usize,
+    max_detail_width: usize,
 ) -> CollapsedToolParts {
     let verb = tool_display_verb(tool_name);
     let params = parse_tool_params(args_raw);
-    let (detail, detail_href) = collapsed_tool_target_linked(tool_name, &params, args_raw, max_detail_chars);
+    let (detail, detail_href) = collapsed_tool_target_linked(tool_name, &params, args_raw, max_detail_width);
     // Collapsed headers are single-row in the transcript (compact density packs them flush):
     // fold any newlines / tabs that made it into the label from AI-generated argument values
     // (e.g. `"query": "a\nb"`) into single spaces, then trim. Without this a "collapsed" card
@@ -648,7 +581,10 @@ pub fn format_collapsed_tool_parts_linked_w(
     let display = {
         let mut value = detail.clone();
         value = collapse_whitespace(&value);
-        truncate_chars(&value, max_detail_chars)
+        // Width-aware final pass: the per-tool summarizers above are coarse char pre-caps,
+        // but the returned detail must fit `max_detail_width` display columns regardless of
+        // wide Unicode (CJK runs double width) — same ellipsis truncation as the transcript.
+        truncate_with_ellipsis(&value, max_detail_width)
     };
     CollapsedToolParts {
         verb,
@@ -661,13 +597,13 @@ fn collapsed_tool_target_linked(
     tool_name: &str,
     params: &[ToolParam],
     args_raw: &str,
-    max_detail_chars: usize,
+    max_detail_width: usize,
 ) -> (String, Option<String>) {
     match tool_base_name(tool_name) {
         "read_file" | "edit_file" | "write_file" | "list_dir" | "delete_path" | "create_dir" => {
             match find_param(params, &["path", "file"]) {
                 Some(path) => {
-                    let display = abbreviate_path(path, max_detail_chars);
+                    let display = abbreviate_path(path, max_detail_width);
                     // OSC 8 target: collapse whitespace so a stray newline in the raw argument
                     // (some models emit them) cannot inject a control break into the escape.
                     let href = elph_tui::components::markdown::path_to_file_url(&collapse_whitespace(path));
@@ -678,7 +614,7 @@ fn collapsed_tool_target_linked(
         }
         "web_fetch" => match find_param(params, &["url", "uri"]) {
             Some(url) => {
-                let display = truncate_chars(url, max_detail_chars);
+                let display = truncate_chars(url, max_detail_width);
                 // Prefer the original URL as the OSC 8 target (even when the label is truncated),
                 // but fold any whitespace/newlines out so the escape stays on one line.
                 let href = is_openable_web_url(url).then(|| collapse_whitespace(url));
@@ -686,7 +622,7 @@ fn collapsed_tool_target_linked(
             }
             None => (String::new(), None),
         },
-        _ => (collapsed_tool_target(tool_name, params, args_raw, max_detail_chars), None),
+        _ => (collapsed_tool_target(tool_name, params, args_raw, max_detail_width), None),
     }
 }
 
@@ -696,7 +632,7 @@ fn is_openable_web_url(s: &str) -> bool {
     s.starts_with("https://") || s.starts_with("http://")
 }
 
-/// Collapsed transcript header: `Edit /U/a/D/crates/coding-agent/src/main.rs` (verb + concise target).
+/// Collapsed transcript header: `Edit ~/Developer/elph/crates/coding-agent/src/main.rs` (verb + concise target).
 pub fn format_collapsed_tool_label(tool_name: &str, args_raw: &str) -> String {
     let (verb, target) = format_collapsed_tool_parts(tool_name, args_raw);
     if target.is_empty() {
@@ -1295,6 +1231,7 @@ pub fn ToolParamsView(props: &ToolParamsViewProps, hooks: Hooks) -> impl Into<An
 #[cfg(test)]
 mod tests {
     use super::*;
+    use elph_tui::utils::display_width;
 
     #[test]
     fn parse_object_into_keyed_rows() {
@@ -1412,8 +1349,7 @@ mod tests {
 
     #[test]
     fn abbreviate_path_project_relative() {
-        // When the path is under CWD, leading components are abbreviated to
-        // their first letter and the project directory name is shown in full.
+        // Paths under CWD use `~/...` style with the project directory name visible.
         let cwd = std::env::current_dir().unwrap();
         let cwd_str = cwd.to_string_lossy().to_string();
         // Create a path that is definitely under CWD.
@@ -1422,14 +1358,14 @@ mod tests {
         // The result should contain the full project directory name.
         let project_name = cwd.file_name().unwrap().to_string_lossy().to_string();
         assert!(short.contains(&project_name), "{short}");
-        // Leading components should be single-letter abbreviations.
+        // The path ends with the relative suffix.
         assert!(short.ends_with("/src/main.rs"), "{short}");
-        // The abbreviated prefix should be shorter than the original CWD prefix.
-        let prefix = short.trim_end_matches("/src/main.rs");
-        assert!(
-            prefix.len() < cwd_str.len(),
-            "abbreviated prefix '{prefix}' should be shorter than CWD '{cwd_str}'"
-        );
+        // Uses `~` prefix for home-relative paths.
+        if let Ok(home) = std::env::var("HOME")
+            && cwd_str.starts_with(&home)
+        {
+            assert!(short.starts_with("~/"), "{short}");
+        }
     }
 
     #[test]
@@ -1494,7 +1430,7 @@ mod tests {
             let label = format_collapsed_tool_label(tool, raw_args);
             assert!(!label.contains('\n'), "{tool} label leaked a newline: {label:?}");
             assert_eq!(label, expected, "{tool}");
-            let parts = format_collapsed_tool_parts_linked_w(tool, raw_args, COLLAPSED_TARGET_MAX_CHARS);
+            let parts = format_collapsed_tool_parts_linked_w(tool, raw_args, COLLAPSED_TARGET_MAX_WIDTH);
             assert!(
                 !parts.detail.contains('\n'),
                 "{tool} detail leaked a newline: {:?}",
@@ -1524,7 +1460,7 @@ mod tests {
         let url = "https://example.com/very/long/path/that/will/be/truncated/for/display/page";
         let parts = format_collapsed_tool_parts_linked("web_fetch", &format!(r#"{{"url":"{url}"}}"#));
         assert_eq!(parts.verb, "WebFetch");
-        assert!(parts.detail.chars().count() <= COLLAPSED_TARGET_MAX_CHARS);
+        assert!(parts.detail.chars().count() <= COLLAPSED_TARGET_MAX_WIDTH);
         assert_eq!(parts.detail_href.as_deref(), Some(url));
     }
 
@@ -1582,6 +1518,22 @@ mod tests {
     fn collapsed_parts_linked_w_keeps_short_detail_intact() {
         let parts = format_collapsed_tool_parts_linked_w("web_fetch", r#"{"url":"https://example.com/x"}"#, 200);
         assert_eq!(parts.detail, "https://example.com/x");
+    }
+
+    #[test]
+    fn collapsed_parts_truncate_by_display_width_not_chars() {
+        // Wide CJK characters are 2 display columns each; a char-count budget would let
+        // the detail overrun the row. The final pass must guarantee the display width.
+        let url = format!("https://example.com/{}/{}.rs", "長いパス".repeat(20), "main");
+        let parts = format_collapsed_tool_parts_linked_w("web_fetch", &format!(r#"{{"url":"{url}"}}"#), 20);
+        assert!(
+            display_width(&parts.detail) <= 20,
+            "detail {}w, budget 20",
+            display_width(&parts.detail)
+        );
+        assert!(parts.detail.ends_with('…'), "{}", parts.detail);
+        // Original URL is preserved for the OSC 8 click target.
+        assert_eq!(parts.detail_href.as_deref(), Some(url.as_str()));
     }
 
     #[test]

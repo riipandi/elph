@@ -29,6 +29,14 @@ impl<S: SessionStorage> Session<S> {
         self.storage.get_metadata().await
     }
 
+    /// Bump the session's `updated_at` timestamp to now (no tree mutation).
+    ///
+    /// Keeps the session near the top of `--continue`/resume ordering and away
+    /// from retention eviction when a visit appends no entries.
+    pub async fn touch_timestamp(&mut self) -> Result<(), SessionError> {
+        self.storage.touch_timestamp().await
+    }
+
     pub fn into_storage(self) -> S {
         self.storage
     }

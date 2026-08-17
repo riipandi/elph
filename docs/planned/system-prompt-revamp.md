@@ -1,6 +1,6 @@
 # Plan: System Prompt Context Efficiency Revamp (elph)
 
-**Scope:** `crates/elph-agent/src/prompt/`, `crates/elph-agent/src/agent/harness/`, `crates/coding-agent/src/agent/prompt/`, `crates/coding-agent/templates/agent/coding_base.md`
+**Scope:** `crates/elph-agent/src/prompt/`, `crates/elph-agent/src/agent/harness/`, `crates/coding-agent/src/agent/prompt/`, `crates/coding-agent/templates/agent/coding_base.txt`
 **Goal:** Reduce per-turn system prompt token footprint without degrading structure, tool discipline, or memory/skill recall quality.
 **Non-goal:** Do not touch model routing, agent modes' behavioral semantics, or MCP transport code. Prompt copy and gating logic only.
 
@@ -25,7 +25,7 @@ Acceptance: baseline doc exists with concrete token numbers, not estimates.
 
 ## Phase 1 — Fix confirmed template bugs (low risk, do independent of everything else)
 
-**File:** `crates/coding-agent/templates/agent/coding_base.md`
+**File:** `crates/coding-agent/prompts/coding_base.txt`
 
 1. `<execution>` step 3 currently hardcodes the literal string `` `code_search` / `grep` / targeted `read_file` `` regardless of whether codegraph tools are actually active this turn. This is inconsistent with the `<codegraph>` block above it, which correctly gates on `${% if codegraph.code_search %}`.
     - Fix: make step 3 conditional the same way — when `codegraph.code_search` is set, mention it; otherwise say `` `grep` / targeted `read_file` `` only. Reuse the existing `codegraph.code_search` template variable, don't introduce a new one.

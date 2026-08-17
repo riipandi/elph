@@ -1,13 +1,17 @@
 //! Shared helpers for `fff-search` backed exploration tools.
 
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
+use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::Duration;
 
 use anyhow::Result;
 use anyhow::anyhow;
+#[cfg(feature = "tools-grep")]
+use fast_glob::glob_match;
 use fff_search::file_picker::{FFFMode, FilePicker, FilePickerOptions, FuzzySearchOptions};
 use fff_search::grep::{GrepMode, GrepResult, GrepSearchOptions};
 use fff_search::types::PaginationArgs;
@@ -38,6 +42,10 @@ pub struct GrepOutputOptions {
     /// Working directory used to render match paths relative to it (token-efficient).
     /// When `None`, absolute paths are used.
     pub cwd: Option<String>,
+    /// Optional glob pattern to filter files (e.g. `**/*.rs`). Only matches from
+    /// files whose relative path matches the glob are included.
+    #[cfg(feature = "tools-grep")]
+    pub file_glob: Option<String>,
 }
 
 impl Default for GrepOutputOptions {
@@ -46,6 +54,8 @@ impl Default for GrepOutputOptions {
             mode: GrepOutputMode::Standard,
             max_line_length: GREP_MAX_LINE_LENGTH,
             cwd: None,
+            #[cfg(feature = "tools-grep")]
+            file_glob: None,
         }
     }
 }
@@ -62,6 +72,32 @@ pub fn build_picker(base_path: &str) -> Result<FilePicker> {
     .map_err(|error| anyhow!("{error}"))?;
     picker.collect_files().map_err(|error| anyhow!("{error}"))?;
     Ok(picker)
+}
+
+/// Process-wide cache of fff pickers keyed by normalized base path.
+/// Avoids re-scanning the tree on every grep/find call when falling back
+/// from system `rg` (or when `rg` is unavailable).
+fn picker_cache() -> &'static parking_lot::Mutex<HashMap<String, Arc<FilePicker>>> {
+    static CACHE: OnceLock<parking_lot::Mutex<HashMap<String, Arc<FilePicker>>>> = OnceLock::new();
+    CACHE.get_or_init(|| parking_lot::Mutex::new(HashMap::new()))
+}
+
+/// Return a cached [`FilePicker`] for `base_path`, building it on first use.
+///
+/// Callers that only need short-lived exclusive access can clone the `Arc` and
+/// search via the shared picker; `FilePicker` grep APIs take `&self`.
+pub fn cached_picker(base_path: &str) -> Result<Arc<FilePicker>> {
+    let key = base_path.replace('\\', "/").trim_end_matches('/').to_string();
+    {
+        let cache = picker_cache().lock();
+        if let Some(hit) = cache.get(&key) {
+            return Ok(Arc::clone(hit));
+        }
+    }
+    let picker = Arc::new(build_picker(base_path)?);
+    let mut cache = picker_cache().lock();
+    // Another thread may have filled the slot; prefer the existing entry.
+    Ok(Arc::clone(cache.entry(key).or_insert_with(|| Arc::clone(&picker))))
 }
 
 pub fn grep_search_scope(absolute_path: &str, is_file: bool) -> (String, String) {
@@ -179,12 +215,25 @@ pub fn format_grep_output_ex(
     let mut lines = Vec::with_capacity(result.matches.len());
     let mut lines_truncated = false;
 
+    // Compile glob pattern once if provided.
+    #[cfg(feature = "tools-grep")]
+    let glob_ref = options.file_glob.as_ref();
+
+    // Helper: check if a file path matches the glob filter.
+    #[cfg(feature = "tools-grep")]
+    let file_allowed = |relative: &str| -> bool { glob_ref.is_none_or(|g| glob_match(g, relative)) };
+    #[cfg(not(feature = "tools-grep"))]
+    let file_allowed = |_: &str| -> bool { true };
+
     match options.mode {
         GrepOutputMode::Standard => {
             let mut current_file_index = None;
             for grep_match in &result.matches {
                 let file = result.files[grep_match.file_index];
                 let relative = file.relative_path(picker);
+                if !file_allowed(&relative) {
+                    continue;
+                }
                 let absolute = join_paths(&base, &relative);
                 let display = make_display_path(&absolute, &options.cwd);
 
@@ -235,6 +284,9 @@ pub fn format_grep_output_ex(
             for grep_match in &result.matches {
                 let file = result.files[grep_match.file_index];
                 let relative = file.relative_path(picker);
+                if !file_allowed(&relative) {
+                    continue;
+                }
                 let absolute = join_paths(&base, &relative);
                 seen_files.insert(make_display_path(&absolute, &options.cwd));
             }
@@ -245,6 +297,9 @@ pub fn format_grep_output_ex(
             for grep_match in &result.matches {
                 let file = result.files[grep_match.file_index];
                 let relative = file.relative_path(picker);
+                if !file_allowed(&relative) {
+                    continue;
+                }
                 let absolute = join_paths(&base, &relative);
                 *counts.entry(make_display_path(&absolute, &options.cwd)).or_insert(0) += 1;
             }

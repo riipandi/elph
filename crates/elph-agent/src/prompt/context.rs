@@ -31,6 +31,15 @@ pub struct ToolNamesContext {
     pub memory_recent: String,
     pub memory_report: String,
     pub memory_contradict: String,
+    /// Multi-worker coordination tools (when registered).
+    pub worker_list: String,
+    pub worker_send: String,
+    pub worker_ask: String,
+    pub worker_get: String,
+    pub worker_await: String,
+    /// Session todo tools (when registered).
+    pub todo_write: String,
+    pub todo_read: String,
     pub by_kind: ToolByKindContext,
 }
 
@@ -142,6 +151,13 @@ pub fn tool_names_context(names: &[String]) -> ToolNamesContext {
         memory_recent: name("memory_recent"),
         memory_report: name("memory_report"),
         memory_contradict: name("memory_contradict"),
+        worker_list: name("worker_list"),
+        worker_send: name("worker_send"),
+        worker_ask: name("worker_ask"),
+        worker_get: name("worker_get"),
+        worker_await: name("worker_await"),
+        todo_write: name("todo_write"),
+        todo_read: name("todo_read"),
         by_kind: ToolByKindContext {
             read: first(&["read_file"]),
             edit: first(&["edit_file", "write_file"]),

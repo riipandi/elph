@@ -189,9 +189,14 @@ fn build_transcript_bubbles_range(
     let mut index = start;
     while index < end {
         let message = &messages[index];
+        // A settled-empty assistant reply is a layout-ghost (zero rows, zero margin): it must
+        // never fuse with a thinking card into a flush pair — the pair's fixed THINKING_RESPONSE_GAP
+        // would paint a phantom blank row where the empty reply body should be.
         if let Some(next) = messages.get(index + 1)
             && index + 1 < end
             && message.style.forms_flush_pair_with(next.style)
+            && !message.is_settled_empty_assistant()
+            && !next.is_settled_empty_assistant()
         {
             let pair_last = next;
             let margin_bottom = pair_last.transcript_margin_bottom(messages.get(index + 2));
@@ -478,5 +483,72 @@ mod tests {
                 }
             }
         }
+    }
+
+    /// A settled-empty assistant ghost between collapsed tools (deepseek-v4-flash streams
+    /// "\n\n" between tool calls) must be spacing-transparent on both sides: the tool rows
+    /// keep their normal compact rhythm instead of a phantom double blank gap.
+    #[test]
+    fn settled_empty_assistant_between_tools_is_invisible() {
+        use crate::tui::transcript::types::{LogDensity, set_log_density};
+        use iocraft::prelude::*;
+
+        let mut ghost = TranscriptMessage::assistant_markdown("\n\n   ");
+        ghost.duration_secs = Some(0.3);
+        // Collapsed finished tool (compact process-log header, flush single line).
+        let mut tool = TranscriptMessage::tool_call("read_file", r#"{"path":"a.rs"}"#, TranscriptStyle::ToolSuccess);
+        tool.detail_expanded = false;
+        assert!(tool.is_tool_collapsed());
+
+        set_log_density(LogDensity::Compact);
+
+        // tool -> ghost -> tool: ghost must not render content or add rows on either side.
+        let messages = vec![tool.clone(), ghost.clone(), tool.clone()];
+        let layouts = layout_transcript_rows(&messages, 80);
+        assert_eq!(layouts[1].row_count, 0, "ghost must measure zero rows");
+        // The two tools must be adjacent: tool2 starts exactly where tool1 ends.
+        assert_eq!(
+            layouts[2].start_row,
+            layouts[0].start_row.saturating_add(layouts[0].row_count),
+            "tool2 must start exactly where tool1 ends (ghost contributes 0 rows + 0 margin)"
+        );
+
+        let bubbles = build_transcript_bubbles(80, &messages, None, None);
+        let rendered = element! { View(width: 80, flex_direction: FlexDirection::Column) { #(bubbles) } }.to_string();
+        let lines: Vec<&str> = rendered.lines().collect();
+        // Ghost paints nothing: its "..." placeholder only exists while streaming.
+        assert!(!rendered.contains('\u{2026}'), "settled ghost must not paint a placeholder");
+        // Both collapsed tool headers render flush, directly adjacent (no blank line between).
+        let headers: Vec<&str> = lines.iter().map(|l| l.trim()).filter(|l| !l.is_empty()).collect();
+        assert_eq!(headers.len(), 2, "exactly two tool headers painted: {lines:?}");
+        assert!(headers[0].starts_with("✓ Read"), "{headers:?}");
+        assert!(headers[1].starts_with("✓ Read"), "{headers:?}");
+        // Any remaining blank line is only the trailing margin after the last row — never
+        // between the two tools.
+        let first_header = lines.iter().position(|l| l.trim().starts_with("✓")).unwrap();
+        let second_header = lines.iter().rposition(|l| l.trim().starts_with("✓")).unwrap();
+        assert_eq!(
+            second_header,
+            first_header + 1,
+            "tool rows must be directly adjacent, gap lines = {}: {lines:?}",
+            second_header.saturating_sub(first_header) - 1
+        );
+
+        // The pair guard must not fuse thinking + ghost into a flush pair (which would paint
+        // an internal THINKING_RESPONSE_GAP row where the empty reply should be).
+        let mut thinking = TranscriptMessage::text("reasoning", TranscriptStyle::Thinking);
+        thinking.duration_secs = Some(0.5);
+        thinking.detail_expanded = false;
+        let messages = vec![thinking.clone(), tool.clone(), thinking, ghost.clone()];
+        let bubbles = build_transcript_bubbles(80, &messages, None, None);
+        let rendered = element! { View(width: 80, flex_direction: FlexDirection::Column) { #(bubbles) } }.to_string();
+        let lines: Vec<&str> = rendered.lines().collect();
+        let blank_rows = lines.iter().filter(|l| l.trim().is_empty()).count();
+        assert!(
+            blank_rows <= 2,
+            "ghost must never add internal pair spacing: {blank_rows} blanks in {lines:?}"
+        );
+
+        set_log_density(LogDensity::Compact);
     }
 }

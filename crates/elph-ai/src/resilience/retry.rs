@@ -90,15 +90,44 @@ pub fn is_anyhow_retryable(error: &anyhow::Error) -> bool {
         || msg.contains("network error")
         || msg.contains("connection refused")
         || msg.contains("connection lost")
+        || msg.contains("connection reset")
+        || msg.contains("connection closed")
+        || msg.contains("broken pipe")
         || msg.contains("timeout")
         || msg.contains("timed out")
         || msg.contains("socket hang up")
         || msg.contains("fetch failed")
-        // Transport / body decoding errors (reqwest)
+        // Transport / body decoding errors (reqwest) - highly retryable
         || msg.contains("error decoding response body")
         || msg.contains("transport error")
+        || msg.contains("http error")
+        || msg.contains("hyper error")
+        || msg.contains("io error")
+        || msg.contains("unexpected eof")
+        || msg.contains("incomplete message")
+        || msg.contains("content length")
+        || msg.contains("chunked")
+        || msg.contains("stream error")
+        || msg.contains("invalid utf8")
+        || msg.contains("utf8 error")
+        || msg.contains("encoding error")
+        || msg.contains("compression error")
+        || msg.contains("gzip error")
+        || msg.contains("zlib error")
+        || msg.contains("brotli error")
+        || msg.contains("deflate error")
+        // Request timeout
         || msg.contains("408")
         || msg.contains("request timed out")
+        // DNS errors
+        || msg.contains("dns")
+        || msg.contains("name resolution")
+        || msg.contains("no such host")
+        // TLS/SSL errors
+        || msg.contains("tls")
+        || msg.contains("ssl")
+        || msg.contains("certificate")
+        || msg.contains("handshake")
 }
 
 #[cfg(test)]
@@ -140,10 +169,44 @@ mod tests {
         assert!(is_anyhow_retryable(&anyhow::anyhow!("408 request timed out")));
         assert!(is_anyhow_retryable(&anyhow::anyhow!("request timed out")));
 
+        // Connection errors
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("connection reset")));
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("connection closed")));
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("broken pipe")));
+
+        // DNS errors
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("dns error")));
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("name resolution failed")));
+
+        // TLS errors
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("tls error")));
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("certificate error")));
+
         // Custom server codes
         assert!(is_anyhow_retryable(&anyhow::anyhow!(
             "446: Processing query timed out (14s elapsed)"
         )));
+    }
+
+    #[test]
+    fn transport_errors_are_retryable() {
+        // Common transport errors that should be retried
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("io error")));
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("unexpected eof")));
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("incomplete message")));
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("content length error")));
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("chunked encoding error")));
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("stream error")));
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("invalid utf8")));
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("utf8 error")));
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("encoding error")));
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("compression error")));
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("gzip error")));
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("zlib error")));
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("brotli error")));
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("deflate error")));
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("http error")));
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("hyper error")));
     }
 
     #[tokio::test]

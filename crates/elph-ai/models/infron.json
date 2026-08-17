@@ -9,14 +9,15 @@
             "input": 0.8,
             "output": 1.6
         },
+        "description": "Reasoning model for deliberate analysis, multi-step problem solving, and tool use",
         "id": "aion-labs/aion-2.0",
         "input": ["text"],
         "maxTokens": 32768,
         "name": "AionLabs: Aion-2.0",
         "provider": "infron",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
+            "high": "high",
             "low": null,
             "max": null,
             "medium": null,
@@ -35,6 +36,7 @@
             "input": 3.0,
             "output": 6.0
         },
+        "description": "Aion-3.0 is a multi-model roleplaying and storytelling system from AionLabs, built on the GLM family of models. It uses a collaborative generation process in which multiple specialized models each contribute...",
         "id": "aion-labs/aion-3.0",
         "input": ["text"],
         "maxTokens": 32768,
@@ -43,9 +45,9 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -61,6 +63,7 @@
             "input": 0.7,
             "output": 1.4
         },
+        "description": "Aion-3.0 Mini is a multi-model roleplaying and storytelling system from AionLabs, built on the DeepSeek family of models. It uses a collaborative generation process in which multiple specialized models each...",
         "id": "aion-labs/aion-3.0-mini",
         "input": ["text"],
         "maxTokens": 32768,
@@ -69,9 +72,9 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -87,6 +90,7 @@
             "input": 0.3,
             "output": 2.5
         },
+        "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
         "id": "amazon/nova-2-lite-v1",
         "input": ["text", "image", "video", "pdf"],
         "maxTokens": 65535,
@@ -95,11 +99,11 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -113,17 +117,18 @@
             "input": 0.06,
             "output": 0.24
         },
+        "description": "Efficient model for low-latency assistance, extraction, and routine automation",
         "id": "amazon/nova-lite-v1",
         "input": ["text", "image"],
         "maxTokens": 5120,
         "name": "Amazon: Nova Lite 1.0",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -139,17 +144,18 @@
             "input": 0.035,
             "output": 0.14
         },
+        "description": "Efficient model for low-latency assistance, extraction, and routine automation",
         "id": "amazon/nova-micro-v1",
         "input": ["text"],
         "maxTokens": 5120,
         "name": "Amazon: Nova Micro 1.0",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -165,17 +171,18 @@
             "input": 0.8,
             "output": 3.2
         },
+        "description": "Flagship model for demanding analysis, coding, and production agent workflows",
         "id": "amazon/nova-pro-v1",
         "input": ["text", "image"],
         "maxTokens": 5120,
         "name": "Amazon: Nova Pro 1.0",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -191,20 +198,23 @@
             "input": 10.0,
             "output": 50.0
         },
+        "description": "Claude model for creative writing, analysis, and controlled agent workflows",
         "id": "anthropic/claude-fable-5",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-01-31",
         "maxTokens": 128000,
         "name": "Claude Fable 5",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-06-09",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "anthropic/claude-haiku-4.5": {
@@ -217,45 +227,20 @@
             "input": 1.0,
             "output": 5.0
         },
+        "description": "Fast Claude model for responsive assistance, classification, and lightweight agents",
         "id": "anthropic/claude-haiku-4.5",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Haiku 4.5 (latest)",
         "provider": "infron",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
+            "high": "high",
             "low": null,
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "anthropic/claude-opus-4": {
-        "api": "openai-completions",
-        "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 200000,
-        "cost": {
-            "cacheRead": 1.5,
-            "cacheWrite": 18.75,
-            "input": 15.0,
-            "output": 75.0
-        },
-        "id": "anthropic/claude-opus-4",
-        "input": ["text", "image", "pdf"],
-        "maxTokens": 32000,
-        "name": "Claude Opus 4 (latest)",
-        "provider": "infron",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -269,20 +254,21 @@
             "input": 15.0,
             "output": 75.0
         },
+        "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
         "id": "anthropic/claude-opus-4.1",
         "input": ["text", "image", "pdf"],
         "maxTokens": 32000,
         "name": "Claude Opus 4.1",
         "provider": "infron",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
-            "max": null,
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "anthropic/claude-opus-4.5": {
@@ -295,19 +281,20 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
         "id": "anthropic/claude-opus-4.5",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Opus 4.5 (latest)",
         "provider": "infron",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
+            "high": "high",
             "low": null,
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -321,20 +308,21 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "High-end Claude for difficult coding, planning, and slower expert reasoning",
         "id": "anthropic/claude-opus-4.6",
         "input": ["text"],
         "maxTokens": 128000,
         "name": "Claude Opus 4.6",
         "provider": "infron",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,
-            "max": null,
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "anthropic/claude-opus-4.7": {
@@ -347,6 +335,7 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "Stronger Opus tier for advanced software work and high-stakes reasoning",
         "id": "anthropic/claude-opus-4.7",
         "input": ["text"],
         "maxTokens": 128000,
@@ -356,11 +345,11 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "anthropic/claude-opus-4.8": {
@@ -373,6 +362,7 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "Top Claude Opus tier for the hardest reasoning, coding, and long-horizon agents",
         "id": "anthropic/claude-opus-4.8",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -380,13 +370,13 @@
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "anthropic/claude-opus-4.8-fast": {
@@ -399,6 +389,7 @@
             "input": 10.0,
             "output": 50.0
         },
+        "description": "Fast-mode variant of [Opus 4.8](/anthropic/claude-opus-4.8) - identical capabilities with higher output speed at 2x pricing relative to regular Opus 4.8. Learn more in Anthropic's docs: https://platform.claude.com/docs/en/build-with-claude/fast-mode",
         "id": "anthropic/claude-opus-4.8-fast",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -408,11 +399,11 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "anthropic/claude-opus-5": {
@@ -425,20 +416,23 @@
             "input": 5.0,
             "output": 25.0
         },
+        "description": "Strongest Claude Opus model for coding, agents, and professional work",
         "id": "anthropic/claude-opus-5",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-05",
         "maxTokens": 128000,
         "name": "Claude Opus 5",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-07-24",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "anthropic/claude-opus-5-fast": {
@@ -451,6 +445,7 @@
             "input": 10.0,
             "output": 50.0
         },
+        "description": "Fast-mode variant of [Opus 5](/anthropic/claude-opus-5) - identical capabilities with higher output speed at 2x pricing relative to regular Opus 5. Learn more in Anthropic's docs: https://platform.claude.com/docs/en/build-with-claude/fast-mode",
         "id": "anthropic/claude-opus-5-fast",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -460,11 +455,11 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "anthropic/claude-sonnet-4.5": {
@@ -477,19 +472,20 @@
             "input": 3.0,
             "output": 15.0
         },
+        "description": "Balanced Claude model for coding, analysis, agent workflows, and cost control",
         "id": "anthropic/claude-sonnet-4.5",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Sonnet 4.5 (latest)",
         "provider": "infron",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
+            "high": "high",
             "low": null,
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -503,6 +499,7 @@
             "input": 3.0,
             "output": 15.0
         },
+        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
         "id": "anthropic/claude-sonnet-4.6",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
@@ -529,20 +526,23 @@
             "input": 2.0,
             "output": 10.0
         },
+        "description": "Everyday Claude agent model for coding, planning, browsing, and general work",
         "id": "anthropic/claude-sonnet-5",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-01-31",
         "maxTokens": 128000,
         "name": "Claude Sonnet 5",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-06-30",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "arcee-ai/trinity-large-thinking": {
@@ -555,17 +555,19 @@
             "input": 0.25,
             "output": 0.9
         },
+        "description": "Reasoning-optimized 398B MoE agent model with extended thinking for long-horizon and multi-turn tool use",
         "id": "arcee-ai/trinity-large-thinking",
         "input": ["text"],
         "maxTokens": 262144,
-        "name": "Arcee AI: Trinity Large Thinking",
+        "name": "Trinity Large Thinking",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-04-01",
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -588,10 +590,10 @@
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -614,10 +616,10 @@
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -633,6 +635,7 @@
             "input": 0.25,
             "output": 2.0
         },
+        "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
         "id": "bytedance/seed-1.6",
         "input": ["text", "image"],
         "maxTokens": 32000,
@@ -642,7 +645,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -668,7 +671,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -685,6 +688,7 @@
             "input": 0.25,
             "output": 2.0
         },
+        "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
         "id": "bytedance/seed-1.8",
         "input": ["text", "image"],
         "maxTokens": 64000,
@@ -696,7 +700,7 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
         }
@@ -706,14 +710,15 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 256000,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.1,
             "cacheWrite": 0.0,
             "input": 0.5,
             "output": 3.0
         },
+        "description": "ByteDance Seed coding model for multimodal software engineering and long-running agents",
         "id": "bytedance/seed-2.0-code",
-        "input": ["text", "image", "video"],
-        "maxTokens": 128000,
+        "input": ["text", "image"],
+        "maxTokens": 131072,
         "name": "Seed 2.0 Code",
         "provider": "infron",
         "reasoning": true,
@@ -723,7 +728,7 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -746,7 +751,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -758,21 +763,22 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 256000,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.02,
             "cacheWrite": 0.0,
             "input": 0.1,
             "output": 0.4
         },
+        "description": "Lightweight ByteDance Seed 2.0 model for low-latency multimodal reasoning and high-volume tasks",
         "id": "bytedance/seed-2.0-mini",
-        "input": ["text"],
-        "maxTokens": 128000,
+        "input": ["text", "image"],
+        "maxTokens": 32000,
         "name": "Seed 2.0 Mini",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -784,13 +790,14 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 256000,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.1,
             "cacheWrite": 0.0,
             "input": 0.5,
             "output": 3.0
         },
+        "description": "Flagship ByteDance Seed 2.0 model for complex multimodal reasoning and long-horizon agent workflows",
         "id": "bytedance/seed-2.0-pro",
-        "input": ["text"],
+        "input": ["text", "image"],
         "maxTokens": 128000,
         "name": "Seed 2.0 Pro",
         "provider": "infron",
@@ -798,7 +805,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -824,7 +831,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -834,19 +841,22 @@
     "cohere/command-a-03-2025": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 256000,
+        "contextWindow": 288000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 2.5,
             "output": 10.0
         },
+        "description": "Cohere command model for multilingual enterprise agents, tools, and chat",
         "id": "cohere/command-a-03-2025",
         "input": ["text"],
+        "knowledgeCutoff": "2024-06-01",
         "maxTokens": 8000,
-        "name": "Command A 03-2025",
+        "name": "Command A",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
+        "releaseDate": "2025-03-13",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -867,17 +877,20 @@
             "input": 0.26,
             "output": 0.38
         },
+        "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek/deepseek-chat",
         "input": ["text"],
+        "knowledgeCutoff": "2025-09",
         "maxTokens": 384000,
         "name": "DeepSeek Chat",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
+        "releaseDate": "2025-12-01",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -893,17 +906,18 @@
             "input": 0.2,
             "output": 0.77
         },
+        "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek/deepseek-chat-v3-0324",
         "input": ["text"],
         "maxTokens": 65536,
         "name": "DeepSeek: DeepSeek V3 0324",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -919,6 +933,7 @@
             "input": 0.21,
             "output": 0.79
         },
+        "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek/deepseek-chat-v3.1",
         "input": ["text"],
         "maxTokens": 32768,
@@ -927,11 +942,11 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -945,6 +960,7 @@
             "input": 0.04,
             "output": 0.08
         },
+        "description": "OCR model for extracting structured text from documents and screenshots",
         "id": "deepseek/deepseek-ocr",
         "input": ["text", "image"],
         "maxTokens": 8192,
@@ -952,9 +968,9 @@
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -971,20 +987,23 @@
             "input": 0.5,
             "output": 2.15
         },
+        "description": "DeepSeek reasoning model for multi-step analysis, math, coding, and tools",
         "id": "deepseek/deepseek-r1",
         "input": ["text"],
+        "knowledgeCutoff": "2024-07",
         "maxTokens": 384000,
         "name": "DeepSeek Reasoner",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2025-01-20",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "deepseek/deepseek-r1-0528": {
@@ -997,6 +1016,7 @@
             "input": 0.5,
             "output": 2.15
         },
+        "description": "DeepSeek reasoning model for multi-step analysis, math, coding, and tools",
         "id": "deepseek/deepseek-r1-0528",
         "input": ["text"],
         "maxTokens": 32768,
@@ -1009,8 +1029,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "deepseek/deepseek-r1-distill-llama-70b": {
@@ -1023,6 +1043,7 @@
             "input": 0.7,
             "output": 0.8
         },
+        "description": "DeepSeek reasoning model for multi-step analysis, math, coding, and tools",
         "id": "deepseek/deepseek-r1-distill-llama-70b",
         "input": ["text"],
         "maxTokens": 8192,
@@ -1031,11 +1052,11 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -1049,17 +1070,19 @@
             "input": 0.21,
             "output": 0.79
         },
+        "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek/deepseek-v3.1",
         "input": ["text"],
         "maxTokens": 8192,
         "name": "DeepSeek V3.1",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2025-08-21",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -1068,26 +1091,27 @@
     "deepseek/deepseek-v3.1-terminus": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 131072,
+        "contextWindow": 163840,
         "cost": {
             "cacheRead": 0.135,
             "cacheWrite": 0.0,
             "input": 0.27,
             "output": 0.95
         },
+        "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek/deepseek-v3.1-terminus",
         "input": ["text"],
         "maxTokens": 32768,
-        "name": "DeepSeek: DeepSeek V3.1 Terminus",
+        "name": "DeepSeek: DeepSeek V3.1 Terminus (retires Aug 17)",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -1101,19 +1125,22 @@
             "input": 0.26,
             "output": 0.38
         },
+        "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek/deepseek-v3.2",
         "input": ["text"],
+        "knowledgeCutoff": "2024-07",
         "maxTokens": 65536,
         "name": "DeepSeek V3.2",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2025-12-01",
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -1127,6 +1154,7 @@
             "input": 0.26,
             "output": 0.38
         },
+        "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek/deepseek-v3.2-exp",
         "input": ["text"],
         "maxTokens": 65536,
@@ -1135,11 +1163,11 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -1153,17 +1181,20 @@
             "input": 0.065,
             "output": 0.1375
         },
+        "description": "Fast DeepSeek model for efficient chat, coding help, and agent loops",
         "id": "deepseek/deepseek-v4-flash",
         "input": ["text"],
+        "knowledgeCutoff": "2025-05",
         "maxTokens": 1048576,
         "name": "DeepSeek V4 Flash",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-04-24",
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
+            "low": null,
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -1179,49 +1210,26 @@
             "input": 0.069,
             "output": 0.1375
         },
+        "description": "Fast DeepSeek model for efficient chat, coding help, and agent loops",
         "id": "deepseek/deepseek-v4-flash-0731",
         "input": ["text"],
+        "knowledgeCutoff": "2025-05",
         "maxTokens": 1048576,
         "name": "DeepSeek V4 Flash 0731",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-07-31",
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
+            "low": null,
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
         }
     },
-    "deepseek/deepseek-v4-pro": {
-        "api": "openai-completions",
-        "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 1000000,
-        "cost": {
-            "cacheRead": 0.135,
-            "cacheWrite": 0.47,
-            "input": 0.435,
-            "output": 0.87
-        },
-        "id": "deepseek/deepseek-v4-pro",
-        "input": ["text"],
-        "maxTokens": 384000,
-        "name": "DeepSeek V4 Pro",
-        "provider": "infron",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "deepseek/deepseek-v4-pro:free": {
+    "deepseek/deepseek-v4-flash:free": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 1000000,
@@ -1231,19 +1239,77 @@
             "input": 0.0,
             "output": 0.0
         },
-        "id": "deepseek/deepseek-v4-pro:free",
+        "description": "Fast DeepSeek V4 lane for economical reasoning, coding, and long-context work",
+        "id": "deepseek/deepseek-v4-flash:free",
         "input": ["text"],
         "maxTokens": 384000,
-        "name": "DeepSeek V4 Pro",
+        "name": "DeepSeek V4 Flash (Free)",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "deepseek/deepseek-v4-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://llm.onerouter.pro/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.135,
+            "cacheWrite": 0.47,
+            "input": 0.825,
+            "output": 1.6505
+        },
+        "description": "Open MoE flagship with million-token context for coding and long agent runs",
+        "id": "deepseek/deepseek-v4-pro",
+        "input": ["text"],
+        "knowledgeCutoff": "2025-05",
+        "maxTokens": 384000,
+        "name": "DeepSeek V4 Pro",
+        "provider": "infron",
+        "reasoning": true,
+        "releaseDate": "2026-04-24",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "deepseek/deepseek-v4-pro-0813": {
+        "api": "openai-completions",
+        "baseUrl": "https://llm.onerouter.pro/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.35,
+            "cacheWrite": 0.0,
+            "input": 0.636,
+            "output": 1.908
+        },
+        "description": "DeepSeek V4 Pro 0813 is a large-scale mixture-of-experts model from DeepSeek. This is the GA release of DeepSeek V4 Pro.",
+        "id": "deepseek/deepseek-v4-pro-0813",
+        "input": ["text"],
+        "maxTokens": 384000,
+        "name": "DeepSeek V4 Pro 0813",
+        "provider": "infron",
+        "reasoning": true,
+        "releaseDate": "2026-08-12",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -1262,12 +1328,12 @@
         "maxTokens": 32000,
         "name": "L3.3 70B Magnum v4 SE (free)",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -1283,12 +1349,15 @@
             "input": 0.3,
             "output": 2.5
         },
+        "description": "Fast Gemini workhorse for multimodal apps where latency and price matter",
         "id": "google/gemini-2.5-flash",
         "input": ["text", "image", "audio", "video", "pdf"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 65536,
         "name": "Gemini 2.5 Flash",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2025-06-17",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1309,12 +1378,15 @@
             "input": 0.3,
             "output": 30.0
         },
+        "description": "Nano Banana image model for fast generation, edits, and character-consistent assets",
         "id": "google/gemini-2.5-flash-image",
-        "input": ["image", "text", "pdf"],
-        "maxTokens": 8192,
+        "input": ["audio", "image", "text", "video"],
+        "knowledgeCutoff": "2024-06",
+        "maxTokens": 32768,
         "name": "Nano Banana",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2025-08-26",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1361,12 +1433,15 @@
             "input": 0.1,
             "output": 0.4
         },
+        "description": "Lean Gemini 2.5 lane for cheap multimodal traffic and quick agents",
         "id": "google/gemini-2.5-flash-lite",
         "input": ["text", "image", "audio", "video", "pdf"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 65536,
         "name": "Gemini 2.5 Flash-Lite",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2025-06-17",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1387,6 +1462,7 @@
             "input": 0.1,
             "output": 0.4
         },
+        "description": "Low-latency Gemini model for high-volume multimodal and agent workloads",
         "id": "google/gemini-2.5-flash-lite-preview-06-17",
         "input": ["text", "video", "image", "audio"],
         "maxTokens": 65535,
@@ -1399,7 +1475,7 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -1413,12 +1489,13 @@
             "input": 0.1,
             "output": 0.4
         },
+        "description": "Low-latency Gemini model for high-volume multimodal and agent workloads",
         "id": "google/gemini-2.5-flash-lite-preview-09-2025",
         "input": ["text", "image"],
         "maxTokens": 65536,
         "name": "gemini-2.5-flash-lite-preview-09-2025",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1465,6 +1542,7 @@
             "input": 0.3,
             "output": 2.5
         },
+        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
         "id": "google/gemini-2.5-flash-preview-05-20",
         "input": ["text", "image", "video", "audio"],
         "maxTokens": 200000,
@@ -1477,7 +1555,7 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -1491,12 +1569,15 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "Google's proven reasoning model for coding, math, and multimodal analysis",
         "id": "google/gemini-2.5-pro",
         "input": ["text", "image", "audio", "video", "pdf"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 65536,
         "name": "Gemini 2.5 Pro",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2025-06-17",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1517,6 +1598,7 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "google/gemini-2.5-pro-preview-03-25",
         "input": ["text", "image", "audio"],
         "maxTokens": 65536,
@@ -1543,6 +1625,7 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "Advanced Gemini model for complex reasoning, coding, and multimodal analysis",
         "id": "google/gemini-2.5-pro-preview-05-06",
         "input": ["text", "image", "pdf", "audio", "video"],
         "maxTokens": 65535,
@@ -1551,9 +1634,9 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -1569,6 +1652,7 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "Advanced Gemini model for complex reasoning, coding, and multimodal analysis",
         "id": "google/gemini-2.5-pro-preview-06-05",
         "input": ["text", "image", "video", "audio"],
         "maxTokens": 200000,
@@ -1581,7 +1665,7 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -1595,17 +1679,20 @@
             "input": 0.25,
             "output": 1.5
         },
+        "description": "New Gemini flash lane bringing frontier-style multimodal reasoning to cheaper runs",
         "id": "google/gemini-3-flash-preview",
         "input": ["text", "image", "video", "audio", "pdf"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 65536,
         "name": "Gemini 3 Flash Preview",
         "provider": "infron",
-        "reasoning": false,
+        "reasoning": true,
+        "releaseDate": "2025-12-17",
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -1621,18 +1708,21 @@
             "input": 0.125,
             "output": 0.75
         },
+        "description": "Low-latency Gemini model for high-volume multimodal and agent workloads",
         "id": "google/gemini-3.1-flash-lite",
         "input": ["text", "image", "video", "audio", "pdf"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 65536,
         "name": "Gemini 3.1 Flash Lite",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-05-07",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
         }
@@ -1647,18 +1737,21 @@
             "input": 0.25,
             "output": 1.5
         },
+        "description": "Low-latency Gemini model for high-volume multimodal and agent workloads",
         "id": "google/gemini-3.1-flash-lite-preview",
         "input": ["text", "image", "video", "audio", "pdf"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 65536,
         "name": "Gemini 3.1 Flash Lite Preview",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-03-03",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
         }
@@ -1673,12 +1766,15 @@
             "input": 1.0,
             "output": 6.0
         },
+        "description": "Reasoning-first Gemini preview for agentic coding and complex problem solving",
         "id": "google/gemini-3.1-pro-preview",
         "input": ["text", "image", "video", "audio", "pdf"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 65536,
         "name": "Gemini 3.1 Pro Preview",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-02-19",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1699,18 +1795,21 @@
             "input": 0.75,
             "output": 4.5
         },
+        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
         "id": "google/gemini-3.5-flash",
         "input": ["text", "image", "video", "audio", "pdf"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 65536,
         "name": "Gemini 3.5 Flash",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-05-19",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
         }
@@ -1725,18 +1824,21 @@
             "input": 0.15,
             "output": 1.25
         },
+        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
         "id": "google/gemini-3.5-flash-lite",
         "input": ["text", "image", "video", "audio", "pdf"],
+        "knowledgeCutoff": "2026-03",
         "maxTokens": 65536,
         "name": "Gemini 3.5 Flash Lite",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-07-21",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
         }
@@ -1746,17 +1848,49 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.15,
-            "cacheWrite": 0.083333,
+            "cacheRead": 0.075,
+            "cacheWrite": 0.041667,
             "input": 0.75,
             "output": 3.75
         },
+        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
         "id": "google/gemini-3.6-flash",
         "input": ["text", "image", "video", "audio", "pdf"],
+        "knowledgeCutoff": "2026-03",
         "maxTokens": 65536,
         "name": "Gemini 3.6 Flash",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-07-21",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "google/gemini-3.7-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://llm.onerouter.pro/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.075,
+            "cacheWrite": 0.041667,
+            "input": 0.375,
+            "output": 1.875
+        },
+        "description": "High-efficiency Gemini model for agentic workflows, coding, and multimodal reasoning",
+        "id": "google/gemini-3.7-flash",
+        "input": ["text", "image", "video", "audio", "pdf"],
+        "knowledgeCutoff": "2026-03",
+        "maxTokens": 65536,
+        "name": "Gemini 3.7 Flash",
+        "provider": "infron",
+        "reasoning": true,
+        "releaseDate": "2026-08-13",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1777,17 +1911,18 @@
             "input": 0.04,
             "output": 0.13
         },
+        "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-3-12b-it",
         "input": ["text", "image"],
         "maxTokens": 16384,
         "name": "Google: Gemma 3 12B",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -1803,17 +1938,18 @@
             "input": 0.08,
             "output": 0.16
         },
+        "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-3-27b-it",
         "input": ["text", "image"],
         "maxTokens": 131072,
         "name": "Google: Gemma 3 27B",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -1829,17 +1965,18 @@
             "input": 0.05,
             "output": 0.1
         },
+        "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-3-4b-it",
         "input": ["text", "image"],
         "maxTokens": 16384,
         "name": "Google: Gemma 3 4B",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -1855,6 +1992,7 @@
             "input": 0.07,
             "output": 0.34
         },
+        "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-4-26b-a4b",
         "input": ["text", "image", "video"],
         "maxTokens": 32768,
@@ -1864,10 +2002,10 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -1881,17 +2019,19 @@
             "input": 0.13,
             "output": 0.38
         },
+        "description": "Largest Gemma 4 instruction model for open, self-hosted chat and reasoning",
         "id": "google/gemma-4-31b-it",
         "input": ["text", "image"],
         "maxTokens": 131072,
         "name": "Gemma 4 31B IT",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-04-02",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -1907,17 +2047,18 @@
             "input": 0.06,
             "output": 0.06
         },
+        "description": "Open-weight instruction model for adaptable chat and self-hosted production workloads",
         "id": "gryphe/mythomax-l2-13b",
         "input": ["text"],
         "maxTokens": 4096,
         "name": "MythoMax 13B",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -1933,36 +2074,11 @@
             "input": 0.25,
             "output": 1.8
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "holo/holo3-35b-a3b",
         "input": ["text", "image"],
         "maxTokens": 65536,
         "name": "Holo3-35B-A3B",
-        "provider": "infron",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "ibm-granite/granite-4.1-8b": {
-        "api": "openai-completions",
-        "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 131072,
-        "cost": {
-            "cacheRead": 0.05,
-            "cacheWrite": 0.0,
-            "input": 0.05,
-            "output": 0.1
-        },
-        "id": "ibm-granite/granite-4.1-8b",
-        "input": ["text"],
-        "maxTokens": 131072,
-        "name": "IBM: Granite 4.1 8B",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1985,6 +2101,7 @@
             "input": 0.25,
             "output": 0.75
         },
+        "description": "Reasoning model for deliberate analysis, multi-step problem solving, and tool use",
         "id": "inception/mercury-2",
         "input": ["text"],
         "maxTokens": 50000,
@@ -1997,7 +2114,7 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -2011,12 +2128,13 @@
             "input": 0.3,
             "output": 2.5
         },
+        "description": "Tool-capable chat model for instruction following and agentic application workflows",
         "id": "inclusionai/ling-2.6-1t",
         "input": ["text"],
         "maxTokens": 32768,
         "name": "inclusionAI: Ling-2.6-1T",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2037,12 +2155,13 @@
             "input": 0.1,
             "output": 0.3
         },
+        "description": "Efficient model for low-latency assistance, extraction, and routine automation",
         "id": "inclusionai/ling-2.6-flash",
         "input": ["text"],
         "maxTokens": 32768,
         "name": "inclusionAI: Ling-2.6-flash",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2063,6 +2182,7 @@
             "input": 0.06,
             "output": 0.18
         },
+        "description": "*Ling-3.0-flash* is a *124B-parameter Mixture-of-Experts (MoE) model*, with approximately *5.1B parameters activated per token*. The model is designed with *token efficiency and production-scale agentic inference* as key priorities, enabling developers...",
         "id": "inclusionai/ling-3.0-flash",
         "input": ["text"],
         "maxTokens": 32768,
@@ -2071,37 +2191,11 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "inclusionai/ling-3.0-tiny:free": {
-        "api": "openai-completions",
-        "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "id": "inclusionai/ling-3.0-tiny:free",
-        "input": ["text"],
-        "maxTokens": 32768,
-        "name": "inclusionAI: Ling 3.0 Tiny (free)",
-        "provider": "infron",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
             "low": null,
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -2115,17 +2209,18 @@
             "input": 2.5,
             "output": 10.0
         },
+        "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "inflection/inflection-3-pi",
         "input": ["text"],
         "maxTokens": 4096,
         "name": "Inflection 3 Pi",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -2141,6 +2236,7 @@
             "input": 1.5,
             "output": 3.5
         },
+        "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
         "id": "interfaze/interfaze-beta",
         "input": ["text", "image", "pdf"],
         "maxTokens": 32000,
@@ -2167,12 +2263,13 @@
             "input": 0.15,
             "output": 0.6
         },
+        "description": "KAT-Coder-Air V2.5 is a flagship-level Agentic Coding model that can directly hand over an entire issue or an entire business workflow to it, allowing it to autonomously locate and make...",
         "id": "kwaipilot/kat-coder-air-v2.5",
         "input": ["text"],
         "maxTokens": 80000,
         "name": "Kwaipilot: KAT-Coder-Air V2.5",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2193,12 +2290,13 @@
             "input": 0.3,
             "output": 1.2
         },
+        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
         "id": "kwaipilot/kat-coder-pro",
         "input": ["text"],
         "maxTokens": 128000,
         "name": "Kat Coder Pro",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2219,12 +2317,13 @@
             "input": 0.3,
             "output": 1.2
         },
+        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
         "id": "kwaipilot/kat-coder-pro-v2",
         "input": ["text"],
         "maxTokens": 80000,
         "name": "Kwaipilot: KAT-Coder-Pro V2",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2245,12 +2344,13 @@
             "input": 0.74,
             "output": 2.96
         },
+        "description": "KAT-Coder-Pro V2.5 is a flagship-level Agentic Coding model that can directly hand over an entire issue or an entire business workflow to it, allowing it to autonomously locate and make...",
         "id": "kwaipilot/kat-coder-pro-v2.5",
         "input": ["text"],
         "maxTokens": 80000,
         "name": "Kwaipilot: KAT-Coder-Pro V2.5",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2271,19 +2371,21 @@
             "input": 0.75,
             "output": 2.95
         },
+        "description": "LongCat 2.0 is a sparse mixture-of-experts language model from Meituan, with 48B active parameters out of 1.6T total. It is suited for coding, repository-level changes, long-horizon problem solving, and agentic...",
         "id": "meituan/longcat-2.0",
         "input": ["text"],
         "maxTokens": 262144,
         "name": "Meituan: LongCat 2.0",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-06-30",
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -2297,19 +2399,47 @@
             "input": 0.2,
             "output": 0.8
         },
+        "description": "Efficient model for low-latency assistance, extraction, and routine automation",
         "id": "meituan/longcat-flash-chat",
         "input": ["text"],
         "maxTokens": 131072,
         "name": "Meituan/Longcat-Flash-Chat",
         "provider": "infron",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "meta-ai/muse-glimmer-30b": {
+        "api": "openai-completions",
+        "baseUrl": "https://llm.onerouter.pro/v1",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0.05,
+            "cacheWrite": 0.0,
+            "input": 0.35,
+            "output": 1.5
+        },
+        "description": "Muse Glimmer is a 30-billion-parameter open-weight multimodal model from Meta Superintelligence Labs, distilled from Muse Spark for always-on local agents, tool use, coding, and image understanding.",
+        "id": "meta-ai/muse-glimmer-30b",
+        "input": ["text", "image"],
+        "maxTokens": 32768,
+        "name": "Muse Glimmer 30B",
+        "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -2323,6 +2453,7 @@
             "input": 1.25,
             "output": 4.25
         },
+        "description": "Muse Spark is a natively multimodal reasoning model with support for tool-use, visual chain of thought, and multi-agent orchestration.",
         "id": "meta-ai/muse-spark-1.1",
         "input": ["text", "image", "video"],
         "maxTokens": 32000,
@@ -2339,32 +2470,6 @@
             "xhigh": null
         }
     },
-    "meta-llama/l3-lunaris-8b": {
-        "api": "openai-completions",
-        "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 8192,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.04,
-            "output": 0.05
-        },
-        "id": "meta-llama/l3-lunaris-8b",
-        "input": ["text"],
-        "maxTokens": 8192,
-        "name": "L3 Lunaris 8B",
-        "provider": "infron",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "meta-llama/llama-3.1-70b-instruct": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
@@ -2375,17 +2480,18 @@
             "input": 0.4,
             "output": 0.4
         },
+        "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "meta-llama/llama-3.1-70b-instruct",
         "input": ["text"],
         "maxTokens": 16384,
         "name": "Meta: Llama 3.1 70B Instruct",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -2408,10 +2514,10 @@
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -2427,17 +2533,18 @@
             "input": 0.135,
             "output": 0.4
         },
+        "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "meta-llama/llama-3.3-70b-instruct",
         "input": ["text"],
         "maxTokens": 16384,
         "name": "Llama-3.3-70B-Instruct",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -2453,17 +2560,18 @@
             "input": 0.15,
             "output": 0.6
         },
+        "description": "Open multimodal Llama model for strong reasoning and fast responses",
         "id": "meta-llama/llama-4-maverick",
         "input": ["text", "image"],
         "maxTokens": 16384,
         "name": "Meta: Llama 4 Maverick",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -2479,6 +2587,7 @@
             "input": 0.255,
             "output": 1.0
         },
+        "description": "MiniMax model for chat, coding, office work, and agentic tasks",
         "id": "minimax/minimax-m2",
         "input": ["text"],
         "maxTokens": 131072,
@@ -2487,9 +2596,9 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -2505,16 +2614,17 @@
             "input": 0.3,
             "output": 1.2
         },
+        "description": "MiniMax model for chat, coding, office work, and agentic tasks",
         "id": "minimax/minimax-m2-her",
         "input": ["text"],
         "maxTokens": 2048,
-        "name": "MiniMax: MiniMax M2-her",
+        "name": "MiniMax-M2 Her",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -2531,6 +2641,7 @@
             "input": 0.27,
             "output": 0.95
         },
+        "description": "MiniMax model for chat, coding, office work, and agentic tasks",
         "id": "minimax/minimax-m2.1",
         "input": ["text"],
         "maxTokens": 131072,
@@ -2540,7 +2651,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -2557,6 +2668,7 @@
             "input": 0.15,
             "output": 0.6065
         },
+        "description": "Prior MiniMax coding model for agent workflows, office edits, and automation",
         "id": "minimax/minimax-m2.5",
         "input": ["text"],
         "maxTokens": 195000,
@@ -2566,7 +2678,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -2592,7 +2704,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -2609,6 +2721,7 @@
             "input": 0.25,
             "output": 1.0
         },
+        "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
         "id": "minimax/minimax-m2.7",
         "input": ["text"],
         "maxTokens": 131072,
@@ -2618,7 +2731,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -2635,6 +2748,7 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
         "id": "minimax/minimax-m2.7:free",
         "input": ["text"],
         "maxTokens": 131072,
@@ -2644,7 +2758,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -2661,6 +2775,7 @@
             "input": 0.28,
             "output": 1.1
         },
+        "description": "MiniMax multimodal model for long-context coding, perception, and agent planning",
         "id": "minimax/minimax-m3",
         "input": ["text", "image", "video"],
         "maxTokens": 512000,
@@ -2670,7 +2785,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -2687,6 +2802,7 @@
             "input": 4.0,
             "output": 25.0
         },
+        "description": "Research model for long-horizon investigation, synthesis, and analytical reports",
         "id": "miromind/mirothinker-1-7-deepresearch",
         "input": ["text"],
         "maxTokens": 16384,
@@ -2713,6 +2829,7 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "Research model for long-horizon investigation, synthesis, and analytical reports",
         "id": "miromind/mirothinker-1-7-deepresearch-mini",
         "input": ["text"],
         "maxTokens": 16384,
@@ -2739,17 +2856,18 @@
             "input": 0.2,
             "output": 0.2
         },
+        "description": "Compact Mistral model for edge, latency-sensitive, and cost-efficient workloads",
         "id": "mistral/ministral-14b-2512",
         "input": ["text", "image"],
         "maxTokens": 128000,
         "name": "ministral-14b-2512",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -2765,19 +2883,22 @@
             "input": 0.02,
             "output": 0.04
         },
+        "description": "Mistral model for multilingual chat, reasoning, and tool-assisted workflows",
         "id": "mistral/mistral-nemo",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-07",
         "maxTokens": 128000,
         "name": "Mistral Nemo",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
+        "releaseDate": "2024-07-01",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -2801,9 +2922,9 @@
             "high": "high",
             "low": "low",
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -2827,9 +2948,9 @@
             "high": "high",
             "low": "low",
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -2838,24 +2959,27 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.014,
+            "cacheRead": 0.015,
             "cacheWrite": 0.0,
             "input": 0.15,
             "output": 0.6
         },
+        "description": "Fast Mistral production model for chat, extraction, and cost-sensitive agents",
         "id": "mistral/mistral-small-2603",
         "input": ["text", "image"],
-        "maxTokens": 262144,
+        "knowledgeCutoff": "2025-06",
+        "maxTokens": 256000,
         "name": "Mistral Small 4",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-03-16",
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -2879,9 +3003,9 @@
             "high": "high",
             "low": "low",
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -2895,20 +3019,21 @@
             "input": 0.6,
             "output": 2.5
         },
+        "description": "Kimi model for long-context chat, coding, and agentic reasoning",
         "id": "moonshotai/kimi-k2-0905",
         "input": ["text"],
         "maxTokens": 262144,
         "name": "Kimi K2 0905",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "moonshotai/kimi-k2-instruct": {
@@ -2921,6 +3046,7 @@
             "input": 0.7,
             "output": 2.5
         },
+        "description": "Kimi model for long-context chat, coding, and agentic reasoning",
         "id": "moonshotai/kimi-k2-instruct",
         "input": ["text"],
         "maxTokens": 131072,
@@ -2928,13 +3054,13 @@
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "moonshotai/kimi-k2-thinking": {
@@ -2947,17 +3073,20 @@
             "input": 0.6,
             "output": 2.5
         },
+        "description": "Kimi reasoning model for long-horizon research, planning, and tool use",
         "id": "moonshotai/kimi-k2-thinking",
         "input": ["text"],
+        "knowledgeCutoff": "2024-08",
         "maxTokens": 100352,
         "name": "Kimi K2 Thinking",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2025-11-06",
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -2973,20 +3102,23 @@
             "input": 0.287,
             "output": 1.5055
         },
+        "description": "Earlier Kimi frontier model for long-context agents, coding, and multimodal work",
         "id": "moonshotai/kimi-k2.5",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 256000,
         "name": "Kimi K2.5",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-01",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "moonshotai/kimi-k2.6": {
@@ -2999,20 +3131,23 @@
             "input": 0.44695,
             "output": 1.85655
         },
+        "description": "Multimodal Kimi workhorse for agent loops, coding tasks, and visual context",
         "id": "moonshotai/kimi-k2.6",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 262144,
         "name": "Kimi K2.6",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-04-21",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "moonshotai/kimi-k2.6:free": {
@@ -3037,8 +3172,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "moonshotai/kimi-k2.7-code": {
@@ -3051,20 +3186,23 @@
             "input": 0.44695,
             "output": 1.85655
         },
+        "description": "Coding-focused Kimi model, stronger on long-horizon repo work with less overthinking",
         "id": "moonshotai/kimi-k2.7-code",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 262144,
         "name": "Kimi K2.7 Code",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-06-12",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
+            "minimal": "minimal",
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "moonshotai/kimi-k2.7-code-fast": {
@@ -3089,8 +3227,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "moonshotai/kimi-k3": {
@@ -3100,20 +3238,22 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 0.0,
-            "input": 2.4,
-            "output": 12.0
+            "input": 3.0,
+            "output": 15.0
         },
+        "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
         "id": "moonshotai/kimi-k3",
         "input": ["text", "image", "pdf"],
         "maxTokens": 131072,
         "name": "Kimi K3",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-07-16",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3136,10 +3276,10 @@
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3162,10 +3302,10 @@
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3181,17 +3321,18 @@
             "input": 0.8,
             "output": 1.2
         },
+        "description": "Efficient model for low-latency assistance, extraction, and routine automation",
         "id": "morph/morph-v3-fast",
         "input": ["text"],
         "maxTokens": 38000,
         "name": "Morph: Morph V3 Fast",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3207,17 +3348,18 @@
             "input": 0.9,
             "output": 1.9
         },
+        "description": "Flagship model for demanding analysis, coding, and production agent workflows",
         "id": "morph/morph-v3-large",
         "input": ["text"],
         "maxTokens": 131072,
         "name": "Morph: Morph V3 Large",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3233,17 +3375,18 @@
             "input": 1.0,
             "output": 1.0
         },
+        "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "nousresearch/hermes-3-llama-3.1-405b",
         "input": ["text"],
         "maxTokens": 16384,
         "name": "Nous: Hermes 3 405B Instruct",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3259,17 +3402,18 @@
             "input": 0.3,
             "output": 0.3
         },
+        "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "nousresearch/hermes-3-llama-3.1-70b",
         "input": ["text"],
         "maxTokens": 16384,
         "name": "Nous: Hermes 3 70B Instruct",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3292,10 +3436,10 @@
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3311,6 +3455,7 @@
             "input": 0.09,
             "output": 0.37
         },
+        "description": "Reasoning model for deliberate analysis, multi-step problem solving, and tool use",
         "id": "nousresearch/hermes-4-405b",
         "input": ["text"],
         "maxTokens": 26215,
@@ -3319,11 +3464,11 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -3337,6 +3482,7 @@
             "input": 0.05,
             "output": 0.2
         },
+        "description": "Reasoning model for deliberate analysis, multi-step problem solving, and tool use",
         "id": "nousresearch/hermes-4-70b",
         "input": ["text"],
         "maxTokens": 131072,
@@ -3345,11 +3491,11 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -3363,17 +3509,19 @@
             "input": 1.2,
             "output": 1.2
         },
+        "description": "Nemotron model for efficient reasoning, coding, and specialized AI agents",
         "id": "nvidia/llama-3.1-nemotron-70b-instruct",
         "input": ["text"],
         "maxTokens": 8192,
         "name": "Llama 3.1 Nemotron 70B Instruct",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
+        "releaseDate": "2025-04-15",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3389,17 +3537,19 @@
             "input": 0.1,
             "output": 0.4
         },
+        "description": "Nemotron model for efficient reasoning, coding, and specialized AI agents",
         "id": "nvidia/llama-3.3-nemotron-super-49b-v1.5",
         "input": ["text"],
         "maxTokens": 65536,
         "name": "Llama 3.3 Nemotron Super 49B v1.5",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2025-07-25",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3415,19 +3565,21 @@
             "input": 0.05,
             "output": 0.2
         },
+        "description": "Small Nemotron 3 MoE for efficient coding, math, and long-context agents",
         "id": "nvidia/nemotron-3-nano-30b-a3b",
         "input": ["text"],
-        "maxTokens": 262144,
+        "maxTokens": 228000,
         "name": "Nemotron 3 Nano 30B A3B",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2025-12-15",
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -3441,17 +3593,19 @@
             "input": 0.105,
             "output": 0.42
         },
+        "description": "Open Nemotron omni model combining reasoning with text, vision, and audio",
         "id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
         "input": ["text", "image"],
         "maxTokens": 65536,
         "name": "Nvidia Nemotron 3 Nano Omni",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-04-28",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3467,19 +3621,21 @@
             "input": 0.1,
             "output": 0.5
         },
+        "description": "Nemotron middle tier for collaborative agents and high-volume reasoning workloads",
         "id": "nvidia/nemotron-3-super-120b-a12b",
         "input": ["text"],
         "maxTokens": 16384,
         "name": "Nemotron 3 Super 120B A12B",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-03-11",
         "thinkingLevelMap": {
-            "high": "high",
+            "high": null,
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -3493,17 +3649,45 @@
             "input": 0.5,
             "output": 2.5
         },
+        "description": "NVIDIA Nemotron 3 Ultra is an open frontier-reasoning and orchestration model from NVIDIA, with 55B active parameters out of 550B total (MoE). Built on a hybrid Transformer-Mamba mixture-of-experts architecture, it...",
         "id": "nvidia/nemotron-3-ultra-550b-a55b",
         "input": ["text"],
         "maxTokens": 512288,
         "name": "Nemotron 3 Ultra 550B A55B",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-06-04",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "nvidia/nemotron-3.5-lightning-30b-a3b:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://llm.onerouter.pro/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "nvidia/nemotron-3.5-lightning-30b-a3b:free",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "nvidia/nemotron-3.5-lightning-30b-a3b:free",
+        "provider": "infron",
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3519,17 +3703,19 @@
             "input": 0.2,
             "output": 0.6
         },
+        "description": "Nemotron multimodal model for visual reasoning and agentic AI workflows",
         "id": "nvidia/nemotron-nano-12b-v2-vl",
         "input": ["text", "image", "video"],
         "maxTokens": 128000,
         "name": "Nemotron Nano 12B v2 VL",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2025-10-28",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3545,17 +3731,19 @@
             "input": 0.04,
             "output": 0.16
         },
+        "description": "Compact Nemotron model for efficient reasoning and deployable AI agents",
         "id": "nvidia/nemotron-nano-9b-v2",
         "input": ["text"],
         "maxTokens": 8192,
         "name": "Nemotron Nano 9B",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2025-08-18",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3578,10 +3766,10 @@
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3597,17 +3785,20 @@
             "input": 30.0,
             "output": 60.0
         },
+        "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "openai/gpt-4",
         "input": ["text"],
+        "knowledgeCutoff": "2023-11",
         "maxTokens": 8192,
         "name": "GPT-4",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
+        "releaseDate": "2023-11-06",
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3623,17 +3814,20 @@
             "input": 2.0,
             "output": 8.0
         },
+        "description": "Long-lived GPT workhorse for coding, instruction following, and production apps",
         "id": "openai/gpt-4.1",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2024-04",
         "maxTokens": 32768,
         "name": "GPT-4.1",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
+        "releaseDate": "2025-04-14",
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3649,17 +3843,20 @@
             "input": 0.4,
             "output": 1.6
         },
+        "description": "Affordable GPT-4.1 lane for fast coding help and structured extraction",
         "id": "openai/gpt-4.1-mini",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2024-04",
         "maxTokens": 32768,
         "name": "GPT-4.1 mini",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
+        "releaseDate": "2025-04-14",
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3675,17 +3872,20 @@
             "input": 0.1,
             "output": 0.4
         },
+        "description": "Tiny GPT-4.1 option for classification, routing, and very high-volume tasks",
         "id": "openai/gpt-4.1-nano",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-04",
         "maxTokens": 32768,
         "name": "GPT-4.1 nano",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
+        "releaseDate": "2025-04-14",
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3701,17 +3901,20 @@
             "input": 2.5,
             "output": 10.0
         },
+        "description": "Omni-era GPT for multimodal chat, practical coding, and general assistants",
         "id": "openai/gpt-4o",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2023-09",
         "maxTokens": 16384,
         "name": "GPT-4o",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
+        "releaseDate": "2024-05-13",
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3722,22 +3925,25 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0.08,
+            "cacheRead": 0.075,
             "cacheWrite": 0.15,
             "input": 0.15,
             "output": 0.6
         },
+        "description": "Small omni GPT for cheap multimodal assistance and production-scale traffic",
         "id": "openai/gpt-4o-mini",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2023-09",
         "maxTokens": 16384,
         "name": "GPT-4o mini",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
+        "releaseDate": "2024-07-18",
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3753,12 +3959,15 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "Original GPT-5 workhorse for reasoning, coding, writing, and tool workflows",
         "id": "openai/gpt-5",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-09-30",
         "maxTokens": 128000,
         "name": "GPT-5",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2025-08-07",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3779,6 +3988,7 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "Chat-tuned GPT model for conversational assistance, writing, and tool workflows",
         "id": "openai/gpt-5-chat",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -3786,13 +3996,13 @@
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "openai/gpt-5-codex": {
@@ -3805,12 +4015,15 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
         "id": "openai/gpt-5-codex",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-09-30",
         "maxTokens": 128000,
         "name": "GPT-5-Codex",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2025-09-15",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3831,12 +4044,15 @@
             "input": 0.25,
             "output": 2.0
         },
+        "description": "Small GPT-5 for responsive agents, coding help, and everyday automation",
         "id": "openai/gpt-5-mini",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-05-30",
         "maxTokens": 128000,
         "name": "GPT-5 Mini",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2025-08-07",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3857,18 +4073,21 @@
             "input": 0.05,
             "output": 0.4
         },
+        "description": "Tiny GPT-5 lane for routing, extraction, classification, and bulk jobs",
         "id": "openai/gpt-5-nano",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-05-30",
         "maxTokens": 128000,
         "name": "GPT-5 Nano",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2025-08-07",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
         }
@@ -3883,17 +4102,20 @@
             "input": 15.0,
             "output": 120.0
         },
+        "description": "Higher-accuracy GPT-5 tier for tough analysis, coding reviews, and planning",
         "id": "openai/gpt-5-pro",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-09-30",
         "maxTokens": 272000,
         "name": "GPT-5 Pro",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2025-10-06",
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3909,12 +4131,15 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "Sharper GPT-5 generation for coding, product work, and tool-assisted tasks",
         "id": "openai/gpt-5.1",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-09-30",
         "maxTokens": 128000,
         "name": "GPT-5.1",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2025-11-13",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3935,20 +4160,21 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "Chat-tuned GPT model for conversational assistance, writing, and tool workflows",
         "id": "openai/gpt-5.1-chat",
         "input": ["pdf", "image", "text"],
         "maxTokens": 64000,
         "name": "GPT-5.1 Chat",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "openai/gpt-5.1-codex": {
@@ -3961,12 +4187,15 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "Codex GPT for repository edits, code review, and practical software agents",
         "id": "openai/gpt-5.1-codex",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-09-30",
         "maxTokens": 128000,
         "name": "GPT-5.1 Codex",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2025-11-13",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3987,12 +4216,15 @@
             "input": 0.25,
             "output": 2.0
         },
+        "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
         "id": "openai/gpt-5.1-codex-mini",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-09-30",
         "maxTokens": 128000,
         "name": "GPT-5.1 Codex mini",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2025-11-13",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4013,12 +4245,15 @@
             "input": 1.75,
             "output": 14.0
         },
+        "description": "Reliable GPT generation for broad coding, writing, and tool-assisted product work",
         "id": "openai/gpt-5.2",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 128000,
         "name": "GPT-5.2",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2025-12-11",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4039,46 +4274,21 @@
             "input": 1.75,
             "output": 14.0
         },
+        "description": "Chat-tuned GPT model for conversational assistance, writing, and tool workflows",
         "id": "openai/gpt-5.2-chat",
         "input": ["pdf", "image", "text"],
-        "maxTokens": 16384,
-        "name": "OpenAI: GPT-5.2 Chat (retires Aug 10)",
+        "maxTokens": 32000,
+        "name": "OpenAI: GPT-5.2 Chat",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "openai/gpt-5.3-chat": {
-        "api": "openai-completions",
-        "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.175,
-            "cacheWrite": 0.0,
-            "input": 1.75,
-            "output": 14.0
-        },
-        "id": "openai/gpt-5.3-chat",
-        "input": ["text", "image", "pdf"],
-        "maxTokens": 16384,
-        "name": "OpenAI: GPT-5.3 Chat (retires Aug 10)",
-        "provider": "infron",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "openai/gpt-5.3-codex": {
@@ -4091,20 +4301,23 @@
             "input": 1.75,
             "output": 14.0
         },
+        "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
         "id": "openai/gpt-5.3-codex",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 128000,
         "name": "GPT-5.3 Codex",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-02-05",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "openai/gpt-5.4": {
@@ -4117,12 +4330,15 @@
             "input": 1.25,
             "output": 7.5
         },
+        "description": "Agent-ready GPT for coding and computer-use workflows at a lower cost",
         "id": "openai/gpt-5.4",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 128000,
         "name": "GPT-5.4",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-03-05",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4143,20 +4359,23 @@
             "input": 0.375,
             "output": 2.25
         },
+        "description": "Strong small GPT for coding subagents, quick tool use, and high-volume work",
         "id": "openai/gpt-5.4-mini",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 128000,
         "name": "GPT-5.4 mini",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-03-17",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "openai/gpt-5.4-nano": {
@@ -4169,20 +4388,23 @@
             "input": 0.2,
             "output": 1.25
         },
+        "description": "Cheapest GPT-5.4 lane for simple routing, extraction, and bulk automation",
         "id": "openai/gpt-5.4-nano",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 128000,
         "name": "GPT-5.4 nano",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-03-17",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "openai/gpt-5.4-pro": {
@@ -4195,20 +4417,23 @@
             "input": 30.0,
             "output": 180.0
         },
+        "description": "More exact GPT-5.4 tier for demanding professional reasoning and agent tasks",
         "id": "openai/gpt-5.4-pro",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 128000,
         "name": "GPT-5.4 Pro",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-03-05",
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
             "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "openai/gpt-5.5": {
@@ -4221,20 +4446,23 @@
             "input": 2.5,
             "output": 15.0
         },
+        "description": "Default frontier GPT for coding, computer use, research, and knowledge work",
         "id": "openai/gpt-5.5",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-12-01",
         "maxTokens": 128000,
         "name": "GPT-5.5",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-04-23",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "openai/gpt-5.5-pro": {
@@ -4247,20 +4475,23 @@
             "input": 30.0,
             "output": 180.0
         },
+        "description": "Highest-accuracy GPT-5.5 tier for slower, precision-heavy reasoning and coding",
         "id": "openai/gpt-5.5-pro",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-12-01",
         "maxTokens": 128000,
         "name": "GPT-5.5 Pro",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-04-23",
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
             "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "openai/gpt-5.6-luna": {
@@ -4268,25 +4499,28 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.1,
+            "cacheRead": 0.02,
             "cacheWrite": 0.25,
             "input": 0.1,
             "output": 0.6
         },
+        "description": "Cost-efficient GPT-5.6 model for fast, high-volume workloads",
         "id": "openai/gpt-5.6-luna",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-02-16",
         "maxTokens": 128000,
         "name": "GPT-5.6 Luna",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-07-09",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "openai/gpt-5.6-sol": {
@@ -4299,20 +4533,23 @@
             "input": 2.5,
             "output": 15.0
         },
+        "description": "Frontier GPT-5.6 model for complex professional work, coding, and agentic workflows",
         "id": "openai/gpt-5.6-sol",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-02-16",
         "maxTokens": 128000,
         "name": "GPT-5.6 Sol",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-07-09",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "openai/gpt-5.6-terra": {
@@ -4320,25 +4557,28 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.25,
+            "cacheRead": 0.2,
             "cacheWrite": 2.5,
             "input": 1.0,
             "output": 6.0
         },
+        "description": "Balanced GPT-5.6 model for capable, cost-efficient everyday work",
         "id": "openai/gpt-5.6-terra",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-02-16",
         "maxTokens": 128000,
         "name": "GPT-5.6 Terra",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-07-09",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "openai/gpt-oss-120b": {
@@ -4351,12 +4591,14 @@
             "input": 0.037,
             "output": 0.17
         },
+        "description": "Open GPT reasoning model for self-hosted agents and controllable deployments",
         "id": "openai/gpt-oss-120b",
         "input": ["text"],
         "maxTokens": 16384,
         "name": "GPT OSS 120B",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2025-08-05",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4377,12 +4619,14 @@
             "input": 0.03,
             "output": 0.14
         },
+        "description": "Open-weight GPT model for self-hosted reasoning and instruction-following workloads",
         "id": "openai/gpt-oss-20b",
         "input": ["text"],
         "maxTokens": 16384,
         "name": "GPT OSS 20B",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2025-08-05",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4403,6 +4647,7 @@
             "input": 0.075,
             "output": 0.3
         },
+        "description": "Safety model for policy screening, moderation, and risk-aware routing workflows",
         "id": "openai/gpt-oss-safeguard-20b",
         "input": ["text"],
         "maxTokens": 65536,
@@ -4429,12 +4674,15 @@
             "input": 15.0,
             "output": 60.0
         },
+        "description": "O-series reasoning model for hard analysis, math, coding, and planning",
         "id": "openai/o1",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2023-09",
         "maxTokens": 100000,
         "name": "o1",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2024-12-05",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4455,20 +4703,21 @@
             "input": 1.21,
             "output": 4.84
         },
+        "description": "O-series reasoning model for hard analysis, math, coding, and planning",
         "id": "openai/o1-mini",
         "input": ["text"],
         "maxTokens": 65536,
         "name": "OpenAI: o1-mini",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "openai/o3-mini": {
@@ -4481,12 +4730,15 @@
             "input": 1.21,
             "output": 4.84
         },
+        "description": "Smaller o-series reasoner for economical coding, math, and planning tasks",
         "id": "openai/o3-mini",
         "input": ["text"],
+        "knowledgeCutoff": "2024-05",
         "maxTokens": 100000,
         "name": "o3-mini",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2024-12-20",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4507,12 +4759,15 @@
             "input": 1.21,
             "output": 4.84
         },
+        "description": "Fast o-series model for compact reasoning, coding, and tool use",
         "id": "openai/o4-mini",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-05",
         "maxTokens": 100000,
         "name": "o4-mini",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2025-04-16",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4533,6 +4788,7 @@
             "input": 0.15,
             "output": 1.5
         },
+        "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
         "id": "perceptron/perceptron-mk1",
         "input": ["text", "image", "video"],
         "maxTokens": 8192,
@@ -4541,37 +4797,11 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "poolside/laguna-s-2.1:free": {
-        "api": "openai-completions",
-        "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "id": "poolside/laguna-s-2.1:free",
-        "input": ["text"],
-        "maxTokens": 32768,
-        "name": "Poolside: Laguna S 2.1 (free)",
-        "provider": "infron",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -4585,9 +4815,10 @@
             "input": 0.05,
             "output": 0.4
         },
+        "description": "Efficient Qwen model for fast chat, extraction, and high-volume workloads",
         "id": "qwen/qwen-flash",
         "input": ["text"],
-        "maxTokens": 250000,
+        "maxTokens": 32768,
         "name": "Qwen Flash",
         "provider": "infron",
         "reasoning": true,
@@ -4597,8 +4828,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen-mt-lite": {
@@ -4616,15 +4847,15 @@
         "maxTokens": 8000,
         "name": "Qwen Mt Lite",
         "provider": "infron",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen-mt-plus": {
@@ -4637,6 +4868,7 @@
             "input": 0.25,
             "output": 0.75
         },
+        "description": "Translation model for multilingual conversion, localization, and cross-language workflows",
         "id": "qwen/qwen-mt-plus",
         "input": ["text"],
         "maxTokens": 8192,
@@ -4644,13 +4876,13 @@
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen-plus": {
@@ -4663,6 +4895,7 @@
             "input": 0.4,
             "output": 1.2
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "qwen/qwen-plus",
         "input": ["text"],
         "maxTokens": 32768,
@@ -4670,13 +4903,13 @@
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen-plus-character": {
@@ -4689,6 +4922,7 @@
             "input": 0.5,
             "output": 1.4
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "qwen/qwen-plus-character",
         "input": ["text"],
         "maxTokens": 4096,
@@ -4696,13 +4930,13 @@
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen2.5-7b-instruct": {
@@ -4715,6 +4949,7 @@
             "input": 0.04,
             "output": 0.1
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "qwen/qwen2.5-7b-instruct",
         "input": ["text"],
         "maxTokens": 32000,
@@ -4722,13 +4957,13 @@
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen2.5-7b-instruct-1m": {
@@ -4746,15 +4981,15 @@
         "maxTokens": 8192,
         "name": "Qwen2.5 7B Instruct 1M",
         "provider": "infron",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-0.6b": {
@@ -4772,40 +5007,41 @@
         "maxTokens": 8192,
         "name": "Qwen3 0.6B",
         "provider": "infron",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-14b": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 131072,
+        "contextWindow": 40960,
         "cost": {
             "cacheRead": 0.04,
             "cacheWrite": 0.0,
             "input": 0.35,
             "output": 1.4
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "qwen/qwen3-14b",
         "input": ["text"],
-        "maxTokens": 8192,
+        "maxTokens": 16384,
         "name": "Qwen: Qwen3 14B",
         "provider": "infron",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
+            "high": "high",
             "low": null,
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -4819,19 +5055,20 @@
             "input": 0.7,
             "output": 2.8
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "qwen/qwen3-235b-a22b",
         "input": ["text"],
         "maxTokens": 8192,
         "name": "Qwen3 235B-A22B",
         "provider": "infron",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
+            "high": "high",
             "low": null,
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -4845,20 +5082,21 @@
             "input": 0.2,
             "output": 0.88
         },
+        "description": "Updated large open Qwen3 MoE instruct model for multilingual chat, coding, and tool use",
         "id": "qwen/qwen3-235b-a22b-instruct-2507",
         "input": ["text"],
         "maxTokens": 16384,
-        "name": "Qwen3 235B A22B Instruct 2507",
+        "name": "Qwen3 235B-A22B Instruct 2507",
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-235b-a22b-thinking-2507": {
@@ -4871,45 +5109,47 @@
             "input": 0.23,
             "output": 2.3
         },
+        "description": "Qwen reasoning model for deliberate problem solving, math, and coding",
         "id": "qwen/qwen3-235b-a22b-thinking-2507",
         "input": ["text"],
         "maxTokens": 131072,
         "name": "Qwen3 235B A22b Thinking 2507",
         "provider": "infron",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-30b-a3b": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 40960,
+        "contextWindow": 131072,
         "cost": {
             "cacheRead": 0.05,
             "cacheWrite": 0.0,
             "input": 0.08,
             "output": 0.8
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "qwen/qwen3-30b-a3b",
         "input": ["text"],
-        "maxTokens": 16384,
-        "name": "Qwen: Qwen3 30B A3B",
+        "maxTokens": 8192,
+        "name": "Qwen3 30B A3B",
         "provider": "infron",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
+            "high": "high",
             "low": null,
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -4923,6 +5163,7 @@
             "input": 0.1,
             "output": 0.3
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "qwen/qwen3-30b-a3b-instruct-2507",
         "input": ["text"],
         "maxTokens": 32000,
@@ -4930,13 +5171,13 @@
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-30b-a3b-thinking-2507": {
@@ -4949,14 +5190,15 @@
             "input": 0.08,
             "output": 0.4
         },
+        "description": "Qwen reasoning model for deliberate problem solving, math, and coding",
         "id": "qwen/qwen3-30b-a3b-thinking-2507",
         "input": ["text"],
         "maxTokens": 32768,
         "name": "Qwen: Qwen3 30B A3B Thinking 2507",
         "provider": "infron",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
+            "high": "high",
             "low": null,
             "max": null,
             "medium": null,
@@ -4975,19 +5217,20 @@
             "input": 0.08,
             "output": 0.24
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "qwen/qwen3-32b",
         "input": ["text"],
         "maxTokens": 16384,
         "name": "Qwen3 32B",
         "provider": "infron",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
+            "high": "high",
             "low": null,
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -5001,19 +5244,20 @@
             "input": 0.05,
             "output": 0.4
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "qwen/qwen3-8b",
         "input": ["text"],
         "maxTokens": 8192,
         "name": "Qwen: Qwen3 8B",
         "provider": "infron",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
+            "high": "high",
             "low": null,
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -5027,46 +5271,48 @@
             "input": 0.78,
             "output": 3.8
         },
+        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
         "id": "qwen/qwen3-coder",
         "input": ["text"],
         "maxTokens": 66536,
         "name": "Qwen3 Coder",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-coder-30b-a3b-instruct": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 160000,
+        "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.015,
             "cacheWrite": 0.075,
             "input": 0.07,
             "output": 0.27
         },
+        "description": "Smaller Qwen coder for efficient local agents and repo-level fixes",
         "id": "qwen/qwen3-coder-30b-a3b-instruct",
         "input": ["text"],
-        "maxTokens": 32768,
+        "maxTokens": 65536,
         "name": "Qwen3-Coder 30B-A3B Instruct",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-coder-480b-a35b": {
@@ -5091,8 +5337,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-coder-flash": {
@@ -5100,11 +5346,12 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.039,
-            "cacheWrite": 0.24375,
+            "cacheRead": 0.06,
+            "cacheWrite": 0.375,
             "input": 0.3,
             "output": 1.5
         },
+        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
         "id": "qwen/qwen3-coder-flash",
         "input": ["text"],
         "maxTokens": 65536,
@@ -5112,13 +5359,13 @@
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-coder-next": {
@@ -5131,20 +5378,21 @@
             "input": 0.18,
             "output": 1.35
         },
+        "description": "Open-weight Qwen coding model for agents, repository edits, and multi-turn tool use",
         "id": "qwen/qwen3-coder-next",
         "input": ["text"],
         "maxTokens": 65536,
-        "name": "qwen/qwen3-coder-next",
+        "name": "Qwen3 Coder Next",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-coder-plus": {
@@ -5152,11 +5400,12 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.13,
-            "cacheWrite": 0.8125,
+            "cacheRead": 0.2,
+            "cacheWrite": 1.25,
             "input": 1.0,
             "output": 5.0
         },
+        "description": "Hosted Qwen coder for software agents, repo edits, and long-context code",
         "id": "qwen/qwen3-coder-plus",
         "input": ["text"],
         "maxTokens": 65536,
@@ -5164,13 +5413,13 @@
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-max": {
@@ -5178,15 +5427,70 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.156,
-            "cacheWrite": 0.975,
+            "cacheRead": 0.24,
+            "cacheWrite": 1.5,
             "input": 1.2,
             "output": 6.0
         },
+        "description": "Flagship Qwen3 model for coding agents, complex reasoning, and tool use",
         "id": "qwen/qwen3-max",
         "input": ["text"],
         "maxTokens": 65536,
         "name": "Qwen3 Max",
+        "provider": "infron",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "qwen/qwen3-next-80b-a3b-instruct": {
+        "api": "openai-completions",
+        "baseUrl": "https://llm.onerouter.pro/v1",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0.0288,
+            "cacheWrite": 0.0,
+            "input": 0.09,
+            "output": 0.574
+        },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
+        "id": "qwen/qwen3-next-80b-a3b-instruct",
+        "input": ["text"],
+        "maxTokens": 32768,
+        "name": "Qwen3-Next 80B-A3B Instruct",
+        "provider": "infron",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "qwen/qwen3-next-80b-a3b-thinking": {
+        "api": "openai-completions",
+        "baseUrl": "https://llm.onerouter.pro/v1",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.15,
+            "output": 1.2
+        },
+        "description": "Efficient Qwen thinking model for local reasoning, math, and coding agents",
+        "id": "qwen/qwen3-next-80b-a3b-thinking",
+        "input": ["text"],
+        "maxTokens": 32768,
+        "name": "Qwen3-Next 80B-A3B (Thinking)",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -5195,60 +5499,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "qwen/qwen3-next-80b-a3b-instruct": {
-        "api": "openai-completions",
-        "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 65536,
-        "cost": {
-            "cacheRead": 0.0288,
-            "cacheWrite": 0.0,
-            "input": 0.09,
-            "output": 0.574
-        },
-        "id": "qwen/qwen3-next-80b-a3b-instruct",
-        "input": ["text"],
-        "maxTokens": 65536,
-        "name": "Qwen3 Next 80B A3B Instruct",
-        "provider": "infron",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "qwen/qwen3-next-80b-a3b-thinking": {
-        "api": "openai-completions",
-        "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 65536,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.15,
-            "output": 1.2
-        },
-        "id": "qwen/qwen3-next-80b-a3b-thinking",
-        "input": ["text"],
-        "maxTokens": 65536,
-        "name": "Qwen3 Next 80B A3B Thinking",
-        "provider": "infron",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-omni-30b-a3b-instruct": {
@@ -5261,20 +5513,21 @@
             "input": 0.25,
             "output": 0.97
         },
+        "description": "Qwen omni model for text, vision, audio, and multimodal agent tasks",
         "id": "qwen/qwen3-omni-30b-a3b-instruct",
         "input": ["text", "video", "audio", "image"],
         "maxTokens": 16384,
         "name": "Qwen3 Omni 30B A3B Instruct",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-omni-30b-a3b-thinking": {
@@ -5287,6 +5540,7 @@
             "input": 0.25,
             "output": 0.97
         },
+        "description": "Qwen omni model for text, vision, audio, and multimodal agent tasks",
         "id": "qwen/qwen3-omni-30b-a3b-thinking",
         "input": ["text", "audio", "video", "image"],
         "maxTokens": 16384,
@@ -5299,8 +5553,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-vl-235b-a22b-instruct": {
@@ -5313,20 +5567,21 @@
             "input": 0.2,
             "output": 0.88
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3-vl-235b-a22b-instruct",
         "input": ["text", "image"],
         "maxTokens": 32768,
         "name": "Qwen: Qwen3 VL 235B A22B Instruct",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-vl-235b-a22b-thinking": {
@@ -5339,6 +5594,7 @@
             "input": 0.5,
             "output": 2.5
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3-vl-235b-a22b-thinking",
         "input": ["text", "image"],
         "maxTokens": 32768,
@@ -5347,9 +5603,9 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -5365,35 +5621,37 @@
             "input": 0.05,
             "output": 0.4
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3-vl-flash",
         "input": ["text", "image"],
         "maxTokens": 32000,
         "name": "Qwen3 VL Flash",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-vl-plus": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 262144,
+        "contextWindow": 256000,
         "cost": {
             "cacheRead": 0.0286,
             "cacheWrite": 0.0,
             "input": 0.2,
             "output": 1.6
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3-vl-plus",
         "input": ["text", "image"],
-        "maxTokens": 65536,
+        "maxTokens": 32768,
         "name": "Qwen3-VL Plus",
         "provider": "infron",
         "reasoning": true,
@@ -5403,8 +5661,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-122b-a10b": {
@@ -5417,6 +5675,7 @@
             "input": 0.29,
             "output": 2.4
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-122b-a10b",
         "input": ["text", "image", "video"],
         "maxTokens": 81920,
@@ -5425,11 +5684,11 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -5443,6 +5702,7 @@
             "input": 0.086,
             "output": 0.688
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-27b",
         "input": ["text", "image", "video"],
         "maxTokens": 65536,
@@ -5451,11 +5711,11 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -5469,6 +5729,7 @@
             "input": 0.31,
             "output": 0.31
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "qwen/qwen3.5-27b-anko",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -5481,8 +5742,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-27b-bluestar-v3-derestricted": {
@@ -5495,6 +5756,7 @@
             "input": 0.31,
             "output": 0.31
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "qwen/qwen3.5-27b-bluestar-v3-derestricted",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -5507,8 +5769,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-27b-bluestar-v3-derestricted-lite": {
@@ -5521,6 +5783,7 @@
             "input": 0.31,
             "output": 0.31
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "qwen/qwen3.5-27b-bluestar-v3-derestricted-lite",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -5533,8 +5796,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-27b-earica-derestricted": {
@@ -5547,6 +5810,7 @@
             "input": 0.31,
             "output": 0.31
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "qwen/qwen3.5-27b-earica-derestricted",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -5559,8 +5823,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-27b-earica-derestricted-lite": {
@@ -5573,6 +5837,7 @@
             "input": 0.31,
             "output": 0.31
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "qwen/qwen3.5-27b-earica-derestricted-lite",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -5585,8 +5850,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-27b-infracelestial": {
@@ -5599,6 +5864,7 @@
             "input": 0.31,
             "output": 0.31
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "qwen/qwen3.5-27b-infracelestial",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -5611,8 +5877,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-27b-marvin-dpo-v2-derestricted": {
@@ -5625,6 +5891,7 @@
             "input": 0.31,
             "output": 0.31
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "qwen/qwen3.5-27b-marvin-dpo-v2-derestricted",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -5637,8 +5904,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-27b-marvin-dpo-v2-derestricted-lite": {
@@ -5651,6 +5918,7 @@
             "input": 0.31,
             "output": 0.31
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "qwen/qwen3.5-27b-marvin-dpo-v2-derestricted-lite",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -5663,8 +5931,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-27b-marvin-v2-derestricted": {
@@ -5677,6 +5945,7 @@
             "input": 0.31,
             "output": 0.31
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "qwen/qwen3.5-27b-marvin-v2-derestricted",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -5689,8 +5958,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-27b-marvin-v2-derestricted-lite": {
@@ -5703,6 +5972,7 @@
             "input": 0.31,
             "output": 0.31
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "qwen/qwen3.5-27b-marvin-v2-derestricted-lite",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -5715,8 +5985,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-27b-nanovel-v2-derestricted": {
@@ -5741,8 +6011,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-27b-nanovel-v2-derestricted-lite": {
@@ -5767,8 +6037,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-27b-queen-derestricted": {
@@ -5781,6 +6051,7 @@
             "input": 0.31,
             "output": 0.31
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "qwen/qwen3.5-27b-queen-derestricted",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -5793,8 +6064,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-27b-queen-derestricted-lite": {
@@ -5807,6 +6078,7 @@
             "input": 0.31,
             "output": 0.31
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "qwen/qwen3.5-27b-queen-derestricted-lite",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -5819,8 +6091,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-27b-rprmax-v1": {
@@ -5833,6 +6105,7 @@
             "input": 0.31,
             "output": 0.31
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "qwen/qwen3.5-27b-rprmax-v1",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -5845,8 +6118,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-35b-a3b": {
@@ -5859,19 +6132,20 @@
             "input": 0.057,
             "output": 0.459
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-35b-a3b",
         "input": ["text", "image", "video"],
-        "maxTokens": 262144,
+        "maxTokens": 65536,
         "name": "Qwen3.5 35B-A3B",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -5885,6 +6159,7 @@
             "input": 0.172,
             "output": 1.032
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-397b-a17b",
         "input": ["text", "image", "video"],
         "maxTokens": 65536,
@@ -5893,11 +6168,11 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -5911,6 +6186,7 @@
             "input": 0.04,
             "output": 0.15
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-9b",
         "input": ["text", "image", "video"],
         "maxTokens": 262144,
@@ -5919,27 +6195,28 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
     "qwen/qwen3.5-flash": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 1020000,
+        "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.0058,
             "cacheWrite": 0.0,
             "input": 0.1,
             "output": 0.4
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-flash",
-        "input": ["text", "image"],
-        "maxTokens": 1020000,
+        "input": ["text"],
+        "maxTokens": 250000,
         "name": "Qwen3.5 Flash",
         "provider": "infron",
         "reasoning": true,
@@ -5949,8 +6226,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-plus": {
@@ -5963,9 +6240,10 @@
             "input": 0.115,
             "output": 0.688
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-plus",
-        "input": ["text"],
-        "maxTokens": 250000,
+        "input": ["text", "image", "video"],
+        "maxTokens": 65536,
         "name": "Qwen3.5 Plus",
         "provider": "infron",
         "reasoning": true,
@@ -5975,8 +6253,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.6-27b": {
@@ -5989,8 +6267,9 @@
             "input": 0.5,
             "output": 2.0
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.6-27b",
-        "input": ["text"],
+        "input": ["text", "image", "video", "pdf"],
         "maxTokens": 65536,
         "name": "Qwen3.6 27B",
         "provider": "infron",
@@ -6000,9 +6279,9 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
+            "minimal": "minimal",
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.6-35b-a3b": {
@@ -6015,6 +6294,7 @@
             "input": 0.15,
             "output": 0.95
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.6-35b-a3b",
         "input": ["text", "image", "video"],
         "maxTokens": 262144,
@@ -6023,11 +6303,11 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -6041,6 +6321,7 @@
             "input": 0.165,
             "output": 0.99
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.6-flash",
         "input": ["text", "image", "video"],
         "maxTokens": 65536,
@@ -6053,8 +6334,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.6-max-preview": {
@@ -6067,6 +6348,7 @@
             "input": 1.3,
             "output": 7.8
         },
+        "description": "Flagship Qwen model for complex reasoning, coding, and agentic workflows",
         "id": "qwen/qwen3.6-max-preview",
         "input": ["text"],
         "maxTokens": 65536,
@@ -6075,11 +6357,11 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -6093,6 +6375,7 @@
             "input": 0.276,
             "output": 1.651
         },
+        "description": "Earlier Qwen multimodal workhorse for million-token agent and document tasks",
         "id": "qwen/qwen3.6-plus",
         "input": ["text", "image", "video"],
         "maxTokens": 65536,
@@ -6105,8 +6388,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.6-plus:free": {
@@ -6131,8 +6414,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.7-flash": {
@@ -6145,6 +6428,7 @@
             "input": 0.028,
             "output": 0.11
         },
+        "description": "Lightweight multimodal Qwen model for high-throughput text, image, and video tasks",
         "id": "qwen/qwen3.7-flash",
         "input": ["text", "image", "video"],
         "maxTokens": 65536,
@@ -6157,8 +6441,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.7-max": {
@@ -6171,6 +6455,7 @@
             "input": 1.65,
             "output": 4.951
         },
+        "description": "Qwen frontier model tuned for agent frameworks, coding assistants, and long tasks",
         "id": "qwen/qwen3.7-max",
         "input": ["text"],
         "maxTokens": 65536,
@@ -6183,8 +6468,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.7-plus": {
@@ -6197,6 +6482,7 @@
             "input": 0.276,
             "output": 1.101
         },
+        "description": "Multimodal Qwen workhorse for long-context agents, visual inputs, and coding",
         "id": "qwen/qwen3.7-plus",
         "input": ["text", "image", "video"],
         "maxTokens": 64000,
@@ -6209,8 +6495,35 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "qwen/qwen3.8-2.4t-a95b": {
+        "api": "openai-completions",
+        "baseUrl": "https://llm.onerouter.pro/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.25,
+            "cacheWrite": 2.5,
+            "input": 1.8,
+            "output": 5.4
+        },
+        "description": "Open-weight sparse MoE (2.4T total, 95B active), the open-weight twin of Qwen3.8 Max for coding, research, complex reasoning, and agentic workflows",
+        "id": "qwen/qwen3.8-2.4t-a95b",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "Qwen3.8 2.4T A95B",
+        "provider": "infron",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.8-max": {
@@ -6223,6 +6536,7 @@
             "input": 0.825,
             "output": 2.4755
         },
+        "description": "2.4-trillion-parameter MoE flagship for coding, professional work, multimodal understanding, and long-horizon agentic workflows",
         "id": "qwen/qwen3.8-max",
         "input": ["text", "image", "video"],
         "maxTokens": 131072,
@@ -6230,13 +6544,13 @@
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
+            "high": null,
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "qwen/tongyi-deepresearch-30b-a3b": {
@@ -6254,12 +6568,12 @@
         "maxTokens": 131100,
         "name": "Tongyi DeepResearch 30B A3B",
         "provider": "infron",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -6301,20 +6615,22 @@
             "input": 5.0,
             "output": 30.0
         },
+        "description": "Fugu Ultra is the higher-performance model in Sakana AI's Fugu family. Rather than a single monolithic model, Fugu is a learned multi-agent orchestration system: a language model trained to route...",
         "id": "sakana/fugu-ultra",
         "input": ["text", "image"],
         "maxTokens": 128000,
         "name": "Fugu Ultra",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-06-15",
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
+            "low": null,
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "sao10k/72b-qwen2.5-kunou-v1": {
@@ -6339,34 +6655,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "sao10k/l3-lunaris-8b": {
-        "api": "openai-completions",
-        "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 8192,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.04,
-            "output": 0.05
-        },
-        "id": "sao10k/l3-lunaris-8b",
-        "input": ["text"],
-        "maxTokens": 16384,
-        "name": "Sao10K: Llama 3 8B Lunaris",
-        "provider": "infron",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "sao10k/l3.1-70b-euryale-v2.2": {
@@ -6379,17 +6669,18 @@
             "input": 0.85,
             "output": 0.85
         },
+        "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "sao10k/l3.1-70b-euryale-v2.2",
         "input": ["text"],
         "maxTokens": 16384,
         "name": "Llama 3.1 70B Euryale",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -6405,6 +6696,7 @@
             "input": 0.493,
             "output": 0.493
         },
+        "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "sao10k/l3.1-70b-hanami-x1",
         "input": ["text"],
         "maxTokens": 16384,
@@ -6431,17 +6723,18 @@
             "input": 0.85,
             "output": 0.85
         },
+        "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "sao10k/l3.3-70b-euryale-v2.3",
         "input": ["text"],
         "maxTokens": 16384,
         "name": "Llama 3.3 70B Euryale",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -6464,10 +6757,10 @@
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -6483,14 +6776,17 @@
             "input": 0.1,
             "output": 0.3
         },
+        "description": "StepFun flash model for efficient multimodal reasoning, coding, and tool use",
         "id": "stepfun/step-3.5-flash",
         "input": ["text"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 65536,
         "name": "Step 3.5 Flash",
         "provider": "infron",
-        "reasoning": false,
+        "reasoning": true,
+        "releaseDate": "2026-01-29",
         "thinkingLevelMap": {
-            "high": null,
+            "high": "high",
             "low": null,
             "max": null,
             "medium": null,
@@ -6509,12 +6805,15 @@
             "input": 0.2,
             "output": 1.15
         },
+        "description": "StepFun flash model for efficient multimodal reasoning, coding, and tool use",
         "id": "stepfun/step-3.7-flash",
         "input": ["text", "image", "video"],
+        "knowledgeCutoff": "2026-03-01",
         "maxTokens": 262144,
         "name": "Step 3.7 Flash",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-05-29",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -6535,19 +6834,21 @@
             "input": 0.14,
             "output": 0.58
         },
+        "description": "Tencent Hy reasoning model for coding, instruction following, and agent tasks",
         "id": "tencent/hy3",
         "input": ["text"],
         "maxTokens": 262144,
         "name": "Hy3",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-07-06",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -6561,17 +6862,18 @@
             "input": 0.31,
             "output": 0.31
         },
+        "description": "General-purpose chat model for instruction following, writing, and analysis",
         "id": "thedrummer/anubis-70b-v1.1",
         "input": ["text"],
         "maxTokens": 16384,
         "name": "Anubis 70B v1.1",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -6587,16 +6889,71 @@
             "input": 1.0,
             "output": 4.05
         },
+        "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
         "id": "thinkingmachines/inkling",
         "input": ["text", "image"],
         "maxTokens": 32768,
         "name": "Inkling",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-07-15",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "upstage/solar-pro-3": {
+        "api": "openai-completions",
+        "baseUrl": "https://llm.onerouter.pro/v1",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0.015,
+            "cacheWrite": 0.0,
+            "input": 0.15,
+            "output": 0.6
+        },
+        "description": "Flagship model for demanding analysis, coding, and production agent workflows",
+        "id": "upstage/solar-pro-3",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "Upstage: Solar Pro 3",
+        "provider": "infron",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
             "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "upstage/solar-pro-4": {
+        "api": "openai-completions",
+        "baseUrl": "https://llm.onerouter.pro/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.03,
+            "output": 0.12
+        },
+        "id": "upstage/solar-pro-4",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "upstage/solar-pro-4",
+        "provider": "infron",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -6613,6 +6970,7 @@
             "input": 0.13,
             "output": 1.25
         },
+        "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
         "id": "volcengine/doubao-seed-1.8",
         "input": ["text", "image", "video"],
         "maxTokens": 64000,
@@ -6634,21 +6992,22 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 256000,
         "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
+            "cacheRead": 0.14,
+            "cacheWrite": 0.0024,
             "input": 0.5,
             "output": 2.5
         },
+        "description": "ByteDance Seed coding model for multimodal software engineering and long-running agents",
         "id": "volcengine/doubao-seed-2.0-code",
-        "input": ["text"],
-        "maxTokens": 32000,
-        "name": "Doubao Seed 2.0 Code",
+        "input": ["text", "image", "video"],
+        "maxTokens": 128000,
+        "name": "Seed 2.0 Code",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -6660,21 +7019,22 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 256000,
         "cost": {
-            "cacheRead": 0.02,
+            "cacheRead": 0.03,
             "cacheWrite": 0.0024,
             "input": 0.1,
             "output": 0.57
         },
+        "description": "Cost-efficient ByteDance Seed 2.0 model for production chat, analysis, and structured generation",
         "id": "volcengine/doubao-seed-2.0-lite",
         "input": ["text", "image", "video"],
-        "maxTokens": 64000,
-        "name": "Doubao-Seed-2.0-lite",
+        "maxTokens": 32000,
+        "name": "Seed 2.0 Lite",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -6686,21 +7046,22 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 256000,
         "cost": {
-            "cacheRead": 0.01,
+            "cacheRead": 0.02,
             "cacheWrite": 0.0024,
             "input": 0.04,
             "output": 0.32
         },
+        "description": "Lightweight ByteDance Seed 2.0 model for low-latency multimodal reasoning and high-volume tasks",
         "id": "volcengine/doubao-seed-2.0-mini",
         "input": ["text", "image", "video"],
-        "maxTokens": 64000,
-        "name": "Doubao-Seed-2.0-mini",
+        "maxTokens": 32000,
+        "name": "Seed 2.0 Mini",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -6712,21 +7073,22 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 256000,
         "cost": {
-            "cacheRead": 0.09,
+            "cacheRead": 0.14,
             "cacheWrite": 0.0024,
             "input": 0.5,
             "output": 2.5
         },
+        "description": "Flagship ByteDance Seed 2.0 model for complex multimodal reasoning and long-horizon agent workflows",
         "id": "volcengine/doubao-seed-2.0-pro",
         "input": ["text", "image", "video"],
-        "maxTokens": 64000,
-        "name": "Doubao-Seed-2.0-pro",
+        "maxTokens": 128000,
+        "name": "Seed 2.0 Pro",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -6752,8 +7114,8 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -6778,8 +7140,8 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -6795,6 +7157,7 @@
             "input": 1.25,
             "output": 2.5
         },
+        "description": "xAI's default Grok for chat, coding, agentic tools, and lower hallucination risk",
         "id": "x-ai/grok-4.3",
         "input": ["text", "image"],
         "maxTokens": 1000000,
@@ -6807,7 +7170,7 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -6816,11 +7179,12 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 500000,
         "cost": {
-            "cacheRead": 0.5,
+            "cacheRead": 0.3,
             "cacheWrite": 2.0,
             "input": 2.0,
             "output": 6.0
         },
+        "description": "xAI's Grok model for chat, coding, agentic tools, and lower hallucination risk",
         "id": "x-ai/grok-4.5",
         "input": ["text", "image"],
         "maxTokens": 500000,
@@ -6837,6 +7201,33 @@
             "xhigh": null
         }
     },
+    "x-ai/grok-4.6": {
+        "api": "openai-completions",
+        "baseUrl": "https://llm.onerouter.pro/v1",
+        "contextWindow": 500000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 2.0,
+            "input": 2.0,
+            "output": 6.0
+        },
+        "description": "xAI's frontier model for long-running agents, coding, knowledge work, and visual projects",
+        "id": "x-ai/grok-4.6",
+        "input": ["text", "image"],
+        "maxTokens": 500000,
+        "name": "Grok 4.6",
+        "provider": "infron",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
     "x-ai/grok-build-0.1": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
@@ -6847,6 +7238,7 @@
             "input": 1.0,
             "output": 2.0
         },
+        "description": "Fast Grok coding model tuned for agentic engineering and iterative edits",
         "id": "x-ai/grok-build-0.1",
         "input": ["text", "image"],
         "maxTokens": 256000,
@@ -6856,8 +7248,8 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -6873,12 +7265,15 @@
             "input": 0.105,
             "output": 0.28
         },
+        "description": "MiMo omni model for text, image, video, audio, and agents",
         "id": "xiaomi/mimo-v2.5",
         "input": ["text", "image", "audio", "video"],
+        "knowledgeCutoff": "2024-12",
         "maxTokens": 131072,
         "name": "MiMo-V2.5",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-04-22",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -6899,19 +7294,22 @@
             "input": 1.0,
             "output": 3.0
         },
+        "description": "Stronger MiMo Pro tier for multimodal reasoning and coding-agent execution",
         "id": "xiaomi/mimo-v2.5-pro",
         "input": ["text"],
+        "knowledgeCutoff": "2024-12",
         "maxTokens": 128000,
         "name": "MiMo-V2.5-Pro",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-04-22",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -6937,8 +7335,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "z-ai/glm-4-32b-0414-128k": {
@@ -6951,6 +7349,7 @@
             "input": 0.1,
             "output": 0.1
         },
+        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "z-ai/glm-4-32b-0414-128k",
         "input": ["text"],
         "maxTokens": 16384,
@@ -6958,13 +7357,13 @@
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "z-ai/glm-4.5": {
@@ -6977,6 +7376,7 @@
             "input": 0.6,
             "output": 2.2
         },
+        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "z-ai/glm-4.5",
         "input": ["text"],
         "maxTokens": 98304,
@@ -6985,11 +7385,11 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -7003,19 +7403,20 @@
             "input": 0.2,
             "output": 1.1
         },
+        "description": "Efficient GLM model for fast reasoning, coding, and agent workflows",
         "id": "z-ai/glm-4.5-air",
         "input": ["text"],
         "maxTokens": 98304,
         "name": "GLM-4.5-Air",
         "provider": "infron",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
+            "high": "high",
             "low": null,
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -7029,20 +7430,21 @@
             "input": 1.1,
             "output": 4.5
         },
+        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "z-ai/glm-4.5-airx",
         "input": ["text"],
         "maxTokens": 16384,
         "name": "glm-4.5-airx",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "z-ai/glm-4.5-flash": {
@@ -7055,20 +7457,21 @@
             "input": 0.1,
             "output": 0.1
         },
+        "description": "Efficient GLM model for fast reasoning, coding, and agent workflows",
         "id": "z-ai/glm-4.5-flash",
         "input": ["text"],
         "maxTokens": 98304,
         "name": "GLM-4.5-Flash",
         "provider": "infron",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "z-ai/glm-4.5v": {
@@ -7081,19 +7484,20 @@
             "input": 0.6,
             "output": 1.8
         },
+        "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
         "id": "z-ai/glm-4.5v",
         "input": ["text", "image"],
         "maxTokens": 16384,
         "name": "GLM-4.5V",
         "provider": "infron",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
+            "high": "high",
             "low": null,
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -7112,27 +7516,28 @@
         "maxTokens": 96000,
         "name": "GLM 4.5X",
         "provider": "infron",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "z-ai/glm-4.6": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 202752,
+        "contextWindow": 204800,
         "cost": {
             "cacheRead": 0.11,
             "cacheWrite": 0.0,
             "input": 0.431,
             "output": 1.74
         },
+        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "z-ai/glm-4.6",
         "input": ["text"],
         "maxTokens": 131072,
@@ -7141,11 +7546,11 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -7159,6 +7564,7 @@
             "input": 0.3,
             "output": 0.9
         },
+        "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
         "id": "z-ai/glm-4.6v",
         "input": ["text", "image", "video"],
         "maxTokens": 32768,
@@ -7167,11 +7573,11 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -7185,6 +7591,7 @@
             "input": 0.1,
             "output": 0.1
         },
+        "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
         "id": "z-ai/glm-4.6v-flash",
         "input": ["text", "image", "video"],
         "maxTokens": 64000,
@@ -7197,8 +7604,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "z-ai/glm-4.6v-flashx": {
@@ -7211,6 +7618,7 @@
             "input": 0.04,
             "output": 0.4
         },
+        "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
         "id": "z-ai/glm-4.6v-flashx",
         "input": ["text", "image"],
         "maxTokens": 16000,
@@ -7223,8 +7631,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "z-ai/glm-4.7": {
@@ -7237,6 +7645,7 @@
             "input": 0.4,
             "output": 1.75
         },
+        "description": "Mature GLM model for dependable coding, reasoning, and structured agent tasks",
         "id": "z-ai/glm-4.7",
         "input": ["text"],
         "maxTokens": 128000,
@@ -7249,8 +7658,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "z-ai/glm-4.7-flash": {
@@ -7263,6 +7672,7 @@
             "input": 0.06,
             "output": 0.4
         },
+        "description": "Efficient GLM model for fast reasoning, coding, and agent workflows",
         "id": "z-ai/glm-4.7-flash",
         "input": ["text"],
         "maxTokens": 16384,
@@ -7271,11 +7681,11 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -7289,6 +7699,7 @@
             "input": 0.07,
             "output": 0.4
         },
+        "description": "Efficient GLM model for fast reasoning, coding, and agent workflows",
         "id": "z-ai/glm-4.7-flashx",
         "input": ["text"],
         "maxTokens": 128000,
@@ -7301,8 +7712,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "z-ai/glm-5": {
@@ -7315,20 +7726,21 @@
             "input": 0.573,
             "output": 1.92
         },
+        "description": "General GLM flagship for coding, analysis, and tool-heavy engineering workflows",
         "id": "z-ai/glm-5",
         "input": ["text"],
         "maxTokens": 128000,
         "name": "GLM-5",
         "provider": "infron",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "z-ai/glm-5-turbo": {
@@ -7341,6 +7753,7 @@
             "input": 0.79,
             "output": 3.44
         },
+        "description": "Faster GLM-5 lane for coding agents that need lower latency",
         "id": "z-ai/glm-5-turbo",
         "input": ["text"],
         "maxTokens": 128000,
@@ -7353,8 +7766,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "z-ai/glm-5.1": {
@@ -7367,6 +7780,7 @@
             "input": 0.825,
             "output": 3.0
         },
+        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
         "id": "z-ai/glm-5.1",
         "input": ["text"],
         "maxTokens": 128000,
@@ -7379,8 +7793,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "z-ai/glm-5.2": {
@@ -7393,6 +7807,7 @@
             "input": 0.55,
             "output": 1.9255
         },
+        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "z-ai/glm-5.2",
         "input": ["text"],
         "maxTokens": 202752,
@@ -7401,9 +7816,9 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
+            "low": null,
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -7419,20 +7834,21 @@
             "input": 2.29,
             "output": 8.0
         },
+        "description": "Efficient GLM model for fast reasoning, coding, and agent workflows",
         "id": "z-ai/glm-5.2-fast",
         "input": ["text"],
         "maxTokens": 1048560,
         "name": "GLM 5.2 Fast",
         "provider": "infron",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "z-ai/glm-5v-turbo": {
@@ -7445,6 +7861,7 @@
             "input": 0.79,
             "output": 3.44
         },
+        "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
         "id": "z-ai/glm-5v-turbo",
         "input": ["image", "text", "video"],
         "maxTokens": 131072,
@@ -7453,11 +7870,11 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     }

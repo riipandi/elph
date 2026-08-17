@@ -62,6 +62,7 @@ pub(crate) fn build_shell_view(
         mut model_selected_index,
         density,
         mut new_session_requested,
+        mut resume_session_requested,
         on_queue_action_click,
         paths,
         mut pending_confetti,
@@ -77,9 +78,16 @@ pub(crate) fn build_shell_view(
         mut pending_queue_click,
         mut pending_quit_confirm,
         mut pending_rename,
+        mut pending_item_selector,
+        mut item_selector_selected,
         mut pending_scoped_models,
         pending_subagent_output,
         mut pending_system_prompt,
+        pending_aside,
+        aside_tick,
+        mut pending_worker_chat,
+        worker_chat_selected,
+        mut worker_pending_count,
         mut pending_tool_approval,
         mut pending_user_question,
         mut pre_echoed_user_prompts,
@@ -138,6 +146,7 @@ pub(crate) fn build_shell_view(
         mut ui_events_slot,
         mut user_shell_abort,
         user_shell_channel,
+        todos,
         ..
     } = ctx;
 
@@ -230,6 +239,8 @@ pub(crate) fn build_shell_view(
         let session_title = crate::agent::session_title_for_rename(agent_session.as_ref())
             .ok()
             .filter(|title| !title.trim().is_empty());
+        let submitted = count_submitted_user_prompts(&messages.read());
+        let persisted_turns = chrome.turn_count;
         record_if_active(
             ExitSnapshot {
                 session_id: session_id.clone(),
@@ -241,9 +252,16 @@ pub(crate) fn build_shell_view(
                 lines_removed,
                 usage: Default::default(),
             },
-            count_submitted_user_prompts(&messages.read()),
-            chrome.turn_count,
+            submitted,
+            persisted_turns,
         );
+        // Discard the session record when the user never produced a turn this run.
+        // Blocking on the async delete (bounded) so the record is gone before exit.
+        if !session_had_user_activity(submitted, persisted_turns)
+            && let Some(session) = agent_session.as_ref()
+        {
+            delete_empty_session_blocking(Arc::clone(session), &session_id);
+        }
         system.exit();
     }
 
@@ -283,12 +301,14 @@ pub(crate) fn build_shell_view(
         .as_ref()
         .is_some_and(|d| d.title == "Session");
     let rename_open = pending_rename.read().is_some();
+    let item_selector_open = pending_item_selector.read().is_some();
     let confetti_open = pending_confetti.read().is_some();
     let provider_connect_open = pending_provider_connect.read().is_some();
     let mcp_auth_open = pending_mcp_auth.read().is_some();
     let provider_disconnect_open = pending_provider_disconnect.read().is_some();
     let provider_api_key_open = pending_provider_api_key.read().is_some();
     let queue_manager_is_open = queue_manager_open.get();
+    let aside_open = pending_aside.read().is_some();
     let status_dialog_open = pending_tool_approval.read().is_some()
         || pending_mode_change.read().is_some()
         || pending_plan_confirmation.read().is_some()
@@ -299,12 +319,34 @@ pub(crate) fn build_shell_view(
         || scoped_models_open
         || system_prompt_open
         || rename_open
+        || item_selector_open
         || confetti_open
         || provider_connect_open
         || mcp_auth_open
         || provider_disconnect_open
         || provider_api_key_open
-        || queue_manager_is_open;
+        || queue_manager_is_open
+        || aside_open;
+    // Lightweight confirmations float below the status row and never need the wheel:
+    // tool approval, plan confirmation, mode change, memory flush, feedback, and
+    // provider disconnect. The transcript stays mouse-scrollable while any of them is
+    // open. Surfaces that own their own scroll (the `/aside` panel, which is
+    // keyboard-scrollable, plus full modals: user question, pickers, system prompt,
+    // provider auth flows, queue manager, confetti, …) lock the wheel so scrolling
+    // them does not fight the transcript underneath.
+    let transcript_wheel_blocked = status_dialog_open
+        && (user_question_open
+            || model_selector_open
+            || scoped_models_open
+            || system_prompt_open
+            || rename_open
+            || item_selector_open
+            || confetti_open
+            || provider_connect_open
+            || mcp_auth_open
+            || provider_api_key_open
+            || queue_manager_is_open
+            || aside_open);
     let prompt_focused =
         !status_dialog_open && matches!(shell_focus.get(), ShellFocus::Prompt | ShellFocus::StatusDialog);
     let transcript_focused = !status_dialog_open && shell_focus.get() == ShellFocus::Transcript;
@@ -333,8 +375,19 @@ pub(crate) fn build_shell_view(
         && !provider_connect_open
         && !mcp_auth_open
         && !provider_disconnect_open;
-    let rename_has_focus =
-        rename_open && !user_question_open && !system_prompt_open && !confetti_open && !model_selector_open;
+    let rename_has_focus = rename_open
+        && !user_question_open
+        && !system_prompt_open
+        && !confetti_open
+        && !model_selector_open
+        && !item_selector_open;
+    let item_selector_has_focus = item_selector_open
+        && !user_question_open
+        && !system_prompt_open
+        && !rename_open
+        && !confetti_open
+        && !model_selector_open
+        && !scoped_models_open;
     let approval_has_focus = (pending_tool_approval.read().is_some()
         || pending_mode_change.read().is_some()
         || pending_plan_confirmation.read().is_some()
@@ -527,8 +580,41 @@ pub(crate) fn build_shell_view(
     } else {
         None
     };
+    // NOTE: Do **not** call `item_selector_selected.set(...)` here during render —
+    // that re-triggers a frame forever and freezes the TUI. Selection is synced
+    // only in `open_item_selector` and keyboard handlers.
+    let item_selector_overlay = if item_selector_open {
+        let pending_snap = pending_item_selector.read().clone();
+        Some(
+            element! {
+                ItemSelectorBar(
+                    screen_width: screen_width,
+                    screen_height: screen_height,
+                    has_focus: item_selector_has_focus,
+                    pending: pending_snap,
+                    selected_index: Some(item_selector_selected),
+                    on_cancel: move |_| {
+                        close_item_selector(
+                            &mut pending_item_selector,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                            true,
+                        );
+                        force_editor_clear.set(true);
+                    },
+                )
+            }
+            .into(),
+        )
+    } else {
+        None
+    };
     // Same slot as slash palette / model picker: above the editor, below the status row.
-    let editor_overlay = rename_overlay.or(model_selector_overlay).or(scoped_models_overlay);
+    let editor_overlay = rename_overlay
+        .or(item_selector_overlay)
+        .or(model_selector_overlay)
+        .or(scoped_models_overlay);
     let _confetti_frame = confetti_frame.get();
     let confetti_overlay = pending_confetti.read().as_ref().map(|_| -> AnyElement<'static> {
         let particles = if let Some(runtime) = confetti_runtime.write().as_mut() {
@@ -787,8 +873,9 @@ pub(crate) fn build_shell_view(
                 messages_revision: Some(messages_revision),
                 sticky_scroll: sticky_scroll,
                 has_focus: transcript_focused,
-                // Modal dialogs own the wheel; keep the transcript still underneath.
-                mouse_scroll: Some(!status_dialog_open),
+                // Plan confirmation / tool approval don't capture the wheel; keep the
+                // transcript scrollable underneath them. Other modals lock it.
+                mouse_scroll: Some(!transcript_wheel_blocked),
                 text_select_mode: select_mode.get() || shift_held.get(),
                 streaming_active: Some(busy.get()),
                 messages_arc: Some(messages_arc.read().clone()),
@@ -810,6 +897,118 @@ pub(crate) fn build_shell_view(
                     }))
                 },
             )
+            #(pending_aside.read().as_ref().map(|state| -> AnyElement<'static> {
+                // The aside panel owns focus while it shows an answer so its keyboard
+                // scroll does not conflict with the transcript underneath (the wheel is
+                // locked via `transcript_wheel_blocked` while the panel is open).
+                let has_focus = matches!(
+                    state,
+                    crate::tui::aside_panel::AsidePanelState::Done { .. }
+                );
+                element! {
+                    crate::tui::aside_panel::AsidePanel(
+                        screen_width: screen_width,
+                        state: state.clone(),
+                        has_focus: has_focus,
+                        tick: aside_tick.get(),
+                    )
+                }
+                .into()
+            }))
+            #(pending_worker_chat.read().as_ref().map(|state| -> AnyElement<'static> {
+                let picked = worker_chat_selected.get();
+                element! {
+                    crate::tui::worker_chat::WorkerChatOverlay(
+                        screen_width: screen_width,
+                        screen_height: screen_height,
+                        state: state.clone(),
+                        picked: picked,
+                        on_esc: {
+                            let mut pending_worker_chat = pending_worker_chat;
+                            let mut worker_chat_selected = worker_chat_selected;
+                            let mut draft = draft;
+                            let mut live_draft = live_draft;
+                            let mut shell_focus = shell_focus;
+                            move |_| {
+                                // Esc: back to picker first, then close.
+                                let mut state = pending_worker_chat.write();
+                                if let Some(s) = state.as_mut() {
+                                    if s.active.is_some() {
+                                        crate::tui::worker_chat::back_to_worker_picker(s);
+                                        worker_chat_selected.set(s.selected);
+                                    } else {
+                                        drop(state);
+                                        crate::tui::worker_chat::close_worker_chat(
+                                            &mut pending_worker_chat,
+                                            &mut draft,
+                                            &mut live_draft,
+                                            &mut shell_focus,
+                                            true,
+                                        );
+                                    }
+                                }
+                            }
+                        },
+                        on_close: {
+                            let mut pending_worker_chat = pending_worker_chat;
+                            let mut draft = draft;
+                            let mut live_draft = live_draft;
+                            let mut shell_focus = shell_focus;
+                            move |_| {
+                                crate::tui::worker_chat::close_worker_chat(
+                                    &mut pending_worker_chat,
+                                    &mut draft,
+                                    &mut live_draft,
+                                    &mut shell_focus,
+                                    false,
+                                );
+                            }
+                        },
+                    )
+                }
+                .into()
+            }))
+            #({
+                let items = todos.read();
+                let panel_rows: Vec<elph_tui::TodoPanelRow> = items
+                    .iter()
+                    .map(|item| {
+                        let finished = matches!(
+                            item.status,
+                            elph_agent::TodoStatus::Completed | elph_agent::TodoStatus::Cancelled
+                        );
+                        elph_tui::TodoPanelRow {
+                            label: item.content.clone(),
+                            running: item.status == elph_agent::TodoStatus::InProgress,
+                            finished,
+                        }
+                    })
+                    .collect();
+                // Hide once every item is finished (or the list is empty).
+                if !elph_tui::todo_panel_should_show(&panel_rows) {
+                    None
+                } else {
+                    // Steering / interject (Ctrl+Enter) or a queued steer item: dim the
+                    // checklist so the old plan reads as provisional until the agent updates it.
+                    let activity = activity_label.read().clone();
+                    let steered_queued = prompt_queue.read().items().iter().any(|item| {
+                        matches!(item.kind, crate::agent::QueuedPromptKind::Steer)
+                    });
+                    let redirected = steered_queued
+                        || activity.eq_ignore_ascii_case("Steering")
+                        || activity.to_ascii_lowercase().starts_with("steering");
+                    let panel_theme = elph_tui::UiTheme::default();
+                    Some::<AnyElement<'static>>(element! {
+                        elph_tui::TodoProgressPanel(
+                            width: screen_width,
+                            items: panel_rows,
+                            max_rows: elph_tui::TODO_PANEL_DEFAULT_MAX_ROWS,
+                            redirected: redirected,
+                            theme: Some(panel_theme),
+                        )
+                    }.into())
+                }
+            })
             #(user_question_view.map(|view| -> AnyElement<'static> {
                 element! {
                     UserQuestionBar(
@@ -1047,6 +1246,20 @@ pub(crate) fn build_shell_view(
                 model_label: model_label.clone(),
                 supports_images: supports_images,
                 colored_status_footer: colored_status_footer,
+                worker_live_count: agent_session
+                    .as_ref()
+                    .map(|s| s.worker_tui_badge_count())
+                    .unwrap_or(0),
+                worker_name: agent_session
+                    .as_ref()
+                    .and_then(|s| s.worker_name())
+                    .unwrap_or("")
+                    .to_string(),
+                worker_pending_count: worker_pending_count.get(),
+                worker_replying: agent_session
+                    .as_ref()
+                    .map(|s| s.is_intercom_turn_active())
+                    .unwrap_or(false),
                 chrome_revision: chrome_ui_revision.get(),
                 draft: Some(draft),
                 live_draft: Some(live_draft),
@@ -1268,6 +1481,7 @@ pub(crate) fn build_shell_view(
                         if slash_echoes_prompt_in_transcript(&outcome) && !queue_follow_up {
                             let echo = if is_slash {
                                 // Keep leading `/` so history / skill cards restore as `/name` or `/cmd`.
+                                // Skills already carry the `/skill:` prefix from palette completion.
                                 if slash_input.trim().starts_with('/') {
                                     slash_input.trim().to_string()
                                 } else {
@@ -1385,6 +1599,30 @@ pub(crate) fn build_shell_view(
 
                                 // Signal the tick loop to reload resources and restart bootstrap
                                 new_session_requested.set(true);
+                            }
+                            SlashOutcome::ResumeSession { session_id } => {
+                                // Graceful multi-worker release before rebinding the session.
+                                if let Some(session) = agent_session.as_ref() {
+                                    let session = Arc::clone(session);
+                                    tokio::spawn(async move {
+                                        session.shutdown_workers().await;
+                                    });
+                                }
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                push_transcript_message_synced(
+                                    &mut messages,
+                                    messages_arc,
+                                    &mut messages_revision,
+                                    &mut prompt_history,
+                                    TranscriptMessage::text(
+                                        format!("Resuming session {session_id}…"),
+                                        TranscriptStyle::Meta,
+                                    ),
+                                );
+                                resume_session_requested.set(Some(session_id));
                             }
                             SlashOutcome::Status(message) => {
                                 push_transcript_message_synced(
@@ -1621,6 +1859,31 @@ pub(crate) fn build_shell_view(
                                 suppress_enter_newline.set(true);
                                 return;
                             }
+                            SlashOutcome::OpenItemSelector {
+                                purpose,
+                                title,
+                                items,
+                                preferred_value,
+                                footer_hint,
+                            } => {
+                                open_item_selector(OpenItemSelectorArgs {
+                                    pending: &mut pending_item_selector,
+                                    draft: &mut draft,
+                                    live_draft: &mut live_draft,
+                                    shell_focus: &mut shell_focus,
+                                    selected_index: Some(&mut item_selector_selected),
+                                    purpose,
+                                    title,
+                                    items,
+                                    preferred_value,
+                                    footer_hint,
+                                });
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
                             SlashOutcome::OpenRenameDialog { initial } => {
                                 open_rename_dialog(OpenRenameDialogArgs {
                                     pending: &mut pending_rename,
@@ -1684,6 +1947,19 @@ pub(crate) fn build_shell_view(
                                 TranscriptMessage::text(overlay_deferred_message(&overlay), TranscriptStyle::Meta),
                                 );
                             }
+                            SlashOutcome::OpenWorkerChat { peers } => {
+                                // Same open path as Alt+M: stash draft + set pending state.
+                                worker_pending_count.set(0);
+                                crate::tui::worker_chat::open_worker_chat_overlay(
+                                    &mut pending_worker_chat,
+                                    &mut draft,
+                                    &mut live_draft,
+                                    &mut shell_focus,
+                                    peers,
+                                    Vec::new(),
+                                );
+                                force_editor_clear.set(true);
+                            }
                             SlashOutcome::BackgroundTask => {
                                 // Background task already dispatched by handle_slash_submit.
                                 // No busy/turn state needed — the task will emit Status events
@@ -1695,7 +1971,10 @@ pub(crate) fn build_shell_view(
                                 // (slim meta line / stream) and derives busy state from the
                                 // agent loop, so a read failure never strands a stale busy UI.
                             }
-                            SlashOutcome::SpawnAgentTurn | SlashOutcome::SpawnAgentTurnQuiet if is_slash => {
+                            SlashOutcome::SpawnAgentTurn
+                            | SlashOutcome::SpawnAgentTurnSkill { .. }
+                            | SlashOutcome::SpawnAgentTurnPromptTemplate { .. }
+                            | SlashOutcome::SpawnAgentTurnQuiet if is_slash => {
                                 if agent_turn_active.get() {
                                     // The command was already dispatched by handle_slash_submit
                                     // (turn_gate queues it behind the active turn). Tell the user —
@@ -1728,7 +2007,10 @@ pub(crate) fn build_shell_view(
                                     begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
                                 }
                             }
-                            SlashOutcome::SpawnAgentTurn | SlashOutcome::SpawnAgentTurnQuiet => {
+                            SlashOutcome::SpawnAgentTurn
+                            | SlashOutcome::SpawnAgentTurnSkill { .. }
+                            | SlashOutcome::SpawnAgentTurnPromptTemplate { .. }
+                            | SlashOutcome::SpawnAgentTurnQuiet => {
                                 debug_assert!(!slash_outcome_is_ui_only(&SlashOutcome::SpawnAgentTurn));
                                 if agent_turn_active.get() {
                                     prompt_queue.write().push_follow_up_local(body.clone());

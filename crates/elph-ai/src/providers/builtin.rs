@@ -270,7 +270,7 @@ pub fn github_copilot_provider() -> Provider {
         base_url: Some("https://api.individual.githubcopilot.com".to_string()),
         headers: None,
         auth: ProviderAuth {
-            api_key: Some(env_api_key_auth("GitHub Copilot token", vec!["COPILOT_GITHUB_TOKEN"])),
+            api_key: Some(crate::auth::github_copilot_api_key_auth()),
             oauth: Some(github_copilot_oauth()),
         },
         models: builtin_catalog("github-copilot").as_ref().clone(),
@@ -502,6 +502,12 @@ pub fn builtin_providers() -> Vec<Provider> {
         ),
         anthropic_provider(),
         simple_provider!(
+            "agnes",
+            "Agnes",
+            openai_completions_api,
+            (vec!["AGNES_API_KEY"], "Agnes API key")
+        ),
+        simple_provider!(
             "azure-openai-responses",
             "Azure OpenAI",
             azure_openai_responses_api,
@@ -588,6 +594,12 @@ pub fn builtin_providers() -> Vec<Provider> {
             "Moonshot AI (China)",
             openai_completions_api,
             (vec!["MOONSHOT_API_KEY"], "Moonshot API key")
+        ),
+        simple_provider!(
+            "nara-router",
+            "Nara Router",
+            openai_completions_api,
+            (vec!["NARA_API_KEY"], "Nara Router API key")
         ),
         opencode_provider(),
         opencode_go_provider(),

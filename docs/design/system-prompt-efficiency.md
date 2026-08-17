@@ -83,7 +83,7 @@ they are **default-inactive** on the model-visible wire:
   turns. Subagents receive the full parent registry with the parent's active set
   (MCP stays inactive until listed/called).
 
-Prompt guidance (`coding_base.md`) tells the model to pass `name_prefix` (e.g.
+Prompt guidance (`coding_base.txt`) tells the model to pass `name_prefix` (e.g.
 `mcp_deepwiki__`) to activate. Full-harness coverage in
 `crates/elph-agent/tests/harness.rs`:
 `harness_lazy_activates_mcp_tools_via_list_available_tools`,
@@ -105,7 +105,7 @@ advertisement from the static prompt.
 
 ## Simplified Technical English response style
 
-The coding-agent domain template (`crates/coding-agent/templates/agent/coding_base.md`)
+The coding-agent domain template (`crates/coding-agent/prompts/coding_base.txt`)
 now ends with a `<response_style>` section derived from ASD-STE100 (Simplified
 Technical English) applied to **every response** the agent writes: chat replies and
 content written to files (code, comments, docs, commit messages).
@@ -136,3 +136,38 @@ The single combined entry point `format_skills_for_context(skills, cwd)` (filter
   verbatim, so they should call `format_skills_for_context` (or pre-filter with
   `filter_skills_for_context`) before setting `skills_section` — the builder itself
   keeps rendering exactly what it receives.
+
+## Serialized Schema Formats
+
+Both skill and tool catalogs use compact XML with attributes for metadata and
+nested `<property>` elements for parameter schemas. Full reference:
+[`docs/skill-tool-schema.md`](../skill-tool-schema.md).
+
+### Skill advertisement (`<available_skills>`)
+
+```xml
+<available_skills note="On match: read SKILL.md fully before acting, resolve relative refs from its dir. Skip loosely related. No match -> proceed without one, don't browse to be thorough.">
+  <skill name="rust-verify-harden" path="~/repo/.agents/skills/rust-verify-harden/SKILL.md"/>
+</available_skills>
+```
+
+Fields: `name` (attribute), `path` (attribute = `file_path`, home directory rendered as `~`). No description, no `trigger`, no child elements. Single-line compact form saves tokens.
+
+The `list_skills` tool returns a separate **structured** form with all frontmatter fields as child elements (`<description>`, `<license>`, `<compatibility>`, `<allowed-tools>`, `<metadata>`). See [`docs/skill-tool-schema.md`](../skill-tool-schema.md).
+
+### Tool catalog (`<available_tools>`)
+
+```xml
+<available_tools>
+  <tool name="read_file" description="Read file contents from disk.">
+    <property name="path" type="string" required="true">File path</property>
+    <property name="offset" type="number"/>
+  </tool>
+  <tool name="grep" description="Search files with ripgrep.">
+    <property name="pattern" type="string" required="true"/>
+    <property name="glob" type="array of string" description="Restrict to matching files."/>
+  </tool>
+</available_tools>
+```
+
+Property descriptions are **element text** for leaf properties and **`description` attribute** for object/array-of-object properties that have nested children. This avoids duplication. Empty-parameter tools omit `<property>` entirely.

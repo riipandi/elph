@@ -38,6 +38,11 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
             api_key_env_key: "ANTHROPIC_API_KEY",
             default_model: "claude-sonnet-4-6",
         }),
+        "agnes" => Some(ProviderConfig {
+            label: "Agnes",
+            api_key_env_key: "AGNES_API_KEY",
+            default_model: "agnes-2.5-flash",
+        }),
         "azure-openai-responses" => Some(ProviderConfig {
             label: "Azure OpenAI",
             api_key_env_key: "AZURE_OPENAI_API_KEY",
@@ -137,6 +142,11 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
             label: "Moonshot AI (China)",
             api_key_env_key: "MOONSHOT_API_KEY",
             default_model: "kimi-k2-0711-preview",
+        }),
+        "nara-router" => Some(ProviderConfig {
+            label: "Nara Router",
+            api_key_env_key: "NARA_API_KEY",
+            default_model: "gpt-5.6-luna",
         }),
         "neuralwatt" => Some(ProviderConfig {
             label: "Neuralwatt",
@@ -396,6 +406,22 @@ mod tests {
     }
 
     #[test]
+    fn agnes_is_a_known_provider() {
+        let cfg = provider_config("agnes").expect("agnes config");
+        assert_eq!(cfg.label, "Agnes");
+        assert_eq!(cfg.api_key_env_key, "AGNES_API_KEY");
+        assert!(elph_ai::get_builtin_model("agnes", cfg.default_model).is_some());
+    }
+
+    #[test]
+    fn resolve_agnes_from_settings() {
+        let (provider, model) =
+            resolve_provider_and_model(None, None, Some("agnes"), Some("agnes-2.5-pro")).expect("resolve agnes");
+        assert_eq!(provider, "agnes");
+        assert_eq!(model, "agnes-2.5-pro");
+    }
+
+    #[test]
     fn resolve_wafer_from_settings() {
         let (provider, model) =
             resolve_provider_and_model(None, None, Some("wafer"), Some("GLM-5.2")).expect("resolve wafer");
@@ -437,6 +463,7 @@ mod tests {
             ("mistral", "Mistral", "MISTRAL_API_KEY"),
             ("moonshotai", "Moonshot AI", "MOONSHOT_API_KEY"),
             ("moonshotai-cn", "Moonshot AI (China)", "MOONSHOT_API_KEY"),
+            ("nara-router", "Nara Router", "NARA_API_KEY"),
             ("nvidia", "NVIDIA NIM", "NVIDIA_API_KEY"),
             ("ollama-cloud", "Ollama Cloud", "OLLAMA_API_KEY"),
             ("openai-codex", "OpenAI Codex", "OPENAI_CODEX_OAUTH_TOKEN"),
@@ -500,6 +527,7 @@ mod tests {
             "mistral",
             "moonshotai",
             "moonshotai-cn",
+            "nara-router",
             "neuralwatt",
             "nvidia",
             "ollama-cloud",

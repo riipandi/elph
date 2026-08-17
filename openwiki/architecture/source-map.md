@@ -16,32 +16,38 @@ Crate-by-crate module map with file paths, noting pi port origins vs Elph-only e
 **Status:** Moved from `elph/` to `crates/coding-agent/` (commit `dc726d9`)
 **Key files:**
 
-| Module                     | Path                                                 | Status                                  |
-| -------------------------- | ---------------------------------------------------- | --------------------------------------- |
-| `main.rs`                  | `crates/coding-agent/src/main.rs`                    | [Elph delta] — CLI entry via clap       |
-| `lib.rs`                   | `crates/coding-agent/src/lib.rs`                     | [Elph delta] — re-exports all modules   |
-| `cli/`                     | `crates/coding-agent/src/cli/` (18 subcommand files) | [Elph delta] — CLI subcommands          |
-| `agent/`                   | `crates/coding-agent/src/agent/`                     | [Partial] — pi-coding-agent equivalent  |
-| `agent/runtime.rs`         | `crates/coding-agent/src/agent/runtime.rs`           | [Partial] — session factory             |
-| `agent/session/`           | `crates/coding-agent/src/agent/session/`             | [Partial] — CodingAgentSession          |
-| `agent/session_manager.rs` | `crates/coding-agent/src/agent/session_manager.rs`   | [Partial]                               |
-| `agent/slash_commands.rs`  | `crates/coding-agent/src/agent/slash_commands.rs`    | [Partial]                               |
-| `agent/mode_change.rs`     | `crates/coding-agent/src/agent/mode_change.rs`       | [Elph delta]                            |
-| `agent/run_mode.rs`        | `crates/coding-agent/src/agent/run_mode.rs`          | [Partial] — non-interactive mode        |
-| `agent/tool_policy.rs`     | `crates/coding-agent/src/agent/tool_policy.rs`       | [Elph delta]                            |
-| `agent/mcp_bootstrap.rs`   | `crates/coding-agent/src/agent/mcp_bootstrap.rs`     | [Elph delta]                            |
-| `agent/prompt/`            | `crates/coding-agent/src/agent/prompt/`              | [Partial]                               |
-| `tui/`                     | `crates/coding-agent/src/tui/` (35+ files)           | [Elph delta] — iocraft-based TUI        |
-| `platform/`                | `crates/coding-agent/src/platform/`                  | [Elph delta]                            |
-| `platform/paths.rs`        | `crates/coding-agent/src/platform/paths.rs`          | [Elph delta] — ELPH_HOME, paths         |
-| `platform/settings.rs`     | `crates/coding-agent/src/platform/settings.rs`       | [Elph delta] — settings merge           |
-| `memory/`                  | `crates/coding-agent/src/memory/`                    | [Elph delta] — floppy memory            |
-| `codegraph/`               | `crates/coding-agent/src/codegraph/`                 | [Elph delta] — code review graph        |
-| `extensions/`              | `crates/coding-agent/src/extensions/`                | [Elph delta] — WASM extension host      |
-| `command/`                 | `crates/coding-agent/src/command/`                   | [Elph delta] — shell command helpers    |
-| `types/`                   | `crates/coding-agent/src/types.rs`                   | [Elph delta] — AgentMode, ThinkingLevel |
-| `utils/`                   | `crates/coding-agent/src/utils/`                     | [Elph delta] — shared utilities         |
-| `worktree/`                | `crates/coding-agent/src/worktree/`                  | [Elph delta] — git worktree management  |
+| Module                     | Path                                                 | Status                                                                                      |
+| -------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `main.rs`                  | `crates/coding-agent/src/main.rs`                    | [Elph delta] — CLI entry via clap                                                           |
+| `lib.rs`                   | `crates/coding-agent/src/lib.rs`                     | [Elph delta] — re-exports all modules                                                       |
+| `cli/`                     | `crates/coding-agent/src/cli/` (18 subcommand files) | [Elph delta] — CLI subcommands                                                              |
+| `agent/`                   | `crates/coding-agent/src/agent/`                     | [Partial] — pi-coding-agent equivalent                                                      |
+| `agent/runtime.rs`         | `crates/coding-agent/src/agent/runtime.rs`           | [Partial] — session factory                                                                 |
+| `agent/session/`           | `crates/coding-agent/src/agent/session/`             | [Partial] — CodingAgentSession                                                              |
+| `agent/session_manager.rs` | `crates/coding-agent/src/agent/session_manager.rs`   | [Partial]                                                                                   |
+| `agent/slash_commands.rs`  | `crates/coding-agent/src/agent/slash_commands.rs`    | [Partial]                                                                                   |
+| `agent/slash_misc.rs`      | `crates/coding-agent/src/agent/slash_misc.rs`        | [Elph delta] — /resume, /tree, /fork, /clone, /export, /import, /workers, /settings, /trust |
+| `agent/mode_change.rs`     | `crates/coding-agent/src/agent/mode_change.rs`       | [Elph delta]                                                                                |
+| `agent/run_mode.rs`        | `crates/coding-agent/src/agent/run_mode.rs`          | [Partial] — non-interactive mode                                                            |
+| `agent/headless_status.rs` | `crates/coding-agent/src/agent/headless_status.rs`   | [Elph delta] — braille spinner                                                              |
+| `agent/pretty_markdown.rs` | `crates/coding-agent/src/agent/pretty_markdown.rs`   | [Elph delta] — streaming markdown→ANSI                                                      |
+| `agent/tool_policy.rs`     | `crates/coding-agent/src/agent/tool_policy.rs`       | [Elph delta]                                                                                |
+| `agent/mcp_bootstrap.rs`   | `crates/coding-agent/src/agent/mcp_bootstrap.rs`     | [Elph delta]                                                                                |
+| `agent/prompt/`            | `crates/coding-agent/src/agent/prompt/`              | [Partial]                                                                                   |
+| `agent/handover/`          | `crates/coding-agent/src/agent/handover/`            | [Elph delta] — Claude/Codex handover                                                        |
+| `agent/aside.rs`           | `crates/coding-agent/src/agent/aside.rs`             | [Elph delta] — inline side questions                                                        |
+| `agent/worker_runtime.rs`  | `crates/coding-agent/src/agent/worker_runtime.rs`    | [Elph delta] — multi-worker runtime                                                         |
+| `tui/`                     | `crates/coding-agent/src/tui/` (40+ files)           | [Elph delta] — iocraft-based TUI                                                            |
+| `platform/`                | `crates/coding-agent/src/platform/`                  | [Elph delta]                                                                                |
+| `platform/paths.rs`        | `crates/coding-agent/src/platform/paths.rs`          | [Elph delta] — ELPH_HOME, paths                                                             |
+| `platform/settings.rs`     | `crates/coding-agent/src/platform/settings.rs`       | [Elph delta] — settings merge                                                               |
+| `memory/`                  | `crates/coding-agent/src/memory/`                    | [Elph delta] — floppy memory                                                                |
+| `codegraph/`               | `crates/coding-agent/src/codegraph/`                 | [Elph delta] — code review graph                                                            |
+| `extensions/`              | `crates/coding-agent/src/extensions/`                | [Elph delta] — WASM extension host                                                          |
+| `command/`                 | `crates/coding-agent/src/command/`                   | [Elph delta] — shell command helpers                                                        |
+| `types/`                   | `crates/coding-agent/src/types.rs`                   | [Elph delta] — AgentMode, ThinkingLevel                                                     |
+| `utils/`                   | `crates/coding-agent/src/utils/`                     | [Elph delta] — shared utilities                                                             |
+| `worktree/`                | `crates/coding-agent/src/worktree/`                  | [Elph delta] — git worktree management                                                      |
 
 ## `elph-agent` (agent runtime)
 
@@ -69,6 +75,10 @@ Crate-by-crate module map with file paths, noting pi port origins vs Elph-only e
 | `exec/`                           | `crates/elph-agent/src/exec/`                           | [Elph delta] — merged from elph-exec (commit `c8f65ab`)                                                                                                                                                             |
 | `compaction/`                     | `crates/elph-agent/src/compaction/`                     | [Parity]                                                                                                                                                                                                            |
 | `session/`                        | `crates/elph-agent/src/session/`                        | [Parity]                                                                                                                                                                                                            |
+| `session/retention.rs`            | `crates/elph-agent/src/session/retention.rs`            | [Elph delta] — `RetentionPolicy`, `run_session_gc()`, `run_full_session_gc()`                                                                                                                                       |
+| `turns/`                          | `crates/elph-agent/src/turns/`                          | [Elph delta] — TurnStore, TurnRecord, TurnUsage, turn accounting                                                                                                                                                    |
+| `todos/`                          | `crates/elph-agent/src/todos/`                          | [Elph delta] — TodoStore, TodoTools, todo_write/todo_read agent tools                                                                                                                                               |
+| `workers/`                        | `crates/elph-agent/src/workers/`                        | [Elph delta] — multi-process worker coordination (registry, leases, mailbox, path claims, tools)                                                                                                                    |
 | `tools/`                          | `crates/elph-agent/src/tools/`                          | [Elph delta] — product tools                                                                                                                                                                                        |
 | `tools/types.rs`                  | `crates/elph-agent/src/tools/types.rs`                  | [Elph delta]                                                                                                                                                                                                        |
 | `tools/mcp/`                      | `crates/elph-agent/src/tools/mcp/`                      | [Elph delta] — MCP client                                                                                                                                                                                           |

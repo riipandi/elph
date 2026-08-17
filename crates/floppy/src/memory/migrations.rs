@@ -92,28 +92,36 @@ pub const MIGRATIONS: &[FloppyMigration] = &[
     },
 ];
 
+fn is_fts_capability_error(error: &anyhow::Error) -> bool {
+    let message = error.to_string().to_ascii_lowercase();
+    [
+        "fts index method is not enabled",
+        "index method is an experimental feature",
+        "unsupported index method",
+        "using fts is not supported",
+        "no such module: fts",
+    ]
+    .iter()
+    .any(|marker| message.contains(marker))
+}
 /// Apply memory migrations (band 1–99) using the shared ledger.
 ///
-/// The Turso-native FTS index (`CREATE INDEX ... USING fts`, Tantivy-backed)
-/// requires the `experimental_index_method` builder flag; on builds without it
-/// the FTS migration fails and we fall back to the base schema, recording
-/// `fts_available = 0` in `meta` so callers can skip keyword search.
+/// The Turso-native FTS index requires the experimental index method flag. If
+/// that capability is unavailable, the base schema is applied and FTS is marked
+/// unavailable. Unrelated migration errors remain fatal.
 pub async fn apply(conn: &Connection) -> Result<()> {
     match apply_set(conn, MIGRATIONS).await {
         Ok(()) => {
             set_meta(conn, "fts_available", "1").await?;
             Ok(())
         }
-        Err(e) => {
-            let msg = e.to_string().to_ascii_lowercase();
-            if msg.contains("fts") || msg.contains("index method") {
-                apply_set(conn, &MIGRATIONS[..3]).await?;
-                set_meta(conn, "fts_available", "0").await?;
-                Ok(())
-            } else {
-                Err(e)
-            }
+        Err(e) if is_fts_capability_error(&e) => {
+            log::warn!("Turso FTS migration unavailable; using non-FTS memory schema: {e}");
+            apply_set(conn, &MIGRATIONS[..3]).await?;
+            set_meta(conn, "fts_available", "0").await?;
+            Ok(())
         }
+        Err(e) => Err(e),
     }
 }
 

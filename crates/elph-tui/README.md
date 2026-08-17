@@ -8,6 +8,8 @@ rendering, overlays, and rich components.
 
 Run any example with `cargo run -p elph-tui --example <name>`.
 
+Build all elph-tui examples: `cargo build -p elph-tui --examples`
+
 ### Apps (multi-zone simulators)
 
 | Example        | Notes                                                               |

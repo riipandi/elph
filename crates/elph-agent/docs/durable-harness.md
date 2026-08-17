@@ -7,8 +7,9 @@ Design notes for semi-durable harness recovery.
 - On harness `new()`, rehydrate **model**, **thinking level**, **active tools**, and **collaboration mode** from session tree entries (host still supplies tool implementations).
 - On session open/resume, `repair_unanswered_tool_calls` appends synthetic error tool results for tool_use without tool_result (crash mid-tool batch).
 - Provider streams are **not** resumed; queues and pending writes remain process-local.
+- Hybrid schema v200: `session_entries` tree + relational `session_turns` / `session_todos` (see repo `docs/session-persistence.md`). TUI history is reconstructed from the tree (no multi-MB UI snapshot SoT).
 
-**Still planned:** durable queue journal, operation start/finish entries, pending-write markers, optional RetryUnfinished policy.
+**Still planned:** durable queue journal polish, physical prune after compaction, session GC driven by `settings.json` `session.retention`, optional RetryUnfinished policy.
 
 ## Framing
 

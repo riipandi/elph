@@ -1,0 +1,194 @@
+{{ layout "layouts/site.vto" }}
+
+{{ setMetadata('title', 'Opinionated AI coding agent harness') }}
+{{ setMetadata('description', 'Opinionated AI coding agent harness. Extensible TUI, mouse support, minimal overhead, with maximum extensibility and control.') }}
+
+<div class="home">
+
+<section class="relative overflow-hidden">
+  <div class="max-w-7xl mx-auto px-5 sm:px-8 pt-16 pb-16 md:pt-24 md:pb-24">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+      <div>
+        <p class="home-label font-mono text-[11px] tracking-wide uppercase mb-5">
+          Opinionated coding agent harness
+        </p>
+        <h1 class="home-fg text-[2.25rem] sm:text-4xl md:text-[2.75rem] font-semibold leading-[1.15]">
+          AI companion for focused coding.
+        </h1>
+        <p class="home-muted mt-4 text-base md:text-lg leading-relaxed">
+          Tailored for developers who want to stay in the flow. Elph understands your repository context, calls tools natively, and asks before risky actions.
+        </p>
+        <p class="mt-6 text-sm leading-relaxed border-l border-orange-500 pl-3 ml-0.5" >
+          Pre-alpha. Breaking changes and bugs are expected. <br /> Read the release notes before you upgrade.
+        </p>
+
+        <div class="mt-8 flex flex-col gap-3">
+          <div class="home-cmd inline-flex items-center gap-3 px-4 py-3 rounded-md bg-[#1a1a17] text-[#ecebe6] text-[13px] font-mono min-w-0 max-w-full">
+            <span class="text-[#c6ff00] shrink-0">$</span>
+            <span class="truncate">curl -fsSL https://elph.space/install.sh | bash</span>
+            <button type="button" class="ml-auto shrink-0 text-[#8b8e80] hover:text-[#c6ff00] transition-colors p-1 rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c6ff00]" aria-label="Copy install command" onclick="copyCommand(this, 'curl -fsSL https://elph.space/install.sh | bash')">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            </button>
+          </div>
+          <div class="home-muted flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-mono">
+            <span>cargo install --locked elph</span>
+            <span class="opacity-40">/</span>
+            <a href="https://github.com/riipandi/elph" target="_blank" rel="noopener noreferrer" class="home-fg hover:opacity-70 transition-opacity">source</a>
+            <span>Rust ≥ 1.97 · Linux &amp; macOS</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="home-tui relative overflow-hidden rounded-lg p-5 sm:p-6 font-mono text-[12px] sm:text-[13px] leading-relaxed">
+          <div class="home-scan"></div>
+          <div class="flex items-center justify-between text-[#6d7064] mb-4 relative z-[1]">
+            <span>elph / current repository <span class="text-[#ecebe6]">build</span></span>
+            <span class="flex gap-1.5" aria-hidden="true">
+              <span class="w-2 h-2 rounded-full bg-[#3a3935]"></span>
+              <span class="w-2 h-2 rounded-full bg-[#3a3935]"></span>
+              <span class="w-2 h-2 rounded-full bg-[#c6ff00]/80"></span>
+            </span>
+          </div>
+          <p class="text-[#8a8880] relative z-[1]"><span class="text-[#c6ff00]">$</span> elph<span class="home-cursor"></span></p>
+          <div class="mt-4 space-y-1.5 relative z-[1]">
+            <p><span class="text-[#6e6c66] w-14 inline-block">user</span><span class="text-[#ecebe6]">make provider setup less noisy</span></p>
+            <p><span class="text-[#c6ff00] w-14 inline-block">elph</span><span class="text-[#9a9890]">reading instructions and narrowing files</span></p>
+            <p><span class="text-[#8a8880] w-14 inline-block">tool</span><span class="text-[#9a9890]">focused tests queued before full validation</span></p>
+          </div>
+          <div class="mt-5 pt-4 border-t border-white/8 relative z-[1]">
+            <p class="text-[11px] tracking-[0.16em] uppercase text-[#6e6c66] mb-3">Work queue</p>
+            <ul class="space-y-2 text-[#d0cec7]">
+              <li class="flex justify-between gap-4"><span>Inspect config path</span><span class="text-[#c6ff00]">done</span></li>
+              <li class="flex justify-between gap-4"><span>Patch provider flow</span><span class="text-[#ecebe6]">ready</span></li>
+              <li class="flex justify-between gap-4"><span>Run package tests</span><span class="text-[#6e6c66]">next</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="home-rule border-t">
+  <div class="max-w-7xl mx-auto px-5 sm:px-8 py-14 md:py-16">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-[var(--home-line)]">
+      <div class="bg-[var(--home-bg)] p-6 reveal">
+        <p class="home-label font-mono text-[11px] mb-2">Less setup</p>
+        <p class="home-muted text-sm leading-relaxed">Project instructions, prompts, and runtime defaults load from the working context.</p>
+      </div>
+      <div class="bg-[var(--home-bg)] p-6 reveal">
+        <p class="home-label font-mono text-[11px] mb-2">More throughput</p>
+        <p class="home-muted text-sm leading-relaxed">The turn loop is built around focused edits, native tools, and test-first validation.</p>
+      </div>
+      <div class="bg-[var(--home-bg)] p-6 reveal">
+        <p class="home-label font-mono text-[11px] mb-2">Clear control</p>
+        <p class="home-muted text-sm leading-relaxed">Risky shell and file actions stay visible through explicit approval paths.</p>
+      </div>
+      <div class="bg-[var(--home-bg)] p-6 reveal">
+        <p class="home-label font-mono text-[11px] mb-2">Extensible core</p>
+        <p class="home-muted text-sm leading-relaxed">Providers, tools, prompt templates, and skills grow without bloating the daily path.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="home-rule border-t">
+  <div class="max-w-7xl mx-auto px-5 sm:px-8 py-16 md:py-20">
+    <div class="md:grid md:grid-cols-12 md:gap-16">
+      <div class="md:col-span-4 mb-10 md:mb-0">
+        <p class="home-label font-mono text-[11px] tracking-[0.22em] uppercase mb-3">Workflow</p>
+        <h2 class="home-fg text-2xl md:text-3xl font-semibold">Start with work, not settings.</h2>
+        <p class="home-muted mt-4 text-sm leading-relaxed">
+          Elph is intentionally small on the surface. Enough structure to move fast, with the important decisions still visible.
+        </p>
+      </div>
+      <ol class="md:col-span-8 space-y-8">
+        <li class="grid grid-cols-[3rem_1fr] gap-4">
+          <span class="home-label font-mono text-sm">01</span>
+          <div>
+            <h3 class="home-fg text-lg font-semibold">Open a repository</h3>
+            <p class="home-muted mt-1 text-sm leading-relaxed">Run Elph where the code lives so it can load nearby instructions, current files, and project context.</p>
+          </div>
+        </li>
+        <li class="grid grid-cols-[3rem_1fr] gap-4">
+          <span class="home-label font-mono text-sm">02</span>
+          <div>
+            <h3 class="home-fg text-lg font-semibold">Describe the outcome</h3>
+            <p class="home-muted mt-1 text-sm leading-relaxed">Ask for the end state. Elph inspects, searches, edits, tracks todos, and keeps changes scoped.</p>
+          </div>
+        </li>
+        <li class="grid grid-cols-[3rem_1fr] gap-4">
+          <span class="home-label font-mono text-sm">03</span>
+          <div>
+            <h3 class="home-fg text-lg font-semibold">Approve and verify</h3>
+            <p class="home-muted mt-1 text-sm leading-relaxed">Review tool actions, apply the change, and run focused tests before broader validation.</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section class="home-rule border-t">
+  <div class="max-w-7xl mx-auto px-5 sm:px-8 py-16 md:py-20">
+    <p class="home-label font-mono text-[11px] tracking-[0.22em] uppercase mb-3">Capabilities</p>
+    <h2 class="home-fg text-2xl md:text-3xl font-semibold max-w-xl mb-12">Minimal does not mean fixed.</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
+      <article>
+        <h3 class="home-fg text-base font-semibold">Focused TUI</h3>
+        <p class="home-muted mt-2 text-sm leading-relaxed">Streaming transcript, markdown, keyboard-first controls, mouse support, paste handling, and session logs. <code class="home-fg">elph</code></p>
+      </article>
+      <article>
+        <h3 class="home-fg text-base font-semibold">Native tool loop</h3>
+        <p class="home-muted mt-2 text-sm leading-relaxed">Read, write, edit, AST grep, PTY via <code class="home-fg">shell_use</code>, web fetch, todos, and skills — not a chat wrapper.</p>
+      </article>
+      <article>
+        <h3 class="home-fg text-base font-semibold">Provider routing</h3>
+        <p class="home-muted mt-2 text-sm leading-relaxed">OpenAI, Anthropic, Gemini, xAI, OpenRouter, Copilot, Bedrock, Groq, DeepSeek, or a local OpenAI-compatible endpoint. Switch mid-session.</p>
+      </article>
+      <article>
+        <h3 class="home-fg text-base font-semibold">Approval workflow</h3>
+        <p class="home-muted mt-2 text-sm leading-relaxed">Plan vs Build. Risky actions are gated. Approved plans land in <code class="home-fg">.elph/plans/</code> before the full tool surface returns.</p>
+      </article>
+      <article>
+        <h3 class="home-fg text-base font-semibold">Local index and memory</h3>
+        <p class="home-muted mt-2 text-sm leading-relaxed">Hybrid FTS + vectors and a shallow impact graph in <code class="home-fg">.elph/store.db</code>. Floppy recalls lessons.</p>
+      </article>
+      <article>
+        <h3 class="home-fg text-base font-semibold">Extension points</h3>
+        <p class="home-muted mt-2 text-sm leading-relaxed">MCP (stdio + HTTP), WASM Component Model, SKILL.md, ACP for editors, headless <code class="home-fg">elph run</code>, and worktrees.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="install" class="home-rule border-t">
+  <div class="max-w-7xl mx-auto px-5 sm:px-8 py-16 md:py-20">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-end">
+      <div class="lg:col-span-7">
+        <p class="home-label font-mono text-[11px] tracking-[0.22em] uppercase mb-3">Install</p>
+        <h2 class="home-fg text-2xl md:text-3xl font-semibold">Run it locally.</h2>
+        <p class="home-muted mt-4 text-sm max-w-lg leading-relaxed">
+          Prebuilt binaries, or cargo. First launch scaffolds <code class="home-fg">~/.config/elph/</code> and a project <code class="home-fg">.elph/</code>. Pre-alpha: breaking changes and bugs are expected — read the release notes before you upgrade.
+        </p>
+      </div>
+      <div class="lg:col-span-5">
+        <div class="home-cmd flex items-center gap-3 px-4 py-3 rounded-md bg-[#1a1a17] text-[#ecebe6] text-[13px] font-mono">
+          <span class="text-[#c6ff00] shrink-0">$</span>
+          <span class="truncate">curl -fsSL https://elph.space/install.sh | bash</span>
+          <button type="button" class="shrink-0 ml-auto text-[#8b8e80] hover:text-[#c6ff00] transition-colors p-1 rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c6ff00]" aria-label="Copy install command" onclick="copyCommand(this, 'curl -fsSL https://elph.space/install.sh | bash')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+          </button>
+        </div>
+        <p class="home-muted mt-4 font-mono text-xs">
+          cargo install --locked elph
+          <span class="mx-2 opacity-40">·</span>
+          <a href="https://github.com/riipandi/elph/releases" target="_blank" rel="noopener noreferrer" class="home-fg hover:opacity-70">releases</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div>

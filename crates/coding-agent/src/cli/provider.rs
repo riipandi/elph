@@ -262,6 +262,11 @@ fn resolve_provider_by_id<'a>(
     Some((provider, method))
 }
 
+/// Interactive provider login used by `elph acp --setup` (ACP Terminal Auth).
+pub fn run_interactive_connect() -> ExitCode {
+    handle_connect(None, None)
+}
+
 fn handle_connect(provider: Option<&str>, env_var: Option<&str>) -> ExitCode {
     let paths = match resolve_paths() {
         Ok(p) => p,

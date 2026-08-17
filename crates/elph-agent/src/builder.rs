@@ -80,6 +80,7 @@ pub struct BuiltinToolsBuilder {
     env: Arc<LocalExecutionEnv>,
     include_web: bool,
     skills: Vec<crate::agent::harness::types::Skill>,
+    path_claims: crate::workers::SharedPathClaim,
 }
 
 impl BuiltinToolsBuilder {
@@ -88,6 +89,7 @@ impl BuiltinToolsBuilder {
             env,
             include_web: false,
             skills: Vec::new(),
+            path_claims: None,
         }
     }
 
@@ -97,6 +99,7 @@ impl BuiltinToolsBuilder {
             env,
             include_web: true,
             skills: Vec::new(),
+            path_claims: None,
         }
     }
 
@@ -117,6 +120,12 @@ impl BuiltinToolsBuilder {
         self
     }
 
+    /// Cross-process path claims for mutate tools (shared-cwd multi-worker safety).
+    pub fn with_path_claims(mut self, claims: crate::workers::SharedPathClaim) -> Self {
+        self.path_claims = claims;
+        self
+    }
+
     pub fn build(self) -> Vec<AgentTool> {
         let mut tools = vec![
             #[cfg(feature = "tools-read-file")]
@@ -126,17 +135,17 @@ impl BuiltinToolsBuilder {
             #[cfg(feature = "tools-shell-use")]
             crate::tools::create_shell_use_tool(self.env.clone()),
             #[cfg(feature = "tools-edit-file")]
-            crate::tools::create_edit_file_tool(self.env.clone()),
+            crate::tools::create_edit_file_tool_with_claims(self.env.clone(), self.path_claims.clone()),
             #[cfg(feature = "tools-write-file")]
-            crate::tools::create_write_file_tool(self.env.clone()),
+            crate::tools::create_write_file_tool_with_claims(self.env.clone(), self.path_claims.clone()),
             #[cfg(feature = "tools-create-dir")]
-            crate::tools::create_create_dir_tool(self.env.clone()),
+            crate::tools::create_create_dir_tool_with_claims(self.env.clone(), self.path_claims.clone()),
             #[cfg(feature = "tools-copy-path")]
-            crate::tools::create_copy_path_tool(self.env.clone()),
+            crate::tools::create_copy_path_tool_with_claims(self.env.clone(), self.path_claims.clone()),
             #[cfg(feature = "tools-delete-path")]
-            crate::tools::create_delete_path_tool(self.env.clone()),
+            crate::tools::create_delete_path_tool_with_claims(self.env.clone(), self.path_claims.clone()),
             #[cfg(feature = "tools-move-path")]
-            crate::tools::create_move_path_tool(self.env.clone()),
+            crate::tools::create_move_path_tool_with_claims(self.env.clone(), self.path_claims.clone()),
             #[cfg(feature = "tools-grep")]
             crate::tools::create_grep_tool(self.env.clone()),
             #[cfg(feature = "tools-find-path")]
@@ -150,11 +159,9 @@ impl BuiltinToolsBuilder {
         }
         // list_available_tools is a meta tool that describes all other tools.
         tools.push(crate::tools::create_list_available_tools(&tools));
-        // On-demand skill discovery: catalog the loaded skill set so the model
-        // can rediscover skills not advertised in <available_skills>.
-        if !self.skills.is_empty() {
-            tools.push(crate::tools::create_list_skills_tool(self.skills));
-        }
+        // Always register `list_skills` so the model can discover a later-loaded
+        // catalog even when bootstrap skills were empty.
+        tools.push(crate::tools::create_list_skills_tool(self.skills));
         tools
     }
 }
@@ -187,6 +194,7 @@ mod tests {
         assert!(names.contains(&"shell_exec".to_string()));
         assert!(names.contains(&"grep".to_string()));
         assert!(names.contains(&"web_search".to_string()));
+        assert!(names.contains(&"list_skills".to_string()));
     }
 
     #[cfg(feature = "tools-shell-use")]

@@ -6,13 +6,30 @@ use super::provider_sources::ProviderSource;
 use super::thinking_map::build_thinking_level_map;
 
 /// Convert a models.dev model object into an Elph catalog entry.
-pub fn from_models_dev(provider: &ProviderSource, model_id: &str, mdev: &Value, previous: Option<&Value>) -> Value {
+// Allow 8 args: all params are needed to thread the models.dev fallback without
+// introducing an opaque config struct for a generator-only function.
+#[allow(clippy::too_many_arguments)]
+pub fn from_models_dev(
+    provider: &ProviderSource,
+    model_id: &str,
+    mdev: &Value,
+    previous: Option<&Value>,
+    live_efforts: Option<&[String]>,
+    rich: Option<&Value>,
+    aimd_reasoning: Option<bool>,
+    models_dev_fallback: Option<&super::models_dev::ModelsDevData>,
+) -> Value {
     let name = mdev
         .get("name")
         .and_then(|v| v.as_str())
         .unwrap_or(model_id)
         .to_string();
-    let reasoning = mdev.get("reasoning").and_then(|v| v.as_bool()).unwrap_or(false);
+    // models.dev is authoritative for the reasoning flag; ai-model-directory only
+    // fills it when models.dev has no opinion (models not listed on models.dev).
+    let reasoning = mdev
+        .get("reasoning")
+        .and_then(|v| v.as_bool())
+        .unwrap_or_else(|| aimd_reasoning.unwrap_or(false));
     let context = mdev
         .pointer("/limit/context")
         .and_then(|v| v.as_u64())
@@ -34,7 +51,17 @@ pub fn from_models_dev(provider: &ProviderSource, model_id: &str, mdev: &Value, 
         .filter(|s| !s.is_empty())
         .unwrap_or(provider.default_base_url)
         .to_string();
-    let thinking = build_thinking_level_map(provider.id, model_id, reasoning, Some(mdev), previous);
+    let thinking = build_thinking_level_map(
+        provider.id,
+        model_id,
+        reasoning,
+        Some(mdev),
+        previous,
+        live_efforts,
+        models_dev_fallback,
+    );
+
+    let (description, knowledge_cutoff, release_date) = extract_meta(Some(mdev), rich);
 
     let mut entry = json!({
         "id": model_id,
@@ -48,6 +75,9 @@ pub fn from_models_dev(provider: &ProviderSource, model_id: &str, mdev: &Value, 
         "maxTokens": max_tokens,
         "cost": cost,
         "thinkingLevelMap": thinking,
+        "description": description.unwrap_or_default(),
+        "knowledgeCutoff": knowledge_cutoff.unwrap_or_default(),
+        "releaseDate": release_date.unwrap_or_default(),
     });
 
     if let Some(prev) = previous {
@@ -62,7 +92,18 @@ pub fn from_models_dev(provider: &ProviderSource, model_id: &str, mdev: &Value, 
 }
 
 /// Refresh an existing Elph-only / gateway model with models.dev pricing/limits when found.
-pub fn enrich_existing(provider: &ProviderSource, model_id: &str, previous: &Value, mdev: Option<&Value>) -> Value {
+// Allow 8 args: same rationale as `from_models_dev`.
+#[allow(clippy::too_many_arguments)]
+pub fn enrich_existing(
+    provider: &ProviderSource,
+    model_id: &str,
+    previous: &Value,
+    mdev: Option<&Value>,
+    live_efforts: Option<&[String]>,
+    rich: Option<&Value>,
+    aimd_reasoning: Option<bool>,
+    models_dev_fallback: Option<&super::models_dev::ModelsDevData>,
+) -> Value {
     let mut entry = previous.clone();
     if !entry.is_object() {
         entry = serde_json::json!({});
@@ -79,10 +120,22 @@ pub fn enrich_existing(provider: &ProviderSource, model_id: &str, previous: &Val
         obj.insert("baseUrl".into(), json!(provider.default_base_url));
     }
 
-    let reasoning = obj
-        .get("reasoning")
-        .and_then(|v| v.as_bool())
-        .or_else(|| mdev.and_then(|m| m.get("reasoning").and_then(|v| v.as_bool())))
+    // models.dev is authoritative for the reasoning flag; ai-model-directory only
+    // fills it when models.dev (and the previous catalog) have no opinion.
+    // For gateway-preserved IDs with no direct models.dev entry, fall back to a
+    // keyword search across all providers to recover the reasoning flag from the
+    // underlying family model (e.g. tencent-hy3-free → tencent/hy3).
+    let mdev_reasoning = mdev.and_then(|m| m.get("reasoning").and_then(|v| v.as_bool()));
+    let prev_reasoning = obj.get("reasoning").and_then(|v| v.as_bool());
+    let fallback_reasoning = models_dev_fallback.and_then(|dev| {
+        let kw = super::thinking_map::extract_family_keyword(model_id);
+        dev.find_model_by_keyword(&kw)
+            .and_then(|m| m.get("reasoning").and_then(|v| v.as_bool()))
+    });
+    let reasoning = mdev_reasoning
+        .or(fallback_reasoning)
+        .or(prev_reasoning)
+        .or(aimd_reasoning)
         .unwrap_or(false);
     obj.insert("reasoning".into(), json!(reasoning));
 
@@ -108,8 +161,28 @@ pub fn enrich_existing(provider: &ProviderSource, model_id: &str, previous: &Val
         obj.insert("cost".into(), zero_cost());
     }
 
-    let thinking = build_thinking_level_map(provider.id, model_id, reasoning, mdev, Some(previous));
+    let thinking = build_thinking_level_map(
+        provider.id,
+        model_id,
+        reasoning,
+        mdev,
+        Some(previous),
+        live_efforts,
+        models_dev_fallback,
+    );
     obj.insert("thinkingLevelMap".into(), thinking);
+
+    // Enrich with metadata-complete fields from the rich (models.json/catalog.json) index.
+    let (description, knowledge_cutoff, release_date) = extract_meta(mdev, rich);
+    if let Some(d) = description {
+        obj.insert("description".into(), json!(d));
+    }
+    if let Some(k) = knowledge_cutoff {
+        obj.insert("knowledgeCutoff".into(), json!(k));
+    }
+    if let Some(r) = release_date {
+        obj.insert("releaseDate".into(), json!(r));
+    }
 
     // Required name fallback
     if obj.get("name").and_then(|v| v.as_str()).unwrap_or("").is_empty() {
@@ -207,4 +280,23 @@ fn fill_zero_from(dest: &mut Map<String, Value>, src: &Value) {
             dest.insert(key.into(), json!(v));
         }
     }
+}
+
+/// Pull human-readable metadata from the merged models.dev sources.
+///
+/// `description` comes from the api.json model (or the rich index when missing);
+/// `knowledgeCutoff` and `releaseDate` come from the rich index (`knowledge`,
+/// `release_date`), which `api.json` omits.
+fn extract_meta(mdev: Option<&Value>, rich: Option<&Value>) -> (Option<String>, Option<String>, Option<String>) {
+    let description = mdev
+        .and_then(|m| m.get("description").and_then(|v| v.as_str()))
+        .or_else(|| rich.and_then(|m| m.get("description").and_then(|v| v.as_str())))
+        .map(str::to_string);
+    let knowledge_cutoff = rich
+        .and_then(|m| m.get("knowledge").and_then(|v| v.as_str()))
+        .map(str::to_string);
+    let release_date = rich
+        .and_then(|m| m.get("release_date").and_then(|v| v.as_str()))
+        .map(str::to_string);
+    (description, knowledge_cutoff, release_date)
 }

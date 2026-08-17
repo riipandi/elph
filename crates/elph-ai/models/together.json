@@ -17,6 +17,7 @@
             "input": 0.3,
             "output": 1.2
         },
+        "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
         "id": "MiniMaxAI/MiniMax-M2.7",
         "input": ["text"],
         "maxTokens": 131072,
@@ -24,10 +25,10 @@
         "provider": "together",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -52,6 +53,7 @@
             "input": 0.3,
             "output": 1.2
         },
+        "description": "MiniMax multimodal model for long-context coding, perception, and agent planning",
         "id": "MiniMaxAI/MiniMax-M3",
         "input": ["text", "image", "video"],
         "maxTokens": 131072,
@@ -59,10 +61,10 @@
         "provider": "together",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -87,6 +89,7 @@
             "input": 0.3,
             "output": 0.3
         },
+        "description": "Efficient Qwen model for fast chat, extraction, and high-volume workloads",
         "id": "Qwen/Qwen2.5-7B-Instruct-Turbo",
         "input": ["text"],
         "maxTokens": 32768,
@@ -94,13 +97,13 @@
         "provider": "together",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3.5-9B": {
@@ -122,6 +125,7 @@
             "input": 0.1,
             "output": 0.15
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "Qwen/Qwen3.5-9B",
         "input": ["text", "image", "video"],
         "maxTokens": 65536,
@@ -129,13 +133,13 @@
         "provider": "together",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3.6-Plus": {
@@ -157,6 +161,7 @@
             "input": 0.5,
             "output": 3.0
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "Qwen/Qwen3.6-Plus",
         "input": ["text"],
         "maxTokens": 500000,
@@ -164,13 +169,13 @@
         "provider": "together",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3.7-Max": {
@@ -192,6 +197,7 @@
             "input": 2.5,
             "output": 7.5
         },
+        "description": "Qwen frontier model tuned for agent frameworks, coding assistants, and long tasks",
         "id": "Qwen/Qwen3.7-Max",
         "input": ["text"],
         "maxTokens": 65536,
@@ -199,13 +205,13 @@
         "provider": "together",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "deepseek-ai/DeepSeek-V4-Pro": {
@@ -227,6 +233,7 @@
             "input": 1.74,
             "output": 3.48
         },
+        "description": "Open MoE flagship with million-token context for coding and long agent runs",
         "id": "deepseek-ai/DeepSeek-V4-Pro",
         "input": ["text"],
         "maxTokens": 32768,
@@ -235,8 +242,8 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": null,
-            "max": null,
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -262,6 +269,7 @@
             "input": 0.275,
             "output": 0.55
         },
+        "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-4-31B-it",
         "input": ["audio", "image", "text", "video"],
         "maxTokens": 8192,
@@ -269,9 +277,9 @@
         "provider": "together",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -297,6 +305,7 @@
             "input": 0.1,
             "output": 0.32
         },
+        "description": "Compact Llama instruction model for fast chat and local deployment",
         "id": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
         "input": ["text"],
         "maxTokens": 16384,
@@ -332,6 +341,7 @@
             "input": 0.95,
             "output": 4.0
         },
+        "description": "Multimodal Kimi workhorse for agent loops, coding tasks, and visual context",
         "id": "moonshotai/Kimi-K2.6",
         "input": ["text", "image", "video"],
         "maxTokens": 262144,
@@ -339,13 +349,13 @@
         "provider": "together",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "moonshotai/Kimi-K2.7-Code": {
@@ -360,27 +370,28 @@
             "supportsStrictMode": false,
             "thinkingFormat": "together"
         },
-        "contextWindow": 262000,
+        "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.16,
+            "cacheRead": 0.19,
             "cacheWrite": 0.95,
             "input": 0.95,
             "output": 4.0
         },
+        "description": "Coding-focused Kimi model, stronger on long-horizon repo work with less overthinking",
         "id": "moonshotai/Kimi-K2.7-Code",
-        "input": ["text", "image"],
-        "maxTokens": 262000,
+        "input": ["text", "image", "video"],
+        "maxTokens": 262144,
         "name": "Kimi K2.7 Code",
         "provider": "together",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "moonshotai/Kimi-K3": {
@@ -397,24 +408,25 @@
         },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.285,
+            "cacheRead": 0.3,
             "cacheWrite": 3.0,
             "input": 3.0,
             "output": 15.0
         },
+        "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
         "id": "moonshotai/Kimi-K3",
-        "input": ["text", "image"],
-        "maxTokens": 262144,
+        "input": ["text", "image", "video"],
+        "maxTokens": 131072,
         "name": "Kimi K3",
         "provider": "together",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -437,19 +449,21 @@
             "input": 0.5,
             "output": 2.2
         },
+        "description": "NVIDIA Nemotron 3 Ultra is an open frontier-reasoning and orchestration model from NVIDIA, with 55B active parameters out of 550B total (MoE). Built on a hybrid Transformer-Mamba mixture-of-experts architecture, it...",
         "id": "nvidia/nemotron-3-ultra-550b-a55b",
         "input": ["text"],
         "maxTokens": 512288,
         "name": "Nemotron 3 Ultra 550B A55B",
         "provider": "together",
         "reasoning": true,
+        "releaseDate": "2026-06-04",
         "thinkingLevelMap": {
-            "high": null,
+            "high": "high",
             "low": null,
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -472,12 +486,14 @@
             "input": 0.08,
             "output": 0.44
         },
+        "description": "Open GPT reasoning model for self-hosted agents and controllable deployments",
         "id": "openai/gpt-oss-120b",
         "input": ["text"],
         "maxTokens": 16384,
         "name": "GPT OSS 120B",
         "provider": "together",
         "reasoning": true,
+        "releaseDate": "2025-08-05",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -507,12 +523,14 @@
             "input": 0.03,
             "output": 0.14
         },
+        "description": "Open-weight GPT model for self-hosted reasoning and instruction-following workloads",
         "id": "openai/gpt-oss-20b",
         "input": ["text"],
         "maxTokens": 16384,
         "name": "GPT OSS 20B",
         "provider": "together",
         "reasoning": true,
+        "releaseDate": "2025-08-05",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -535,22 +553,23 @@
             "supportsStrictMode": false,
             "thinkingFormat": "together"
         },
-        "contextWindow": 524288,
+        "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.16,
+            "cacheRead": 0.748,
             "cacheWrite": 0.0,
-            "input": 0.95,
-            "output": 4.05
+            "input": 3.74,
+            "output": 9.36
         },
+        "description": "Multimodal MoE reasoning model (975B total, 41B active) for text, image, and audio",
         "id": "thinkingmachines/Inkling",
-        "input": ["text", "image", "audio"],
-        "maxTokens": 1048576,
+        "input": ["text", "image"],
+        "maxTokens": 131072,
         "name": "Inkling",
         "provider": "together",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
             "medium": null,
             "minimal": null,
@@ -577,6 +596,7 @@
             "input": 1.4,
             "output": 4.4
         },
+        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "zai-org/GLM-5.2",
         "input": ["text"],
         "maxTokens": 131072,
@@ -584,13 +604,13 @@
         "provider": "together",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     }
 }

@@ -95,21 +95,68 @@ pub const FOOTER_SEP: &str = " · ";
 /// Footer image/vision indicator.
 pub const FOOTER_IMG_INDICATOR: &str = "◐";
 
+/// Multi-worker footer badge when live workers ≥ 2 (`⬡ N`).
+pub const FOOTER_WORKERS_BADGE_PREFIX: &str = "⬡";
+
+/// Filled hexagon used for the active (messaging) worker badge state.
+pub const FOOTER_WORKERS_BADGE_PREFIX_ACTIVE: &str = "⬢";
+
+/// Format the workers badge (`⬡ N` or `⬡ N · name`) or empty when count &lt; 2.
+#[cfg(test)]
+pub fn footer_workers_badge(live_count: usize) -> Option<String> {
+    footer_workers_badge_with_name(live_count, "")
+}
+
+/// Like [`footer_workers_badge`], optionally appending this worker's memorable name.
+pub fn footer_workers_badge_with_name(live_count: usize, worker_name: &str) -> Option<String> {
+    if live_count < 2 {
+        return None;
+    }
+    let name = worker_name.trim();
+    if name.is_empty() {
+        Some(format!("{FOOTER_WORKERS_BADGE_PREFIX} {live_count}"))
+    } else {
+        Some(format!("{FOOTER_WORKERS_BADGE_PREFIX} {live_count}{FOOTER_SEP}{name}"))
+    }
+}
+
 /// Status footer right: `turn: N · [+A/B -C/D]` (single-digit counts).
 /// When fitting is tight, git yields before turn (see `fit_footer_status_right`).
 ///
 /// With select mode: `sel · turn: N · [+A/B -C/D]`.
+/// With workers ≥2: `⬡ N · turn: …` (or after `sel`).
+#[cfg(test)]
 pub fn footer_status_right_label(turn: u32, git: Option<&GitFooterInfo>) -> String {
-    footer_status_right_label_with_select(turn, git, false)
+    footer_status_right_label_with_select(turn, git, false, 0)
 }
 
-/// Like [`footer_status_right_label`], optionally prefixing the select-mode badge.
-pub fn footer_status_right_label_with_select(turn: u32, git: Option<&GitFooterInfo>, select_mode: bool) -> String {
+/// Like [`footer_status_right_label`], optionally prefixing select-mode and/or workers badges.
+#[cfg(test)]
+pub fn footer_status_right_label_with_select(
+    turn: u32,
+    git: Option<&GitFooterInfo>,
+    select_mode: bool,
+    worker_live_count: usize,
+) -> String {
+    footer_status_right_label_with_workers(turn, git, select_mode, worker_live_count, "")
+}
+
+/// Right footer with optional multi-worker badge and self name.
+pub fn footer_status_right_label_with_workers(
+    turn: u32,
+    git: Option<&GitFooterInfo>,
+    select_mode: bool,
+    worker_live_count: usize,
+    worker_name: &str,
+) -> String {
     let turn_s = format!("turn: {turn}");
-    let base = match footer_git_stats_label(git) {
+    let mut base = match footer_git_stats_label(git) {
         Some(stats) => format!("{}{}{}", turn_s, FOOTER_SEP, stats),
         None => turn_s,
     };
+    if let Some(workers) = footer_workers_badge_with_name(worker_live_count, worker_name) {
+        base = format!("{}{}{}", workers, FOOTER_SEP, base);
+    }
     if select_mode {
         format!("{}{}{}", FOOTER_SELECT_MODE_BADGE, FOOTER_SEP, base)
     } else {
@@ -268,10 +315,13 @@ mod tests {
         assert_eq!(footer_status_right_label(3, None), "turn: 3");
         assert_eq!(footer_status_right_label(12, Some(&git)), "turn: 12 · [+0/0 -0/0]");
         assert_eq!(
-            footer_status_right_label_with_select(0, Some(&git), true),
+            footer_status_right_label_with_select(0, Some(&git), true, 0),
             "sel · turn: 0 · [+0/0 -0/0]"
         );
-        assert_eq!(footer_status_right_label_with_select(3, None, true), "sel · turn: 3");
+        assert_eq!(footer_status_right_label_with_select(3, None, true, 0), "sel · turn: 3");
+        assert_eq!(footer_status_right_label_with_select(1, None, false, 2), "⬡ 2 · turn: 1");
+        assert_eq!(footer_workers_badge(1), None);
+        assert_eq!(footer_workers_badge(2).as_deref(), Some("⬡ 2"));
     }
 
     #[test]

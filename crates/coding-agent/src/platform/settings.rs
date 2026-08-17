@@ -33,7 +33,33 @@
 //!   "memory": { ... },
 //!   "codegraph": { "enabled": false, "toolTimeoutMs": 15000 },
 //!   "notifications": { ... },
-//!   "compaction": { ... }
+//!   "compaction": { "thresholdPct": 80, "keepRecentTokens": 20000, "physicalPrune": true },
+//!   "session": {
+//!     "retention": {
+//!       "enabled": true,
+//!       "gcOnOpen": true,
+//!       "maxSessionsPerCwd": 40,
+//!       "maxSessionAgeDays": 30,
+//!       "maxEntriesPerSession": 8000,
+//!       "maxStoreDbBytes": 536870912,
+//!       "protectLatestPerCwd": true,
+//!       "maxEntryPayloadBytes": 262144,
+//!       "journalKeepTurns": 20,
+//!       "maxTerminalFilesPerSession": 50
+//!     }
+//!   },
+//!   "workers": {
+//!     "enabled": true,
+//!     "name": null,
+//!     "purpose": "",
+//!     "heartbeatSecs": 10,
+//!     "leaseStaleSecs": 30,
+//!     "inboxPollMs": 750,
+//!     "askTimeoutMs": 600000,
+//!     "maxHops": 5,
+//!     "tuiShowPeers": true,
+//!     "fileLeases": true
+//!   }
 //! }
 //! ```
 //!
@@ -122,6 +148,167 @@ pub struct Settings {
     /// Auto-compaction preferences.
     #[serde(default)]
     pub compaction: CompactionConfig,
+    /// Session storage and retention (not live model/mode state).
+    #[serde(default)]
+    pub session: SessionSettings,
+    /// Multi-process worker coordination (leases, registry, mailbox, TUI peers).
+    #[serde(default)]
+    pub workers: WorkersSettings,
+}
+
+/// Multi-worker coordination preferences (same machine / shared project store).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkersSettings {
+    /// Master switch: session lease, registry, worker tools, heartbeat.
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    /// Preferred display name among live peers (suffix allocated on collision).
+    #[serde(default)]
+    pub name: Option<String>,
+    /// Short purpose shown in `worker_list`.
+    #[serde(default)]
+    pub purpose: String,
+    /// Heartbeat interval for lease + registry + file claims (seconds).
+    #[serde(default = "default_workers_heartbeat_secs")]
+    pub heartbeat_secs: u64,
+    /// Stale window before reclaim / demote (seconds). Must be > heartbeat.
+    #[serde(default = "default_workers_lease_stale_secs")]
+    pub lease_stale_secs: u64,
+    /// Inbox poll interval for durable mailbox delivery (milliseconds).
+    #[serde(default = "default_workers_inbox_poll_ms")]
+    pub inbox_poll_ms: u64,
+    /// Ask timeout before message marked `timeout` (milliseconds).
+    #[serde(default = "default_workers_ask_timeout_ms")]
+    pub ask_timeout_ms: u64,
+    /// Max hops when forwarding worker messages.
+    #[serde(default = "default_workers_max_hops")]
+    pub max_hops: u32,
+    /// Show compact peer badge in TUI when live workers ≥ 2.
+    #[serde(default = "default_true")]
+    pub tui_show_peers: bool,
+    /// Cross-process path claims on mutate tools (shared-cwd safety).
+    #[serde(default = "default_true")]
+    pub file_leases: bool,
+}
+
+impl Default for WorkersSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            name: None,
+            purpose: String::new(),
+            heartbeat_secs: default_workers_heartbeat_secs(),
+            lease_stale_secs: default_workers_lease_stale_secs(),
+            inbox_poll_ms: default_workers_inbox_poll_ms(),
+            ask_timeout_ms: default_workers_ask_timeout_ms(),
+            max_hops: default_workers_max_hops(),
+            tui_show_peers: true,
+            file_leases: true,
+        }
+    }
+}
+
+fn default_workers_heartbeat_secs() -> u64 {
+    10
+}
+fn default_workers_lease_stale_secs() -> u64 {
+    30
+}
+fn default_workers_inbox_poll_ms() -> u64 {
+    750
+}
+fn default_workers_ask_timeout_ms() -> u64 {
+    600_000
+}
+fn default_workers_max_hops() -> u32 {
+    5
+}
+
+/// Session storage preferences (retention / GC). Per-session pin is DB state, not settings.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionSettings {
+    #[serde(default)]
+    pub retention: SessionRetentionSettings,
+}
+
+/// Automatic session GC, payload caps, and size budgets.
+///
+/// Numeric fields use `0` to mean “unlimited / disabled for that dimension”
+/// (except booleans).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionRetentionSettings {
+    /// Master switch for automatic session GC + size enforcement.
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    /// Run GC when opening the project store (best-effort, never mid-turn).
+    #[serde(default = "default_true")]
+    pub gc_on_open: bool,
+    /// Keep at most N non-pinned sessions per project cwd (newest `updated_at` first).
+    #[serde(default = "default_max_sessions_per_cwd")]
+    pub max_sessions_per_cwd: u32,
+    /// Drop non-pinned sessions older than this many days (`0` = no age limit).
+    #[serde(default = "default_max_session_age_days")]
+    pub max_session_age_days: u32,
+    /// Soft pressure: after this many tree entries, prefer compact+prune.
+    #[serde(default = "default_max_entries_per_session")]
+    pub max_entries_per_session: u32,
+    /// Soft budget for `.elph/store.db` file size in bytes (`0` = unlimited).
+    #[serde(default = "default_max_store_db_bytes")]
+    pub max_store_db_bytes: u64,
+    /// Never auto-GC the most recently updated session for a cwd.
+    #[serde(default = "default_true")]
+    pub protect_latest_per_cwd: bool,
+    /// Truncate oversized entry payloads on write (bytes).
+    #[serde(default = "default_max_entry_payload_bytes")]
+    pub max_entry_payload_bytes: u32,
+    /// Keep harness journal custom entries covering approximately this many recent turns.
+    #[serde(default = "default_journal_keep_turns")]
+    pub journal_keep_turns: u32,
+    /// Cap terminal output files retained per session (`0` = unlimited until session GC).
+    #[serde(default = "default_max_terminal_files")]
+    pub max_terminal_files_per_session: u32,
+}
+
+impl Default for SessionRetentionSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            gc_on_open: true,
+            max_sessions_per_cwd: default_max_sessions_per_cwd(),
+            max_session_age_days: default_max_session_age_days(),
+            max_entries_per_session: default_max_entries_per_session(),
+            max_store_db_bytes: default_max_store_db_bytes(),
+            protect_latest_per_cwd: true,
+            max_entry_payload_bytes: default_max_entry_payload_bytes(),
+            journal_keep_turns: default_journal_keep_turns(),
+            max_terminal_files_per_session: default_max_terminal_files(),
+        }
+    }
+}
+
+fn default_max_sessions_per_cwd() -> u32 {
+    40
+}
+fn default_max_session_age_days() -> u32 {
+    30
+}
+fn default_max_entries_per_session() -> u32 {
+    8000
+}
+fn default_max_store_db_bytes() -> u64 {
+    512 * 1024 * 1024
+}
+fn default_max_entry_payload_bytes() -> u32 {
+    256 * 1024
+}
+fn default_journal_keep_turns() -> u32 {
+    20
+}
+fn default_max_terminal_files() -> u32 {
+    50
 }
 
 /// TUI presentation preferences.
@@ -166,6 +353,10 @@ pub struct UiSettings {
     /// while the agent is busy streaming or running tools.
     #[serde(default = "default_true")]
     pub allow_mode_change_while_busy: bool,
+    /// When true (default), show a dimmed per-turn stats card (tokens in/out, cache,
+    /// provider/model) under the last assistant reply after each completed turn.
+    #[serde(default = "default_true")]
+    pub turn_stats: bool,
 }
 
 impl Default for UiSettings {
@@ -181,6 +372,7 @@ impl Default for UiSettings {
             density: default_log_density(),
             file_picker: FilePickerSettings::default(),
             allow_mode_change_while_busy: true,
+            turn_stats: true,
         }
     }
 }
@@ -628,6 +820,9 @@ pub struct CompactionConfig {
     /// Number of recent tokens to keep after compaction.
     #[serde(default = "default_compaction_keep_recent")]
     pub keep_recent_tokens: u64,
+    /// When true (default), physically DELETE pre-boundary `session_entries` after compact.
+    #[serde(default = "default_true")]
+    pub physical_prune: bool,
 }
 
 impl Default for CompactionConfig {
@@ -635,6 +830,7 @@ impl Default for CompactionConfig {
         Self {
             threshold_pct: default_compaction_threshold_pct(),
             keep_recent_tokens: default_compaction_keep_recent(),
+            physical_prune: true,
         }
     }
 }
@@ -649,6 +845,7 @@ impl CompactionConfig {
             reserve_tokens: elph_agent::HARNESS_DEFAULT_COMPACTION_SETTINGS.reserve_tokens,
             threshold_pct: Some(self.threshold_pct.clamp(1, 100)),
             keep_recent_tokens: self.keep_recent_tokens,
+            physical_prune: self.physical_prune,
         }
     }
 }
@@ -673,6 +870,8 @@ impl Settings {
             mcp: McpSettings::default(),
             notifications: NotificationSettings::default(),
             compaction: CompactionConfig::default(),
+            session: SessionSettings::default(),
+            workers: WorkersSettings::default(),
         }
     }
 
@@ -786,7 +985,8 @@ fn migrate_settings_value(value: &mut Value) {
         }
     }
 
-    // Migrate legacy `session` group → models / top-level.
+    // Migrate legacy `session` live-state keys → models / top-level.
+    // Preserve modern `session.retention` (and any future storage keys under `session`).
     if let Some(session_val) = root.remove("session")
         && let Some(session) = session_val.as_object()
     {
@@ -824,6 +1024,15 @@ fn migrate_settings_value(value: &mut Value) {
                 obj.entry("sessionTitleModel".to_string()).or_insert(title);
             }
             // agentMode intentionally dropped — live mode is per-session; default is build.
+        }
+
+        // Re-insert storage-only fields under `session`.
+        let mut kept = Map::new();
+        if let Some(retention) = session.get("retention").cloned() {
+            kept.insert("retention".to_string(), retention);
+        }
+        if !kept.is_empty() {
+            root.insert("session".to_string(), Value::Object(kept));
         }
     }
 
@@ -1107,6 +1316,7 @@ mod tests {
         assert_eq!(decoded.default_timeout, "120s");
         assert!(decoded.simplified_technical_english);
         assert!(decoded.ui.show_thinking);
+        assert!(decoded.ui.turn_stats);
         assert_eq!(decoded.ui.theme, "auto");
         assert!(decoded.ui.themes.dark.is_empty());
         assert!(decoded.models.scoped_models.is_empty());
@@ -1158,7 +1368,10 @@ mod tests {
 
         let raw = std::fs::read_to_string(paths.settings_path()).expect("read");
         let value: Value = serde_json::from_str(&raw).expect("parse");
-        assert!(value.get("session").is_none());
+        // Storage/retention group is present; no live model state under session.
+        assert!(value.get("session").is_some());
+        assert!(value["session"].get("retention").is_some());
+        assert!(value["session"].get("agentMode").is_none());
         assert!(value["models"].get("defaultModel").is_none());
         assert_eq!(value["models"]["scopedModels"], serde_json::json!([]));
     }
@@ -1169,7 +1382,9 @@ mod tests {
         let obj = json.as_object().expect("object");
         assert!(obj.contains_key("ui"));
         assert!(obj.contains_key("preferredChatLanguage"));
-        assert!(!obj.contains_key("session"));
+        assert!(obj.contains_key("session"));
+        assert!(obj["session"].get("retention").is_some());
+        assert_eq!(obj["session"]["retention"]["maxSessionsPerCwd"], 40);
         assert!(obj.contains_key("models"));
         assert!(!obj.contains_key("provider"));
         assert!(obj.contains_key("maxRetries"));
@@ -1178,7 +1393,9 @@ mod tests {
         assert!(!obj.contains_key("showThinking"));
         assert!(!obj.contains_key("scopedModelItems"));
         assert_eq!(json["ui"]["footerTokenDisplay"], "both");
+        assert_eq!(json["ui"]["turnStats"], true);
         assert!(json["models"]["scopedModels"].as_array().expect("arr").is_empty());
+        assert_eq!(json["compaction"]["physicalPrune"], true);
     }
 
     #[test]
@@ -1525,10 +1742,12 @@ mod tests {
         assert!(raw.contains("\"ui\""));
         assert!(raw.contains("\"models\""));
         assert!(!raw.contains("scopedModelItems"));
-        // Top-level showThinking should be gone after save; no session group.
+        // Top-level showThinking gone; legacy live session keys not re-emitted.
         let value: Value = serde_json::from_str(&raw).expect("parse");
         assert!(value.get("showThinking").is_none());
-        assert!(value.get("session").is_none());
+        assert!(value.get("session").is_some());
+        assert!(value["session"].get("retention").is_some());
+        assert!(value["session"].get("agentMode").is_none());
         assert_eq!(value["ui"]["showThinking"], false);
         assert_eq!(value["models"]["scopedModels"][0], "openai/gpt-5.6-luna");
         assert_eq!(value["models"]["defaultModel"], "openai/gpt-5.6-luna");

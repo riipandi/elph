@@ -29,7 +29,7 @@ pub use context::{SystemPromptTemplateContext, ToolByKindContext, ToolNamesConte
 #[cfg(feature = "prompt-templates")]
 pub use system_builder::{PromptAssemblyMode, SystemPromptBuildError, SystemPromptBuilder, format_project_context};
 #[cfg(feature = "prompt-templates")]
-pub use template::{PromptRenderError, render_base_template};
+pub use template::{PromptRenderError, render_base_template, sanitize_system_prompt};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PromptTemplateDiagnosticCode {

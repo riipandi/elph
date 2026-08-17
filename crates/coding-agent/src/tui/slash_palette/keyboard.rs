@@ -5,8 +5,8 @@ use iocraft::prelude::{KeyCode, KeyModifiers};
 use super::model::SlashPalettePhase;
 use super::model::SlashPaletteSnapshot;
 use super::model::{
-    complete_command, complete_slash_arg, palette_submit_slash_input, palette_visible, query_from_draft,
-    selected_arg_value, selected_command_name,
+    clamp_index, complete_command, complete_slash_arg, palette_submit_slash_input, palette_visible, query_from_draft,
+    selected_arg_value,
 };
 use crate::agent::slash_arg_completions;
 use crate::agent::slash_palette_submit_on_enter;
@@ -14,14 +14,14 @@ use crate::types::SlashCommand;
 
 use super::model::parse_slash_draft;
 
-fn overlay_or_complete_action(draft: &str, command_name: &str) -> SlashPaletteKeyAction {
-    if slash_palette_submit_on_enter(command_name) {
+fn overlay_or_complete_action(draft: &str, command: &SlashCommand) -> SlashPaletteKeyAction {
+    if slash_palette_submit_on_enter(&command.name) {
         SlashPaletteKeyAction::SubmitCommand {
-            slash_input: palette_submit_slash_input(draft, command_name),
+            slash_input: palette_submit_slash_input(draft, command),
         }
     } else {
         SlashPaletteKeyAction::CompleteDraft {
-            text: complete_command(draft, command_name),
+            text: complete_command(draft, command),
             suppress_enter_newline: false,
         }
     }
@@ -73,14 +73,14 @@ fn enter_palette_action(
     filtered_commands: &[SlashCommand],
     selected_index: usize,
 ) -> Option<SlashPaletteKeyAction> {
-    if let Some(name) = selected_command_name(filtered_commands, selected_index) {
-        return Some(if slash_palette_submit_on_enter(name) {
+    if let Some(cmd) = filtered_commands.get(clamp_index(selected_index, filtered_commands.len())) {
+        return Some(if slash_palette_submit_on_enter(&cmd.name) {
             SlashPaletteKeyAction::SubmitCommand {
-                slash_input: palette_submit_slash_input(draft, name),
+                slash_input: palette_submit_slash_input(draft, cmd),
             }
         } else {
             SlashPaletteKeyAction::CompleteDraft {
-                text: complete_command(draft, name),
+                text: complete_command(draft, cmd),
                 suppress_enter_newline: true,
             }
         });
@@ -88,8 +88,9 @@ fn enter_palette_action(
 
     let query = query_from_draft(draft)?;
     if slash_palette_submit_on_enter(&query) {
+        let fallback = SlashCommand::new(query, "");
         return Some(SlashPaletteKeyAction::SubmitCommand {
-            slash_input: palette_submit_slash_input(draft, &query),
+            slash_input: palette_submit_slash_input(draft, &fallback),
         });
     }
     None
@@ -125,9 +126,9 @@ pub fn resolve_key_action(
 
     match (modifiers, code) {
         (_, KeyCode::Esc) if modifiers.is_empty() => Some(SlashPaletteKeyAction::Dismiss),
-        (_, KeyCode::Tab) | (_, KeyCode::Right) => {
-            selected_command_name(filtered_commands, selected_index).map(|name| overlay_or_complete_action(draft, name))
-        }
+        (_, KeyCode::Tab) | (_, KeyCode::Right) => filtered_commands
+            .get(clamp_index(selected_index, filtered_commands.len()))
+            .map(|cmd| overlay_or_complete_action(draft, cmd)),
         (_, KeyCode::Enter) if modifiers.is_empty() => enter_palette_action(draft, filtered_commands, selected_index),
         (_, KeyCode::Up) | (_, KeyCode::Down) if modifiers.is_empty() => {
             if filtered_commands.is_empty() {
@@ -419,6 +420,37 @@ mod tests {
             action,
             SlashPaletteKeyAction::SubmitCommand {
                 slash_input: "/confetti firework".into(),
+            }
+        );
+    }
+
+    #[test]
+    fn skill_selection_emits_skill_prefix() {
+        use crate::types::SlashCommandKind;
+
+        let commands = vec![
+            SlashCommand::new("code-review", "Review code").with_kind(SlashCommandKind::Skill),
+            SlashCommand::new("compact", "Compact history"),
+        ];
+        let filtered = super::super::model::filter_commands(&commands, "code");
+        let index = filtered
+            .iter()
+            .position(|cmd| cmd.name == "code-review")
+            .expect("code-review");
+        let action = resolve_key_action("/code", &filtered, index, KeyCode::Tab, KeyModifiers::NONE).unwrap();
+        assert_eq!(
+            action,
+            SlashPaletteKeyAction::CompleteDraft {
+                text: "/skill:code-review ".into(),
+                suppress_enter_newline: false,
+            }
+        );
+        let action = resolve_key_action("/code", &filtered, index, KeyCode::Enter, KeyModifiers::NONE).unwrap();
+        assert_eq!(
+            action,
+            SlashPaletteKeyAction::CompleteDraft {
+                text: "/skill:code-review ".into(),
+                suppress_enter_newline: true,
             }
         );
     }

@@ -3,31 +3,8 @@ use std::sync::Arc;
 use elph_agent::ensure_database;
 use elph_agent::goals::create_goal_tools;
 use elph_agent::goals::{GoalStatus, GoalStore};
-use elph_agent::{AgentToolResult, Migration};
+use elph_agent::{AgentToolResult, SESSION_TREE_MIGRATIONS};
 use serde_json::json;
-
-const GOALS_MIGRATIONS: &[Migration] = &[Migration {
-    version: 4,
-    name: "create_goals_table",
-    up: "CREATE TABLE IF NOT EXISTS goals (
-            id TEXT PRIMARY KEY,
-            session_id TEXT NOT NULL,
-            objective TEXT NOT NULL,
-            completion_criterion TEXT,
-            status TEXT NOT NULL DEFAULT 'active',
-            turns_used INTEGER NOT NULL DEFAULT 0,
-            tokens_used INTEGER NOT NULL DEFAULT 0,
-            wall_clock_ms INTEGER NOT NULL DEFAULT 0,
-            wall_clock_budget_ms INTEGER NOT NULL DEFAULT 0,
-            turn_budget INTEGER NOT NULL DEFAULT 0,
-            token_budget INTEGER NOT NULL DEFAULT 0,
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            completed_at TEXT,
-            FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
-        ) STRICT;
-        CREATE INDEX IF NOT EXISTS idx_goals_session_id ON goals(session_id);
-        CREATE INDEX IF NOT EXISTS idx_goals_status ON goals(status);",
-}];
 
 fn tool_text(result: AgentToolResult) -> String {
     result
@@ -41,14 +18,28 @@ fn tool_text(result: AgentToolResult) -> String {
         .join("")
 }
 
-#[tokio::test]
-async fn goal_store_lifecycle() {
+/// Canonical schema + parent `sessions` row (goals FK requires it).
+async fn setup_store(session_id: &str) -> (tempfile::TempDir, GoalStore) {
     let tmp = tempfile::tempdir().expect("tempdir");
     let db_path = tmp.path().join("store.db");
-    ensure_database(&db_path, GOALS_MIGRATIONS).await.expect("migrate");
+    ensure_database(&db_path, &SESSION_TREE_MIGRATIONS)
+        .await
+        .expect("migrate");
+    let db = elph_agent::datastore::open_local(&db_path).await.expect("open");
+    let conn = elph_agent::datastore::connect(&db).await.expect("connect");
+    conn.execute(
+        "INSERT INTO sessions (id, created_at, updated_at, cwd) VALUES (?, ?, ?, ?)",
+        turso::params![session_id, "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z", "/tmp"],
+    )
+    .await
+    .expect("session");
+    (tmp, GoalStore::new(&db_path))
+}
 
-    let store = GoalStore::new(&db_path);
+#[tokio::test]
+async fn goal_store_lifecycle() {
     let session_id = "sess_test";
+    let (_tmp, store) = setup_store(session_id).await;
 
     let goal = store
         .create_goal(session_id, "Ship feature X", Some("tests pass"), 1000, 5, 60_000)
@@ -84,12 +75,8 @@ async fn goal_store_lifecycle() {
 
 #[tokio::test]
 async fn goal_accounting_sets_budget_limited() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let db_path = tmp.path().join("store.db");
-    ensure_database(&db_path, GOALS_MIGRATIONS).await.expect("migrate");
-
-    let store = GoalStore::new(&db_path);
     let session_id = "sess_budget";
+    let (_tmp, store) = setup_store(session_id).await;
     store
         .create_goal(session_id, "Small task", None, 10, 0, 0)
         .await
@@ -106,13 +93,10 @@ async fn goal_accounting_sets_budget_limited() {
 
 #[tokio::test]
 async fn goal_tools_round_trip() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let db_path = tmp.path().join("store.db");
-    ensure_database(&db_path, GOALS_MIGRATIONS).await.expect("migrate");
-
-    let store = Arc::new(GoalStore::new(&db_path));
-    let session_id = "sess_tools".to_string();
-    let tools = create_goal_tools(store, session_id);
+    let session_id = "sess_tools";
+    let (_tmp, store) = setup_store(session_id).await;
+    let store = Arc::new(store);
+    let tools = create_goal_tools(store, session_id.to_string());
 
     let create = tools.iter().find(|t| t.name() == "create_goal").expect("create_goal");
     let ctx = elph_agent::ToolContext::new(std::sync::Arc::new(elph_agent::LocalExecutionEnv::new(".")));

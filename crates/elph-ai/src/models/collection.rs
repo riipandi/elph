@@ -3,9 +3,13 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
+use parking_lot::RwLock;
+
 use crate::auth::ProviderAuthHolder;
+use crate::auth::oauth::oauth_provider_modify_models;
 use crate::auth::resolve::resolve_provider_auth;
 use crate::auth::resolve::{AuthResolutionOverrides, ModelsError, ModelsErrorCode};
+use crate::auth::types::{Credential, OAuthCredential};
 use crate::auth::{AuthContext, AuthModel, AuthResult, CredentialStore, InMemoryCredentialStore, ProviderAuth};
 use crate::types::{AssistantMessage, Context, Model, ProviderHeaders, SimpleStreamOptions, StreamOptions};
 use crate::utils::event_stream::AssistantMessageEventStream;
@@ -32,7 +36,11 @@ pub struct Provider {
     pub base_url: Option<String>,
     pub headers: Option<ProviderHeaders>,
     pub auth: ProviderAuth,
-    models: Vec<Model>,
+    /// Full catalog baseline (before OAuth plan filtering).
+    catalog_models: Vec<Model>,
+    /// Live model list (may be plan-filtered). Interior mutability so credentials
+    /// can re-filter after `/provider connect` without rebuilding `Models`.
+    models: RwLock<Vec<Model>>,
     refresh: Option<RefreshFn>,
     api: ProviderApi,
 }
@@ -40,13 +48,21 @@ pub struct Provider {
 type RefreshFn = Arc<dyn Fn() -> Pin<Box<dyn Future<Output = anyhow::Result<Vec<Model>>> + Send>> + Send + Sync>;
 
 impl Provider {
-    pub fn get_models(&self) -> &[Model] {
-        &self.models
+    pub fn get_models(&self) -> Vec<Model> {
+        self.models.read().clone()
     }
 
     /// Replace the model list for this provider (keeps auth/api adapters).
+    /// Also updates the catalog baseline used for OAuth re-filtering.
     pub fn set_models(&mut self, models: Vec<Model>) {
-        self.models = models;
+        self.catalog_models = models.clone();
+        *self.models.write() = models;
+    }
+
+    /// Re-apply OAuth `modify_models` (base URL + plan filter) onto the catalog baseline.
+    pub fn apply_oauth_model_filter(&self, credential: &OAuthCredential) {
+        let filtered = oauth_provider_modify_models(&self.id, self.catalog_models.clone(), credential);
+        *self.models.write() = filtered;
     }
 
     pub fn stream(
@@ -118,7 +134,8 @@ pub fn create_provider(input: CreateProviderOptions) -> Provider {
         base_url: input.base_url,
         headers: input.headers,
         auth: input.auth,
-        models: input.models,
+        catalog_models: input.models.clone(),
+        models: RwLock::new(input.models),
         refresh: input.refresh_models,
         api: input.api,
     }
@@ -141,6 +158,48 @@ pub struct MutableModels {
 }
 
 impl Models {
+    /// Shared credential store used by [`Self::get_auth`] / streaming auth resolution.
+    ///
+    /// Host apps should update this after `/provider connect` so the live session
+    /// picks up new OAuth/API keys without a full restart.
+    pub fn credentials(&self) -> Arc<dyn CredentialStore> {
+        self.credentials.clone()
+    }
+
+    /// Insert or replace a credential for `provider_id` (in-memory store used by this
+    /// models collection). Does not write `auth.json` — callers persist separately.
+    ///
+    /// For OAuth providers with `modify_models` (e.g. GitHub Copilot plan gating), also
+    /// re-filters the live model list from the catalog baseline.
+    pub async fn set_credential(&self, provider_id: &str, credential: crate::auth::Credential) {
+        let provider_id = provider_id.to_string();
+        let cred = credential;
+        let for_filter = cred.clone();
+        self.credentials
+            .modify(&provider_id, Box::new(move |_| Box::pin(async move { Some(cred) })))
+            .await;
+        self.apply_oauth_model_filter(provider_id.as_str(), &for_filter);
+    }
+
+    /// Apply OAuth plan/baseUrl model filters for every stored OAuth credential.
+    pub async fn apply_oauth_model_filters(&self) {
+        for info in self.credentials.list().await {
+            if let Some(cred) = self.credentials.read(&info.provider_id).await {
+                self.apply_oauth_model_filter(&info.provider_id, &cred);
+            }
+        }
+    }
+
+    fn apply_oauth_model_filter(&self, provider_id: &str, credential: &Credential) {
+        let Credential::OAuth(oauth) = credential else {
+            return;
+        };
+        let Some(provider) = self.providers.get(provider_id) else {
+            return;
+        };
+        provider.apply_oauth_model_filter(oauth);
+    }
+
     pub fn get_providers(&self) -> Vec<&Provider> {
         self.providers.values().collect()
     }
@@ -151,16 +210,8 @@ impl Models {
 
     pub fn get_models(&self, provider: Option<&str>) -> Vec<Model> {
         match provider {
-            Some(id) => self
-                .providers
-                .get(id)
-                .map(|p| p.get_models().to_vec())
-                .unwrap_or_default(),
-            None => self
-                .providers
-                .values()
-                .flat_map(|p| p.get_models().iter().cloned())
-                .collect(),
+            Some(id) => self.providers.get(id).map(|p| p.get_models()).unwrap_or_default(),
+            None => self.providers.values().flat_map(|p| p.get_models()).collect(),
         }
     }
 
@@ -316,7 +367,8 @@ impl Clone for Provider {
             base_url: self.base_url.clone(),
             headers: self.headers.clone(),
             auth: self.auth.clone(),
-            models: self.models.clone(),
+            catalog_models: self.catalog_models.clone(),
+            models: RwLock::new(self.models.read().clone()),
             refresh: self.refresh.clone(),
             api: match &self.api {
                 ProviderApi::Single(s) => ProviderApi::Single(s.clone()),
@@ -433,7 +485,7 @@ impl MutableModels {
         let mut report = OverlayApplyReport::default();
         for (provider_id, overlay) in overlays {
             if let Some(provider) = self.inner.providers.get_mut(provider_id) {
-                let merged = crate::models::catalog::merge_model_lists(provider.get_models(), overlay);
+                let merged = crate::models::catalog::merge_model_lists(&provider.get_models(), overlay);
                 provider.set_models(merged);
                 report.updated += 1;
             } else if let Some(provider) = create_disk_provider(provider_id, overlay.clone()) {
@@ -513,13 +565,26 @@ pub fn create_disk_provider(id: &str, models: Vec<Model>) -> Option<Provider> {
     // Convention: SOME_PROVIDER_API_KEY from kebab id `some-provider`.
     let env_name = format!("{}_API_KEY", id.replace('-', "_").to_ascii_uppercase());
     let display = title_case_provider_id(id);
+    let local = base_url
+        .as_deref()
+        .is_some_and(crate::auth::is_local_or_loopback_base_url)
+        || {
+            let lower = id.to_ascii_lowercase();
+            lower.contains("local") || lower.contains("ollama") || lower.contains("lmstudio") || lower.contains("vllm")
+        };
+    let api_key_auth = if local {
+        // Local OpenAI-compatible endpoints rarely require a real key.
+        crate::auth::optional_env_api_key_auth(format!("{display} API key (optional)"), vec![env_name])
+    } else {
+        crate::auth::flexible_api_key_auth(format!("{display} API key"), vec![env_name])
+    };
     Some(create_provider(CreateProviderOptions {
         id: id.to_string(),
         name: Some(display.clone()),
         base_url,
         headers,
         auth: crate::auth::ProviderAuth {
-            api_key: Some(crate::auth::flexible_api_key_auth(format!("{display} API key"), vec![env_name])),
+            api_key: Some(api_key_auth),
             oauth: None,
         },
         models,

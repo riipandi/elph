@@ -1,7 +1,8 @@
 # Getting Started
 
 Elph is a terminal-based AI coding companion. It runs as an interactive TUI, can execute
-headless prompts (`elph run`), and speaks ACP for editor integrations.
+headless prompts (`elph run`), and speaks ACP for editor integrations
+(`elph acp --stdio` for v1, `elph acp --stdio --experimental` for v2).
 
 ## Installation
 

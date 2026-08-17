@@ -1,5 +1,41 @@
 # Known Issues
 
+## 2026-08-13 — Turso multiprocess WAL integration requires hardening
+
+The project uses Turso `0.8.0-pre.4` with `experimental_multiprocess_wal(true)` for `.elph/store.db`. The builder configuration is consistent, but the surrounding integration is not yet production-ready for concurrent OS processes.
+
+### High-risk findings
+
+- `TranscriptCache` no longer checkpoints/truncates WAL on every open. Checkpointing remains Turso-managed for multiprocess access.
+- WAL recovery can delete a short `-wal` file while another process may still be initializing or writing it. The generic `unable to open database file` error is also too broad to justify sidecar deletion.
+- No true two-process integration test currently proves that separate Rust processes can open, write, checkpoint, and recover the same database file.
+- `with_mvcc_transaction` uses serialized `BEGIN IMMEDIATE`; it is not Turso MVCC. Turso MVCC requires `journal_mode = mvcc` and `BEGIN CONCURRENT`, and MVCC is incompatible with multiprocess WAL.
+- Lock retry does not cover every transaction phase, especially `BEGIN IMMEDIATE` and `COMMIT`.
+- Session indexes are cached in memory. A process that keeps a session open can miss entries written by another process, and `active_leaf_id` has last-writer-wins behavior without an expected-old-leaf check.
+- Migration existence checks, DDL, and migration-ledger writes are not one atomic operation. Concurrent startup and destructive schema rebuilds can leave partial or conflicting migration state.
+- Goal, worker-name, and todo read-modify-write flows have TOCTOU or lost-update risks under concurrent processes.
+- `elph-agent` and `floppy` duplicate Turso open/configuration helpers with different behavior. In particular, foreign-key enforcement is enabled in `elph-agent` but not consistently in `floppy`.
+
+### Operational limitations
+
+- Turso multiprocess WAL is experimental. Its `.tshm` format and public API may change between releases.
+- The database must use a supported 64-bit platform and a local filesystem with coherent mmap and POSIX byte-range locking. Network/distributed filesystems such as NFS, SMB/CIFS, CephFS, Lustre, and similar filesystems are not safe.
+- In-place `VACUUM` requires that no other process hold the multiprocess WAL. The project does not currently document or enforce a dedicated maintenance lock protocol.
+- The dependency is a pre-release. Upstream Turso changelogs record recent fixes for multiprocess WAL file locks, SDK races, stale checkpoint state, and WAL recovery behavior. The exact contents of the pinned version must be verified before relying on cross-process access.
+
+### Current workaround
+
+Use one long-lived `Arc<Database>` per process and avoid opening the same session from multiple processes when possible. Do not manually remove `.tshm`, `-shm`, or `-wal` files while any Elph process may still be using the database. Use the detailed audit for scope, evidence, and remediation order:
+
+- [docs/turso-multiprocess-wal-audit.md](./docs/turso-multiprocess-wal-audit.md)
+
+### Required follow-up
+
+1. Verify the pinned Turso version includes the upstream multiprocess WAL Rust SDK lock fixes.
+2. Add a two-process test harness for open, concurrent writes, snapshots, checkpointing, and crash/reopen recovery.
+3. Replace mtime-based sidecar liveness and automatic deletion with an ownership-safe recovery policy.
+4. Make migration startup and session-level read-modify-write behavior safe under concurrent processes.
+
 ## 2026-07-04
 
 - **Pi OS 32-bit (armv7)** — cross-compile fails; `turso`/`io-uring` does not support armv7. Use Pi OS **64-bit** → `*-linux-glibc-arm64.tar.gz`.

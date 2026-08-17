@@ -113,10 +113,17 @@ pub fn activity_label_for_event(event: &AgentUiEvent, show_thinking: bool) -> Op
         | AgentUiEvent::ThinkingDelta(_)
         | AgentUiEvent::QueueUpdate { .. }
         | AgentUiEvent::MemoryResult(_)
+        | AgentUiEvent::AsideStarted { .. }
+        | AgentUiEvent::AsideFinished { .. }
+        | AgentUiEvent::AsideFailed { .. }
+        | AgentUiEvent::WorkerInboxReceived { .. }
+        | AgentUiEvent::WorkerInboxSent { .. }
+        | AgentUiEvent::WorkerInboxUpdated
         | AgentUiEvent::UserPromptCommitted { .. }
         | AgentUiEvent::TranscriptNotice(_)
         | AgentUiEvent::SubagentOutput { .. }
-        | AgentUiEvent::RetryablePrompt(_) => None,
+        | AgentUiEvent::RetryablePrompt(_)
+        | AgentUiEvent::TodoUpdated { .. } => None,
         AgentUiEvent::ModeChangeRequired(req) => Some(format!("Switch to {} mode?", req.target_mode)),
     }
 }
@@ -162,6 +169,24 @@ const OVERDUE_THINKING_MESSAGES: &[&str] = &[
     "Still cooking… almost done?",
     "Deep in the thought mines…",
     "Consulting the silicon oracle…",
+    "Processing thoughts like a supercomputer...",
+    "Still in the matrix of ideas...",
+    "Brain gears spinning... but slowly",
+    "This might take a while... like a snail on caffeine",
+    "Still in the quantum thought cloud...",
+    "Thinking so hard the CPU is sweating",
+    "Lost in the labyrinth of logic...",
+    "Still debugging the answer...",
+    "Thoughts are coming, but in slow motion",
+    "This is taking longer than a coffee break in Italy",
+    "Still in the 'thinking' state... like a cat watching a wall",
+    "Brain is at 11, but the answer is at 3",
+    "Still in the 'Eureka!' phase... just not there yet",
+    "Thinking so hard the fans are spinning up",
+    "This is like waiting for a pot to boil... but the stove is off",
+    "Still in the 'aha!' moment... just not quite yet",
+    "Thoughts are brewing... like a fine tea",
+    "Still in the 'lightbulb' phase... just not lit yet",
 ];
 
 /// Escalating witty label for a thinking phase that exceeds 10s.
@@ -236,6 +261,90 @@ pub fn format_activity_busy_line_dynamic(label: &str, phase_elapsed_secs: f64) -
 /// Idle status notice shown briefly after a turn completes.
 pub fn format_turn_complete_notice(elapsed_secs: f64) -> String {
     format!("Turn complete · {}", format_duration_secs(elapsed_secs))
+}
+
+/// Per-turn completion stats rendered as a dimmed Meta card below the last assistant reply.
+///
+/// Populated from the harness `session_turns` record at `RunCompleted`; all fields optional
+/// so a missing store / legacy record degrades to a duration-only line.
+#[derive(Debug, Clone, Default)]
+pub struct TurnCompleteStats {
+    pub elapsed_secs: f64,
+    pub input_tokens: u64,
+    pub output_tokens: u64,
+    pub cache_read_tokens: u64,
+    pub cache_write_tokens: u64,
+    pub provider_id: Option<String>,
+    pub model_id: Option<String>,
+}
+
+impl TurnCompleteStats {
+    pub fn from_event(
+        elapsed_secs: f64,
+        usage: Option<&elph_agent::TurnUsage>,
+        provider_id: Option<&str>,
+        model_id: Option<&str>,
+    ) -> Self {
+        Self {
+            elapsed_secs,
+            input_tokens: usage.map(|u| u.input_tokens.max(0) as u64).unwrap_or(0),
+            output_tokens: usage.map(|u| u.output_tokens.max(0) as u64).unwrap_or(0),
+            cache_read_tokens: usage.map(|u| u.cache_read_tokens.max(0) as u64).unwrap_or(0),
+            cache_write_tokens: usage.map(|u| u.cache_write_tokens.max(0) as u64).unwrap_or(0),
+            provider_id: provider_id.map(str::to_string),
+            model_id: model_id.map(str::to_string),
+        }
+    }
+
+    /// `provider/model` label, omitting the provider when either side is missing.
+    pub fn model_label(&self) -> Option<String> {
+        match (&self.provider_id, &self.model_id) {
+            (Some(provider), Some(model)) if !provider.is_empty() && !model.is_empty() => {
+                Some(format!("{provider}/{model}"))
+            }
+            (_, Some(model)) if !model.is_empty() => Some(model.clone()),
+            _ => None,
+        }
+    }
+
+    /// Compact token usage line:
+    /// `3K/2K ↓↑ · 1K/0 ↓↑ cached` (input/output pair and cache read/write pair;
+    /// `↓` = sent to the API, `↑` = received from it).
+    fn tokens_line(&self) -> String {
+        let mut parts = Vec::new();
+        if self.input_tokens > 0 || self.output_tokens > 0 {
+            parts.push(format!(
+                "{}/{} ↓↑",
+                crate::tui::labels::format_token_count(self.input_tokens),
+                crate::tui::labels::format_token_count(self.output_tokens),
+            ));
+        }
+        if self.cache_read_tokens > 0 || self.cache_write_tokens > 0 {
+            parts.push(format!(
+                "{}/{} ↓↑ cached",
+                crate::tui::labels::format_token_count(self.cache_read_tokens),
+                crate::tui::labels::format_token_count(self.cache_write_tokens),
+            ));
+        }
+        parts.join(" · ")
+    }
+}
+
+/// Dimmed transcript line rendered under the last assistant message when a turn finishes.
+///
+/// Examples:
+/// - `turn: 1m50s · 3.1K in · 2.4K out · 1.2K cached · anthropic/claude-sonnet-4`
+/// - `turn: 12s` (no usage / model reported)
+pub fn format_turn_complete_stats_line(stats: &TurnCompleteStats) -> String {
+    let mut parts = vec![format!("turn: {}", format_duration_secs(stats.elapsed_secs))];
+    let tokens = stats.tokens_line();
+    if !tokens.is_empty() {
+        parts.push(tokens);
+    }
+    if let Some(model) = stats.model_label() {
+        parts.push(model);
+    }
+    parts.join(" · ")
 }
 
 /// Idle status notice shown briefly after the user cancels an active turn.
@@ -651,5 +760,60 @@ mod tests {
         assert!((tracker.tokens_per_sec(2.0) - 1.5).abs() < f64::EPSILON);
         tracker.sync_baseline(150);
         assert_eq!(tracker.active_tokens(), 150);
+    }
+
+    #[test]
+    fn turn_complete_stats_from_event_maps_usage() {
+        let stats = TurnCompleteStats::from_event(
+            110.0,
+            Some(&elph_agent::TurnUsage {
+                input_tokens: 3100,
+                output_tokens: 2400,
+                cache_read_tokens: 1200,
+                cache_write_tokens: 0,
+                total_tokens: 6700,
+                cost: 0.0123,
+            }),
+            Some("anthropic"),
+            Some("claude-sonnet-4"),
+        );
+        assert_eq!(stats.input_tokens, 3100);
+        assert_eq!(stats.output_tokens, 2400);
+        assert_eq!(stats.cache_read_tokens, 1200);
+        assert!(stats.input_tokens > 0 && stats.cache_read_tokens > 0);
+        assert_eq!(stats.model_label().as_deref(), Some("anthropic/claude-sonnet-4"));
+        assert_eq!(
+            format_turn_complete_stats_line(&stats),
+            "turn: 1m50s · 3K/2K ↓↑ · 1K/0 ↓↑ cached · anthropic/claude-sonnet-4"
+        );
+    }
+
+    #[test]
+    fn turn_complete_stats_cache_write_shows_read_write_pair() {
+        let stats = TurnCompleteStats::from_event(5.0, None, None, None);
+        let mut stats = stats;
+        stats.input_tokens = 500;
+        stats.output_tokens = 700;
+        stats.cache_write_tokens = 2_500;
+        assert_eq!(
+            format_turn_complete_stats_line(&stats),
+            "turn: 5s · 500/700 ↓↑ · 0/2K ↓↑ cached"
+        );
+    }
+
+    #[test]
+    fn turn_complete_stats_without_usage_is_duration_only() {
+        let stats = TurnCompleteStats::from_event(12.0, None, None, None);
+        assert_eq!((stats.input_tokens, stats.output_tokens, stats.cache_read_tokens), (0, 0, 0));
+        assert_eq!(stats.model_label(), None);
+        assert_eq!(format_turn_complete_stats_line(&stats), "turn: 12s");
+    }
+
+    #[test]
+    fn turn_complete_stats_model_label_handles_partial_ids() {
+        let stats = TurnCompleteStats::from_event(1.0, None, None, Some("gpt-5.6-luna"));
+        assert_eq!(stats.model_label().as_deref(), Some("gpt-5.6-luna"));
+        let empty = TurnCompleteStats::from_event(1.0, None, Some("openai"), None);
+        assert_eq!(empty.model_label(), None);
     }
 }

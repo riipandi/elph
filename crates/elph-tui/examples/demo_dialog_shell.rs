@@ -30,8 +30,9 @@ fn sample_todos() -> Vec<DialogTodoItem> {
     vec![
         DialogTodoItem::new("Audit dialog_shell module", DialogTodoStatus::Done)
             .with_detail("Frame, header, overlay, presets"),
-        DialogTodoItem::new("Add coding-agent example", DialogTodoStatus::Pending),
-        DialogTodoItem::new("Wire into elph shell", DialogTodoStatus::Skipped).with_detail("Deferred to follow-up PR"),
+        DialogTodoItem::new("Add coding-agent example", DialogTodoStatus::InProgress),
+        DialogTodoItem::new("Wire into elph shell", DialogTodoStatus::Pending),
+        DialogTodoItem::new("Add interactive demo", DialogTodoStatus::Skipped).with_detail("Deferred to follow-up PR"),
     ]
 }
 

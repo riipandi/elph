@@ -9,17 +9,18 @@
             "input": 0.85,
             "output": 1.55
         },
+        "description": "Automatic model router for matching prompts to suitable backends and budgets",
         "id": "auto",
         "input": ["text", "image"],
         "maxTokens": 16384,
         "name": "Auto Route",
         "provider": "opengateway",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -35,18 +36,21 @@
             "input": 0.25,
             "output": 1.5
         },
+        "description": "Low-latency Gemini model for high-volume multimodal and agent workloads",
         "id": "google/gemini-3.1-flash-lite",
         "input": ["text", "image", "video", "audio", "pdf"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 65536,
         "name": "Gemini 3.1 Flash Lite",
         "provider": "opengateway",
-        "reasoning": false,
+        "reasoning": true,
+        "releaseDate": "2026-05-07",
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": null,
+            "medium": "medium",
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
         }
@@ -84,8 +88,8 @@
         "cost": {
             "cacheRead": 0,
             "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "input": 0.45,
+            "output": 2.6
         },
         "id": "mindai/macaron-v1-tall",
         "input": ["text"],
@@ -113,6 +117,7 @@
             "input": 0.33,
             "output": 1.32
         },
+        "description": "MiniMax multimodal model for long-context coding, perception, and agent planning",
         "id": "minimax/minimax-m3",
         "input": ["text", "image", "video"],
         "maxTokens": 512000,
@@ -122,7 +127,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -139,16 +144,18 @@
             "input": 3.0,
             "output": 12.5
         },
+        "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
         "id": "moonshotai/kimi-k3",
         "input": ["text", "image", "pdf"],
         "maxTokens": 131072,
         "name": "Kimi K3",
         "provider": "opengateway",
-        "reasoning": false,
+        "reasoning": true,
+        "releaseDate": "2026-07-16",
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -165,19 +172,20 @@
             "input": 0.0,
             "output": 0.0
         },
+        "description": "NVIDIA Nemotron 3 Ultra is an open frontier-reasoning and orchestration model from NVIDIA, with 55B active parameters out of 550B total (MoE). Built on a hybrid Transformer-Mamba mixture-of-experts architecture, it... **Terms of service** For NVIDIA free endpoints (Super/Ultra/etc): Trial use only - do not submit personal or confidential data. Your use is logged for security purposes and to improve NVIDIA products and services. The logged session data for improvement purposes is not linked to your identity or any persistent identifier. For more information about our data processing practices, see our [Privacy Policy](https://www.nvidia.com/en-us/about-nvidia/privacy-policy/). By interacting with this endpoint, you consent to our collection, recording, and use of such information and the [NVIDIA API Trial Terms of Service](https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf).",
         "id": "nvidia/nemotron-3-ultra-550b-a55b:free",
         "input": ["text"],
         "maxTokens": 65536,
         "name": "NVIDIA: Nemotron 3 Ultra (free)",
         "provider": "opengateway",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
+            "high": "high",
             "low": null,
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -191,6 +199,7 @@
             "input": 1.504,
             "output": 4.504
         },
+        "description": "Qwen frontier model tuned for agent frameworks, coding assistants, and long tasks",
         "id": "qwen/qwen3.7-max",
         "input": ["text"],
         "maxTokens": 65536,
@@ -203,8 +212,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "tencent/hy3": {
@@ -217,19 +226,21 @@
             "input": 0.16,
             "output": 0.64
         },
+        "description": "Tencent Hy reasoning model for coding, instruction following, and agent tasks",
         "id": "tencent/hy3",
         "input": ["text"],
         "maxTokens": 262144,
         "name": "Hy3",
         "provider": "opengateway",
-        "reasoning": false,
+        "reasoning": true,
+        "releaseDate": "2026-07-06",
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -243,12 +254,15 @@
             "input": 0.4,
             "output": 2.0
         },
+        "description": "MiMo omni model for text, image, video, audio, and agents",
         "id": "xiaomi/mimo-v2.5",
         "input": ["text", "image", "audio", "video"],
+        "knowledgeCutoff": "2024-12",
         "maxTokens": 131072,
         "name": "MiMo-V2.5",
         "provider": "opengateway",
         "reasoning": true,
+        "releaseDate": "2026-04-22",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -269,19 +283,22 @@
             "input": 0.47,
             "output": 0.94
         },
+        "description": "Stronger MiMo Pro tier for multimodal reasoning and coding-agent execution",
         "id": "xiaomi/mimo-v2.5-pro",
         "input": ["text"],
+        "knowledgeCutoff": "2024-12",
         "maxTokens": 128000,
         "name": "MiMo-V2.5-Pro",
         "provider": "opengateway",
         "reasoning": true,
+        "releaseDate": "2026-04-22",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -295,16 +312,17 @@
             "input": 1.05,
             "output": 4.4
         },
+        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "z-ai/glm-5.2",
         "input": ["text"],
         "maxTokens": 202752,
         "name": "GLM-5.2",
         "provider": "opengateway",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
+            "high": "high",
             "low": null,
-            "max": null,
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,

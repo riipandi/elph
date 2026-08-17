@@ -131,13 +131,35 @@ impl CliSpinner {
     }
 
     pub fn finish_and_clear(&self) {
+        self.finish_inner(/*newline*/ false);
+    }
+
+    /// Stop the spinner, clear the line, and advance the cursor (so the next
+    /// stderr/stdout write cannot overwrite residual spinner glyphs).
+    pub fn finish_and_clear_with_newline(&self) {
+        self.finish_inner(/*newline*/ true);
+    }
+
+    fn finish_inner(&self, newline: bool) {
         {
             let mut guard = self.inner.state.lock().expect("spinner lock");
-            if !guard.enabled {
+            if guard.finished {
+                // Already stopped — still ensure a clean line if we were enabled.
+                if guard.enabled {
+                    clear_line();
+                    if newline {
+                        let _ = writeln!(stderr().lock());
+                    }
+                }
                 return;
             }
             guard.finished = true;
-            clear_line();
+            if guard.enabled {
+                clear_line();
+                if newline {
+                    let _ = writeln!(stderr().lock());
+                }
+            }
         }
         // Do NOT hold the state lock across `join`: the tick thread must acquire
         // it to observe `finished` and exit, so holding it here deadlocks (tick
@@ -150,16 +172,14 @@ impl CliSpinner {
 
 impl Drop for CliSpinner {
     fn drop(&mut self) {
+        // Only the last clone is responsible for teardown. Earlier clones just
+        // release their Arc — finish_and_clear must be called explicitly while
+        // clones may still be alive (e.g. event tasks).
         if Arc::strong_count(&self.inner) != 1 {
             return;
         }
-        {
-            let mut guard = self.inner.state.lock().expect("spinner lock");
-            guard.finished = true;
-        }
-        if let Some(handle) = self.inner.tick_thread.lock().expect("spinner tick lock").take() {
-            let _ = handle.join();
-        }
+        // Best-effort: clear residual spinner if the owner forgot finish_and_clear.
+        self.finish_inner(/*newline*/ false);
     }
 }
 

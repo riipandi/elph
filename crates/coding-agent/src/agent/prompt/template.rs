@@ -1,7 +1,7 @@
 //! MiniJinja template engine for the coding-agent domain template.
 //!
 //! The generic base template lives in `elph-agent` (rendered in Rust); this
-//! module renders the product-specific `coding_base.md` with MiniJinja using
+//! module renders the product-specific `coding_base.txt` with MiniJinja using
 //! custom delimiters (`${{` / `${%`) to avoid collisions with markdown.
 
 use minijinja::{Environment, syntax::SyntaxConfig};
@@ -55,7 +55,7 @@ impl std::fmt::Debug for PromptTemplateEngine {
 pub fn coding_agent_engine() -> PromptTemplateEngine {
     let mut engine = PromptTemplateEngine::new();
     engine
-        .register_embedded("coding_base", include_str!("../../../templates/agent/coding_base.md"))
+        .register_embedded("coding_base", include_str!("../../../prompts/coding_base.txt"))
         .expect("coding_base template is valid");
     engine
 }

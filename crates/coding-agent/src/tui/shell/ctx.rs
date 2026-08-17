@@ -82,6 +82,8 @@ pub(crate) struct ShellCtx {
     pub(crate) model_provider_index: State<usize>,
     pub(crate) model_selected_index: State<usize>,
     pub(crate) new_session_requested: Ref<bool>,
+    /// When set, next tick reloads bootstrap with this session id (`/resume <id>`).
+    pub(crate) resume_session_requested: Ref<Option<String>>,
     pub(crate) on_queue_action_click: Handler<(usize, PromptQueueAction)>,
     pub(crate) palette_refresh_pending: State<bool>,
     pub(crate) paths: State<Paths>,
@@ -102,9 +104,23 @@ pub(crate) struct ShellCtx {
     pub(crate) pending_queue_click: State<Option<(usize, PromptQueueAction)>>,
     pub(crate) pending_quit_confirm: Ref<bool>,
     pub(crate) pending_rename: Ref<Option<PendingRenameDialog>>,
+    pub(crate) pending_item_selector: Ref<Option<crate::tui::item_selector::PendingItemSelector>>,
+    pub(crate) item_selector_selected: State<usize>,
     pub(crate) pending_scoped_models: Ref<Option<PendingScopedModels>>,
     pub(crate) pending_subagent_output: Ref<Option<PendingSubagentOutputDialog>>,
     pub(crate) pending_system_prompt: Ref<Option<PendingSystemPromptDialog>>,
+    /// Inline `/aside` panel above the status row (Grok `/btw` parity).
+    pub(crate) pending_aside: Ref<Option<crate::tui::aside_panel::AsidePanelState>>,
+    /// Bumped while aside is Loading so the spinner re-renders.
+    pub(crate) aside_tick: State<u64>,
+    /// Worker chat overlay state (None = closed). All keys live here; the picker
+    /// selection highlights via `worker_chat_selected`.
+    pub(crate) pending_worker_chat: Ref<Option<crate::tui::worker_chat::WorkerChatState>>,
+    /// Picker highlight for the worker chat overlay.
+    pub(crate) worker_chat_selected: State<usize>,
+    /// Pending inbound worker messages not yet seen (overlay closed). Drives the
+    /// footer `⬡` badge color: >0 → yellow. Reset when the overlay opens.
+    pub(crate) worker_pending_count: State<usize>,
     pub(crate) pending_tool_approval: Ref<Option<PendingToolApproval>>,
     pub(crate) pending_transcript_notice_expires: Ref<HashMap<&'static str, Instant>>,
     pub(crate) pending_user_question: Ref<Option<PendingUserQuestion>>,
@@ -166,8 +182,13 @@ pub(crate) struct ShellCtx {
     pub(crate) transcript_pending: Ref<bool>,
     pub(crate) turn_cancel_requested: Ref<bool>,
     pub(crate) turn_token_tracker: Ref<Option<TurnTokenTracker>>,
+    pub(crate) last_turn_stats: Ref<Option<TurnCompleteStats>>,
+    /// `ui.turnStats` — show the dimmed per-turn stats card after each completed turn.
+    pub(crate) turn_stats_enabled: bool,
     pub(crate) pending_approval_label: Ref<bool>,
     pub(crate) ui_events_slot: Ref<Option<Arc<Mutex<UnboundedReceiver<AgentUiEvent>>>>>,
     pub(crate) user_shell_abort: Ref<Option<CancellationToken>>,
     pub(crate) user_shell_channel: Ref<UserShellChannel>,
+    /// Current session todo list (for structured work tracking).
+    pub(crate) todos: State<Vec<elph_agent::TodoItem>>,
 }

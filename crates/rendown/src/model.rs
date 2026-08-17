@@ -1,0 +1,150 @@
+//! Cloneable markdown document model (neutral colors — no iocraft).
+
+/// 24-bit RGB terminal color.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct RgbColor {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+}
+
+impl RgbColor {
+    pub const fn new(r: u8, g: u8, b: u8) -> Self {
+        Self { r, g, b }
+    }
+}
+
+/// Font weight for styled spans.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum FontWeight {
+    #[default]
+    Normal,
+    Bold,
+}
+
+/// Semantic role of a rendered markdown line (drives spacing and layout).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MarkdownLineKind {
+    Paragraph,
+    /// Hard-wrapped line within the same block (no extra gap after).
+    Continuation,
+    Heading(u8),
+    ListItem,
+    Code,
+    Blockquote,
+    Rule,
+    Table,
+    Blank,
+}
+
+/// Parsed GFM table rows (formatted at render/layout time).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct MarkdownTable {
+    pub rows: Vec<Vec<String>>,
+}
+
+/// One styled text run inside a line.
+#[derive(Clone, Debug, PartialEq)]
+pub struct StyledSpan {
+    pub text: String,
+    pub color: RgbColor,
+    pub weight: FontWeight,
+    pub italic: bool,
+    /// When true, render with underline (links / clickable paths).
+    pub underline: bool,
+    /// OSC 8 target URI (`https://…`, `file:///…`).
+    pub href: Option<String>,
+}
+
+impl StyledSpan {
+    pub fn plain(text: impl Into<String>, color: RgbColor) -> Self {
+        Self {
+            text: text.into(),
+            color,
+            weight: FontWeight::Normal,
+            italic: false,
+            underline: false,
+            href: None,
+        }
+    }
+
+    /// Link-styled span: link color + hyperlink target (no underline).
+    pub fn link(text: impl Into<String>, href: impl Into<String>, color: RgbColor) -> Self {
+        Self {
+            text: text.into(),
+            color,
+            weight: FontWeight::Normal,
+            italic: false,
+            underline: false,
+            href: Some(href.into()),
+        }
+    }
+}
+
+/// One renderable line (paragraph, heading, list item, or code line).
+#[derive(Clone, Debug, PartialEq)]
+pub struct MarkdownLine {
+    pub kind: MarkdownLineKind,
+    pub spans: Vec<StyledSpan>,
+    /// Multi-line fenced code blocks use a subtle tinted background card.
+    pub code_background: bool,
+    /// Matrix for [`MarkdownLineKind::Table`] lines.
+    pub table: Option<MarkdownTable>,
+    /// Deferred Mermaid source (v1: rendered as plain fenced source via highlight).
+    pub mermaid_source: Option<String>,
+}
+
+impl MarkdownLine {
+    pub fn blank() -> Self {
+        Self {
+            kind: MarkdownLineKind::Blank,
+            spans: Vec::new(),
+            code_background: false,
+            table: None,
+            mermaid_source: None,
+        }
+    }
+
+    pub fn is_blank(&self) -> bool {
+        if self.kind == MarkdownLineKind::Blank {
+            return true;
+        }
+        if matches!(self.kind, MarkdownLineKind::Table) && self.table.is_some() {
+            return false;
+        }
+        if matches!(self.kind, MarkdownLineKind::Rule) {
+            return false;
+        }
+        if self.mermaid_source.is_some() {
+            return false;
+        }
+        self.spans.iter().all(|span| span.text.trim().is_empty())
+    }
+}
+
+/// Parsed markdown document (safe to cache and parse off the UI thread).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct MarkdownDocument {
+    pub lines: Vec<MarkdownLine>,
+}
+
+impl MarkdownDocument {
+    pub fn is_empty(&self) -> bool {
+        self.lines.is_empty() || self.lines.iter().all(|line| line.is_blank())
+    }
+
+    /// Collapse duplicate blank lines and trim trailing empties.
+    pub fn normalize(mut self) -> Self {
+        let mut lines = Vec::with_capacity(self.lines.len());
+        for line in self.lines.drain(..) {
+            if line.is_blank() && lines.last().is_some_and(|last: &MarkdownLine| last.is_blank()) {
+                continue;
+            }
+            lines.push(line);
+        }
+        while lines.last().is_some_and(|line: &MarkdownLine| line.is_blank()) {
+            lines.pop();
+        }
+        Self { lines }
+    }
+}

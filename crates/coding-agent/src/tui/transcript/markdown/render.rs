@@ -209,11 +209,12 @@ pub fn render_markdown_buffer(
 /// Get the built (merged) document, using a cache for completed messages.
 ///
 /// For completed messages (`stream_complete == true` and the stable prefix covers the
-/// whole content), the built document is cached per `(stable_hash, wrap_width)`. This
-/// avoids cloning the cached `MarkdownDocument` + merging on every paint — an O(n)
-/// allocation that was a significant contributor to scroll/resize lag.
+/// whole content), the built document is cached per `(stable_hash, wrap_width)` in the
+/// global `BUILT_DOC_CACHE`. This avoids cloning the cached `MarkdownDocument` + merging
+/// on every paint — an O(n) allocation that was a significant contributor to scroll/resize lag.
 ///
-/// Streaming messages always rebuild (the tail changes every frame).
+/// For streaming messages, delegates to `buffer.built_document()` which shares the parsed
+/// document between layout and paint within the same frame via the buffer's per-buffer cache.
 fn build_cached_document(
     buffer: &AssistantMarkdownBuffer,
     raw: &str,
@@ -221,7 +222,8 @@ fn build_cached_document(
     wrap_width: u16,
 ) -> MarkdownDocument {
     // Only cache completed messages whose stable prefix covers the whole content.
-    // During streaming, the document changes every frame — caching would waste memory.
+    // During streaming, the document changes every frame — the buffer-level cache
+    // handles sharing between layout and paint.
     let can_cache = buffer.stream_complete
         && buffer.stable_end >= raw.len()
         && buffer.wrap_width == wrap_width
@@ -229,7 +231,7 @@ fn build_cached_document(
 
     if can_cache {
         let Some(part) = buffer.parts.first() else {
-            return build_assistant_markdown_document(buffer, raw, tail_foreground);
+            return buffer.built_document(raw, tail_foreground);
         };
         let stable_hash = part.source_hash;
         let key = BuiltDocCacheKey {
@@ -246,7 +248,7 @@ fn build_cached_document(
         }
 
         // Cache miss — build and cache.
-        let doc = build_assistant_markdown_document(buffer, raw, tail_foreground);
+        let doc = buffer.built_document(raw, tail_foreground);
         if let Ok(mut cache) = built_doc_cache().lock() {
             if cache.len() >= BUILT_DOC_CACHE_MAX {
                 // Drain half (oldest-first via iteration order) while holding the lock,
@@ -262,8 +264,8 @@ fn build_cached_document(
         return doc;
     }
 
-    // Streaming or incomplete — always rebuild.
-    build_assistant_markdown_document(buffer, raw, tail_foreground)
+    // Streaming or incomplete — use the buffer's per-frame cache.
+    buffer.built_document(raw, tail_foreground)
 }
 
 #[cfg(test)]
@@ -621,16 +623,18 @@ mod tests {
         let doc = elph_tui::parse_markdown_document(raw);
         let hash = crate::tui::transcript::markdown::buffer::stable_source_hash(raw);
 
-        let buffer = AssistantMarkdownBuffer {
-            stable_end: raw.len(),
-            parts: vec![RenderedPart {
+        let buffer = {
+            let mut buf = AssistantMarkdownBuffer::new();
+            buf.stable_end = raw.len();
+            buf.parts = vec![RenderedPart {
                 source_end: raw.len(),
                 source_hash: hash,
                 row_count: 1,
                 document: Some(doc.clone()),
-            }],
-            wrap_width: 80,
-            stream_complete: true,
+            }];
+            buf.wrap_width = 80;
+            buf.stream_complete = true;
+            buf
         };
 
         // First call — builds and caches.
@@ -648,5 +652,40 @@ mod tests {
             "cache should have at least one entry after building, got {}",
             cache.len()
         );
+    }
+}
+
+#[cfg(test)]
+mod probe_tests {
+    use super::*;
+    use crate::tui::transcript::markdown::buffer::{AssistantMarkdownBuffer, stable_source_hash};
+
+    #[test]
+    fn probe_retention_stripped_message_repaint_behavior() {
+        let raw =
+            "## Heading\n\nA paragraph of text that is long enough to matter.\n\n| a | b |\n| - | - |\n| 1 | 2 |\n";
+        let mut buffer = AssistantMarkdownBuffer::new();
+        buffer.mark_stream_complete();
+        buffer.refresh_stable(raw, 80);
+        let hash = buffer.parts[0].source_hash;
+        buffer.apply_document(hash, elph_tui::parse_markdown_document(raw));
+        assert!(buffer.has_cached_documents());
+
+        let before = built_doc_cache().lock().unwrap().len();
+        let _ = build_cached_document(&buffer, raw, Color::Reset, 80);
+        let with_doc = built_doc_cache().lock().unwrap().len();
+        println!("PROBE cache entries: before={before} after_paint_with_doc={with_doc}");
+
+        // Now simulate retention releasing the document.
+        let stripped = buffer.without_documents();
+        assert!(!stripped.has_cached_documents());
+        let base = built_doc_cache().lock().unwrap().len();
+        for _ in 0..5 {
+            let _ = build_cached_document(&stripped, raw, Color::Reset, 80);
+        }
+        let after = built_doc_cache().lock().unwrap().len();
+        println!("PROBE stripped: cache_before={base} cache_after_5_paints={after}");
+        println!("PROBE stripped repaint memoized = {}", after > base);
+        let _ = stable_source_hash("x");
     }
 }

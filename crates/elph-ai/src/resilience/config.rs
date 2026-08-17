@@ -44,7 +44,7 @@ impl Default for ResilienceConfig {
             burst_size: 5,
             failure_threshold: 5,
             recovery_timeout: Duration::from_secs(30),
-            max_retries: 3,
+            max_retries: 5, // Increased from 3 to 5 for better handling of transient transport errors
             initial_backoff: Duration::from_millis(500),
             max_backoff: Duration::from_secs(30),
         }
@@ -132,7 +132,7 @@ impl ResilienceConfig {
         let max_retries = std::env::var("ELPH_MAX_RETRIES")
             .ok()
             .and_then(|v| v.parse().ok())
-            .unwrap_or(3);
+            .unwrap_or(5); // Increased from 3 to 5 for better handling of transient transport errors
 
         let max_backoff_ms = std::env::var("ELPH_MAX_RETRY_DELAY_MS")
             .ok()
@@ -163,7 +163,7 @@ mod tests {
         assert_eq!(cfg.burst_size, 5);
         assert_eq!(cfg.failure_threshold, 5);
         assert_eq!(cfg.recovery_timeout, Duration::from_secs(30));
-        assert_eq!(cfg.max_retries, 3);
+        assert_eq!(cfg.max_retries, 5); // Updated to 5
     }
 
     #[test]

@@ -17,34 +17,31 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use tokio_util::sync::CancellationToken;
 
 use crate::agent::CODEX_HANDOVER_PROMPT_PREFIX;
+use crate::agent::CONTINUE_META_LABEL;
 use crate::agent::HANDOVER_PROMPT_PREFIX;
 use crate::agent::RETRY_CONTINUE_PROMPT;
 use crate::agent::load_resources;
 use crate::agent::slash_commands_for_palette;
 use crate::agent::{AgentUiEvent, CodingAgentSession, ToolApprovalChoice};
 use crate::extensions::ExtensionHost;
-use crate::platform::exit_message::{ExitSnapshot, record_if_active};
+use crate::platform::exit_message::{ExitSnapshot, record_if_active, session_had_user_activity};
 use crate::platform::{Paths, Settings};
 use crate::types::{AgentMode, SlashCommand, ThinkingLevel};
 use crate::types::{is_force_quit_command, is_quit_command};
 use crate::utils::path::AppPaths;
 use elph_agent::{BUDGET_LIMIT_PROMPT_PREFIX, CONTINUATION_PROMPT_PREFIX};
 
-use crate::tui::activity::TurnTokenTracker;
+use crate::agent::rename_session_title;
+use crate::agent::session_info_slash_message;
+use crate::tui::activity::{TurnCompleteStats, TurnTokenTracker};
 use crate::tui::activity::{
     accumulate_session_elapsed, activity_label_for_event, format_quit_canceled_notice, format_shell_canceled_notice,
-    format_turn_canceled_notice, format_turn_complete_notice, user_shell_activity_label,
+    format_turn_canceled_notice, format_turn_complete_notice, format_turn_complete_stats_line,
+    user_shell_activity_label,
 };
 use crate::tui::agent_bridge::{PromptQueue, TranscriptEventApplier, TurnDispatcher};
 use crate::tui::chrome::{ChromeStats, Header};
 use crate::tui::chrome::{chrome_stats_from_session, format_elapsed_secs, read_git_footer_info, refresh_chrome_stats};
-use crate::tui::focus::ShellFocus;
-use crate::tui::focus::{is_ctrl_enter_interject, is_text_select_toggle_key, prompt_focus_char, shell_global_shortcut};
-use crate::tui::labels::GitFooterInfo;
-use crate::tui::transcript::TranscriptCache;
-
-use crate::agent::rename_session_title;
-use crate::agent::session_info_slash_message;
 use crate::tui::confetti::{
     ConfettiMode, ConfettiOverlay, ConfettiRuntime, OpenConfettiArgs, PendingConfetti, close_confetti, open_confetti,
 };
@@ -54,6 +51,15 @@ use crate::tui::file_picker::{
     build_snapshot as build_file_picker_snapshot, file_picker_open, mention_highlight_ansi, mention_picker_visible,
     resolve_key_action as resolve_file_picker_key_action, sync_selection as sync_file_picker_selection,
 };
+use crate::tui::focus::ShellFocus;
+use crate::tui::focus::{is_ctrl_enter_interject, is_text_select_toggle_key, prompt_focus_char, shell_global_shortcut};
+use crate::tui::item_selector::{
+    ItemSelectorPurpose, OpenItemSelectorArgs, PendingItemSelector, apply_tree_filter_key, close_item_selector,
+    item_selector_confirm_on_enter, item_selector_confirm_summary_on_ctrl_enter, item_selector_list_nav_delta,
+    open_item_selector, tree_filter_key_action,
+};
+use crate::tui::item_selector_bar::ItemSelectorBar;
+use crate::tui::labels::GitFooterInfo;
 use crate::tui::mcp_auth_dialog::{
     OpenMcpAuthDialogArgs, PendingMcpAuthDialog, open_mcp_auth_dialog, start_mcp_oauth_for_server,
 };
@@ -134,9 +140,9 @@ use crate::tui::transcript::{
     AGENT_MODE_NOTICE_TTL, EphemeralBanner, EphemeralBannerGeneration, EphemeralBannerKind,
     FILE_PICKER_HIDDEN_NOTICE_KEY, LogDensity, MODEL_SET_NOTICE_KEY, QUIT_BUSY_NOTICE_KEY, TranscriptMessage,
     TranscriptPanel, TranscriptStyle, agent_mode_banner, agent_mode_busy_banner, api_error_banner,
-    clear_ephemeral_banner, clear_ephemeral_banner_if_generation, clipboard_notice_banner, expire_ephemeral_banner,
-    file_picker_hidden_notice_text, model_set_notice_from_value, model_set_notice_text, prompt_copy_banner,
-    prompt_copy_failed_banner, publish_ephemeral_banner, quit_busy_banner, select_mode_off_banner,
+    apply_transcript_retention, clear_ephemeral_banner, clear_ephemeral_banner_if_generation, clipboard_notice_banner,
+    expire_ephemeral_banner, file_picker_hidden_notice_text, model_set_notice_from_value, model_set_notice_text,
+    prompt_copy_banner, prompt_copy_failed_banner, publish_ephemeral_banner, quit_busy_banner, select_mode_off_banner,
     select_mode_on_banner, theme_mode_banner, toggle_latest_collapsible_detail,
 };
 use crate::tui::user_question::PendingUserQuestion;
@@ -163,6 +169,9 @@ use helpers::*;
 use keys::handle_shell_key;
 use tick::shell_tick_loop;
 use view::build_shell_view;
+
+// Re-exported for transcript reconstruction on session resume (startup.rs).
+pub(crate) use helpers::worker_inbound_meta_label;
 
 // ── OAuth dialog events ──────────────────────────────────────────────
 
@@ -216,7 +225,14 @@ impl elph_ai::auth::AuthLoginCallbacks for OAuthLoginCallbacksImpl {
             .unwrap_or_default()
             .as_nanos() as u64;
 
-        // Send the prompt event through the channel so the UI can show it.
+        // Register the oneshot **before** notifying the UI so a fast Enter (e.g. blank
+        // enterprise host → github.com) is never dropped on an empty store.
+        let (response_tx, response_rx) = tokio::sync::oneshot::channel();
+        {
+            let mut store = OAUTH_PROMPT_STORE.lock().unwrap();
+            store.insert(prompt_id, response_tx);
+        }
+
         match &prompt {
             elph_ai::auth::AuthPrompt::Text { message, placeholder } => {
                 let _ = tx.send(OAuthDialogEvent::PromptText {
@@ -249,13 +265,6 @@ impl elph_ai::auth::AuthLoginCallbacks for OAuthLoginCallbacksImpl {
         }
 
         Box::pin(async move {
-            let (response_tx, response_rx) = tokio::sync::oneshot::channel();
-            // Use std::sync::Mutex::lock() — held briefly, dropped before await.
-            {
-                let mut store = OAUTH_PROMPT_STORE.lock().unwrap();
-                store.insert(prompt_id, response_tx);
-            }
-
             match response_rx.await {
                 Ok(response) => Ok(response),
                 Err(_) => Err(anyhow::anyhow!("OAuth prompt cancelled")),
@@ -298,18 +307,6 @@ const STARTUP_TRANSCRIPT_PUBLISH_MS: u64 = 33;
 const TRANSCRIPT_PUBLISH_HEAVY_MS: u64 = 150;
 const TRANSCRIPT_PUBLISH_BURST_MS: u64 = 180;
 
-/// Max messages kept in memory before oldest are archived to SQLite.
-/// Lowered from 500 to cap peak memory — each message carries a full
-/// `AssistantMarkdownBuffer` (parsed MarkdownDocument) plus tool diff text.
-const MAX_MESSAGES_BEFORE_ARCHIVE: usize = 150;
-/// How many recent messages to keep after archival.
-/// Lowered from 200: old retained messages have their markdown cache dropped
-/// (see `drop_old_markdown_caches`), so keeping fewer live messages is enough.
-const KEEP_MESSAGES: usize = 60;
-/// How many trailing messages keep their parsed markdown cache. Older retained
-/// messages have their `AssistantMarkdownBuffer` documents dropped to free memory
-/// (the source text is still archived to SQLite and can be re-parsed on demand).
-const MARKED_MESSAGES_WITH_MARKDOWN_CACHE: usize = 20;
 const MAX_UI_EVENTS_PER_TICK: usize = 48;
 const MAX_BOOTSTRAP_EVENTS_PER_TICK: usize = 32;
 /// How long the status row shows turn elapsed after completion before returning to tips.
@@ -345,6 +342,8 @@ pub struct MainShellProps {
     pub paths: Paths,
     pub file_picker_show_hidden: bool,
     pub allow_mode_change_while_busy: bool,
+    /// When true (default), show the dimmed per-turn stats card (tokens/model) after each completed turn.
+    pub turn_stats_enabled: bool,
     pub initial_git_footer: Option<GitFooterInfo>,
 }
 
@@ -376,6 +375,7 @@ impl Default for MainShellProps {
             paths: Paths::resolve().expect("resolve elph paths"),
             file_picker_show_hidden: false,
             allow_mode_change_while_busy: true,
+            turn_stats_enabled: true,
             initial_git_footer: None,
         }
     }
@@ -502,10 +502,19 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             .unwrap_or_default()
     });
     let pending_system_prompt = hooks.use_ref(|| None::<PendingSystemPromptDialog>);
+    let pending_aside = hooks.use_ref(|| None::<crate::tui::aside_panel::AsidePanelState>);
+    let aside_tick = hooks.use_state(|| 0u64);
+    let pending_worker_chat = hooks.use_ref(|| None::<crate::tui::worker_chat::WorkerChatState>);
+    let worker_chat_selected = hooks.use_state(|| 0usize);
+    // Pending inbound worker messages not yet seen (overlay closed). Drives the
+    // footer `⬡` badge color: >0 → yellow. Reset when the overlay opens.
+    let worker_pending_count = hooks.use_state(|| 0usize);
     let system_prompt_scroll = hooks.use_ref_default::<ScrollViewHandle>();
     let system_prompt_scroll_tick = hooks.use_ref(|| 0u32);
     let pending_rename = hooks.use_ref(|| None::<crate::tui::rename_dialog::PendingRenameDialog>);
     let rename_value = hooks.use_state(String::new);
+    let pending_item_selector = hooks.use_ref(|| None::<PendingItemSelector>);
+    let item_selector_selected = hooks.use_state(|| 0usize);
     let pending_confetti = hooks.use_ref(|| None::<PendingConfetti>);
     let pending_provider_connect = hooks.use_ref(|| None::<PendingProviderConnectDialog>);
     let pending_provider_disconnect = hooks.use_ref(|| None::<PendingProviderDisconnectDialog>);
@@ -587,6 +596,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let turn_cancel_requested = hooks.use_ref(|| false);
     let pending_quit_confirm = hooks.use_ref(|| false);
     let turn_token_tracker = hooks.use_ref(|| None::<TurnTokenTracker>);
+    // Stats of the most recently completed turn (usage/model) for the dimmed transcript card.
+    let last_turn_stats = hooks.use_ref(|| None::<TurnCompleteStats>);
+    // `ui.turnStats` — show the dimmed per-turn stats card after each completed turn.
+    let turn_stats_enabled = props.turn_stats_enabled;
     // Track if an approval dialog (mode change / tool approval) set the activity label.
     // Cleared on RunCompleted to reset status when turn finishes.
     let pending_approval_label = hooks.use_ref(|| false);
@@ -607,6 +620,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     // Set true by `/new` handler; the tick loop picks this up to reload resources + restart
     // bootstrap with a fresh session (in-process, no exit + re-launch).
     let new_session_requested = hooks.use_ref(|| false);
+    // `/resume <id>` — next tick reloads bootstrap with this session id.
+    let resume_session_requested = hooks.use_ref(|| None::<String>);
 
     let cwd_for_mention_index = cwd.clone();
     let cwd_for_loop = cwd.clone();
@@ -704,6 +719,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         model_selected_index,
         density,
         new_session_requested,
+        resume_session_requested,
         on_queue_action_click,
         palette_refresh_pending,
         paths,
@@ -724,9 +740,16 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         pending_queue_click,
         pending_quit_confirm,
         pending_rename,
+        pending_item_selector,
+        item_selector_selected,
         pending_scoped_models,
         pending_subagent_output,
         pending_system_prompt,
+        pending_aside,
+        aside_tick,
+        pending_worker_chat,
+        worker_chat_selected,
+        worker_pending_count,
         pending_tool_approval,
         pending_transcript_notice_expires,
         pending_user_question,
@@ -788,10 +811,13 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         transcript_pending,
         turn_cancel_requested,
         turn_token_tracker,
+        last_turn_stats,
+        turn_stats_enabled,
         pending_approval_label,
         ui_events_slot,
         user_shell_abort,
         user_shell_channel,
+        todos: hooks.use_state(Vec::new),
     };
 
     hooks.use_future(shell_tick_loop(ctx.clone()));

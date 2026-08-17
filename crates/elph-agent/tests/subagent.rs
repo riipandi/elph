@@ -8,36 +8,26 @@ use elph_agent::AgentGraphStore;
 use elph_agent::AgentHarnessResources;
 use elph_agent::AgentHarnessStreamOptions;
 use elph_agent::LocalExecutionEnv;
-use elph_agent::Migration;
+use elph_agent::SESSION_TREE_MIGRATIONS;
 use elph_agent::SubagentBootstrap;
 use elph_agent::SubagentLimits;
 use elph_agent::SubagentSpawnConfig;
 use elph_agent::SubagentStatus;
 use elph_agent::create_search_tools;
 use elph_agent::ensure_database;
-use elph_ai::{FauxResponseStep, StopReason};
-use elph_ai::{faux_assistant_message, faux_text};
+use elph_ai::{FauxResponseStep, StopReason, faux_assistant_message, faux_text, faux_thinking};
 
-const PLATFORM_LIKE: &[Migration] = &[
-    Migration {
-        version: 7,
-        name: "create_agent_spawn_edges_table",
-        up: "CREATE TABLE IF NOT EXISTS agent_spawn_edges (
-            parent_session_id TEXT NOT NULL,
-            child_session_id TEXT NOT NULL,
-            agent_path TEXT NOT NULL,
-            depth INTEGER NOT NULL,
-            status TEXT NOT NULL DEFAULT 'open',
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (parent_session_id, child_session_id)
-        ) STRICT;",
-    },
-    Migration {
-        version: 100,
-        name: "session_tree_pi_schema",
-        up: elph_agent::SESSION_TREE_MIGRATIONS[0].up,
-    },
-];
+/// Parent session row required by FK on `agent_spawn_edges` / child sessions.
+async fn seed_parent_session(db_path: &std::path::Path, session_id: &str) {
+    let db = elph_agent::datastore::open_local(db_path).await.expect("open");
+    let conn = elph_agent::datastore::connect(&db).await.expect("connect");
+    conn.execute(
+        "INSERT INTO sessions (id, created_at, updated_at, cwd) VALUES (?, ?, ?, ?)",
+        turso::params![session_id, "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z", "/tmp"],
+    )
+    .await
+    .expect("seed parent session");
+}
 
 #[tokio::test(flavor = "multi_thread")]
 async fn spawn_and_list_subagents_with_turso_sessions() {
@@ -52,9 +42,10 @@ async fn spawn_and_list_subagents_with_turso_sessions() {
     let tools = create_search_tools(env.clone());
 
     let graph_db = temp.path().join("store.db");
-    ensure_database(&graph_db, PLATFORM_LIKE)
+    ensure_database(&graph_db, &SESSION_TREE_MIGRATIONS)
         .await
         .expect("platform migrate");
+    seed_parent_session(&graph_db, "parent_sess").await;
 
     let bootstrap = SubagentBootstrap {
         cwd: temp.path().to_string_lossy().to_string(),
@@ -158,9 +149,10 @@ async fn subagent_inherits_current_model_after_switch() {
     let tools = create_search_tools(env.clone());
 
     let graph_db = temp.path().join("store.db");
-    ensure_database(&graph_db, PLATFORM_LIKE)
+    ensure_database(&graph_db, &SESSION_TREE_MIGRATIONS)
         .await
         .expect("platform migrate");
+    seed_parent_session(&graph_db, "parent_sess").await;
 
     let bootstrap = SubagentBootstrap {
         cwd: temp.path().to_string_lossy().to_string(),
@@ -242,9 +234,10 @@ async fn wait_immediately_after_followup_never_races_turn_start() {
     let tools = create_search_tools(env.clone());
 
     let graph_db = temp.path().join("store.db");
-    ensure_database(&graph_db, PLATFORM_LIKE)
+    ensure_database(&graph_db, &SESSION_TREE_MIGRATIONS)
         .await
         .expect("platform migrate");
+    seed_parent_session(&graph_db, "parent_sess").await;
 
     let bootstrap = SubagentBootstrap {
         cwd: temp.path().to_string_lossy().to_string(),
@@ -299,4 +292,75 @@ async fn wait_immediately_after_followup_never_races_turn_start() {
     assert_eq!(agents[0].output.text, "Turn complete.");
     assert!(agents[0].output.turns >= 8);
     assert!(!summaries.iter().any(|s| s.contains("no output")));
+}
+
+/// A subagent whose final assistant message contains only Thinking blocks
+/// (no Text blocks) must still persist its output to output.md.
+/// Regression test for subagent output.md being empty when models return
+/// thinking-only responses.
+#[tokio::test(flavor = "multi_thread")]
+async fn subagent_persists_thinking_only_response_to_output_md() {
+    let temp = tempfile::TempDir::new().expect("tempdir");
+    let env = Arc::new(LocalExecutionEnv::new(temp.path()));
+    let (faux, models) = common::new_faux();
+    faux.set_responses(vec![FauxResponseStep::Static(faux_assistant_message(
+        vec![faux_thinking("I will analyze the code.")],
+        Some(StopReason::Stop),
+    ))]);
+    let stream_fn = common::faux_stream_fn(&faux);
+    let tools = create_search_tools(env.clone());
+
+    let graph_db = temp.path().join("store.db");
+    ensure_database(&graph_db, &SESSION_TREE_MIGRATIONS)
+        .await
+        .expect("platform migrate");
+    seed_parent_session(&graph_db, "parent_sess").await;
+
+    let bootstrap = SubagentBootstrap {
+        cwd: temp.path().to_string_lossy().to_string(),
+        store_db_path: graph_db.to_string_lossy().to_string(),
+        resources: AgentHarnessResources::default(),
+        stream_options: AgentHarnessStreamOptions::default(),
+        thinking_level: Default::default(),
+        prompt_encoding: None,
+        database: None,
+        agent_graph: Some(Arc::new(AgentGraphStore::new(&graph_db))),
+        outputs_root: Some(temp.path().join("outputs")),
+    };
+
+    let registry = Arc::new(elph_agent::AgentRegistry::new());
+    let parent_path = elph_agent::generate_agent_name();
+    let control = AgentControl::new(
+        SubagentSpawnConfig {
+            env,
+            model: faux.provider.get_models()[0].clone(),
+            system_prompt: "subagent".into(),
+            base_tools: tools,
+            active_tool_names: vec![],
+            stream_fn,
+            models,
+            root_session_id: "parent_sess".into(),
+            bootstrap: Some(bootstrap),
+        },
+        SubagentLimits::default(),
+        0,
+        registry,
+        parent_path.clone(),
+    );
+
+    let id = control
+        .spawn_agent("thinker", Some("Think about this".into()))
+        .await
+        .expect("spawn");
+    control.wait_agent(&id).await.expect("wait");
+
+    let agents = control.list_agents(None).await;
+    assert_eq!(agents.len(), 1);
+    assert_eq!(agents[0].output.turns, 1);
+
+    // output.md must contain the thinking content, not be empty.
+    let agent_dir = temp.path().join("outputs").join("subagents").join(&agents[0].id);
+    assert!(agent_dir.join("output.md").exists(), "output.md missing");
+    let output_md = std::fs::read_to_string(agent_dir.join("output.md")).expect("read output.md");
+    assert_eq!(output_md.trim(), "I will analyze the code.");
 }

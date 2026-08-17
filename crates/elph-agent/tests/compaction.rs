@@ -281,6 +281,7 @@ fn should_compact_respects_settings() {
         reserve_tokens: 10_000,
         threshold_pct: None,
         keep_recent_tokens: 20_000,
+        physical_prune: true,
     };
     assert!(should_compact(95_000, 100_000, settings));
     assert!(!should_compact(89_000, 100_000, settings));
@@ -689,6 +690,7 @@ fn prepare_compaction_split_turn_includes_prior_file_ops() {
             reserve_tokens: 100,
             threshold_pct: None,
             keep_recent_tokens: 1,
+            physical_prune: true,
         },
     )
     .unwrap()
@@ -724,6 +726,7 @@ fn prepare_compaction_includes_branch_and_custom_entries() {
             reserve_tokens: 100,
             threshold_pct: None,
             keep_recent_tokens: 1,
+            physical_prune: true,
         },
     )
     .unwrap()
@@ -959,6 +962,7 @@ async fn compact_clamps_summary_max_tokens_to_model_cap() {
             reserve_tokens: 500_000,
             threshold_pct: None,
             keep_recent_tokens: 20_000,
+            physical_prune: true,
         },
     };
 
@@ -986,6 +990,7 @@ async fn compact_returns_errors_without_panicking() {
             reserve_tokens: 2000,
             threshold_pct: None,
             keep_recent_tokens: 20,
+            physical_prune: true,
         },
     };
 
@@ -1043,6 +1048,7 @@ async fn compact_passes_reasoning_for_turn_prefix_summaries() {
             reserve_tokens: 2000,
             threshold_pct: None,
             keep_recent_tokens: 20,
+            physical_prune: true,
         },
     };
 
@@ -1069,6 +1075,7 @@ async fn compact_returns_turn_prefix_errors_without_panicking() {
             reserve_tokens: 2000,
             threshold_pct: None,
             keep_recent_tokens: 20,
+            physical_prune: true,
         },
     };
 

@@ -23,7 +23,7 @@ pub fn handle(args: &ModelsArgs) -> ExitCode {
     let query = args.search.as_deref().map(|s| s.to_ascii_lowercase());
 
     // Collect filtered (provider, model) rows, preserving first-seen provider order.
-    let mut rows: Vec<(&Provider, &Model)> = Vec::new();
+    let mut rows: Vec<(&Provider, Model)> = Vec::new();
     for provider in models.get_providers() {
         let provider_matches = match &args.provider {
             Some(filter) => provider.id == *filter || provider.name.eq_ignore_ascii_case(filter),
@@ -89,7 +89,7 @@ pub fn handle(args: &ModelsArgs) -> ExitCode {
         let group: Vec<&Model> = rows
             .iter()
             .filter(|(p, _)| p.id == provider.id)
-            .map(|(_, m)| *m)
+            .map(|(_, m)| m)
             .collect();
         let name_w = group
             .iter()

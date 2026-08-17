@@ -3,8 +3,7 @@
 use crate::tui::labels::{
     FOOTER_IMG_INDICATOR, FOOTER_SELECT_MODE_BADGE, FOOTER_SEP, GitFooterInfo, context_pct_limit_label,
     editor_border_project_label, footer_mode_label, footer_model_name, footer_model_thinking_label,
-    footer_status_left_label, footer_status_right_label, footer_status_right_label_with_select, format_token_count,
-    session_header_segments, session_label,
+    footer_status_left_label, format_token_count, session_header_segments, session_label,
 };
 use crate::types::{AgentMode, ThinkingLevel};
 use elph_tui::utils::{display_width, truncate_with_ellipsis};
@@ -194,35 +193,76 @@ pub fn fit_footer_status_left(
 /// Status footer right progressive fit. **Git yields first when narrowing.**
 ///
 /// Drop order: full (`turn | git`) → turn only → empty/truncated.
+#[cfg(test)]
 pub fn fit_footer_status_right(turn: u32, git: Option<&GitFooterInfo>, max_width: usize) -> String {
-    if max_width == 0 {
-        return String::new();
-    }
-    let turn_s = format!("turn: {turn}");
-    let full = footer_status_right_label(turn, git);
-    let candidates = if git.is_some() { vec![full, turn_s] } else { vec![full] };
-    pick_fitting_label(&candidates, max_width)
+    fit_footer_status_right_with_select(turn, git, max_width, false, 0)
 }
 
-/// Like [`fit_footer_status_right`], with optional select-mode badge on the left of the right cluster.
+/// Like [`fit_footer_status_right`], with optional select-mode and multi-worker badges.
 ///
-/// Drop order: full (`sel | turn | git`) → `sel | turn` → `sel` → empty/truncated.
+/// Drop order: full → drop git → drop workers → select/turn only → sel → empty/truncated.
+#[cfg(test)]
 pub fn fit_footer_status_right_with_select(
     turn: u32,
     git: Option<&GitFooterInfo>,
     max_width: usize,
     select_mode: bool,
+    worker_live_count: usize,
 ) -> String {
-    if !select_mode {
-        return fit_footer_status_right(turn, git, max_width);
-    }
+    fit_footer_status_right_with_workers(turn, git, max_width, select_mode, worker_live_count, "")
+}
+
+/// Fit right footer including optional multi-worker name.
+pub fn fit_footer_status_right_with_workers(
+    turn: u32,
+    git: Option<&GitFooterInfo>,
+    max_width: usize,
+    select_mode: bool,
+    worker_live_count: usize,
+    worker_name: &str,
+) -> String {
     if max_width == 0 {
         return String::new();
     }
-    let turn_s = format!("{}{}turn: {}", FOOTER_SELECT_MODE_BADGE, FOOTER_SEP, turn);
-    let full = footer_status_right_label_with_select(turn, git, true);
-    let mut candidates = if git.is_some() { vec![full, turn_s] } else { vec![full] };
-    candidates.push(FOOTER_SELECT_MODE_BADGE.to_string());
+    use crate::tui::labels::footer_status_right_label_with_workers;
+    let full = footer_status_right_label_with_workers(turn, git, select_mode, worker_live_count, worker_name);
+    let mut candidates = vec![full];
+    // Drop name first, then git, then workers count.
+    if !worker_name.trim().is_empty() && worker_live_count >= 2 {
+        candidates.push(footer_status_right_label_with_workers(
+            turn,
+            git,
+            select_mode,
+            worker_live_count,
+            "",
+        ));
+    }
+    if git.is_some() {
+        candidates.push(footer_status_right_label_with_workers(
+            turn,
+            None,
+            select_mode,
+            worker_live_count,
+            worker_name,
+        ));
+        candidates.push(footer_status_right_label_with_workers(
+            turn,
+            None,
+            select_mode,
+            worker_live_count,
+            "",
+        ));
+    }
+    if worker_live_count >= 2 {
+        candidates.push(footer_status_right_label_with_workers(turn, git, select_mode, 0, ""));
+        candidates.push(footer_status_right_label_with_workers(turn, None, select_mode, 0, ""));
+    }
+    if select_mode {
+        candidates.push(format!("{}{}turn: {}", FOOTER_SELECT_MODE_BADGE, FOOTER_SEP, turn));
+        candidates.push(FOOTER_SELECT_MODE_BADGE.to_string());
+    } else {
+        candidates.push(format!("turn: {turn}"));
+    }
     pick_fitting_label(&candidates, max_width)
 }
 
@@ -331,10 +371,16 @@ mod tests {
         assert!(display_width(&tight) <= 4);
         assert!(!tight.contains('['));
 
-        let sel_wide = fit_footer_status_right_with_select(0, Some(&git), 48, true);
+        let sel_wide = fit_footer_status_right_with_select(0, Some(&git), 48, true, 0);
         assert_eq!(sel_wide, "sel · turn: 0 · [+3/42 -1/7]");
-        let sel_mid = fit_footer_status_right_with_select(0, Some(&git), 18, true);
+        let sel_mid = fit_footer_status_right_with_select(0, Some(&git), 18, true, 0);
         assert_eq!(sel_mid, "sel · turn: 0");
+
+        let workers_wide = fit_footer_status_right_with_select(1, None, 40, false, 3);
+        assert_eq!(workers_wide, "⬡ 3 · turn: 1");
+        // Tight: drop workers before losing turn.
+        let workers_tight = fit_footer_status_right_with_select(1, None, 10, false, 3);
+        assert_eq!(workers_tight, "turn: 1");
     }
 
     #[test]

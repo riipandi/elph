@@ -51,19 +51,9 @@ fn format_skills_for_system_prompt_orders_visible_skills() {
     let formatted = format_skills_for_system_prompt(&[visible_skill(), disabled_skill(), second_skill()]);
 
     let expected = "\
-Use a matching skill; read its full file first and resolve relative references from the skill directory.
-
-<available_skills>
-  <skill>
-    <name>visible</name>
-    <description>Use &lt;this&gt; &amp; that</description>
-    <location>/skills/visible/SKILL.md</location>
-  </skill>
-  <skill>
-    <name>second</name>
-    <description>Second skill</description>
-    <location>/skills/second/SKILL.md</location>
-  </skill>
+<available_skills note=\"On match: read SKILL.md fully before acting, resolve relative refs from its dir. Skip loosely related. No match -> proceed without one, don't browse to be thorough.\">
+  <skill name=\"visible\" path=\"/skills/visible/SKILL.md\"/>
+  <skill name=\"second\" path=\"/skills/second/SKILL.md\"/>
 </available_skills>";
     assert_eq!(formatted, expected);
 }
@@ -88,7 +78,8 @@ fn format_skills_for_system_prompt_escapes_xml_fields() {
         argument_hint: None,
     }]);
 
-    assert!(formatted.contains(
-        "<name>a&amp;b</name>\n    <description>Quote &quot;double&quot; and &apos;single&apos;</description>\n    <location>/skills/&lt;bad&gt;&amp;&quot;quote&quot;/SKILL.md</location>"
-    ));
+    // XML escaping is applied to name and path attributes only (description is no longer included).
+    assert!(
+        formatted.contains("<skill name=\"a&amp;b\" path=\"/skills/&lt;bad&gt;&amp;&quot;quote&quot;/SKILL.md\"/>")
+    );
 }

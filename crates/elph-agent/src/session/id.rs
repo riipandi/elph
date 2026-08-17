@@ -1,15 +1,17 @@
 //! Session and entry ID generation with optional prefixed Kalid support.
 //!
 //! Unprefixed IDs (16-char Kalid) are used for session IDs and entry IDs.
-//! Prefixed IDs (`goal_<16>`, `msg_<16>`, `todo_<16>`, `skc_<16>`) are used
-//! for goals, messages, todos, and skill cache entries respectively.
+//! Prefixed IDs (`goal_<16>`, `msg_<16>`, `todo_<16>`, `turn_<16>`) are used
+//! for goals, messages, todos, and turns respectively.
 
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::thread;
 use std::time::Duration;
 
 use kalid::Kalid;
+use memorable_ids::GenerateOptions;
+use memorable_ids::generate;
 
 use crate::session::types::SessionTreeEntry;
 
@@ -21,7 +23,9 @@ thread_local! {
 const GOAL_PREFIX: &str = "goal";
 const MESSAGE_PREFIX: &str = "msg";
 const TODO_PREFIX: &str = "todo";
-const SKILL_CACHE_PREFIX: &str = "skc";
+const TURN_PREFIX: &str = "turn";
+const WORKER_PREFIX: &str = "wrk";
+const WORKER_MSG_PREFIX: &str = "wmsg";
 
 /// K-sortable ID string (16-char Kalid, no prefix).
 pub fn create_kalid() -> String {
@@ -50,6 +54,16 @@ pub fn create_prefixed_kalid(prefix: &str) -> String {
     format!("{}_{}", prefix, next_unique_kalid())
 }
 
+/// Create a prefixed Kalid around an explicit body (e.g. a raw RNG Kalid).
+pub fn create_prefixed_kalid_with(prefix: &str, body: String) -> String {
+    format!("{}_{}", prefix, body)
+}
+
+#[cfg(test)]
+fn collect_existing(ids: &[&str]) -> HashSet<String> {
+    ids.iter().map(|s| s.to_string()).collect()
+}
+
 /// Create a goal ID (`goal_<16>`).
 pub fn create_goal_id() -> String {
     create_prefixed_kalid(GOAL_PREFIX)
@@ -61,13 +75,68 @@ pub fn create_message_id() -> String {
 }
 
 /// Create a todo ID (`todo_<16>`).
+///
+/// Uniqueness is load-bearing: todo IDs become the PRIMARY KEY of the
+/// `session_todos` table, so `replace` (delete-all + insert) can never collide
+/// with stale rows from a previous list — a duplicate would fail the whole write.
+/// `next_unique_kalid()` only checks against the *last* generated ID (thread-local),
+/// so identical fast-sequential bodys (e.g. `todo_bj5s97pfxx4pg1yp` twice) slip
+/// through and violate the constraint. Take the slow path and ask the RNG / clock
+/// mix inside the store for a fresh body when the fast path repeats.
+///
+/// Wrapper stays `todo_<16>`: use [`create_todo_id_checked`] when a duplicate
+/// would be fatal (DB unique constraint).
 pub fn create_todo_id() -> String {
     create_prefixed_kalid(TODO_PREFIX)
 }
 
-/// Create a skill cache ID (`skc_<16>`).
-pub fn create_skill_cache_id() -> String {
-    create_prefixed_kalid(SKILL_CACHE_PREFIX)
+/// Like [`create_todo_id`], but retries against a set of already-present IDs.
+///
+/// The fallback bodies come from `kalid::generate_kalid()` (RNG + clock, not the
+/// thread-local last-ID filter), so consecutive calls from the same task diverge.
+pub fn create_todo_id_checked(existing: &HashSet<String>) -> String {
+    for _ in 0..100 {
+        let candidate = create_todo_id();
+        if !existing.contains(&candidate) {
+            return candidate;
+        }
+    }
+    create_prefixed_kalid_with(WORKER_PREFIX, kalid::generate_kalid())
+}
+
+/// Create a turn ID (`turn_<16>`).
+pub fn create_turn_id() -> String {
+    create_prefixed_kalid(TURN_PREFIX)
+}
+
+/// Create a worker ID with memorable name using underscore separator.
+///
+/// Example: `wrk_quick_fox`
+pub fn create_worker_id() -> String {
+    let options = GenerateOptions {
+        components: 2,
+        separator: "_".to_string(),
+        suffix: None,
+    };
+    for _ in 0..100 {
+        let core = generate(options.clone()).expect("valid memorable id options");
+        let parts: Vec<&str> = core.split('_').collect();
+        if parts.len() == 2
+            && parts
+                .iter()
+                .all(|part| !part.is_empty() && part.chars().all(|c| c.is_ascii_alphabetic()))
+        {
+            return format!("{}_{}", WORKER_PREFIX, core);
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
+    // Fallback: use kalid if memorable_ids fails to generate valid core
+    create_prefixed_kalid(WORKER_PREFIX)
+}
+
+/// Create a worker-message ID (`wmsg_<16>`).
+pub fn create_worker_msg_id() -> String {
+    create_prefixed_kalid(WORKER_MSG_PREFIX)
 }
 
 /// Returns `true` when `id` is a valid Kalid string, with or without prefix.
@@ -76,24 +145,40 @@ pub fn create_skill_cache_id() -> String {
 /// - Unprefixed 16-char Kalid (e.g. `a1b2c3d4e5f6g7h8`)
 /// - Prefixed Kalid with a known prefix + `_` separator + 16-char body
 ///   (e.g. `goal_a1b2c3d4e5f6g7h8`)
+/// - Worker IDs with memorable names (e.g. `wrk_quick_fox`)
 pub fn is_valid_kalid(id: &str) -> bool {
-    let body = strip_prefix(id).unwrap_or(id);
-    body.len() == 16 && Kalid::parse(body).is_ok()
-}
-
-/// Strip a known prefix and separator from a Kalid string, returning the 16-char body.
-///
-/// Returns `None` if no known prefix is found.
-fn strip_prefix(id: &str) -> Option<&str> {
-    let underscore = id.find('_')?;
-    let prefix = &id[..underscore];
-    // Only strip known prefixes to avoid false positives
-    match prefix {
-        GOAL_PREFIX | MESSAGE_PREFIX | TODO_PREFIX | SKILL_CACHE_PREFIX => {
-            let body = &id[underscore + 1..];
-            Some(body)
+    let underscore = id.find('_');
+    if let Some(pos) = underscore {
+        let prefix = &id[..pos];
+        let body = &id[pos + 1..];
+        match prefix {
+            WORKER_PREFIX => {
+                // Worker IDs accept either 16-char body (fallback) or memorable adjective_noun
+                if body.len() == 16 && body.chars().all(|c| c.is_ascii_alphanumeric()) {
+                    return true;
+                }
+                // Check for memorable adjective_noun format
+                let parts: Vec<&str> = body.split('_').collect();
+                if parts.len() == 2
+                    && parts
+                        .iter()
+                        .all(|part| !part.is_empty() && part.chars().all(|c| c.is_ascii_alphabetic()))
+                {
+                    return true;
+                }
+                false
+            }
+            GOAL_PREFIX | MESSAGE_PREFIX | TODO_PREFIX | TURN_PREFIX | WORKER_MSG_PREFIX => {
+                body.len() == 16 && Kalid::parse(body).is_ok()
+            }
+            _ => {
+                // Unknown prefix: treat as unprefixed → must be 16-char Kalid
+                id.len() == 16 && Kalid::parse(id).is_ok()
+            }
         }
-        _ => None,
+    } else {
+        // No prefix: must be 16-char Kalid
+        id.len() == 16 && Kalid::parse(id).is_ok()
     }
 }
 
@@ -165,11 +250,25 @@ mod tests {
     }
 
     #[test]
-    fn create_skill_cache_id_has_prefix() {
-        let id = create_skill_cache_id();
-        assert!(id.starts_with("skc_"), "skc_ prefix");
-        assert_eq!(id.len(), 20); // "skc_" (4) + 16 body
-        assert!(is_valid_kalid(&id));
+    fn create_todo_id_checked_avoids_collision_with_same_body() {
+        // Regression: the thread-local last-ID filter can hand out the same body twice
+        // back-to-back (e.g. `todo_bj5s97pfxx4pg1yp`), which violates the PRIMARY KEY.
+        let same_body = "bj5s97pfxx4pg1yp";
+        for _ in 0..8 {
+            let held = collect_existing(&[&format!("todo_{same_body}")]);
+            let id = create_todo_id_checked(&held);
+            assert_ne!(id, format!("todo_{same_body}"));
+            assert!(id.starts_with("todo_"));
+            assert!(is_valid_kalid(&id));
+        }
+    }
+
+    #[test]
+    fn create_todo_id_checked_not_in_set() {
+        let held = collect_existing(&["todo_aaaaaaaaaaaaaaaa", "todo_bbbbbbbbbbbbbbbb"]);
+        let id = create_todo_id_checked(&held);
+        assert!(!held.contains(&id), "id {id} must not be in the held set");
+        assert!(id.starts_with("todo_"));
     }
 
     #[test]
@@ -183,7 +282,7 @@ mod tests {
         assert!(is_valid_kalid(&create_goal_id()));
         assert!(is_valid_kalid(&create_message_id()));
         assert!(is_valid_kalid(&create_todo_id()));
-        assert!(is_valid_kalid(&create_skill_cache_id()));
+        assert!(is_valid_kalid(&create_turn_id()));
     }
 
     #[test]
@@ -204,5 +303,31 @@ mod tests {
     fn rapid_prefixed_ids_produce_distinct_ids() {
         let ids: std::collections::HashSet<String> = (0..8).map(|_| create_goal_id()).collect();
         assert_eq!(ids.len(), 8);
+    }
+
+    #[test]
+    fn create_worker_id_uses_memorable_underscore_format() {
+        for _ in 0..32 {
+            let id = create_worker_id();
+            assert!(id.starts_with("wrk_"), "expected wrk_ prefix, got {id}");
+            let core = id.strip_prefix("wrk_").expect("core");
+            let parts: Vec<&str> = core.split('_').collect();
+            // Either fallback Kalid (16 chars) or memorable adjective_noun (2 parts)
+            if parts.len() == 2 {
+                assert!(parts[0].chars().all(|c| c.is_ascii_alphabetic()));
+                assert!(parts[1].chars().all(|c| c.is_ascii_alphabetic()));
+            } else {
+                // Fallback to Kalid
+                assert_eq!(core.len(), 16);
+            }
+            assert!(is_valid_kalid(&id));
+        }
+    }
+
+    #[test]
+    fn is_valid_kalid_accepts_memorable_worker_id() {
+        assert!(is_valid_kalid("wrk_quick_fox"));
+        assert!(is_valid_kalid("wrk_silent_owl"));
+        assert!(is_valid_kalid("wrk_a1b2c3d4e5f6g7h8")); // Fallback Kalid
     }
 }

@@ -11,7 +11,7 @@ const GREEN: Style = Style::new().bold().fg_color(Some(Color::Ansi(AnsiColor::Gr
 const YELLOW: Style = Style::new().bold().fg_color(Some(Color::Ansi(AnsiColor::Yellow)));
 const RED: Style = Style::new().bold().fg_color(Some(Color::Ansi(AnsiColor::Red)));
 const CYAN: Style = Style::new().fg_color(Some(Color::Ansi(AnsiColor::Cyan)));
-const BLUE: Style = Style::new().fg_color(Some(Color::Ansi(AnsiColor::Blue)));
+const BLUE: Style = Style::new().bold().fg_color(Some(Color::Ansi(AnsiColor::Blue)));
 const MUTED: Style = Style::new().fg_color(Some(Color::Ansi(AnsiColor::BrightBlack)));
 const BOLD: Style = Style::new().bold();
 const MAGENTA: Style = Style::new().fg_color(Some(Color::Ansi(AnsiColor::Magenta)));
@@ -84,7 +84,7 @@ pub fn success(msg: impl fmt::Display) {
 /// Section header.
 pub fn header(msg: impl fmt::Display) {
     if color_enabled() {
-        println!("\n{}", paint(BLUE.bold(), msg));
+        println!("\n{}", paint(BLUE, msg));
     } else {
         println!("\n{msg}");
     }
@@ -130,5 +130,48 @@ pub fn verified(msg: impl fmt::Display) {
         println!("  {} {}", paint(GREEN, "✓"), paint(MUTED, msg));
     } else {
         println!("  ✓ {msg}");
+    }
+}
+
+/// Resolved cost source breakdown summary line.
+pub fn cost_breakdown(live_api: usize, models_dev: usize, aimd: usize, previous: usize, none: usize) {
+    let total = live_api + models_dev + aimd + previous + none;
+    if total == 0 {
+        return;
+    }
+    let parts: Vec<String> = [
+        (live_api, "live-api"),
+        (models_dev, "models.dev"),
+        (aimd, "ai-model-directory"),
+        (previous, "previous"),
+    ]
+    .iter()
+    .filter(|(c, _)| *c > 0)
+    .map(|(c, s)| format!("{s}={c}"))
+    .collect();
+    let parts_str = parts.join(" ");
+    if color_enabled() {
+        if none > 0 {
+            println!(
+                "  {} {}  {}",
+                paint(MAGENTA, "cost source"),
+                paint(YELLOW, format!("none={none}")),
+                paint(MUTED, parts_str),
+            );
+        } else {
+            println!(
+                "  {} {} {}",
+                paint(MAGENTA, "cost source"),
+                paint(MUTED, parts_str),
+                paint(GREEN, format!("none={none}")),
+            );
+        }
+    } else {
+        let none_s = if none > 0 {
+            format!(" none={none}")
+        } else {
+            String::new()
+        };
+        println!("  cost source: {parts_str}{none_s}");
     }
 }

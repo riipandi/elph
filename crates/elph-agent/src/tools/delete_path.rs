@@ -12,13 +12,18 @@ use crate::runtime::local_env::LocalExecutionEnv;
 use crate::tools::common::{check_aborted, file_error, resolve_path};
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
+use crate::workers::SharedPathClaim;
 
 pub fn create_delete_path_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
+    create_delete_path_tool_with_claims(env, None)
+}
+
+pub fn create_delete_path_tool_with_claims(env: Arc<LocalExecutionEnv>, claims: SharedPathClaim) -> AgentTool {
     let env_for_tool = env.clone();
     simple_tool(
         Tool {
             name: "delete_path".into(),
-constrained_sampling: None,
+            constrained_sampling: None,
             description: "Deletes a file or directory (including contents recursively) at the specified path and confirms the deletion.".into(),
             parameters: json!({
                 "type": "object",
@@ -31,7 +36,8 @@ constrained_sampling: None,
         "delete_path",
         move |_, args| {
             let env = env_for_tool.clone();
-            Box::pin(async move { execute_delete_path(env, args, None).await })
+            let claims = claims.clone();
+            Box::pin(async move { execute_delete_path(env, args, None, claims).await })
         },
     )
 }
@@ -40,6 +46,7 @@ async fn execute_delete_path(
     env: Arc<LocalExecutionEnv>,
     args: Value,
     signal: Option<CancellationToken>,
+    claims: SharedPathClaim,
 ) -> anyhow::Result<AgentToolResult> {
     check_aborted(signal.as_ref())?;
     let path = args
@@ -48,6 +55,9 @@ async fn execute_delete_path(
         .ok_or_else(|| anyhow::anyhow!("Missing required argument: path"))?;
 
     let absolute = resolve_path(&env, path, signal.as_ref()).await?;
+    if let Some(claim) = claims.as_ref() {
+        claim.claim(&absolute, "delete_path").await?;
+    }
     match FileSystem::remove(
         env.as_ref(),
         &absolute,

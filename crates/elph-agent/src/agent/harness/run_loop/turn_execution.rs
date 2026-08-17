@@ -11,6 +11,7 @@ use crate::agent::harness::types::AgentHarnessPromptOptions;
 use crate::agent::harness::types::BeforeAgentStartEvent;
 use crate::goals::{GoalRuntime, GoalTurnFinish, GoalTurnStart};
 use crate::runtime::run_agent_loop;
+use crate::turns::{TurnStatus, TurnUsage};
 use crate::types::AgentEvent;
 use crate::types::llm_message_to_agent;
 
@@ -103,6 +104,32 @@ where
             .await
             .unwrap_or_else(|_| crate::session::durability::new_id("turn"));
 
+        // Relational turn accounting (best-effort; tree journal remains authoritative for recovery).
+        let db_turn_id = if let Some(store) = &self.shared.turn_store {
+            let model = turn_state.model.clone();
+            let thinking = *self.shared.thinking_level.lock().await;
+            let thinking_s = super::super::helpers::thinking_level_to_session_string(thinking);
+            match store
+                .start_turn(
+                    &turn_state.session_id,
+                    Some(&operation_id),
+                    Some(model.provider.as_str()),
+                    Some(model.id.as_str()),
+                    Some(thinking_s.as_str()),
+                )
+                .await
+            {
+                Ok(rec) => Some(rec.id),
+                Err(err) => {
+                    log::warn!("session_turns start failed: {err:#}");
+                    None
+                }
+            }
+        } else {
+            None
+        };
+        let turn_started_ms = now_ms();
+
         let before_result = match self
             .shared
             .hooks
@@ -119,6 +146,19 @@ where
                 let _ = self
                     .journal_turn_finished(turn_id, operation_id, crate::session::durability::OperationOutcome::Failed)
                     .await;
+                if let (Some(store), Some(db_id)) = (&self.shared.turn_store, db_turn_id.as_deref()) {
+                    let _ = store
+                        .finish_turn(
+                            db_id,
+                            TurnStatus::Failed,
+                            TurnUsage::default(),
+                            (now_ms() - turn_started_ms).max(0),
+                            None,
+                            None,
+                            Some(&error.to_string()),
+                        )
+                        .await;
+                }
                 return Err(error);
             }
         };
@@ -147,6 +187,19 @@ where
                             crate::session::durability::OperationOutcome::Failed,
                         )
                         .await;
+                    if let (Some(store), Some(db_id)) = (&self.shared.turn_store, db_turn_id.as_deref()) {
+                        let _ = store
+                            .finish_turn(
+                                db_id,
+                                TurnStatus::Failed,
+                                TurnUsage::default(),
+                                (now_ms() - turn_started_ms).max(0),
+                                None,
+                                None,
+                                Some(&message),
+                            )
+                            .await;
+                    }
                     return Err(AgentHarnessError::new(AgentHarnessErrorCode::InvalidState, message));
                 }
                 Err(error) => {
@@ -157,6 +210,19 @@ where
                             crate::session::durability::OperationOutcome::Failed,
                         )
                         .await;
+                    if let (Some(store), Some(db_id)) = (&self.shared.turn_store, db_turn_id.as_deref()) {
+                        let _ = store
+                            .finish_turn(
+                                db_id,
+                                TurnStatus::Failed,
+                                TurnUsage::default(),
+                                (now_ms() - turn_started_ms).max(0),
+                                None,
+                                None,
+                                Some(&error.to_string()),
+                            )
+                            .await;
+                    }
                     return Err(AgentHarnessError::new(AgentHarnessErrorCode::InvalidState, error.to_string()));
                 }
             }
@@ -190,6 +256,24 @@ where
                     crate::session::durability::OperationOutcome::Failed
                 };
                 let _ = self.journal_turn_finished(turn_id, operation_id, outcome).await;
+                if let (Some(store), Some(db_id)) = (&self.shared.turn_store, db_turn_id.as_deref()) {
+                    let status = if abort_token.is_cancelled() {
+                        TurnStatus::Interrupted
+                    } else {
+                        TurnStatus::Failed
+                    };
+                    let _ = store
+                        .finish_turn(
+                            db_id,
+                            status,
+                            TurnUsage::default(),
+                            (now_ms() - turn_started_ms).max(0),
+                            None,
+                            None,
+                            Some(&error),
+                        )
+                        .await;
+                }
                 return self
                     .emit_run_failure(&model, &error, abort_token.is_cancelled(), &emit)
                     .await;
@@ -200,16 +284,57 @@ where
             let _ = self
                 .journal_turn_finished(turn_id, operation_id, crate::session::durability::OperationOutcome::Failed)
                 .await;
+            if let (Some(store), Some(db_id)) = (&self.shared.turn_store, db_turn_id.as_deref()) {
+                let _ = store
+                    .finish_turn(
+                        db_id,
+                        TurnStatus::Failed,
+                        TurnUsage::default(),
+                        (now_ms() - turn_started_ms).max(0),
+                        None,
+                        None,
+                        Some(&error.to_string()),
+                    )
+                    .await;
+            }
             return Err(error);
         }
         let _ = self
             .journal_turn_finished(turn_id, operation_id, crate::session::durability::OperationOutcome::Completed)
             .await;
 
+        // Accumulate provider usage across every assistant message in the turn — tool-call
+        // iterations (`StopReason::ToolUse`) and the final reply are separate API calls, each
+        // carrying their own usage (tool-call tokens included). Summing them yields the turn's
+        // true provider-reported consumption; taking only the last message under-reports.
+        let mut total_usage = TurnUsage::default();
+        for message in &run_result {
+            if let Some(assistant) = message.as_llm()
+                && let Message::Assistant(assistant) = assistant
+            {
+                total_usage += TurnUsage::from_ai_usage(&assistant.usage);
+            }
+        }
+
         for message in run_result.into_iter().rev() {
             if let Some(assistant) = message.as_llm()
                 && let Message::Assistant(assistant) = assistant
             {
+                if let (Some(store), Some(db_id)) = (&self.shared.turn_store, db_turn_id.as_deref())
+                    && let Err(err) = store
+                        .finish_turn(
+                            db_id,
+                            TurnStatus::Completed,
+                            total_usage.clone(),
+                            (now_ms() - turn_started_ms).max(0),
+                            None,
+                            None,
+                            None,
+                        )
+                        .await
+                {
+                    log::warn!("session_turns finish failed: {err:#}");
+                }
                 if let Some(goal_runtime) = &self.shared.goal_runtime {
                     let mode = *self.shared.collaboration_mode.lock().await;
                     match goal_runtime.finish_turn(mode, Some(&assistant.usage)).await {
@@ -245,6 +370,20 @@ where
                 }
                 return Ok(assistant.clone());
             }
+        }
+
+        if let (Some(store), Some(db_id)) = (&self.shared.turn_store, db_turn_id.as_deref()) {
+            let _ = store
+                .finish_turn(
+                    db_id,
+                    TurnStatus::Failed,
+                    TurnUsage::default(),
+                    (now_ms() - turn_started_ms).max(0),
+                    None,
+                    None,
+                    Some("AgentHarness prompt completed without an assistant message"),
+                )
+                .await;
         }
 
         Err(AgentHarnessError::new(

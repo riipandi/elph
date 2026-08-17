@@ -337,9 +337,12 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
         settings: &config.settings,
         cwd: &cwd,
         resume_id: config.resume_id.as_deref(),
+        create_if_missing: false,
+        session_name: None,
         provider_override: None,
         model_override: config.model_override.as_deref(),
         agent_mode: None,
+        system_prompt_override: None,
         preloaded_resources: Some(config.preloaded_resources.clone()),
         defer_mcp_load: true,
         headless: false,
@@ -347,6 +350,7 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
     .await?;
 
     let session = Arc::new(session);
+    session.start_worker_inbox_poller();
     let session_id = session.session_id().to_string();
     let is_resume = config.resume_id.is_some();
 
@@ -377,61 +381,16 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
     })
 }
 
-/// Load persisted chat history from the session's branch entries and convert them
-/// to transcript messages for display on resume.
+/// Load persisted chat history by reconstructing TUI cards from the session tree.
 ///
-/// Prefer the TranscriptCache snapshot (overwrite semantics, latest only). Fall back to
-/// the session-tree `elph.transcript.snapshot` custom entry, then to reconstructing cards
-/// from LLM messages + tool results when no snapshot exists (e.g. interrupted turn).
-async fn load_chat_history(session: &CodingAgentSession, paths: &crate::platform::Paths) -> Vec<TranscriptMessage> {
-    // 1. Try the TranscriptCache first (new overwrite-based storage).
-    let session_id = session.session_id().to_string();
-    if let Ok(cache) = crate::tui::transcript::TranscriptCache::open(&paths.memory_db_path(), &session_id).await
-        && let Ok(Some(json)) = cache.load_snapshot().await
-    {
-        match serde_json::from_str::<serde_json::Value>(&json) {
-            Ok(value) => {
-                let messages = crate::tui::transcript::messages_from_snapshot_data(&value);
-                if let Some(msgs) = messages
-                    && !msgs.is_empty()
-                {
-                    return msgs;
-                }
-            }
-            Err(err) => {
-                log::warn!("transcript snapshot cache parse failed: {err:#}");
-            }
-        }
-    }
-
-    // 2. Fall back to session-tree entries (legacy path).
+/// The tree is the single source of truth (same data the model uses via
+/// `build_session_context`). UI snapshot tables are not used.
+async fn load_chat_history(session: &CodingAgentSession, _paths: &crate::platform::Paths) -> Vec<TranscriptMessage> {
     let Ok(entries) = session.branch_entries().await else {
         return Vec::new();
     };
-
-    if let Some(messages) = load_transcript_snapshot_from_entries(&entries) {
-        return messages;
-    }
-
-    // 3. Last resort: reconstruct from LLM entries.
     let cwd = session.harness().env().cwd().to_string();
     reconstruct_transcript_from_llm_entries(&entries, &cwd)
-}
-
-/// Latest full transcript snapshot written after each completed turn.
-fn load_transcript_snapshot_from_entries(entries: &[elph_agent::SessionTreeEntry]) -> Option<Vec<TranscriptMessage>> {
-    use crate::tui::transcript::{TRANSCRIPT_SNAPSHOT_CUSTOM_TYPE, messages_from_snapshot_data};
-
-    let mut latest: Option<&serde_json::Value> = None;
-    for entry in entries {
-        if let elph_agent::SessionTreeEntry::Custom { custom_type, data, .. } = entry
-            && custom_type == TRANSCRIPT_SNAPSHOT_CUSTOM_TYPE
-            && let Some(data) = data
-        {
-            latest = Some(data);
-        }
-    }
-    latest.and_then(messages_from_snapshot_data)
 }
 
 /// Reconstruct transcript cards from the LLM session tree (fallback path).
@@ -531,6 +490,30 @@ fn reconstruct_transcript_from_llm_entries(
                     continue;
                 }
 
+                // Auto-retry / `/continue` recovery prompt — same quiet meta label the live
+                // shell applier renders (see `UserPromptCommitted` in shell/tick.rs), so a
+                // resumed session never shows the raw recovery prompt as a user card.
+                if text.trim() == crate::agent::RETRY_CONTINUE_PROMPT {
+                    let mut notice =
+                        TranscriptMessage::text(crate::agent::CONTINUE_META_LABEL.to_string(), TranscriptStyle::Meta);
+                    notice.sticky_meta = true;
+                    messages.push(notice);
+                    last_event_ms = Some(*user_ms);
+                    continue;
+                }
+
+                // Worker-message turn prompt — same slim meta label the live shell
+                // applier renders (see shell/tick.rs), so a resumed session never
+                // shows the raw `<intercom>` wrapper as a user prompt card.
+                if text.starts_with(crate::agent::WORKER_INBOUND_PROMPT_PREFIX) {
+                    let label = crate::tui::shell::worker_inbound_meta_label(&text);
+                    let mut notice = TranscriptMessage::text(label, TranscriptStyle::Meta);
+                    notice.sticky_meta = true;
+                    messages.push(notice);
+                    last_event_ms = Some(*user_ms);
+                    continue;
+                }
+
                 let mut msg = TranscriptMessage::text(text, TranscriptStyle::User);
                 msg.submitted_at = entry_ts.or_else(|| datetime_from_millis(*user_ms));
                 msg.detail_expanded = false;
@@ -599,7 +582,10 @@ fn reconstruct_transcript_from_llm_entries(
                                 last_event_ms = Some(result.timestamp_ms.max(assist_ms));
                             }
 
-                            msg.detail_expanded = msg.tool.as_ref().is_some_and(|t| t.has_inline_diff());
+                            // Finished tool cards start collapsed like the live applier's
+                            // end_tool — never auto-expand on resume just because a diff
+                            // payload was restored.
+                            msg.detail_expanded = false;
                             messages.push(msg);
                         }
                         AssistantContentBlock::Text(t) => {
@@ -682,17 +668,14 @@ pub(crate) fn prompt_card_from_session_meta(
     if prompt_title.is_empty() {
         return None;
     }
+    // `prompt_title` already carries a leading `/`
+    // (skills include the `/skill:` prefix from prompt_ops).
     let style = if prompt_kind == "skill" {
         TranscriptStyle::SkillPrompt
     } else {
         TranscriptStyle::User
     };
-    let display = if prompt_kind == "skill" {
-        format!("[skill] {prompt_title}")
-    } else {
-        prompt_title.to_string()
-    };
-    let mut msg = TranscriptMessage::text(display, style);
+    let mut msg = TranscriptMessage::text(prompt_title.to_string(), style);
     msg.submitted_at = submitted_at;
     msg.detail_expanded = false;
     Some(msg)
@@ -954,7 +937,7 @@ mod tests {
     fn prompt_card_from_session_meta_skill_and_template() {
         let skill = prompt_card_from_session_meta("/tui-design layout", "skill", None).expect("skill");
         assert_eq!(skill.style, TranscriptStyle::SkillPrompt);
-        assert_eq!(skill.content, "[skill] /tui-design layout");
+        assert_eq!(skill.content, "/tui-design layout");
         assert!(skill.style.is_user_input_card());
 
         let template = prompt_card_from_session_meta("/review-pr 42", "template", None).expect("template");
@@ -974,10 +957,191 @@ mod tests {
         let restored = messages_from_snapshot_data(&data).expect("parse");
         assert_eq!(restored.len(), 2);
         assert_eq!(restored[0].style, TranscriptStyle::SkillPrompt);
-        // The `[skill]` display prefix is part of the card content and is
-        // preserved verbatim through the snapshot round-trip.
-        assert_eq!(restored[0].content, "[skill] /code-review fix tests");
+        assert_eq!(restored[0].content, "/code-review fix tests");
         assert_eq!(restored[1].style, TranscriptStyle::User);
         assert_eq!(restored[1].content, "/summarize --short");
+    }
+
+    /// Resumed edit_file cards start collapsed even though a diff payload is restored.
+    ///
+    /// Regression: the fallback reconstruction expanded tool cards whenever
+    /// `old_text`/`new_text` diff details were present, so every resumed `Edit`
+    /// row rendered its multi-line diff instead of the collapsed one-line header
+    /// the live applier shows for finished tools.
+    #[test]
+    fn reconstructed_edit_file_tool_card_starts_collapsed() {
+        use elph_agent::{AgentMessage, SessionTreeEntry};
+        use elph_ai::{AssistantContentBlock, ContentBlock, Message, StopReason, ToolCall, UserContent};
+
+        let call_id = "call-edit-1";
+        let entries = vec![
+            SessionTreeEntry::Message {
+                id: "u1".into(),
+                parent_id: None,
+                timestamp: "t".into(),
+                message: AgentMessage::Llm(Box::new(Message::User {
+                    content: UserContent::Text("fix it".into()),
+                    timestamp: 0,
+                })),
+                prompt_title: String::new(),
+                prompt_kind: String::new(),
+            },
+            SessionTreeEntry::Message {
+                id: "a1".into(),
+                parent_id: Some("u1".into()),
+                timestamp: "t".into(),
+                message: AgentMessage::Llm(Box::new(Message::Assistant(elph_ai::faux_assistant_message(
+                    vec![AssistantContentBlock::ToolCall(ToolCall::new(
+                        call_id,
+                        "edit_file",
+                        serde_json::json!({ "path": "src/main.rs" }),
+                    ))],
+                    Some(StopReason::ToolUse),
+                )))),
+                prompt_title: String::new(),
+                prompt_kind: String::new(),
+            },
+            SessionTreeEntry::Message {
+                id: "r1".into(),
+                parent_id: Some("a1".into()),
+                timestamp: "t".into(),
+                message: AgentMessage::Llm(Box::new(Message::ToolResult {
+                    tool_call_id: call_id.into(),
+                    tool_name: "edit_file".into(),
+                    content: vec![ContentBlock::Text {
+                        text: "Edited src/main.rs".into(),
+                    }],
+                    details: Some(serde_json::json!({
+                        "old_content": "fn a() {}\n",
+                        "new_content": "fn a() { 1 }\n",
+                        "file_path": "src/main.rs",
+                        "_elph_ui": { "duration_secs": 0.4 },
+                    })),
+                    added_tool_names: None,
+                    usage: None,
+                    is_error: false,
+                    timestamp: 10,
+                })),
+                prompt_title: String::new(),
+                prompt_kind: String::new(),
+            },
+        ];
+
+        let messages = reconstruct_transcript_from_llm_entries(&entries, "/tmp/project");
+        assert_eq!(messages.len(), 2, "user + tool card");
+        let tool_card = &messages[1];
+        let tool = tool_card.tool.as_ref().expect("tool card");
+        assert_eq!(tool.name, "edit_file");
+        // The diff payload is restored, but the finished tool card must stay collapsed —
+        // same as the live applier's end_tool — so resume matches the live transcript.
+        assert!(tool.has_inline_diff());
+        assert!(!tool_card.detail_expanded, "resumed edit_file must start collapsed");
+        assert!(tool_card.is_tool_collapsed());
+        assert_eq!(tool_card.duration_secs, Some(0.4));
+        assert!(tool_card.layout_text().starts_with("✓ Edit "));
+        assert_eq!(tool_card.layout_text().lines().count(), 1, "collapsed card is header-only");
+    }
+    /// Recovery prompts (auto-retry / `/continue`) restore as a quiet sticky meta label,
+    /// never as a giant user prompt card — matching the live `UserPromptCommitted`
+    /// rendering in shell/tick.rs.
+    #[test]
+    fn resumed_retry_continue_prompt_renders_as_meta_label() {
+        use elph_agent::{AgentMessage, SessionTreeEntry};
+        use elph_ai::{Message, UserContent};
+
+        let entries = vec![
+            SessionTreeEntry::Message {
+                id: "u1".into(),
+                parent_id: None,
+                timestamp: "t".into(),
+                message: AgentMessage::Llm(Box::new(Message::User {
+                    content: UserContent::Text(crate::agent::RETRY_CONTINUE_PROMPT.to_string()),
+                    timestamp: 0,
+                })),
+                prompt_title: String::new(),
+                prompt_kind: String::new(),
+            },
+            SessionTreeEntry::Message {
+                id: "a1".into(),
+                parent_id: Some("u1".into()),
+                timestamp: "t".into(),
+                message: AgentMessage::Llm(Box::new(Message::Assistant(elph_ai::faux_assistant_message(
+                    Vec::new(),
+                    None,
+                )))),
+                prompt_title: String::new(),
+                prompt_kind: String::new(),
+            },
+        ];
+
+        let messages = reconstruct_transcript_from_llm_entries(&entries, "/tmp/project");
+        assert_eq!(messages.len(), 1, "recovery prompt renders as one quiet meta line");
+        let msg = &messages[0];
+        assert_eq!(msg.style, TranscriptStyle::Meta);
+        assert_eq!(msg.content, crate::agent::CONTINUE_META_LABEL);
+        assert!(msg.sticky_meta, "resumed recovery notice must stay sticky like the live label");
+        assert!(!msg.style.is_user_input_card(), "no giant user prompt card on resume");
+    }
+
+    /// Worker-message turn prompts restore as a slim sticky meta label, never as a
+    /// giant user prompt card showing the raw `<intercom>` wrapper — matching the
+    /// live `UserPromptCommitted` rendering in shell/tick.rs.
+    #[test]
+    fn resumed_worker_inbound_prompt_renders_as_meta_label() {
+        use elph_agent::{AgentMessage, SessionTreeEntry};
+        use elph_ai::{Message, UserContent};
+
+        let prompt = format!(
+            "{} (`calm-fox`)\n\
+             in this shared project. Answer it as part of your normal turn — you may use\n\
+             tools. Reply with the `worker_reply` tool so the peer receives your answer.\n\
+             If the message needs no answer, send a short acknowledgement.</intercom>\n\n\
+             Please check the auth service",
+            crate::agent::WORKER_INBOUND_PROMPT_PREFIX
+        );
+
+        let entries = vec![
+            SessionTreeEntry::Message {
+                id: "u1".into(),
+                parent_id: None,
+                timestamp: "t".into(),
+                message: AgentMessage::Llm(Box::new(Message::User {
+                    content: UserContent::Text(prompt),
+                    timestamp: 0,
+                })),
+                prompt_title: String::new(),
+                prompt_kind: String::new(),
+            },
+            SessionTreeEntry::Message {
+                id: "a1".into(),
+                parent_id: Some("u1".into()),
+                timestamp: "t".into(),
+                message: AgentMessage::Llm(Box::new(Message::Assistant(elph_ai::faux_assistant_message(
+                    Vec::new(),
+                    None,
+                )))),
+                prompt_title: String::new(),
+                prompt_kind: String::new(),
+            },
+        ];
+
+        let messages = reconstruct_transcript_from_llm_entries(&entries, "/tmp/project");
+        assert_eq!(messages.len(), 1, "worker inbound renders as one slim meta line");
+        let msg = &messages[0];
+        assert_eq!(msg.style, TranscriptStyle::Meta);
+        assert!(msg.content.starts_with("Message from worker calm-fox"), "{}", msg.content);
+        assert!(msg.content.contains("Please check the auth service"), "{}", msg.content);
+        assert!(
+            !msg.content.contains("<intercom>"),
+            "raw wrapper must be hidden: {}",
+            msg.content
+        );
+        assert!(
+            !msg.content.contains("worker_reply"),
+            "wrapper body must be hidden: {}",
+            msg.content
+        );
+        assert!(msg.sticky_meta, "resumed worker notice must stay sticky like the live label");
+        assert!(!msg.style.is_user_input_card(), "no giant user prompt card on resume");
     }
 }

@@ -164,6 +164,8 @@ pub struct CompactionSettings {
     /// When `None`, falls back to `reserve_tokens` (legacy behavior).
     pub threshold_pct: Option<u8>,
     pub keep_recent_tokens: u64,
+    /// When true, physically DELETE `session_entries` not on the post-compaction branch.
+    pub physical_prune: bool,
 }
 
 impl Default for CompactionSettings {
@@ -177,6 +179,7 @@ pub const DEFAULT_COMPACTION_SETTINGS: CompactionSettings = CompactionSettings {
     reserve_tokens: 16384,
     threshold_pct: Some(80),
     keep_recent_tokens: 20000,
+    physical_prune: true,
 };
 
 /// Validation settings for skill loading.
@@ -275,6 +278,8 @@ where
     pub steering_mode: QueueMode,
     pub follow_up_mode: QueueMode,
     pub goal_runtime: Option<std::sync::Arc<crate::goals::GoalRuntime>>,
+    /// Optional relational turn accounting (`session_turns` + session rollups).
+    pub turn_store: Option<std::sync::Arc<crate::turns::TurnStore>>,
     pub subagent_bootstrap: Option<crate::agent::subagent::SubagentBootstrap>,
     pub compaction_settings: CompactionSettings,
     pub shared_registry: Option<std::sync::Arc<crate::agent::subagent::AgentRegistry>>,

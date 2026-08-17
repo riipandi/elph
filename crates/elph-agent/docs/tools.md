@@ -21,10 +21,10 @@ The `elph` binary adds two additional tools not in `elph-agent`: `diagnostics` a
 
 ```
 Read & Search Tools
-  - list_dir     : Lists files and directories in a given path, providing an overview of filesystem contents.
-  - read_file    : Reads the content of a specified file in the project, allowing access to file contents.
-  - find_path    : Quickly finds files by matching glob patterns (like `*/.ts`), returning matching file paths alphabetically.
-  - grep         : Searches file contents across the project using regular expressions, preferred for finding symbols in code without knowing exact file paths.
+  - list_dir     : Lists immediate children of one directory (not recursive). Prefer find_path/grep for discovery.
+  - read_file    : Reads file contents; supports batch `paths`/`ranges` and streaming `offset`/`limit` windows with line numbers. Includes content hash for edit_file TOCTOU protection.
+  - find_path    : Finds files by glob (`*.rs`, `**/foo.rs`) via fff-search (gitignore-aware).
+  - grep         : Content search with AST-aware pattern matching for structural code search (via ast-grep) and text-based search (via fff-search). Automatically detects AST patterns with metavariables (e.g., 'fn $NAME($ARGS)', 'let $X = $Y', '$VAR = $EXPR') for semantic code matching.
   - diagnostics  : Gets errors and warnings for either a specific file or the entire project, useful after making edits to determine if further changes are needed.
 
 Edit Tools
@@ -38,6 +38,11 @@ Edit Tools
 
 Terminal Tools
   - shell_use    : Drives a real PTY terminal session (bash/zsh/fish/pwsh/cmd/nushell/...). Use for interactive programs, TUIs, REPLs, keystroke-driven prompts, and verifying on-screen state.
+
+Session structure (host-registered; not part of BuiltinToolsBuilder)
+  - todo_write   : Create/update session todos (`merge` by id, statuses pending|in_progress|completed|cancelled).
+  - todo_read    : Read the current session todo list.
+  - create_goal / get_goal / update_goal / set_goal_budget : Session objective + budgets (see goals module).
 
 Web Tools
   - web_fetch    : Fetches a URL and optionally returns the content as Markdown. Useful for providing docs as context.
@@ -171,21 +176,21 @@ Read a text or image file. Text output is truncated to 2000 lines or 50 KB (whic
 
 #### `grep`
 
-Search file contents under a directory or single file. Powered by `fff-search` in `FFFMode::Ai`.
+Search file contents with AST-aware and text-based search. Automatically detects AST patterns with metavariables for structural code search (via ast-grep) and falls back to text-based search (via fff-search).
 
 | Parameter    | Type    | Required | Default | Description                              |
 | ------------ | ------- | -------- | ------- | ---------------------------------------- |
-| `pattern`    | string  | yes      | —       | Regex or literal search pattern          |
+| `pattern`    | string  | yes      | —       | Search pattern. AST patterns with metavariables (e.g., 'fn $NAME($ARGS)', 'let $X = $Y', '$VAR = $EXPR') are detected automatically for structural code matching. Otherwise treated as regex/literal text. |
 | `path`       | string  | no       | `.`     | Directory or file to search              |
-| `literal`    | boolean | no       | `false` | Treat `pattern` as plain text, not regex |
+| `literal`    | boolean | no       | `false` | Treat `pattern` as literal text, not regex (disables AST pattern detection) |
 | `ignoreCase` | boolean | no       | `false` | Case-insensitive match                   |
-| `limit`      | number  | no       | `100`   | Maximum matches                          |
+| `limit`      | number  | no       | `200`   | Maximum matches                                 |
+|| `type`       | string  | no       | —       | File type hint for AST pattern detection (rust, py, js, ts, go, java, c, cpp, cs, elixir) |
+|| `glob`       | string  | no       | —       | Glob filter (e.g., '**/*.rs', '*.{ts,tsx}')      |
 
 Output format: `path:line:content`, one match per line. Paths are rendered relative to the working directory when possible (absolute otherwise), so results stay token-efficient while remaining actionable. Long lines are truncated to 500 characters. Overall output is capped at 50 KB.
 
-When `path` points to a file, the search is scoped to that file via `AiGrepConfig` path constraints. When `path` is a directory, the picker indexes from that root.
-
-`literal: true` uses plain-text mode. With `ignoreCase: true`, the pattern is escaped and searched as a case-insensitive regex.
+AST patterns provide structural code matching that is more accurate than text-based search for code-like patterns. The tool automatically detects AST patterns when they contain metavariables like `$VAR`, `$NAME`, or `$EXPR` (e.g., 'fn $NAME($ARGS)', 'let $X = $Y'). Simple code structure without metavariables (e.g., 'function test()') or operators alone (e.g., 'x == y') are treated as text search to avoid false positives. Use `literal: true` to force text-based search.
 
 #### `find_path`
 
@@ -222,13 +227,7 @@ Replace an exact substring in a file. `old_string` must occur exactly once.
 | `old_string` | string | yes      | Text to replace  |
 | `new_string` | string | yes      | Replacement text |
 
-The edit is applied in memory, written to disk, then **re-read from disk and compared** to the
-intended result. A successful result therefore means the change actually persisted. The tool
-aborts (without touching the file) if `new_string` equals `old_string` (a no-op), if the edit
-would leave a standalone `old_string` **outside** the replaced region (the only allowed overlap
-is an `old_string` that stays inside `new_string`, e.g. appending a tag right after its own
-closing tag), if the file changed between the initial read and the write (TOCTOU — another tool
-or external editor modified it), or if the on-disk content does not match after the write.
+The edit reads the file, verifies that `old_string` appears exactly once, and replaces it with `new_string`. If `old_string` is not found, a diagnostic hint points out possible whitespace differences or the nearest matching line. The tool aborts if `new_string` equals `old_string` (a no-op) or if `old_string` appears multiple times (requiring more surrounding context).
 
 #### `write_file`
 

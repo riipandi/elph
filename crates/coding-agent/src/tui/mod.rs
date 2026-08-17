@@ -5,12 +5,15 @@
 mod activity;
 mod agent_bridge;
 pub(crate) mod api_error_display;
+pub(crate) mod aside_panel;
 mod ask_user_tool_card;
 pub(crate) mod chrome;
 mod confetti;
 mod file_picker;
 mod focus;
 mod inline_dialog;
+pub(crate) mod item_selector;
+mod item_selector_bar;
 pub(crate) mod labels;
 pub(crate) mod mcp_auth_dialog;
 mod model_option_list;
@@ -44,6 +47,7 @@ pub(crate) mod transcript;
 mod user_question;
 mod user_question_bar;
 mod user_question_option_list;
+mod worker_chat;
 
 use std::sync::Arc;
 
@@ -173,6 +177,7 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
         paths: paths,
         file_picker_show_hidden: settings.ui.file_picker.show_hidden_files,
         allow_mode_change_while_busy: settings.ui.allow_mode_change_while_busy,
+        turn_stats_enabled: settings.ui.turn_stats,
         initial_git_footer: git_footer,
     ))
     .render_loop()

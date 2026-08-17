@@ -19,7 +19,11 @@ pub mod prompt;
 pub mod runtime;
 
 pub mod session;
+pub mod session_summary;
 pub mod skills;
+pub mod todos;
+pub mod turns;
+pub mod workers;
 
 pub mod tools;
 pub mod trace;
@@ -210,6 +214,7 @@ pub use messages::create_custom_message;
 pub use messages::default_convert_to_llm;
 pub use messages::default_convert_to_llm as convert_to_llm;
 pub use messages::default_convert_to_llm_fn;
+pub use messages::now_date_with_offset;
 pub use messages::now_iso_timestamp;
 pub use messages::shell_exec_execution_to_text;
 #[cfg(feature = "extensions")]
@@ -290,6 +295,8 @@ pub use session::build_session_context;
 pub use session::build_session_context_with_options;
 pub use session::create_session_id;
 pub use session::create_timestamp;
+pub use session::create_worker_id;
+pub use session::create_worker_msg_id;
 pub use session::default_context_entry_transform;
 pub use session::derive_session_context_state;
 pub use session::get_entries_to_fork;
@@ -300,8 +307,17 @@ pub use session::reconcile_session;
 pub use session::reduce_durable_state;
 pub use session::repair_unanswered_tool_calls;
 pub use session::to_session;
+pub use session::{
+    CANONICAL_SESSION_SCHEMA_SQL, EVENTS_FILE, SESSION_SUMMARY_SCHEMA_SQL, SESSION_TREE_MIGRATIONS, SUMMARY_FILE,
+    WORKERS_SCHEMA_SQL,
+};
 pub use session::{DurableHarnessState, OperationKind, OperationOutcome, QueueKind, RecoveryReport};
-pub use session::{EVENTS_FILE, SESSION_TREE_MIGRATIONS, SUMMARY_FILE};
+pub use session::{
+    RetentionPolicy, SessionGcReport, list_session_gc_rows, run_full_session_gc, run_session_gc, set_session_pinned,
+};
+pub use session_summary::SessionSummary;
+pub use session_summary::SessionSummaryStore;
+pub use session_summary::create_session_summary_tool;
 pub use skills::LoadSkillsResult;
 pub use skills::LoadSourcedSkillsResult;
 pub use skills::SkillDiagnostic;
@@ -316,6 +332,10 @@ pub use skills::load_sourced_skills;
 pub use skills::load_sourced_skills_with_options;
 pub use skills::skill_args_validation_notice;
 pub use skills::skill_requires_arguments;
+pub use todos::{
+    TodoHook, TodoItem, TodoStatus, TodoStore, TodoUpdate, WorkTracker, auto_close_done_todos, create_todo_tools,
+    create_todo_tools_with_hook,
+};
 #[cfg(any(feature = "tools-edit", feature = "tools-search"))]
 pub use tools::create_all_tools;
 #[cfg(any(feature = "tools-edit", feature = "tools-search", feature = "tools-web"))]
@@ -339,6 +359,7 @@ pub use tools::create_grep_tool;
 pub use tools::create_list_available_tools;
 #[cfg(feature = "tools-list-dir")]
 pub use tools::create_list_dir_tool;
+pub use tools::create_list_skills_tool;
 #[cfg(feature = "tools-move-path")]
 pub use tools::create_move_path_tool;
 #[cfg(feature = "tools-read-file")]
@@ -551,4 +572,10 @@ pub use tools::{close_shell_use_sessions, create_shell_use_tool, shell_use_open_
 #[cfg(feature = "tools-web")]
 pub use tools::{create_web_extract_tool, create_web_fetch_tool, create_web_search_tool, create_web_tools};
 pub use tools::{echo_tool, simple_tool};
+pub use turns::{TurnRecord, TurnStatus, TurnStore, TurnUsage};
 pub use types::*;
+pub use workers::{
+    FileLeaseStore, LeaseConflict, LeaseError, LiveWorker, MailboxStore, MessageKind, MessageStatus, PathClaimContext,
+    SessionLease, SessionLeaseStore, SharedPathClaim, WorkerMessage, WorkerRecord, WorkerRegistry, WorkerStatus,
+    WorkerToolContext, create_worker_tools, normalize_claim_path,
+};

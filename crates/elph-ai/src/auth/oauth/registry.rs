@@ -119,6 +119,11 @@ fn radius_provider() -> OAuthProviderInterface {
     }
 }
 
+/// Rewrite Copilot base URLs and drop models not enabled for this account.
+///
+/// When `available_model_ids` is set (from `GET /models` after login/refresh), only those
+/// ids remain. Free/Student plans are auto-selection-only — typically a short list that may
+/// include `auto` — so premium catalog rows must not be offered or requested.
 fn modify_github_copilot_models(models: Vec<Model>, credential: &OAuthCredential) -> Vec<Model> {
     let enterprise_domain = credential
         .enterprise_url
@@ -126,13 +131,41 @@ fn modify_github_copilot_models(models: Vec<Model>, credential: &OAuthCredential
         .and_then(crate::auth::oauth::normalize_domain);
     let base_url =
         crate::auth::oauth::get_github_copilot_base_url(Some(&credential.access), enterprise_domain.as_deref());
-    models
+
+    // `None` → older credential / fetch failed: keep catalog (legacy). `Some` → plan-gated set.
+    let allowed = credential
+        .available_model_ids
+        .as_ref()
+        .map(|ids| ids.iter().map(|s| s.as_str()).collect::<std::collections::HashSet<_>>());
+
+    let mut filtered: Vec<Model> = models
         .into_iter()
-        .map(|mut model| {
+        .filter_map(|mut model| {
+            if model.provider != "github-copilot" {
+                return Some(model);
+            }
+            if let Some(ref allowed) = allowed
+                && !allowed.contains(model.id.as_str())
+            {
+                return None;
+            }
             model.base_url = base_url.clone();
-            model
+            Some(model)
         })
-        .collect()
+        .collect();
+
+    // Free/Student plans are auto-selection-only. If the plan list filtered everything
+    // out (or only listed ids outside our catalog), still offer `auto` when present.
+    if allowed.is_some()
+        && !filtered.iter().any(|m| m.id == "auto")
+        && let Some(auto) = github_copilot_catalog_models().into_iter().find(|m| m.id == "auto")
+    {
+        let mut auto = auto;
+        auto.base_url = base_url;
+        filtered.insert(0, auto);
+    }
+
+    filtered
 }
 
 static REGISTRY: LazyLock<RwLock<HashMap<String, OAuthProviderInterface>>> = LazyLock::new(|| {

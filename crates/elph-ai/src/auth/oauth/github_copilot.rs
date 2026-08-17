@@ -46,17 +46,42 @@ fn github_copilot_oauth_impl() -> OAuthAuth {
         to_auth: Arc::new(|credential| {
             Box::pin(async move {
                 let enterprise_domain = copilot_enterprise_domain(&credential);
+                // OAuth `access` is already the Copilot session token (`tid=…;exp=…;…`).
+                // If a plain GitHub token was stored by mistake, exchange it.
+                let session = ensure_copilot_session_token(&credential.access, enterprise_domain.as_deref()).await?;
                 Ok(ModelAuth {
-                    api_key: Some(credential.access.clone()),
+                    api_key: Some(session.clone()),
                     headers: None,
-                    base_url: Some(get_github_copilot_base_url(
-                        Some(&credential.access),
-                        enterprise_domain.as_deref(),
-                    )),
+                    base_url: Some(get_github_copilot_base_url(Some(&session), enterprise_domain.as_deref())),
                 })
             })
         }),
     }
+}
+
+/// True when the token looks like a GitHub Copilot **session** token (`k=v;k=v;…`),
+/// not a bare GitHub PAT / OAuth access token.
+pub fn is_copilot_session_token(token: &str) -> bool {
+    let t = token.trim();
+    t.contains('=') && t.contains(';')
+}
+
+/// Exchange a GitHub OAuth/PAT-style token for a Copilot session token when needed.
+///
+/// The Copilot chat API expects the session token from
+/// `GET /copilot_internal/v2/token`. Sending a plain GitHub token yields
+/// `invalid token: missing = param` (400).
+pub async fn ensure_copilot_session_token(token: &str, enterprise_domain: Option<&str>) -> anyhow::Result<String> {
+    let token = token.trim();
+    if token.is_empty() {
+        anyhow::bail!("empty GitHub Copilot token");
+    }
+    if is_copilot_session_token(token) {
+        return Ok(token.to_string());
+    }
+    log::info!("exchanging GitHub token for Copilot session token");
+    let creds = refresh_copilot_access_token(token, enterprise_domain).await?;
+    Ok(creds.access)
 }
 
 #[derive(Debug, Clone)]
@@ -65,7 +90,9 @@ pub struct CopilotOAuthTokens {
     refresh: String,
     expires: i64,
     enterprise_url: Option<String>,
-    available_model_ids: Vec<String>,
+    /// `None` when the plan model list was not fetched (do not filter the catalog).
+    /// `Some(ids)` when known — including empty (no tool-capable models for this plan).
+    available_model_ids: Option<Vec<String>>,
 }
 
 fn to_oauth_credential(creds: CopilotOAuthTokens) -> OAuthCredential {
@@ -76,7 +103,7 @@ fn to_oauth_credential(creds: CopilotOAuthTokens) -> OAuthCredential {
         expires: creds.expires,
         account_id: None,
         enterprise_url: creds.enterprise_url,
-        available_model_ids: Some(creds.available_model_ids),
+        available_model_ids: creds.available_model_ids,
     }
 }
 
@@ -133,20 +160,39 @@ fn copilot_urls(domain: &str) -> (String, String, String) {
 }
 
 pub async fn login_github_copilot(callbacks: &Arc<dyn AuthLoginCallbacks>) -> anyhow::Result<CopilotOAuthTokens> {
-    let input = callbacks
-        .prompt(AuthPrompt::Text {
-            message: "GitHub Enterprise URL/domain (blank for github.com)".to_string(),
-            placeholder: Some("company.ghe.com".to_string()),
-        })
-        .await?;
-
-    let trimmed = input.trim();
-    let enterprise_domain = normalize_domain(&input);
-    if !trimmed.is_empty() && enterprise_domain.is_none() {
-        return Err(anyhow::anyhow!("Invalid GitHub Enterprise URL/domain"));
-    }
+    // Optional enterprise host: blank → github.com. Env ELPH_GITHUB_HOST skips the prompt.
+    let enterprise_domain = if let Ok(host) = std::env::var("ELPH_GITHUB_HOST") {
+        let host = host.trim().to_string();
+        if host.is_empty() {
+            None
+        } else {
+            Some(normalize_domain(&host).ok_or_else(|| anyhow::anyhow!("Invalid ELPH_GITHUB_HOST: {host}"))?)
+        }
+    } else {
+        callbacks.notify(AuthEvent::Progress {
+            message: "GitHub host: press Enter for github.com (or type enterprise domain)".to_string(),
+        });
+        let input = callbacks
+            .prompt(AuthPrompt::Text {
+                message: "GitHub host (Enter = github.com, or company.ghe.com)".to_string(),
+                placeholder: Some("github.com".to_string()),
+            })
+            .await?;
+        let trimmed = input.trim();
+        if trimmed.is_empty() || trimmed.eq_ignore_ascii_case("github.com") {
+            None
+        } else {
+            Some(
+                normalize_domain(trimmed)
+                    .ok_or_else(|| anyhow::anyhow!("Invalid GitHub Enterprise URL/domain: {trimmed}"))?,
+            )
+        }
+    };
     let domain = enterprise_domain.as_deref().unwrap_or("github.com");
 
+    callbacks.notify(AuthEvent::Progress {
+        message: format!("Requesting device code from {domain}…"),
+    });
     let device = start_device_flow(domain).await?;
     callbacks.notify(AuthEvent::DeviceCode {
         user_code: device.user_code.clone(),
@@ -155,14 +201,32 @@ pub async fn login_github_copilot(callbacks: &Arc<dyn AuthLoginCallbacks>) -> an
         expires_in_seconds: Some(device.expires_in as u32),
     });
 
+    // Poll immediately — GitHub usually accepts the first poll after a short delay;
+    // waiting a full interval first made "Waiting for authentication" feel stuck.
     let github_access = poll_github_access_token(domain, &device).await?;
+    callbacks.notify(AuthEvent::Progress {
+        message: "Exchanging for Copilot session token…".to_string(),
+    });
     let mut creds = refresh_copilot_access_token(&github_access, enterprise_domain.as_deref()).await?;
 
+    // Skip sequential enable-all (one POST per catalog model — very slow). Users can
+    // enable models in the Copilot settings UI; listing available ids is enough.
     callbacks.notify(AuthEvent::Progress {
-        message: "Enabling models...".to_string(),
+        message: "Fetching available models…".to_string(),
     });
-    enable_all_copilot_models(&creds.access, enterprise_domain.as_deref()).await;
-    creds.available_model_ids = fetch_available_model_ids(&creds.access, enterprise_domain.as_deref()).await?;
+    match tokio::time::timeout(
+        std::time::Duration::from_secs(8),
+        fetch_available_model_ids(&creds.access, enterprise_domain.as_deref()),
+    )
+    .await
+    {
+        Ok(Ok(ids)) => {
+            log::info!("Copilot plan models: {} available", ids.len());
+            creds.available_model_ids = Some(ids);
+        }
+        Ok(Err(e)) => log::warn!("Copilot model list failed: {e:#}"),
+        Err(_) => log::warn!("Copilot model list timed out"),
+    }
     Ok(creds)
 }
 
@@ -171,8 +235,38 @@ pub async fn refresh_github_copilot_token(
     enterprise_domain: Option<&str>,
 ) -> anyhow::Result<CopilotOAuthTokens> {
     let mut creds = refresh_copilot_access_token(refresh_token, enterprise_domain).await?;
-    creds.available_model_ids = fetch_available_model_ids(&creds.access, enterprise_domain).await?;
+    match fetch_available_model_ids(&creds.access, enterprise_domain).await {
+        Ok(ids) => creds.available_model_ids = Some(ids),
+        Err(e) => log::warn!("Copilot model list failed on refresh: {e:#}"),
+    }
     Ok(creds)
+}
+
+/// Fill `available_model_ids` when missing (older auth.json entries) so free/paid
+/// plan filtering can apply without forcing a full re-login.
+pub async fn ensure_copilot_available_model_ids(credential: &mut OAuthCredential) -> anyhow::Result<()> {
+    if credential.available_model_ids.is_some() {
+        return Ok(());
+    }
+    let enterprise_domain = copilot_enterprise_domain(credential);
+    let session = ensure_copilot_session_token(&credential.access, enterprise_domain.as_deref()).await?;
+    if session != credential.access {
+        credential.access = session.clone();
+    }
+    match tokio::time::timeout(
+        std::time::Duration::from_secs(8),
+        fetch_available_model_ids(&session, enterprise_domain.as_deref()),
+    )
+    .await
+    {
+        Ok(Ok(ids)) => {
+            log::info!("Copilot plan models (lazy): {} available", ids.len());
+            credential.available_model_ids = Some(ids);
+        }
+        Ok(Err(e)) => log::warn!("Copilot lazy model list failed: {e:#}"),
+        Err(_) => log::warn!("Copilot lazy model list timed out"),
+    }
+    Ok(())
 }
 
 async fn start_device_flow(domain: &str) -> anyhow::Result<DeviceCodeResponse> {
@@ -212,7 +306,8 @@ async fn poll_github_access_token(domain: &str, device: &DeviceCodeResponse) -> 
     poll_oauth_device_code_flow(DeviceCodePollOptions {
         interval_seconds: device.interval,
         expires_in_seconds: Some(device.expires_in),
-        wait_before_first_poll: true,
+        // First poll after ~1s (MINIMUM_INTERVAL), not a full GitHub interval (often 5s+).
+        wait_before_first_poll: false,
         poll: Box::new({
             let device_code = device.device_code.clone();
             let access_token_url = access_token_url.clone();
@@ -292,11 +387,14 @@ async fn refresh_copilot_access_token(
         refresh: refresh_token.to_string(),
         expires: expires_at * 1000 - 5 * 60 * 1000,
         enterprise_url: enterprise_domain.map(|s| s.to_string()),
-        available_model_ids: vec![],
+        available_model_ids: None,
     })
 }
 
-async fn fetch_available_model_ids(token: &str, enterprise_domain: Option<&str>) -> anyhow::Result<Vec<String>> {
+pub(crate) async fn fetch_available_model_ids(
+    token: &str,
+    enterprise_domain: Option<&str>,
+) -> anyhow::Result<Vec<String>> {
     let base_url = get_github_copilot_base_url(Some(token), enterprise_domain);
     let client = reqwest::Client::new();
     let mut req = client
@@ -335,6 +433,9 @@ async fn fetch_available_model_ids(token: &str, enterprise_domain: Option<&str>)
     Ok(ids)
 }
 
+/// Optional: enable every catalog model via Copilot policy API (slow — one HTTP
+/// call per model). Login no longer calls this; keep for manual/debug use.
+#[allow(dead_code)]
 async fn enable_all_copilot_models(token: &str, enterprise_domain: Option<&str>) {
     let base_url = get_github_copilot_base_url(Some(token), enterprise_domain);
     let client = reqwest::Client::new();

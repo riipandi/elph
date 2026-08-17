@@ -9,6 +9,7 @@
             "input": 30.0,
             "output": 60.0
         },
+        "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "gpt-4",
         "input": ["text"],
         "maxTokens": 8192,
@@ -35,6 +36,7 @@
             "input": 10.0,
             "output": 30.0
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "gpt-4-turbo",
         "input": ["text", "image"],
         "maxTokens": 4096,
@@ -61,6 +63,7 @@
             "input": 2.0,
             "output": 8.0
         },
+        "description": "Long-lived GPT workhorse for coding, instruction following, and production apps",
         "id": "gpt-4.1",
         "input": ["text", "image"],
         "maxTokens": 32768,
@@ -87,6 +90,7 @@
             "input": 0.4,
             "output": 1.6
         },
+        "description": "Affordable GPT-4.1 lane for fast coding help and structured extraction",
         "id": "gpt-4.1-mini",
         "input": ["text", "image"],
         "maxTokens": 32768,
@@ -113,6 +117,7 @@
             "input": 0.1,
             "output": 0.4
         },
+        "description": "Tiny GPT-4.1 option for classification, routing, and very high-volume tasks",
         "id": "gpt-4.1-nano",
         "input": ["text", "image"],
         "maxTokens": 32768,
@@ -139,6 +144,7 @@
             "input": 2.5,
             "output": 10.0
         },
+        "description": "Omni-era GPT for multimodal chat, practical coding, and general assistants",
         "id": "gpt-4o",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -165,6 +171,7 @@
             "input": 5.0,
             "output": 15.0
         },
+        "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "gpt-4o-2024-05-13",
         "input": ["text", "image"],
         "maxTokens": 4096,
@@ -191,6 +198,7 @@
             "input": 2.5,
             "output": 10.0
         },
+        "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "gpt-4o-2024-08-06",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -217,6 +225,7 @@
             "input": 2.5,
             "output": 10.0
         },
+        "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "gpt-4o-2024-11-20",
         "input": ["text", "image", "audio"],
         "maxTokens": 16384,
@@ -243,6 +252,7 @@
             "input": 0.15,
             "output": 0.6
         },
+        "description": "Small omni GPT for cheap multimodal assistance and production-scale traffic",
         "id": "gpt-4o-mini",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -272,6 +282,7 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "gpt-5",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -279,11 +290,11 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": null,
+            "medium": "medium",
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
         }
@@ -301,6 +312,7 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "Chat-tuned GPT model for conversational assistance, writing, and tool workflows",
         "id": "gpt-5-chat-latest",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -308,13 +320,13 @@
         "provider": "azure-openai-responses",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "gpt-5-mini": {
@@ -330,6 +342,7 @@
             "input": 0.25,
             "output": 2.0
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "gpt-5-mini",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -337,11 +350,11 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": null,
+            "medium": "medium",
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
         }
@@ -359,6 +372,7 @@
             "input": 0.05,
             "output": 0.4
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "gpt-5-nano",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -366,11 +380,11 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
-            "minimal": null,
+            "medium": "medium",
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
         }
@@ -388,6 +402,7 @@
             "input": 15.0,
             "output": 120.0
         },
+        "description": "Higher-accuracy GPT-5 tier for tough analysis, coding reviews, and planning",
         "id": "gpt-5-pro",
         "input": ["text", "image"],
         "maxTokens": 272000,
@@ -395,7 +410,7 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
+            "high": "high",
             "low": null,
             "max": null,
             "medium": null,
@@ -417,6 +432,7 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "Speech generation model for controllable voice, narration, and audio delivery",
         "id": "gpt-5.1",
         "input": ["text", "image", "audio"],
         "maxTokens": 128000,
@@ -424,12 +440,12 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -446,6 +462,7 @@
             "input": 1.75,
             "output": 14.0
         },
+        "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "gpt-5.2",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -453,12 +470,12 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -475,6 +492,7 @@
             "input": 1.75,
             "output": 14.0
         },
+        "description": "Chat-tuned GPT model for conversational assistance, writing, and tool workflows",
         "id": "gpt-5.2-chat-latest",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -485,10 +503,10 @@
             "high": null,
             "low": null,
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "gpt-5.2-pro": {
@@ -504,6 +522,7 @@
             "input": 18.9,
             "output": 151.2
         },
+        "description": "Frontier GPT model for professional reasoning, coding, and multimodal work",
         "id": "gpt-5.2-pro",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -511,12 +530,12 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -533,20 +552,21 @@
             "input": 1.75,
             "output": 14.0
         },
+        "description": "Chat-tuned GPT model for conversational assistance, writing, and tool workflows",
         "id": "gpt-5.3-chat-latest",
         "input": ["text", "image"],
         "maxTokens": 128000,
         "name": "GPT-5.3 Chat Latest",
         "provider": "azure-openai-responses",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "gpt-5.3-codex": {
@@ -562,6 +582,7 @@
             "input": 1.75,
             "output": 14.0
         },
+        "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
         "id": "gpt-5.3-codex",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -569,12 +590,12 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -591,6 +612,7 @@
             "input": 1.75,
             "output": 14.0
         },
+        "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
         "id": "gpt-5.3-codex-spark",
         "input": ["text", "image", "pdf"],
         "maxTokens": 32000,
@@ -598,12 +620,12 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -620,6 +642,7 @@
             "input": 2.5,
             "output": 15.0
         },
+        "description": "Agent-ready GPT for coding and computer-use workflows at a lower cost",
         "id": "gpt-5.4",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -627,12 +650,12 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -649,6 +672,7 @@
             "input": 0.75,
             "output": 4.5
         },
+        "description": "Strong small GPT for coding subagents, quick tool use, and high-volume work",
         "id": "gpt-5.4-mini",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -656,12 +680,12 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -678,6 +702,7 @@
             "input": 0.2,
             "output": 1.25
         },
+        "description": "Cheapest GPT-5.4 lane for simple routing, extraction, and bulk automation",
         "id": "gpt-5.4-nano",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -685,12 +710,12 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -707,6 +732,7 @@
             "input": 30.0,
             "output": 180.0
         },
+        "description": "More exact GPT-5.4 tier for demanding professional reasoning and agent tasks",
         "id": "gpt-5.4-pro",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -714,10 +740,10 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
+            "high": "high",
             "low": null,
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
@@ -736,6 +762,7 @@
             "input": 5.0,
             "output": 30.0
         },
+        "description": "Default frontier GPT for coding, computer use, research, and knowledge work",
         "id": "gpt-5.5",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -743,12 +770,12 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -765,6 +792,7 @@
             "input": 30.0,
             "output": 180.0
         },
+        "description": "Highest-accuracy GPT-5.5 tier for slower, precision-heavy reasoning and coding",
         "id": "gpt-5.5-pro",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -772,10 +800,10 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
+            "high": "high",
             "low": null,
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
@@ -789,11 +817,12 @@
         },
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.1,
-            "cacheWrite": 1.25,
-            "input": 1.0,
-            "output": 6.0
+            "cacheRead": 0.02,
+            "cacheWrite": 0.25,
+            "input": 0.2,
+            "output": 1.2
         },
+        "description": "Cost-efficient GPT-5.6 model for fast, high-volume workloads",
         "id": "gpt-5.6-luna",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -801,12 +830,12 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -823,6 +852,7 @@
             "input": 5.0,
             "output": 30.0
         },
+        "description": "Frontier GPT-5.6 model for complex professional work, coding, and agentic workflows",
         "id": "gpt-5.6-sol",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -830,12 +860,12 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -847,11 +877,12 @@
         },
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.25,
-            "cacheWrite": 3.125,
-            "input": 2.5,
-            "output": 15.0
+            "cacheRead": 0.2,
+            "cacheWrite": 2.5,
+            "input": 2.0,
+            "output": 12.0
         },
+        "description": "Balanced GPT-5.6 model for capable, cost-efficient everyday work",
         "id": "gpt-5.6-terra",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
@@ -859,12 +890,12 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -878,6 +909,7 @@
             "input": 4.0,
             "output": 24.0
         },
+        "description": "Realtime speech-to-speech model with configurable reasoning, tool use, and robust voice-agent behavior",
         "id": "gpt-realtime-2.1",
         "input": ["text", "audio", "image"],
         "maxTokens": 32000,
@@ -904,6 +936,7 @@
             "input": 15.0,
             "output": 60.0
         },
+        "description": "O-series reasoning model for hard analysis, math, coding, and planning",
         "id": "o1",
         "input": ["text", "image"],
         "maxTokens": 100000,
@@ -930,6 +963,7 @@
             "input": 150.0,
             "output": 600.0
         },
+        "description": "O-series reasoning model for hard analysis, math, coding, and planning",
         "id": "o1-pro",
         "input": ["text", "image"],
         "maxTokens": 100000,
@@ -956,6 +990,7 @@
             "input": 2.0,
             "output": 8.0
         },
+        "description": "Deliberate o-series reasoner for hard math, coding, and multi-step analysis",
         "id": "o3",
         "input": ["text", "image"],
         "maxTokens": 100000,
@@ -982,6 +1017,7 @@
             "input": 1.1,
             "output": 4.4
         },
+        "description": "Smaller o-series reasoner for economical coding, math, and planning tasks",
         "id": "o3-mini",
         "input": ["text"],
         "maxTokens": 100000,
@@ -1008,6 +1044,7 @@
             "input": 20.0,
             "output": 40.0
         },
+        "description": "High-effort o3 tier for difficult technical reasoning and careful answers",
         "id": "o3-pro",
         "input": ["text", "image"],
         "maxTokens": 100000,
@@ -1020,8 +1057,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "o4-mini": {
@@ -1034,6 +1071,7 @@
             "input": 1.1,
             "output": 4.4
         },
+        "description": "Fast o-series model for compact reasoning, coding, and tool use",
         "id": "o4-mini",
         "input": ["text", "image"],
         "maxTokens": 100000,

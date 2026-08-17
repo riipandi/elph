@@ -40,6 +40,8 @@ A single 500-line assistant reply parsed into ~800 `MarkdownLine` × ~2000 `Styl
 
 **Fix applied (session 1):** Added `drop_cached_documents()` to `AssistantMarkdownBuffer` and wired it into the archive path to shed parsed documents from retained messages beyond `MARKED_MESSAGES_WITH_MARKDOWN_CACHE` (20).
 
+**Superseded:** that archive path also *drained* old messages, which deleted visible scrollback mid-session. It is replaced by `transcript/retention.rs` (`apply_transcript_retention`), which keeps every row and releases documents outside a trailing 40-message window via `without_documents()` — avoiding the `Arc::make_mut` deep-clone spike. See `docs/archive/transcript.md` § Memory Retention.
+
 **Estimated savings:** 200-500 MB in a 40-turn session (each parsed document is 1-5 MB).
 
 ---

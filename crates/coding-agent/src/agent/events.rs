@@ -1,5 +1,7 @@
 //! Agent → TUI event bridge.
 
+use elph_agent::{TodoItem, TurnUsage};
+
 /// Recovery prompt submitted instead of re-sending the original text when a transient
 /// stream/provider error interrupts a turn. The model resumes from the last persisted
 /// state (any tool results already in the conversation stay in context) instead of
@@ -10,6 +12,14 @@
 pub const RETRY_CONTINUE_PROMPT: &str = "Continue: the previous response was interrupted by a transient stream error. \
      Resume from where you left off and finish the task. Do not repeat tool calls or \
      actions that already succeeded.";
+
+/// Slim sticky meta label rendered in the transcript for the retry/continue prompt.
+///
+/// Used by the live shell applier and by resume reconstruction so the recovery
+/// prompt shows as one quiet status line instead of a giant user prompt card.
+/// The label must stay identical in both paths so a live `continue` notice and a
+/// resumed one render the same.
+pub const CONTINUE_META_LABEL: &str = "Continuing tasks…";
 
 /// Lifecycle phase for subagent UI (maps to process glyphs / status colors).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -25,7 +35,7 @@ impl SubagentUiPhase {
     /// Plain-language status word for a11y (not color-only).
     pub fn as_word(self) -> &'static str {
         match self {
-            Self::Pending => "pending",
+            Self::Pending => "starting",
             Self::Running => "running",
             Self::Idle => "idle",
             Self::Error => "error",
@@ -96,6 +106,12 @@ pub enum AgentUiEvent {
     },
     RunCompleted {
         elapsed_secs: f64,
+        /// Provider-reported usage for the turn (input/output/cache), when available.
+        usage: Option<TurnUsage>,
+        /// Provider id the turn ran on (e.g. `openai`), when known.
+        provider_id: Option<String>,
+        /// Model id the turn ran on, when known.
+        model_id: Option<String>,
     },
     /// Harness steer/follow-up queue snapshot (after enqueue, drain, cancel, or abort).
     QueueUpdate {
@@ -132,6 +148,45 @@ pub enum AgentUiEvent {
     UserQuestionRequired(UserQuestionRequest),
     /// Agent requests a mode change (Ask/Plan → Build/Brave).
     ModeChangeRequired(ModeChangeRequest),
+    /// `/aside` side question started (panel / status).
+    AsideStarted {
+        request_id: u64,
+        question: String,
+    },
+    /// `/aside` answer ready — shell opens a scroll dialog (not session history).
+    AsideFinished {
+        request_id: u64,
+        question: String,
+        answer: String,
+    },
+    /// `/aside` failed.
+    AsideFailed {
+        request_id: u64,
+        error: String,
+    },
+    /// A worker message was received (threaded, via worker_send/reply/ask).
+    /// The shell shows the inbox badge and stores the message for the worker chat.
+    WorkerInboxReceived {
+        msg_id: String,
+        from_worker: String,
+        from_worker_id: String,
+        text: String,
+        created_at: String,
+    },
+    /// A worker message was sent by this session (worker_send/reply/ask).
+    WorkerInboxSent {
+        msg_id: String,
+        to_worker: String,
+        to_worker_id: String,
+        text: String,
+        created_at: String,
+    },
+    /// The worker inbox changed in a way the shell should re-read.
+    WorkerInboxUpdated,
+    /// Todo list updated by the agent (todo_write tool call).
+    TodoUpdated {
+        items: Vec<TodoItem>,
+    },
 }
 
 #[derive(Debug)]

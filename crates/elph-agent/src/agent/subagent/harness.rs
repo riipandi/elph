@@ -125,8 +125,14 @@ impl SubagentHarness {
             .map(|message| {
                 let mut text = String::new();
                 for block in &message.content {
-                    if let elph_ai::AssistantContentBlock::Text(content) = block {
-                        text.push_str(&content.text);
+                    match block {
+                        elph_ai::AssistantContentBlock::Text(content) => {
+                            text.push_str(&content.text);
+                        }
+                        elph_ai::AssistantContentBlock::Thinking(content) => {
+                            text.push_str(&content.thinking);
+                        }
+                        _ => {}
                     }
                 }
                 text
@@ -233,6 +239,7 @@ pub async fn spawn_subagent_harness(
         follow_up_mode: QueueMode::OneAtATime,
         compaction_settings: crate::agent::harness::types::DEFAULT_COMPACTION_SETTINGS,
         goal_runtime: None,
+        turn_store: None,
         subagent_bootstrap: Some(bootstrap.clone()),
         shared_registry: Some(shared_registry),
         agent_control: Some(agent_control),
@@ -259,6 +266,7 @@ pub async fn spawn_subagent_harness(
             finished_at_ms: None,
             turns: 0,
         },
+        created_at_ms: Some(now_ms()),
     };
 
     if let Some(dir) = &output_dir {

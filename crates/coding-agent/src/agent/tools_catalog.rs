@@ -7,6 +7,7 @@
 
 use anyhow::Result;
 use elph_agent::create_list_available_tools;
+use elph_agent::create_list_skills_tool;
 use elph_agent::{AgentHarness, CollaborationMode, McpToolRegistry, TursoSessionStorage, is_mcp_tool};
 
 use crate::types::AgentMode;
@@ -31,18 +32,11 @@ pub async fn refresh_tools_catalog(harness: &AgentHarness<TursoSessionStorage>, 
         .cloned()
         .collect();
 
-    // Keep `list_skills` available (always-active catalog tool); it is excluded
-    // from the `list_available_tools` snapshot so the two catalogs don't nest.
-    tools.retain(|tool| tool.name() != "list_available_tools");
-    if !tools.iter().any(|tool| tool.name() == "list_skills")
-        && let Some(skills_tool) = harness
-            .get_tools()
-            .await
-            .into_iter()
-            .find(|tool| tool.name() == "list_skills")
-    {
-        tools.push(skills_tool);
-    }
+    // Rebuild `list_skills` from the live resource set so a late/lazy skill load
+    // is visible (the previous snapshot was frozen at tool-build time).
+    tools.retain(|tool| tool.name() != "list_available_tools" && tool.name() != "list_skills");
+    let skills = harness.get_resources().await.skills;
+    tools.push(create_list_skills_tool(skills));
     tools.push(create_list_available_tools(&snapshot));
 
     let active_opt = if active_names.is_empty() {

@@ -226,12 +226,53 @@ Tool call headers in the transcript use descriptive labels. MCP tools include th
 The server name is extracted from the exposed tool name format `mcp_{server}__{tool}` via
 [`parse_exposed_tool_name`] in `tool_params.rs`.
 
-## Disk Caching with Turso
+## Memory Retention (retention.rs)
 
-### Architecture
+The transcript is the user's scrollback: **every row stays mounted for the whole session**.
+Retention never drops messages — it only sheds *derived* or *bounded* payloads that can be
+rebuilt, so memory stays flat without changing what is on screen.
 
-The transcript cache uses **libsql** (Turso) local SQLite to archive old messages, keeping
-memory usage bounded.
+Previously, `run_completed` drained the oldest messages out of `messages_arc_inner` once the
+count passed a threshold. That silently deleted earlier scrollback mid-session: the rows were
+gone from the panel but still present in `session_entries`, so they reappeared only after
+quitting and resuming (which reconstructs the transcript from the tree). Retention replaces
+that drain.
+
+`apply_transcript_retention` runs at turn completion (`run_completed`) and walks the messages
+**newest-first**, shedding two payloads:
+
+| Payload                          | Rule                                          | Recovery                                  |
+| -------------------------------- | --------------------------------------------- | ----------------------------------------- |
+| Parsed `MarkdownDocument` caches | Released outside the trailing 40-message window | Re-derived on paint from `content`        |
+| Tool diff text (`old_text`/`new_text`) | Stripped past an 8 MB total budget       | Card renders collapsed (same as on resume) |
+
+```rust
+const MARKDOWN_DOCUMENT_WINDOW: usize = 40;         // retention.rs
+const DIFF_TEXT_BUDGET_BYTES: usize = 8 * 1024 * 1024;
+```
+
+Retained `AssistantMarkdownBuffer` metadata (`stable_end`, `stream_complete`, `wrap_width`,
+per-part `row_count`) is untouched, so `layout_transcript_rows_cached` keeps measuring released
+rows at their correct height and scroll geometry does not shift when a document is freed.
+
+Two details keep this cheap and stable:
+
+- **`without_documents()` instead of `Arc::make_mut`.** The buffer is shared with the render
+  snapshot, so `make_mut` would deep-clone every cached document *before* dropping it — a
+  memory spike at exactly the moment memory is being reclaimed. `without_documents` builds a
+  document-free copy directly.
+- **The parse worker honors the same window.** `collect_markdown_parse_jobs` is bounded to the
+  trailing `MARKDOWN_DOCUMENT_WINDOW` messages. Without that bound the worker would re-parse
+  precisely the rows retention releases each turn, and the two would ping-pong every tick.
+
+Rows scrolled back into view re-derive their document through `build_cached_document`, which
+memoizes into the global `BUILT_DOC_CACHE` (64 entries), so revisiting old scrollback parses
+at most once.
+
+## Disk Snapshots with Turso
+
+Snapshots persist the transcript for `--resume` / `--continue`. They are unrelated to live
+memory retention above.
 
 ```
 Event Loop                          Panel
@@ -239,14 +280,15 @@ Event Loop                          Panel
     ▼                                  ▼
 ┌─────────────────────┐    ┌──────────────────────┐
 │  messages_arc_inner │    │  messages State      │
-│  (active Vec)       │◄──►│  (synced each tick)  │
-│  200-500 messages   │    │  panel reads from    │
+│  (full session Vec) │◄──►│  (synced each tick)  │
+│  never drained      │    │  panel reads from    │
 └──────────┬──────────┘    └──────────────────────┘
            │
-           │ drain oldest on run_completed
+           │ retention at run_completed
+           │ (sheds caches, keeps rows)
            ▼
 ┌─────────────────────┐
-│  TranscriptCache    │  ← turso SQLite
+│  TranscriptCache    │  ← turso SQLite (overwrite)
 └─────────────────────┘
 ```
 
@@ -282,27 +324,25 @@ CREATE INDEX IF NOT EXISTS idx_transcript_msg_session_seq
     ON transcript_messages(session_id, seq);
 ```
 
-### Archive Trigger
+### Snapshot Semantics
 
-Archival happens **at turn completion** (`run_completed`) when the message count exceeds 500:
+`transcript_snapshot` holds **one row per session** (`INSERT OR REPLACE` on `session_id`), so
+saving does not accumulate copies. Snapshots previously went into the append-only session tree
+as `elph.transcript.snapshot` custom entries, where they grew to 600+ MB; `TranscriptCache::open`
+prunes those legacy entries and checkpoints the WAL once, idempotently.
 
-```rust
-const MAX_MESSAGES_BEFORE_ARCHIVE: usize = 500;  // trigger threshold
-const KEEP_MESSAGES: usize = 200;                // keep after truncation
-```
-
-1. Clone the first 300 messages from `messages_arc_inner`.
-2. Spawn a background `tokio::spawn` to push them to SQLite via `push_batch()`.
-3. Drain the first 300 from `messages_arc_inner` in-place.
-4. The panel reads `messages_arc_inner` directly, so the truncation shows up without
-   a State re-sync; the State copy refreshes on the next event tick.
+`build_snapshot_data` strips tool diff text (`old_text` / `new_text`) before serializing —
+the same payload live retention drops — so snapshot size stays bounded. On resume the tool
+card renders collapsed without its inline diff.
 
 ### Core API (`TranscriptCache`)
 
-| Method                      | Async | Purpose                                            |
-| --------------------------- | ----- | -------------------------------------------------- |
-| `open(db_path, session_id)` | ✅    | Open/create DB, idempotent DDL (no migration band) |
-| `push_batch(batch)`         | ✅    | Insert batch (individual `INSERT OR IGNORE`)       |
+| Method                      | Async | Purpose                                             |
+| --------------------------- | ----- | --------------------------------------------------- |
+| `open(db_path, session_id)` | ✅    | Open DB, prune legacy tree snapshots, checkpoint WAL |
+| `save_snapshot(json)`       | ✅    | Overwrite this session's snapshot (single row)      |
+| `load_snapshot()`           | ✅    | Read the session's snapshot, if any                 |
+| `push_batch(batch)`         | ✅    | Insert batch (individual `INSERT OR IGNORE`)        |
 
 ### Database Location
 
@@ -322,7 +362,8 @@ in `platform/paths.rs`.
 
 | File                                                     | Role                                                                                                   |
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `crates/coding-agent/src/tui/transcript/cache.rs`        | `TranscriptCache` (SQLite archive store)                                                               |
+| `crates/coding-agent/src/tui/transcript/cache.rs`        | `TranscriptCache` (SQLite snapshot store)                                                              |
+| `crates/coding-agent/src/tui/transcript/retention.rs`    | `apply_transcript_retention` (sheds caches, never drops rows)                                          |
 | `crates/coding-agent/src/tui/transcript/mod.rs`          | Module exports                                                                                         |
 | `crates/coding-agent/src/tui/transcript/panel.rs`        | TranscriptPanel component + render cache                                                               |
 | `crates/coding-agent/src/tui/transcript/layout.rs`       | `IncrementalLayoutCache` + row layout                                                                  |

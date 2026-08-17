@@ -85,6 +85,7 @@ impl From<&TranscriptMessage> for ArchivedTranscriptMessage {
 
 impl ArchivedTranscriptMessage {
     /// Convert archive row back into a live transcript message (rebuild markdown if needed).
+    #[cfg_attr(not(test), allow(dead_code))] // used via messages_from_snapshot_data in tests
     pub fn into_transcript_message(self) -> TranscriptMessage {
         let mut message = TranscriptMessage {
             content: self.content,
@@ -159,6 +160,7 @@ pub fn build_snapshot_data(messages: &[TranscriptMessage]) -> serde_json::Value 
 }
 
 /// Parse snapshot JSON into transcript messages.
+#[cfg_attr(not(test), allow(dead_code))] // re-exported for integration-style unit tests
 pub fn messages_from_snapshot_data(data: &serde_json::Value) -> Option<Vec<TranscriptMessage>> {
     let snapshot: TranscriptSnapshot = serde_json::from_value(data.clone()).ok()?;
     Some(

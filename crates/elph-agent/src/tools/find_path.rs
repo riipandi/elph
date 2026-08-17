@@ -1,4 +1,6 @@
 //! Find tool — elph coding-agent tools.
+//!
+//! Uses fff-search with cached picker for gitignore-aware file discovery.
 
 use std::sync::Arc;
 
@@ -12,26 +14,29 @@ use crate::agent::harness::utils::truncate::TruncationOptions;
 use crate::agent::harness::utils::truncate::truncate_head;
 use crate::runtime::local_env::LocalExecutionEnv;
 use crate::tools::common::{check_aborted, resolve_path};
-use crate::tools::fff_picker::{build_find_glob_pattern, build_find_options, build_picker, run_with_abort_signal};
+use crate::tools::fff_picker::{build_find_glob_pattern, build_find_options, cached_picker, run_with_abort_signal};
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
 
-const DEFAULT_LIMIT: usize = 1000;
+const DEFAULT_LIMIT: usize = 200;
 
 pub fn create_find_path_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     let env_for_tool = env.clone();
     simple_tool(
         Tool {
             name: "find_path".into(),
-                constrained_sampling: None,
+            constrained_sampling: None,
 
-            description: "Quickly finds files by matching glob patterns (like '*.rs'), returning matching file paths alphabetically.".into(),
+            description:
+                "Find files by glob pattern (fast, respects .gitignore). Use '*.rs' or '**/*.rs' for recursive. \
+Faster than grep for names/extensions. Prefer over shell find/ls. Use list_dir only for a known directory listing."
+                    .into(),
             parameters: json!({
                 "type": "object",
                 "properties": {
-                    "pattern": { "type": "string", "description": "Glob pattern, e.g. '*.rs'" },
-                    "path": { "type": "string", "description": "Directory to search in" },
-                    "limit": { "type": "number" }
+                    "pattern": { "type": "string", "description": "Glob pattern, e.g. '*.rs', '**/todo_progress.rs', 'src/**/*.toml'" },
+                    "path": { "type": "string", "description": "Directory to search in (default: workspace root)" },
+                    "limit": { "type": "number", "description": "Max paths to return (default: 200)" }
                 },
                 "required": ["pattern"]
             }),
@@ -62,16 +67,24 @@ async fn execute_find_path(
 
     let base = resolve_path(&env, path, signal.as_ref()).await?;
     let glob_pattern = build_find_glob_pattern(pattern);
+
+    // Use cached fff picker for file discovery
     let signal_for_blocking = signal.clone();
+    let base_for_thread = base.clone();
+    let glob_for_thread = glob_pattern.clone();
 
     let (results, limit_reached) = tokio::task::spawn_blocking(move || {
         run_with_abort_signal(signal_for_blocking.as_ref(), |abort| {
             if abort.load(std::sync::atomic::Ordering::Relaxed) {
                 return Err(anyhow::anyhow!("Operation aborted"));
             }
-            let picker = build_picker(&base)?;
-            let search = picker.glob(&glob_pattern, build_find_options(limit));
-            let mut results: Vec<String> = search.items.iter().map(|item| item.relative_path(&picker)).collect();
+            let picker = cached_picker(&base_for_thread)?;
+            let search = picker.glob(&glob_for_thread, build_find_options(limit));
+            let mut results: Vec<String> = search
+                .items
+                .iter()
+                .map(|item| item.relative_path(picker.as_ref()))
+                .collect();
             results.sort();
             let limit_reached = results.len() >= limit || search.total_matched > limit;
             if results.len() > limit {
@@ -82,6 +95,10 @@ async fn execute_find_path(
     })
     .await??;
 
+    Ok(finish_find(results, limit_reached, limit))
+}
+
+fn finish_find(results: Vec<String>, limit_reached: bool, limit: usize) -> AgentToolResult {
     let output = results.join("\n");
     let truncation = truncate_head(
         &output,
@@ -98,7 +115,7 @@ async fn execute_find_path(
         text.push_str("\n\n[output truncated]");
     }
 
-    Ok(AgentToolResult {
+    AgentToolResult {
         content: vec![crate::types::ToolResultContent::Text(elph_ai::TextContent::new(text))],
         details: json!({
             "resultLimitReached": limit_reached,
@@ -107,5 +124,5 @@ async fn execute_find_path(
         added_tool_names: None,
         terminate: None,
         usage: None,
-    })
+    }
 }

@@ -226,11 +226,12 @@ async fn poll_for_tokens(device: DeviceCodeResponse) -> Result<OAuthCredential> 
                     if ok {
                         let response = parse_token_response(&body, None)?;
                         let expires = response.expires_in.unwrap_or(DEFAULT_TOKEN_LIFETIME_SECONDS);
-                        let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+                        // expires is stored as epoch **milliseconds** (same as Pi / other OAuth providers).
+                        let now_ms = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis() as i64;
                         let credential = oauth_credential(
                             response.access_token,
                             response.refresh_token.unwrap_or_default(),
-                            now as i64 + (expires as i64 * 1000 - REFRESH_SKEW_MS as i64),
+                            now_ms + (expires as i64 * 1000) - REFRESH_SKEW_MS as i64,
                         );
                         Ok::<DeviceCodePollResult<OAuthCredential>, anyhow::Error>(DeviceCodePollResult::Complete(
                             credential,
@@ -322,11 +323,25 @@ async fn refresh_xai_token(refresh_token: &str) -> Result<OAuthCredential> {
 
     let response = parse_token_response(&body, Some(refresh_token))?;
     let expires = response.expires_in.unwrap_or(DEFAULT_TOKEN_LIFETIME_SECONDS);
-    let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+    let now_ms = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis() as i64;
 
     Ok(oauth_credential(
         response.access_token,
         response.refresh_token.unwrap_or(refresh_token.to_string()),
-        now as i64 + (expires as i64 * 1000 - REFRESH_SKEW_MS as i64),
+        now_ms + (expires as i64 * 1000) - REFRESH_SKEW_MS as i64,
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn expires_is_epoch_milliseconds_not_seconds() {
+        // A correctly-skewed 1h token must be in the future as ms (≈ 1.7e12 scale).
+        let now_ms = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as i64;
+        let expires = now_ms + 3_600_000 - REFRESH_SKEW_MS as i64;
+        assert!(expires > 1_000_000_000_000, "expires should be ms epoch, got {expires}");
+        assert!(expires > chrono::Utc::now().timestamp_millis());
+    }
 }

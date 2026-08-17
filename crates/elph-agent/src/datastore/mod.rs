@@ -11,10 +11,6 @@
 //! fast. The retry logic in [`conn::open_local`] absorbs brief contention from
 //! `WAL` + `busy_timeout` readers (e.g. `sqlite3` reads), but cannot override
 //! an external tool holding an exclusive lock.
-//!
-//! The `turso` crate is pinned at `0.7.2` because `experimental_multiprocess_wal`
-//! is experimental and the `.db-tshm` shared-memory format may change between
-//! versions.
 
 mod conn;
 mod lazy;
@@ -24,8 +20,10 @@ use std::path::Path;
 
 use anyhow::Result;
 
-pub use conn::{cleanup_stale_shared_memory, is_lock_err};
-pub use conn::{connect, open_connection, open_local, open_local_with, with_conn};
+pub use conn::{CommitOutcome, connect, open_connection, open_local, open_local_with, with_conn};
+pub use conn::{
+    is_lock_err, is_open_retryable, is_write_conflict_err, with_write_transaction, with_write_transaction_outcome,
+};
 pub use lazy::ensure_databases_once;
 pub use migrations::{Migration, run as run_migrations};
 

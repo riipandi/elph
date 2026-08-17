@@ -1,5 +1,5 @@
 use super::*;
-use crate::core::db::{clear_broken_wal_sidecars, is_lock_err, is_wal_io_err};
+use crate::core::db::is_lock_err;
 use crate::core::embed::noop_embedder;
 use crate::create_memory_store;
 use crate::memory::scoring::{compute_credit, update_weight};
@@ -603,29 +603,6 @@ fn is_lock_err_detects_lock_messages() {
     assert!(is_lock_err("database is locked"));
     assert!(is_lock_err("Locking error"));
     assert!(!is_lock_err("syntax error"));
-}
-
-#[test]
-fn is_wal_io_err_detects_truncated_wal() {
-    assert!(is_wal_io_err(
-        "I/O error: short read on WAL frame at offset 1652152: expected 4096 bytes, got 0"
-    ));
-    assert!(is_wal_io_err("unable to open database file"));
-    assert!(!is_wal_io_err("syntax error near FROM"));
-}
-
-#[test]
-fn clear_broken_wal_removes_empty_wal_when_db_missing() {
-    let dir = tempfile::tempdir().expect("tempdir");
-    let db = dir.path().join("store.db");
-    let db_s = db.to_string_lossy().into_owned();
-    // No main db — only orphan empty WAL (common after crash / partial create).
-    let wal = dir.path().join("store.db-wal");
-    std::fs::write(&wal, b"").expect("empty wal");
-    std::fs::write(dir.path().join("store.db-shm"), b"x").expect("shm");
-    clear_broken_wal_sidecars(&db_s);
-    assert!(!wal.exists(), "empty wal should be removed");
-    assert!(!dir.path().join("store.db-shm").exists());
 }
 
 #[tokio::test]

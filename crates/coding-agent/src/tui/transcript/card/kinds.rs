@@ -11,6 +11,7 @@ use elph_tui::components::{DiffLineNumberStyle, DiffMode, DiffView, EMBEDDED_DIF
 use elph_tui::components::{
     ProcessStatus, ProcessStatusIndicator, ProcessStatusRow, process_status_glyph, process_status_word,
 };
+use elph_tui::utils::{display_width, truncate_with_ellipsis};
 use iocraft::prelude::*;
 
 use crate::tui::activity::format_duration_secs;
@@ -37,8 +38,9 @@ use super::frame::{
 };
 use super::toggle_ctx::CollapsibleToggleCtx;
 use super::tool_format::{
-    format_assistant_stream_body_display, format_thinking_body_display, format_thinking_stream_body_display,
-    format_tool_output_display, format_tool_output_display_full, format_tool_output_display_unlimited,
+    ShellExecArgs, format_assistant_stream_body_display, format_shell_header, format_thinking_body_display,
+    format_thinking_stream_body_display, format_tool_args_display, format_tool_output_display,
+    format_tool_output_display_full, format_tool_output_display_unlimited, is_shell_exec_tool,
 };
 
 pub fn tool_status_marker(style: TranscriptStyle) -> &'static str {
@@ -81,6 +83,27 @@ fn process_meta_chip(status: ProcessStatus, duration_secs: Option<f64>) -> Optio
 pub fn user_prompt_card(screen_width: u16, message: &TranscriptMessage, margin_bottom: u16) -> AnyElement<'static> {
     let chrome = TranscriptCardChrome::tinted(screen_width, message.style, margin_bottom);
     render_user_input_card(&chrome, message, true)
+}
+
+/// Fixed chrome columns in a collapsed-header row: status glyph (2) + 3 flex gaps (1 each)
+/// + 1 breathing column so the row never touches the far edge.
+const COLLAPSED_HEADER_FIXED_COLS: usize = 6;
+
+/// Split the collapsed-header row width between the task label and the detail (hint).
+///
+/// Both are measured in display columns (`display_width`) so wide Unicode never overflows
+/// the row. The label keeps its full width up to half the available space; anything wider
+/// (e.g. a long `[MCP:<server>]` verb) ellipsizes so the hint keeps roughly the other half.
+///
+/// Returns `(label, detail_budget)`.
+fn collapsed_header_split(inner_width: u16, verb: &str, meta_width: usize) -> (String, usize) {
+    let avail = (inner_width as usize)
+        .saturating_sub(COLLAPSED_HEADER_FIXED_COLS)
+        .saturating_sub(meta_width);
+    let label_cap = avail.saturating_div(2).max(1);
+    let label = truncate_with_ellipsis(verb, label_cap);
+    let budget = avail.saturating_sub(display_width(&label)).max(8);
+    (label, budget)
 }
 
 pub fn suppressed_sticky_user_prompt_card(
@@ -323,11 +346,12 @@ pub fn thinking_card(
         toggle,
     )];
     if show_body {
-        // Streaming: tight 20-line cap so the collapse-on-finish transition does not
-        // cause a large layout jump. Finished + expanded: full content (48 lines) so
-        // the user sees the complete reasoning when they expand a settled card.
+        // Streaming: fixed 8 wrapped-row cap (header + gap + body ≤ 10 rows) so the
+        // collapse-on-finish transition does not cause a large layout jump. Finished +
+        // expanded: full content (48 lines) so the user sees the complete reasoning
+        // when they expand a settled card.
         let body = if streaming {
-            format_thinking_stream_body_display(&message.content)
+            format_thinking_stream_body_display(&message.content, inner_width)
         } else {
             format_thinking_body_display(&message.content)
         };
@@ -714,25 +738,106 @@ pub fn tool_call_card(
             && !has_diff
             && ask_user_rows.is_none()
             && !parse_tool_params(&tool.args_summary).is_empty();
+        // Wait: click only when finished and there is result body text.
+        let clickable = message.is_collapsible_detail();
+        // shell_exec: skip generic arg dump; render custom command+output block instead.
+        let is_shell = show_detail && is_shell_exec_tool(&tool.name) && !collapsed && !has_diff;
+        if is_shell {
+            let shell_args = ShellExecArgs::parse(&tool.args_summary);
+            let verb = tool_display_verb(&tool.name);
+            let header_task = format_shell_header(&verb, &shell_args);
+            // Color the $ command line by status: running = grey, done = green, failed = red.
+            let cmd_fg = match status {
+                ProcessStatus::Running => TOOL_RUNNING_FG,
+                ProcessStatus::Done => TOOL_SUCCESS_FG,
+                ProcessStatus::Failed => TOOL_FAILED_FG,
+                _ => TOOL_OUTPUT_FG,
+            };
+            // Output color follows status too.
+            let out_fg = cmd_fg;
+            let cmd_text = if shell_args.command.is_empty() {
+                format_tool_args_display(&tool.args_summary)
+            } else {
+                format!("$ {}", shell_args.command)
+            };
+            return element! {
+                View(
+                    width: chrome.outer_width,
+                    background_color: chrome.background,
+                    border_style: BorderStyle::None,
+                    margin_bottom: chrome.margin_bottom,
+                    padding_top: chrome.padding_top,
+                    padding_bottom: chrome.padding_bottom,
+                    padding_left: chrome.padding_h,
+                    padding_right: chrome.padding_h,
+                    flex_direction: FlexDirection::Column,
+                    gap: 0,
+                ) {
+                    ProcessHeaderToggle(
+                        inner_width: inner_width,
+                        label: header_task,
+                        detail: String::new(),
+                        detail_href: None,
+                        duration_secs: message.duration_secs,
+                        status: status,
+                        message_index: message_index,
+                        clickable: clickable,
+                        toggle: toggle,
+                    )
+                    View(
+                            width: inner_width,
+                            padding_top: 1,
+                            padding_left: TOOL_RESULT_PAD_LEFT,
+                            padding_right: TOOL_RESULT_PAD_RIGHT,
+                            flex_direction: FlexDirection::Column,
+                            gap: 0,
+                            flex_shrink: 0f32,
+                        ) {
+                            #(if !cmd_text.is_empty() {
+                                Some(element! {
+                                    Text(color: cmd_fg, wrap: TextWrap::Wrap, content: cmd_text)
+                                })
+                            } else {
+                                None
+                            })
+                            #(if !output.is_empty() {
+                                Some(element! {
+                                    View(
+                                        width: inner_width,
+                                        padding_top: TOOL_OUTPUT_SECTION_GAP,
+                                        padding_left: 0,
+                                        padding_right: TOOL_RESULT_PAD_RIGHT,
+                                        flex_direction: FlexDirection::Column,
+                                        gap: 0,
+                                    ) {
+                                        Text(color: out_fg, wrap: TextWrap::Wrap, content: output)
+                                    }
+                                })
+                            } else {
+                                None
+                            })
+                        }
+                }
+            }
+            .into();
+        }
         // Compact header for collapsed tools + Wait Agent (running/done): verb + scannable target.
         // Expanded generic tools: verb only (args/output below).
         // Expanded edit_file with diff: verb + short path so the header still identifies the file.
         let (header_task, header_detail, header_detail_href) = if wait_agent || collapsed || has_diff {
             // Size the header detail to the available terminal width so wide terminals show the
             // full path/query instead of a hard 44-char cap. Reserve room for the status glyph,
-            // the verb, the duration meta chip, and the flex gaps between them.
+            // the duration meta chip, and the flex gaps. Label & detail truncate by display
+            // column width (see `collapsed_header_split`), consistently with the transcript.
             let meta = process_meta_chip(status, message.duration_secs);
-            let label_w = tool_display_verb(&tool.name).chars().count();
-            let meta_w = meta.as_ref().map_or(0, |m| m.chars().count());
-            let reserved = 2usize + 3usize + label_w + meta_w; // glyph + 3 gaps + label + meta
-            let budget = (inner_width as usize).saturating_sub(reserved).saturating_sub(1).max(8);
+            let verb = tool_display_verb(&tool.name);
+            let meta_w = meta.as_ref().map_or(0, |m| display_width(m));
+            let (label, budget) = collapsed_header_split(inner_width, &verb, meta_w);
             let parts = format_collapsed_tool_parts_linked_w(&tool.name, &tool.args_summary, budget);
-            (parts.verb, parts.detail, parts.detail_href)
+            (label, parts.detail, parts.detail_href)
         } else {
             (tool_display_verb(&tool.name), String::new(), None)
         };
-        // Wait: click only when finished and there is result body text.
-        let clickable = message.is_collapsible_detail();
         // Result body (args / output / diff) sits one cell in from the header glyph column,
         // with matching right padding so content stays symmetrically framed inside the card.
         let result_width = inner_width
@@ -935,7 +1040,7 @@ pub fn thinking_response_pair_card(
                 ))
                 #(if thinking_show_body {
                     let body = if thinking.is_thinking_streaming() {
-                        format_thinking_stream_body_display(&thinking.content)
+                        format_thinking_stream_body_display(&thinking.content, inner_width)
                     } else {
                         format_thinking_body_display(&thinking.content)
                     };
@@ -969,4 +1074,49 @@ pub fn thinking_response_pair_card(
         }
     }
     .into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn header_split_keeps_short_label_and_full_budget() {
+        let (label, budget) = collapsed_header_split(80, "Read", 0);
+        assert_eq!(label, "Read");
+        assert_eq!(budget, 74 - display_width(&label));
+        assert!(budget >= 8);
+    }
+
+    #[test]
+    fn header_split_reserves_meta_width() {
+        let meta_w = display_width("· running");
+        let (label, budget) = collapsed_header_split(80, "Read", meta_w);
+        assert_eq!(label, "Read");
+        // Budget shrinks by exactly the meta chip width.
+        let (_, wide_budget) = collapsed_header_split(80, "Read", 0);
+        assert_eq!(wide_budget - budget, meta_w);
+    }
+
+    #[test]
+    fn header_split_ellipsizes_wide_label_to_keep_hint_share() {
+        let wide = format!("[MCP:{}] CreateIssue", "very-long-server-name");
+        let (label, budget) = collapsed_header_split(60, &wide, 0);
+        assert!(
+            display_width(&label) < display_width(&wide),
+            "wide label must ellipsize: {label}"
+        );
+        assert!(label.ends_with('…'));
+        assert!(budget >= 20, "hint keeps at least ~1/3 of the row: {budget}");
+    }
+
+    #[test]
+    fn header_split_label_is_display_width_aware() {
+        // Wide glyphs are 2 display columns per char; a char-count budget would overflow.
+        let long = format!("🗂️ {}", "長いラベル".repeat(6));
+        let (label, _) = collapsed_header_split(40, &long, 0);
+        let cap = (40 - COLLAPSED_HEADER_FIXED_COLS) / 2;
+        assert!(display_width(&label) <= cap, "label {}w > cap {cap}", display_width(&label));
+        assert!(label.ends_with('…'));
+    }
 }

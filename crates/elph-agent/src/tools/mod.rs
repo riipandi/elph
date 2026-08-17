@@ -3,6 +3,8 @@
 mod common;
 pub mod types;
 
+#[cfg(feature = "tools-grep")]
+mod ast_grep_helper;
 #[cfg(feature = "tools-collaboration")]
 mod collaboration;
 #[cfg(feature = "tools-edit-file")]
@@ -58,13 +60,13 @@ use crate::types::{AgentTool, AgentToolResult, ToolExecuteFn};
 #[cfg(feature = "tools-collaboration")]
 pub use collaboration::create_collaboration_tools;
 #[cfg(feature = "tools-copy-path")]
-pub use copy_path::create_copy_path_tool;
+pub use copy_path::{create_copy_path_tool, create_copy_path_tool_with_claims};
 #[cfg(feature = "tools-create-dir")]
-pub use create_dir::create_create_dir_tool;
+pub use create_dir::{create_create_dir_tool, create_create_dir_tool_with_claims};
 #[cfg(feature = "tools-delete-path")]
-pub use delete_path::create_delete_path_tool;
+pub use delete_path::{create_delete_path_tool, create_delete_path_tool_with_claims};
 #[cfg(feature = "tools-edit-file")]
-pub use edit_file::create_edit_file_tool;
+pub use edit_file::{create_edit_file_tool, create_edit_file_tool_with_claims};
 pub use file_mutation_queue::FileMutationQueue;
 #[cfg(feature = "tools-find-path")]
 pub use find_path::create_find_path_tool;
@@ -76,7 +78,7 @@ pub use list_available_tools::create_list_available_tools;
 pub use list_dir::create_list_dir_tool;
 pub use list_skills::{create_list_skills_tool, format_skill_catalog};
 #[cfg(feature = "tools-move-path")]
-pub use move_path::create_move_path_tool;
+pub use move_path::{create_move_path_tool, create_move_path_tool_with_claims};
 #[cfg(feature = "tools-read-file")]
 pub use read_file::create_read_file_tool;
 #[cfg(feature = "tools-shell-exec")]
@@ -91,7 +93,7 @@ pub use web::{Engine as WebSearchEngine, SearchResult as WebSearchResult};
 #[cfg(feature = "tools-web")]
 pub use web::{create_web_extract_tool, create_web_fetch_tool, create_web_search_tool, create_web_tools};
 #[cfg(feature = "tools-write-file")]
-pub use write_file::create_write_file_tool;
+pub use write_file::{create_write_file_tool, create_write_file_tool_with_claims};
 
 pub fn simple_tool(
     tool: Tool,
@@ -119,7 +121,6 @@ pub fn echo_tool() -> AgentTool {
         Tool {
             name: "echo".into(),
             constrained_sampling: None,
-
             description: "Echo text".into(),
             parameters: serde_json::json!({
                 "type": "object",

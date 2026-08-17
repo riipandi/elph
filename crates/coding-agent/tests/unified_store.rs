@@ -2,9 +2,9 @@
 //! (`.elph/store.db`) sharing **one** `app_migrations` ledger.
 //!
 //! ```text
-//! (transcript)  elph-agent migration ─────────┐
-//!                                             ├─► .elph/store.db
-//! (memory, codegraph)  floppy migration ──────┘
+//! (session)  elph-agent / platform migration ──┐
+//!                                              ├─► .elph/store.db
+//! (memory, codegraph)  floppy migration ───────┘
 //! ```
 
 use elph::platform::migrations::metadata_migrations;
@@ -14,24 +14,25 @@ use floppy::memory::migrations as memory_migrations;
 use turso::Builder;
 
 /// Expected ledger contents across all bands, in version order.
-const EXPECTED_VERSIONS: &[i64] = &[1, 2, 3, 4, 100, 101, 102, 103, 104, 105, 106, 107, 500, 501];
+/// Platform and session tree share versions 201–203 (whichever applies first wins per version).
+const EXPECTED_VERSIONS: &[i64] = &[1, 2, 3, 4, 201, 202, 203, 500, 501];
 
 #[tokio::test]
 async fn all_bands_share_one_store_db_and_one_ledger() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let store_db = tmp.path().join("store.db");
 
-    // Platform band (elph host): 101–106.
+    // Platform band (elph host): v201.
     ensure_database(&store_db, metadata_migrations())
         .await
         .expect("platform band");
 
-    // Session tree (elph-agent transcript): v100 — same file, same ledger.
+    // Session tree (elph-agent): v201 — same file, same ledger (no-op if already applied).
     ensure_database(&store_db, &SESSION_TREE_MIGRATIONS)
         .await
         .expect("session band");
 
-    // Floppy memory (1–3) and codegraph (500–501) bands.
+    // Floppy memory (1–4) and codegraph (500–501) bands.
     let db = Builder::new_local(store_db.to_string_lossy().as_ref())
         .experimental_multiprocess_wal(true)
         .experimental_index_method(true)
@@ -93,18 +94,27 @@ async fn all_bands_share_one_store_db_and_one_ledger() {
         "cg_nodes",
         "cg_edges",
         "cg_meta",
-        // session tree + platform band
+        // session schema v2
         "sessions",
         "session_entries",
         "session_sequences",
-        "todos",
+        "session_turns",
+        "session_todos",
         "goals",
-        "skill_cache",
         "agent_spawn_edges",
-        // transcript cache (v107)
-        "transcript_messages",
-        "transcript_snapshot",
+        // workers v202
+        "session_leases",
+        "workers",
+        "worker_messages",
+        "file_leases",
     ] {
         assert!(tables.contains(&table.to_string()), "missing table {table}: {tables:?}");
+    }
+    // Legacy bloat / unused tables must not exist.
+    for gone in ["todos", "transcript_messages", "transcript_snapshot", "skill_cache"] {
+        assert!(
+            !tables.contains(&gone.to_string()),
+            "legacy table {gone} should not exist: {tables:?}"
+        );
     }
 }

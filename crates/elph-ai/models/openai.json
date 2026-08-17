@@ -6,15 +6,18 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 8.0,
+            "output": 32.0
         },
+        "description": "Image model for prompt-driven generation, editing, and visual design workflows",
         "id": "chatgpt-image-latest",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 0,
         "name": "chatgpt-image-latest",
         "provider": "openai",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -35,12 +38,15 @@
             "input": 0.5,
             "output": 1.5
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "gpt-3.5-turbo",
         "input": ["text"],
+        "knowledgeCutoff": "2021-09-01",
         "maxTokens": 4096,
         "name": "GPT-3.5-turbo",
         "provider": "openai",
         "reasoning": false,
+        "releaseDate": "2023-03-01",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -64,12 +70,15 @@
             "input": 30.0,
             "output": 60.0
         },
+        "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "gpt-4",
         "input": ["text"],
+        "knowledgeCutoff": "2023-11",
         "maxTokens": 8192,
         "name": "GPT-4",
         "provider": "openai",
         "reasoning": false,
+        "releaseDate": "2023-11-06",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -93,12 +102,15 @@
             "input": 10.0,
             "output": 30.0
         },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "gpt-4-turbo",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2023-12",
         "maxTokens": 4096,
         "name": "GPT-4 Turbo",
         "provider": "openai",
         "reasoning": false,
+        "releaseDate": "2023-11-06",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -122,12 +134,15 @@
             "input": 2.0,
             "output": 8.0
         },
+        "description": "Long-lived GPT workhorse for coding, instruction following, and production apps",
         "id": "gpt-4.1",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2024-04",
         "maxTokens": 32768,
         "name": "GPT-4.1",
         "provider": "openai",
         "reasoning": false,
+        "releaseDate": "2025-04-14",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -151,12 +166,15 @@
             "input": 0.4,
             "output": 1.6
         },
+        "description": "Affordable GPT-4.1 lane for fast coding help and structured extraction",
         "id": "gpt-4.1-mini",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2024-04",
         "maxTokens": 32768,
         "name": "GPT-4.1 mini",
         "provider": "openai",
         "reasoning": false,
+        "releaseDate": "2025-04-14",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -180,12 +198,15 @@
             "input": 0.1,
             "output": 0.4
         },
+        "description": "Tiny GPT-4.1 option for classification, routing, and very high-volume tasks",
         "id": "gpt-4.1-nano",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-04",
         "maxTokens": 32768,
         "name": "GPT-4.1 nano",
         "provider": "openai",
         "reasoning": false,
+        "releaseDate": "2025-04-14",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -209,12 +230,15 @@
             "input": 2.5,
             "output": 10.0
         },
+        "description": "Omni-era GPT for multimodal chat, practical coding, and general assistants",
         "id": "gpt-4o",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2023-09",
         "maxTokens": 16384,
         "name": "GPT-4o",
         "provider": "openai",
         "reasoning": false,
+        "releaseDate": "2024-05-13",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -238,12 +262,15 @@
             "input": 5.0,
             "output": 15.0
         },
+        "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "gpt-4o-2024-05-13",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2023-09",
         "maxTokens": 4096,
         "name": "GPT-4o (2024-05-13)",
         "provider": "openai",
         "reasoning": false,
+        "releaseDate": "2024-05-13",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -267,12 +294,15 @@
             "input": 2.5,
             "output": 10.0
         },
+        "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "gpt-4o-2024-08-06",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2023-09",
         "maxTokens": 16384,
         "name": "GPT-4o (2024-08-06)",
         "provider": "openai",
         "reasoning": false,
+        "releaseDate": "2024-08-06",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -296,12 +326,15 @@
             "input": 2.5,
             "output": 10.0
         },
+        "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "gpt-4o-2024-11-20",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2023-09",
         "maxTokens": 16384,
         "name": "GPT-4o (2024-11-20)",
         "provider": "openai",
         "reasoning": false,
+        "releaseDate": "2024-11-20",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -325,12 +358,15 @@
             "input": 0.15,
             "output": 0.6
         },
+        "description": "Small omni GPT for cheap multimodal assistance and production-scale traffic",
         "id": "gpt-4o-mini",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2023-09",
         "maxTokens": 16384,
         "name": "GPT-4o mini",
         "provider": "openai",
         "reasoning": false,
+        "releaseDate": "2024-07-18",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -355,12 +391,15 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "Original GPT-5 workhorse for reasoning, coding, writing, and tool workflows",
         "id": "gpt-5",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-09-30",
         "maxTokens": 128000,
         "name": "GPT-5",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "2025-08-07",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -385,12 +424,15 @@
             "input": 0.25,
             "output": 2.0
         },
+        "description": "Small GPT-5 for responsive agents, coding help, and everyday automation",
         "id": "gpt-5-mini",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-05-30",
         "maxTokens": 128000,
         "name": "GPT-5 Mini",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "2025-08-07",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -415,12 +457,15 @@
             "input": 0.05,
             "output": 0.4
         },
+        "description": "Tiny GPT-5 lane for routing, extraction, classification, and bulk jobs",
         "id": "gpt-5-nano",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-05-30",
         "maxTokens": 128000,
         "name": "GPT-5 Nano",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "2025-08-07",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -445,12 +490,15 @@
             "input": 15.0,
             "output": 120.0
         },
+        "description": "Higher-accuracy GPT-5 tier for tough analysis, coding reviews, and planning",
         "id": "gpt-5-pro",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-09-30",
         "maxTokens": 272000,
         "name": "GPT-5 Pro",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "2025-10-06",
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
@@ -475,19 +523,22 @@
             "input": 1.25,
             "output": 10.0
         },
+        "description": "Sharper GPT-5 generation for coding, product work, and tool-assisted tasks",
         "id": "gpt-5.1",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-09-30",
         "maxTokens": 128000,
         "name": "GPT-5.1",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "2025-11-13",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": "none",
+            "off": "off",
             "xhigh": null
         }
     },
@@ -505,19 +556,22 @@
             "input": 1.75,
             "output": 14.0
         },
+        "description": "Reliable GPT generation for broad coding, writing, and tool-assisted product work",
         "id": "gpt-5.2",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 128000,
         "name": "GPT-5.2",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "2025-12-11",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": "none",
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -535,12 +589,15 @@
             "input": 1.75,
             "output": 14.0
         },
+        "description": "Chat-tuned GPT model for conversational assistance, writing, and tool workflows",
         "id": "gpt-5.2-chat-latest",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 16384,
         "name": "GPT-5.2 Chat",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "2025-12-11",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -548,7 +605,7 @@
             "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "gpt-5.2-pro": {
@@ -565,12 +622,15 @@
             "input": 21.0,
             "output": 168.0
         },
+        "description": "Higher-accuracy GPT-5.2 variant for tougher reasoning and review workflows",
         "id": "gpt-5.2-pro",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 128000,
         "name": "GPT-5.2 Pro",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "2025-12-11",
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
@@ -595,20 +655,23 @@
             "input": 1.75,
             "output": 14.0
         },
+        "description": "Chat-tuned GPT model for conversational assistance, writing, and tool workflows",
         "id": "gpt-5.3-chat-latest",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 16384,
         "name": "GPT-5.3 Chat (latest)",
         "provider": "openai",
         "reasoning": false,
+        "releaseDate": "2026-03-03",
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "gpt-5.3-codex": {
@@ -625,19 +688,22 @@
             "input": 1.75,
             "output": 14.0
         },
+        "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
         "id": "gpt-5.3-codex",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 128000,
         "name": "GPT-5.3 Codex",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "2026-02-05",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": "none",
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -655,19 +721,22 @@
             "input": 1.75,
             "output": 14.0
         },
+        "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
         "id": "gpt-5.3-codex-spark",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 32000,
         "name": "GPT-5.3 Codex Spark",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "2026-02-05",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -686,19 +755,22 @@
             "input": 2.5,
             "output": 15.0
         },
+        "description": "Agent-ready GPT for coding and computer-use workflows at a lower cost",
         "id": "gpt-5.4",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 128000,
         "name": "GPT-5.4",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "2026-03-05",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": "none",
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -717,19 +789,22 @@
             "input": 0.75,
             "output": 4.5
         },
+        "description": "Strong small GPT for coding subagents, quick tool use, and high-volume work",
         "id": "gpt-5.4-mini",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 128000,
         "name": "GPT-5.4 mini",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "2026-03-17",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": "none",
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -747,19 +822,22 @@
             "input": 0.2,
             "output": 1.25
         },
+        "description": "Cheapest GPT-5.4 lane for simple routing, extraction, and bulk automation",
         "id": "gpt-5.4-nano",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 128000,
         "name": "GPT-5.4 nano",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "2026-03-17",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": "none",
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -778,12 +856,15 @@
             "input": 30.0,
             "output": 180.0
         },
+        "description": "More exact GPT-5.4 tier for demanding professional reasoning and agent tasks",
         "id": "gpt-5.4-pro",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2025-08-31",
         "maxTokens": 128000,
         "name": "GPT-5.4 Pro",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "2026-03-05",
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
@@ -809,19 +890,22 @@
             "input": 5.0,
             "output": 30.0
         },
+        "description": "Default frontier GPT for coding, computer use, research, and knowledge work",
         "id": "gpt-5.5",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-12-01",
         "maxTokens": 128000,
         "name": "GPT-5.5",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "2026-04-23",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": "none",
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -839,12 +923,15 @@
             "input": 30.0,
             "output": 180.0
         },
+        "description": "Highest-accuracy GPT-5.5 tier for slower, precision-heavy reasoning and coding",
         "id": "gpt-5.5-pro",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-12-01",
         "maxTokens": 128000,
         "name": "GPT-5.5 Pro",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "2026-04-23",
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
@@ -865,19 +952,22 @@
             "input": 5.0,
             "output": 30.0
         },
+        "description": "Frontier GPT-5.6 model for complex professional work, coding, and agentic workflows",
         "id": "gpt-5.6",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "",
         "maxTokens": 128000,
         "name": "GPT-5.6",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": "max",
             "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -897,19 +987,22 @@
             "input": 0.2,
             "output": 1.2
         },
+        "description": "Cost-efficient GPT-5.6 model for fast, high-volume workloads",
         "id": "gpt-5.6-luna",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-02-16",
         "maxTokens": 128000,
         "name": "GPT-5.6 Luna",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "2026-07-09",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": "max",
             "medium": "medium",
             "minimal": null,
-            "off": "none",
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -929,19 +1022,22 @@
             "input": 5.0,
             "output": 30.0
         },
+        "description": "Frontier GPT-5.6 model for complex professional work, coding, and agentic workflows",
         "id": "gpt-5.6-sol",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-02-16",
         "maxTokens": 128000,
         "name": "GPT-5.6 Sol",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "2026-07-09",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": "max",
             "medium": "medium",
             "minimal": null,
-            "off": "none",
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -961,19 +1057,22 @@
             "input": 2.0,
             "output": 12.0
         },
+        "description": "Balanced GPT-5.6 model for capable, cost-efficient everyday work",
         "id": "gpt-5.6-terra",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-02-16",
         "maxTokens": 128000,
         "name": "GPT-5.6 Terra",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "2026-07-09",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": "max",
             "medium": "medium",
             "minimal": null,
-            "off": "none",
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -987,12 +1086,15 @@
             "input": 5.0,
             "output": 40.0
         },
+        "description": "OpenAI image model for production generation, edits, and brand-safe visual workflows",
         "id": "gpt-image-1",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 0,
         "name": "gpt-image-1",
         "provider": "openai",
         "reasoning": false,
+        "releaseDate": "2025-04-24",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1010,15 +1112,18 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 2.5,
+            "output": 8.0
         },
+        "description": "Image model for prompt-driven generation, editing, and visual design workflows",
         "id": "gpt-image-1-mini",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 0,
         "name": "gpt-image-1-mini",
         "provider": "openai",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1039,12 +1144,15 @@
             "input": 5.0,
             "output": 32.0
         },
+        "description": "Image model for prompt-driven generation, editing, and visual design workflows",
         "id": "gpt-image-1.5",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 0,
         "name": "gpt-image-1.5",
         "provider": "openai",
         "reasoning": false,
+        "releaseDate": "2025-11-25",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1065,12 +1173,15 @@
             "input": 5.0,
             "output": 30.0
         },
+        "description": "Image model for prompt-driven generation, editing, and visual design workflows",
         "id": "gpt-image-2",
         "input": ["text", "image"],
+        "knowledgeCutoff": "",
         "maxTokens": 0,
         "name": "gpt-image-2",
         "provider": "openai",
         "reasoning": false,
+        "releaseDate": "2026-04-21",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1094,12 +1205,15 @@
             "input": 4.0,
             "output": 24.0
         },
+        "description": "Realtime speech-to-speech model with configurable reasoning, tool use, and robust voice-agent behavior",
         "id": "gpt-realtime-2.1",
         "input": ["text", "audio", "image"],
+        "knowledgeCutoff": "2024-09-30",
         "maxTokens": 32000,
         "name": "GPT-Realtime-2.1",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "2026-07-06",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1123,12 +1237,15 @@
             "input": 15.0,
             "output": 60.0
         },
+        "description": "O-series reasoning model for hard analysis, math, coding, and planning",
         "id": "o1",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2023-09",
         "maxTokens": 100000,
         "name": "o1",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "2024-12-05",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1152,12 +1269,15 @@
             "input": 150.0,
             "output": 600.0
         },
+        "description": "O-series reasoning model for hard analysis, math, coding, and planning",
         "id": "o1-pro",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2023-09",
         "maxTokens": 100000,
         "name": "o1-pro",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "2025-03-19",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1181,12 +1301,15 @@
             "input": 2.0,
             "output": 8.0
         },
+        "description": "Deliberate o-series reasoner for hard math, coding, and multi-step analysis",
         "id": "o3",
         "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2024-05",
         "maxTokens": 100000,
         "name": "o3",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "2025-04-16",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1210,12 +1333,15 @@
             "input": 1.1,
             "output": 4.4
         },
+        "description": "Smaller o-series reasoner for economical coding, math, and planning tasks",
         "id": "o3-mini",
         "input": ["text"],
+        "knowledgeCutoff": "2024-05",
         "maxTokens": 100000,
         "name": "o3-mini",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "2024-12-20",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1239,12 +1365,15 @@
             "input": 20.0,
             "output": 80.0
         },
+        "description": "High-effort o3 tier for difficult technical reasoning and careful answers",
         "id": "o3-pro",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-05",
         "maxTokens": 100000,
         "name": "o3-pro",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "2025-06-10",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1268,12 +1397,15 @@
             "input": 1.1,
             "output": 4.4
         },
+        "description": "Fast o-series model for compact reasoning, coding, and tool use",
         "id": "o4-mini",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2024-05",
         "maxTokens": 100000,
         "name": "o4-mini",
         "provider": "openai",
         "reasoning": true,
+        "releaseDate": "2025-04-16",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1294,12 +1426,15 @@
             "input": 0.13,
             "output": 0.0
         },
+        "description": "Embedding model for semantic search, retrieval, clustering, and ranking pipelines",
         "id": "text-embedding-3-large",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 3072,
         "name": "text-embedding-3-large",
         "provider": "openai",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1320,12 +1455,15 @@
             "input": 0.02,
             "output": 0.0
         },
+        "description": "Embedding model for semantic search, retrieval, clustering, and ranking pipelines",
         "id": "text-embedding-3-small",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 1536,
         "name": "text-embedding-3-small",
         "provider": "openai",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1346,12 +1484,15 @@
             "input": 0.1,
             "output": 0.0
         },
+        "description": "Embedding model for semantic search, retrieval, clustering, and ranking pipelines",
         "id": "text-embedding-ada-002",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 1536,
         "name": "text-embedding-ada-002",
         "provider": "openai",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
             "high": null,
             "low": null,

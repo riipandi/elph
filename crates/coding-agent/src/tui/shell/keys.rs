@@ -1,6 +1,7 @@
 //! Terminal key handler (extracted from the MainShell `use_terminal_events` closure).
 
 use super::*;
+use iocraft::MouseEventKind;
 
 /// Handles terminal key events (extracted from the MainShell `use_terminal_events` closure).
 pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
@@ -60,8 +61,14 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         mut pending_provider_disconnect,
         pending_quit_confirm,
         mut pending_rename,
+        mut pending_item_selector,
+        mut item_selector_selected,
         mut pending_scoped_models,
         mut pending_system_prompt,
+        mut pending_aside,
+        mut pending_worker_chat,
+        mut worker_chat_selected,
+        mut worker_pending_count,
         pending_tool_approval,
         mut pending_transcript_notice_expires,
         pending_user_question,
@@ -110,6 +117,9 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         mut turn_cancel_requested,
         mut turn_token_tracker,
         user_shell_abort,
+        todos: _,
+        mut resume_session_requested,
+        screen_width,
         ..
     } = ctx;
     let paths = paths.read().clone();
@@ -120,6 +130,39 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
     let mut messages_revision = messages_revision;
     // Copy for terminal-events closure so pre-echo paths can sync to the shared arc.
     let mut messages_arc = messages_arc;
+
+    // Mouse wheel over the `/aside` panel scrolls its answer. The transcript wheel
+    // is locked while the panel is open, so the wheel can't also scroll the
+    // transcript underneath it (the aside owns the wheel while open).
+    if let TerminalEvent::FullscreenMouse(m) = &event {
+        if matches!(m.kind, MouseEventKind::ScrollUp | MouseEventKind::ScrollDown) {
+            use crate::tui::inline_dialog::inline_body_width;
+            let content_w = inline_body_width(screen_width) as usize;
+            let up = matches!(m.kind, MouseEventKind::ScrollUp);
+            // Read-only pass: how far can the answer scroll?
+            let max_off = {
+                let guard = pending_aside.read();
+                match &*guard {
+                    Some(s) => s.max_scroll_offset(content_w),
+                    None => 0,
+                }
+            };
+            if max_off > 0 {
+                let mut guard = pending_aside.write();
+                if let Some(st) = guard.as_mut() {
+                    if up {
+                        st.scroll_up(3);
+                    } else {
+                        st.scroll_down(3, max_off);
+                    }
+                }
+            }
+        }
+        // Other mouse events (clicks, drags, moves) are handled by their own
+        // component hooks (transcript text-select, subagent click, …); don't consume.
+        return;
+    }
+
     let TerminalEvent::Key(KeyEvent {
         code, kind, modifiers, ..
     }) = event
@@ -214,6 +257,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             && kind == KeyEventKind::Press
             && is_prompt_history_open_key(code, modifiers)
             && arrow_up_gap_ok
+            && !pending_aside.read().is_some()
         {
             let draft_body = {
                 let live = live_draft.read().clone();
@@ -414,7 +458,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             // Recovery prompt — render a slim status label, not a user bubble (and not
             // Arrow-Up history). The pre-echoed counter consumes the matching
             // UserPromptCommitted from the agent loop so it does not render twice.
-            let mut notice = TranscriptMessage::text("Continuing tasks…", TranscriptStyle::Meta);
+            let mut notice = TranscriptMessage::text(CONTINUE_META_LABEL.to_string(), TranscriptStyle::Meta);
             notice.sticky_meta = true;
             messages_arc.write().write().unwrap().push(notice.clone());
             push_transcript_message(&mut messages, &mut messages_revision, &mut prompt_history, notice);
@@ -475,6 +519,206 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
     let system_prompt_open = pending_system_prompt.read().is_some();
     let rename_open = pending_rename.read().is_some();
     let confetti_open = pending_confetti.read().is_some();
+    let aside_open = pending_aside.read().is_some();
+    let worker_chat_open = pending_worker_chat.read().is_some();
+
+    // ── Worker chat overlay (Alt+M / `/intercom`) ─────────────────────
+    let worker_chat_state = pending_worker_chat.read().clone();
+    let worker_chat_open = worker_chat_open || worker_chat_state.is_some();
+    let worker_chat_active = worker_chat_state.as_ref().and_then(|s| s.active.clone());
+    let worker_chat_peers_len = worker_chat_state.as_ref().map(|s| s.peers.len()).unwrap_or(0);
+    if worker_chat_open && kind == KeyEventKind::Press {
+        if modifiers.is_empty() && code == KeyCode::Esc {
+            // Esc: back to picker first, then close.
+            let mut state = pending_worker_chat.write();
+            if let Some(s) = state.as_mut() {
+                if s.active.is_some() {
+                    crate::tui::worker_chat::back_to_worker_picker(s);
+                    worker_chat_selected.set(s.selected);
+                } else {
+                    drop(state);
+                    crate::tui::worker_chat::close_worker_chat(
+                        &mut pending_worker_chat,
+                        &mut draft,
+                        &mut live_draft,
+                        &mut shell_focus,
+                        true,
+                    );
+                }
+            }
+            return;
+        }
+        if worker_chat_active.is_none() {
+            // Picker navigation (+ select thread).
+            if modifiers.is_empty() && code == KeyCode::Up {
+                if worker_chat_peers_len > 0 {
+                    let next = worker_chat_selected.get().saturating_sub(1);
+                    worker_chat_selected.set(next);
+                    if let Some(s) = pending_worker_chat.write().as_mut() {
+                        s.selected = next;
+                    }
+                }
+                return;
+            }
+            if modifiers.is_empty() && code == KeyCode::Down {
+                if worker_chat_peers_len > 0 {
+                    let next = (worker_chat_selected.get() + 1).min(worker_chat_peers_len - 1);
+                    worker_chat_selected.set(next);
+                    if let Some(s) = pending_worker_chat.write().as_mut() {
+                        s.selected = next;
+                    }
+                }
+                return;
+            }
+            if modifiers.is_empty() && code == KeyCode::Enter {
+                let idx = worker_chat_selected.get();
+                if let Some(s) = pending_worker_chat.write().as_mut() {
+                    let _ = crate::tui::worker_chat::select_worker_thread(s, idx);
+                    worker_chat_selected.set(s.selected);
+                }
+                return;
+            }
+        } else {
+            // Thread view: compose input + Enter send (via tokio spawn so the async
+            // mailbox write never blocks the key handler).
+            if modifiers.is_empty()
+                && let KeyCode::Char(c) = code
+                && !c.is_control()
+            {
+                if let Some(s) = pending_worker_chat.write().as_mut() {
+                    crate::tui::worker_chat::worker_compose_push(s, c);
+                }
+                return;
+            }
+            if modifiers.is_empty() && code == KeyCode::Backspace {
+                if let Some(s) = pending_worker_chat.write().as_mut() {
+                    let _ = crate::tui::worker_chat::worker_compose_backspace(s);
+                }
+                return;
+            }
+            if modifiers.is_empty() && code == KeyCode::Enter {
+                let body = pending_worker_chat
+                    .read()
+                    .as_ref()
+                    .map(|s| s.compose.clone())
+                    .unwrap_or_default();
+                let body = body.trim().to_string();
+                if !body.is_empty() {
+                    let peer = pending_worker_chat
+                        .read()
+                        .as_ref()
+                        .and_then(|s| s.active.clone())
+                        .map(|(id, name)| elph_agent::LiveWorker {
+                            worker_id: id,
+                            session_id: String::new(),
+                            name: name.clone(),
+                            purpose: String::new(),
+                            model: None,
+                            status: elph_agent::WorkerStatus::Online,
+                            context_pct: None,
+                            is_self: false,
+                        });
+                    let parent = pending_worker_chat
+                        .read()
+                        .as_ref()
+                        .and_then(|s| s.thread_parent.clone());
+                    if let (Some(peer), Some(session)) = (peer, agent_session.as_ref()) {
+                        let session = Arc::clone(session);
+                        let worker_id = peer.worker_id.clone();
+                        let body_for_task = body.clone();
+                        let parent_for_task = parent.clone();
+                        tokio::spawn(async move {
+                            if let Err(err) = session
+                                .tui_send_worker_message(&peer, &body_for_task, parent_for_task.as_deref())
+                                .await
+                            {
+                                log::warn!("worker chat send failed: {err:#}");
+                            }
+                        });
+                        if let Some(s) = pending_worker_chat.write().as_mut() {
+                            crate::tui::worker_chat::worker_compose_clear(s);
+                        }
+                        push_transcript_message_synced(
+                            &mut messages,
+                            messages_arc,
+                            &mut messages_revision,
+                            &mut prompt_history,
+                            TranscriptMessage::text(format!("→ {worker_id}: {body}"), TranscriptStyle::Meta),
+                        );
+                    }
+                }
+                return;
+            }
+        }
+        // In-modal keys: swallow everything except shell global shortcuts.
+        if !shell_global_shortcut(modifiers, code) {
+            return;
+        }
+    }
+
+    // Alt+M — open worker chat (only when no other modal is open).
+    let worker_modal_blocked = pending_tool_approval.read().is_some()
+        || pending_user_question.read().is_some()
+        || pending_mode_change.read().is_some()
+        || pending_plan_confirmation.read().is_some()
+        || pending_memory_flush.read().is_some()
+        || *pending_feedback.read()
+        || pending_item_selector.read().is_some()
+        || aside_open;
+    if modifiers.contains(KeyModifiers::ALT)
+        && !modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::META)
+        && matches!(code, KeyCode::Char('m') | KeyCode::Char('M'))
+        && !worker_modal_blocked
+    {
+        // Opening the chat means the user now sees any queued inbound messages.
+        worker_pending_count.set(0);
+        let Some(session) = agent_session.clone() else {
+            // No live agent session: open an empty picker.
+            let mut state = crate::tui::worker_chat::WorkerChatState::new();
+            state.rebuild_peers(Vec::new());
+            let stashed = {
+                let current = live_draft.read().clone();
+                if current.trim().is_empty() { None } else { Some(current) }
+            };
+            if stashed.is_some() {
+                draft.set(String::new());
+                live_draft.set(String::new());
+            }
+            if let Some(text) = stashed {
+                state.compose = text;
+            }
+            pending_worker_chat.set(Some(state));
+            shell_focus.set(ShellFocus::StatusDialog);
+            return;
+        };
+        tokio::spawn(async move {
+            let peers = session.tui_worker_peers().await.unwrap_or_default();
+            let history = session
+                .tui_worker_inbox(crate::tui::worker_chat::WORKER_CHAT_INBOX_LIMIT)
+                .await
+                .unwrap_or_default();
+            // Hand to the shell: refresh or create the pending chat state.
+            // We mutate shell state directly here (we are on the keys path).
+            if let Some(pending) = pending_worker_chat.write().as_mut() {
+                // Already open? just refresh history.
+                pending.messages = history;
+                pending.rebuild_peers(peers);
+                pending.revision = pending.revision.wrapping_add(1);
+                return;
+            }
+            let mut state = crate::tui::worker_chat::WorkerChatState::new();
+            if history.len() > crate::tui::worker_chat::WORKER_CHAT_INBOX_LIMIT as usize {
+                let start = history.len() - crate::tui::worker_chat::WORKER_CHAT_INBOX_LIMIT as usize;
+                state.messages = history[start..].to_vec();
+            } else {
+                state.messages = history;
+            }
+            state.rebuild_peers(peers);
+            pending_worker_chat.set(Some(state));
+            shell_focus.set(ShellFocus::StatusDialog);
+        });
+        return;
+    }
 
     // Escape closes confetti/fireworks overlay.
     if confetti_open && modifiers.is_empty() && code == KeyCode::Esc {
@@ -488,8 +732,50 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         return;
     }
 
+    // `/aside` panel: Esc dismisses; ↑↓ scroll Done answers (when scrollable).
+    if aside_open && kind == KeyEventKind::Press && modifiers.is_empty() {
+        use crate::tui::aside_panel::dismiss_aside_panel;
+        use crate::tui::inline_dialog::inline_body_width;
+        let content_w = inline_body_width(screen_width) as usize;
+        if code == KeyCode::Esc {
+            if let Some(state) = pending_aside.write().take() {
+                let (_id, notice) = dismiss_aside_panel(state);
+                if let Some(notice) = notice {
+                    push_transcript_message_synced(
+                        &mut messages,
+                        messages_arc,
+                        &mut messages_revision,
+                        &mut prompt_history,
+                        crate::tui::transcript::TranscriptMessage::text(
+                            notice,
+                            crate::tui::transcript::TranscriptStyle::Meta,
+                        ),
+                    );
+                }
+            }
+            return;
+        }
+        if matches!(code, KeyCode::Up | KeyCode::Down | KeyCode::PageUp | KeyCode::PageDown)
+            && let Some(state) = pending_aside.write().as_mut()
+        {
+            let max_off = state.max_scroll_offset(content_w);
+            if max_off > 0 {
+                let page = crate::tui::aside_panel::ASIDE_MAX_BODY_LINES.saturating_sub(1).max(1);
+                match code {
+                    KeyCode::Up => state.scroll_up(1),
+                    KeyCode::Down => state.scroll_down(1, max_off),
+                    KeyCode::PageUp => state.scroll_up(page),
+                    KeyCode::PageDown => state.scroll_down(page, max_off),
+                    _ => {}
+                }
+                return;
+            }
+        }
+    }
+
     let model_selector_open = pending_model_selector.read().is_some();
     let scoped_models_open = pending_scoped_models.read().is_some();
+    let item_selector_open = pending_item_selector.read().is_some();
     let provider_connect_open = pending_provider_connect.read().is_some();
     let mcp_auth_open = pending_mcp_auth.read().is_some();
     let provider_disconnect_open = pending_provider_disconnect.read().is_some();
@@ -503,6 +789,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         || pending_user_question.read().is_some()
         || model_selector_open
         || scoped_models_open
+        || item_selector_open
         || system_prompt_open
         || rename_open
         || confetti_open
@@ -814,6 +1101,176 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     pending.toggle_selected();
                     apply_scoped_session(pending, &mut session_scoped_items.write());
                     scoped_selected_index.set(pending.selected_index);
+                }
+                return;
+            }
+
+            if !shell_global_shortcut(modifiers, code) {
+                return;
+            }
+        }
+
+        // ── Item selector (/resume, /tree) ─────────────────────────────
+        if item_selector_open
+            && pending_user_question.read().is_none()
+            && !system_prompt_open
+            && !confetti_open
+            && !model_selector_open
+            && !scoped_models_open
+            && !rename_open
+        {
+            if modifiers.is_empty() && code == KeyCode::Esc {
+                close_item_selector(&mut pending_item_selector, &mut draft, &mut live_draft, &mut shell_focus, true);
+                force_editor_clear.set(true);
+                return;
+            }
+
+            // Pi TreeSelector filter modes (Tab / Ctrl+O cycle, Ctrl+D/T/U/L/A).
+            if let Some(action) = tree_filter_key_action(modifiers, code)
+                && let Some(pending) = pending_item_selector.write().as_mut()
+                && pending.purpose == ItemSelectorPurpose::NavigateTree
+            {
+                apply_tree_filter_key(pending, action);
+                item_selector_selected.set(pending.filtered_selected());
+                return;
+            }
+            // Resume picker: ignore tree filter chords (fall through for Esc-global etc.).
+
+            if let Some(delta) = item_selector_list_nav_delta(modifiers, code) {
+                if let Some(pending) = pending_item_selector.write().as_mut() {
+                    if delta == isize::MIN / 4 {
+                        let indices = pending.filtered_indices();
+                        if let Some(&first) = indices.first() {
+                            pending.selected = first;
+                        }
+                    } else if delta == isize::MAX / 4 {
+                        let indices = pending.filtered_indices();
+                        if let Some(&last) = indices.last() {
+                            pending.selected = last;
+                        }
+                    } else {
+                        pending.move_delta(delta);
+                    }
+                    item_selector_selected.set(pending.filtered_selected());
+                }
+                return;
+            }
+
+            if modifiers.is_empty() && code == KeyCode::Backspace {
+                if let Some(pending) = pending_item_selector.write().as_mut()
+                    && pending.filter_backspace()
+                {
+                    item_selector_selected.set(pending.filtered_selected());
+                }
+                return;
+            }
+
+            // Printable filter characters (no modifiers).
+            if modifiers.is_empty()
+                && let KeyCode::Char(c) = code
+                && !c.is_control()
+            {
+                if let Some(pending) = pending_item_selector.write().as_mut() {
+                    pending.apply_filter_char(c);
+                    item_selector_selected.set(pending.filtered_selected());
+                }
+                return;
+            }
+
+            let with_summary = item_selector_confirm_summary_on_ctrl_enter(modifiers, code);
+            let plain_confirm = item_selector_confirm_on_enter(modifiers, code);
+            if plain_confirm || with_summary {
+                let snapshot = pending_item_selector.read().clone();
+                let Some(pending) = snapshot else {
+                    return;
+                };
+                let Some(value) = pending.selected_value().map(str::to_string) else {
+                    return;
+                };
+                let purpose = pending.purpose;
+                close_item_selector(&mut pending_item_selector, &mut draft, &mut live_draft, &mut shell_focus, false);
+                force_editor_clear.set(true);
+                match purpose {
+                    ItemSelectorPurpose::ResumeSession => {
+                        if let Some(session) = agent_session.as_ref() {
+                            let session = Arc::clone(session);
+                            tokio::spawn(async move {
+                                session.shutdown_workers().await;
+                            });
+                        }
+                        push_transcript_message_synced(
+                            &mut messages,
+                            messages_arc,
+                            &mut messages_revision,
+                            &mut prompt_history,
+                            TranscriptMessage::text(format!("Resuming session {value}…"), TranscriptStyle::Meta),
+                        );
+                        resume_session_requested.set(Some(value));
+                    }
+                    ItemSelectorPurpose::NavigateTree => {
+                        let Some(session) = agent_session.as_ref().map(Arc::clone) else {
+                            push_transcript_message_synced(
+                                &mut messages,
+                                messages_arc,
+                                &mut messages_revision,
+                                &mut prompt_history,
+                                TranscriptMessage::text(
+                                    "Agent session required for /tree.".to_string(),
+                                    TranscriptStyle::Meta,
+                                ),
+                            );
+                            return;
+                        };
+                        let summarize = with_summary;
+                        let entry_id = value.clone();
+                        let sid = session.session_id().to_string();
+                        let nav = elph_agent::try_block_on(async {
+                            session.navigate_tree_to_with_options(&entry_id, summarize).await
+                        });
+                        match nav {
+                            Ok(Ok(())) => {
+                                push_transcript_message_synced(
+                                    &mut messages,
+                                    messages_arc,
+                                    &mut messages_revision,
+                                    &mut prompt_history,
+                                    TranscriptMessage::text(
+                                        format!(
+                                            "Navigated to {entry_id}{}",
+                                            if summarize { " (with summary)" } else { "" }
+                                        ),
+                                        TranscriptStyle::Meta,
+                                    ),
+                                );
+                                // Reload transcript for the new leaf.
+                                resume_session_requested.set(Some(sid));
+                            }
+                            Ok(Err(e)) => {
+                                push_transcript_message_synced(
+                                    &mut messages,
+                                    messages_arc,
+                                    &mut messages_revision,
+                                    &mut prompt_history,
+                                    TranscriptMessage::text(
+                                        format!("/tree navigate failed: {e:#}"),
+                                        TranscriptStyle::Meta,
+                                    ),
+                                );
+                            }
+                            Err(e) => {
+                                push_transcript_message_synced(
+                                    &mut messages,
+                                    messages_arc,
+                                    &mut messages_revision,
+                                    &mut prompt_history,
+                                    TranscriptMessage::text(
+                                        format!("/tree navigate failed: {e}"),
+                                        TranscriptStyle::Meta,
+                                    ),
+                                );
+                            }
+                        }
+                    }
                 }
                 return;
             }
@@ -1923,6 +2380,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             let provider_id_for_task = provider_id.clone();
                             let mut pending_ref = pending_provider_connect;
                             let auth_store_path_for_task = auth_store_path.clone();
+                            // Inject into the live session models store after save (no restart).
+                            let session_for_inject = agent_session.clone();
 
                             tokio::spawn(async move {
                                 // Build AuthLoginCallbacks that sends events through the channel
@@ -1932,55 +2391,89 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                                     Ok(credential) => {
                                         log::info!("OAuth login succeeded for provider: {}", provider_id_for_task);
 
-                                        // Derive API key from OAuth credential
-                                        match elph_ai::get_oauth_api_key(&provider_id_for_task, credential.clone())
-                                            .await
+                                        // Prefer refreshed credential from get_oauth_api_key when needed.
+                                        let credential = match elph_ai::get_oauth_api_key(
+                                            &provider_id_for_task,
+                                            credential.clone(),
+                                        )
+                                        .await
                                         {
                                             Ok(api_key_result) => {
-                                                // OAuth credentials are stored differently — they provide
-                                                // access tokens that auto-refresh. For now we save the
-                                                // access token as an encrypted API key as a fallback,
-                                                // but the real OAuth flow stores tokens in-memory.
                                                 log::info!(
                                                     "OAuth login complete for {} — token expires at {}",
                                                     provider_id_for_task,
                                                     api_key_result.new_credentials.expires,
                                                 );
+                                                api_key_result.new_credentials
+                                            }
+                                            Err(e) => {
+                                                log::warn!(
+                                                    "get_oauth_api_key for {provider_id_for_task} failed ({e}); using login credential"
+                                                );
+                                                credential
+                                            }
+                                        };
 
-                                                // Store OAuth credential in auth.json for persistence
-                                                if let Ok(json) = serde_json::to_string(&credential) {
-                                                    let _ = crate::tui::provider_credential_store::save_provider_credential(
-                                                            &auth_store_path_for_task,
-                                                            &provider_id_for_task,
-                                                            &json,
-                                                        ).await;
-                                                }
-
-                                                // Close dialog — OAuth is complete.
-                                                // The main loop detects the done flag
-                                                // and cleans up focus + clears the draft.
-                                                if let Some(pending) = pending_ref.write().as_mut() {
-                                                    pending.done = true;
-                                                    pending.oauth_url =
-                                                        format!("Signed in to {provider_name_for_clone}");
+                                        // Persist OAuth JSON blob in auth.json.
+                                        let save_ok = match serde_json::to_string(&credential) {
+                                            Ok(json) => {
+                                                match crate::tui::provider_credential_store::save_provider_credential(
+                                                    &auth_store_path_for_task,
+                                                    &provider_id_for_task,
+                                                    &json,
+                                                )
+                                                .await
+                                                {
+                                                    Ok(()) => {
+                                                        log::info!(
+                                                            "saved OAuth credential for {provider_id_for_task} to auth.json"
+                                                        );
+                                                        true
+                                                    }
+                                                    Err(e) => {
+                                                        log::error!(
+                                                            "failed to save OAuth credential for {provider_id_for_task}: {e}"
+                                                        );
+                                                        false
+                                                    }
                                                 }
                                             }
                                             Err(e) => {
-                                                log::error!(
-                                                    "Failed to derive API key from OAuth for {}: {}",
-                                                    provider_id_for_task,
-                                                    e
-                                                );
-                                                if let Some(pending) = pending_ref.write().as_mut() {
-                                                    pending.oauth_url = format!("OAuth error: {e}");
-                                                }
+                                                log::error!("serialize OAuth credential: {e}");
+                                                false
                                             }
+                                        };
+
+                                        // Always inject into the live Models store so the current
+                                        // session can stream without restart.
+                                        if let Some(session) = session_for_inject.as_ref() {
+                                            session
+                                                .inject_provider_credential(
+                                                    &provider_id_for_task,
+                                                    elph_ai::Credential::OAuth(credential.clone()),
+                                                )
+                                                .await;
+                                        } else if save_ok {
+                                            // No live session — disk save is enough for next boot.
+                                        }
+
+                                        if let Some(pending) = pending_ref.write().as_mut() {
+                                            pending.done = true;
+                                            pending.completed_provider_id = Some(provider_id_for_task.clone());
+                                            pending.oauth_url = if save_ok {
+                                                format!("Signed in to {provider_name_for_clone}")
+                                            } else {
+                                                format!(
+                                                    "Signed in to {provider_name_for_clone} (live only; auth.json save failed)"
+                                                )
+                                            };
                                         }
                                     }
                                     Err(e) => {
                                         log::error!("OAuth login failed for {}: {}", provider_id_for_task, e);
                                         if let Some(pending) = pending_ref.write().as_mut() {
                                             pending.oauth_url = format!("OAuth failed: {e}");
+                                            pending.oauth_is_prompt = false;
                                         }
                                     }
                                 }
@@ -2377,30 +2870,43 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 if let Some(pid) = provider_id {
                     let auth_store_path = paths.auth_store_path();
                     let api_key_clone = api_key.clone();
+                    let session_for_inject = agent_session.clone();
                     tokio::spawn(async move {
                         // Detect env: prefix — store as plaintext reference, not encrypted.
-                        if let Some(env_var) = api_key_clone.strip_prefix("env:") {
-                            match crate::tui::provider_credential_store::save_provider_env_ref(
+                        let save_result = if let Some(env_var) = api_key_clone.strip_prefix("env:") {
+                            crate::tui::provider_credential_store::save_provider_env_ref(
                                 &auth_store_path,
                                 &pid,
                                 env_var,
                             )
                             .await
-                            {
-                                Ok(()) => log::info!("Saved env ref for provider: {pid}"),
-                                Err(e) => log::error!("Failed to save env ref for provider {pid}: {e}"),
-                            }
+                            .map(|_| {
+                                log::info!("Saved env ref for provider: {pid}");
+                                crate::agent::model_registry::credential_from_auth_value(&format!(
+                                    "{}{env_var}",
+                                    elph_agent::ENV_REF_PREFIX
+                                ))
+                            })
                         } else {
-                            match crate::tui::provider_credential_store::save_provider_credential(
+                            crate::tui::provider_credential_store::save_provider_credential(
                                 &auth_store_path,
                                 &pid,
                                 &api_key_clone,
                             )
                             .await
-                            {
-                                Ok(()) => log::info!("Saved encrypted API key for provider: {pid}"),
-                                Err(e) => log::error!("Failed to save API key for provider {pid}: {e}"),
+                            .map(|_| {
+                                log::info!("Saved encrypted API key for provider: {pid}");
+                                crate::agent::model_registry::credential_from_auth_value(&api_key_clone)
+                            })
+                        };
+                        match save_result {
+                            Ok(Some(cred)) => {
+                                if let Some(session) = session_for_inject.as_ref() {
+                                    session.inject_provider_credential(&pid, cred).await;
+                                }
                             }
+                            Ok(None) => log::warn!("empty credential for provider {pid}"),
+                            Err(e) => log::error!("Failed to save credential for provider {pid}: {e}"),
                         }
                     });
                 }
@@ -2735,8 +3241,10 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 // shows a "queued" notice instead, and no raw slash text reaches the model.
                 let queue_follow_up = agent_turn_active.get();
                 if slash_echoes_prompt_in_transcript(&outcome) && !queue_follow_up {
+                    // Skills already carry the `/skill:` prefix from palette completion.
+                    let formatted_echo = echo;
                     let mut submitted =
-                        TranscriptMessage::text(echo.clone(), TranscriptStyle::for_slash_turn_echo(&slash_input));
+                        TranscriptMessage::text(formatted_echo, TranscriptStyle::for_slash_turn_echo(&slash_input));
                     if submitted.style.is_user_input_card() {
                         submitted.submitted_at = Some(chrono::Utc::now());
                         // Sync to shared arc so the arc-to-state sync never loses this pre-echoed prompt.
@@ -2857,6 +3365,30 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         });
                         force_editor_clear.set(true);
                     }
+                    SlashOutcome::OpenItemSelector {
+                        purpose,
+                        title,
+                        items,
+                        preferred_value,
+                        footer_hint,
+                    } => {
+                        open_item_selector(OpenItemSelectorArgs {
+                            pending: &mut pending_item_selector,
+                            draft: &mut draft,
+                            live_draft: &mut live_draft,
+                            shell_focus: &mut shell_focus,
+                            selected_index: Some(&mut item_selector_selected),
+                            purpose,
+                            title,
+                            items,
+                            preferred_value,
+                            footer_hint,
+                        });
+                        draft.set(String::new());
+                        live_draft.set(String::new());
+                        force_editor_clear.set(true);
+                        suppress_enter_newline.set(true);
+                    }
                     SlashOutcome::OpenRenameDialog { initial } => {
                         open_rename_dialog(OpenRenameDialogArgs {
                             pending: &mut pending_rename,
@@ -2973,6 +3505,26 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             TranscriptMessage::text(overlay_deferred_message(&overlay), TranscriptStyle::Meta),
                         );
                     }
+                    SlashOutcome::ResumeSession { session_id } => {
+                        if let Some(session) = agent_session.as_ref() {
+                            let session = Arc::clone(session);
+                            tokio::spawn(async move {
+                                session.shutdown_workers().await;
+                            });
+                        }
+                        draft.set(String::new());
+                        live_draft.set(String::new());
+                        force_editor_clear.set(true);
+                        suppress_enter_newline.set(true);
+                        push_transcript_message_synced(
+                            &mut messages,
+                            messages_arc,
+                            &mut messages_revision,
+                            &mut prompt_history,
+                            TranscriptMessage::text(format!("Resuming session {session_id}…"), TranscriptStyle::Meta),
+                        );
+                        resume_session_requested.set(Some(session_id));
+                    }
                     SlashOutcome::Status(message) => {
                         push_transcript_message_synced(
                             &mut messages,
@@ -2991,7 +3543,10 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             TranscriptMessage::text(message, TranscriptStyle::Meta),
                         );
                     }
-                    SlashOutcome::SpawnAgentTurn | SlashOutcome::SpawnAgentTurnQuiet => {
+                    SlashOutcome::SpawnAgentTurn
+                    | SlashOutcome::SpawnAgentTurnSkill { .. }
+                    | SlashOutcome::SpawnAgentTurnPromptTemplate { .. }
+                    | SlashOutcome::SpawnAgentTurnQuiet => {
                         if agent_turn_active.get() {
                             // The command was already dispatched by handle_slash_submit
                             // (turn_gate queues it behind the active turn). Tell the user —

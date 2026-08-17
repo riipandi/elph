@@ -86,23 +86,22 @@ fn format_skills_ref<'a>(skills: impl Iterator<Item = &'a Skill>) -> String {
         return String::new();
     }
 
-    let mut lines = vec![
-        "Use a matching skill; read its full file first and resolve relative references from the skill directory."
-            .to_string(),
-        String::new(),
-        "<available_skills>".to_string(),
+    let mut lines: Vec<String> = vec![
+        "<available_skills note=\"On match: read SKILL.md fully before acting, resolve relative refs from its dir. Skip loosely related. No match -> proceed without one, don't browse to be thorough.\">".to_string(),
     ];
 
     for skill in collected {
-        lines.push("  <skill>".to_string());
-        lines.push(format!("    <name>{}</name>", escape_xml(&skill.name)));
-        lines.push(format!("    <description>{}</description>", escape_xml(&skill.description)));
-        lines.push(format!("    <location>{}</location>", escape_xml(&skill.file_path)));
-        lines.push("  </skill>".to_string());
+        lines.push(format!(
+            "  <skill name=\"{}\" path=\"{}\"/>",
+            escape_xml(&skill.name),
+            escape_xml(&path_to_relative_with_tilde(&skill.file_path)),
+        ));
     }
 
     lines.push("</available_skills>".to_string());
-    lines.join("\n")
+
+    // Sanitize: trim trailing whitespace from each line, preserve intentional blank lines
+    lines.iter().map(|line| line.trim_end()).collect::<Vec<_>>().join("\n")
 }
 
 /// Filter skills for the current working directory, then format the
@@ -121,6 +120,19 @@ fn escape_xml(value: &str) -> String {
         .replace('>', "&gt;")
         .replace('"', "&quot;")
         .replace('\'', "&apos;")
+}
+
+/// Convert an absolute path under `$HOME` to a tilde-relative path
+/// (e.g. `/Users/alice/project` → `~/project`). Leaves non-home paths unchanged.
+fn path_to_relative_with_tilde(path: &str) -> String {
+    if let Ok(home_dir) = std::env::var("HOME")
+        && path.starts_with(&home_dir)
+    {
+        let remainder = path.strip_prefix(&home_dir).unwrap_or(path);
+        let remainder = remainder.strip_prefix('/').unwrap_or(remainder);
+        return format!("~/{}", remainder);
+    }
+    path.to_string()
 }
 
 #[cfg(test)]
@@ -151,6 +163,15 @@ mod tests {
     #[test]
     fn escapes_xml_entities() {
         assert_eq!(escape_xml("a&b<c>\"d'"), "a&amp;b&lt;c&gt;&quot;d&apos;");
+    }
+
+    #[test]
+    fn format_skills_output_matches_expected_format() {
+        let skills = [skill("test-skill", "/r/.agents/skills/test-skill/SKILL.md", None)];
+        let output = format_skills_ref(skills.iter());
+        assert!(output.contains("<available_skills"));
+        assert!(output.contains("<skill name=\"test-skill\" path=\"/r/.agents/skills/test-skill/SKILL.md\"/>"));
+        assert!(output.contains("</available_skills>"));
     }
 
     #[test]
@@ -280,6 +301,27 @@ mod tests {
         let mut s = skill("hidden", "/r/.agents/skills/hidden/SKILL.md", None);
         s.disable_model_invocation = true;
         let rendered = format_skills_for_system_prompt(&[s]);
-        assert!(rendered.is_empty());
+        assert_eq!(rendered, "");
+    }
+
+    #[test]
+    fn path_uses_tilde_for_home_paths() {
+        let home = std::env::var("HOME").unwrap_or_default();
+        if !home.is_empty() {
+            let s = skill(
+                "my-skill",
+                &format!("{}/projects/elph/.agents/skills/my-skill/SKILL.md", home),
+                None,
+            );
+            let rendered = format_skills_for_system_prompt(&[s]);
+            assert!(rendered.contains("path=\"~/projects/elph/.agents/skills/my-skill/SKILL.md\""));
+        }
+    }
+
+    #[test]
+    fn path_leaves_non_home_paths_unchanged() {
+        let s = skill("my-skill", "/r/.agents/skills/my-skill/SKILL.md", None);
+        let rendered = format_skills_for_system_prompt(&[s]);
+        assert!(rendered.contains("path=\"/r/.agents/skills/my-skill/SKILL.md\""));
     }
 }

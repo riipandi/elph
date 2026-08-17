@@ -1,0 +1,67 @@
+/.idea
+/.pnp
+/.husky
+/.snippets
+.turbo
+.vercel
+.pnp.js
+.DS_Store
+.DS_Store?
+/coverage
+/[Tt]emp/
+/[Tt]mp/
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+node_modules/
+*tsbuildinfo
+npm-debug.log*
+coverage.*
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/mcp.json
+!.vscode/tasks.json
+*.bak
+*.pid
+*~
+
+# SQLite
+*.sqlite*
+*.sqlite3*
+*.db
+
+# Output directory
+temp/
+build/
+dist/
+tmp/
+out/
+.output
+.wrangler
+.wireit
+.cache
+.temp
+.tmp
+
+# Vite & Vitest config
+vite.config.*
+!vite.config.ts
+vitest.config.*
+!vitest.config.ts
+vitest.workspace.*
+!vitest.workspace.ts
+
+# Envars
+.env.*
+!.env.example
+.*.vars
+
+# Disable this line in your real app
+/playwright/.cache/
+/playwright-report/
+/tests-results/
+/blob-report/
+.playwright/

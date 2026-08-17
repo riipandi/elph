@@ -1,0 +1,48 @@
+{
+  "name": "elph-website",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "check": "oxlint --fix && oxfmt --write",
+    "format": "oxfmt --write",
+    "lint": "oxlint --fix",
+    "cleanup": "pnpm dlx del-cli .wrangler dist",
+    "cf:deploy": "pnpm -s build && wrangler pages deploy",
+    "cf:preview": "pnpm -s build && wrangler pages dev",
+    "update-deps": "npm-check-updates",
+    "start": "serve dist -l 3000 -nCL",
+    "typecheck": "tsc -b --noEmit"
+  },
+  "dependencies": {
+    "@mdit/plugin-alert": "^1.0.1",
+    "@mdit/plugin-anchor": "^1.1.1",
+    "@mdit/plugin-tab": "^1.0.1",
+    "@mdit/plugin-tasklist": "^1.0.1",
+    "@pagefind/component-ui": "^1.5.2",
+    "@shikijs/langs": "^4.3.1",
+    "@shikijs/markdown-it": "^4.3.1",
+    "@shikijs/themes": "^4.3.1",
+    "markdown-it": "^14.3.0",
+    "markdown-it-front-matter": "^0.2.4",
+    "shiki": "^4.3.1",
+    "slugify": "^1.6.9",
+    "ufo": "^1.6.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/markdown-it": "^14.1.2",
+    "@types/node": "^26.1.1",
+    "oxfmt": "0.60.0",
+    "oxlint": "^1.75.0",
+    "serve": "^14.2.6",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.1.5",
+    "vitto": "^1.0.0",
+    "wrangler": "^4.114.0"
+  }
+}

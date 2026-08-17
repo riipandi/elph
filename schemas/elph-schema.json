@@ -111,6 +111,11 @@
                     "type": "boolean",
                     "default": true,
                     "description": "When true, allow mode changes (keyboard shortcut and agent request) while the agent is busy streaming or running tools."
+                },
+                "turnStats": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "When true (default), show a dimmed per-turn stats card under the last assistant reply after each completed turn: duration, tokens in/out, cached tokens (when reported), and provider/model."
                 }
             }
         },

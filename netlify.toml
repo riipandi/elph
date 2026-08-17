@@ -1,0 +1,24 @@
+[build.environment]
+NODE_VERSION = "24.19.0"
+NPM_VERSION = "11.17.0"
+TZ = "Asia/Jakarta"
+
+[build]
+publish = "website/dist"
+command = """\
+  git config core.quotepath false && \
+  pnpm install && NODE_ENV=production pnpm run build && \
+	cp ./schemas/*.json ./website/dist/ && \
+	cp ./scripts/install.sh ./website/dist/
+  """
+
+[[redirects]]
+from = "/install"
+to = "/install.sh"
+status = 200
+force = true
+
+[[redirects]]
+from = "/*"
+to = "/404/"
+status = 404

@@ -30,11 +30,9 @@ pub async fn ensure_database(paths: &Paths) -> Result<Database> {
     log::info!("Opening store database");
 
     // Open the database and apply all migration bands through one connection.
-    let db = open_local_with(
-        &store_db,
-        |b| b.experimental_multiprocess_wal(true).experimental_index_method(true),
-        false,
-    )
+    let db = open_local_with(&store_db, |b| {
+        b.experimental_multiprocess_wal(true).experimental_index_method(true)
+    })
     .await?;
     let conn = connect(&db).await?;
 

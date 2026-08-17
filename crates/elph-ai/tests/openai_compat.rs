@@ -39,7 +39,7 @@ fn detect_compat_matches_elph_ai_defaults() {
 
 #[test]
 fn tokenrouter_gateway_avoids_openai_only_fields() {
-    let model = get_builtin_model("tokenrouter", "moonshotai/kimi-k3-free").expect("model exists");
+    let model = get_builtin_model("tokenrouter", "moonshotai/kimi-k3").expect("model exists");
     let compat = detect_compat(&model);
     assert!(!compat.supports_store, "gateways must not send store");
     assert!(!compat.supports_developer_role, "gateways must keep system role");

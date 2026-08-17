@@ -6,7 +6,7 @@ powered by the Elph library stack.
 
 ## Quick Start
 
-Install using the [install script](../scripts/install-elph.sh):
+Install using the [install script](../scripts/install.sh):
 
 ```sh
 curl -fsSL https://elph.space/elph/install.sh | bash

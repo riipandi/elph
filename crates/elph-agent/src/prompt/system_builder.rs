@@ -3,7 +3,7 @@
 use thiserror::Error;
 
 use super::context::SystemPromptTemplateContext;
-use super::template::{PromptRenderError, render_base_template};
+use super::template::{PromptRenderError, render_base_template, sanitize_system_prompt};
 
 /// How a domain-specific body is combined with the generic base template.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -25,11 +25,12 @@ pub enum SystemPromptBuildError {
 
 /// Pi-style project context wrapper for AGENTS.md / context files.
 pub fn format_project_context(path: &str, content: &str) -> String {
-    format!(
+    let formatted = format!(
         "<project_context>\n\nProject-specific instructions and guidelines:\n\n\
          <project_instructions path=\"{path}\">\n{content}\n</project_instructions>\n\n\
          </project_context>"
-    )
+    );
+    sanitize_system_prompt(&formatted)
 }
 
 fn append_project_context(out: &mut String, agents_md: &str) {
@@ -98,7 +99,7 @@ impl SystemPromptBuilder {
                     out.push_str(&self.context.mode_section);
                 }
                 append_project_context(&mut out, &self.context.agents_md);
-                Ok(out)
+                Ok(sanitize_system_prompt(&out))
             }
             PromptAssemblyMode::Full => {
                 let mut out = self.domain_body.clone().ok_or(SystemPromptBuildError::MissingDomain)?;
@@ -113,7 +114,7 @@ impl SystemPromptBuilder {
                 if !self.context.agents_md.trim().is_empty() && !out.contains(&self.context.agents_md) {
                     append_project_context(&mut out, &self.context.agents_md);
                 }
-                Ok(out)
+                Ok(sanitize_system_prompt(&out))
             }
         }
     }
@@ -129,5 +130,20 @@ mod tests {
         assert!(block.contains("<project_context>"));
         assert!(block.contains("<project_instructions path=\"AGENTS.md\">"));
         assert!(block.contains("Be concise."));
+    }
+
+    #[test]
+    fn render_sanitize_trailing_whitespace() {
+        let builder = SystemPromptBuilder::new()
+            .persona("Test persona  ")
+            .context(SystemPromptTemplateContext {
+                persona: String::new(),
+                working_directory: Some("/test/dir  ".to_string()),
+                ..Default::default()
+            });
+        let result = builder.render().unwrap();
+        // Should not have trailing whitespace
+        assert!(!result.ends_with(" "));
+        assert!(!result.contains("  \n"));
     }
 }

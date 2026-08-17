@@ -110,6 +110,36 @@ impl AgentRegistry {
             .collect()
     }
 
+    /// Find agents stuck in Pending state for longer than the timeout.
+    /// Returns a list of agent IDs that should be marked as Error.
+    pub async fn stuck_pending_agents(&self, timeout: std::time::Duration) -> Vec<String> {
+        let now_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as i64)
+            .unwrap_or(0);
+        let timeout_ms = timeout.as_millis() as i64;
+
+        self.agents
+            .lock()
+            .await
+            .values()
+            .filter(|record| {
+                if record.info.status != SubagentStatus::Pending {
+                    return false;
+                }
+                // Check if the agent has been pending for too long
+                if let Some(created_at) = record.info.created_at_ms {
+                    let elapsed = now_ms.saturating_sub(created_at);
+                    elapsed > timeout_ms
+                } else {
+                    // If we don't have creation time, conservatively include it
+                    true
+                }
+            })
+            .map(|record| record.info.id.clone())
+            .collect()
+    }
+
     pub async fn remove(&self, id: &str) -> Option<SubagentRecord> {
         let record = self.agents.lock().await.remove(id)?;
         self.paths.lock().await.remove(&record.info.agent_path);

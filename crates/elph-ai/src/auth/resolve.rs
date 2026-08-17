@@ -189,29 +189,34 @@ async fn resolve_stored_oauth(
                 ));
             }
         };
+        let refreshed_for_store = refreshed.clone();
         let post = credentials
             .modify(
                 provider_id,
                 Box::new(move |current| {
-                    let refreshed = refreshed.clone();
+                    let refreshed = refreshed_for_store.clone();
                     Box::pin(async move {
-                        let Some(Credential::OAuth(current)) = current else {
-                            return None;
-                        };
-                        if chrono::Utc::now().timestamp_millis() < current.expires {
-                            return None;
+                        // Always write the fresh token when the slot is still OAuth (or empty).
+                        // A concurrent refresh may have already updated expires; prefer newer.
+                        match current {
+                            Some(Credential::OAuth(current))
+                                if chrono::Utc::now().timestamp_millis() < current.expires
+                                    && current.expires >= refreshed.expires =>
+                            {
+                                Some(Credential::OAuth(current))
+                            }
+                            _ => Some(Credential::OAuth(refreshed)),
                         }
-                        Some(Credential::OAuth(refreshed))
                     })
                 }),
             )
             .await;
 
-        if let Some(Credential::OAuth(cred)) = post {
-            stored = cred;
-        } else {
-            return Ok(None);
-        }
+        // Prefer store result; never drop a successful refresh just because modify returned None.
+        stored = match post {
+            Some(Credential::OAuth(cred)) => cred,
+            _ => refreshed,
+        };
     }
 
     match (oauth.to_auth)(stored).await {

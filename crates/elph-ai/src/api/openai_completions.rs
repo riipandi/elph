@@ -5,7 +5,7 @@ use anyhow::Result;
 use serde_json::Value;
 use serde_json::json;
 
-use crate::api::common::{apply_on_payload, build_http_client_for_target, finish_stream_error, get_client_api_key};
+use crate::api::common::{apply_on_payload, build_http_client_for_target, finish_stream_error};
 use crate::api::common::{invoke_on_response_from_reqwest, is_request_aborted, merge_model_headers};
 use crate::api::github_copilot_headers::{build_copilot_dynamic_headers, has_copilot_vision_input};
 use crate::api::openai_compat::ResolvedOpenAICompletionsCompat;
@@ -104,7 +104,12 @@ async fn run_openai_completions(
             has_copilot_vision_input(&context.messages),
         ));
     }
-    let api_key = get_client_api_key(&model.provider, options.base.api_key.as_deref(), &headers)?;
+    let api_key = crate::api::common::get_client_api_key_for_url(
+        &model.provider,
+        options.base.api_key.as_deref(),
+        &headers,
+        Some(model.base_url.as_str()),
+    )?;
     let mut params = build_params(model, context, options)?;
     params = apply_on_payload(options.base.on_payload.as_ref(), params, model).await;
 
@@ -119,7 +124,7 @@ async fn run_openai_completions(
         &options.base.signal,
         &client,
         req,
-        options.base.max_retries.unwrap_or(3),
+        options.base.max_retries.unwrap_or(5), // Increased from 3 to 5 for better transport error handling
     )
     .await?;
     invoke_on_response_from_reqwest(options.base.on_response.as_ref(), &response, model).await;

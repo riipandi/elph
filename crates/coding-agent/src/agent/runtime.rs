@@ -5,7 +5,8 @@ use anyhow::Result;
 use elph_agent::create_goal_tools_with_hook;
 use elph_agent::{
     AgentGraphStore, AgentHarness, AgentHarnessOptions, AgentHarnessStreamOptions, BuiltinToolsBuilder, GoalRuntime,
-    GoalStore, LocalExecutionEnv, QueueMode, RestoreOptions, SubagentBootstrap, SystemPrompt, is_mcp_tool,
+    GoalStore, LocalExecutionEnv, QueueMode, RestoreOptions, SessionSummaryStore, SubagentBootstrap, SystemPrompt,
+    TodoHook, TodoStore, TurnStore, WorkTracker, create_session_summary_tool, create_todo_tools_with_hook, is_mcp_tool,
 };
 use std::path::Path;
 use std::sync::Arc;
@@ -18,6 +19,7 @@ use super::resource_loader::{LoadResourcesResult, load_resources};
 use super::session::{CodingAgentSession, CodingAgentSessionParams};
 use super::session_manager::SessionManager;
 use super::tool_policy::{thinking_level_from_setting, to_agent_thinking};
+use super::worker_runtime::{WorkerRuntime, WorkerRuntimeStart};
 use crate::platform::{Paths, Settings};
 use crate::types::AgentMode;
 pub struct CreateSessionOptions<'a> {
@@ -25,11 +27,18 @@ pub struct CreateSessionOptions<'a> {
     pub settings: &'a Settings,
     pub cwd: &'a Path,
     pub resume_id: Option<&'a str>,
+    /// When true with `resume_id`, create a new session with that id if missing.
+    pub create_if_missing: bool,
+    /// Optional display name applied on new session create.
+    pub session_name: Option<&'a str>,
     pub provider_override: Option<&'a str>,
     pub model_override: Option<&'a str>,
-    /// Host override for agent mode (e.g. `elph run --brave`). Default: `build`.
+    /// Host override for agent mode (e.g. `elph run --mode`). Default: `build` (TUI)
+    /// or headless caller default (brave for `elph run`).
     /// Not read from settings — mode is per-session.
     pub agent_mode: Option<crate::types::AgentMode>,
+    /// Full system prompt override (replaces compiled coding prompt for this run).
+    pub system_prompt_override: Option<&'a str>,
     /// When set, skips a second [`load_resources`] pass during session bootstrap.
     pub preloaded_resources: Option<LoadResourcesResult>,
     /// When true, MCP discovery is skipped; use [`super::mcp_bootstrap`] to load later.
@@ -49,49 +58,149 @@ pub async fn create_coding_session_with_events(
     // they all connect from one open database instead of each opening the file.
     let database = Arc::new(crate::platform::datastore::ensure_database(options.paths).await?);
 
+    // Best-effort session retention GC (settings-driven). Never mid-turn; skip if disabled.
+    if options.settings.session.retention.enabled && options.settings.session.retention.gc_on_open {
+        let r = &options.settings.session.retention;
+        let policy = elph_agent::RetentionPolicy {
+            enabled: true,
+            max_sessions_per_cwd: r.max_sessions_per_cwd,
+            max_session_age_days: r.max_session_age_days,
+            max_store_db_bytes: r.max_store_db_bytes,
+            protect_latest_per_cwd: r.protect_latest_per_cwd,
+            protect_session_id: options.resume_id.map(|s| s.to_string()),
+        };
+        match elph_agent::run_full_session_gc(
+            Arc::clone(&database),
+            options.paths.memory_db_path(),
+            Some(options.paths.data_dir().join("sessions")),
+            policy,
+            false,
+        )
+        .await
+        {
+            Ok(report) if !report.deleted_ids.is_empty() => {
+                log::info!(
+                    "session GC removed {} session(s) (examined {})",
+                    report.deleted_ids.len(),
+                    report.examined
+                );
+            }
+            Ok(_) => {}
+            Err(err) => log::warn!("session GC failed: {err:#}"),
+        }
+    }
+
     let env = Arc::new(LocalExecutionEnv::new(options.cwd));
-    let session_manager = SessionManager::new_with_database(options.paths, options.cwd, database.clone())?;
-    let session = session_manager.create(options.resume_id).await?;
+    let workers_cfg = &options.settings.workers;
+    // One worker_id for lease + registry + file claims for this process.
+    let worker_id = WorkerRuntime::new_worker_id();
+    let lease_stale_secs = workers_cfg.lease_stale_secs.max(1);
+    let mut session_manager = SessionManager::new_with_database(options.paths, options.cwd, database.clone())?;
+    if workers_cfg.enabled {
+        session_manager = session_manager.with_session_lease(worker_id.clone(), lease_stale_secs);
+    }
+    let session = session_manager
+        .create_with_options(options.resume_id, options.create_if_missing, options.session_name)
+        .await?;
     let session_id = {
         use elph_agent::session::types::HasSessionId;
         session.metadata().await.session_id().to_string()
     };
+    let project_key = session_manager.project_key().to_string();
 
     // resolve_model and discover_mcp_registry are pure file reads independent
     // of each other and of the DB operations above — run them concurrently.
     let auth_store = options.paths.auth_store_path();
 
     // Open session-scoped MCP cache store (eager — creates the JSONL file now).
-    let mcp_cache_path = session_manager.mcp_cache_path(&session_id);
-    let mcp_cache = elph_agent::McpCacheStore::open(&mcp_cache_path, options.settings.mcp.cache_max_entries).ok();
-
-    let ((selection, _overlay_stats), (mcp_registry, mcp_config_warnings)) = tokio::try_join!(
-        resolve_model(
-            options.settings,
-            options.provider_override,
-            options.model_override,
-            Some(&auth_store),
-        ),
-        async {
-            let (registry, warnings) = discover_mcp_registry(
-                options.paths,
-                mcp_cache.map(Arc::new),
-                options.settings.mcp.cache_ttl_secs.saturating_mul(1000),
-            )
-            .await;
-            Ok::<_, anyhow::Error>((registry, warnings))
-        },
-    )?;
+    let (selection, _overlay_stats) = resolve_model(
+        options.settings,
+        options.provider_override,
+        options.model_override,
+        Some(&auth_store),
+    )
+    .await?;
+    let (mcp_registry, mcp_config_warnings) = if options.defer_mcp_load {
+        (Arc::new(elph_agent::McpToolRegistry::empty()), Vec::new())
+    } else {
+        let mcp_cache_path = session_manager.mcp_cache_path(&session_id);
+        let mcp_cache = elph_agent::McpCacheStore::open(&mcp_cache_path, options.settings.mcp.cache_max_entries).ok();
+        discover_mcp_registry(
+            options.paths,
+            mcp_cache.map(Arc::new),
+            options.settings.mcp.cache_ttl_secs.saturating_mul(1000),
+        )
+        .await
+    };
 
     let resources = match options.preloaded_resources {
         Some(loaded) => loaded.resources,
         None => load_resources(options.paths, options.cwd, env.as_ref()).await.resources,
     };
+
+    // Multi-worker: start before built-in tools so path claims + worker_* tools wire in.
+    let worker_runtime = if workers_cfg.enabled {
+        let desired_name = workers_cfg
+            .name
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string)
+            .unwrap_or_else(default_worker_name);
+        match WorkerRuntime::start(WorkerRuntimeStart {
+            database: database.clone(),
+            db_path: options.paths.memory_db_path(),
+            worker_id: worker_id.clone(),
+            session_id: session_id.clone(),
+            project_key: project_key.clone(),
+            desired_name,
+            purpose: workers_cfg.purpose.clone(),
+            model: Some(format!("{}/{}", selection.model.provider, selection.model_id)),
+            heartbeat_secs: workers_cfg.heartbeat_secs.max(1),
+            stale_secs: lease_stale_secs,
+            ask_timeout_ms: workers_cfg.ask_timeout_ms,
+            max_hops: workers_cfg.max_hops,
+            tui_show_peers: workers_cfg.tui_show_peers,
+            file_leases: workers_cfg.file_leases,
+            inbox_poll_ms: workers_cfg.inbox_poll_ms,
+        })
+        .await
+        {
+            Ok(rt) => {
+                log::info!("worker registered name={} id={} session={}", rt.name, rt.worker_id, session_id);
+                Some(rt)
+            }
+            Err(err) => {
+                log::warn!("worker registry start failed (lease still held): {err:#}");
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    let path_claims = worker_runtime.as_ref().and_then(|rt| {
+        if !rt.file_leases_enabled() {
+            return None;
+        }
+        Some(std::sync::Arc::new(elph_agent::PathClaimContext::new(
+            rt.file_leases(),
+            rt.project_key.clone(),
+            rt.worker_id.clone(),
+            rt.session_id.clone(),
+            rt.stale_secs(),
+        )))
+    });
+
     // Provide the loaded skill set so `list_skills` (on-demand catalog) can be
     // registered alongside the built-in tools.
     let mut tools = BuiltinToolsBuilder::all(env.clone())
         .with_skills(resources.skills.clone())
+        .with_path_claims(path_claims)
         .build();
+    if let Some(rt) = worker_runtime.as_ref() {
+        tools.extend(rt.create_tools());
+    }
 
     // Shared memory runtime (tools + hooks + bootstrap use one store / task id).
     let memory_opts = crate::memory::runtime::MemoryRuntimeOptions::from_settings(&options.settings.memory);
@@ -133,7 +242,38 @@ pub async fn create_coding_session_with_events(
             }
         })
     }));
+    let goal_store_for_prompt = Arc::clone(&goal_store);
     tools.extend(create_goal_tools_with_hook(goal_store, session_id.clone(), goal_hook));
+
+    let todo_store = Arc::new(TodoStore::new(options.paths.memory_db_path()).with_database(database.clone()));
+    let ui_tx_for_todo = ui_tx.clone();
+    let todo_hook: TodoHook = Arc::new(move |items| {
+        let ui_tx = ui_tx_for_todo.clone();
+        Box::pin(async move {
+            log::debug!("todo_hook: sending TodoUpdated event with {} items", items.len());
+            if let Err(err) = ui_tx.send(crate::agent::AgentUiEvent::TodoUpdated { items }) {
+                log::warn!("todo_hook: failed to send event: {err}");
+            }
+        })
+    });
+    // Work tracker: enforces honest progress by requiring actual mutating
+    // tool calls between marking an item in_progress and marking it completed.
+    let work_tracker = Arc::new(WorkTracker::new());
+    let work_tracker_for_tools = work_tracker.clone();
+    // Keep a handle for continuity brief + TUI rehydrate (tools take another Arc clone).
+    let todo_store_for_prompt = Arc::clone(&todo_store);
+    tools.extend(create_todo_tools_with_hook(
+        Arc::clone(&todo_store),
+        session_id.clone(),
+        Some(todo_hook.clone()),
+        Some(work_tracker_for_tools),
+    ));
+
+    // Session summary store: one row per session, upserted on compaction.
+    // Read on demand via the `get_session_summary` agent tool.
+    let summary_store =
+        Arc::new(SessionSummaryStore::new(options.paths.memory_db_path()).with_database(database.clone()));
+    tools.push(create_session_summary_tool(Arc::clone(&summary_store)));
 
     // Clamp default thinking (new-session seed) to the resolved model catalog.
     let thinking = {
@@ -180,33 +320,98 @@ pub async fn create_coding_session_with_events(
         preferred_chat_language: options.settings.preferred_chat_language.clone(),
         codegraph_enabled: options.settings.codegraph.enabled,
         ste_enabled: options.settings.simplified_technical_english,
+        worker_name: worker_runtime.as_ref().map(|w| w.name.clone()),
+        worker_peers: None,
     };
 
-    let system_prompt = SystemPrompt::Dynamic(Arc::new(move |ctx| {
-        let cwd = cwd.clone();
-        let agents_md = agents_md.clone();
-        let mode_state = Arc::clone(&mode_for_prompt);
-        let memory_section = injected_memory.clone();
-        let mut prompt_options = prompt_options.clone();
-        Box::pin(async move {
-            prompt_options.mode = *mode_state.lock().await;
-            let tool_names: Vec<String> = ctx.active_tools.iter().map(|t| t.name().to_string()).collect();
-            let mut prompt =
-                build_coding_system_prompt(&cwd, &ctx.resources, &tool_names, agents_md.as_deref(), &prompt_options)
-                    .unwrap_or_else(|error| {
-                        log::warn!("coding system prompt render failed: {error}");
-                        elph_agent::DEFAULT_SYSTEM_PROMPT.to_string()
-                    });
+    // Peers summary is refreshed each turn via registry (near-realtime demote first).
+    let peers_registry = worker_runtime.as_ref().map(|w| w.registry());
+    let peers_project_key = worker_runtime.as_ref().map(|w| w.project_key.clone());
+    let peers_worker_id = worker_runtime.as_ref().map(|w| w.worker_id.clone());
+    let peers_stale = worker_runtime.as_ref().map(|w| w.stale_secs()).unwrap_or(30);
 
-            // Append memory context section at the end of the system prompt.
-            if let Some(ref mem) = memory_section {
-                prompt.push_str("\n\n");
-                prompt.push_str(mem);
-            }
+    // Session continuity: todos/goals/last anchors — re-read each turn so restore and mid-session stay aligned.
+    // Suppressed for brand-new sessions so the agent never inherits prior session state
+    // unless the user explicitly resumes/continues via `--resume`, `--continue`, or `/resume`.
+    let is_new_session = options.resume_id.is_none() || options.create_if_missing;
+    let continuity_stores = ContinuityStores {
+        session_id: session_id.clone(),
+        todo_store: todo_store_for_prompt,
+        goal_store: goal_store_for_prompt,
+        is_new_session,
+    };
 
-            prompt
-        })
-    }));
+    let system_prompt = if let Some(override_text) = options.system_prompt_override {
+        // Even with a full override, append continuity so resume never loses open work.
+        let continuity_stores = continuity_stores.clone();
+        let override_text = override_text.to_string();
+        SystemPrompt::Dynamic(Arc::new(move |ctx| {
+            let base = override_text.clone();
+            let continuity_stores = continuity_stores.clone();
+            Box::pin(async move {
+                let mut prompt = base;
+                if let Some(section) = continuity_stores.build_section(ctx.session).await {
+                    prompt.push_str("\n\n");
+                    prompt.push_str(&section);
+                }
+                prompt
+            })
+        }))
+    } else {
+        let continuity_stores = continuity_stores.clone();
+        SystemPrompt::Dynamic(Arc::new(move |ctx| {
+            let cwd = cwd.clone();
+            let agents_md = agents_md.clone();
+            let mode_state = Arc::clone(&mode_for_prompt);
+            let memory_section = injected_memory.clone();
+            let mut prompt_options = prompt_options.clone();
+            let peers_registry = peers_registry.clone();
+            let peers_project_key = peers_project_key.clone();
+            let peers_worker_id = peers_worker_id.clone();
+            let continuity_stores = continuity_stores.clone();
+            Box::pin(async move {
+                prompt_options.mode = *mode_state.lock().await;
+                if let (Some(reg), Some(pk), Some(wid)) =
+                    (peers_registry.as_ref(), peers_project_key.as_ref(), peers_worker_id.as_ref())
+                    && let Ok(peers) = reg.list_live_peers(pk, wid, peers_stale).await
+                {
+                    let summary = peers
+                        .into_iter()
+                        .filter(|p| !p.is_self)
+                        .map(|p| p.name)
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    prompt_options.worker_peers = if summary.is_empty() { None } else { Some(summary) };
+                }
+                let tool_names: Vec<String> = ctx.active_tools.iter().map(|t| t.name().to_string()).collect();
+                let mut prompt = build_coding_system_prompt(
+                    &cwd,
+                    &ctx.resources,
+                    &tool_names,
+                    agents_md.as_deref(),
+                    &prompt_options,
+                )
+                .unwrap_or_else(|error| {
+                    log::warn!("coding system prompt render failed: {error}");
+                    elph_agent::DEFAULT_SYSTEM_PROMPT.to_string()
+                });
+
+                // Append memory context section at the end of the system prompt.
+                if let Some(ref mem) = memory_section {
+                    prompt.push_str("\n\n");
+                    prompt.push_str(mem);
+                }
+
+                // Structured resume state (todos / goal / last anchors).
+                if let Some(section) = continuity_stores.build_section(ctx.session).await {
+                    prompt.push_str("\n\n");
+                    prompt.push_str(&section);
+                }
+
+                prompt
+            })
+        }))
+    };
 
     let model = selection.model.clone();
     let models = Arc::clone(&selection.models);
@@ -237,6 +442,9 @@ pub async fn create_coding_session_with_events(
             follow_up_mode: QueueMode::OneAtATime,
             compaction_settings,
             goal_runtime: Some(goal_runtime.clone()),
+            turn_store: Some(Arc::new(
+                TurnStore::new(options.paths.memory_db_path()).with_database(database.clone()),
+            )),
             subagent_bootstrap: Some(subagent_bootstrap),
             shared_registry: None,
             agent_control: None,
@@ -255,6 +463,78 @@ pub async fn create_coding_session_with_events(
     if let Err(err) = crate::memory::hooks::register_automatic_memory_hooks(&harness, Arc::clone(&memory_runtime)).await
     {
         log::warn!("automatic memory hooks: {err:#}");
+    }
+
+    // Wire the work tracker: increment on every successful mutating tool call so
+    // `todo_write` can enforce that `completed` items actually did real work.
+    let work_tracker_for_hook = work_tracker.clone();
+    harness
+        .on_tool_result(move |event: &elph_agent::ToolResultEvent| {
+            let tracker = work_tracker_for_hook.clone();
+            let tool_name = event.tool_name.clone();
+            let is_error = event.is_error;
+            Box::pin(async move {
+                if is_mutating_tool(&tool_name) && !is_error {
+                    tracker.record_work();
+                }
+                None
+            })
+        })
+        .await;
+
+    // Post-turn todo hardening: close stale todos after a successful turn.
+    // Best-effort — hook setup failures are logged, not fatal.
+    if let Err(err) = crate::agent::todo_hooks::register_todo_auto_close_hook(
+        &harness,
+        Arc::clone(&todo_store),
+        session_id.clone(),
+        Arc::clone(&work_tracker),
+        todo_hook.clone(),
+    )
+    .await
+    {
+        log::warn!("todo auto-close hook: {err:#}");
+    }
+
+    // Wire session_compact event: upsert the compaction summary into
+    // `session_summaries` so other sessions can recall past context.
+    // Runs best-effort — lock errors and write failures are logged, not fatal.
+    let summary_store_for_hook = Arc::clone(&summary_store);
+    let session_id_for_hook = session_id.clone();
+    harness
+        .on("session_compact", move |event| {
+            let store = Arc::clone(&summary_store_for_hook);
+            let session_id = session_id_for_hook.clone();
+            Box::pin(async move {
+                let compact = match &event {
+                    elph_agent::AgentHarnessOwnEvent::SessionCompact(e) => &e.compaction_entry,
+                    _ => return None,
+                };
+                let fields = compact.as_compaction()?;
+                let details_str = fields.details.map(|v| serde_json::to_string(v).unwrap_or_default());
+                store
+                    .upsert_best_effort(
+                        &session_id,
+                        fields.summary,
+                        fields.tokens_before as i64,
+                        Some(fields.first_kept_entry_id),
+                        details_str.as_deref(),
+                    )
+                    .await;
+                None
+            })
+        })
+        .await
+        .ok();
+
+    // Rehydrate todos into the TUI immediately on restore/continue so the panel
+    // and model-facing state match the durable `session_todos` rows.
+    match continuity_stores.todo_store.list(&session_id).await {
+        Ok(items) if !items.is_empty() => {
+            let _ = ui_tx.send(crate::agent::AgentUiEvent::TodoUpdated { items });
+        }
+        Ok(_) => {}
+        Err(err) => log::warn!("todo rehydrate on open failed: {err:#}"),
     }
 
     let harness = Arc::new(harness);
@@ -279,15 +559,87 @@ pub async fn create_coding_session_with_events(
         compaction_model_ref: options.settings.models.compaction_model.clone(),
         codegraph_enabled: options.settings.codegraph.enabled,
         ste_enabled: options.settings.simplified_technical_english,
+        worker_runtime,
     })
     .await?;
 
-    start_mcp_notifications(&session, Arc::clone(&mcp_registry), mcp_config_warnings);
+    if !options.defer_mcp_load {
+        start_mcp_notifications(&session, Arc::clone(&mcp_registry), mcp_config_warnings);
+    }
 
     Ok((session, ui_rx))
 }
 
-pub async fn create_coding_session(options: CreateSessionOptions<'_>) -> Result<CodingAgentSession> {
-    let (session, _rx) = create_coding_session_with_events(options).await?;
-    Ok(session)
+/// Stores used to build `<session_state>` for system prompt continuity on resume.
+#[derive(Clone)]
+struct ContinuityStores {
+    session_id: String,
+    todo_store: Arc<TodoStore>,
+    goal_store: Arc<GoalStore>,
+    /// When true, the session is brand-new — suppress the continuity brief entirely.
+    is_new_session: bool,
+}
+
+impl ContinuityStores {
+    async fn build_section<S>(&self, session: elph_agent::Session<S>) -> Option<String>
+    where
+        S: elph_agent::SessionStorage + Clone + Send + Sync + 'static,
+    {
+        // New sessions must never receive prior session state. Only resume/continue do.
+        if self.is_new_session {
+            return None;
+        }
+        let branch = session.branch(None).await.unwrap_or_default();
+        let todos = self.todo_store.list(&self.session_id).await.unwrap_or_default();
+        let goal = self.goal_store.get_latest_goal(&self.session_id).await.ok().flatten();
+        let snap =
+            super::session_continuity::ContinuitySnapshot::from_parts(&self.session_id, &branch, &todos, goal.as_ref());
+        let section = snap.render();
+        if section.is_empty() { None } else { Some(section) }
+    }
+}
+
+/// Default display name for a worker: memorable-id (e.g. `calm-fox`), with hostname fallback.
+fn default_worker_name() -> String {
+    match memorable_ids::generate(memorable_ids::GenerateOptions::default()) {
+        Ok(name) => {
+            let name = name.trim().to_string();
+            if name.is_empty() {
+                hostname_worker_name_fallback()
+            } else {
+                name
+            }
+        }
+        Err(_) => hostname_worker_name_fallback(),
+    }
+}
+
+fn hostname_worker_name_fallback() -> String {
+    std::env::var("HOSTNAME")
+        .or_else(|_| std::env::var("COMPUTERNAME"))
+        .ok()
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| "worker".into())
+}
+
+/// Returns `true` if the tool performs a mutating action that counts as "work".
+///
+/// Read-only tools (read_file, grep, find_path, list_dir, web_search, etc.) do
+/// not advance progress. Mutating tools (edit_file, write_file, shell_exec,
+/// delete_path, create_dir, move/copy, agent spawn, etc.) do.
+fn is_mutating_tool(tool_name: &str) -> bool {
+    matches!(
+        tool_name,
+        "edit_file"
+            | "write_file"
+            | "delete_path"
+            | "create_dir"
+            | "move_path"
+            | "copy_path"
+            | "shell_exec"
+            | "shell_use"
+            | "spawn_agent"
+            | "followup_task"
+            | "request_mode_change"
+    )
 }

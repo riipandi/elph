@@ -66,12 +66,12 @@
         "maxTokens": 64000,
         "name": "CohereLabs/c4ai-command-a-03-2025",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -92,12 +92,12 @@
         "maxTokens": 64000,
         "name": "CohereLabs/c4ai-command-r-08-2024",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -118,12 +118,12 @@
         "maxTokens": 64000,
         "name": "CohereLabs/c4ai-command-r7b-12-2024",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -144,12 +144,90 @@
         "maxTokens": 64000,
         "name": "CohereLabs/c4ai-command-r7b-arabic-02-2025",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "CohereLabs/command-a-plus-05-2026-bf16": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "CohereLabs/command-a-plus-05-2026-bf16",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "CohereLabs/command-a-plus-05-2026-bf16",
+        "provider": "huggingface",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "CohereLabs/command-a-plus-05-2026-fp8": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "CohereLabs/command-a-plus-05-2026-fp8",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "CohereLabs/command-a-plus-05-2026-fp8",
+        "provider": "huggingface",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "CohereLabs/command-a-plus-05-2026-w4a4": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "CohereLabs/command-a-plus-05-2026-w4a4",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "CohereLabs/command-a-plus-05-2026-w4a4",
+        "provider": "huggingface",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -165,17 +243,18 @@
             "input": 2.5,
             "output": 10.0
         },
+        "description": "Cohere reasoning model for multilingual enterprise agents, tools, and complex workflows",
         "id": "CohereLabs/command-a-reasoning-08-2025",
         "input": ["text"],
         "maxTokens": 32000,
         "name": "Command A Reasoning",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -191,6 +270,7 @@
             "input": 2.5,
             "output": 10.0
         },
+        "description": "Translation model for multilingual conversion, localization, and cross-language workflows",
         "id": "CohereLabs/command-a-translate-08-2025",
         "input": ["text"],
         "maxTokens": 8000,
@@ -198,10 +278,37 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "CohereLabs/command-a-vision-07-2025": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 2.5,
+            "output": 10.0
+        },
+        "description": "Cohere vision model for multilingual document analysis, OCR, and image understanding",
+        "id": "CohereLabs/command-a-vision-07-2025",
+        "input": ["text", "image"],
+        "maxTokens": 8000,
+        "name": "Command A Vision",
+        "provider": "huggingface",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -321,6 +428,7 @@
             "input": 0.6052,
             "output": 2.4225
         },
+        "description": "MiniMax model for chat, coding, office work, and agentic tasks",
         "id": "MiniMaxAI/MiniMax-M1-80k",
         "input": ["text"],
         "maxTokens": 131072,
@@ -350,6 +458,7 @@
             "input": 0.3,
             "output": 1.2
         },
+        "description": "Efficient open MiniMax model built for coding agents and tool-heavy workflows",
         "id": "MiniMaxAI/MiniMax-M2",
         "input": ["text"],
         "maxTokens": 128000,
@@ -359,7 +468,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -379,6 +488,7 @@
             "input": 0.3,
             "output": 1.2
         },
+        "description": "MiniMax model for chat, coding, office work, and agentic tasks",
         "id": "MiniMaxAI/MiniMax-M2.1",
         "input": ["text"],
         "maxTokens": 131072,
@@ -388,7 +498,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -408,6 +518,7 @@
             "input": 0.3,
             "output": 1.2
         },
+        "description": "MiniMax model for chat, coding, office work, and agentic tasks",
         "id": "MiniMaxAI/MiniMax-M2.5",
         "input": ["text"],
         "maxTokens": 131072,
@@ -417,7 +528,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -437,6 +548,7 @@
             "input": 0.3,
             "output": 1.2
         },
+        "description": "MiniMax model for chat, coding, office work, and agentic tasks",
         "id": "MiniMaxAI/MiniMax-M2.7",
         "input": ["text"],
         "maxTokens": 131072,
@@ -446,7 +558,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -466,6 +578,7 @@
             "input": 0.3,
             "output": 1.2
         },
+        "description": "MiniMax multimodal model for long-context coding, perception, and agent planning",
         "id": "MiniMaxAI/MiniMax-M3",
         "input": ["text", "image"],
         "maxTokens": 128000,
@@ -475,7 +588,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -492,6 +605,7 @@
             "input": 0.7,
             "output": 0.7
         },
+        "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "NousResearch/Hermes-3-Llama-3.1-70B",
         "input": ["text"],
         "maxTokens": 16384,
@@ -518,6 +632,7 @@
             "input": 0.11,
             "output": 0.38
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "Qwen/Qwen2.5-72B-Instruct",
         "input": ["text"],
         "maxTokens": 8192,
@@ -525,13 +640,13 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen2.5-7B-Instruct": {
@@ -544,6 +659,7 @@
             "input": 0.05,
             "output": 0.05
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "Qwen/Qwen2.5-7B-Instruct",
         "input": ["text"],
         "maxTokens": 4000,
@@ -551,39 +667,40 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen2.5-Coder-32B-Instruct": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 32000,
+        "contextWindow": 131072,
         "cost": {
             "cacheRead": 0.1003,
             "cacheWrite": 0.0,
-            "input": 0.2006,
-            "output": 0.2006
+            "input": 0.06,
+            "output": 0.2
         },
+        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
         "id": "Qwen/Qwen2.5-Coder-32B-Instruct",
         "input": ["text"],
         "maxTokens": 8192,
-        "name": "Qwen 2.5 Coder 32b",
+        "name": "Qwen2.5-Coder-32B-Instruct",
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen2.5-Coder-3B-Instruct": {
@@ -593,23 +710,23 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.01,
+            "output": 0.03
         },
         "id": "Qwen/Qwen2.5-Coder-3B-Instruct",
         "input": ["text"],
         "maxTokens": 64000,
         "name": "Qwen/Qwen2.5-Coder-3B-Instruct",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen2.5-Coder-7B-Instruct": {
@@ -619,23 +736,23 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.01,
+            "output": 0.03
         },
         "id": "Qwen/Qwen2.5-Coder-7B-Instruct",
         "input": ["text"],
         "maxTokens": 64000,
         "name": "Qwen/Qwen2.5-Coder-7B-Instruct",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen2.5-VL-72B-Instruct": {
@@ -648,6 +765,7 @@
             "input": 0.25,
             "output": 0.75
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "Qwen/Qwen2.5-VL-72B-Instruct",
         "input": ["text", "image"],
         "maxTokens": 8192,
@@ -655,13 +773,13 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3-14B": {
@@ -674,6 +792,7 @@
             "input": 0.07,
             "output": 0.28
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "Qwen/Qwen3-14B",
         "input": ["text"],
         "maxTokens": 131000,
@@ -686,8 +805,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3-235B-A22B": {
@@ -703,6 +822,7 @@
             "input": 0.2,
             "output": 0.8
         },
+        "description": "Large open Qwen MoE for multilingual reasoning, coding, and tool use",
         "id": "Qwen/Qwen3-235B-A22B",
         "input": ["text"],
         "maxTokens": 16384,
@@ -715,8 +835,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3-235B-A22B-Instruct-2507": {
@@ -729,6 +849,7 @@
             "input": 0.855,
             "output": 2.565
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "Qwen/Qwen3-235B-A22B-Instruct-2507",
         "input": ["text"],
         "maxTokens": 16384,
@@ -736,13 +857,13 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3-235B-A22B-Thinking-2507": {
@@ -758,6 +879,7 @@
             "input": 0.3,
             "output": 3.0
         },
+        "description": "Qwen reasoning model for deliberate problem solving, math, and coding",
         "id": "Qwen/Qwen3-235B-A22B-Thinking-2507",
         "input": ["text"],
         "maxTokens": 131072,
@@ -770,8 +892,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3-30B-A3B": {
@@ -781,23 +903,24 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.13,
-            "output": 0.52
+            "input": 0.12,
+            "output": 0.5
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "Qwen/Qwen3-30B-A3B",
         "input": ["text"],
         "maxTokens": 16384,
-        "name": "Qwen: Qwen3 30B A3B",
+        "name": "Qwen3 30B A3B",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3-32B": {
@@ -813,6 +936,7 @@
             "input": 0.29,
             "output": 0.59
         },
+        "description": "Dense open Qwen model for self-hosted chat, reasoning, and coding",
         "id": "Qwen/Qwen3-32B",
         "input": ["text"],
         "maxTokens": 16384,
@@ -825,8 +949,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3-4B-Instruct-2507": {
@@ -839,6 +963,7 @@
             "input": 0.2,
             "output": 0.2
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "Qwen/Qwen3-4B-Instruct-2507",
         "input": ["text"],
         "maxTokens": 131072,
@@ -862,23 +987,23 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.01,
+            "output": 0.03
         },
         "id": "Qwen/Qwen3-4B-Thinking-2507",
         "input": ["text"],
         "maxTokens": 64000,
         "name": "Qwen/Qwen3-4B-Thinking-2507",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3-8B": {
@@ -891,6 +1016,7 @@
             "input": 0.2,
             "output": 0.2
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "Qwen/Qwen3-8B",
         "input": ["text"],
         "maxTokens": 131072,
@@ -904,7 +1030,7 @@
             "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3-Coder-30B-A3B-Instruct": {
@@ -920,6 +1046,7 @@
             "input": 0.07,
             "output": 0.26
         },
+        "description": "Smaller Qwen coder for efficient local agents and repo-level fixes",
         "id": "Qwen/Qwen3-Coder-30B-A3B-Instruct",
         "input": ["text"],
         "maxTokens": 65536,
@@ -927,13 +1054,13 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3-Coder-480B-A35B-Instruct": {
@@ -949,6 +1076,7 @@
             "input": 2.0,
             "output": 2.0
         },
+        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
         "id": "Qwen/Qwen3-Coder-480B-A35B-Instruct",
         "input": ["text"],
         "maxTokens": 66536,
@@ -956,13 +1084,13 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3-Coder-Next": {
@@ -978,6 +1106,7 @@
             "input": 0.2,
             "output": 1.5
         },
+        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
         "id": "Qwen/Qwen3-Coder-Next",
         "input": ["text"],
         "maxTokens": 65536,
@@ -985,13 +1114,13 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3-Next-80B-A3B-Instruct": {
@@ -1007,6 +1136,7 @@
             "input": 0.25,
             "output": 1.0
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "Qwen/Qwen3-Next-80B-A3B-Instruct",
         "input": ["text"],
         "maxTokens": 66536,
@@ -1014,13 +1144,13 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3-VL-235B-A22B-Instruct": {
@@ -1033,6 +1163,7 @@
             "input": 0.3,
             "output": 1.5
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "Qwen/Qwen3-VL-235B-A22B-Instruct",
         "input": ["text", "image"],
         "maxTokens": 262000,
@@ -1040,13 +1171,13 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3-VL-235B-A22B-Thinking": {
@@ -1059,6 +1190,7 @@
             "input": 0.45,
             "output": 3.5
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "Qwen/Qwen3-VL-235B-A22B-Thinking",
         "input": ["text", "image"],
         "maxTokens": 262000,
@@ -1071,34 +1203,35 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3-VL-30B-A3B-Instruct": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 100000,
+        "contextWindow": 256000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.23,
-            "output": 0.92
+            "input": 0.15,
+            "output": 0.55
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "Qwen/Qwen3-VL-30B-A3B-Instruct",
-        "input": ["text", "image", "video"],
-        "maxTokens": 100000,
-        "name": "Qwen3 VL 30B",
+        "input": ["text", "image"],
+        "maxTokens": 32768,
+        "name": "Qwen3-VL 30B-A3B Instruct",
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3.5-122B-A10B": {
@@ -1114,6 +1247,7 @@
             "input": 0.4,
             "output": 3.2
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "Qwen/Qwen3.5-122B-A10B",
         "input": ["text", "image"],
         "maxTokens": 65536,
@@ -1126,8 +1260,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3.5-27B": {
@@ -1143,6 +1277,7 @@
             "input": 0.3,
             "output": 2.4
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "Qwen/Qwen3.5-27B",
         "input": ["text", "image"],
         "maxTokens": 65536,
@@ -1155,8 +1290,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3.5-35B-A3B": {
@@ -1172,6 +1307,7 @@
             "input": 0.25,
             "output": 2.0
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "Qwen/Qwen3.5-35B-A3B",
         "input": ["text", "image"],
         "maxTokens": 65536,
@@ -1184,8 +1320,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3.5-397B-A17B": {
@@ -1201,6 +1337,7 @@
             "input": 0.6,
             "output": 3.6
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "Qwen/Qwen3.5-397B-A17B",
         "input": ["text", "image"],
         "maxTokens": 32768,
@@ -1213,7 +1350,7 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": "none",
+            "off": "off",
             "xhigh": null
         }
     },
@@ -1230,6 +1367,7 @@
             "input": 0.17,
             "output": 0.25
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "Qwen/Qwen3.5-9B",
         "input": ["text", "image"],
         "maxTokens": 65536,
@@ -1242,8 +1380,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3.6-27B": {
@@ -1259,6 +1397,7 @@
             "input": 0.47,
             "output": 3.19
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "Qwen/Qwen3.6-27B",
         "input": ["text", "image"],
         "maxTokens": 65536,
@@ -1271,8 +1410,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen/Qwen3.6-35B-A3B": {
@@ -1288,6 +1427,7 @@
             "input": 0.15,
             "output": 0.95
         },
+        "description": "Open multimodal Qwen MoE for local agents that need vision, audio, and code",
         "id": "Qwen/Qwen3.6-35B-A3B",
         "input": ["text", "image"],
         "maxTokens": 65536,
@@ -1300,8 +1440,35 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "Qwen/Qwen3.8-2.4T-A95B": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.25,
+            "cacheWrite": 2.5,
+            "input": 2.5,
+            "output": 6.25
+        },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
+        "id": "Qwen/Qwen3.8-2.4T-A95B",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "Qwen3.8 2.4T A95B",
+        "provider": "huggingface",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "Sao10K/L3-8B-Lunaris-v1": {
@@ -1311,8 +1478,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.05,
+            "output": 0.05
         },
         "id": "Sao10K/L3-8B-Lunaris-v1",
         "input": ["text"],
@@ -1340,6 +1507,7 @@
             "input": 0.2006,
             "output": 0.2006
         },
+        "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "Sao10K/L3-8B-Stheno-v3.2",
         "input": ["text"],
         "maxTokens": 8192,
@@ -1369,6 +1537,7 @@
             "input": 0.4,
             "output": 2.0
         },
+        "description": "MiMo model for long-context reasoning, perception, and agentic tasks",
         "id": "XiaomiMiMo/MiMo-V2.5",
         "input": ["text"],
         "maxTokens": 131072,
@@ -1381,7 +1550,7 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": "none",
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -1395,6 +1564,7 @@
             "input": 1.0,
             "output": 3.0
         },
+        "description": "Stronger MiMo Pro tier for multimodal reasoning and coding-agent execution",
         "id": "XiaomiMiMo/MiMo-V2.5-Pro",
         "input": ["text"],
         "maxTokens": 131072,
@@ -1407,7 +1577,7 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -1418,19 +1588,19 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.2,
+            "output": 0.4
         },
         "id": "aisingapore/Gemma-SEA-LION-v4-27B-IT",
         "input": ["text"],
         "maxTokens": 64000,
         "name": "aisingapore/Gemma-SEA-LION-v4-27B-IT",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -1444,49 +1614,23 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.25,
+            "output": 0.5
         },
         "id": "aisingapore/Qwen-SEA-LION-v4-32B-IT",
         "input": ["text"],
         "maxTokens": 64000,
         "name": "aisingapore/Qwen-SEA-LION-v4-32B-IT",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "allenai/Olmo-3-7B-Instruct": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "id": "allenai/Olmo-3-7B-Instruct",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "allenai/Olmo-3-7B-Instruct",
-        "provider": "huggingface",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "alpindale/WizardLM-2-8x22B": {
@@ -1496,8 +1640,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.62,
+            "output": 0.62
         },
         "id": "alpindale/WizardLM-2-8x22B",
         "input": ["text"],
@@ -1522,19 +1666,19 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.42,
+            "output": 1.25
         },
         "id": "baidu/ERNIE-4.5-VL-424B-A47B-Base-PT",
         "input": ["text"],
         "maxTokens": 64000,
         "name": "baidu/ERNIE-4.5-VL-424B-A47B-Base-PT",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -1548,23 +1692,23 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 1.25,
+            "output": 1.25
         },
         "id": "deepcogito/cogito-671b-v2.1",
         "input": ["text"],
         "maxTokens": 64000,
         "name": "deepcogito/cogito-671b-v2.1",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "deepcogito/cogito-671b-v2.1-FP8": {
@@ -1574,23 +1718,23 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 1.25,
+            "output": 1.25
         },
         "id": "deepcogito/cogito-671b-v2.1-FP8",
         "input": ["text"],
         "maxTokens": 64000,
         "name": "deepcogito/cogito-671b-v2.1-FP8",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "deepseek-ai/DeepSeek-R1": {
@@ -1606,6 +1750,7 @@
             "input": 0.7,
             "output": 2.5
         },
+        "description": "Classic open reasoning model for transparent math, coding, and deliberate problem solving",
         "id": "deepseek-ai/DeepSeek-R1",
         "input": ["text"],
         "maxTokens": 32768,
@@ -1618,8 +1763,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "deepseek-ai/DeepSeek-R1-0528": {
@@ -1635,6 +1780,7 @@
             "input": 3.0,
             "output": 5.0
         },
+        "description": "DeepSeek reasoning model for multi-step analysis, math, coding, and tools",
         "id": "deepseek-ai/DeepSeek-R1-0528",
         "input": ["text"],
         "maxTokens": 163840,
@@ -1647,8 +1793,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "deepseek-ai/DeepSeek-R1-Distill-Llama-70B": {
@@ -1661,20 +1807,21 @@
             "input": 0.03,
             "output": 0.14
         },
+        "description": "DeepSeek reasoning model for multi-step analysis, math, coding, and tools",
         "id": "deepseek-ai/DeepSeek-R1-Distill-Llama-70B",
         "input": ["text"],
         "maxTokens": 131072,
         "name": "DeepSeek R1 Distill Llama 70B",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "deepseek-ai/DeepSeek-R1-Distill-Llama-8B": {
@@ -1684,23 +1831,24 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.05,
+            "output": 0.05
         },
+        "description": "DeepSeek reasoning model for multi-step analysis, math, coding, and tools",
         "id": "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
         "input": ["text"],
         "maxTokens": 16384,
         "name": "DeepSeek R1 Distill Llama 8B",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B": {
@@ -1713,20 +1861,21 @@
             "input": 0.144,
             "output": 0.431
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
         "input": ["text"],
         "maxTokens": 16384,
         "name": "DeepSeek R1 Distill Qwen 14B",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B": {
@@ -1739,20 +1888,21 @@
             "input": 0.072,
             "output": 0.144
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
         "input": ["text"],
         "maxTokens": 16384,
         "name": "DeepSeek R1 Distill Qwen 7B",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "deepseek-ai/DeepSeek-V3": {
@@ -1765,6 +1915,7 @@
             "input": 0.4,
             "output": 1.3
         },
+        "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek-ai/DeepSeek-V3",
         "input": ["text"],
         "maxTokens": 8192,
@@ -1772,9 +1923,9 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -1788,9 +1939,10 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.25,
-            "output": 0.88
+            "input": 0.27,
+            "output": 1.12
         },
+        "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek-ai/DeepSeek-V3-0324",
         "input": ["text"],
         "maxTokens": 163840,
@@ -1798,9 +1950,9 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -1817,6 +1969,7 @@
             "input": 0.27,
             "output": 1.0
         },
+        "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek-ai/DeepSeek-V3.1",
         "input": ["text"],
         "maxTokens": 8192,
@@ -1826,8 +1979,8 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -1843,6 +1996,7 @@
             "input": 0.27,
             "output": 1.0
         },
+        "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek-ai/DeepSeek-V3.1-Terminus",
         "input": ["text"],
         "maxTokens": 8192,
@@ -1852,8 +2006,8 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -1872,6 +2026,7 @@
             "input": 0.28,
             "output": 0.4
         },
+        "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek-ai/DeepSeek-V3.2",
         "input": ["text"],
         "maxTokens": 65536,
@@ -1881,8 +2036,8 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -1898,17 +2053,18 @@
             "input": 0.27,
             "output": 0.4
         },
+        "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek-ai/DeepSeek-V3.2-Exp",
         "input": ["text"],
         "maxTokens": 164000,
         "name": "DeepSeek V3.2 Exp",
         "provider": "huggingface",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -1927,6 +2083,7 @@
             "input": 0.14,
             "output": 0.28
         },
+        "description": "Fast DeepSeek V4 lane for economical reasoning, coding, and long-context work",
         "id": "deepseek-ai/DeepSeek-V4-Flash",
         "input": ["text"],
         "maxTokens": 384000,
@@ -1936,8 +2093,8 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -1953,6 +2110,7 @@
             "input": 0.14,
             "output": 0.28
         },
+        "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
         "id": "deepseek-ai/DeepSeek-V4-Flash-0731",
         "input": ["text"],
         "maxTokens": 384000,
@@ -1982,6 +2140,7 @@
             "input": 0.435,
             "output": 0.87
         },
+        "description": "Open MoE flagship with million-token context for coding and long agent runs",
         "id": "deepseek-ai/DeepSeek-V4-Pro",
         "input": ["text"],
         "maxTokens": 393216,
@@ -1998,6 +2157,33 @@
             "xhigh": null
         }
     },
+    "deepseek-ai/DeepSeek-V4-Pro-0813": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 1.32,
+            "output": 3.96
+        },
+        "description": "Flagship DeepSeek model for coding, reasoning, and agentic work",
+        "id": "deepseek-ai/DeepSeek-V4-Pro-0813",
+        "input": ["text"],
+        "maxTokens": 384000,
+        "name": "DeepSeek V4 Pro 0813",
+        "provider": "huggingface",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "google/gemma-3-12b-it": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
@@ -2008,6 +2194,7 @@
             "input": 0.05,
             "output": 0.15
         },
+        "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-3-12b-it",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -2015,9 +2202,9 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -2029,11 +2216,12 @@
         "baseUrl": "https://router.huggingface.co/v1",
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0.04,
-            "cacheWrite": 0.125,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.08,
             "output": 0.16
         },
+        "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-3-27b-it",
         "input": ["text", "image"],
         "maxTokens": 131072,
@@ -2041,9 +2229,9 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -2060,6 +2248,7 @@
             "input": 0.05,
             "output": 0.1
         },
+        "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-3-4b-it",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -2067,9 +2256,9 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -2086,6 +2275,7 @@
             "input": 0.06,
             "output": 0.12
         },
+        "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-3n-E4B-it",
         "input": ["text"],
         "maxTokens": 32768,
@@ -2093,9 +2283,9 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -2115,6 +2305,7 @@
             "input": 0.13,
             "output": 0.4
         },
+        "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-4-26B-A4B-it",
         "input": ["text", "image"],
         "maxTokens": 32768,
@@ -2124,8 +2315,8 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -2144,6 +2335,7 @@
             "input": 0.14,
             "output": 0.4
         },
+        "description": "Largest Gemma 4 instruction model for open, self-hosted chat and reasoning",
         "id": "google/gemma-4-31B-it",
         "input": ["text", "image"],
         "maxTokens": 32768,
@@ -2153,8 +2345,8 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -2170,6 +2362,7 @@
             "input": 0.3,
             "output": 2.5
         },
+        "description": "Tool-capable chat model for instruction following and agentic application workflows",
         "id": "inclusionAI/Ling-2.6-1T",
         "input": ["text"],
         "maxTokens": 32768,
@@ -2177,10 +2370,10 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -2193,20 +2386,21 @@
         "cost": {
             "cacheRead": 0.2,
             "cacheWrite": 0.2,
-            "input": 0.2,
-            "output": 0.2
+            "input": 0.06,
+            "output": 0.06
         },
+        "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "meta-llama/Llama-3.1-8B-Instruct",
         "input": ["text"],
-        "maxTokens": 16384,
-        "name": "Llama 3.1 8B Instruct",
+        "maxTokens": 4096,
+        "name": "Llama-3.1-8B-Instruct",
         "provider": "huggingface",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -2225,6 +2419,7 @@
             "input": 0.59,
             "output": 0.79
         },
+        "description": "Popular open Llama workhorse for multilingual chat, coding, and self-hosting",
         "id": "meta-llama/Llama-3.3-70B-Instruct",
         "input": ["text"],
         "maxTokens": 4096,
@@ -2251,6 +2446,7 @@
             "input": 0.14,
             "output": 0.59
         },
+        "description": "Open multimodal Llama for strong reasoning with efficient everyday serving",
         "id": "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",
         "input": ["text", "image"],
         "maxTokens": 8192,
@@ -2277,6 +2473,7 @@
             "input": 0.1,
             "output": 0.3
         },
+        "description": "Open multimodal Llama model for long-context analysis and efficient agents",
         "id": "meta-llama/Llama-4-Scout-17B-16E-Instruct",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -2303,6 +2500,7 @@
             "input": 0.18,
             "output": 0.18
         },
+        "description": "Safety model for policy screening, moderation, and risk-aware routing workflows",
         "id": "meta-llama/Llama-Guard-4-12B",
         "input": ["image", "text"],
         "maxTokens": 16384,
@@ -2319,6 +2517,33 @@
             "xhigh": null
         }
     },
+    "meta-models/Muse-Glimmer-30B": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0.05,
+            "cacheWrite": 0.0,
+            "input": 0.2,
+            "output": 0.8
+        },
+        "description": "Muse Glimmer is a 30-billion-parameter open-weight multimodal model from Meta Superintelligence Labs, distilled from Muse Spark for always-on local agents, tool use, coding, and image understanding.",
+        "id": "meta-models/Muse-Glimmer-30B",
+        "input": ["text", "image"],
+        "maxTokens": 32768,
+        "name": "Muse Glimmer 30B",
+        "provider": "huggingface",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
     "microsoft/phi-4": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
@@ -2329,6 +2554,7 @@
             "input": 0.07,
             "output": 0.14
         },
+        "description": "Open-weight instruction model for adaptable chat and self-hosted production workloads",
         "id": "microsoft/phi-4",
         "input": ["text"],
         "maxTokens": 16384,
@@ -2358,6 +2584,7 @@
             "input": 1.0,
             "output": 3.0
         },
+        "description": "Kimi model for long-context chat, coding, and agentic reasoning",
         "id": "moonshotai/Kimi-K2-Instruct",
         "input": ["text"],
         "maxTokens": 16384,
@@ -2365,13 +2592,13 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "moonshotai/Kimi-K2-Instruct-0905": {
@@ -2387,6 +2614,7 @@
             "input": 1.0,
             "output": 3.0
         },
+        "description": "Kimi model for long-context chat, coding, and agentic reasoning",
         "id": "moonshotai/Kimi-K2-Instruct-0905",
         "input": ["text"],
         "maxTokens": 16384,
@@ -2394,13 +2622,13 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "moonshotai/Kimi-K2.5": {
@@ -2416,6 +2644,7 @@
             "input": 0.6,
             "output": 3.0
         },
+        "description": "Kimi multimodal agent model for visual understanding, coding, and planning",
         "id": "moonshotai/Kimi-K2.5",
         "input": ["text", "image", "video"],
         "maxTokens": 262144,
@@ -2428,8 +2657,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "moonshotai/Kimi-K2.6": {
@@ -2445,6 +2674,7 @@
             "input": 0.95,
             "output": 4.0
         },
+        "description": "Kimi multimodal agent model for visual understanding, coding, and planning",
         "id": "moonshotai/Kimi-K2.6",
         "input": ["text", "image", "video"],
         "maxTokens": 262144,
@@ -2457,8 +2687,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "moonshotai/Kimi-K2.7-Code": {
@@ -2474,6 +2704,7 @@
             "input": 0.95,
             "output": 4.0
         },
+        "description": "Coding-focused Kimi model, stronger on long-horizon repo work with less overthinking",
         "id": "moonshotai/Kimi-K2.7-Code",
         "input": ["text", "image"],
         "maxTokens": 262144,
@@ -2486,8 +2717,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "moonshotai/Kimi-K3": {
@@ -2503,6 +2734,7 @@
             "input": 3.0,
             "output": 15.0
         },
+        "description": "Kimi multimodal agent model for visual understanding, coding, and planning",
         "id": "moonshotai/Kimi-K3",
         "input": ["text", "image"],
         "maxTokens": 131072,
@@ -2529,6 +2761,7 @@
             "input": 0.5,
             "output": 2.5
         },
+        "description": "Largest Nemotron 3 model for maximum open-weight reasoning and agent accuracy",
         "id": "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16",
         "input": ["text"],
         "maxTokens": 65000,
@@ -2552,18 +2785,45 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.6,
+            "output": 3.6
         },
         "id": "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-NVFP4",
         "input": ["text"],
         "maxTokens": 64000,
         "name": "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-NVFP4",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.05,
+            "output": 0.15
+        },
+        "description": "Fast NVIDIA Nemotron MoE for reliable agentic tasks across enterprise workloads",
+        "id": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16",
+        "input": ["text"],
+        "maxTokens": 32768,
+        "name": "Nemotron 3.5 Lightning 30B A3B",
+        "provider": "huggingface",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
             "max": null,
             "medium": null,
             "minimal": null,
@@ -2584,12 +2844,14 @@
             "input": 0.25,
             "output": 0.69
         },
+        "description": "Open GPT reasoning model for self-hosted agents and controllable deployments",
         "id": "openai/gpt-oss-120b",
         "input": ["text"],
         "maxTokens": 32768,
         "name": "GPT OSS 120B",
         "provider": "huggingface",
         "reasoning": true,
+        "releaseDate": "2025-08-05",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2613,12 +2875,14 @@
             "input": 0.1,
             "output": 0.5
         },
+        "description": "Open-weight GPT model for self-hosted reasoning and instruction-following workloads",
         "id": "openai/gpt-oss-20b",
         "input": ["text"],
         "maxTokens": 32768,
         "name": "GPT OSS 20B",
         "provider": "huggingface",
         "reasoning": true,
+        "releaseDate": "2025-08-05",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2639,6 +2903,7 @@
             "input": 0.075,
             "output": 0.3
         },
+        "description": "Safety model for policy screening, moderation, and risk-aware routing workflows",
         "id": "openai/gpt-oss-safeguard-20b",
         "input": ["text"],
         "maxTokens": 65536,
@@ -2662,19 +2927,19 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.27999999999999997,
+            "output": 0.86
         },
         "id": "pearl-ai/Gemma-4-31B-it-pearl",
         "input": ["text"],
         "maxTokens": 64000,
         "name": "pearl-ai/Gemma-4-31B-it-pearl",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -2722,10 +2987,10 @@
         "maxTokens": 64000,
         "name": "prism-ml/Ternary-Bonsai-27B-gguf",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
             "medium": null,
             "minimal": null,
@@ -2743,6 +3008,7 @@
             "input": 0.67,
             "output": 0.67
         },
+        "description": "Open-weight instruction model for adaptable chat and self-hosted production workloads",
         "id": "speakleash/Bielik-11B-v3.0-Instruct",
         "input": ["text"],
         "maxTokens": 32000,
@@ -2772,6 +3038,7 @@
             "input": 0.1,
             "output": 0.3
         },
+        "description": "StepFun flash lane for quick multimodal reasoning and coding assistance",
         "id": "stepfun-ai/Step-3.5-Flash",
         "input": ["text"],
         "maxTokens": 256000,
@@ -2801,6 +3068,7 @@
             "input": 0.2,
             "output": 1.15
         },
+        "description": "Newer StepFun flash model for faster agents, coding, and multimodal prompts",
         "id": "stepfun-ai/Step-3.7-Flash",
         "input": ["text", "image", "video"],
         "maxTokens": 256000,
@@ -2824,23 +3092,23 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.82,
+            "output": 2.92
         },
         "id": "swiss-ai/Apertus-70B-Instruct-2509",
         "input": ["text"],
         "maxTokens": 64000,
         "name": "swiss-ai/Apertus-70B-Instruct-2509",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "swiss-ai/Apertus-8B-Instruct-2509": {
@@ -2850,23 +3118,23 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.1,
+            "output": 0.2
         },
         "id": "swiss-ai/Apertus-8B-Instruct-2509",
         "input": ["text"],
         "maxTokens": 64000,
         "name": "swiss-ai/Apertus-8B-Instruct-2509",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "swiss-ai/Apertus-v1.5-70B": {
@@ -2879,6 +3147,7 @@
             "input": 0.87,
             "output": 3.1
         },
+        "description": "Open, ethically-sourced Swiss AI model for multilingual, multimodal chat and instruction following",
         "id": "swiss-ai/Apertus-v1.5-70B",
         "input": ["text", "image", "audio"],
         "maxTokens": 8192,
@@ -2886,13 +3155,13 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "swiss-ai/Apertus-v1.5-8B": {
@@ -2902,23 +3171,23 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.1,
+            "output": 0.2
         },
         "id": "swiss-ai/Apertus-v1.5-8B",
         "input": ["text"],
         "maxTokens": 64000,
         "name": "swiss-ai/Apertus-v1.5-8B",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "tencent/Hy3": {
@@ -2931,6 +3200,7 @@
             "input": 0.14,
             "output": 0.58
         },
+        "description": "Tencent Hy reasoning model for coding, instruction following, and agent tasks",
         "id": "tencent/Hy3",
         "input": ["text"],
         "maxTokens": 64000,
@@ -2943,7 +3213,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -2957,6 +3227,7 @@
             "input": 1.0,
             "output": 4.05
         },
+        "description": "Multimodal model for analyzing text, images, documents, and rich media",
         "id": "thinkingmachines/Inkling",
         "input": ["text", "image"],
         "maxTokens": 1048576,
@@ -2983,6 +3254,7 @@
             "input": 0.5,
             "output": 1.2
         },
+        "description": "Efficient model for low-latency assistance, extraction, and routine automation",
         "id": "thinkingmachines/Inkling-Small",
         "input": ["text", "image"],
         "maxTokens": 1048576,
@@ -2992,32 +3264,6 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "utter-project/EuroLLM-22B-Instruct-2512": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "id": "utter-project/EuroLLM-22B-Instruct-2512",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "utter-project/EuroLLM-22B-Instruct-2512",
-        "provider": "huggingface",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
             "max": null,
             "medium": null,
             "minimal": null,
@@ -3035,6 +3281,7 @@
             "input": 0.035,
             "output": 0.138
         },
+        "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
         "id": "zai-org/AutoGLM-Phone-9B-Multilingual",
         "input": ["text", "image"],
         "maxTokens": 65536,
@@ -3058,23 +3305,23 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.55,
+            "output": 1.66
         },
         "id": "zai-org/GLM-4-32B-0414",
         "input": ["text"],
         "maxTokens": 64000,
         "name": "zai-org/GLM-4-32B-0414",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-4.5": {
@@ -3087,6 +3334,7 @@
             "input": 0.6,
             "output": 2.2
         },
+        "description": "Hybrid-reasoning GLM release that made the 4.5 line broadly useful",
         "id": "zai-org/GLM-4.5",
         "input": ["text"],
         "maxTokens": 98304,
@@ -3099,8 +3347,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-4.5-Air": {
@@ -3116,6 +3364,7 @@
             "input": 0.13,
             "output": 0.85
         },
+        "description": "Lighter GLM-4.5 variant for fast coding assistance and cheaper agents",
         "id": "zai-org/GLM-4.5-Air",
         "input": ["text"],
         "maxTokens": 98304,
@@ -3128,8 +3377,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-4.5V": {
@@ -3145,6 +3394,7 @@
             "input": 0.6,
             "output": 1.8
         },
+        "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
         "id": "zai-org/GLM-4.5V",
         "input": ["text", "image"],
         "maxTokens": 16384,
@@ -3157,8 +3407,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-4.5V-FP8": {
@@ -3176,15 +3426,15 @@
         "maxTokens": 64000,
         "name": "zai-org/GLM-4.5V-FP8",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-4.6": {
@@ -3200,6 +3450,7 @@
             "input": 0.55,
             "output": 2.2
         },
+        "description": "Late GLM-4 workhorse for coding agents, reasoning, and structured tasks",
         "id": "zai-org/GLM-4.6",
         "input": ["text"],
         "maxTokens": 131072,
@@ -3212,8 +3463,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-4.6-FP8": {
@@ -3231,15 +3482,15 @@
         "maxTokens": 64000,
         "name": "zai-org/GLM-4.6-FP8",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-4.6V": {
@@ -3252,6 +3503,7 @@
             "input": 0.3,
             "output": 0.9
         },
+        "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
         "id": "zai-org/GLM-4.6V",
         "input": ["text", "image"],
         "maxTokens": 24000,
@@ -3259,13 +3511,13 @@
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-4.6V-FP8": {
@@ -3283,15 +3535,15 @@
         "maxTokens": 64000,
         "name": "zai-org/GLM-4.6V-FP8",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-4.6V-Flash": {
@@ -3301,23 +3553,23 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.3,
+            "output": 0.9
         },
         "id": "zai-org/GLM-4.6V-Flash",
         "input": ["text"],
         "maxTokens": 64000,
         "name": "zai-org/GLM-4.6V-Flash",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-4.7": {
@@ -3333,6 +3585,7 @@
             "input": 0.6,
             "output": 2.2
         },
+        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "zai-org/GLM-4.7",
         "input": ["text"],
         "maxTokens": 131072,
@@ -3345,8 +3598,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-4.7-FP8": {
@@ -3356,23 +3609,23 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 809929.694,
+            "output": 2892606.05
         },
         "id": "zai-org/GLM-4.7-FP8",
         "input": ["text"],
         "maxTokens": 64000,
         "name": "zai-org/GLM-4.7-FP8",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-4.7-Flash": {
@@ -3388,6 +3641,7 @@
             "input": 0.06,
             "output": 0.4
         },
+        "description": "Efficient GLM model for fast reasoning, coding, and agent workflows",
         "id": "zai-org/GLM-4.7-Flash",
         "input": ["text"],
         "maxTokens": 128000,
@@ -3400,8 +3654,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-5": {
@@ -3417,6 +3671,7 @@
             "input": 1.0,
             "output": 3.2
         },
+        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "zai-org/GLM-5",
         "input": ["text"],
         "maxTokens": 131072,
@@ -3429,8 +3684,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-5.1": {
@@ -3446,6 +3701,7 @@
             "input": 1.0,
             "output": 3.2
         },
+        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "zai-org/GLM-5.1",
         "input": ["text"],
         "maxTokens": 131072,
@@ -3458,8 +3714,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-5.1-FP8": {
@@ -3467,11 +3723,12 @@
         "baseUrl": "https://router.huggingface.co/v1",
         "contextWindow": 202752,
         "cost": {
-            "cacheRead": 0.182,
+            "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 1.4,
             "output": 4.4
         },
+        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
         "id": "zai-org/GLM-5.1-FP8",
         "input": ["text"],
         "maxTokens": 131072,
@@ -3484,8 +3741,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-5.2": {
@@ -3501,6 +3758,7 @@
             "input": 1.4,
             "output": 4.4
         },
+        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "zai-org/GLM-5.2",
         "input": ["text"],
         "maxTokens": 131072,
@@ -3513,8 +3771,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "zai-org/GLM-5.2-FP8": {
@@ -3527,6 +3785,7 @@
             "input": 1.2,
             "output": 4.2
         },
+        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "zai-org/GLM-5.2-FP8",
         "input": ["text"],
         "maxTokens": 202752,

@@ -1,77 +1,97 @@
-//! ACP (Agent Client Protocol) agent server over stdio.
+//! ACP agent server over stdio (v1 stable, v2 experimental).
 
-mod handler;
-mod util;
+mod auth;
+mod capabilities;
+mod commands;
+mod config;
+mod content;
+mod elicitation;
+mod limits;
+mod mcp;
+mod permission;
+mod plan;
+mod prompt;
+mod replay;
+mod session;
+mod state;
+mod terminals;
+mod tools;
+mod updates;
+mod v1;
+
+/// Which ACP protocol this process speaks (one version per process).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AcpMode {
+    /// ACP v1 (stable). `elph acp --stdio`
+    V1,
+    /// ACP v2 draft. `elph acp --stdio --experimental`
+    V2,
+}
 
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::Arc;
 
-use agent_client_protocol::schema::v1::{
-    AgentCapabilities, InitializeRequest, InitializeResponse, NewSessionRequest, NewSessionResponse, PromptRequest,
-    PromptResponse, SessionId, StopReason,
+use agent_client_protocol::schema::ProtocolVersion;
+use agent_client_protocol::schema::v2::{
+    CancelSessionNotification, CloseSessionRequest, DeleteSessionRequest, InitializeRequest, InitializeResponse,
+    ListSessionsRequest, LoginAuthRequest, LoginAuthResponse, LogoutAuthRequest, LogoutAuthResponse, NewSessionRequest,
+    PromptRequest, ResumeSessionRequest, SetSessionConfigOptionRequest, SetSessionConfigOptionResponse,
 };
-use agent_client_protocol::{Agent, Result as AcpResult, Stdio};
-use anyhow::Context;
+use agent_client_protocol::{Agent, ConnectTo, Result as AcpResult, Stdio};
 use parking_lot::Mutex;
-use tokio::sync::mpsc;
 
-use crate::agent::{AgentUiEvent, CodingAgentSession, CreateSessionOptions, create_coding_session_with_events};
+use crate::platform::acp::state::{AcpAgentState, lookup_session, session_key};
 use crate::platform::{Paths, Settings};
 
-/// Handle + receiver + working directory extracted from an active session.
-type SessionContext = (
-    Arc<CodingAgentSession>,
-    Arc<tokio::sync::Mutex<mpsc::UnboundedReceiver<AgentUiEvent>>>,
-    PathBuf,
-);
-
-/// Per-session runtime state kept for the duration of the ACP connection.
-struct AcpSessionState {
-    session: Arc<CodingAgentSession>,
-    ui_rx: Arc<tokio::sync::Mutex<mpsc::UnboundedReceiver<AgentUiEvent>>>,
-    cwd: PathBuf,
+/// Run Elph as an ACP agent on stdio.
+pub async fn run_agent_stdio(paths: Paths, settings: Settings, mode: AcpMode) -> AcpResult<()> {
+    run_agent_on(paths, settings, mode, Stdio::new()).await
 }
 
-/// Shared mutable state across all ACP sessions.
-struct AcpAgentState {
-    sessions: HashMap<String, AcpSessionState>,
-    paths: Paths,
-    settings: Settings,
+/// Run the ACP agent on an arbitrary transport (stdio or in-process streams).
+pub async fn run_agent_on<T>(paths: Paths, settings: Settings, mode: AcpMode, transport: T) -> AcpResult<()>
+where
+    T: ConnectTo<Agent> + 'static,
+{
+    match mode {
+        AcpMode::V1 => v1::run_with(paths, settings, transport).await,
+        AcpMode::V2 => run_v2_with(paths, settings, transport).await,
+    }
 }
 
-/// Run Elph as an ACP agent on stdio (for IDE / CLI clients).
-pub async fn run_agent_stdio(paths: Paths, settings: Settings) -> AcpResult<()> {
+async fn run_v2_with<T>(paths: Paths, settings: Settings, transport: T) -> AcpResult<()>
+where
+    T: ConnectTo<Agent> + 'static,
+{
     let state = Arc::new(Mutex::new(AcpAgentState {
         sessions: HashMap::new(),
         paths,
         settings,
+        client_fs_read: false,
+        client_elicitation_form: false,
+        auth: crate::platform::acp::state::ConnectionAuth::Anonymous,
     }));
 
     Agent
-        .builder()
-        .name("elph")
-        .on_receive_request(
-            async move |initialize: InitializeRequest, responder, _connection| {
-                responder.respond(
-                    InitializeResponse::new(initialize.protocol_version).agent_capabilities(AgentCapabilities::new()),
-                )
-            },
-            agent_client_protocol::on_receive_request!(),
-        )
+        .v2()
         .on_receive_request(
             {
                 let state = Arc::clone(&state);
-                async move |request: NewSessionRequest, responder, _connection| match create_acp_session(
-                    &state,
-                    &request.cwd,
-                )
-                .await
-                {
-                    Ok(session_id) => responder.respond(NewSessionResponse::new(session_id)),
-                    Err(error) => {
-                        responder.respond_with_error(agent_client_protocol::util::internal_error(error.to_string()))
+                async move |initialize: InitializeRequest, responder, _connection| {
+                    {
+                        let mut guard = state.lock();
+                        guard.client_elicitation_form = initialize
+                            .capabilities
+                            .elicitation
+                            .as_ref()
+                            .is_some_and(|e| e.form.is_some());
                     }
+                    let _ = responder.respond(
+                        InitializeResponse::new(ProtocolVersion::V2, capabilities::implementation())
+                            .capabilities(capabilities::agent_capabilities())
+                            .auth_methods(auth::v2_auth_methods()),
+                    );
+                    Ok(())
                 }
             },
             agent_client_protocol::on_receive_request!(),
@@ -79,67 +99,262 @@ pub async fn run_agent_stdio(paths: Paths, settings: Settings) -> AcpResult<()> 
         .on_receive_request(
             {
                 let state = Arc::clone(&state);
-                async move |request: PromptRequest, responder, connection| match self::handler::run_prompt(
-                    &state,
-                    &connection,
-                    &request.session_id,
-                    &request,
-                )
-                .await
-                {
-                    Ok(()) => responder.respond(PromptResponse::new(StopReason::EndTurn)),
-                    Err(error) => {
-                        responder.respond_with_error(agent_client_protocol::util::internal_error(error.to_string()))
+                async move |request: LoginAuthRequest, responder, _connection| {
+                    match auth::login(&state, request.method_id.0.as_ref()) {
+                        Ok(()) => {
+                            let _ = responder.respond(LoginAuthResponse::new());
+                        }
+                        Err(error) => {
+                            let _ = responder.respond_with_error(error);
+                        }
                     }
+                    Ok(())
                 }
             },
             agent_client_protocol::on_receive_request!(),
         )
-        .connect_to(Stdio::new())
+        .on_receive_request(
+            {
+                let state = Arc::clone(&state);
+                async move |_request: LogoutAuthRequest, responder, connection| {
+                    let state = Arc::clone(&state);
+                    if let Err(error) = connection.spawn(async move {
+                        auth::logout(&state).await;
+                        let _ = responder.respond(LogoutAuthResponse::new());
+                        Ok(())
+                    }) {
+                        log::warn!("ACP logout spawn failed: {error}");
+                    }
+                    Ok(())
+                }
+            },
+            agent_client_protocol::on_receive_request!(),
+        )
+        .on_receive_request(
+            {
+                let state = Arc::clone(&state);
+                async move |request: NewSessionRequest, responder, connection| {
+                    if let Err(error) = auth::require(&state) {
+                        let _ = responder.respond_with_error(error);
+                        return Ok(());
+                    }
+                    let state = Arc::clone(&state);
+                    let conn = connection.clone();
+                    if let Err(error) = connection.spawn(async move {
+                        match session::create_session(&state, &request, &conn).await {
+                            Ok(response) => {
+                                let sid = response.session_id.clone();
+                                let _ = responder.respond(response);
+                                session::finish_create_session(&state, &request, &conn, &sid).await;
+                            }
+                            Err(error) => {
+                                let _ = responder
+                                    .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                            }
+                        }
+                        Ok(())
+                    }) {
+                        log::warn!("ACP session/new spawn failed: {error}");
+                    }
+                    Ok(())
+                }
+            },
+            agent_client_protocol::on_receive_request!(),
+        )
+        .on_receive_request(
+            {
+                let state = Arc::clone(&state);
+                async move |request: ResumeSessionRequest, responder, connection| {
+                    if let Err(error) = auth::require(&state) {
+                        let _ = responder.respond_with_error(error);
+                        return Ok(());
+                    }
+                    let state = Arc::clone(&state);
+                    let conn = connection.clone();
+                    if let Err(error) = connection.spawn(async move {
+                        match session::resume_session(&state, &request, &conn).await {
+                            Ok(response) => {
+                                let sid = request.session_id.clone();
+                                let _ = responder.respond(response);
+                                session::finish_resume_session(&state, &request, &conn, &sid).await;
+                            }
+                            Err(error) => {
+                                let _ = responder
+                                    .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                            }
+                        }
+                        Ok(())
+                    }) {
+                        log::warn!("ACP session/resume spawn failed: {error}");
+                    }
+                    Ok(())
+                }
+            },
+            agent_client_protocol::on_receive_request!(),
+        )
+        .on_receive_request(
+            {
+                let state = Arc::clone(&state);
+                async move |request: ListSessionsRequest, responder, connection| {
+                    let state = Arc::clone(&state);
+                    if let Err(error) = connection.spawn(async move {
+                        match session::list_sessions(&state, &request).await {
+                            Ok(response) => {
+                                let _ = responder.respond(response);
+                            }
+                            Err(error) => {
+                                let _ = responder
+                                    .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                            }
+                        }
+                        Ok(())
+                    }) {
+                        log::warn!("ACP session/list spawn failed: {error}");
+                    }
+                    Ok(())
+                }
+            },
+            agent_client_protocol::on_receive_request!(),
+        )
+        .on_receive_request(
+            {
+                let state = Arc::clone(&state);
+                async move |request: CloseSessionRequest, responder, connection| {
+                    let state = Arc::clone(&state);
+                    if let Err(error) = connection.spawn(async move {
+                        match session::close_session(&state, &request).await {
+                            Ok(response) => {
+                                let _ = responder.respond(response);
+                            }
+                            Err(error) => {
+                                let _ = responder
+                                    .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                            }
+                        }
+                        Ok(())
+                    }) {
+                        log::warn!("ACP session/close spawn failed: {error}");
+                    }
+                    Ok(())
+                }
+            },
+            agent_client_protocol::on_receive_request!(),
+        )
+        .on_receive_request(
+            {
+                let state = Arc::clone(&state);
+                async move |request: DeleteSessionRequest, responder, connection| {
+                    let state = Arc::clone(&state);
+                    if let Err(error) = connection.spawn(async move {
+                        match session::delete_session(&state, &request).await {
+                            Ok(response) => {
+                                let _ = responder.respond(response);
+                            }
+                            Err(error) => {
+                                let _ = responder
+                                    .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                            }
+                        }
+                        Ok(())
+                    }) {
+                        log::warn!("ACP session/delete spawn failed: {error}");
+                    }
+                    Ok(())
+                }
+            },
+            agent_client_protocol::on_receive_request!(),
+        )
+        .on_receive_request(
+            {
+                let state = Arc::clone(&state);
+                async move |request: SetSessionConfigOptionRequest, responder, connection| {
+                    if let Err(error) = auth::require(&state) {
+                        let _ = responder.respond_with_error(error);
+                        return Ok(());
+                    }
+                    let state = Arc::clone(&state);
+                    let conn = connection.clone();
+                    if let Err(error) = connection.spawn(async move {
+                        match set_config(&state, &request, &conn).await {
+                            Ok(response) => {
+                                let _ = responder.respond(response);
+                            }
+                            Err(error) => {
+                                let _ = responder
+                                    .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                            }
+                        }
+                        Ok(())
+                    }) {
+                        log::warn!("ACP set_config spawn failed: {error}");
+                    }
+                    Ok(())
+                }
+            },
+            agent_client_protocol::on_receive_request!(),
+        )
+        .on_receive_request(
+            {
+                let state = Arc::clone(&state);
+                async move |request: PromptRequest, responder, connection| {
+                    if let Err(error) = auth::require(&state) {
+                        let _ = responder.respond_with_error(error);
+                        return Ok(());
+                    }
+                    let state = Arc::clone(&state);
+                    let conn = connection.clone();
+                    if let Err(error) = connection.spawn(async move {
+                        if let Err(error) = prompt::handle_prompt(state, conn, request, responder).await {
+                            log::warn!("ACP prompt failed: {error:#}");
+                        }
+                        Ok(())
+                    }) {
+                        log::warn!("ACP prompt spawn failed: {error}");
+                    }
+                    Ok(())
+                }
+            },
+            agent_client_protocol::on_receive_request!(),
+        )
+        .on_receive_notification(
+            {
+                let state = Arc::clone(&state);
+                async move |notification: CancelSessionNotification, connection| {
+                    crate::platform::acp::state::mark_session_cancelled(&state, &session_key(&notification.session_id));
+                    let state = Arc::clone(&state);
+                    let conn = connection.clone();
+                    if let Err(error) = connection.spawn(async move {
+                        if let Err(error) = prompt::handle_cancel(&state, &conn, notification).await {
+                            log::warn!("ACP cancel failed: {error:#}");
+                        }
+                        Ok(())
+                    }) {
+                        log::warn!("ACP cancel spawn failed: {error}");
+                    }
+                    Ok(())
+                }
+            },
+            agent_client_protocol::on_receive_notification!(),
+        )
+        .connect_to(transport)
         .await
 }
 
-/// Create a new agent session and register it in shared state.
-async fn create_acp_session(state: &Arc<Mutex<AcpAgentState>>, cwd: &PathBuf) -> anyhow::Result<SessionId> {
-    let (paths, settings) = {
-        let guard = state.lock();
-        (guard.paths.clone(), guard.settings.clone())
-    };
-
-    let (session, ui_rx) = create_coding_session_with_events(CreateSessionOptions {
-        paths: &paths,
-        settings: &settings,
-        cwd,
-        resume_id: None,
-        provider_override: None,
-        model_override: None,
-        agent_mode: None,
-        preloaded_resources: None,
-        defer_mcp_load: false,
-        headless: false,
-    })
-    .await?;
-
-    let session_id = SessionId::from(session.session_id().to_string());
-    let key = session.session_id().to_string();
-
-    state.lock().sessions.insert(
-        key,
-        AcpSessionState {
-            session: Arc::new(session),
-            ui_rx: Arc::new(tokio::sync::Mutex::new(ui_rx)),
-            cwd: cwd.clone(),
-        },
+async fn set_config(
+    state: &Arc<Mutex<AcpAgentState>>,
+    request: &SetSessionConfigOptionRequest,
+    connection: &agent_client_protocol::ConnectionTo<agent_client_protocol::Client>,
+) -> anyhow::Result<SetSessionConfigOptionResponse> {
+    let key = session_key(&request.session_id);
+    let (session, _, _) = lookup_session(state, &key)?;
+    let settings = state.lock().settings.clone();
+    let options = config::set_config_option(&session, &settings, request.config_id.0.as_ref(), &request.value).await?;
+    let _ = updates::send_update(
+        connection,
+        &request.session_id,
+        agent_client_protocol::schema::v2::SessionUpdate::ConfigOptionUpdate(
+            agent_client_protocol::schema::v2::ConfigOptionUpdate::new(options.clone()),
+        ),
     );
-    Ok(session_id)
-}
-
-/// Look up session state by its string key.
-///
-/// Returns the session handle, its UI event receiver (for streaming), and the
-/// working directory it was created with (for `/reload` and similar commands).
-fn lookup_session(state: &Arc<Mutex<AcpAgentState>>, key: &str) -> anyhow::Result<SessionContext> {
-    let guard = state.lock();
-    let entry = guard.sessions.get(key).context("ACP session not found")?;
-    Ok((Arc::clone(&entry.session), entry.ui_rx.clone(), entry.cwd.clone()))
+    Ok(SetSessionConfigOptionResponse::new(options))
 }

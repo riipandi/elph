@@ -81,7 +81,7 @@ Schema: [schemas/elph-schema.json](../schemas/elph-schema.json).
 | --------- | ----------------------------------------------------- | --------------------- |
 | **Adopt** | [figment](https://crates.io/crates/figment)           | Layered merge         |
 | **Adopt** | [jsonc-parser](https://crates.io/crates/jsonc-parser) | JSONC comments        |
-| **Defer** | dotenvy, confique, json5, config-rs                   | Optional DX / overlap |
+| **Defer** | dotenvy, dotenv-ng, confique, json5, config-rs        | Optional DX / overlap |
 | **Skip**  | twelf, envy, ron                                      | Too narrow            |
 
 ---

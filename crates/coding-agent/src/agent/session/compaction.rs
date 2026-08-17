@@ -73,6 +73,11 @@ impl CodingAgentSession {
     }
 
     fn notice(&self, message: impl Into<String>) {
+        // Intercom (worker-message) turns stay silent: compaction affecting a
+        // peer-to-peer turn is internal, not user-visible transcript news.
+        if self.intercom_turn_active.load(std::sync::atomic::Ordering::Relaxed) {
+            return;
+        }
         let _ = self.ui_tx.send(AgentUiEvent::TranscriptNotice(message.into()));
     }
 
@@ -96,16 +101,21 @@ impl CodingAgentSession {
         let model_ref = format!("{}/{}", model.provider.as_str(), model.id);
 
         let running = match source {
-            CompactSource::Manual => format!("Compacting history with {model_ref}…"),
-            CompactSource::Automatic => format!("Auto-compacting history with {model_ref}…"),
+            CompactSource::Manual => format!("Compacting history with {model_ref}"),
+            CompactSource::Automatic => format!("Auto-compacting history with {model_ref}"),
             CompactSource::ModelSwitch => {
-                format!("Compacting history for the new model’s context limit with {model_ref}…")
+                format!("Compacting history for the new model’s context limit with {model_ref}")
             }
         };
         self.notice(running.clone());
         // Surface the running label on the status row (busy indicator) so the user sees the
         // agent is actively compacting history — not frozen — while the turn is still busy.
-        let _ = self.ui_tx.send(AgentUiEvent::Status(running.clone()));
+        // The status text must exactly match the sticky notice so the transcript applier
+        // collapses the pair into a single card (see `TranscriptEventApplier::push_status`).
+        // (Intercom turns skip both — see `notice`.)
+        if !self.intercom_turn_active.load(std::sync::atomic::Ordering::Relaxed) {
+            let _ = self.ui_tx.send(AgentUiEvent::Status(running.clone()));
+        }
 
         let before = self.estimate_context_usage().await.ok().map(|(t, _)| t);
         let result = self
@@ -372,6 +382,7 @@ mod tests {
             reserve_tokens: 16_384,
             threshold_pct: Some(80),
             keep_recent_tokens: 20_000,
+            physical_prune: true,
         };
         // History over threshold → normal message.
         let msg = auto_compact_will_message(180_000, 200_000, 0, settings);
@@ -386,6 +397,7 @@ mod tests {
             reserve_tokens: 16_384,
             threshold_pct: Some(80),
             keep_recent_tokens: 20_000,
+            physical_prune: true,
         };
         // History under threshold, but history + prompt over → mention prompt.
         let msg = auto_compact_will_message(150_000, 200_000, 20_000, settings);

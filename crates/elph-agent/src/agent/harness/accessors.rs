@@ -44,6 +44,10 @@ where
             .map_err(session_error)
     }
 
+    pub async fn session_leaf_id(&self) -> HarnessOpResult<Option<String>> {
+        self.shared.session.lock().await.leaf_id().await.map_err(session_error)
+    }
+
     pub async fn phase(&self) -> AgentHarnessPhase {
         *self.shared.phase.lock().await
     }
@@ -145,6 +149,14 @@ where
     /// Session backend metadata (includes last-activity timestamps for dir storage).
     pub async fn session_metadata(&self) -> S::Metadata {
         self.shared.session.lock().await.metadata().await
+    }
+
+    /// Most recent persisted turn record for this session (usage, provider/model), if any.
+    ///
+    /// Reads the relational `session_turns` table written by the harness turn loop.
+    pub async fn current_turn_record(&self, session_id: &str) -> Option<crate::turns::TurnRecord> {
+        let store = self.shared.turn_store.as_ref()?.clone();
+        store.latest_turn(session_id).await.ok().flatten()
     }
 
     pub fn compaction_settings(&self) -> CompactionSettings {

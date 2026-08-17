@@ -17,11 +17,40 @@ use tokio::time::timeout;
 use turso::{Builder, Connection, Database};
 
 /// Max retries on a transient lock/`SQLITE_BUSY` error before giving up.
-pub const MAX_RETRIES: u32 = 10;
+pub const MAX_RETRIES: u32 = 20;
 /// Base delay (ms) for the jittered exponential backoff.
 pub const BASE_DELAY_MS: u64 = 50;
 
-const DB_OPEN_TIMEOUT_MS: u64 = 10000; // 10 seconds timeout for database open
+const DB_OPEN_TIMEOUT_MS: u64 = 30000; // 30 seconds timeout for database open (increased for multi-worker scenarios)
+
+/// Validate a durable local database path before enabling multiprocess WAL.
+///
+/// Turso performs the filesystem capability check (POSIX locks + mmap) during
+/// `Builder::build`; this guard rejects URI/in-memory paths and path shapes
+/// that cannot safely represent a local database file.
+pub fn validate_local_database_path(path: &Path) -> Result<()> {
+    if path.as_os_str().is_empty() || path == Path::new(":memory:") {
+        anyhow::bail!("multiprocess WAL requires a durable local database path");
+    }
+    if path.to_string_lossy().starts_with("file:") {
+        anyhow::bail!("multiprocess WAL requires a filesystem path, not a database URI");
+    }
+    let parent = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    let parent_metadata =
+        std::fs::metadata(parent).with_context(|| format!("inspect database directory {}", parent.display()))?;
+    if !parent_metadata.is_dir() {
+        anyhow::bail!("database parent is not a directory: {}", parent.display());
+    }
+    if let Ok(metadata) = std::fs::metadata(path)
+        && !metadata.is_file()
+    {
+        anyhow::bail!("database path is not a regular file: {}", path.display());
+    }
+    Ok(())
+}
 
 /// Check if a Turso error message indicates a lock-related failure.
 ///
@@ -34,15 +63,36 @@ pub fn is_lock_err(msg: &str) -> bool {
     lower.contains("locked") || lower.contains("locking") || lower.contains("busy")
 }
 
-/// Check if a Turso error message indicates a corrupt / truncated WAL sidecar.
-pub fn is_wal_io_err(msg: &str) -> bool {
+/// Check if a Turso open/build error is transient and worth retrying.
+///
+/// A second Elph instance opening the same `.elph/store.db` under
+/// multiprocess WAL will either hit a lock error or one of Turso's
+/// "already open" authority messages. Both are transient: the opener
+/// releases the writer slot on its own schedule, and the retry loop
+/// absorbs the contention instead of failing fast.
+pub fn is_open_retryable(msg: &str) -> bool {
     let lower = msg.to_ascii_lowercase();
-    lower.contains("short read on wal")
-        || lower.contains("wal frame")
-        || lower.contains("database disk image is malformed")
-        || lower.contains("file is not a database")
-        || (lower.contains("i/o error") && lower.contains("wal"))
-        || lower.contains("unable to open database file")
+    is_lock_err(msg)
+        || lower.contains("already open")
+        || lower.contains("multiprocess wal")
+        || lower.contains("schema changed")
+        || lower.contains("schemaupdated")
+}
+
+/// Check if an external Turso error represents a multiprocess-WAL write conflict.
+///
+/// Under `experimental_multiprocess_wal(true)` writers across processes are
+/// serialized via a single cluster-wide writer slot. A second process that
+/// attempts to open or acquire the writer while the first holds it receives one
+/// of these messages. Turso MVCC (`BEGIN CONCURRENT`) is intentionally NOT
+/// enabled — it is incompatible with multiprocess WAL — so the only conflict
+/// surface is the serialized `BEGIN IMMEDIATE` writer slot.
+///
+/// This classifier is used to decide whether a write (or open) is worth
+/// retrying instead of failing through to the caller.
+pub fn is_write_conflict_err(msg: &str) -> bool {
+    let lower = msg.to_ascii_lowercase();
+    lower.contains("conflict") || lower.contains("busy snapshot") || lower.contains("busy")
 }
 
 /// Jittered exponential backoff: `BASE_DELAY * (1 + jitter) * min(attempt+1, 5)`.
@@ -51,101 +101,10 @@ fn jitter_delay(attempt: u32) -> u64 {
     (BASE_DELAY_MS as f64 * (1.0 + jitter) * (attempt as f64 + 1.0).min(5.0)) as u64
 }
 
-/// Heuristic: treat the DB as in-use when its WAL file was modified within the
-/// last 30s. Used to avoid deleting shared-memory sidecars while another
-/// process holds the DB open (which would corrupt the shared WAL state in
-/// `experimental_multiprocess_wal` mode).
-pub fn database_in_use(db_path: &str) -> bool {
-    let wal = format!("{db_path}-wal");
-    let Ok(meta) = std::fs::metadata(wal) else {
-        return false;
-    };
-    let Ok(modified) = meta.modified() else {
-        return false;
-    };
-    // If the clock is unreliable, err toward "not in use" so genuinely stale
-    // sidecars still get cleaned up.
-    modified
-        .elapsed()
-        .is_ok_and(|elapsed| elapsed < Duration::from_secs(30))
-}
-
-/// Remove stale `-shm`/`-tshm` shared-memory sidecars if the database is not
-/// currently in use. Removing shared memory while another process holds the DB
-/// open can corrupt the shared WAL state, so this is gated on [`database_in_use`].
-pub fn cleanup_stale_shared_memory(path: &Path) -> Result<()> {
-    if !path.exists() {
-        return Ok(());
-    }
-
-    let db_path_str = path.to_string_lossy();
-    let mut shm_path = String::with_capacity(db_path_str.len() + 4);
-    shm_path.push_str(&db_path_str);
-    shm_path.push_str("-shm");
-    let mut tshm_path = String::with_capacity(db_path_str.len() + 5);
-    tshm_path.push_str(&db_path_str);
-    tshm_path.push_str("-tshm");
-
-    if database_in_use(&db_path_str) {
-        log::debug!("Database is currently in use, skipping shared-memory cleanup");
-        return Ok(());
-    }
-
-    for sidecar in [shm_path, tshm_path] {
-        if Path::new(&sidecar).exists() {
-            if let Err(e) = std::fs::remove_file(&sidecar) {
-                log::warn!("Failed to remove stale shared-memory file {sidecar}: {e}");
-            } else {
-                log::debug!("Removed stale shared memory file: {sidecar}");
-            }
-        }
-    }
-
-    Ok(())
-}
-
-/// Remove broken WAL sidecars: `-wal` under 32 bytes (cannot hold a valid WAL
-/// header) and `-shm`/`-tshm` when the database is not in use.
-pub fn clear_broken_wal_sidecars(db_path: &str) {
-    for suffix in ["-wal", "-shm", "-tshm"] {
-        let sidecar = format!("{db_path}{suffix}");
-        let p = std::path::Path::new(&sidecar);
-        if !p.exists() {
-            continue;
-        }
-        let should_remove = if suffix == "-wal" {
-            // A WAL file under 32 bytes cannot hold a valid SQLite WAL header,
-            // so it is broken by definition and safe to remove.
-            match std::fs::metadata(p) {
-                Ok(m) => m.len() < 32,
-                Err(_) => true,
-            }
-        } else {
-            // -shm / -tshm coordinate shared WAL state across processes. Only
-            // delete them when no process is actively using the database.
-            !database_in_use(db_path)
-        };
-        if should_remove {
-            let _ = std::fs::remove_file(p);
-        }
-    }
-}
-
-/// Open a local Turso database with multiprocess WAL, lock-retry backoff, and
-/// optional one-pass WAL sidecar recovery.
-///
-/// `configure` builds the `Builder` (caller-supplied flags), `recover_wal`
-/// enables clearing broken WAL sidecars on a `SQLITE_IOERR`/WAL read error.
-/// Cleans stale shared memory before the first attempt.
-pub async fn open_local_internal(
-    path: &Path,
-    configure: impl Fn(Builder) -> Builder,
-    recover_wal: bool,
-) -> Result<Database> {
-    cleanup_stale_shared_memory(path).ok();
-
+/// Open a local Turso database with multiprocess WAL and lock-retry backoff.
+pub async fn open_local_internal(path: &Path, configure: impl Fn(Builder) -> Builder) -> Result<Database> {
+    validate_local_database_path(path)?;
     let mut attempt = 0u32;
-    let mut cleared_wal = false;
     loop {
         let build = configure(Builder::new_local(path.to_string_lossy().as_ref()))
             .build()
@@ -153,23 +112,24 @@ pub async fn open_local_internal(
         match build {
             Ok(db) => {
                 if attempt > 0 {
-                    log::info!("Database opened successfully after {attempt} retry attempts");
+                    log::info!("Database opened successfully after {attempt} retry attempts (database was busy)");
                 }
                 return Ok(db);
             }
             Err(e) => {
                 let msg = e.to_string();
-                if recover_wal && !cleared_wal && is_wal_io_err(&msg) {
-                    clear_broken_wal_sidecars(&path.to_string_lossy());
-                    cleared_wal = true;
-                    attempt = 0;
-                    continue;
-                }
-                if attempt >= MAX_RETRIES || !is_lock_err(&msg) {
-                    log::error!("Failed to open database after {attempt} attempts: {msg}");
+                if attempt >= MAX_RETRIES || !is_open_retryable(&msg) {
+                    log::error!(
+                        "Failed to open database after {attempt} attempts (database path: {}): {msg}",
+                        path.display()
+                    );
                     return Err(e).with_context(|| format!("open_local: {}", path.display()));
                 }
-                log::warn!("Database open attempt {} failed with lock error: {msg}", attempt + 1);
+                log::warn!(
+                    "Database is busy (another Elph instance may be open) - retry attempt {}/{}: {msg}",
+                    attempt + 1,
+                    MAX_RETRIES
+                );
             }
         }
         tokio::time::sleep(Duration::from_millis(jitter_delay(attempt))).await;
@@ -185,12 +145,13 @@ async fn connect_retry(db: &Database) -> Result<Connection> {
         match db.connect() {
             Ok(conn) => return Ok(conn),
             Err(e) => {
-                if attempt >= MAX_RETRIES || !is_lock_err(&e.to_string()) {
-                    return Err(e).context("connect: connection failed");
+                if attempt >= MAX_RETRIES || !is_open_retryable(&e.to_string()) {
+                    return Err(e).context("connect: database connection failed (database may be locked or corrupted)");
                 }
                 log::warn!(
-                    "Database connection attempt {} failed with lock error, retrying...",
-                    attempt + 1
+                    "Database is busy (connection failed, retrying...) - attempt {}/{}: {e}",
+                    attempt + 1,
+                    MAX_RETRIES
                 );
             }
         }
@@ -207,10 +168,96 @@ async fn set_busy_timeout(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Connect to an open `Database` and set `busy_timeout` (propagating any error).
+/// Enforce declared FOREIGN KEY constraints for this connection.
+///
+/// SQLite/Turso default is off; without this, FK DDL is documentation-only.
+async fn set_foreign_keys(conn: &Connection) -> Result<()> {
+    conn.execute("PRAGMA foreign_keys = ON", ())
+        .await
+        .context("set foreign_keys")?;
+    Ok(())
+}
+
+/// Apply per-connection session pragmas (busy timeout + foreign keys).
+async fn apply_connection_pragmas(conn: &Connection) -> Result<()> {
+    set_busy_timeout(conn).await?;
+    set_foreign_keys(conn).await?;
+    Ok(())
+}
+
+/// Result of a transaction whose commit may have become ambiguous.
+#[derive(Debug)]
+pub enum CommitOutcome<T> {
+    /// The transaction commit returned successfully.
+    Committed(T),
+    /// The transaction body failed and was rolled back successfully. The
+    /// original body error is preserved for callers and retry classification.
+    RolledBack(anyhow::Error),
+    /// The commit returned an error and the final durable state is unknown.
+    Unknown(anyhow::Error),
+}
+
+/// Execute a serialized write transaction and preserve ambiguous commit state.
+///
+/// Callers must use an idempotency key or a database uniqueness constraint before
+/// retrying [`CommitOutcome::Unknown`]. Never replay a non-idempotent closure blindly.
+pub async fn with_write_transaction_outcome<F, T, Fut>(conn: &Connection, f: F) -> Result<CommitOutcome<T>>
+where
+    F: Fn() -> Fut,
+    Fut: std::future::Future<Output = Result<T>>,
+{
+    const MAX_TRANSACTION_RETRIES: u32 = 10;
+    let mut attempt = 0u32;
+    loop {
+        match conn.execute("BEGIN IMMEDIATE", ()).await {
+            Ok(_) => {}
+            Err(error) if attempt < MAX_TRANSACTION_RETRIES && is_lock_err(&error.to_string()) => {
+                tokio::time::sleep(Duration::from_millis(jitter_delay(attempt))).await;
+                attempt += 1;
+                continue;
+            }
+            Err(error) => return Err(error).context("BEGIN IMMEDIATE failed"),
+        }
+        match f().await {
+            Ok(result) => match conn.execute("COMMIT", ()).await {
+                Ok(_) => return Ok(CommitOutcome::Committed(result)),
+                Err(error) => {
+                    let _ = conn.execute("ROLLBACK", ()).await;
+                    return Ok(CommitOutcome::Unknown(error.into()));
+                }
+            },
+            Err(error) => {
+                if let Err(rollback_error) = conn.execute("ROLLBACK", ()).await {
+                    return Err(error).context(format!("ROLLBACK failed: {rollback_error}"));
+                }
+                if attempt < MAX_TRANSACTION_RETRIES && is_lock_err(&error.to_string()) {
+                    tokio::time::sleep(Duration::from_millis(jitter_delay(attempt))).await;
+                    attempt += 1;
+                    continue;
+                }
+                return Ok(CommitOutcome::RolledBack(error));
+            }
+        }
+    }
+}
+/// Execute a serialized write transaction. Commit failures are returned as errors
+/// and are never replayed because the transaction may already be durable.
+pub async fn with_write_transaction<F, T, Fut>(conn: &Connection, f: F) -> Result<T>
+where
+    F: Fn() -> Fut,
+    Fut: std::future::Future<Output = Result<T>>,
+{
+    match with_write_transaction_outcome(conn, f).await? {
+        CommitOutcome::Committed(result) => Ok(result),
+        CommitOutcome::RolledBack(error) => Err(error).context("transaction rolled back"),
+        CommitOutcome::Unknown(error) => Err(error).context("COMMIT outcome unknown"),
+    }
+}
+
+/// Connect to an open `Database` and set mandatory connection pragmas.
 async fn connect_internal(db: &Database) -> Result<Connection> {
     let conn = connect_retry(db).await?;
-    set_busy_timeout(&conn).await?;
+    apply_connection_pragmas(&conn).await?;
     Ok(conn)
 }
 
@@ -219,26 +266,20 @@ async fn connect_internal(db: &Database) -> Result<Connection> {
 async fn open_connection_internal(
     path: &Path,
     configure: impl Fn(Builder) -> Builder,
-    recover_wal: bool,
 ) -> Result<(Database, Connection)> {
-    let db = open_local_internal(path, configure, recover_wal).await?;
+    let db = open_local_internal(path, configure).await?;
     let conn = connect_internal(&db).await?;
     Ok((db, conn))
 }
 
 /// Open a connection, run an async closure, then drop both. The `Database` is
 /// kept alive for the duration of `f`.
-async fn with_conn_internal<T, F, Fut>(
-    path: &Path,
-    configure: impl Fn(Builder) -> Builder,
-    recover_wal: bool,
-    f: F,
-) -> Result<T>
+async fn with_conn_internal<T, F, Fut>(path: &Path, configure: impl Fn(Builder) -> Builder, f: F) -> Result<T>
 where
     F: FnOnce(Connection) -> Fut,
     Fut: std::future::Future<Output = Result<T>>,
 {
-    let (_db, conn) = open_connection_internal(path, configure, recover_wal).await?;
+    let (_db, conn) = open_connection_internal(path, configure).await?;
     f(conn).await
 }
 
@@ -254,40 +295,38 @@ fn multiprocess_wal(b: turso::Builder) -> turso::Builder {
 pub async fn open_local(path: &Path) -> Result<Database> {
     timeout(
         Duration::from_millis(DB_OPEN_TIMEOUT_MS),
-        open_local_internal(path, multiprocess_wal, false),
+        open_local_internal(path, multiprocess_wal),
     )
     .await
-    .map_err(|_| anyhow::anyhow!("database open timeout after {}ms", DB_OPEN_TIMEOUT_MS))?
+    .map_err(|_| {
+        anyhow::anyhow!(
+            "database open timeout after {}ms (database may be busy or locked)",
+            DB_OPEN_TIMEOUT_MS
+        )
+    })?
 }
 
-/// Open a local Turso database with a caller-supplied builder configuration.
+/// Open a local Turso database with multiprocess WAL enabled.
 ///
-/// Like [`open_local`] but lets the caller supply the `Builder` flags (e.g.
-/// `experimental_index_method`). Still wraps the open in the standard hard
-/// timeout. `recover_wal` enables one-pass WAL sidecar recovery.
-pub async fn open_local_with(
-    path: &Path,
-    configure: impl Fn(Builder) -> Builder,
-    recover_wal: bool,
-) -> Result<Database> {
+/// The caller may tune builder options, but cannot disable the required
+/// multiprocess WAL mode for this shared-database helper.
+pub async fn open_local_with(path: &Path, configure: impl Fn(Builder) -> Builder) -> Result<Database> {
     timeout(
         Duration::from_millis(DB_OPEN_TIMEOUT_MS),
-        open_local_internal(path, configure, recover_wal),
+        open_local_internal(path, |builder| configure(multiprocess_wal(builder))),
     )
     .await
-    .map_err(|_| anyhow::anyhow!("database open timeout after {}ms", DB_OPEN_TIMEOUT_MS))?
+    .map_err(|_| {
+        anyhow::anyhow!(
+            "database open timeout after {}ms (database may be busy or locked)",
+            DB_OPEN_TIMEOUT_MS
+        )
+    })?
 }
 
-/// Connect to an open Database, retrying on lock errors.
-///
-/// Sets `PRAGMA busy_timeout = 5000` on the connection (best-effort: a failure
-/// to set the pragma is logged but does not abort the connection).
+/// Connect to an open Database and apply mandatory pragmas.
 pub async fn connect(db: &Database) -> Result<Connection> {
-    let conn = connect_retry(db).await?;
-    if let Err(e) = set_busy_timeout(&conn).await {
-        log::warn!("Failed to set busy_timeout: {e}");
-    }
-    Ok(conn)
+    connect_internal(db).await
 }
 
 /// Open a database and connect in one step.
@@ -295,7 +334,7 @@ pub async fn connect(db: &Database) -> Result<Connection> {
 /// Returns `(Database, Connection)`. Caller must hold `Database` alive
 /// for the lifetime of `Connection` (Connection borrows from Database).
 pub async fn open_connection(path: &Path) -> Result<(Database, Connection)> {
-    open_connection_internal(path, multiprocess_wal, false).await
+    open_connection_internal(path, multiprocess_wal).await
 }
 
 /// Open a connection, run an async closure, then drop both.
@@ -307,12 +346,18 @@ where
     F: FnOnce(Connection) -> Fut,
     Fut: std::future::Future<Output = Result<T>>,
 {
-    with_conn_internal(path, multiprocess_wal, false, f).await
+    with_conn_internal(path, multiprocess_wal, f).await
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rejects_non_filesystem_database_paths() {
+        assert!(validate_local_database_path(Path::new(":memory:")).is_err());
+        assert!(validate_local_database_path(Path::new("file::memory:")).is_err());
+    }
 
     #[tokio::test]
     async fn open_local_creates_db_file() {
@@ -384,6 +429,51 @@ mod tests {
         assert!(!is_lock_err("no such table"));
     }
 
+    #[test]
+    fn is_write_conflict_err_detects_conflicts() {
+        assert!(is_write_conflict_err("conflict"));
+        assert!(is_write_conflict_err("Busy snapshot"));
+        assert!(is_write_conflict_err("transaction conflict"));
+        assert!(!is_write_conflict_err("syntax error"));
+        assert!(!is_write_conflict_err("no such table"));
+    }
+
+    #[test]
+    fn is_open_retryable_detects_transient_open_errors() {
+        assert!(is_open_retryable(
+            "Database is already open with experimental multiprocess WAL in another process"
+        ));
+        assert!(is_open_retryable("database is locked"));
+        assert!(is_open_retryable("Locking error"));
+        assert!(is_open_retryable("database is busy"));
+        assert!(!is_open_retryable("malformed database schema"));
+        assert!(!is_open_retryable("no such table"));
+    }
+
+    #[tokio::test]
+    async fn transaction_preserves_body_error_after_rollback() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let path = tmp.path().join("transaction-error.db");
+        let (_db, conn) = open_connection(&path).await.expect("open_connection");
+        conn.execute("CREATE TABLE t (value INTEGER NOT NULL)", ())
+            .await
+            .expect("create table");
+
+        let error = with_write_transaction(&conn, || async {
+            conn.execute("INSERT INTO missing_table VALUES (1)", ()).await?;
+            Ok::<(), anyhow::Error>(())
+        })
+        .await
+        .expect_err("transaction should fail");
+
+        let message = format!("{error:?}");
+        assert!(message.contains("missing_table"), "original error was lost: {message}");
+        assert!(
+            message.contains("transaction rolled back"),
+            "rollback context missing: {message}"
+        );
+    }
+
     #[tokio::test]
     async fn open_connection_is_idempotent() {
         let tmp = tempfile::tempdir().expect("tempdir");
@@ -407,6 +497,77 @@ mod tests {
         assert!(exists, "table should persist across opens");
         drop(conn2);
         drop(db2);
+    }
+
+    #[tokio::test]
+    async fn multiprocess_writers_share_the_same_wal() {
+        if let Ok(path) = std::env::var("ELPH_MULTIPROCESS_WAL_CHILD") {
+            let path = std::path::PathBuf::from(path);
+            let worker = std::env::var("ELPH_MULTIPROCESS_WAL_WORKER").expect("worker id");
+            for i in 0..20 {
+                with_conn(&path, |conn| {
+                    let worker = worker.clone();
+                    async move {
+                        with_write_transaction(&conn, || async {
+                            conn.execute(
+                                "INSERT INTO multiprocess_rows (worker, value) VALUES (?, ?)",
+                                turso::params![worker.as_str(), i],
+                            )
+                            .await?;
+                            Ok::<(), anyhow::Error>(())
+                        })
+                        .await
+                    }
+                })
+                .await
+                .expect("child write");
+            }
+            return;
+        }
+
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let path = tmp.path().join("multiprocess.db");
+        let (_db, conn) = open_connection(&path).await.expect("init");
+        conn.execute(
+            "CREATE TABLE multiprocess_rows (worker TEXT NOT NULL, value INTEGER NOT NULL)",
+            (),
+        )
+        .await
+        .expect("schema");
+        drop(conn);
+        drop(_db);
+
+        let current = std::env::current_exe().expect("test executable");
+        let mut children = Vec::new();
+        for worker in ["a", "b"] {
+            children.push(
+                std::process::Command::new(&current)
+                    .arg("--exact")
+                    .arg("datastore::conn::tests::multiprocess_writers_share_the_same_wal")
+                    .arg("--nocapture")
+                    .env("ELPH_MULTIPROCESS_WAL_CHILD", &path)
+                    .env("ELPH_MULTIPROCESS_WAL_WORKER", worker)
+                    .spawn()
+                    .expect("spawn child"),
+            );
+        }
+        for mut child in children {
+            assert!(child.wait().expect("wait child").success());
+        }
+
+        let (_db, conn) = open_connection(&path).await.expect("reopen");
+        let mut rows = conn
+            .query("SELECT COUNT(*) FROM multiprocess_rows", ())
+            .await
+            .expect("count");
+        let count: i64 = rows
+            .next()
+            .await
+            .expect("row")
+            .expect("count row")
+            .get(0)
+            .expect("value");
+        assert_eq!(count, 40);
     }
 
     #[tokio::test]

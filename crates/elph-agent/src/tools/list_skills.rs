@@ -15,17 +15,66 @@ use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
 
 fn escape_xml(value: &str) -> String {
-    value.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
 }
 
-/// Build the `<available_skills>`-style XML block (same shape the system prompt uses).
+/// Convert an absolute path under `$HOME` to a tilde-relative path
+/// (e.g. `/Users/alice/project` → `~/project`). Leaves non-home paths unchanged.
+fn path_to_relative_with_tilde(path: &str) -> String {
+    if let Ok(home_dir) = std::env::var("HOME")
+        && path.starts_with(&home_dir)
+    {
+        let remainder = path.strip_prefix(&home_dir).unwrap_or(path);
+        let remainder = remainder.strip_prefix('/').unwrap_or(remainder);
+        return format!("~/{}", remainder);
+    }
+    path.to_string()
+}
+
+/// Build the `<available_skills>`-style XML block for `list_skills` output.
+///
+/// Follows the [Agent Skills specification](https://agentskills.io/specification):
+/// `name` + `path` are attributes; all frontmatter fields are child elements.
 pub fn format_skill_catalog(skills: &[Skill]) -> String {
     let mut out = String::from("<available_skills>\n");
     for skill in skills {
-        out.push_str("  <skill>\n");
-        out.push_str(&format!("    <name>{}</name>\n", escape_xml(&skill.name)));
+        out.push_str(&format!(
+            "  <skill name=\"{}\" path=\"{}\">\n",
+            escape_xml(&skill.name),
+            escape_xml(&path_to_relative_with_tilde(&skill.file_path)),
+        ));
         out.push_str(&format!("    <description>{}</description>\n", escape_xml(&skill.description)));
-        out.push_str(&format!("    <location>{}</location>\n", escape_xml(&skill.file_path)));
+        if let Some(ref license) = skill.license {
+            out.push_str(&format!("    <license>{}</license>\n", escape_xml(license)));
+        }
+        if let Some(ref compatibility) = skill.compatibility {
+            out.push_str(&format!("    <compatibility>{}</compatibility>\n", escape_xml(compatibility)));
+        }
+        if let Some(ref allowed_tools) = skill.allowed_tools
+            && !allowed_tools.is_empty()
+        {
+            out.push_str(&format!(
+                "    <allowed-tools>{}</allowed-tools>\n",
+                escape_xml(&allowed_tools.join(" "))
+            ));
+        }
+        if let Some(ref metadata) = skill.metadata {
+            for (key, value) in metadata {
+                let value_str = match value {
+                    serde_json::Value::String(s) => s.clone(),
+                    other => other.to_string(),
+                };
+                out.push_str(&format!(
+                    "    <metadata key=\"{}\" value=\"{}\"/>\n",
+                    escape_xml(key),
+                    escape_xml(&value_str)
+                ));
+            }
+        }
         out.push_str("  </skill>\n");
     }
     out.push_str("</available_skills>");
@@ -149,10 +198,9 @@ mod tests {
             ],
             json!({}),
         );
-        assert!(text.contains("<skill>"));
-        assert!(text.contains("<name>a</name>"));
-        assert!(text.contains("<name>b</name>"));
-        assert!(text.contains("<name>c</name>"));
+        assert!(text.contains("<skill name=\"a\""));
+        assert!(text.contains("<skill name=\"b\""));
+        assert!(text.contains("<skill name=\"c\""));
     }
 
     #[test]
@@ -165,9 +213,9 @@ mod tests {
             ],
             json!({ "relevance": "project" }),
         );
-        assert!(text.contains("<name>a</name>"));
-        assert!(!text.contains("<name>b</name>"));
-        assert!(!text.contains("<name>c</name>"));
+        assert!(text.contains("<skill name=\"a\""));
+        assert!(!text.contains("<skill name=\"b\""));
+        assert!(!text.contains("<skill name=\"c\""));
     }
 
     #[test]
@@ -180,15 +228,64 @@ mod tests {
             ],
             json!({ "relevance": "global" }),
         );
-        assert!(!text.contains("<name>a</name>"));
-        assert!(text.contains("<name>b</name>"));
-        assert!(text.contains("<name>c</name>"));
+        assert!(!text.contains("<skill name=\"a\""));
+        assert!(text.contains("<skill name=\"b\""));
+        assert!(text.contains("<skill name=\"c\""));
     }
 
     #[test]
     fn disabled_skills_are_hidden() {
         let text = run(vec![skill("hidden", None, true), skill("visible", None, false)], json!({}));
-        assert!(!text.contains("<name>hidden</name>"));
-        assert!(text.contains("<name>visible</name>"));
+        assert!(!text.contains("<skill name=\"hidden\""));
+        assert!(text.contains("<skill name=\"visible\""));
+    }
+
+    #[test]
+    fn output_has_structured_xml_with_all_spec_fields() {
+        let mut meta = std::collections::HashMap::new();
+        meta.insert("version".to_string(), json!("1.0"));
+        let skill = Skill {
+            name: "pdf-processing".to_string(),
+            description: "Extract PDF text and tables.".to_string(),
+            content: "# PDF".into(),
+            file_path: "/skills/pdf/SKILL.md".to_string(),
+            disable_model_invocation: false,
+            license: Some("Apache-2.0".to_string()),
+            compatibility: Some("Requires poppler".to_string()),
+            metadata: Some(meta),
+            allowed_tools: Some(vec!["read".to_string(), "shell_exec".to_string()]),
+            argument_hint: None,
+        };
+        let text = run(vec![skill], json!({}));
+        assert!(text.contains("<available_skills>"));
+        assert!(text.contains("<skill name=\"pdf-processing\" path=\"/skills/pdf/SKILL.md\">"));
+        assert!(text.contains("<description>Extract PDF text and tables.</description>"));
+        assert!(text.contains("<license>Apache-2.0</license>"));
+        assert!(text.contains("<compatibility>Requires poppler</compatibility>"));
+        assert!(text.contains("<allowed-tools>read shell_exec</allowed-tools>"));
+        assert!(text.contains("<metadata key=\"version\" value=\"1.0\"/>"));
+        assert!(text.contains("</skill>"));
+        assert!(text.contains("</available_skills>"));
+    }
+
+    #[test]
+    fn home_paths_are_converted_to_tilde() {
+        let home = std::env::var("HOME").unwrap_or_default();
+        if !home.is_empty() {
+            let skill = Skill {
+                name: "math".to_string(),
+                description: "Do math.".to_string(),
+                content: "".into(),
+                file_path: format!("{}/projects/elph/.agents/skills/math/SKILL.md", home),
+                disable_model_invocation: false,
+                license: None,
+                compatibility: None,
+                metadata: None,
+                allowed_tools: None,
+                argument_hint: None,
+            };
+            let text = run(vec![skill], json!({}));
+            assert!(text.contains("path=\"~/projects/elph/.agents/skills/math/SKILL.md\""));
+        }
     }
 }

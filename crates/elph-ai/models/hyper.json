@@ -15,6 +15,7 @@
             "input": 0.2,
             "output": 0.4
         },
+        "description": "Fast DeepSeek V4 lane for economical reasoning, coding, and long-context work",
         "id": "deepseek-v4-flash",
         "input": ["text"],
         "maxTokens": 384000,
@@ -40,13 +41,14 @@
             "supportsStore": false,
             "thinkingFormat": "deepseek"
         },
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.032664,
+            "cacheRead": 0.04,
             "cacheWrite": 0.0,
-            "input": 0.152432,
-            "output": 0.304864
+            "input": 0.2,
+            "output": 0.4
         },
+        "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
         "id": "deepseek-v4-flash-0731",
         "input": ["text"],
         "maxTokens": 384000,
@@ -55,11 +57,11 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": null,
+            "low": "low",
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": "none",
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -79,6 +81,7 @@
             "input": 2.4,
             "output": 4.8
         },
+        "description": "Open MoE flagship with million-token context for coding and long agent runs",
         "id": "deepseek-v4-pro",
         "input": ["text"],
         "maxTokens": 384000,
@@ -92,6 +95,33 @@
             "medium": null,
             "minimal": null,
             "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "deepseek-v4-pro-0813": {
+        "api": "openai-completions",
+        "baseUrl": "https://hyper.charm.land/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.0479072,
+            "cacheWrite": 0.0,
+            "input": 1.437216,
+            "output": 4.311648
+        },
+        "description": "DeepSeek V4 Pro snapshot with million-token context and support for thinking and non-thinking modes",
+        "id": "deepseek-v4-pro-0813",
+        "input": ["text"],
+        "maxTokens": 262144,
+        "name": "DeepSeek V4 Pro 0813",
+        "provider": "hyper",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -110,20 +140,48 @@
             "input": 0.124,
             "output": 0.42
         },
+        "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "gemma-4-26b-a4b-it",
         "input": ["text"],
         "maxTokens": 25600,
         "name": "Gemma 4 26B A4B IT",
         "provider": "hyper",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
+        }
+    },
+    "glm-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://hyper.charm.land/v1",
+        "contextWindow": 202752,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.38,
+            "input": 0.76,
+            "output": 2.356
+        },
+        "description": "General GLM flagship for coding, analysis, and tool-heavy engineering workflows",
+        "id": "glm-5",
+        "input": ["text"],
+        "maxTokens": 20275,
+        "name": "GLM-5",
+        "provider": "hyper",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "glm-5.1": {
@@ -142,6 +200,7 @@
             "input": 1.52432,
             "output": 4.79072
         },
+        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
         "id": "glm-5.1",
         "input": ["text"],
         "maxTokens": 3276,
@@ -174,6 +233,7 @@
             "input": 1.4,
             "output": 4.4
         },
+        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "glm-5.2",
         "input": ["text"],
         "maxTokens": 32768,
@@ -201,11 +261,12 @@
         },
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.089,
-            "input": 0.178,
-            "output": 0.71
+            "cacheRead": 0.0152432,
+            "cacheWrite": 0.094,
+            "input": 0.16332,
+            "output": 0.65328
         },
+        "description": "Open GPT reasoning model for self-hosted agents and controllable deployments",
         "id": "gpt-oss-120b",
         "input": ["text"],
         "maxTokens": 13107,
@@ -233,24 +294,25 @@
         "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.275,
-            "input": 0.55,
-            "output": 2.89
+            "cacheWrite": 0.279,
+            "input": 0.558,
+            "output": 2.94
         },
+        "description": "Earlier Kimi frontier model for long-context agents, coding, and multimodal work",
         "id": "kimi-k2.5",
         "input": ["text"],
         "maxTokens": 26214,
         "name": "Kimi K2.5",
         "provider": "hyper",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "kimi-k2.6": {
@@ -269,6 +331,7 @@
             "input": 0.95,
             "output": 4.0
         },
+        "description": "Multimodal Kimi workhorse for agent loops, coding tasks, and visual context",
         "id": "kimi-k2.6",
         "input": ["text", "image"],
         "maxTokens": 26214,
@@ -300,20 +363,21 @@
             "input": 0.95,
             "output": 4.0
         },
+        "description": "Coding-focused Kimi model, stronger on long-horizon repo work with less overthinking",
         "id": "kimi-k2.7-code",
         "input": ["text", "image"],
         "maxTokens": 16000,
         "name": "Kimi K2.7 Code",
         "provider": "hyper",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "kimi-k3": {
@@ -328,10 +392,11 @@
         "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.32664,
-            "cacheWrite": 0.0,
-            "input": 3.2664,
-            "output": 16.332
+            "cacheWrite": 0.3,
+            "input": 3.0,
+            "output": 15.0
         },
+        "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
         "id": "kimi-k3",
         "input": ["text", "image"],
         "maxTokens": 131072,
@@ -359,10 +424,11 @@
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.3033,
-            "input": 0.6066,
-            "output": 1.0386
+            "cacheWrite": 0.304,
+            "input": 0.608,
+            "output": 0.838
         },
+        "description": "Popular open Llama workhorse for multilingual chat, coding, and self-hosting",
         "id": "llama-3.3-70b-instruct",
         "input": ["text"],
         "maxTokens": 12800,
@@ -394,6 +460,7 @@
             "input": 0.274,
             "output": 0.8992
         },
+        "description": "Open multimodal Llama for strong reasoning with efficient everyday serving",
         "id": "llama-4-maverick-17b-128e-instruct-fp8",
         "input": ["text"],
         "maxTokens": 43000,
@@ -421,21 +488,22 @@
         "contextWindow": 262100,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.218,
-            "input": 0.436,
-            "output": 1.72
+            "cacheWrite": 0.213,
+            "input": 0.426,
+            "output": 1.62
         },
+        "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
         "id": "minimax-m2.7",
         "input": ["text"],
         "maxTokens": 6553,
         "name": "MiniMax-M2.7",
         "provider": "hyper",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -457,6 +525,7 @@
             "input": 0.32664,
             "output": 1.30656
         },
+        "description": "MiniMax multimodal model for long-context coding, perception, and agent planning",
         "id": "minimax-m3",
         "input": ["text", "image"],
         "maxTokens": 512000,
@@ -484,10 +553,11 @@
         "contextWindow": 106000,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.2845,
-            "input": 0.569,
-            "output": 2.135
+            "cacheWrite": 0.2225,
+            "input": 0.445,
+            "output": 2.145
         },
+        "description": "Open Qwen coding heavyweight for repository reasoning and agentic engineering",
         "id": "qwen3-coder-480b-a35b-instruct-int4-mixed-ar",
         "input": ["text"],
         "maxTokens": 10600,
@@ -495,13 +565,13 @@
         "provider": "hyper",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen3-next-80b-a3b-instruct": {
@@ -519,6 +589,7 @@
             "input": 0.1175,
             "output": 1.136
         },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "qwen3-next-80b-a3b-instruct",
         "input": ["text"],
         "maxTokens": 26214,
@@ -526,13 +597,13 @@
         "provider": "hyper",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen3.6-flash": {
@@ -550,20 +621,21 @@
             "input": 1.0,
             "output": 4.0
         },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen3.6-flash",
         "input": ["text", "image"],
         "maxTokens": 64000,
         "name": "Qwen3.6 Flash",
         "provider": "hyper",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen3.6-max": {
@@ -581,20 +653,21 @@
             "input": 2.0,
             "output": 12.0
         },
+        "description": "Flagship Qwen model for complex reasoning, coding, and agentic workflows",
         "id": "qwen3.6-max",
         "input": ["text"],
         "maxTokens": 64000,
         "name": "Qwen3.6 Max Preview",
         "provider": "hyper",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen3.6-plus": {
@@ -612,20 +685,21 @@
             "input": 2.0,
             "output": 6.0
         },
+        "description": "Earlier Qwen multimodal workhorse for million-token agent and document tasks",
         "id": "qwen3.6-plus",
         "input": ["text", "image"],
         "maxTokens": 64000,
         "name": "Qwen3.6 Plus",
         "provider": "hyper",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen3.7-flash": {
@@ -643,20 +717,21 @@
             "input": 0.2,
             "output": 0.8
         },
+        "description": "Efficient model for low-latency assistance, extraction, and routine automation",
         "id": "qwen3.7-flash",
         "input": ["text", "image"],
         "maxTokens": 64000,
         "name": "Qwen3.7 Flash",
         "provider": "hyper",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen3.7-max": {
@@ -674,20 +749,21 @@
             "input": 2.5,
             "output": 7.5
         },
+        "description": "Qwen frontier model tuned for agent frameworks, coding assistants, and long tasks",
         "id": "qwen3.7-max",
         "input": ["text"],
         "maxTokens": 64000,
         "name": "Qwen3.7 Max",
         "provider": "hyper",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen3.7-plus": {
@@ -705,20 +781,21 @@
             "input": 1.2,
             "output": 4.8
         },
+        "description": "Multimodal Qwen workhorse for long-context agents, visual inputs, and coding",
         "id": "qwen3.7-plus",
         "input": ["text", "image"],
         "maxTokens": 64000,
         "name": "Qwen3.7 Plus",
         "provider": "hyper",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen3.8-max": {
@@ -736,20 +813,21 @@
             "input": 2.0,
             "output": 6.0
         },
+        "description": "Preview Qwen flagship for million-token multimodal reasoning and long-horizon agentic workflows",
         "id": "qwen3.8-max",
         "input": ["text", "image"],
         "maxTokens": 65536,
         "name": "Qwen3.8 Max Preview",
         "provider": "hyper",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     }
 }

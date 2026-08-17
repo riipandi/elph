@@ -13,6 +13,7 @@
             "input": 0.104,
             "output": 0.207
         },
+        "description": "Fast DeepSeek V4 lane for economical reasoning, coding, and long-context work",
         "id": "deepseek-v4-flash",
         "input": ["text"],
         "maxTokens": 65536,
@@ -43,16 +44,17 @@
             "input": 0.144,
             "output": 0.42
         },
+        "description": "Largest Gemma 4 instruction model for open, self-hosted chat and reasoning",
         "id": "gemma-4-31b",
         "input": ["text", "image"],
         "maxTokens": 16384,
         "name": "Gemma 4 31B",
         "provider": "neuralwatt",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
+            "high": "high",
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -73,6 +75,7 @@
             "input": 1.45,
             "output": 4.5
         },
+        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "glm-5.2",
         "input": ["text"],
         "maxTokens": 1048560,
@@ -85,7 +88,7 @@
             "max": "max",
             "medium": "medium",
             "minimal": "minimal",
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -103,6 +106,7 @@
             "input": 1.45,
             "output": 4.5
         },
+        "description": "Efficient GLM model for fast reasoning, coding, and agent workflows",
         "id": "glm-5.2-fast",
         "input": ["text"],
         "maxTokens": 1048560,
@@ -110,13 +114,13 @@
         "provider": "neuralwatt",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "glm-5.2-short": {
@@ -133,6 +137,7 @@
             "input": 1.45,
             "output": 4.5
         },
+        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "glm-5.2-short",
         "input": ["text"],
         "maxTokens": 199984,
@@ -145,7 +150,7 @@
             "max": "max",
             "medium": "medium",
             "minimal": "minimal",
-            "off": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -163,6 +168,7 @@
             "input": 1.45,
             "output": 4.5
         },
+        "description": "Efficient GLM model for fast reasoning, coding, and agent workflows",
         "id": "glm-5.2-short-fast",
         "input": ["text"],
         "maxTokens": 199984,
@@ -170,13 +176,13 @@
         "provider": "neuralwatt",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "kimi-k2.6": {
@@ -193,6 +199,7 @@
             "input": 0.95,
             "output": 4.0
         },
+        "description": "Kimi multimodal agent model for visual understanding, coding, and planning",
         "id": "kimi-k2.6",
         "input": ["text", "image", "video"],
         "maxTokens": 32768,
@@ -205,8 +212,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "kimi-k2.6-fast": {
@@ -223,6 +230,7 @@
             "input": 0.69,
             "output": 3.22
         },
+        "description": "Kimi multimodal agent model for visual understanding, coding, and planning",
         "id": "kimi-k2.6-fast",
         "input": ["text", "image"],
         "maxTokens": 262128,
@@ -230,13 +238,13 @@
         "provider": "neuralwatt",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "kimi-k2.7-code": {
@@ -253,6 +261,7 @@
             "input": 0.95,
             "output": 3.9995
         },
+        "description": "Coding-focused Kimi model, stronger on long-horizon repo work with less overthinking",
         "id": "kimi-k2.7-code",
         "input": ["text", "image", "video"],
         "maxTokens": 32768,
@@ -265,8 +274,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "kimi-k2.7-code-fast": {
@@ -288,15 +297,15 @@
         "maxTokens": 65536,
         "name": "Kimi K2.7 Code Fast",
         "provider": "neuralwatt",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen3.5-397b": {
@@ -325,8 +334,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen3.5-397b-fast": {
@@ -343,6 +352,7 @@
             "input": 0.69,
             "output": 4.14
         },
+        "description": "Efficient Qwen model for fast chat, extraction, and high-volume workloads",
         "id": "qwen3.5-397b-fast",
         "input": ["text"],
         "maxTokens": 262128,
@@ -350,13 +360,13 @@
         "provider": "neuralwatt",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen3.6-35b": {
@@ -373,6 +383,7 @@
             "input": 0.15,
             "output": 0.5
         },
+        "description": "Open multimodal Qwen MoE for local agents that need vision, audio, and code",
         "id": "qwen3.6-35b",
         "input": ["text", "image"],
         "maxTokens": 32768,
@@ -385,7 +396,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -403,6 +414,7 @@
             "input": 0.29,
             "output": 1.15
         },
+        "description": "Efficient model for low-latency assistance, extraction, and routine automation",
         "id": "qwen3.6-35b-fast",
         "input": ["text", "image"],
         "maxTokens": 131056,
@@ -410,13 +422,13 @@
         "provider": "neuralwatt",
         "reasoning": false,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     }
 }

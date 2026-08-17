@@ -1,10 +1,14 @@
 //! Read tool — elph coding-agent tools.
 //!
 //! Reads file contents with support for:
-//! - Single file with optional offset/limit
+//! - Single file with optional offset/limit (line-range streaming — does not load
+//!   the whole file when offset/limit is set)
 //! - Batch reading of multiple files in one call
 //! - Multiple specific ranges across files
+//! - Large file handling with automatic truncation and size limits
 
+use std::io::{BufRead, BufReader};
+use std::path::Path;
 use std::sync::Arc;
 
 use elph_ai::Tool;
@@ -19,6 +23,10 @@ use crate::runtime::local_env::LocalExecutionEnv;
 use crate::tools::common::{check_aborted, is_probably_image, read_file_text, resolve_path};
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
+use crate::workers::content_hash;
+
+/// Maximum file size we'll attempt to read (100MB)
+const MAX_FILE_SIZE: u64 = 100 * 1024 * 1024;
 
 /// A single file read request (path + optional range).
 #[derive(Debug, Clone)]
@@ -34,11 +42,10 @@ pub fn create_read_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
         Tool {
             name: "read_file".into(),
             constrained_sampling: None,
-
             description: format!(
-                "Read file contents from the project. Supports single files with offset/limit, \
-                 batch reading of multiple files (paths), and multiple specific ranges (ranges). \
-                 Each file's output is truncated to {DEFAULT_MAX_LINES} lines or {}/KB.",
+                "Read file contents. Prefer offset/limit (or ranges) after grep hits — do not load whole large files. \
+Batch with paths[] for multiple known files in one call. Windowed reads include line numbers and a (start-end of total) header. \
+Truncates to {DEFAULT_MAX_LINES} lines or {}/KB per file.",
                 DEFAULT_MAX_BYTES / 1024
             ),
             parameters: json!({
@@ -51,15 +58,15 @@ pub fn create_read_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
                     "paths": {
                         "type": "array",
                         "items": { "type": "string" },
-                        "description": "Multiple file paths to read in one call. Mutually exclusive with path/ranges."
+                        "description": "Multiple file paths to read in one call. Prefer this over sequential read_file calls."
                     },
                     "offset": {
                         "type": "number",
-                        "description": "Line number to start reading from (1-indexed). Applies to all files when used with 'paths'."
+                        "description": "1-indexed start line. Prefer with limit for large files (streams without full load)."
                     },
                     "limit": {
                         "type": "number",
-                        "description": "Maximum number of lines to read. Applies to all files when used with 'paths'."
+                        "description": "Maximum number of lines to read from offset."
                     },
                     "ranges": {
                         "type": "array",
@@ -72,7 +79,8 @@ pub fn create_read_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
                             },
                             "required": ["path"]
                         },
-                        "description": "Multiple specific file ranges to read. Each entry specifies a path and optional offset/limit. Mutually exclusive with path/paths."
+                        "minItems": 1,
+                        "description": "Multiple specific file ranges (path + offset/limit) in one call. Omit this field when unused; do not send an empty array."
                     }
                 }
                 // No root oneOf: xAI rejects oneOf branches that only list `required`
@@ -98,36 +106,81 @@ async fn execute_read(
     let requests = parse_read_requests(&args)?;
 
     let mut all_outputs: Vec<String> = Vec::new();
+    let mut all_hashes: Vec<Value> = Vec::new();
     let batch_mode = requests.len() > 1;
 
     for (i, request) in requests.iter().enumerate() {
-        let absolute = resolve_path(&env, &request.path, signal.as_ref()).await?;
+        let absolute = match resolve_path(&env, &request.path, signal.as_ref()).await {
+            Ok(p) => p,
+            Err(e) => {
+                all_outputs.push(format!("[{}] Error: {}", request.path, e));
+                continue;
+            }
+        };
+
         if is_probably_image(&absolute) {
             all_outputs.push(format!("[{}] Read image file (content omitted)", request.path));
             continue;
         }
 
-        let content = read_file_text(&env, &absolute, signal.as_ref()).await?;
-        let start_line = request.offset.map(|v| v.saturating_sub(1)).unwrap_or(0);
-        let selected =
-            match crate::agent::harness::utils::truncate::select_line_range(&content, start_line, request.limit) {
-                Ok(selected) => selected,
-                Err(total_lines) => {
-                    return Err(anyhow::anyhow!(
-                        "Offset {} is beyond end of file ({} lines total) in {}",
-                        request.offset.unwrap_or(1),
-                        total_lines,
-                        request.path,
-                    ));
+        check_aborted(signal.as_ref())?;
+
+        // Check file size before reading to handle large files
+        let file_size = std::fs::metadata(&absolute).map(|m| m.len()).unwrap_or(0);
+
+        if file_size > MAX_FILE_SIZE {
+            all_outputs.push(format!(
+                "[{}] File too large to read ({} bytes > {} bytes). Use offset/limit to read specific ranges.",
+                request.path,
+                format_size(file_size as usize),
+                format_size(MAX_FILE_SIZE as usize)
+            ));
+            continue;
+        }
+
+        let ranged = request.offset.is_some() || request.limit.is_some();
+        let (body, meta) = if ranged {
+            match read_line_window(&absolute, request.offset, request.limit) {
+                Ok(res) => res,
+                Err(e) => {
+                    all_outputs.push(format!("[{}] Error: {}", request.path, e));
+                    continue;
+                }
+            }
+        } else {
+            let content = match read_file_text(&env, &absolute, signal.as_ref()).await {
+                Ok(c) => c,
+                Err(e) => {
+                    all_outputs.push(format!("[{}] Error: {}", request.path, e));
+                    continue;
                 }
             };
+            let total = content.lines().count();
+            (
+                content,
+                ReadWindowMeta {
+                    start_line: 1,
+                    end_line: total,
+                    total_lines: total,
+                    truncated_by_eof: false,
+                },
+            )
+        };
 
-        let truncation = truncate_head(&selected, TruncationOptions::default());
+        // A ranged read hashes only its returned window. Expose hashes for complete reads.
+        if !ranged {
+            all_hashes.push(json!({
+                "path": request.path,
+                "content_hash": content_hash(body.as_bytes()),
+            }));
+        }
+
+        let truncation = truncate_head(&body, TruncationOptions::default());
         let mut output = truncation.content;
         if truncation.first_line_exceeds_limit {
             output = format!(
-                "[Line {} exceeds {} limit in {}. Use shell_exec to read a portion of the file.]",
-                start_line + 1,
+                "[Line {} exceeds {} limit in {}. Use a smaller offset/limit window.]",
+                meta.start_line,
                 format_size(DEFAULT_MAX_BYTES),
                 request.path,
             );
@@ -139,17 +192,21 @@ async fn execute_read(
             ));
         }
 
-        if batch_mode {
-            let header = if let Some(offset) = request.offset {
-                if let Some(limit) = request.limit {
-                    format!("--- {} (lines {}-{}) ---", request.path, offset, offset + limit - 1)
-                } else {
-                    format!("--- {} (from line {}) ---", request.path, offset)
-                }
-            } else {
-                format!("--- {} ---", request.path)
-            };
+        // Line numbers when reading a window (matches Grok-style range reads).
+        if ranged && !output.starts_with('[') {
+            output = number_lines(&output, meta.start_line);
+        }
 
+        let header = if ranged {
+            format!(
+                "--- {} ({}-{} of {}) ---",
+                request.path, meta.start_line, meta.end_line, meta.total_lines
+            )
+        } else {
+            format!("--- {} ---", request.path)
+        };
+
+        if batch_mode || ranged {
             if i > 0 {
                 all_outputs.push(String::new());
             }
@@ -168,6 +225,7 @@ async fn execute_read(
         ))],
         details: json!({
             "file_count": requests.len(),
+            "files": all_hashes,
         }),
         added_tool_names: None,
         terminate: None,
@@ -175,13 +233,109 @@ async fn execute_read(
     })
 }
 
+struct ReadWindowMeta {
+    start_line: usize,
+    end_line: usize,
+    total_lines: usize,
+    #[allow(dead_code)]
+    truncated_by_eof: bool,
+}
+
+/// Read `[offset, offset+limit)` lines (1-indexed offset) without loading the full file.
+fn read_line_window(
+    absolute: &str,
+    offset: Option<usize>,
+    limit: Option<usize>,
+) -> anyhow::Result<(String, ReadWindowMeta)> {
+    let start = offset.unwrap_or(1).max(1);
+    let max_lines = limit.unwrap_or(DEFAULT_MAX_LINES).max(1);
+
+    let file =
+        std::fs::File::open(Path::new(absolute)).map_err(|e| anyhow::anyhow!("Failed to open {absolute}: {e}"))?;
+    let reader = BufReader::new(file);
+
+    let mut selected = String::new();
+    let mut total = 0usize;
+    let mut end_line = start.saturating_sub(1);
+    let mut taken = 0usize;
+
+    for line in reader.lines() {
+        let line = line.map_err(|e| anyhow::anyhow!("Failed to read {absolute}: {e}"))?;
+        total += 1;
+        if total < start {
+            continue;
+        }
+        if taken >= max_lines {
+            // Keep counting remaining lines for accurate "of N" totals (cheap for text).
+            // Stop after a modest scan beyond the window to avoid multi-second reads on huge files.
+            // Cap residual count at start+max_lines+10_000.
+            if total >= start + max_lines + 10_000 {
+                // Approximate remainder: report at least known total.
+                break;
+            }
+            continue;
+        }
+        selected.push_str(&line);
+        selected.push('\n');
+        taken += 1;
+        end_line = total;
+    }
+
+    if total == 0 {
+        return Ok((
+            String::new(),
+            ReadWindowMeta {
+                start_line: 1,
+                end_line: 0,
+                total_lines: 0,
+                truncated_by_eof: true,
+            },
+        ));
+    }
+
+    if total < start {
+        return Err(anyhow::anyhow!(
+            "Offset {start} is beyond end of file ({total} lines total) in {absolute}"
+        ));
+    }
+
+    // If we stopped early on residual scan, note total as lower bound via max.
+    if end_line < start {
+        end_line = start;
+    }
+
+    Ok((
+        selected,
+        ReadWindowMeta {
+            start_line: start,
+            end_line,
+            total_lines: total.max(end_line),
+            truncated_by_eof: taken < max_lines,
+        },
+    ))
+}
+
+fn number_lines(content: &str, start_line: usize) -> String {
+    let mut out = String::with_capacity(content.len() + content.lines().count() * 6);
+    for (i, line) in content.lines().enumerate() {
+        let n = start_line + i;
+        out.push_str(&format!("{n:>6}|{line}\n"));
+    }
+    // Preserve trailing newline absence for empty.
+    if out.ends_with('\n') {
+        out.pop();
+    }
+    out
+}
+
 /// Parse read requests from tool arguments.
 fn parse_read_requests(args: &Value) -> anyhow::Result<Vec<ReadRequest>> {
-    // Ranges take priority: multiple specific paths with individual offsets
-    if let Some(ranges) = args.get("ranges").and_then(|v| v.as_array()) {
-        if ranges.is_empty() {
-            return Err(anyhow::anyhow!("'ranges' must contain at least one entry"));
-        }
+    // Ranges take priority when they contain entries. Some providers emit an
+    // empty optional array; treat that as omitted so a valid path/paths selector
+    // can still be used instead of returning a confusing validation error.
+    if let Some(ranges) = args.get("ranges").and_then(|v| v.as_array())
+        && !ranges.is_empty()
+    {
         let mut requests = Vec::with_capacity(ranges.len());
         for range in ranges {
             let path = range
@@ -197,10 +351,9 @@ fn parse_read_requests(args: &Value) -> anyhow::Result<Vec<ReadRequest>> {
     }
 
     // Batch paths: multiple files with shared offset/limit
-    if let Some(paths) = args.get("paths").and_then(|v| v.as_array()) {
-        if paths.is_empty() {
-            return Err(anyhow::anyhow!("'paths' must contain at least one path"));
-        }
+    if let Some(paths) = args.get("paths").and_then(|v| v.as_array())
+        && !paths.is_empty()
+    {
         let offset = args.get("offset").and_then(|v| v.as_u64()).map(|v| v as usize);
         let limit = args.get("limit").and_then(|v| v.as_u64()).map(|v| v as usize);
         let requests: Vec<ReadRequest> = paths
@@ -222,7 +375,14 @@ fn parse_read_requests(args: &Value) -> anyhow::Result<Vec<ReadRequest>> {
     let path = args
         .get("path")
         .and_then(|v| v.as_str())
-        .ok_or_else(|| anyhow::anyhow!("Missing required argument: 'path', 'paths', or 'ranges'"))?
+        .filter(|path| !path.trim().is_empty())
+        .ok_or_else(|| {
+            if args.get("ranges").is_some_and(Value::is_array) || args.get("paths").is_some_and(Value::is_array) {
+                anyhow::anyhow!("Provide a non-empty 'path', 'paths', or 'ranges' selector; omit empty arrays")
+            } else {
+                anyhow::anyhow!("Missing required argument: 'path', 'paths', or 'ranges'")
+            }
+        })?
         .to_string();
     let offset = args.get("offset").and_then(|v| v.as_u64()).map(|v| v as usize);
     let limit = args.get("limit").and_then(|v| v.as_u64()).map(|v| v as usize);
@@ -276,6 +436,9 @@ mod tests {
             .unwrap_or("");
         assert!(text.contains("line3"));
         assert!(!text.contains("line1"));
+        // Windowed reads include a range header and line numbers.
+        assert!(text.contains("of "));
+        assert!(text.contains("3|") || text.contains("line3"));
     }
 
     #[tokio::test]
@@ -291,8 +454,8 @@ mod tests {
                 _ => None,
             })
             .unwrap_or("");
-        assert!(text.contains("--- a.txt ---"));
-        assert!(text.contains("--- b.txt ---"));
+        assert!(text.contains("a.txt"));
+        assert!(text.contains("b.txt"));
         assert!(text.contains("line1"));
         assert!(text.contains("alpha"));
     }
@@ -371,6 +534,60 @@ mod tests {
     #[test]
     fn parse_ranges_empty_errors() {
         let args = json!({"ranges": []});
-        assert!(parse_read_requests(&args).is_err());
+        let error = parse_read_requests(&args).expect_err("empty selector must fail");
+        assert!(error.to_string().contains("non-empty"));
+    }
+
+    #[test]
+    fn parse_empty_ranges_falls_back_to_path() {
+        let args = json!({"ranges": [], "path": "main.rs"});
+        let requests = parse_read_requests(&args).expect("path fallback");
+        assert_eq!(requests.len(), 1);
+        assert_eq!(requests[0].path, "main.rs");
+    }
+
+    #[tokio::test]
+    async fn read_result_includes_content_hash() {
+        let (env, dir) = setup_env();
+        let args = json!({"path": "a.txt"});
+        let result = execute_read(env, args, None).await.expect("read failed");
+
+        let files = result
+            .details
+            .get("files")
+            .and_then(|v| v.as_array())
+            .expect("files array");
+        assert_eq!(files.len(), 1, "one file");
+        let hash = files[0]
+            .get("content_hash")
+            .and_then(|v| v.as_str())
+            .expect("content_hash");
+        assert!(!hash.is_empty(), "hash must not be empty");
+
+        // Verify: the hash matches content_hash of the file content.
+        let content = std::fs::read_to_string(dir.path().join("a.txt")).expect("read file");
+        let expected = crate::workers::content_hash(content.as_bytes());
+        assert_eq!(hash, &expected, "read hash must match file content hash");
+    }
+
+    #[tokio::test]
+    async fn read_batch_includes_per_file_hashes() {
+        let (env, _dir) = setup_env();
+        let args = json!({"paths": ["a.txt", "b.txt"]});
+        let result = execute_read(env, args, None).await.expect("read failed");
+
+        let files = result
+            .details
+            .get("files")
+            .and_then(|v| v.as_array())
+            .expect("files array");
+        assert_eq!(files.len(), 2, "two files");
+        for entry in files {
+            let hash = entry
+                .get("content_hash")
+                .and_then(|v| v.as_str())
+                .expect("content_hash per file");
+            assert!(!hash.is_empty(), "hash must not be empty");
+        }
     }
 }

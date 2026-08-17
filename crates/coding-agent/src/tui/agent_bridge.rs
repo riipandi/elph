@@ -171,27 +171,8 @@ impl SlashDispatcher {
                         log::error!("skill dispatch failed ({name}): {err}");
                     }
                 }
-                SlashDispatch::NewSession
-                | SlashDispatch::Continue
-                | SlashDispatch::Quit
-                | SlashDispatch::Help
-                | SlashDispatch::Tools { .. }
-                | SlashDispatch::SystemPrompt
-                | SlashDispatch::SessionInfo
-                | SlashDispatch::Rename { .. }
-                | SlashDispatch::Confetti { .. }
-                | SlashDispatch::Feedback
-                | SlashDispatch::ProviderConnect { .. }
-                | SlashDispatch::ProviderDisconnect { .. }
-                | SlashDispatch::ProviderList
-                | SlashDispatch::ProviderUpdate { .. }
-                | SlashDispatch::McpAuth { .. }
-                | SlashDispatch::McpLogout { .. }
-                | SlashDispatch::McpList
-                | SlashDispatch::Handover { .. }
-                | SlashDispatch::Unimplemented(_)
-                | SlashDispatch::OverlayNeeded(_)
-                | SlashDispatch::Memory { .. } => {}
+                // TUI-only / informational dispatch — never sent through this bridge.
+                _ => {}
             }
         });
     }
@@ -497,9 +478,16 @@ impl TranscriptEventApplier {
             | AgentUiEvent::ModeChangeRequired(_)
             | AgentUiEvent::QueueUpdate { .. }
             | AgentUiEvent::MemoryResult(_)
+            | AgentUiEvent::AsideStarted { .. }
+            | AgentUiEvent::AsideFinished { .. }
+            | AgentUiEvent::AsideFailed { .. }
+            | AgentUiEvent::WorkerInboxReceived { .. }
+            | AgentUiEvent::WorkerInboxSent { .. }
+            | AgentUiEvent::WorkerInboxUpdated
             | AgentUiEvent::UserPromptCommitted { .. }
             | AgentUiEvent::RetryablePrompt(_)
-            | AgentUiEvent::Retrying { .. } => false,
+            | AgentUiEvent::Retrying { .. }
+            | AgentUiEvent::TodoUpdated { .. } => false,
             // ToolApprovalRequired is handled in shell (must respond on response_tx).
             AgentUiEvent::ToolApprovalRequired(_) => false,
         }
@@ -641,7 +629,8 @@ impl TranscriptEventApplier {
 
         let indent = subagent_status_indent(agent_path);
         let style = match phase {
-            SubagentUiPhase::Pending | SubagentUiPhase::Running => TranscriptStyle::StatusRunning,
+            SubagentUiPhase::Pending => TranscriptStyle::StatusRunning, // Show as running while pending
+            SubagentUiPhase::Running => TranscriptStyle::StatusRunning,
             SubagentUiPhase::Idle | SubagentUiPhase::Done => TranscriptStyle::StatusSuccess,
             SubagentUiPhase::Error => TranscriptStyle::StatusFailed,
         };
@@ -752,8 +741,17 @@ impl TranscriptEventApplier {
             let new_len = last.content.len().saturating_add(cleaned.len());
             if new_len > ASSISTANT_STREAM_CAP && !last.content.is_empty() {
                 let drop = new_len.saturating_sub(ASSISTANT_STREAM_CAP / 2).min(last.content.len());
+                // Round down to a valid char boundary so we never slice mid-UTF-8.
+                let drop = last
+                    .content
+                    .char_indices()
+                    .map(|(i, _)| i)
+                    .chain(std::iter::once(last.content.len()))
+                    .take_while(|&i| i <= drop)
+                    .last()
+                    .unwrap_or(0);
                 let prefix = "\n[...stream truncated...]\n";
-                last.content = format!("{}{}", prefix, &last.content[drop..]);
+                last.content = format!("{prefix}{}", &last.content[drop..]);
             }
             last.content.push_str(&cleaned);
             return true;
@@ -831,6 +829,14 @@ impl TranscriptEventApplier {
             // Keep only the last TOOL_OUTPUT_STREAM_CAP - chunk_len bytes, prefixed with a marker.
             let drop = new_len.saturating_sub(TOOL_OUTPUT_STREAM_CAP).min(target.len());
             let prefix = "\n[...stream output truncated...]\n";
+            // Round down to a valid char boundary so we never slice mid-UTF-8.
+            let drop = target
+                .char_indices()
+                .map(|(i, _)| i)
+                .chain(std::iter::once(target.len()))
+                .take_while(|&i| i <= drop)
+                .last()
+                .unwrap_or(0);
             *target = format!("{prefix}{}", &target[drop..]);
         }
         target.push_str(output);
@@ -931,7 +937,15 @@ mod tests {
         let mut applier = TranscriptEventApplier::new(false, false);
         applier.apply(&mut messages, AgentUiEvent::TextDelta("Hi\n\n".into()));
         applier.apply(&mut messages, AgentUiEvent::TextDelta("Done.".into()));
-        assert!(applier.apply(&mut messages, AgentUiEvent::RunCompleted { elapsed_secs: 0.0 }));
+        assert!(applier.apply(
+            &mut messages,
+            AgentUiEvent::RunCompleted {
+                elapsed_secs: 0.0,
+                usage: None,
+                provider_id: None,
+                model_id: None
+            }
+        ));
         let markdown = messages[0].markdown.as_ref().expect("markdown buffer");
         assert!(markdown.stream_complete);
     }
@@ -1107,19 +1121,20 @@ mod tests {
         let mut messages = Vec::new();
         let mut applier = TranscriptEventApplier::new(false, false);
         // Compaction emits the running label (with the resolved model) as both a sticky notice and a Status.
-        assert!(applier.apply(
-            &mut messages,
-            AgentUiEvent::TranscriptNotice("Compacting history with openai/gpt-5.6-luna…".into())
-        ));
+        assert!(applier.apply(&mut messages, AgentUiEvent::TranscriptNotice("Compacting history…".into())));
         assert_eq!(messages.len(), 1);
         assert!(messages[0].sticky_meta);
         // A later Status with the same label must collapse into the sticky notice
-        // instead of adding a second transcript card.
+        // instead of adding a second transcript card. `/compact` sends the exact
+        // same running string through both channels (see `run_compact_with_notices`).
+        assert!(applier.apply(&mut messages, AgentUiEvent::Status("Compacting history…".into())));
+        assert_eq!(messages.len(), 1, "same-label Status must collapse into the sticky notice");
+        // A different-label status (e.g. progress detail) must not collapse and appends.
         assert!(applier.apply(
             &mut messages,
-            AgentUiEvent::Status("Compacting history with openai/gpt-5.6-luna…".into())
+            AgentUiEvent::Status("Compacting history with claude-sonnet…".into())
         ));
-        assert_eq!(messages.len(), 1, "same-label Status must collapse into the sticky notice");
+        assert_eq!(messages.len(), 2, "different-label Status appends a second card");
     }
 
     #[test]
@@ -1277,7 +1292,15 @@ mod tests {
         let mut applier = TranscriptEventApplier::new(false, false);
         applier.apply(&mut messages, AgentUiEvent::TextDelta("Done".into()));
         std::thread::sleep(std::time::Duration::from_millis(120));
-        applier.apply(&mut messages, AgentUiEvent::RunCompleted { elapsed_secs: 1.0 });
+        applier.apply(
+            &mut messages,
+            AgentUiEvent::RunCompleted {
+                elapsed_secs: 1.0,
+                usage: None,
+                provider_id: None,
+                model_id: None,
+            },
+        );
         assert!(messages[0].duration_secs.is_some_and(|secs| secs > 0.0));
     }
 
@@ -1319,7 +1342,15 @@ mod tests {
         );
 
         // Settle with no real content → nothing left to display (not a phantom blank box).
-        applier.apply(&mut messages, AgentUiEvent::RunCompleted { elapsed_secs: 0.4 });
+        applier.apply(
+            &mut messages,
+            AgentUiEvent::RunCompleted {
+                elapsed_secs: 0.4,
+                usage: None,
+                provider_id: None,
+                model_id: None,
+            },
+        );
         assert!(messages[0].duration_secs.is_some());
         assert!(messages[0].content.trim().is_empty());
         assert!(
@@ -1506,5 +1537,59 @@ mod tests {
         assert!(messages[0].content.contains("...stream truncated..."));
         // Tail (most recent bytes) is preserved, not the head.
         assert!(messages[0].content.ends_with(&long_delta[long_delta.len() / 2..]));
+    }
+
+    #[test]
+    fn assistant_stream_caps_skips_utf8_boundary() {
+        // Use a multi-byte Unicode char (─, 3 bytes) positioned so byte-slicing would hit mid-char.
+        let mut messages = Vec::new();
+        let mut applier = TranscriptEventApplier::new(false, false);
+        applier.apply(&mut messages, AgentUiEvent::TextDelta("start".into()));
+        let long_delta = "x".repeat(ASSISTANT_STREAM_CAP) + "─";
+        // This must not panic — the fix rounds drop down to a char boundary.
+        applier.apply(&mut messages, AgentUiEvent::TextDelta(long_delta));
+        assert!(messages[0].content.contains("...stream truncated..."));
+    }
+
+    #[test]
+    fn tool_update_stream_caps_skips_utf8_boundary() {
+        let mut messages = Vec::new();
+        let mut applier = TranscriptEventApplier::new(false, false);
+        applier.apply(
+            &mut messages,
+            AgentUiEvent::ToolStart {
+                id: "t1".into(),
+                name: "shell_exec".into(),
+                args_summary: r#"{"command":"echo"}"#.into(),
+                user_shell: false,
+            },
+        );
+        // Seed target so !target.is_empty() and the cap triggers on the next update.
+        applier.apply(
+            &mut messages,
+            AgentUiEvent::ToolUpdate {
+                id: "t1".into(),
+                output: "seed\n".into(),
+            },
+        );
+        // Now send enough to exceed the cap; end with a multi-byte char so byte-slicing
+        // would hit mid-UTF-8 without the boundary fix.
+        let prefix = "a".repeat(TOOL_OUTPUT_STREAM_CAP + 100);
+        applier.apply(
+            &mut messages,
+            AgentUiEvent::ToolUpdate {
+                id: "t1".into(),
+                output: prefix + "─",
+            },
+        );
+        // Must not panic — the fix rounds drop down to a char boundary.
+        assert!(
+            messages[0]
+                .tool
+                .as_ref()
+                .unwrap()
+                .output
+                .contains("...stream output truncated...")
+        );
     }
 }

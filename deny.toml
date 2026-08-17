@@ -1,0 +1,74 @@
+# cargo-deny configuration — permissive + weak copyleft license policy.
+# Allows permissive licenses and MPL-2.0 (weak copyleft).
+# Strong copyleft (GPL, AGPL, LGPL) is disallowed.
+
+[advisories]
+# Advisory audit is handled by `cargo audit`; deny only checks license/ban/source.
+ignore = []
+
+[licenses]
+version = 2
+
+# Permissive + weak copyleft licenses.
+# Permissive: MIT, Apache-2.0, ISC, BSD-2/3-Clause, Unicode-3.0, Zlib, 0BSD,
+#             BSL-1.0, MIT-0, CC0-1.0, CDLA-Permissive-2.0, NCSA,
+#             Apache-2.0 WITH LLVM-exception
+# Weak copyleft: MPL-2.0
+# Exception: LicenseRef-proprietary for intel-mkl-src
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "ISC",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "Unicode-3.0",
+    "Zlib",
+    "0BSD",
+    "BSL-1.0",
+    "MIT-0",
+    "CC0-1.0",
+    "CDLA-Permissive-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "NCSA",
+    "MPL-2.0",
+    "LicenseRef-proprietary",
+]
+
+# Confidence threshold for auto-detection (0.0–1.0).
+confidence-threshold = 0.8
+
+# Clarify unlicensed crates that have no license field in their manifest.
+# These are transitive deps we can't control.
+[[licenses.clarify]]
+crate = "intel-mkl-src"
+expression = "LicenseRef-proprietary"
+license-files = [
+    { path = "License.txt", hash = 0x3bf8c2d0 },
+]
+
+[[licenses.clarify]]
+crate = "cfg_block"
+expression = "MIT"
+license-files = [
+    { path = "LICENSE", hash = 0x00000001 },
+]
+
+[[licenses.clarify]]
+crate = "model2vec-rs"
+expression = "MIT"
+license-files = [
+    { path = "LICENSE", hash = 0x00000002 },
+]
+
+[bans]
+# Deny duplicate major versions of the same crate.
+multiple-versions = "warn"
+# Deny specific crates by name (not commonly needed).
+deny = []
+
+[sources]
+# Only allow crates from crates.io.
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

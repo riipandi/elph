@@ -1,6 +1,6 @@
 //! Build chat model catalogs from models.dev (origin) + Elph provider overlays.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::path::PathBuf;
 
@@ -10,7 +10,9 @@ use serde_json::Value;
 
 use super::models_dev::{default_cache_dir, find_model, find_model_fuzzy, load_models_dev, models_for_provider_keys};
 use super::normalize::{enrich_existing, from_models_dev};
-use super::pricing::{apply_cost, fetch_all_live_pricing, fetch_live_model_ids, resolve_cost};
+use super::pricing::{
+    aimd_reasoning, apply_cost, fetch_ai_model_directory, fetch_all_live_data, fetch_nara_pricing, resolve_cost,
+};
 use super::provider_sources::all_provider_sources;
 use super::term;
 
@@ -25,11 +27,23 @@ pub struct CatalogIndexEntry {
 
 pub struct ChatOptions {
     pub models_dir: PathBuf,
-    /// Checked so every catalog provider has a factory in `builtin_providers()`.
     pub builtin_rs: PathBuf,
     pub offline: bool,
     pub no_live_pricing: bool,
     pub force: bool,
+}
+
+/// Extract effort levels from live thinking data for a model.
+/// Returns None when the model has boolean reasoning but no discrete effort levels.
+fn live_efforts_for(
+    live: &HashMap<String, super::pricing::LiveProbeResult>,
+    provider_id: &str,
+    model_id: &str,
+) -> Option<Vec<String>> {
+    live.get(provider_id)
+        .and_then(|r| r.thinking.get(model_id))
+        .filter(|t| !t.supported_efforts.is_empty())
+        .map(|t| t.supported_efforts.clone())
 }
 
 pub fn generate_chat(options: ChatOptions) -> Result<()> {
@@ -37,35 +51,43 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
     fs::create_dir_all(&options.models_dir).context("create models output directory")?;
     let cache_dir = default_cache_dir(&options.models_dir);
     let models_dev = load_models_dev(&cache_dir, options.offline, options.force)?;
-    let live = fetch_all_live_pricing(options.no_live_pricing);
+    let mut live = fetch_all_live_data(options.no_live_pricing);
+    let aimd = fetch_ai_model_directory(&cache_dir, options.offline);
+    // Nara's /v1/models exposes no pricing; merge the official /api/pricing catalog
+    // (USD per million tokens) into the live map so resolve_cost picks it up first.
+    let nara_pricing = fetch_nara_pricing(&cache_dir, options.offline);
+    if !nara_pricing.is_empty() {
+        let nara_result = live.entry("nara-router".to_string()).or_default();
+        for (id, prices) in nara_pricing {
+            nara_result.pricing.insert(id, prices);
+        }
+    }
 
     let mut index: Vec<CatalogIndexEntry> = Vec::new();
     let mut total_models = 0usize;
     let mut maps_ok = 0usize;
     let mut maps_bad = 0usize;
 
+    let mut cost_live = 0usize;
+    let mut cost_mdev = 0usize;
+    let mut cost_aimd = 0usize;
+    let mut cost_prev = 0usize;
+    let mut cost_none = 0usize;
+
     term::header("providers");
     for src in all_provider_sources() {
         let rust_mod = src.id.replace('-', "_");
         let out_path = options.models_dir.join(format!("{rust_mod}.json"));
         let previous = load_previous_catalog(&out_path)?;
-
         let mut catalog = BTreeMap::new();
 
         if src.gateway_preserve_ids || models_for_provider_keys(&models_dev, src.models_dev_keys).is_none() {
-            // Gateway / Elph-only provider: keep existing model ids and enrich.
-            // When a live `/models` endpoint is configured (and the key is set),
-            // refresh the model id list so new upstream models appear.
             let prev_map = previous.as_ref().and_then(|v| v.as_object());
-            let live_ids = fetch_live_model_ids(src);
+            let live_ids = super::pricing::fetch_live_model_ids(src);
             if let Some(live_ids) = &live_ids {
                 term::live_pricing(src.id, live_ids.len());
             }
 
-            // Union of previous ids + live ids (new upstream models get a fresh entry).
-            // When a live `/models` endpoint is available, it is the source of
-            // truth: live ids replace the previous list so removed upstream
-            // models (and non-LLM entries) are dropped from the catalog.
             let mut ids: Vec<String> = Vec::new();
             if let Some(live_ids) = &live_ids {
                 ids.extend(live_ids.iter().cloned());
@@ -76,11 +98,22 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
             ids.dedup();
 
             if ids.is_empty() {
-                // No previous catalog and no live ids: fall back to models.dev list if any.
                 if let Some((_, mdev_models)) = models_for_provider_keys(&models_dev, src.models_dev_keys) {
                     for (mid, mdev) in mdev_models {
-                        let mut entry = from_models_dev(src, mid, mdev, None);
-                        let (i, o, cr, cw, _) = resolve_cost(src, mid, &models_dev, &live, None);
+                        let _live_map: HashMap<String, super::pricing::PriceTriple> = HashMap::new();
+                        let rich = models_dev.rich_model(src.id, mid);
+                        let aimd_reasoning = aimd_reasoning(&aimd, src.id, mid);
+                        let mut entry =
+                            from_models_dev(src, mid, mdev, None, None, rich, aimd_reasoning, Some(&models_dev));
+                        let (i, o, cr, cw, csrc) = resolve_cost(src, mid, &models_dev, &live, &aimd, None);
+                        tally_cost(
+                            csrc,
+                            &mut cost_live,
+                            &mut cost_mdev,
+                            &mut cost_aimd,
+                            &mut cost_prev,
+                            &mut cost_none,
+                        );
                         apply_cost(&mut entry, i, o, cr, cw);
                         tally_map(&entry, &mut maps_ok, &mut maps_bad);
                         catalog.insert(mid.clone(), entry);
@@ -96,26 +129,88 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
                 for mid in ids {
                     let prev_entry = prev_map.and_then(|m| m.get(&mid));
                     let prev_ref = prev_entry.unwrap_or(&Value::Null);
+                    let live_efforts = live_efforts_for(&live, src.id, &mid);
+                    let _live_map: HashMap<String, super::pricing::PriceTriple> =
+                        live.get(src.id).map(|r| r.pricing.clone()).unwrap_or_default();
+
+                    let rich = models_dev.rich_model(src.id, &mid);
+                    let aimd_reasoning = aimd_reasoning(&aimd, src.id, &mid);
                     let mut entry = if let Some(m) = find_model(&models_dev, src.models_dev_keys, &mid) {
-                        enrich_existing(src, &mid, prev_ref, Some(m))
+                        enrich_existing(
+                            src,
+                            &mid,
+                            prev_ref,
+                            Some(m),
+                            live_efforts.as_deref(),
+                            rich,
+                            aimd_reasoning,
+                            Some(&models_dev),
+                        )
                     } else if let Some((_, m)) = find_model_fuzzy(&models_dev, &mid) {
-                        enrich_existing(src, &mid, prev_ref, Some(&m))
+                        enrich_existing(
+                            src,
+                            &mid,
+                            prev_ref,
+                            Some(&m),
+                            live_efforts.as_deref(),
+                            rich,
+                            aimd_reasoning,
+                            Some(&models_dev),
+                        )
                     } else {
-                        enrich_existing(src, &mid, prev_ref, None)
+                        enrich_existing(
+                            src,
+                            &mid,
+                            prev_ref,
+                            None,
+                            live_efforts.as_deref(),
+                            rich,
+                            aimd_reasoning,
+                            Some(&models_dev),
+                        )
                     };
-                    let (i, o, cr, cw, _) = resolve_cost(src, &mid, &models_dev, &live, entry.get("cost"));
+                    let (i, o, cr, cw, csrc) = resolve_cost(src, &mid, &models_dev, &live, &aimd, entry.get("cost"));
+                    tally_cost(
+                        csrc,
+                        &mut cost_live,
+                        &mut cost_mdev,
+                        &mut cost_aimd,
+                        &mut cost_prev,
+                        &mut cost_none,
+                    );
                     apply_cost(&mut entry, i, o, cr, cw);
                     tally_map(&entry, &mut maps_ok, &mut maps_bad);
                     catalog.insert(mid.clone(), entry);
                 }
             }
         } else if let Some((_, mdev_models)) = models_for_provider_keys(&models_dev, src.models_dev_keys) {
-            // Origin: models.dev list
             let prev_map = previous.as_ref().and_then(|v| v.as_object());
+            let _live_map: HashMap<String, super::pricing::PriceTriple> =
+                live.get(src.id).map(|r| r.pricing.clone()).unwrap_or_default();
             for (mid, mdev) in mdev_models {
                 let prev = prev_map.and_then(|m| m.get(mid));
-                let mut entry = from_models_dev(src, mid, mdev, prev);
-                let (i, o, cr, cw, _) = resolve_cost(src, mid, &models_dev, &live, entry.get("cost"));
+                let live_efforts = live_efforts_for(&live, src.id, mid);
+                let rich = models_dev.rich_model(src.id, mid);
+                let aimd_reasoning = aimd_reasoning(&aimd, src.id, mid);
+                let mut entry = from_models_dev(
+                    src,
+                    mid,
+                    mdev,
+                    prev,
+                    live_efforts.as_deref(),
+                    rich,
+                    aimd_reasoning,
+                    Some(&models_dev),
+                );
+                let (i, o, cr, cw, csrc) = resolve_cost(src, mid, &models_dev, &live, &aimd, entry.get("cost"));
+                tally_cost(
+                    csrc,
+                    &mut cost_live,
+                    &mut cost_mdev,
+                    &mut cost_aimd,
+                    &mut cost_prev,
+                    &mut cost_none,
+                );
                 apply_cost(&mut entry, i, o, cr, cw);
                 tally_map(&entry, &mut maps_ok, &mut maps_bad);
                 catalog.insert(mid.clone(), entry);
@@ -160,6 +255,8 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
         bail!("{maps_bad} models missing complete thinkingLevelMap");
     }
 
+    term::cost_breakdown(cost_live, cost_mdev, cost_aimd, cost_prev, cost_none);
+
     verify_providers_registered(&index, &options.builtin_rs)?;
 
     Ok(())
@@ -187,94 +284,15 @@ fn tally_map(entry: &Value, ok: &mut usize, bad: &mut usize) {
     }
 }
 
-fn named_factory_provider_id(fn_name: &str) -> Option<&'static str> {
-    Some(match fn_name {
-        "amazon_bedrock_provider" => "amazon-bedrock",
-        "anthropic_provider" => "anthropic",
-        "cloudflare_ai_gateway_provider" => "cloudflare-ai-gateway",
-        "cloudflare_workers_ai_provider" => "cloudflare-workers-ai",
-        "fireworks_provider" => "fireworks",
-        "github_copilot_provider" => "github-copilot",
-        "google_vertex_provider" => "google-vertex",
-        "hyper_provider" => "hyper",
-        "infron_provider" => "infron",
-        "kimi_coding_provider" => "kimi-coding",
-        "mistral_provider" => "mistral",
-        "neuralwatt_provider" => "neuralwatt",
-        "nvidia_provider" => "nvidia",
-        "openai_provider" => "openai",
-        "openai_codex_provider" => "openai-codex",
-        "opencode_provider" => "opencode",
-        "opencode_go_provider" => "opencode-go",
-        "sumopod_provider" => "sumopod",
-        "wafer_provider" => "wafer",
-        "xai_provider" => "xai",
-        _ => return None,
-    })
-}
-
-/// Parse `builtin_providers()` body for registered provider ids.
-fn parse_registered_provider_ids(builtin_src: &str) -> Result<std::collections::BTreeSet<String>> {
-    use std::collections::BTreeSet;
-
-    let start = builtin_src
-        .find("pub fn builtin_providers()")
-        .context("builtin_providers() not found in providers/builtin.rs")?;
-    let after = &builtin_src[start..];
-    let body_start = after.find("vec![").context("builtin_providers vec![ not found")?;
-    let body = &after[body_start..];
-    // Take until the matching `]\n}` of the function is fragile; scan until we hit `    ]\n}`
-    // after the first vec. Use a simple depth-ish cut at the first `\n    ]\n` after vec![.
-    let end = body
-        .find("\n    ]")
-        .context("could not find end of builtin_providers vec")?;
-    let body = &body[..end];
-
-    let mut ids = BTreeSet::new();
-    // simple_provider!("id", ...)
-    for cap in regex_lite_simple_provider_ids(body) {
-        ids.insert(cap);
+/// Tally a resolved cost source tag into the running counters.
+fn tally_cost(src: &str, live: &mut usize, mdev: &mut usize, aimd: &mut usize, previous: &mut usize, none: &mut usize) {
+    match src {
+        "live-api" => *live += 1,
+        "models.dev" => *mdev += 1,
+        "ai-model-directory" => *aimd += 1,
+        "previous" => *previous += 1,
+        _ => *none += 1,
     }
-    // named factories: foo_provider()
-    for name in body.split_whitespace() {
-        let name = name.trim_end_matches([',', '(', ')']);
-        if name.ends_with("_provider")
-            && let Some(id) = named_factory_provider_id(name)
-        {
-            ids.insert(id.to_string());
-        }
-    }
-    // Also catch `openai_provider(),` style with no whitespace split issues
-    for line in body.lines() {
-        let trimmed = line.trim();
-        if let Some(name) = trimmed.strip_suffix("(),") {
-            if let Some(id) = named_factory_provider_id(name) {
-                ids.insert(id.to_string());
-            }
-        } else if let Some(name) = trimmed.strip_suffix("()")
-            && let Some(id) = named_factory_provider_id(name)
-        {
-            ids.insert(id.to_string());
-        }
-    }
-
-    Ok(ids)
-}
-
-fn regex_lite_simple_provider_ids(body: &str) -> Vec<String> {
-    let mut out = Vec::new();
-    let mut search = body;
-    while let Some(idx) = search.find("simple_provider!(") {
-        let after = &search[idx + "simple_provider!(".len()..];
-        let after = after.trim_start();
-        if let Some(rest) = after.strip_prefix('"')
-            && let Some(end) = rest.find('"')
-        {
-            out.push(rest[..end].to_string());
-        }
-        search = &search[idx + 1..];
-    }
-    out
 }
 
 fn verify_providers_registered(index: &[CatalogIndexEntry], builtin_rs: &std::path::Path) -> Result<()> {
@@ -308,4 +326,88 @@ fn verify_providers_registered(index: &[CatalogIndexEntry], builtin_rs: &std::pa
         catalog.len()
     ));
     Ok(())
+}
+
+fn named_factory_provider_id(fn_name: &str) -> Option<&'static str> {
+    Some(match fn_name {
+        "amazon_bedrock_provider" => "amazon-bedrock",
+        "anthropic_provider" => "anthropic",
+        "cloudflare_ai_gateway_provider" => "cloudflare-ai-gateway",
+        "cloudflare_workers_ai_provider" => "cloudflare-workers-ai",
+        "fireworks_provider" => "fireworks",
+        "github_copilot_provider" => "github-copilot",
+        "google_vertex_provider" => "google-vertex",
+        "hyper_provider" => "hyper",
+        "infron_provider" => "infron",
+        "kimi_coding_provider" => "kimi-coding",
+        "mistral_provider" => "mistral",
+        "neuralwatt_provider" => "neuralwatt",
+        "nvidia_provider" => "nvidia",
+        "openai_provider" => "openai",
+        "openai_codex_provider" => "openai-codex",
+        "opencode_provider" => "opencode",
+        "opencode_go_provider" => "opencode-go",
+        "sumopod_provider" => "sumopod",
+        "wafer_provider" => "wafer",
+        "xai_provider" => "xai",
+        _ => return None,
+    })
+}
+
+fn parse_registered_provider_ids(builtin_src: &str) -> Result<std::collections::BTreeSet<String>> {
+    use std::collections::BTreeSet;
+
+    let start = builtin_src
+        .find("pub fn builtin_providers()")
+        .context("builtin_providers() not found in providers/builtin.rs")?;
+    let after = &builtin_src[start..];
+    let body_start = after.find("vec![").context("builtin_providers vec![ not found")?;
+    let body = &after[body_start..];
+    let end = body
+        .find("\n    ]")
+        .context("could not find end of builtin_providers vec")?;
+    let body = &body[..end];
+
+    let mut ids = BTreeSet::new();
+    for cap in regex_lite_simple_provider_ids(body) {
+        ids.insert(cap);
+    }
+    for name in body.split_whitespace() {
+        let name = name.trim_end_matches([',', '(', ')']);
+        if name.ends_with("_provider")
+            && let Some(id) = named_factory_provider_id(name)
+        {
+            ids.insert(id.to_string());
+        }
+    }
+    for line in body.lines() {
+        let trimmed = line.trim();
+        if let Some(name) = trimmed.strip_suffix("(),") {
+            if let Some(id) = named_factory_provider_id(name) {
+                ids.insert(id.to_string());
+            }
+        } else if let Some(name) = trimmed.strip_suffix("()")
+            && let Some(id) = named_factory_provider_id(name)
+        {
+            ids.insert(id.to_string());
+        }
+    }
+
+    Ok(ids)
+}
+
+fn regex_lite_simple_provider_ids(body: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut search = body;
+    while let Some(idx) = search.find("simple_provider!(") {
+        let after = &search[idx + "simple_provider!(".len()..];
+        let after = after.trim_start();
+        if let Some(rest) = after.strip_prefix('"')
+            && let Some(end) = rest.find('"')
+        {
+            out.push(rest[..end].to_string());
+        }
+        search = &search[idx + 1..];
+    }
+    out
 }

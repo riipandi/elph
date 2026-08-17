@@ -64,12 +64,9 @@ pub async fn resolve_model(
         default_model_id.as_deref(),
     )?;
 
-    // Look up under the resolved provider only. Gateway model ids often contain `/`
-    // (e.g. `moonshotai/kimi-k3-free`); never re-interpret that as a different provider.
-    // Honors CONFIG_DIR/providers via install_providers_dir above.
-    let model =
-        get_builtin_model(&provider, &model_id).with_context(|| format!("Model not found: {provider}/{model_id}"))?;
-
+    // Gateway model ids often contain `/` (e.g. `moonshotai/kimi-k3-free`); never
+    // re-interpret that as a different provider. Lookup uses the live collection
+    // after OAuth plan filtering (see `pick_model_for_provider`).
     let credentials = load_credentials_from_auth_json(auth_store_path).await?;
     let mut mutable = elph_ai::builtin_models(Some(CreateModelsOptions {
         credentials: Some(Arc::new(credentials)),
@@ -79,17 +76,31 @@ pub async fn resolve_model(
     // merge their disk files during load).
     let overlays = elph_ai::custom_provider_catalogs();
     let overlay_stats = mutable.apply_model_overlays(&overlays);
+
+    // Lazily fill Copilot plan model ids for older auth.json entries, then filter
+    // the live catalog (Free/Student = auto / plan-available models only).
+    if let Some(Credential::OAuth(mut oauth)) = mutable.credentials().read("github-copilot").await {
+        let _ = elph_ai::ensure_copilot_available_model_ids(&mut oauth).await;
+        mutable.set_credential("github-copilot", Credential::OAuth(oauth)).await;
+    } else {
+        mutable.apply_oauth_model_filters().await;
+    }
+
     let models = mutable.into_arc();
     models
         .get_provider(&provider)
         .with_context(|| format!("Provider not registered in runtime models collection: {provider}"))?;
+
+    // Prefer plan-filtered models from the live collection over the full builtin catalog.
+    let model = pick_model_for_provider(&models, &provider, &model_id)
+        .with_context(|| format!("Model not found: {provider}/{model_id}"))?;
 
     // Auth is optional at bootstrap: revoked OAuth should not block the session.
     // First API call will surface a clear re-auth error; clear dead tokens from disk.
     match models.get_auth(&model).await {
         Ok(_) => {}
         Err(e) if matches!(e.code, elph_ai::ModelsErrorCode::OAuth) => {
-            log::warn!("OAuth unavailable for {provider}/{model_id}: {e}");
+            log::warn!("OAuth unavailable for {provider}/{}: {e}", model.id);
             if let Some(path) = auth_store_path {
                 let detail = e.to_string().to_ascii_lowercase();
                 if detail.contains("invalid_grant")
@@ -107,7 +118,7 @@ pub async fn resolve_model(
             }
         }
         Err(e) => {
-            return Err(e).with_context(|| format!("resolve auth for {provider}/{model_id}"));
+            return Err(e).with_context(|| format!("resolve auth for {provider}/{}", model.id));
         }
     }
 
@@ -122,6 +133,34 @@ pub async fn resolve_model(
         },
         overlay_stats,
     ))
+}
+
+/// Resolve a model from the live (possibly plan-filtered) collection.
+///
+/// For GitHub Copilot, if the requested id is not available on the plan, fall back to
+/// `auto`, then `gpt-5-mini`, then the first remaining model — Free/Student plans only
+/// support auto model selection (and a short plan list).
+fn pick_model_for_provider(models: &Models, provider: &str, model_id: &str) -> Option<Model> {
+    if let Some(m) = models.get_model(provider, model_id) {
+        return Some(m);
+    }
+    if provider == "github-copilot" {
+        for fallback in ["auto", "gpt-5-mini"] {
+            if let Some(m) = models.get_model(provider, fallback) {
+                log::warn!("Copilot model `{model_id}` is not available on this plan; using `{fallback}` instead");
+                return Some(m);
+            }
+        }
+        if let Some(m) = models.get_models(Some(provider)).into_iter().next() {
+            log::warn!(
+                "Copilot model `{model_id}` is not available on this plan; using `{}` instead",
+                m.id
+            );
+            return Some(m);
+        }
+    }
+    // Unfiltered builtin fallback (no OAuth plan list yet, or non-Copilot provider).
+    get_builtin_model(provider, model_id)
 }
 
 /// Try to load a plain JSON auth file (legacy format without sealed envelope).
@@ -230,6 +269,52 @@ async fn load_credentials_from_auth_json(auth_store_path: Option<&Path>) -> Resu
     }
 
     Ok(store)
+}
+
+/// Parse a single provider credential string into an in-memory [`Credential`].
+pub fn credential_from_auth_value(raw: &str) -> Option<Credential> {
+    if let Some(var_name) = raw.strip_prefix(elph_agent::ENV_REF_PREFIX) {
+        let mut env = ProviderEnv::new();
+        env.insert(var_name.to_string(), var_name.to_string());
+        return Some(Credential::ApiKey(ApiKeyCredential {
+            kind: "api_key".to_string(),
+            key: None,
+            env: Some(env),
+        }));
+    }
+    if raw.trim().starts_with('{')
+        && let Ok(oauth) = serde_json::from_str::<OAuthCredential>(raw)
+    {
+        return Some(Credential::OAuth(oauth));
+    }
+    if raw.is_empty() {
+        return None;
+    }
+    Some(Credential::ApiKey(ApiKeyCredential::new(raw.to_string())))
+}
+
+/// Load one provider credential from sealed/plain `auth.json` (if present).
+pub async fn load_single_credential_from_auth_json(
+    auth_store_path: &Path,
+    provider_id: &str,
+) -> Result<Option<Credential>> {
+    if !auth_store_path.exists() {
+        return Ok(None);
+    }
+    let file = match elph_agent::AuthStoreFile::load_from_path(auth_store_path).await {
+        Ok(f) => f,
+        Err(e) => {
+            log::warn!("auth store load failed ({}): {e}", auth_store_path.display());
+            match try_load_plain_json_auth(auth_store_path).await {
+                Some(f) => f,
+                None => return Ok(None),
+            }
+        }
+    };
+    let Some(raw) = file.get_provider_credential(provider_id) else {
+        return Ok(None);
+    };
+    Ok(credential_from_auth_value(raw))
 }
 
 #[cfg(test)]

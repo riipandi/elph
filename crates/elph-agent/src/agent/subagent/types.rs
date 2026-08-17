@@ -65,6 +65,9 @@ pub struct SubagentInfo {
     pub model: String,
     /// Output of the last completed turn (persisted + traced).
     pub output: SubagentOutput,
+    /// Creation timestamp in epoch milliseconds for health checks.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub created_at_ms: Option<i64>,
 }
 
 #[derive(Debug, Clone)]

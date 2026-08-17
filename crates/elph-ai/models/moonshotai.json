@@ -17,20 +17,23 @@
             "input": 0.6,
             "output": 2.5
         },
+        "description": "Kimi model for long-context chat, coding, and agentic reasoning",
         "id": "kimi-k2-0711-preview",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 16384,
         "name": "Kimi K2 0711",
         "provider": "moonshotai",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "kimi-k2-0905-preview": {
@@ -51,20 +54,23 @@
             "input": 0.6,
             "output": 2.5
         },
+        "description": "Kimi model for long-context chat, coding, and agentic reasoning",
         "id": "kimi-k2-0905-preview",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 262144,
         "name": "Kimi K2 0905",
         "provider": "moonshotai",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "kimi-k2-thinking": {
@@ -85,20 +91,23 @@
             "input": 0.6,
             "output": 2.5
         },
+        "description": "Thinking Kimi model for slower research passes, planning, and hard technical questions",
         "id": "kimi-k2-thinking",
         "input": ["text"],
+        "knowledgeCutoff": "2024-08",
         "maxTokens": 262144,
         "name": "Kimi K2 Thinking",
         "provider": "moonshotai",
         "reasoning": true,
+        "releaseDate": "2025-11-06",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "kimi-k2-thinking-turbo": {
@@ -119,20 +128,23 @@
             "input": 1.15,
             "output": 8.0
         },
+        "description": "Kimi reasoning model for long-horizon research, planning, and tool use",
         "id": "kimi-k2-thinking-turbo",
         "input": ["text"],
+        "knowledgeCutoff": "2024-08",
         "maxTokens": 262144,
         "name": "Kimi K2 Thinking Turbo",
         "provider": "moonshotai",
         "reasoning": true,
+        "releaseDate": "2025-11-06",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "kimi-k2-turbo-preview": {
@@ -153,20 +165,23 @@
             "input": 2.4,
             "output": 10.0
         },
+        "description": "Fast Kimi model for responsive chat, coding help, and agent loops",
         "id": "kimi-k2-turbo-preview",
         "input": ["text"],
+        "knowledgeCutoff": "",
         "maxTokens": 262144,
         "name": "Kimi K2 Turbo",
         "provider": "moonshotai",
         "reasoning": false,
+        "releaseDate": "",
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "kimi-k2.5": {
@@ -187,20 +202,23 @@
             "input": 0.6,
             "output": 3.0
         },
+        "description": "Earlier Kimi frontier model for long-context agents, coding, and multimodal work",
         "id": "kimi-k2.5",
         "input": ["text", "image", "video"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 262144,
         "name": "Kimi K2.5",
         "provider": "moonshotai",
         "reasoning": true,
+        "releaseDate": "2026-01",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "kimi-k2.6": {
@@ -221,20 +239,23 @@
             "input": 0.95,
             "output": 4.0
         },
+        "description": "Multimodal Kimi workhorse for agent loops, coding tasks, and visual context",
         "id": "kimi-k2.6",
         "input": ["text", "image", "video"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 262144,
         "name": "Kimi K2.6",
         "provider": "moonshotai",
         "reasoning": true,
+        "releaseDate": "2026-04-21",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "kimi-k2.7-code": {
@@ -255,20 +276,23 @@
             "input": 0.95,
             "output": 4.0
         },
+        "description": "Coding-focused Kimi model, stronger on long-horizon repo work with less overthinking",
         "id": "kimi-k2.7-code",
         "input": ["text", "image", "video"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 262144,
         "name": "Kimi K2.7 Code",
         "provider": "moonshotai",
         "reasoning": true,
+        "releaseDate": "2026-06-12",
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "kimi-k2.7-code-highspeed": {
@@ -289,20 +313,23 @@
             "input": 1.9,
             "output": 8.0
         },
+        "description": "Coding-focused Kimi model, stronger on long-horizon repo work with less overthinking",
         "id": "kimi-k2.7-code-highspeed",
         "input": ["text", "image", "video"],
+        "knowledgeCutoff": "2025-01",
         "maxTokens": 262144,
         "name": "Kimi K2.7 Code HighSpeed",
         "provider": "moonshotai",
         "reasoning": true,
+        "releaseDate": "2026-06-12",
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "kimi-k3": {
@@ -325,12 +352,15 @@
             "input": 3.0,
             "output": 15.0
         },
+        "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
         "id": "kimi-k3",
         "input": ["text", "image", "video"],
+        "knowledgeCutoff": "",
         "maxTokens": 131072,
         "name": "Kimi K3",
         "provider": "moonshotai",
         "reasoning": true,
+        "releaseDate": "2026-07-16",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",

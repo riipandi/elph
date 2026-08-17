@@ -10,7 +10,7 @@ pub mod migration;
 pub mod paths;
 pub mod util;
 
-pub use db::{open_local_db, with_local_db};
+pub use db::{is_lock_err, is_open_retryable, open_local_db, with_local_db};
 pub use embed::{DEFAULT_EMBED_MODEL, EmbedFn, EmbedFuture, EmbedOptions, create_embedder, noop_embedder};
 #[cfg(feature = "embed")]
 pub use embed::{ResolvedEmbeddingModel, embedding_dims, resolve_embedding_model};

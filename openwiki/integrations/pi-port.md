@@ -162,6 +162,10 @@ From `docs/porting/pi-agent.md`, `docs/porting/pi-ai.md`, and recent git history
 | `BeforeToolCallResult.terminate`          | P2       | [Closed] | `f398e03` — before-hook path feeds batch early-termination                                                                                                  |
 | `Agent.reset()` idle-guard                | P2       | [Closed] | Sprint 8 — `Result` return; bails if run in flight                                                                                                          |
 | pi-agent v4 lane-based session model      | P1       | [Open]   | [Architectural] — pi v0.84.0 rewrites session layer with lanes, durable operation records, shared sequence numbers. Deferred pending architecture decision. |
+| Headless mode parity                      | P2       | [Closed] | `0c73d8d` — `elph run` with `--output=plain/pretty/json/stream-json/stream-message-json`                                                                    |
+| Session persistence (turns, todos, GC)    | P2       | [Closed] | `2ce555b` — `TurnStore`, `TodoStore`, `RetentionPolicy`, `run_session_gc()`                                                                                 |
+| Handover (Claude + Codex)                 | P2       | [Closed] | `92c17da`, `601eebf` — inert transcript, bounded reads, safety boundary                                                                                     |
+| Subagent output durability                | P2       | [Closed] | `951fea9` — `SubagentOutput`, `TurnGuard`, `wait_agent_for_output()`                                                                                        |
 
 ## Elph-Only Extensions
 

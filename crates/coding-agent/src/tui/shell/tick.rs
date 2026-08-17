@@ -55,6 +55,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         mut messages_revision,
         mut messages_revision_for_tick,
         mut new_session_requested,
+        mut resume_session_requested,
         mut palette_refresh_pending,
         paths,
         mut pending_confetti,
@@ -66,6 +67,10 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         mut pending_provider_disconnect_for_tick,
         mut pending_quit_confirm,
         mut pending_system_prompt,
+        mut pending_aside,
+        mut aside_tick,
+        mut pending_worker_chat,
+        mut worker_pending_count,
         mut pending_tool_approval,
         mut pending_transcript_notice_expires,
         mut pending_user_question,
@@ -98,9 +103,12 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         mut transcript_pending,
         mut turn_cancel_requested,
         mut turn_token_tracker,
+        mut last_turn_stats,
+        turn_stats_enabled,
         mut ui_events_slot,
         mut user_shell_abort,
         mut user_shell_channel,
+        mut todos,
         mut thinking_level,
         pending_subagent_output,
         ..
@@ -196,10 +204,18 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         // (which runs on the next agent event) does not overwrite them.
         *messages_arc_inner.write().unwrap() = messages.read().clone();
 
-        // Handle `/new` command: reload resources, create fresh bootstrap config (resume_id: None),
-        // and restart the bootstrap worker — all without exiting the TUI.
-        if *new_session_requested.read() {
+        // Handle `/new` and `/resume <id>`: reload resources + restart bootstrap without exiting TUI.
+        let resume_id_req = resume_session_requested.read().clone();
+        let want_new = *new_session_requested.read();
+        if want_new || resume_id_req.is_some() {
             *new_session_requested.write() = false;
+            *resume_session_requested.write() = None;
+
+            // Capture the outgoing session id before we drop the slot — if it never
+            // produced a turn, delete the empty record so `/new` does not litter the
+            // project store with blank sessions.
+            let outgoing_session = agent_session_slot.read().clone();
+            let outgoing_id = outgoing_session.as_ref().map(|s| s.session_id().to_string());
 
             let paths_for_load = paths.read().clone();
             let cwd_for_load = cwd_for_loop.clone();
@@ -208,7 +224,6 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 let env = Arc::new(LocalExecutionEnv::new(&cwd_for_load));
                 let loaded = load_resources(&paths_for_load, &cwd_for_load, &env).await;
 
-                // Update palette data from fresh resources
                 let new_templates = loaded.resources.prompt_templates.clone();
                 let new_skills = loaded.resources.skills.clone();
                 prompt_templates.set(new_templates);
@@ -223,24 +238,36 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     ));
                 }
 
-                // Create a fresh bootstrap config with no resume_id (forces a new session).
-                // Boot on the model last used in this project, same as a fresh startup.
-                let boot = crate::tui::resolve_boot_model(&settings, &paths_for_load, &cwd_for_load, None).await;
+                let boot =
+                    crate::tui::resolve_boot_model(&settings, &paths_for_load, &cwd_for_load, resume_id_req.as_deref())
+                        .await;
                 let new_config = TuiBootstrapConfig {
                     paths: paths_for_load,
                     settings,
-                    resume_id: None,
+                    resume_id: resume_id_req,
                     model_override: boot.ok().map(|(provider, model_id)| format!("{provider}/{model_id}")),
                     preloaded_resources: loaded,
                 };
                 bootstrap_config.set(Some(new_config));
             }
 
-            // Reset bootstrap phase so the next tick re-spawns the worker
             bootstrap_phase.set(BootstrapPhase::Pending);
             bootstrap_worker_started.set(false);
             bootstrap_rx.set(None);
             chrome_refresh_pending.set(true);
+            // Clear the old live session slot so UI does not keep talking to a dead worker.
+            agent_session_slot.set(None);
+            messages.set(Vec::new());
+            *messages_arc_inner.write().unwrap() = Vec::new();
+
+            if let Some(id) = outgoing_id
+                && let Some(session) = outgoing_session
+            {
+                let sm = session.session_manager();
+                if let Err(err) = sm.delete_if_no_turns(&id).await {
+                    log::warn!("delete empty session on /new: {err:#}");
+                }
+            }
         }
 
         let agent_session_for_loop = agent_session_slot.read().clone();
@@ -289,7 +316,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             }
         }
 
-        // ── OAuth completed: close dialog ──────────────────────────
+        // ── OAuth completed: close dialog + ensure live creds reloaded ──
         if pending_provider_connect_for_tick
             .read()
             .as_ref()
@@ -297,18 +324,30 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         {
             let notice = pending_provider_connect_for_tick.read().as_ref().and_then(|p| {
                 let url = &p.oauth_url;
-                // If the done flag was set with a notification message, use it
                 if url.starts_with("Signed in to ") {
                     Some(url.clone())
                 } else {
                     None
                 }
             });
+            // Best-effort: re-read auth.json into the live session models store
+            // for the provider that just connected (not only the current model).
+            let completed_pid = pending_provider_connect_for_tick
+                .read()
+                .as_ref()
+                .and_then(|p| p.completed_provider_id.clone());
+            if let (Some(session), Some(provider)) = (agent_session_slot.read().clone(), completed_pid) {
+                let path = paths.read().auth_store_path();
+                tokio::spawn(async move {
+                    if let Err(e) = session.reload_provider_credential_from_disk(&path, &provider).await {
+                        log::warn!("reload credential after OAuth for {provider}: {e:#}");
+                    }
+                });
+            }
             pending_provider_connect_for_tick.set(None);
             provider_connect_api_key_for_tick.set(String::new());
             provider_connect_input_focus_for_tick.set(ProviderConnectFocus::default());
             shell_focus_for_tick.set(ShellFocus::Prompt);
-            // Push transcript notification
             if let Some(notice) = notice {
                 let mut msgs = messages_for_tick.write().clone();
                 msgs.push(TranscriptMessage::text(notice, TranscriptStyle::Meta));
@@ -454,6 +493,19 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             Vec::new()
         };
 
+        // Worker inbox events land in the worker chat overlay (never the transcript).
+        // When the overlay is closed, still count unseen inbound messages so the
+        // footer `⬡` badge can signal pending mail (yellow).
+        if let Some(state) = pending_worker_chat.write().as_mut() {
+            crate::tui::worker_chat::drain_worker_inbox_events(state, &drained_events);
+        } else {
+            for event in &drained_events {
+                if matches!(event, AgentUiEvent::WorkerInboxReceived { .. }) {
+                    worker_pending_count.set(worker_pending_count.get().saturating_add(1));
+                }
+            }
+        }
+
         for event in drained_events {
             if agent_event_keeps_busy(&event) {
                 // Stream/tool activity means a real harness turn (not bootstrap chrome).
@@ -478,9 +530,28 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     live_after_run_completed = true;
                 }
             }
-            if let AgentUiEvent::RunCompleted { elapsed_secs } = &event {
+            if let AgentUiEvent::RunCompleted {
+                elapsed_secs,
+                usage,
+                provider_id,
+                model_id,
+            } = &event
+            {
                 run_completed = true;
                 run_completed_elapsed = Some(*elapsed_secs);
+                // Only render a stats card for real agent/chat-assistant turns. System
+                // operations that spin the UI without an AI response (e.g. `/compact`
+                // "History is already up to date") carry no usage/model and are skipped.
+                if usage.is_some() || provider_id.is_some() || model_id.is_some() {
+                    last_turn_stats.set(Some(TurnCompleteStats::from_event(
+                        *elapsed_secs,
+                        usage.as_ref(),
+                        provider_id.as_deref(),
+                        model_id.as_deref(),
+                    )));
+                } else {
+                    last_turn_stats.set(None);
+                }
             }
 
             match &event {
@@ -538,6 +609,61 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     body_height: Some(body_height),
                     show_copy: false,
                 });
+                continue;
+            }
+
+            if let AgentUiEvent::AsideStarted { request_id, question } = &event {
+                *pending_aside.write() =
+                    Some(crate::tui::aside_panel::AsidePanelState::loading(*request_id, question.clone()));
+                activity_label.set(format!("Aside: {question}"));
+                continue;
+            }
+            if let AgentUiEvent::AsideFinished {
+                request_id,
+                question,
+                answer,
+            } = &event
+            {
+                let accept = pending_aside
+                    .read()
+                    .as_ref()
+                    .is_none_or(|s| s.request_id() == *request_id);
+                if accept {
+                    *pending_aside.write() = Some(crate::tui::aside_panel::AsidePanelState::done(
+                        *request_id,
+                        question.clone(),
+                        answer.clone(),
+                    ));
+                }
+                continue;
+            }
+            if let AgentUiEvent::AsideFailed { request_id, error, .. } = &event {
+                let question = pending_aside
+                    .read()
+                    .as_ref()
+                    .map(|s| s.question().to_string())
+                    .unwrap_or_default();
+                let accept = pending_aside
+                    .read()
+                    .as_ref()
+                    .is_none_or(|s| s.request_id() == *request_id);
+                if accept {
+                    *pending_aside.write() = Some(crate::tui::aside_panel::AsidePanelState::error(
+                        *request_id,
+                        question,
+                        error.clone(),
+                    ));
+                }
+                continue;
+            }
+            // Workers → a chat message was pushed into the worker chat overlay, and worker
+            // turn dialogue stays out of the main transcript — nothing to do here.
+
+            if let AgentUiEvent::TodoUpdated { items } = &event {
+                log::debug!("tick: received TodoUpdated event with {} items, updating state", items.len());
+                todos.set(items.clone());
+                // Force a redraw so the todo panel reflects the status change immediately.
+                chrome_full_redraw_pending.set(true);
                 continue;
             }
 
@@ -714,7 +840,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 // slim sticky status label ("Continuing tasks…") instead of a user bubble card,
                 // and skip Arrow-Up history.
                 if text.trim() == RETRY_CONTINUE_PROMPT {
-                    let mut notice = TranscriptMessage::text("Continuing tasks…", TranscriptStyle::Meta);
+                    let mut notice = TranscriptMessage::text(CONTINUE_META_LABEL.to_string(), TranscriptStyle::Meta);
                     notice.sticky_meta = true;
                     {
                         let mut msgs = messages_arc_inner.write().unwrap();
@@ -751,10 +877,24 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 // harness — render as a slim meta label instead of a user bubble card.
                 if text.starts_with(CONTINUATION_PROMPT_PREFIX) || text.starts_with(BUDGET_LIMIT_PROMPT_PREFIX) {
                     let label = if text.starts_with(CONTINUATION_PROMPT_PREFIX) {
-                        "Continuing tasks…"
+                        CONTINUE_META_LABEL.to_string()
                     } else {
-                        "Goal budget limit reached"
+                        "Goal budget limit reached".to_string()
                     };
+                    let mut notice = TranscriptMessage::text(label, TranscriptStyle::Meta);
+                    notice.sticky_meta = true;
+                    {
+                        let mut msgs = messages_arc_inner.write().unwrap();
+                        msgs.push(notice);
+                    }
+                    transcript_changed = true;
+                    continue;
+                }
+                // Worker-message turn prompt (`queue_answer_worker_inbound`) — never
+                // render `<intercom>` or a peer's message as a user prompt card.
+                // Slim meta line naming the sender + a short preview instead.
+                if text.starts_with(crate::agent::WORKER_INBOUND_PROMPT_PREFIX) {
+                    let label = worker_inbound_meta_label(&text);
                     let mut notice = TranscriptMessage::text(label, TranscriptStyle::Meta);
                     notice.sticky_meta = true;
                     {
@@ -911,6 +1051,14 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             }
         }
 
+        // Drive spinner while /aside is loading (shell re-render, independent of busy turn).
+        if matches!(
+            pending_aside.read().as_ref(),
+            Some(crate::tui::aside_panel::AsidePanelState::Loading { .. })
+        ) {
+            aside_tick.set(aside_tick.get().wrapping_add(1));
+        }
+
         if transcript_changed {
             // Sync the arc to State at controlled interval (one dirty per tick
             // instead of per-token). Panel reads from the arc directly.
@@ -929,104 +1077,18 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         }
 
         if run_completed {
-            // ── Archive old messages to SQLite when memory grows large ──
-            // Single shared snapshot avoids cloning the transcript twice (archive + snapshot
-            // save both need the data) — peak memory is cut roughly in half on archive turns.
-            let should_archive = {
-                let msgs = messages_arc_inner.read().unwrap();
-                msgs.len() > MAX_MESSAGES_BEFORE_ARCHIVE
+            // Shed re-derivable memory (old parsed markdown, oversized tool diffs) while
+            // keeping every transcript row mounted. Dropping rows here used to make older
+            // scrollback disappear mid-session and only come back after a resume rebuilt
+            // it from session_entries.
+            let retention_changed = {
+                let mut msgs = messages_arc_inner.write().unwrap();
+                apply_transcript_retention(&mut msgs)
             };
-            if should_archive {
-                let paths_for_archive = paths.read().clone();
-                let sid = live_session_id.read().clone();
-                // One shared Arc snapshot for both archive and session save.
-                let snapshot_arc = Arc::new(messages_arc_inner.read().unwrap().clone());
-                let snapshot_for_archive = Arc::clone(&snapshot_arc);
-                tokio::spawn(async move {
-                    if let Ok(cache) = TranscriptCache::open(&paths_for_archive.memory_db_path(), &sid).await {
-                        let snapshot = snapshot_for_archive;
-                        let archive_count = snapshot.len().saturating_sub(KEEP_MESSAGES);
-                        let archived: Vec<(usize, &TranscriptMessage)> =
-                            snapshot[..archive_count].iter().enumerate().collect();
-                        if let Err(err) = cache.push_batch(archived).await {
-                            log::warn!("transcript archive failed: {err:#}");
-                        }
-                    }
-                });
-                // Truncate messages_arc_inner. The panel reads the arc directly, so the
-                // State copy can stay as-is until the next event tick re-syncs it.
-                // Also drop parsed markdown caches from old retained messages — the source
-                // text is still archived to SQLite and can be re-parsed on resume.
-                let keep = KEEP_MESSAGES;
-                {
-                    let mut msgs = messages_arc_inner.write().unwrap();
-                    let archive_count = msgs.len().saturating_sub(keep);
-                    if archive_count > 0 {
-                        msgs.drain(..archive_count);
-                    }
-                    // Drop parsed markdown documents and tool diff text from retained
-                    // messages beyond the cache window. This sheds the two biggest memory
-                    // consumers for old messages:
-                    //   - Parsed MarkdownDocument (styled spans + tables): 1-5 MB per message
-                    //   - Tool diff text (old_text/new_text): ~500 KB per edit_file tool
-                    // Keeps AssistantMarkdownBuffer metadata (stable_end, stream_complete,
-                    // row counts) so layout stays correct.
-                    let markdown_keep = super::MARKED_MESSAGES_WITH_MARKDOWN_CACHE;
-                    let n = msgs.len();
-                    if n > markdown_keep {
-                        for msg in msgs[..n - markdown_keep].iter_mut() {
-                            if let Some(ref mut md) = msg.markdown {
-                                std::sync::Arc::make_mut(md).drop_cached_documents();
-                            }
-                            if let Some(ref mut tool) = msg.tool {
-                                tool.strip_diff_text();
-                            }
-                        }
-                    }
-                }
-                // Re-sync the State copy so it also drops the markdown caches.
+            if retention_changed {
+                // Re-sync the State copy so it also releases the freed caches.
                 *messages.write() = messages_arc_inner.read().unwrap().clone();
-                // Session snapshot: write to TranscriptCache (overwrite semantics) instead
-                // of appending to the session tree. This keeps only the latest snapshot and
-                // prevents 600+ MB accumulation from 7-8 MB snapshots appended every turn.
-                if let Some(session) = agent_session_for_loop.as_ref() {
-                    let session = Arc::clone(session);
-                    let snapshot_for_cache = Arc::clone(&snapshot_arc);
-                    let paths_for_snapshot = paths.read().clone();
-                    let sid_for_snapshot = live_session_id.read().clone();
-                    tokio::spawn(async move {
-                        if let Err(err) = session
-                            .save_transcript_snapshot_to_cache(
-                                &snapshot_for_cache,
-                                &paths_for_snapshot.memory_db_path(),
-                                &sid_for_snapshot,
-                            )
-                            .await
-                        {
-                            log::warn!("transcript snapshot cache save failed: {err:#}");
-                        }
-                    });
-                }
-            } else {
-                // No archive this turn — persist session snapshot to cache (overwrite).
-                if let Some(session) = agent_session_for_loop.as_ref() {
-                    let snapshot = messages.read().clone();
-                    let session = Arc::clone(session);
-                    let paths_for_snapshot = paths.read().clone();
-                    let sid_for_snapshot = live_session_id.read().clone();
-                    tokio::spawn(async move {
-                        if let Err(err) = session
-                            .save_transcript_snapshot_to_cache(
-                                &snapshot,
-                                &paths_for_snapshot.memory_db_path(),
-                                &sid_for_snapshot,
-                            )
-                            .await
-                        {
-                            log::warn!("transcript snapshot cache save failed: {err:#}");
-                        }
-                    });
-                }
+                messages_revision.set(messages_revision.get().wrapping_add(1));
             }
 
             pending_quit_confirm.set(false);
@@ -1060,18 +1122,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 chrome_refresh_pending.set(true);
             }
             // Follow-up prompts are drained inside the harness agent loop; no TUI re-spawn.
-
-            // Persist full transcript (thinking / tools / durations / expand / diffs)
-            // so --resume matches the live session. Non-fatal on failure.
-            if let Some(session) = agent_session_for_loop.as_ref() {
-                let snapshot = messages.read().clone();
-                let session = Arc::clone(session);
-                tokio::spawn(async move {
-                    if let Err(err) = session.save_transcript_snapshot(&snapshot).await {
-                        log::warn!("transcript snapshot save failed: {err:#}");
-                    }
-                });
-            }
+            // History is durable via session_entries (MessageEnd); no separate UI snapshot.
 
             if turn_cancel_requested.get() {
                 turn_cancel_requested.set(false);
@@ -1087,6 +1138,8 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                         notifier::NotifKind::TurnCancel { elapsed_secs: elapsed },
                     );
                 }
+                // Canceled turns do not get a stats card.
+                last_turn_stats.set(None);
             } else if let Some(elapsed_secs) = run_completed_elapsed {
                 idle_status_notice.set(Some(IdleStatusNotice {
                     text: format_turn_complete_notice(elapsed_secs),
@@ -1095,6 +1148,24 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 // Desktop notification
                 if let Ok(settings) = Settings::load(&paths.read().clone()) {
                     notifier::notify(&settings.notifications, notifier::NotifKind::TurnComplete { elapsed_secs });
+                }
+                // Dimmed per-turn stats card under the last assistant reply
+                // (`ui.turnStats`, default on). Falls back to duration-only when
+                // no usage/model was reported.
+                if !live_after_run_completed
+                    && turn_stats_enabled
+                    && let Some(stats) = last_turn_stats.read().clone()
+                {
+                    let mut msg =
+                        TranscriptMessage::text(format_turn_complete_stats_line(&stats), TranscriptStyle::Meta);
+                    msg.sticky_meta = true;
+                    {
+                        let mut msgs = messages_arc_inner.write().unwrap();
+                        msgs.push(msg);
+                    }
+                    // Repaint immediately: the transcript sync already ran this tick.
+                    *messages.write() = messages_arc_inner.read().unwrap().clone();
+                    messages_revision.set(messages_revision.get().wrapping_add(1));
                 }
             }
         }

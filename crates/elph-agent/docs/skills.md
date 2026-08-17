@@ -168,7 +168,7 @@ Format skill for invocation with optional instructions:
 use elph_agent::format_skill_invocation;
 
 let invocation = format_skill_invocation(&skill, Some("Focus on security."));
-// <skill name="my-skill" location="/path/to/SKILL.md">
+// <skill name="my-skill" path="/path/to/SKILL.md">
 // <license>MIT</license>
 // <allowed-tools>read grep</allowed-tools>
 // References are relative to /path/to.
