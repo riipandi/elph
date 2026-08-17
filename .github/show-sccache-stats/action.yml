@@ -6,7 +6,7 @@ description: Print sccache hit/miss statistics after compilation
 runs:
   using: composite
   steps:
-    - name: Show sccache statistics
+    - name: Show sccache stats
       shell: bash
       run: |
         set -euo pipefail

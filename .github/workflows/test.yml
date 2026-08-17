@@ -81,32 +81,32 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: rust
+      - name: Setup Rust
         uses: ./.github/setup-rust
         with:
           sharedKey: ${{ inputs.sharedKeyPrefix || 'ci' }}-${{ inputs.app || 'elph' }}-${{ matrix.name }}
           cacheBackend: namespace
           saveCache: ${{ github.ref == 'refs/heads/main' }}
 
-      - name: fmt
+      - name: Check format
         run: cargo fmt --all --check
 
-      - name: check
+      - name: Check compile
         run: make check-${{ inputs.app || 'elph' }}
 
-      - name: clippy
+      - name: Lint
         run: make lint-${{ inputs.app || 'elph' }}
 
-      - name: test
+      - name: Test
         if: (inputs.mode || 'full') == 'full'
         run: make test-${{ inputs.app || 'elph' }}
 
-      - name: build
+      - name: Build debug
         if: (inputs.mode || 'full') == 'full'
         run: make build-${{ inputs.app || 'elph' }}
         env:
           RUSTC_WRAPPER: sccache
 
-      - name: sccache
+      - name: Show sccache stats
         if: always()
         uses: ./.github/show-sccache-stats

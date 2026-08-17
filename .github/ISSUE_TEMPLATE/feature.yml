@@ -1,0 +1,87 @@
+name: Feature request
+description: Propose a behavior or API change in Elph
+title: "[feat] "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Elph is a Rust coding-agent workspace (CLI + TUI + `elph-agent` / `elph-ai`).
+        Prefer a concrete user-visible outcome over a large design dump. If this is a **pi** port gap, say so — we implement on Elph architecture, not as a TypeScript copy.
+
+        Breaking changes are allowed when the task needs them; do not propose compat shims unless you will implement and maintain them.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - CLI
+        - TUI
+        - Agent runtime (`elph-agent`)
+        - Tools / MCP / skills / extensions
+        - Providers / model catalog (`elph-ai`)
+        - Session / memory / codegraph
+        - ACP
+        - Config / docs
+        - Build / release / CI
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What you cannot do today, or what is painful. A user story beats an abstract wish list.
+      placeholder: I cannot resume a session after a crash because the last turn is only in memory.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What Elph should do. Name commands, config keys, or crate APIs if you already know them.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Workarounds, other tools, or why an existing slash command / hook / MCP path is not enough.
+
+  - type: dropdown
+    id: origin
+    attributes:
+      label: Origin
+      options:
+        - New Elph behavior
+        - Gap vs pi (intent/behavior missing)
+        - Elph-only divergence that should stay different
+        - Unsure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: breaking
+    attributes:
+      label: Likely contract change
+      description: Public CLI, crate API, session schema, or documented config.
+      options:
+        - No
+        - Yes (CLI / flags)
+        - Yes (crate API)
+        - Yes (session / store schema)
+        - Yes (config / env)
+        - Unsure
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Extra context
+      description: Links to docs, pi changelog, or a sketch of the make/test surface (`make test-elph`, etc.).

@@ -42,7 +42,7 @@ jobs:
     timeout-minutes: 2
     steps:
       - uses: actions/checkout@v7
-      - name: actor
+      - name: Check actor
         run: ./scripts/ci-check-release-actor.sh
 
   version-gate:
@@ -82,26 +82,26 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: version
+      - name: Pin version
         env:
           APP: ${{ inputs.app || 'elph' }}
           TARGET_VERSION: ${{ needs.version-gate.outputs.release_version }}
         run: ./scripts/ci-set-app-version.sh
 
-      - name: rust
+      - name: Setup Rust
         uses: ./.github/setup-rust
         with:
           sharedKey: release-linux
           cacheBackend: namespace
           installNextest: "false"
 
-      - name: build
+      - name: Build release
         run: cargo build --release --bin ${{ inputs.app || 'elph' }}
         env:
           APP: ${{ inputs.app || 'elph' }}
           RUSTC_WRAPPER: sccache
 
-      - name: package
+      - name: Package
         shell: bash
         run: |
           set -euo pipefail
@@ -111,11 +111,11 @@ jobs:
           cp "target/release/${app}" "release/binaries/${label}"
           tar -C target/release -czf "release/archives/${label}.tar.gz" "${app}"
 
-      - name: sccache
+      - name: Show sccache stats
         if: always()
         uses: ./.github/show-sccache-stats
 
-      - name: upload
+      - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.app || 'elph' }}-linux
@@ -133,30 +133,30 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: version
+      - name: Pin version
         env:
           APP: ${{ inputs.app || 'elph' }}
           TARGET_VERSION: ${{ needs.version-gate.outputs.release_version }}
         run: ./scripts/ci-set-app-version.sh
 
-      - name: rust
+      - name: Setup Rust
         uses: ./.github/setup-rust
         with:
           sharedKey: release-macos
           cacheBackend: namespace
           installNextest: "false"
 
-      - name: build
+      - name: Build release
         run: make release-macos
         env:
           APP: ${{ inputs.app || 'elph' }}
           RUSTC_WRAPPER: sccache
 
-      - name: sccache
+      - name: Show sccache stats
         if: always()
         uses: ./.github/show-sccache-stats
 
-      - name: upload
+      - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.app || 'elph' }}-macos
@@ -174,27 +174,27 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: version
+      - name: Pin version
         shell: bash
         env:
           APP: ${{ inputs.app || 'elph' }}
           TARGET_VERSION: ${{ needs.version-gate.outputs.release_version }}
         run: ./scripts/ci-set-app-version.sh
 
-      - name: rust
+      - name: Setup Rust
         uses: ./.github/setup-rust
         with:
           sharedKey: release-windows
           cacheBackend: namespace
           installNextest: "false"
 
-      - name: build
+      - name: Build release
         shell: bash
         run: cargo build --release --bin ${{ inputs.app || 'elph' }}
         env:
           RUSTC_WRAPPER: sccache
 
-      - name: package
+      - name: Package
         shell: bash
         run: |
           set -euo pipefail
@@ -204,11 +204,11 @@ jobs:
           cp "target/release/${app}.exe" "release/binaries/${label}.exe"
           cd target/release && zip -q -j "${{ github.workspace }}/release/archives/${label}.zip" "${app}.exe"
 
-      - name: sccache
+      - name: Show sccache stats
         if: always()
         uses: ./.github/show-sccache-stats
 
-      - name: upload
+      - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.app || 'elph' }}-windows
@@ -226,31 +226,31 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: linux
+      - name: Fetch linux
         uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.app || 'elph' }}-linux
           path: .
 
-      - name: macos
+      - name: Fetch macos
         uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.app || 'elph' }}-macos
           path: .
 
-      - name: windows
+      - name: Fetch windows
         uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.app || 'elph' }}-windows
           path: .
 
-      - name: confirm
+      - name: Log version
         shell: bash
         run: |
           set -euo pipefail
           echo "Publishing ${{ inputs.app || 'elph' }} v${{ needs.version-gate.outputs.release_version }} (${GITHUB_REF_NAME})"
 
-      - name: checksums
+      - name: Write checksums
         shell: bash
         run: |
           set -euo pipefail
@@ -263,7 +263,7 @@ jobs:
           fi
           cat "release/archives/SHA256SUMS"
 
-      - name: gh-release
+      - name: Publish release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
@@ -289,13 +289,13 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: sync
+      - name: Sync version
         env:
           APP: ${{ inputs.app || 'elph' }}
           RELEASED_VERSION: ${{ needs.version-gate.outputs.release_version }}
         run: ./scripts/ci-sync-app-version-on-main.sh
 
-      - name: push
+      - name: Push main
         env:
           APP: ${{ inputs.app || 'elph' }}
         run: |

@@ -36,13 +36,13 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: rustup
+    - name: Install toolchain
       uses: dtolnay/rust-toolchain@v1
       with:
         toolchain: 1.97.0
         components: clippy, rustfmt
 
-    - name: tools
+    - name: Install tools
       if: inputs.installNextest == 'true' || inputs.installCross == 'true' || inputs.installSccache == 'true' || inputs.cacheBackend == 'namespace' || runner.os == 'Linux'
       shell: bash
       run: |
@@ -84,7 +84,7 @@ runs:
           done
         fi
 
-    - name: cargo-cache
+    - name: Cache Cargo
       if: inputs.cacheBackend == 'rust-cache'
       uses: swatinem/rust-cache@v2.9.1
       with:
@@ -93,13 +93,13 @@ runs:
         cache-bin: false
         save-if: ${{ inputs.saveCache }}
 
-    - name: ns-cache
+    - name: Cache Cargo (volume)
       if: inputs.cacheBackend == 'namespace'
       uses: namespacelabs/nscloud-cache-action@v1
       with:
         cache: rust
 
-    - name: sccache
+    - name: Configure sccache
       shell: bash
       run: |
         set -euo pipefail

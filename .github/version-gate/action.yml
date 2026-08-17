@@ -25,7 +25,7 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: check
+    - name: Compare versions
       id: check
       shell: bash
       env:
