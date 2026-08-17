@@ -40,6 +40,7 @@ Elph’s wire shape follows the same product conventions as [pi-acp](https://git
 - `ask_user_question` uses v2 `elicitation/create` forms when the client advertises form elicitation; otherwise each step uses `session/request_permission`.
 - Client `mcpServers` on `session/new`, `session/load`, and `session/resume` are overlaid on `mcp.json` (home ← project ← client; same name wins) and bound into the session tool registry.
 - `session/cancel` aborts the harness turn **and** marks in-flight tool calls cancelled (v2 status `cancelled`; v1 `failed` with output `cancelled`).
+- A harness `RunCompleted` mid-turn (auto-retry after a stream cut, compact-then-resume) does **not** end the ACP prompt. The client stays in `running` until `submit_prompt` finishes. A failed `session/update` (tool chunk, terminal) is logged and ignored so the turn does not die mid tool-call.
 
 ## v1 capabilities
 

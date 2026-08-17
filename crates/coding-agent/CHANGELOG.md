@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   set mode/config) require credentials; list/close/delete/cancel and initialize do not.
   Existing env/`auth.json` keys allow privileged methods without an extra authenticate
   call. After logout, those methods return `auth_required` until an explicit login.
+  ACP turns no longer stop on an intermediate `RunCompleted` (retry/compact) or a
+  failed tool `session/update`.
   See `docs/acp.md`.
 
 ### Added
