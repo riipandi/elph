@@ -14,33 +14,28 @@ use crate::agent::{
 use crate::platform::Paths;
 use crate::platform::acp::state::{AcpAgentState, lookup_session};
 use crate::platform::acp::updates::{send_agent_text, send_idle, send_update};
-use crate::types::SlashCommand;
+use crate::types::{SlashCommand, SlashCommandKind};
 
 use parking_lot::Mutex;
 use std::sync::Arc;
 
+/// Headless-safe builtins only. TUI pickers/overlays are omitted (model, resume, memory, …).
 const ACP_COMMANDS: &[(&str, &str, Option<&str>)] = &[
     ("help", "List commands", None),
     ("tools", "List available tools", Some("[filter]")),
+    ("system-prompt", "Show compiled system prompt", None),
     ("session", "Show session info", None),
     ("rename", "Rename the current session", Some("<title>")),
     ("compact", "Compact conversation history", Some("[args]")),
     ("continue", "Resume the interrupted task", None),
     ("reload", "Reload workspace resources", None),
     ("goal", "Inspect or update the session goal", Some("[args]")),
-    ("settings", "Show settings paths", None),
     ("changelog", "Show changelog", None),
-    ("hotkeys", "Show keyboard shortcuts", None),
-    ("workers", "List live multi-worker peers", None),
-    ("tree", "Navigate session tree", Some("[entry_id]")),
     ("export", "Export session as JSONL", Some("[path]")),
     ("import", "Import session JSONL", Some("[path]")),
     ("trust", "Save project trust decision", None),
-    ("fork", "Fork the current session", None),
-    ("clone", "Clone the current session", None),
     ("aside", "Ask a side question without interrupting", Some("<question>")),
     ("mcp", "List or logout MCP servers", Some("[list|logout <name>]")),
-    ("provider", "List configured providers", Some("list")),
 ];
 
 /// ACP-safe builtins plus session prompt templates and skills (pi-acp style).
@@ -88,12 +83,17 @@ fn merge_advertised(palette: &[SlashCommand]) -> Vec<AdvertisedSlash> {
         });
     }
     for cmd in palette.iter().filter(|c| !c.hidden) {
-        if !seen.insert(cmd.name.clone()) {
+        let (name, description) = match cmd.kind {
+            SlashCommandKind::PromptTemplate => (cmd.name.clone(), cmd.description.clone()),
+            SlashCommandKind::Skill => (format!("skill:{}", cmd.name), cmd.description.clone()),
+            SlashCommandKind::Builtin | SlashCommandKind::Extension => continue,
+        };
+        if !seen.insert(name.clone()) {
             continue;
         }
         out.push(AdvertisedSlash {
-            name: cmd.name.clone(),
-            description: cmd.description.clone(),
+            name,
+            description,
             hint: cmd.args_hint.clone(),
         });
     }
@@ -359,10 +359,13 @@ mod tests {
     }
 
     #[test]
-    fn catalog_includes_templates_and_skills() {
+    fn catalog_includes_templates_and_prefixed_skills() {
         let palette = vec![
-            SlashCommand::new("review", "[prompt] Review a PR").with_args_hint("<url>"),
-            SlashCommand::new("code-review", "[skill] Review changes"),
+            SlashCommand::new("review", "[prompt] Review a PR")
+                .with_kind(SlashCommandKind::PromptTemplate)
+                .with_args_hint("<url>"),
+            SlashCommand::new("code-review", "[skill] Review changes").with_kind(SlashCommandKind::Skill),
+            SlashCommand::new("model", "Select model"),
             SlashCommand::new("help", "duplicate builtin"),
         ];
         let cmds = merge_advertised(&palette);
@@ -371,7 +374,10 @@ mod tests {
             cmds.iter()
                 .any(|c| c.name == "review" && c.hint.as_deref() == Some("<url>"))
         );
-        assert!(cmds.iter().any(|c| c.name == "code-review"));
+        assert!(cmds.iter().any(|c| c.name == "skill:code-review"));
+        assert!(!cmds.iter().any(|c| c.name == "code-review"));
+        assert!(!cmds.iter().any(|c| c.name == "model"));
+        assert!(!cmds.iter().any(|c| c.name == "hotkeys" || c.name == "workers"));
         assert_eq!(cmds.iter().filter(|c| c.name == "help").count(), 1);
     }
 }

@@ -523,6 +523,26 @@ impl CodingAgentSession {
         &self.session_manager
     }
 
+    /// Every provider/model the live session catalog knows (`provider/model_id`, display name).
+    pub fn list_acp_models(&self) -> Vec<(String, String)> {
+        let selection = self.selection.read();
+        let mut providers: Vec<_> = selection.models.get_providers();
+        providers.sort_by(|a, b| a.id.cmp(&b.id));
+        let mut out = Vec::new();
+        let mut seen = std::collections::HashSet::new();
+        for provider in providers {
+            let mut models = provider.get_models();
+            models.sort_by(|a, b| a.id.cmp(&b.id));
+            for model in models {
+                let id = format!("{}/{}", provider.id, model.id);
+                if seen.insert(id.clone()) {
+                    out.push((id, format!("{}/{}", provider.id, model.name)));
+                }
+            }
+        }
+        out
+    }
+
     pub fn model_display(&self) -> String {
         let selection = self.selection.read();
         format!("{} [{}/{}]", selection.display_name, selection.provider, selection.model_id)

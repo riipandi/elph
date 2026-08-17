@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **ACP:** `elph acp --stdio` speaks **v1 (stable)**; `elph acp --stdio --experimental`
   speaks **v2 (draft)**. Bare `elph acp` aliases `--stdio`. Each process speaks one
   version. v1 holds `session/prompt` until `stopReason` and supports `session/load`.
-  Slash advertisement includes prompt templates and skills. v1 `modes` / `thought_level`
+  Slash advertisement includes prompt templates and `/skill:NAME` skills (TUI-only
+  commands omitted). Model config lists the full provider/model catalog. v1 `modes` / `thought_level`
   expose reasoning effort (pi-acp convention); `configOptions` also expose model and
   agent mode. Client `mcpServers` are attached to the session registry. `session/cancel`
   cancels in-flight tool calls. v2 keeps accept-then-`state_update`. See `docs/acp.md`.

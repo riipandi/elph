@@ -28,8 +28,9 @@ Elph’s wire shape follows the same product conventions as [pi-acp](https://git
 - No ACP auth methods (credentials stay file/env).
 - No audio prompts.
 - No Client `fs/*` or `terminal/*` execution (Elph uses its own tools).
-- Slash commands advertised after session setup are ACP-safe builtins **plus** the session’s prompt templates and skills (same catalog as the TUI palette). Dispatch uses that catalog.
-- `configOptions` advertise **model**, **thought_level** (reasoning), and **mode** (ask/plan/build/brave).
+- Slash commands advertised after session setup are a **headless subset** of builtins (no TUI pickers such as `/model`, `/resume`, `/memory`, `/hotkeys`) plus prompt templates and skills.
+- Skills are advertised as `/skill:NAME` so they do not collide with prompt templates. Templates keep their raw name (e.g. `/review`).
+- `configOptions` advertise **model** (full live session catalog plus disk/embedded providers), **thought_level** (reasoning), and **mode** (ask/plan/build/brave).
 - On v1, Zed-style `modes` / `session/set_mode` are thinking levels (`off` … `max`), matching pi-acp. Agent permission mode stays on `configOptions.mode`.
 - Tool approval uses `session/request_permission`.
 - Client `mcpServers` on `session/new`, `session/load`, and `session/resume` are overlaid on `mcp.json` (home ← project ← client; same name wins) and bound into the session tool registry.
