@@ -11,7 +11,7 @@ use crate::prompt::builtin::compaction::{TURN_PREFIX_SUMMARIZATION_PROMPT, UPDAT
 use crate::types::AgentMessage;
 
 fn now_millis() -> i64 {
-    (time::OffsetDateTime::now_utc().unix_timestamp_nanos() / 1_000_000) as i64
+    chrono::Utc::now().timestamp_millis()
 }
 
 fn assistant_text_content(message: &elph_ai::AssistantMessage) -> String {

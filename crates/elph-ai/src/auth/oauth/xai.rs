@@ -171,7 +171,9 @@ async fn post_form(url: &str, fields: Vec<(&str, &str)>) -> Result<(bool, Value)
     use reqwest::Client;
 
     let client = Client::new();
-    let body_str = serde_urlencoded::to_string(fields)?;
+    let body_str = url::form_urlencoded::Serializer::new(String::new())
+        .extend_pairs(fields)
+        .finish();
     let response = client
         .post(url)
         .header("Accept", "application/json")

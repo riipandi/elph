@@ -44,7 +44,7 @@ ifneq ($(SCCACHE_OK),)
     export SCCACHE_DIRECT := true
     # Cap remote cache at 50 GB so it never eclipses local disk. The bucket is shared
     # across sessions — anything beyond this size is unlikely to be re-used soon.
-    export SCCACHE_MAXSIZE := 50G
+    export SCCACHE_MAXSIZE := 20G
   endif
 endif
 

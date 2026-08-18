@@ -32,10 +32,8 @@ base64.workspace = true
 chrono.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 eventsource-stream.workspace = true
-failsafe.workspace = true
 fastrace = { workspace = true, optional = true }
 fastrace-reqwest = { workspace = true, optional = true }
-futures-util.workspace = true
 futures.workspace = true
 governor.workspace = true
 http.workspace = true
@@ -46,15 +44,13 @@ memchr.workspace = true
 parking_lot.workspace = true
 rand.workspace = true
 regex.workspace = true
-reqwest = { workspace = true, features = ["blocking"] }
+reqwest.workspace = true
 rustls.workspace = true
 schemars.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde-jsonlines.workspace = true
 serde_json.workspace = true
-serde_urlencoded.workspace = true
 sha2.workspace = true
-thiserror.workspace = true
 tokio = { workspace = true, features = ["sync", "time", "rt-multi-thread", "macros", "net", "io-util"] }
 tokio-rustls.workspace = true
 tokio-tungstenite.workspace = true

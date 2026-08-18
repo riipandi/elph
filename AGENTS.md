@@ -71,7 +71,7 @@ Do not mix types (structs, enums, type aliases) and functions in one braced `use
 | Stats         | `make stats` (sccache hit rate + target/ breakdown)               |
 | Space reclaim | `make gc` (incremental >7d, deps >60d) · `make gc DRY=1`          |
 
-`make` automatically sets `RUSTC_WRAPPER=sccache`, `SCCACHE_DIRECT=true`, and `SCCACHE_MAXSIZE=50G`. Do **not** run `cargo build/test/check/clippy` directly in this project — you will bypass sccache, waste remote-cache hits, and inflate `target/` with redundant incremental artefacts.
+`make` automatically sets `RUSTC_WRAPPER=sccache`, `SCCACHE_DIRECT=true`, and `SCCACHE_MAXSIZE=20G`. Do **not** run `cargo build/test/check/clippy` directly in this project — you will bypass sccache, waste remote-cache hits, and inflate `target/` with redundant incremental artefacts.
 
 If a make target does not exist for the operation you need, append `CARGO=` to call cargo directly but still set the wrapper:
 

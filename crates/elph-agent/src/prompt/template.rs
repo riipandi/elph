@@ -1,14 +1,23 @@
 //! System prompt base template rendered directly in Rust (no template engine).
 
-use thiserror::Error;
+use std::fmt;
 
 use super::context::SystemPromptTemplateContext;
 
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub enum PromptRenderError {
-    #[error("template render failed: {0}")]
     Render(String),
 }
+
+impl fmt::Display for PromptRenderError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Render(msg) => write!(f, "template render failed: {msg}"),
+        }
+    }
+}
+
+impl std::error::Error for PromptRenderError {}
 
 /// Sanitize a compiled system prompt: trim trailing whitespace, collapse
 /// consecutive blank lines to at most one, and strip leading/trailing blanks.

@@ -22,20 +22,15 @@ astral-tl.workspace = true
 async-trait.workspace = true
 ast-grep-core = { workspace = true, optional = true }
 ast-grep-language = { workspace = true, optional = true }
-backon.workspace = true
 base64.workspace = true
-bytes.workspace = true
+chrono.workspace = true
 elph-ai.workspace = true
 encoding_rs.workspace = true
-failsafe.workspace = true
 fastrace = { workspace = true, optional = true }
 fastrace-reqwest = { workspace = true, optional = true }
 fff-search = { workspace = true, optional = true }
 futures.workspace = true
-getrandom.workspace = true
 fast-glob = { workspace = true, optional = true }
-governor.workspace = true
-hex.workspace = true
 hkdf.workspace = true
 htmd.workspace = true
 http.workspace = true
@@ -57,9 +52,6 @@ serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 shell-use = { workspace = true, optional = true }
-tempfile.workspace = true
-thiserror.workspace = true
-time.workspace = true
 tokio = { workspace = true, features = [
   "fs",
   "io-util",

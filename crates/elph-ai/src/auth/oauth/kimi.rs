@@ -72,7 +72,9 @@ fn oauth_credential(access: String, refresh: String, expires: i64) -> OAuthCrede
 
 async fn post_form(url: &str, fields: Vec<(&str, &str)>) -> Result<(bool, Value)> {
     let client = reqwest::Client::new();
-    let body_str = serde_urlencoded::to_string(fields)?;
+    let body_str = url::form_urlencoded::Serializer::new(String::new())
+        .extend_pairs(fields)
+        .finish();
     let response = client
         .post(url)
         .header("Accept", "application/json")

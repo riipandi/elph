@@ -6,23 +6,23 @@ GitHub Actions run on [Namespace](https://namespace.so/docs/solutions/github-act
 
 Set these on the GitHub repository (Settings → Secrets and variables → Actions). They match the local `AWS_PROFILE=r2-sccache` bucket.
 
-| Kind   | Name                          | Value |
-| ------ | ----------------------------- | ----- |
-| Secret | `SCCACHE_R2_ACCESS_KEY_ID`    | R2 API token access key |
-| Secret | `SCCACHE_R2_SECRET_ACCESS_KEY`| R2 API token secret |
-| Variable | `SCCACHE_R2_BUCKET`         | Bucket name |
-| Variable | `SCCACHE_R2_ENDPOINT`       | `https://<accountid>.r2.cloudflarestorage.com` |
-| Variable | `SCCACHE_R2_REGION`         | Optional; defaults to `auto` |
+| Kind     | Name                           | Value                                          |
+| -------- | ------------------------------ | ---------------------------------------------- |
+| Secret   | `SCCACHE_R2_ACCESS_KEY_ID`     | R2 API token access key                        |
+| Secret   | `SCCACHE_R2_SECRET_ACCESS_KEY` | R2 API token secret                            |
+| Variable | `SCCACHE_R2_BUCKET`            | Bucket name                                    |
+| Variable | `SCCACHE_R2_ENDPOINT`          | `https://<accountid>.r2.cloudflarestorage.com` |
+| Variable | `SCCACHE_R2_REGION`            | Optional; defaults to `auto`                   |
 
-CI maps those to `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `SCCACHE_BUCKET`, `SCCACHE_ENDPOINT`, and `SCCACHE_REGION`. Also set: `SCCACHE_S3_USE_SSL=true`, `SCCACHE_DIRECT=true`, `SCCACHE_MAXSIZE=50G`. If `SCCACHE_R2_BUCKET` is empty, sccache still wraps rustc but has no remote cache.
+CI maps those to `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `SCCACHE_BUCKET`, `SCCACHE_ENDPOINT`, and `SCCACHE_REGION`. Also set: `SCCACHE_S3_USE_SSL=true`, `SCCACHE_DIRECT=true`, `SCCACHE_MAXSIZE=20G`. If `SCCACHE_R2_BUCKET` is empty, sccache still wraps rustc but has no remote cache.
 
 Create these runner profiles in the [Namespace dashboard](https://cloud.namespace.so/workspace/actions/profiles) and enable a cache volume on each:
 
-| `runs-on`                                 | OS / arch        | Used by        |
-| ----------------------------------------- | ---------------- | -------------- |
-| `namespace-profile-linux-base-amd64`      | Linux AMD64      | CI + release   |
-| `namespace-profile-macos-base-arm64`      | macOS ARM64      | CI + release   |
-| `namespace-profile-windows-base-amd64`    | Windows AMD64    | Release only   |
+| `runs-on`                              | OS / arch     | Used by      |
+| -------------------------------------- | ------------- | ------------ |
+| `namespace-profile-linux-base-amd64`   | Linux AMD64   | CI + release |
+| `namespace-profile-macos-base-arm64`   | macOS ARM64   | CI + release |
+| `namespace-profile-windows-base-amd64` | Windows AMD64 | Release only |
 
 Connect the GitHub org to Namespace before the first run. Lightweight jobs (version gate, publish, sync) stay on GitHub `ubuntu-slim`.
 

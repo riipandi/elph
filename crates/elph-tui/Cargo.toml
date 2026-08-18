@@ -26,11 +26,9 @@ html-escape.workspace = true
 iocraft.workspace = true
 linkify.workspace = true
 log.workspace = true
-memchr.workspace = true
 mermaid-text.workspace = true
 pulldown-cmark.workspace = true
 qrcode.workspace = true
-reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 similar.workspace = true
@@ -53,6 +51,7 @@ clipboard-rs = { workspace = true, features = ["wayland"] }
 [dev-dependencies]
 futures.workspace = true
 lipsum.workspace = true
+reqwest.workspace = true
 macro_rules_attribute.workspace = true
 mexprp = { workspace = true, default-features = false }
 smol-macros.workspace = true

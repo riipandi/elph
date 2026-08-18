@@ -27,14 +27,12 @@ path = "src/main.rs"
 metal = ["floppy/metal"]
 
 [build-dependencies]
-hex.workspace = true
 sha2.workspace = true
 
 [dependencies]
 agent-client-protocol.workspace = true
 anstyle.workspace = true
 anyhow.workspace = true
-chord_macro.workspace = true
 chrono.workspace = true
 clap.workspace = true
 clap_complete.workspace = true
@@ -50,7 +48,6 @@ elph-agent = { workspace = true, features = [
 elph-ai = { workspace = true, features = ["tracing"] }
 elph-tui = { workspace = true }
 floppy = { workspace = true, features = ["full"] }
-futures-util.workspace = true
 git2 = { workspace = true, features = ["cred"] }
 inquire.workspace = true
 iocraft.workspace = true
@@ -88,7 +85,6 @@ libc.workspace = true
 [dev-dependencies]
 elph-agent = { workspace = true, features = ["full"] }
 elph-ai = { workspace = true }
-libc.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time", "sync"] }
 

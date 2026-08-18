@@ -1,12 +1,9 @@
+use std::fmt;
 use std::sync::Arc;
-
-use thiserror::Error;
 
 use super::types::{ApiKeyCredential, AuthContext, AuthModel, AuthResult, BoxFuture, Credential, CredentialStore};
 use super::types::{OAuthCredential, ProviderAuth};
 use crate::types::ProviderEnv;
-
-use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModelsErrorCode {
@@ -22,11 +19,10 @@ pub enum ModelsErrorCode {
 ///
 /// The Display includes the underlying cause message when present,
 /// so auth failures report the provider response instead of a bare wrapper.
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub struct ModelsError {
     pub code: ModelsErrorCode,
     pub message: String,
-    #[source]
     pub cause: Option<anyhow::Error>,
 }
 
@@ -37,6 +33,12 @@ impl fmt::Display for ModelsError {
             write!(f, " — {}", cause)?;
         }
         Ok(())
+    }
+}
+
+impl std::error::Error for ModelsError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.cause.as_ref().map(|e| e.as_ref())
     }
 }
 

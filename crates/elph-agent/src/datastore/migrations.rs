@@ -51,7 +51,7 @@ pub async fn run(conn: &Connection, migrations: &[Migration]) -> Result<()> {
 
             let mut hasher = Sha256::new();
             hasher.update(migration.up.as_bytes());
-            let sql_sha256 = hex::encode(hasher.finalize());
+            let sql_sha256 = crate::utils::hex::encode(hasher.finalize());
 
             if let Some(applied_name) = applied_name {
                 if applied_name != migration.name {
