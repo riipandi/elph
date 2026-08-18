@@ -32,8 +32,14 @@ pub struct AcpSessionState {
     pub stream_gate: Arc<tokio::sync::Mutex<()>>,
     pub ids: MessageIds,
     pub open_tools: Arc<Mutex<HashSet<String>>>,
+    /// Accumulated tool output (harness updates are deltas; ACP replace-updates send this snapshot).
+    pub tool_outputs: Arc<Mutex<HashMap<String, String>>>,
+    /// Bytes already sent as display-only terminal chunks, per tool-call id.
+    pub terminal_sent: Arc<Mutex<HashMap<String, usize>>>,
     /// Tool-call ids whose local shell is mirrored as a display-only ACP terminal.
     pub open_shells: Arc<Mutex<HashSet<String>>>,
+    /// At most one idle `state_update` per foreground stretch (cancel + stream must not double-emit).
+    pub idle_emitted: Arc<AtomicBool>,
 }
 
 pub struct AcpAgentState {
@@ -84,6 +90,24 @@ impl Default for MessageIds {
 
 pub fn session_key(session_id: &SessionId) -> String {
     session_id.0.as_ref().to_owned()
+}
+
+pub fn next_message_id(state: &Arc<Mutex<AcpAgentState>>, session_id: &SessionId, prefix: &str) -> String {
+    state
+        .lock()
+        .sessions
+        .get(&session_key(session_id))
+        .map(|s| s.ids.next(prefix))
+        .unwrap_or_else(|| format!("{prefix}_1"))
+}
+
+/// Returns true if this call is the first idle of the current stretch.
+pub fn take_idle_slot(state: &Arc<Mutex<AcpAgentState>>, session_id: &SessionId) -> bool {
+    state
+        .lock()
+        .sessions
+        .get(&session_key(session_id))
+        .is_none_or(|s| !s.idle_emitted.swap(true, Ordering::Relaxed))
 }
 
 pub fn mark_session_cancelled(state: &Arc<Mutex<AcpAgentState>>, key: &str) {

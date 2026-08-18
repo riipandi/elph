@@ -141,15 +141,30 @@ where
                     let state = Arc::clone(&state);
                     let conn = connection.clone();
                     if let Err(error) = connection.spawn(async move {
-                        match session::create_session(&state, &request, &conn).await {
-                            Ok(response) => {
+                        // Isolate panics so they cannot tear down the JSON-RPC stdio loop
+                        // (client then reports `incoming_transport_closed` on session/new).
+                        let opened = tokio::spawn({
+                            let state = Arc::clone(&state);
+                            let request = request.clone();
+                            let conn = conn.clone();
+                            async move { session::create_session(&state, &request, &conn).await }
+                        })
+                        .await;
+                        match opened {
+                            Ok(Ok(response)) => {
                                 let sid = response.session_id.clone();
                                 let _ = responder.respond(response);
                                 session::finish_create_session(&state, &request, &conn, &sid).await;
                             }
-                            Err(error) => {
+                            Ok(Err(error)) => {
                                 let _ = responder
                                     .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                            }
+                            Err(join) => {
+                                log::error!("ACP session/new panicked: {join}");
+                                let _ = responder.respond_with_error(agent_client_protocol::util::internal_error(
+                                    format!("session/new panicked: {join}"),
+                                ));
                             }
                         }
                         Ok(())

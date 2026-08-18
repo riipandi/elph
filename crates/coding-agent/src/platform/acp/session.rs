@@ -23,7 +23,7 @@ use crate::platform::acp::updates::send_update;
 pub async fn create_session(
     state: &Arc<Mutex<AcpAgentState>>,
     request: &NewSessionRequest,
-    connection: &ConnectionTo<Client>,
+    _connection: &ConnectionTo<Client>,
 ) -> anyhow::Result<NewSessionResponse> {
     let cwd = request.cwd.0.clone();
     if !cwd.is_absolute() {
@@ -33,10 +33,6 @@ pub async fn create_session(
 
     let session_id = open_or_create(state, &cwd, additional, None).await?;
     let sid = SessionId::from(session_id.clone());
-    attach_session_mcp(state, &sid, mcp::map_servers(&request.mcp_servers)).await;
-    if let Err(error) = after_open(state, connection, &sid).await {
-        log::warn!("ACP after session/new: {error:#}");
-    }
     let (session, _, _) = lookup_session(state, &session_id)?;
     let settings = state.lock().settings.clone();
     Ok(NewSessionResponse::new(sid).config_options(config::config_options_initial(&session, &settings).await))
@@ -45,10 +41,19 @@ pub async fn create_session(
 /// Side effects after `session/new` has been answered (must not run on the I/O task).
 pub async fn finish_create_session(
     state: &Arc<Mutex<AcpAgentState>>,
-    _request: &NewSessionRequest,
+    request: &NewSessionRequest,
     connection: &ConnectionTo<Client>,
     session_id: &SessionId,
 ) {
+    // Advertise slash commands *after* session/new is answered. Clients such as Zed
+    // ignore `available_commands_update` for a session id they have not yet created.
+    if let Err(error) = advertise_commands(state, connection, session_id).await {
+        log::warn!("ACP available_commands after session/new: {error:#}");
+    }
+    attach_session_mcp(state, session_id, mcp::map_servers(&request.mcp_servers)).await;
+    if let Err(error) = after_open(state, connection, session_id).await {
+        log::warn!("ACP after session/new: {error:#}");
+    }
     emit_full_config(state, connection, session_id).await;
 }
 
@@ -85,7 +90,7 @@ async fn attach_session_mcp(
 pub async fn resume_session(
     state: &Arc<Mutex<AcpAgentState>>,
     request: &ResumeSessionRequest,
-    connection: &ConnectionTo<Client>,
+    _connection: &ConnectionTo<Client>,
 ) -> anyhow::Result<ResumeSessionResponse> {
     let cwd = request.cwd.0.clone();
     if !cwd.is_absolute() {
@@ -94,11 +99,6 @@ pub async fn resume_session(
     let additional: Vec<PathBuf> = request.additional_directories.iter().map(|p| p.0.clone()).collect();
     let resume_id = request.session_id.0.to_string();
     let session_id = open_or_create(state, &cwd, additional, Some(&resume_id)).await?;
-    let sid = SessionId::from(session_id.clone());
-    attach_session_mcp(state, &sid, mcp::map_servers(&request.mcp_servers)).await;
-    if let Err(error) = after_open(state, connection, &sid).await {
-        log::warn!("ACP after session/resume: {error:#}");
-    }
     let (session, _, _) = lookup_session(state, &session_id)?;
     let settings = state.lock().settings.clone();
     Ok(ResumeSessionResponse::new().config_options(config::config_options_initial(&session, &settings).await))
@@ -115,6 +115,13 @@ pub async fn finish_resume_session(
         && let Err(error) = replay::replay_from_start(connection, session_id, &session).await
     {
         log::warn!("ACP resume replay: {error:#}");
+    }
+    if let Err(error) = advertise_commands(state, connection, session_id).await {
+        log::warn!("ACP available_commands after session/resume: {error:#}");
+    }
+    attach_session_mcp(state, session_id, mcp::map_servers(&request.mcp_servers)).await;
+    if let Err(error) = after_open(state, connection, session_id).await {
+        log::warn!("ACP after session/resume: {error:#}");
     }
     emit_full_config(state, connection, session_id).await;
 }
@@ -248,10 +255,13 @@ pub(super) async fn open_or_create(
     additional: Vec<PathBuf>,
     resume_id: Option<&str>,
 ) -> anyhow::Result<String> {
-    let (paths, settings) = {
+    let (paths, mut settings) = {
         let guard = state.lock();
         (guard.paths.clone(), guard.settings.clone())
     };
+    // GC on open can lock the store for a long time and the client will kill stdio
+    // (`incoming_transport_closed` on `session/new`). Run retention from the TUI / cron instead.
+    settings.session.retention.gc_on_open = false;
 
     if let Some(id) = resume_id {
         let manager = crate::agent::SessionManager::new(&paths, cwd)?;
@@ -263,22 +273,27 @@ pub(super) async fn open_or_create(
         }
     }
 
-    let (session, ui_rx) = create_coding_session_with_events(CreateSessionOptions {
-        paths: &paths,
-        settings: &settings,
-        cwd,
-        resume_id,
-        create_if_missing: false,
-        session_name: None,
-        provider_override: None,
-        model_override: None,
-        agent_mode: None,
-        system_prompt_override: None,
-        preloaded_resources: None,
-        defer_mcp_load: true,
-        headless: true,
-    })
-    .await?;
+    let created = tokio::time::timeout(
+        std::time::Duration::from_secs(25),
+        create_coding_session_with_events(CreateSessionOptions {
+            paths: &paths,
+            settings: &settings,
+            cwd,
+            resume_id,
+            create_if_missing: false,
+            session_name: None,
+            provider_override: None,
+            model_override: None,
+            agent_mode: None,
+            system_prompt_override: None,
+            preloaded_resources: None,
+            defer_mcp_load: true,
+            headless: true,
+        }),
+    )
+    .await
+    .map_err(|_| anyhow::anyhow!("session open timed out after 25s"))?;
+    let (session, ui_rx) = created?;
 
     let key = session.session_id().to_string();
     let session = Arc::new(session);
@@ -297,10 +312,22 @@ pub(super) async fn open_or_create(
             stream_gate: Arc::new(tokio::sync::Mutex::new(())),
             ids: MessageIds::new(),
             open_tools: Arc::new(Mutex::new(std::collections::HashSet::new())),
+            tool_outputs: Arc::new(Mutex::new(std::collections::HashMap::new())),
+            terminal_sent: Arc::new(Mutex::new(std::collections::HashMap::new())),
             open_shells: Arc::new(Mutex::new(std::collections::HashSet::new())),
+            idle_emitted: Arc::new(AtomicBool::new(false)),
         },
     );
     Ok(key)
+}
+
+async fn advertise_commands(
+    state: &Arc<Mutex<AcpAgentState>>,
+    connection: &ConnectionTo<Client>,
+    session_id: &SessionId,
+) -> anyhow::Result<()> {
+    let (session, _, _) = lookup_session(state, session_id.0.as_ref())?;
+    commands::send_available_commands(connection, session_id, &session).await
 }
 
 async fn after_open(
@@ -313,6 +340,7 @@ async fn after_open(
     if let Err(error) = session.reconcile_tool_surface().await {
         log::warn!("ACP tool catalog refresh: {error:#}");
     }
+    // Skills / MCP tools may have appeared; refresh the slash catalog.
     commands::send_available_commands(connection, session_id, &session).await?;
     if let Ok(title) = crate::agent::session_title_for_rename(Some(&session)) {
         send_update(

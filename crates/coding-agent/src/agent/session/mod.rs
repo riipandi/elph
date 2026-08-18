@@ -779,9 +779,17 @@ impl CodingAgentSession {
             return;
         }
         let before = registry.tool_count();
-        if let Err(err) = registry.discover_tools().await {
-            log::warn!("MCP on-demand discovery: {err:#}");
-            // Still re-attach whatever was discovered so far.
+        match tokio::time::timeout(std::time::Duration::from_secs(12), registry.discover_tools()).await {
+            Ok(Ok(())) => {}
+            Ok(Err(err)) => {
+                log::warn!("MCP on-demand discovery: {err:#}");
+            }
+            Err(_) => {
+                log::warn!("MCP on-demand discovery timed out after 12s");
+                let _ = self
+                    .ui_tx
+                    .send(AgentUiEvent::Status("MCP discovery timed out after 12s; continuing.".into()));
+            }
         }
         let after = registry.tool_count();
         if after != before || pending > 0 {
