@@ -3,11 +3,12 @@
 use std::io::{self, Write};
 
 use crate::ansi::{VisualLine, flatten_visual_lines, write_document_ansi};
-use crate::colors::{ColorLevel, detect_color_level, span_anstyle};
+use crate::builder::Rendown;
+use crate::colors::{ColorLevel, span_anstyle};
 use crate::parse::parse_markdown_document_with_theme;
 use crate::theme::MarkdownTheme;
 
-/// Streaming markdown → ANSI helper for headless CLI.
+/// Streaming markdown → ANSI helper.
 ///
 /// Buffers the full source; on each newline (and on [`finish`](Self::finish)) re-parses and
 /// emits only **new** visual lines since the last paint (append-only).
@@ -15,22 +16,18 @@ pub struct StreamRenderer {
     source: String,
     width: u16,
     theme: MarkdownTheme,
-    /// Number of visual lines already written.
+    color_level: ColorLevel,
     painted_lines: usize,
-    /// Whether any output has been written.
     wrote: bool,
 }
 
 impl StreamRenderer {
-    pub fn new(width: u16) -> Self {
-        Self::with_theme(width, MarkdownTheme::default())
-    }
-
-    pub fn with_theme(width: u16, theme: MarkdownTheme) -> Self {
+    pub fn from_rendown(rendown: &Rendown) -> Self {
         Self {
             source: String::new(),
-            width: width.max(40),
-            theme,
+            width: rendown.width_value().max(40),
+            theme: *rendown.theme_ref(),
+            color_level: rendown.resolved_color_level(),
             painted_lines: 0,
             wrote: false,
         }
@@ -57,13 +54,12 @@ impl StreamRenderer {
         Ok(())
     }
 
-    /// Flush remaining incomplete tail (re-parse full source, emit remaining lines).
+    /// Flush remaining incomplete tail.
     pub fn finish(&mut self, out: &mut impl Write) -> io::Result<()> {
         if self.source.is_empty() && self.painted_lines == 0 {
             return Ok(());
         }
         self.repaint_new_lines(out)?;
-        // If we never emitted a trailing newline after the last visual line, ensure flush.
         out.flush()?;
         Ok(())
     }
@@ -72,23 +68,17 @@ impl StreamRenderer {
         let doc = parse_markdown_document_with_theme(&self.source, &self.theme);
         let visual = flatten_visual_lines(&doc, self.width, &self.theme);
 
-        // Streaming incomplete fences: if the source ends mid-fence without closing ```,
-        // pulldown still may parse partial content — we just paint whatever we have.
         if visual.len() < self.painted_lines {
-            // Layout regression (rare): full re-emit.
             self.painted_lines = 0;
-            // Clear is not possible on plain TTY stream; re-print all with marker would
-            // scramble. Accept append-only of full document for v1 if shrink happens.
-            // Reset and rewrite from scratch by writing a blank separator then full doc.
             writeln!(out)?;
-            write_document_ansi(&doc, self.width, &self.theme, out)?;
+            write_document_ansi(&doc, self.width, &self.theme, self.color_level, out)?;
             self.painted_lines = visual.len();
             self.wrote = true;
             return out.flush();
         }
 
         for line in visual.iter().skip(self.painted_lines) {
-            write_visual_line_ansi(line, &self.theme, out)?;
+            write_visual_line_ansi(line, &self.theme, self.color_level, out)?;
             writeln!(out)?;
             self.wrote = true;
         }
@@ -97,11 +87,16 @@ impl StreamRenderer {
     }
 }
 
-fn write_visual_line_ansi(line: &VisualLine, theme: &MarkdownTheme, out: &mut impl Write) -> io::Result<()> {
+fn write_visual_line_ansi(
+    line: &VisualLine,
+    theme: &MarkdownTheme,
+    color_level: ColorLevel,
+    out: &mut impl Write,
+) -> io::Result<()> {
     if line.spans.is_empty() || line.spans.iter().all(|s| s.text.is_empty()) {
         return Ok(());
     }
-    let bg = if line.code_background && detect_color_level() != ColorLevel::None {
+    let bg = if line.code_background && color_level != ColorLevel::None {
         Some(anstyle::RgbColor(theme.code_bg.r, theme.code_bg.g, theme.code_bg.b))
     } else {
         None
@@ -110,7 +105,7 @@ fn write_visual_line_ansi(line: &VisualLine, theme: &MarkdownTheme, out: &mut im
         if span.text.is_empty() {
             continue;
         }
-        let mut style = span_anstyle(span);
+        let mut style = span_anstyle(span, color_level);
         if let Some(bg) = bg {
             style = style.bg_color(Some(anstyle::Color::Rgb(bg)));
         }
@@ -136,7 +131,7 @@ mod tests {
 
     #[test]
     fn streams_heading_across_chunks() {
-        let mut r = StreamRenderer::new(80);
+        let mut r = Rendown::new().width(80).stream();
         let mut buf = Vec::new();
         r.push("# Hel", &mut buf).unwrap();
         assert!(buf.is_empty(), "partial line should not emit");
@@ -149,7 +144,7 @@ mod tests {
 
     #[test]
     fn finish_flushes_without_trailing_newline() {
-        let mut r = StreamRenderer::new(80);
+        let mut r = Rendown::new().width(80).stream();
         let mut buf = Vec::new();
         r.push("plain text no nl", &mut buf).unwrap();
         assert!(buf.is_empty());

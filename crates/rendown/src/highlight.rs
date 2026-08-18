@@ -1,4 +1,4 @@
-//! Fenced code block highlighting via syntect (no mermaid for v1).
+//! Fenced code block highlighting via syntect.
 
 use crate::blocks::code_block_uses_card_background;
 use crate::colors::syntect_to_styled_span;
@@ -8,13 +8,19 @@ use crate::theme::MarkdownTheme;
 
 /// Highlight a fenced code block into per-line styled spans.
 ///
-/// Mermaid fences are rendered as plain source (no mermaid-text dependency in v1).
+/// Mermaid fences always produce a single deferred line (`mermaid_source` set).
+/// Diagram rendering happens later (ANSI / TUI) so width is known.
 pub fn highlight_code_block(language: Option<&str>, code: &str, theme: &MarkdownTheme) -> Vec<MarkdownLine> {
     let use_card = code_block_uses_card_background(code);
 
-    // Mermaid: keep as plain fenced source lines (parity later with elph-tui mermaid).
     if language.is_some_and(|lang| lang.trim() == "mermaid") {
-        return fallback_plain_code_block(code, theme, true);
+        return vec![MarkdownLine {
+            kind: MarkdownLineKind::Code,
+            spans: vec![StyledSpan::plain("", theme.body)],
+            code_background: true,
+            table: None,
+            mermaid_source: Some(code.to_string()),
+        }];
     }
 
     let fence_info = language.unwrap_or("");
@@ -86,5 +92,31 @@ mod tests {
         let lines = highlight_code_block(Some("rust"), "let a = 1;\nlet b = 2;\n", &MarkdownTheme::default());
         assert_eq!(lines.len(), 2);
         assert!(lines.iter().all(|line| line.code_background));
+    }
+
+    #[test]
+    fn mermaid_stores_deferred_source() {
+        let src = "graph LR; A[Build] --> B[Deploy]";
+        let lines = highlight_code_block(Some("mermaid"), src, &MarkdownTheme::default());
+        assert_eq!(lines.len(), 1);
+        assert!(lines[0].code_background);
+        assert_eq!(lines[0].kind, MarkdownLineKind::Code);
+        assert_eq!(lines[0].mermaid_source.as_deref(), Some(src));
+    }
+
+    #[test]
+    fn mermaid_language_trims() {
+        let src = "graph LR; A --> B";
+        let lines = highlight_code_block(Some("mermaid "), src, &MarkdownTheme::default());
+        assert_eq!(lines[0].mermaid_source.as_deref(), Some(src));
+    }
+
+    #[test]
+    fn non_mermaid_language_uses_syntect_path() {
+        let src = "let x = 1;";
+        let lines = highlight_code_block(Some("rust"), src, &MarkdownTheme::default());
+        assert_eq!(lines.len(), 1);
+        assert!(lines[0].mermaid_source.is_none());
+        assert!(!lines[0].spans.is_empty());
     }
 }

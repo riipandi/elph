@@ -22,7 +22,11 @@ pub struct MarkdownTheme {
 }
 
 impl MarkdownTheme {
-    /// Ghostty-style dark palette (matches elph-tui [`UiTheme::dark`] mapping).
+    pub fn builder() -> MarkdownThemeBuilder {
+        MarkdownThemeBuilder { theme: Self::dark() }
+    }
+
+    /// Dark palette (Ghostty-inspired neutrals).
     pub const fn dark() -> Self {
         Self {
             // text_primary #d4d5d9
@@ -56,6 +60,74 @@ impl MarkdownTheme {
 impl Default for MarkdownTheme {
     fn default() -> Self {
         Self::dark()
+    }
+}
+
+/// Incremental theme constructor. Unset fields keep [`MarkdownTheme::dark`] values.
+#[derive(Clone, Copy, Debug)]
+pub struct MarkdownThemeBuilder {
+    theme: MarkdownTheme,
+}
+
+impl MarkdownThemeBuilder {
+    pub fn body(mut self, color: RgbColor) -> Self {
+        self.theme.body = color;
+        self
+    }
+    pub fn heading(mut self, color: RgbColor) -> Self {
+        self.theme.heading = color;
+        self
+    }
+    pub fn heading_weight(mut self, weight: FontWeight) -> Self {
+        self.theme.heading_weight = weight;
+        self
+    }
+    pub fn strong(mut self, color: RgbColor) -> Self {
+        self.theme.strong = color;
+        self
+    }
+    pub fn emphasis(mut self, color: RgbColor) -> Self {
+        self.theme.emphasis = color;
+        self
+    }
+    pub fn inline_code(mut self, color: RgbColor) -> Self {
+        self.theme.inline_code = color;
+        self
+    }
+    pub fn link(mut self, color: RgbColor) -> Self {
+        self.theme.link = color;
+        self
+    }
+    pub fn code_bg(mut self, color: RgbColor) -> Self {
+        self.theme.code_bg = color;
+        self
+    }
+    pub fn code_inset(mut self, inset: u16) -> Self {
+        self.theme.code_inset = inset;
+        self
+    }
+    pub fn blockquote(mut self, color: RgbColor) -> Self {
+        self.theme.blockquote = color;
+        self
+    }
+    pub fn horizontal_rule(mut self, color: RgbColor) -> Self {
+        self.theme.horizontal_rule = color;
+        self
+    }
+    pub fn list_marker(mut self, color: RgbColor) -> Self {
+        self.theme.list_marker = color;
+        self
+    }
+    pub fn table_border(mut self, color: RgbColor) -> Self {
+        self.theme.table_border = color;
+        self
+    }
+    pub fn table_header(mut self, color: RgbColor) -> Self {
+        self.theme.table_header = color;
+        self
+    }
+    pub fn build(self) -> MarkdownTheme {
+        self.theme
     }
 }
 

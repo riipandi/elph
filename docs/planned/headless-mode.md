@@ -88,7 +88,7 @@ Unless `--no-session`, stderr prints a **dimmed** turn block with blank lines ab
 
 ### Pretty markdown (`--output=pretty` / `--output-format=pretty`)
 
-Streaming **CommonMark/markdown** render via the workspace crate **`rendown`** (pulldown-cmark + syntect, cloned from elph-tui markdown; **crossterm** for terminal width). Full source is re-parsed on each newline (and on turn end); only new visual lines are emitted.
+Streaming **CommonMark/markdown** render via the workspace crate **`rendown`** (`Rendown` builder; features `stream` + `mermaid`). Full source is re-parsed on each newline (and on turn end); only new visual lines are emitted. Terminal width comes from `rendown::terminal_width` (crossterm, `stream` feature).
 
 ```sh
 elph run --output=pretty "explain this crate in markdown"

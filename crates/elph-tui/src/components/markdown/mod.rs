@@ -1,30 +1,33 @@
-//! Markdown pipeline: pulldown-cmark parse + syntect highlight + cached render.
+//! Markdown pipeline: rendown parse/highlight + iocraft paint.
 
 mod blocks;
-pub(crate) mod colors;
-pub(crate) mod highlight;
+pub(crate) mod convert;
 mod layout;
-pub(crate) mod linkify;
-pub(crate) mod model;
-pub(crate) mod parse;
-pub(crate) mod parser_config;
-pub(crate) mod render;
-pub(crate) mod syntax;
+mod render;
 mod table;
-pub(crate) mod theme;
+mod theme;
 
 pub use layout::{markdown_document_row_count, markdown_source_row_count};
-pub use linkify::{path_to_file_url, spans_with_links};
-pub use model::{MarkdownDocument, MarkdownLine, MarkdownLineKind, MarkdownTable, StyledSpan};
-pub use parse::{parse_markdown_document, parse_markdown_document_with_theme};
-pub use parser_config::has_open_container_at as markdown_has_open_container_at;
 pub use render::{plain_text_document, render_linkified_plain_text, render_markdown_block, render_markdown_children};
 pub use render::{render_markdown_document, render_markdown_lines, streaming_tail_document};
-pub use theme::MarkdownTheme;
+pub use rendown::{MarkdownDocument, MarkdownLine, MarkdownLineKind, MarkdownTable, MarkdownTheme, StyledSpan};
+pub use rendown::{has_open_container_at as markdown_has_open_container_at, path_to_file_url, spans_with_links};
+pub use theme::theme_from_ui;
 
 use super::scroll_box::ScrollBox;
 use super::theme::{UiTheme, resolve_ui_theme};
 use iocraft::prelude::*;
+use rendown::Rendown;
+
+/// Parse markdown with the default theme.
+pub fn parse_markdown_document(source: &str) -> MarkdownDocument {
+    Rendown::new().parse(source)
+}
+
+/// Parse markdown with an explicit theme.
+pub fn parse_markdown_document_with_theme(source: &str, theme: &MarkdownTheme) -> MarkdownDocument {
+    Rendown::new().theme(*theme).parse(source)
+}
 
 /// Props for [`MarkdownView`].
 #[derive(Clone, Default, Props)]
@@ -39,7 +42,7 @@ pub struct MarkdownViewProps {
 #[component]
 pub fn MarkdownView(props: &MarkdownViewProps, hooks: Hooks) -> impl Into<AnyElement<'static>> {
     let ui_theme = resolve_ui_theme(&hooks, props.theme);
-    let markdown_theme = MarkdownTheme::from_ui_theme(ui_theme);
+    let markdown_theme = theme_from_ui(ui_theme);
     let document = parse_markdown_document_with_theme(&props.source, &markdown_theme);
     let block = render_markdown_block(&document, props.width.max(1));
 
@@ -55,6 +58,7 @@ pub fn MarkdownView(props: &MarkdownViewProps, hooks: Hooks) -> impl Into<AnyEle
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rendown::FontWeight;
 
     #[test]
     fn parses_inline_styles_and_code_fence() {
@@ -63,7 +67,7 @@ mod tests {
         assert!(doc.lines.iter().any(|line| {
             line.spans
                 .iter()
-                .any(|span| span.weight == iocraft::prelude::Weight::Bold && span.text.contains("Hi"))
+                .any(|span| span.weight == FontWeight::Bold && span.text.contains("Hi"))
         }));
         assert!(doc.lines.iter().any(|line| line.code_background));
         let single = parse_markdown_document("```rust\nfn main() {}\n```");

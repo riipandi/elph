@@ -1,7 +1,10 @@
 //! Row measurement helpers (shared with ANSI streaming gaps).
 
 use crate::blocks::{CODE_VERTICAL_PADDING, code_content_width, segment_end, segment_gap_after};
+use crate::mermaid::mermaid_display_text;
 use crate::model::{MarkdownDocument, MarkdownLine, MarkdownLineKind};
+use crate::table::format_table_lines;
+use crate::theme::MarkdownTheme;
 use crate::wrap::{wrap_text_to_lines, wrap_with_hanging_ranges};
 
 fn line_plain_text(line: &MarkdownLine) -> String {
@@ -12,16 +15,16 @@ fn code_line_row_count(text: &str, inner: u16) -> u16 {
     wrap_with_hanging_ranges(text, inner).len().max(1) as u16
 }
 
-fn line_row_count(line: &MarkdownLine, wrap_width: u16) -> u16 {
+fn line_row_count(line: &MarkdownLine, wrap_width: u16, theme: &MarkdownTheme) -> u16 {
     if line.is_blank() {
         return 1;
     }
     if line.kind == MarkdownLineKind::Rule {
         return 1;
     }
-    if line.mermaid_source.is_some() {
-        // v1: mermaid is plain source lines already expanded at highlight.
-        return 1;
+    if let Some(source) = &line.mermaid_source {
+        let inner = code_content_width(wrap_width);
+        return mermaid_display_text(source, inner).lines().count().max(1) as u16;
     }
     if line.code_background {
         let inner = code_content_width(wrap_width);
@@ -31,8 +34,10 @@ fn line_row_count(line: &MarkdownLine, wrap_width: u16) -> u16 {
         return code_line_row_count(&line_plain_text(line), wrap_width).max(1);
     }
     if line.kind == MarkdownLineKind::Table {
-        // Approximate: tables expand at paint; use build via format_table_lines.
-        return 3;
+        if let Some(table) = &line.table {
+            return format_table_lines(table, wrap_width, theme).len().max(1) as u16;
+        }
+        return 1;
     }
     wrap_text_to_lines(&line_plain_text(line), wrap_width as usize)
         .len()
@@ -40,7 +45,7 @@ fn line_row_count(line: &MarkdownLine, wrap_width: u16) -> u16 {
 }
 
 /// Wrapped row count for a parsed markdown document (includes block gaps).
-pub fn markdown_document_row_count(document: &MarkdownDocument, wrap_width: u16) -> u16 {
+pub fn markdown_document_row_count(document: &MarkdownDocument, wrap_width: u16, theme: &MarkdownTheme) -> u16 {
     let mut total = 0u16;
     let lines = &document.lines;
     let mut index = 0usize;
@@ -57,20 +62,20 @@ pub fn markdown_document_row_count(document: &MarkdownDocument, wrap_width: u16)
                     0
                 };
                 for item in &lines[index..end] {
-                    block = block.saturating_add(line_row_count(item, wrap_width));
+                    block = block.saturating_add(line_row_count(item, wrap_width, theme));
                 }
                 total = total.saturating_add(block.max(1));
             } else {
                 for item in &lines[index..end] {
-                    total = total.saturating_add(line_row_count(item, wrap_width));
+                    total = total.saturating_add(line_row_count(item, wrap_width, theme));
                 }
             }
         } else if line.kind == MarkdownLineKind::ListItem {
             for item in &lines[index..end] {
-                total = total.saturating_add(line_row_count(item, wrap_width));
+                total = total.saturating_add(line_row_count(item, wrap_width, theme));
             }
         } else {
-            total = total.saturating_add(line_row_count(line, wrap_width));
+            total = total.saturating_add(line_row_count(line, wrap_width, theme));
         }
         total = total.saturating_add(segment_gap_after(lines, index, end));
         index = end;

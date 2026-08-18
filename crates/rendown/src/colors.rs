@@ -41,8 +41,8 @@ pub fn detect_color_level() -> ColorLevel {
     })
 }
 
-fn adapt_anstyle_color(color: AnstyleColor) -> Option<AnstyleColor> {
-    match detect_color_level() {
+fn adapt_anstyle_color(color: AnstyleColor, level: ColorLevel) -> Option<AnstyleColor> {
+    match level {
         ColorLevel::None => None,
         ColorLevel::TrueColor => Some(color),
         ColorLevel::Ansi256 => Some(match color {
@@ -130,7 +130,7 @@ fn anstyle_color_to_rgb(color: AnstyleColor, fallback: RgbColor) -> RgbColor {
             AnsiColor::White | AnsiColor::BrightWhite => RgbColor::new(0xb0, 0xb3, 0xb9),
         },
         AnstyleColor::Ansi256(index) => {
-            if let Some(adapted) = adapt_anstyle_color(AnstyleColor::Ansi256(index)) {
+            if let Some(adapted) = adapt_anstyle_color(AnstyleColor::Ansi256(index), detect_color_level()) {
                 return anstyle_color_to_rgb(adapted, fallback);
             }
             fallback
@@ -142,7 +142,7 @@ pub fn syntect_to_styled_span(style: SyntectStyle, text: impl Into<String>, fall
     let anstyle = to_anstyle(style);
     let color = anstyle
         .get_fg_color()
-        .and_then(adapt_anstyle_color)
+        .and_then(|c| adapt_anstyle_color(c, detect_color_level()))
         .map(|c| anstyle_color_to_rgb(c, fallback))
         .unwrap_or(fallback);
     let effects = anstyle.get_effects();
@@ -161,11 +161,11 @@ pub fn syntect_to_styled_span(style: SyntectStyle, text: impl Into<String>, fall
 }
 
 /// Build anstyle Style for a span (for ANSI emission).
-pub fn span_anstyle(span: &StyledSpan) -> anstyle::Style {
+pub fn span_anstyle(span: &StyledSpan, level: ColorLevel) -> anstyle::Style {
     let mut style = anstyle::Style::new();
-    if detect_color_level() != ColorLevel::None {
+    if level != ColorLevel::None {
         let rgb = AnstyleRgb(span.color.r, span.color.g, span.color.b);
-        if let Some(fg) = adapt_anstyle_color(AnstyleColor::Rgb(rgb)) {
+        if let Some(fg) = adapt_anstyle_color(AnstyleColor::Rgb(rgb), level) {
             style = style.fg_color(Some(fg));
         }
     }

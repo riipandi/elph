@@ -1,26 +1,66 @@
 # rendown
 
-Streaming CommonMark/markdown → ANSI for terminals.
+CommonMark/markdown → ANSI for terminals.
 
-Cloned from `elph-tui`’s markdown pipeline (pulldown-cmark + syntect tokyo-night) with
-neutral RGB colors (no iocraft). Used by headless `elph run --output=pretty`.
+Parse once into a cacheable document (GFM, syntect highlighting, OSC 8 links), then write
+styled text. Incremental streaming and mermaid diagrams are optional features.
 
-## API
+## Usage
+
+```toml
+[dependencies]
+rendown = "0.0.1"
+# Optional:
+# rendown = { version = "0.0.1", features = ["stream", "mermaid"] }
+```
 
 ```rust
-use rendown::{parse_markdown, write_document_ansi, StreamRenderer, MarkdownTheme};
+use rendown::{ColorLevel, MarkdownTheme, Rendown};
 
-let doc = parse_markdown("# Hello\n\n**world**");
+let md = Rendown::new()
+    .width(80)
+    .theme(MarkdownTheme::dark())
+    .color_level(ColorLevel::TrueColor);
+
+let doc = md.parse("# Hello\n\n**world**");
 let mut out = Vec::new();
-write_document_ansi(&doc, 80, &MarkdownTheme::default(), &mut out)?;
+md.write(&doc, &mut out)?;
+```
 
-let mut stream = StreamRenderer::new(80);
-stream.push("# Hel", &mut out)?;
-stream.push("lo\n", &mut out)?;
-stream.finish(&mut out)?;
+Theme fields can be overridden with a builder:
+
+```rust
+use rendown::{MarkdownTheme, RgbColor};
+
+let theme = MarkdownTheme::builder()
+    .heading(RgbColor::new(0xff, 0xb3, 0x47))
+    .build();
+```
+
+### Features
+
+| Feature | Default | Adds |
+| --- | --- | --- |
+| *(none)* | yes | Parse + ANSI write |
+| `stream` | off | `Rendown::stream()` / `StreamRenderer` + `terminal_width()` (crossterm) |
+| `mermaid` | off | `render_mermaid_at_width` (mermaid-text). Fences always store `mermaid_source` in the IR; without this feature, ANSI prints the source as a code card |
+
+```rust
+#[cfg(feature = "stream")]
+{
+    use rendown::Rendown;
+    let mut stream = Rendown::new().width(80).stream();
+    stream.push("# Hel", &mut out)?;
+    stream.finish(&mut out)?;
+}
 ```
 
 ## Notes
 
-- Mermaid fences render as plain source in v1 (no `mermaid-text`).
-- Transcript / elph-tui still use their own copy; a later PR can dedupe.
+- Colors are neutral RGB (`RgbColor`, `FontWeight`). No TUI toolkit dependency.
+- `NO_COLOR` and `supports-color` control auto color level unless you call `.color_level(...)`.
+- Mermaid fences are deferred at parse time so width-aware rendering can happen later.
+
+## License
+
+Licensed under the [MIT License](https://www.tldrlegal.com/license/mit-license).

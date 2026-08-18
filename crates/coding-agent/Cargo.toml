@@ -61,7 +61,7 @@ regex.workspace = true
 rustc-hash.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-rendown.workspace = true
+rendown = { workspace = true, features = ["stream", "mermaid"] }
 tokio = { workspace = true, features = [
   "fs",
   "io-util",

@@ -9,9 +9,10 @@ use std::path::Path;
 use iocraft::prelude::*;
 use similar::ChangeTag;
 
+use rendown::{FontWeight, syntax_highlight_raw, syntect_to_styled_span};
+
 use super::render::diff_line_color;
-use crate::components::markdown::colors::syntect_to_styled_span;
-use crate::components::markdown::syntax::syntax_highlight_raw;
+use crate::components::markdown::convert::{from_iocraft_color, to_iocraft_color, to_iocraft_weight};
 use crate::components::theme::UiTheme;
 
 /// Highlight the content portion of a diff line using syntect.
@@ -44,10 +45,11 @@ pub fn highlight_diff_line(
         if let Some(lines) = highlighted {
             if let Some(regions) = lines.first() {
                 for (style, segment) in regions {
-                    let span = syntect_to_styled_span(*style, segment.as_str(), theme.text_secondary, theme);
-                    let mut mt = MixedTextContent::new(segment.as_str()).color(span.color);
-                    if span.weight != Weight::Normal {
-                        mt = mt.weight(span.weight);
+                    let span =
+                        syntect_to_styled_span(*style, segment.as_str(), from_iocraft_color(theme.text_secondary));
+                    let mut mt = MixedTextContent::new(segment.as_str()).color(to_iocraft_color(span.color));
+                    if span.weight != FontWeight::Normal {
+                        mt = mt.weight(to_iocraft_weight(span.weight));
                     }
                     if span.italic {
                         mt = mt.italic();

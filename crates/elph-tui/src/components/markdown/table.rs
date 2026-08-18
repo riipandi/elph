@@ -6,8 +6,9 @@ use unicode_width::UnicodeWidthStr;
 use crate::text_input_layout::WrappedTextLayout;
 use crate::utils::truncate_with_ellipsis;
 
-use super::model::MarkdownTable;
-use super::theme::MarkdownTheme;
+use rendown::{MarkdownTable, MarkdownTheme};
+
+use super::convert::to_iocraft_color;
 
 /// Absolute floor for any column (separator + at least one glyph).
 const MIN_COL_WIDTH: u16 = 4;
@@ -423,16 +424,20 @@ fn render_table_line(line: TableLine, width: u16, theme: &MarkdownTheme) -> AnyE
             View(width: width.max(1), flex_shrink: 0f32) {
                 Text(
                     content: text,
-                    color: theme.table_border,
+                    color: to_iocraft_color(theme.table_border),
                     wrap: TextWrap::NoWrap,
                 )
             }
         }
         .into(),
         TableLine::Row { cell_segments, header } => {
-            let content_color = if header { theme.table_header } else { theme.body };
+            let content_color = if header {
+                to_iocraft_color(theme.table_header)
+            } else {
+                to_iocraft_color(theme.body)
+            };
             let content_weight = if header { Weight::Bold } else { Weight::Normal };
-            let mut parts = vec![MixedTextContent::new("│").color(theme.table_border)];
+            let mut parts = vec![MixedTextContent::new("│").color(to_iocraft_color(theme.table_border))];
             for (index, segment) in cell_segments.iter().enumerate() {
                 let mut part = MixedTextContent::new(segment.as_str()).color(content_color);
                 if header {
@@ -440,10 +445,10 @@ fn render_table_line(line: TableLine, width: u16, theme: &MarkdownTheme) -> AnyE
                 }
                 parts.push(part);
                 if index + 1 < cell_segments.len() {
-                    parts.push(MixedTextContent::new("│").color(theme.table_border));
+                    parts.push(MixedTextContent::new("│").color(to_iocraft_color(theme.table_border)));
                 }
             }
-            parts.push(MixedTextContent::new("│").color(theme.table_border));
+            parts.push(MixedTextContent::new("│").color(to_iocraft_color(theme.table_border)));
             element! {
                 View(width: width.max(1), flex_shrink: 0f32) {
                     MixedText(contents: parts, wrap: TextWrap::NoWrap)

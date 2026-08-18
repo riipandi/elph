@@ -3,9 +3,10 @@
 use crate::wrapped_text_row_count;
 use unicode_width::UnicodeWidthChar;
 
+use rendown::{MarkdownDocument, MarkdownLine, MarkdownLineKind};
+
 use super::blocks::CODE_VERTICAL_PADDING;
 use super::blocks::{code_content_width, segment_end, segment_gap_after};
-use super::model::{MarkdownDocument, MarkdownLine, MarkdownLineKind};
 use super::table::markdown_table_row_count;
 
 /// Hanging-indent word wrap for a single code line.
@@ -91,7 +92,7 @@ fn line_row_count(line: &MarkdownLine, wrap_width: u16) -> u16 {
     // and paint in parity — the row count matches exactly what render_mermaid_card paints.
     if let Some(source) = &line.mermaid_source {
         let inner = code_content_width(wrap_width);
-        let rendered = super::highlight::render_mermaid_at_width(source, inner).unwrap_or_else(|_| source.clone());
+        let rendered = rendown::mermaid_display_text(source, inner);
         return rendered.lines().count().max(1) as u16;
     }
     if line.code_background {

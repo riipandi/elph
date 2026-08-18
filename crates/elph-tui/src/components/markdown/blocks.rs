@@ -1,6 +1,6 @@
 //! Block segmentation and consistent inter-block spacing.
 
-use super::model::{MarkdownLine, MarkdownLineKind};
+use rendown::{MarkdownLine, MarkdownLineKind};
 
 /// Rows between adjacent markdown block segments (paragraph, code, list, …).
 pub const BLOCK_GAP_ROWS: u16 = 1;
@@ -20,6 +20,7 @@ pub fn code_content_width(outer_width: u16) -> u16 {
 }
 
 /// Multi-line fenced blocks use the tinted card; single-line blocks render inline.
+#[cfg(test)]
 pub fn code_block_uses_card_background(body: &str) -> bool {
     let trimmed = body.trim_end_matches(['\n', '\r']);
     if trimmed.is_empty() {

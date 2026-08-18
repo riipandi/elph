@@ -346,12 +346,7 @@ fn attach_orphan_url_lines_to_list_items(lines: &mut [MarkdownLine]) {
     }
 }
 
-/// Parse markdown source off the UI thread (CPU-bound).
-pub fn parse_markdown_document(source: &str) -> MarkdownDocument {
-    parse_markdown_document_with_theme(source, &MarkdownTheme::default())
-}
-
-pub fn parse_markdown_document_with_theme(source: &str, theme: &MarkdownTheme) -> MarkdownDocument {
+pub(crate) fn parse_markdown_document_with_theme(source: &str, theme: &MarkdownTheme) -> MarkdownDocument {
     if source.is_empty() {
         return MarkdownDocument::default();
     }
@@ -657,6 +652,10 @@ mod tests {
     use super::*;
     use crate::layout::markdown_document_row_count;
 
+    fn parse_markdown_document(source: &str) -> MarkdownDocument {
+        parse_markdown_document_with_theme(source, &MarkdownTheme::default())
+    }
+
     fn line_texts(doc: &MarkdownDocument) -> Vec<(MarkdownLineKind, String)> {
         doc.lines
             .iter()
@@ -676,7 +675,7 @@ mod tests {
             line_texts(&doc)
         );
         assert_eq!(doc.lines.len(), 2);
-        let rows = markdown_document_row_count(&doc, 40);
+        let rows = markdown_document_row_count(&doc, 40, &MarkdownTheme::default());
         assert!(rows <= 4, "too many rows for two short paragraphs: {rows}");
     }
 
@@ -709,7 +708,7 @@ mod tests {
     fn list_followed_by_paragraph_has_gap_row() {
         let doc = parse_markdown_document("- item\n\nnext");
         assert_eq!(doc.lines.len(), 2);
-        let rows = markdown_document_row_count(&doc, 40);
+        let rows = markdown_document_row_count(&doc, 40, &MarkdownTheme::default());
         assert!(rows >= 3, "expected gap after list, got {rows}");
     }
 
