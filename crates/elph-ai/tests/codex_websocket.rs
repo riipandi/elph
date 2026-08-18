@@ -1,5 +1,7 @@
-use elph_ai::reset_codex_websocket_debug_stats;
-use elph_ai::{close_codex_websocket_sessions, get_codex_websocket_debug_stats, get_codex_websocket_input_delta};
+use elph_ai::api::codex_transport::reset_codex_websocket_debug_stats;
+use elph_ai::api::codex_transport::{
+    close_codex_websocket_sessions, get_codex_websocket_debug_stats, get_codex_websocket_input_delta,
+};
 use serde_json::json;
 
 #[test]

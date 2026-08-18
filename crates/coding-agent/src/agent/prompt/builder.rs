@@ -1,24 +1,26 @@
 //! Coding-agent system prompt assembly.
 //!
 //! Layering (generic runtime → product domain):
-//! 1. [`elph_agent::render_base_template`] — persona, session env, [`format_skills_for_context`] (`<available_skills>`)
+//! 1. [`elph_agent::prompt::render_base_template`] — persona, session env, [`format_skills_for_context`] (`<available_skills>`)
 //! 2. [`super::template::coding_agent_engine`] — Grok-style `coding_base.txt` (MiniJinja) with tool names
 //! 3. `mode_section` — per-mode appendix (`<mode_context>`)
-//! 4. [`elph_agent::format_project_context`] — Pi-style `<project_context>` for AGENTS.md
+//! 4. [`elph_agent::prompt::format_project_context`] — Pi-style `<project_context>` for AGENTS.md
 
 use std::path::Path;
 
 use crate::types::AgentMode;
-use elph_agent::{AgentHarnessResources, PromptAssemblyMode, SystemPromptBuilder, SystemPromptTemplateContext};
-use elph_agent::{format_skills_for_context, now_date_with_offset};
+use elph_agent::harness::AgentHarnessResources;
+use elph_agent::harness::format_skills_for_context;
+use elph_agent::messages::now_date_with_offset;
+use elph_agent::prompt::{PromptAssemblyMode, SystemPromptBuilder, SystemPromptTemplateContext};
 
-use super::context::{ElphCodingPromptContext, has_codegraph_tools};
+use super::context::ElphCodingPromptContext;
 use super::modes::mode_footer_slug;
 use super::template::coding_agent_engine;
 
 /// Per-session prompt knobs derived from `Settings` and the live agent mode.
 ///
-/// Grouped into a struct so the two booleans are named at every call site — as
+/// Grouped into a struct so the booleans are named at every call site — as
 /// positional `bool` arguments they were trivially swappable and pushed
 /// `build_coding_system_prompt` past the `clippy::too_many_arguments` limit.
 #[derive(Clone, Debug, Default)]
@@ -29,10 +31,6 @@ pub struct CodingPromptOptions {
     /// Code, comments, and documentation remain in English regardless of this
     /// value. Empty string uses the default (English).
     pub preferred_chat_language: String,
-    /// Mirrors the `codegraph.enabled` setting: when false, the `<codegraph>`
-    /// guidance section is omitted even if `code_*` tool names leak into
-    /// `tool_names` (defense-in-depth on top of the tool-name check).
-    pub codegraph_enabled: bool,
     /// Mirrors `simplifiedTechnicalEnglish`: renders the `<response_style>` block.
     pub ste_enabled: bool,
     /// Memorable multi-worker display name when workers are enabled.
@@ -47,7 +45,6 @@ impl CodingPromptOptions {
         Self {
             mode,
             preferred_chat_language: String::new(),
-            codegraph_enabled: true,
             ste_enabled: true,
             worker_name: None,
             worker_peers: None,
@@ -72,12 +69,6 @@ impl CodingPromptOptions {
         self
     }
 
-    /// Toggle the `<codegraph>` guidance section.
-    pub fn with_codegraph(mut self, enabled: bool) -> Self {
-        self.codegraph_enabled = enabled;
-        self
-    }
-
     /// Toggle the `<response_style>` (Simplified Technical English) section.
     pub fn with_ste(mut self, enabled: bool) -> Self {
         self.ste_enabled = enabled;
@@ -96,7 +87,6 @@ pub fn build_coding_system_prompt(
     let CodingPromptOptions {
         mode,
         preferred_chat_language,
-        codegraph_enabled,
         ste_enabled,
         worker_name,
         worker_peers,
@@ -129,11 +119,6 @@ pub fn build_coding_system_prompt(
     .with_active_tool_names(tool_names);
 
     let elph_context = ElphCodingPromptContext::new(&base_context);
-    let elph_context = if codegraph_enabled && has_codegraph_tools(tool_names) {
-        elph_context.with_codegraph_tools(tool_names)
-    } else {
-        elph_context
-    };
     let elph_context = elph_context.with_ste_code(ste_enabled);
     let elph_context = elph_context.with_worker_name(worker_name.as_deref());
     let elph_context = elph_context.with_worker_peers(worker_peers.as_deref());
@@ -151,10 +136,36 @@ pub fn build_coding_system_prompt(
         .map_err(Into::into)
 }
 
+/// Slim system prompt for the parallel inbound-worker answer loop.
+///
+/// Not `coding_base`: that template assumes write/shell/todo tools and a user
+/// coding turn. Intercom only has `worker_reply` / `worker_list` / `worker_pending`.
+pub fn build_intercom_system_prompt(worker_name: Option<&str>, worker_peers: Option<&str>) -> anyhow::Result<String> {
+    #[derive(serde::Serialize)]
+    struct IntercomPromptContext<'a> {
+        worker_name: &'a str,
+        worker_peers: &'a str,
+    }
+    let name = worker_name.unwrap_or("").trim();
+    let peers = worker_peers.unwrap_or("").trim();
+    let body = coding_agent_engine().render(
+        "intercom_base",
+        &IntercomPromptContext {
+            worker_name: name,
+            worker_peers: peers,
+        },
+    )?;
+    SystemPromptBuilder::new()
+        .mode(PromptAssemblyMode::Full)
+        .domain_body(body)
+        .render()
+        .map_err(Into::into)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use elph_agent::AgentHarnessResources;
+    use elph_agent::harness::AgentHarnessResources;
 
     #[test]
     fn coding_prompt_layers_base_domain_and_mode() {
@@ -177,49 +188,6 @@ mod tests {
     }
 
     #[test]
-    fn coding_prompt_includes_codegraph_when_tools_present() {
-        let prompt = build_coding_system_prompt(
-            Path::new("/tmp/project"),
-            &AgentHarnessResources::default(),
-            &[
-                "read_file".into(),
-                "code_search".into(),
-                "code_impact".into(),
-                "memory_search".into(),
-            ],
-            None,
-            &CodingPromptOptions::new(AgentMode::Build).with_codegraph(true),
-        )
-        .expect("prompt");
-
-        // These tools appear in the template but may not have dedicated sections
-        assert!(prompt.contains("code_search"));
-        assert!(prompt.contains("code_impact"));
-        assert!(prompt.contains("memory_search"));
-    }
-
-    #[test]
-    fn coding_prompt_omits_codegraph_without_tools() {
-        let prompt = build_coding_system_prompt(
-            Path::new("/tmp/project"),
-            &AgentHarnessResources::default(),
-            &[
-                "read_file".into(),
-                "grep".into(),
-                // No codegraph tools — the literal string must not appear
-                // anywhere in the prompt.
-            ],
-            None,
-            &CodingPromptOptions::new(AgentMode::Build),
-        )
-        .expect("prompt");
-
-        assert!(!prompt.contains("<codegraph_tools>"));
-        assert!(!prompt.contains("code_search"));
-        assert!(prompt.contains("One targeted search"));
-    }
-
-    #[test]
     fn coding_prompt_documents_lazy_mcp_activation() {
         let prompt = build_coding_system_prompt(
             Path::new("/tmp/project"),
@@ -238,27 +206,6 @@ mod tests {
     }
 
     #[test]
-    fn coding_prompt_omits_codegraph_when_disabled_even_with_tools() {
-        // Defense-in-depth: `codegraph.enabled` false must hide the `<codegraph_tools>`
-        // guidance section even if `code_*` tool names are present in the active
-        // tool list (they still appear in `<available_tools>`).
-        let prompt = build_coding_system_prompt(
-            Path::new("/tmp/project"),
-            &AgentHarnessResources::default(),
-            &["read_file".into(), "code_search".into(), "code_impact".into()],
-            None,
-            &CodingPromptOptions::new(AgentMode::Build).with_codegraph(false),
-        )
-        .expect("prompt");
-
-        assert!(!prompt.contains("<codegraph_tools>"));
-        assert!(!prompt.contains("code index"));
-        // Guidance that only exists inside the `<codegraph_tools>` section must be gone.
-        assert!(!prompt.contains("blast radius"));
-        assert!(!prompt.contains("Prefer codegraph"));
-    }
-
-    #[test]
     fn plan_mode_includes_proposed_plan_guidance() {
         let prompt = build_coding_system_prompt(
             Path::new("/tmp/project"),
@@ -270,7 +217,7 @@ mod tests {
         .expect("prompt");
 
         assert!(prompt.contains("<proposed_plan>"));
-        assert!(prompt.contains("Plan — read-only exploration"));
+        assert!(prompt.contains("Plan — design an implementation-ready plan"));
         assert!(prompt.contains("implementation-ready plan"));
     }
 
@@ -553,34 +500,6 @@ mod tests {
     }
 
     #[test]
-    fn codegraph_tools_section_conditional_rendering() {
-        let with_codegraph = build_coding_system_prompt(
-            Path::new("/tmp/project"),
-            &AgentHarnessResources::default(),
-            &["read_file", "code_search", "code_impact"].map(String::from),
-            None,
-            &CodingPromptOptions::new(AgentMode::Build).with_codegraph(true),
-        )
-        .expect("prompt");
-
-        assert!(with_codegraph.contains("<codegraph_tools note="));
-        assert!(with_codegraph.contains("<tool name=\"code_search\""));
-        assert!(with_codegraph.contains("<tool name=\"code_impact\""));
-        assert!(with_codegraph.contains(">50 file impact"));
-
-        let without_codegraph = build_coding_system_prompt(
-            Path::new("/tmp/project"),
-            &AgentHarnessResources::default(),
-            &["read_file", "grep"].map(String::from),
-            None,
-            &CodingPromptOptions::new(AgentMode::Build),
-        )
-        .expect("prompt");
-
-        assert!(!without_codegraph.contains("<codegraph_tools"));
-    }
-
-    #[test]
     fn error_recovery_section_is_present() {
         let prompt = build_coding_system_prompt(
             Path::new("/tmp/project"),
@@ -638,7 +557,7 @@ mod tests {
     #[test]
     fn skills_format_uses_inline_attributes() {
         let mut resources = AgentHarnessResources::default();
-        resources.skills.push(elph_agent::Skill {
+        resources.skills.push(elph_agent::harness::Skill {
             name: "test-skill".to_string(),
             description: "Test skill for unit testing".to_string(),
             content: String::new(),
@@ -705,5 +624,32 @@ mod tests {
 
         assert!(with_subagents.contains("<subagents>"));
         assert!(with_subagents.contains("exclusive write scope"));
+    }
+
+    #[test]
+    fn intercom_prompt_is_not_coding_base() {
+        let prompt = build_intercom_system_prompt(Some("calm-fox"), Some("brave-owl")).expect("prompt");
+        assert!(prompt.contains("calm-fox"));
+        assert!(prompt.contains("brave-owl"));
+        assert!(prompt.contains("worker_reply"));
+        assert!(prompt.contains("separate answer loop"));
+        assert!(!prompt.contains("## Working loop"));
+        assert!(!prompt.contains("edit_file"));
+        assert!(!prompt.contains("todo_write"));
+        assert!(!prompt.contains("You are a fast and decisive coding agent"));
+    }
+
+    #[test]
+    fn coding_prompt_points_inbound_at_intercom_loop() {
+        let prompt = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["read_file".to_string()],
+            None,
+            &CodingPromptOptions::new(AgentMode::Build).with_worker_name("calm-fox"),
+        )
+        .expect("prompt");
+        assert!(prompt.contains("separate intercom loop"));
+        assert!(!prompt.contains("Reply to inbound worker messages as normal text"));
     }
 }

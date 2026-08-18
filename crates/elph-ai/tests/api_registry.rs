@@ -9,7 +9,10 @@ fn builtin_apis_registers_expected_providers() {
     assert!(names.contains(&"openai-responses"));
     assert!(names.contains(&"openai-codex-responses"));
     assert!(names.contains(&"google-generative-ai"));
+    #[cfg(feature = "bedrock")]
     assert!(names.contains(&"bedrock-converse-stream"));
+    #[cfg(not(feature = "bedrock"))]
+    assert!(!names.contains(&"bedrock-converse-stream"));
 }
 
 #[test]

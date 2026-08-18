@@ -41,7 +41,7 @@ pub fn openai_codex_oauth_loader() -> OAuthLoader {
 fn openai_codex_oauth_impl() -> OAuthAuth {
     OAuthAuth {
         name: "OpenAI (ChatGPT Plus/Pro)".to_string(),
-        login: Arc::new(|callbacks: Arc<dyn AuthLoginCallbacks>| {
+        login: Arc::new(|callbacks, identity| {
             Box::pin(async move {
                 let method = callbacks
                     .prompt(AuthPrompt::Select {
@@ -59,21 +59,30 @@ fn openai_codex_oauth_impl() -> OAuthAuth {
                             },
                         ],
                     })
-                    .await?;
+                    .await
+                    .map_err(super::map_oauth("OpenAI Codex login prompt"))?;
 
                 let creds = if method == OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD {
-                    login_openai_codex_device_code(callbacks).await?
+                    login_openai_codex_device_code(callbacks)
+                        .await
+                        .map_err(super::map_oauth("OpenAI Codex device-code login"))?
                 } else if method == OPENAI_CODEX_BROWSER_LOGIN_METHOD {
-                    login_openai_codex(callbacks).await?
+                    login_openai_codex(callbacks, &identity)
+                        .await
+                        .map_err(super::map_oauth("OpenAI Codex browser login"))?
                 } else {
-                    return Err(anyhow::anyhow!("Unknown OpenAI Codex login method: {method}"));
+                    return Err(crate::auth::ModelsError::oauth(format!(
+                        "Unknown OpenAI Codex login method: {method}"
+                    )));
                 };
                 Ok(to_oauth_credential(creds))
             })
         }),
         refresh: Arc::new(|credential| {
             Box::pin(async move {
-                let creds = refresh_openai_codex_token(&credential.refresh).await?;
+                let creds = refresh_openai_codex_token(&credential.refresh)
+                    .await
+                    .map_err(super::map_oauth("OpenAI Codex token refresh failed"))?;
                 Ok(to_oauth_credential(creds))
             })
         }),
@@ -108,10 +117,13 @@ fn to_oauth_credential(creds: CodexOAuthTokens) -> OAuthCredential {
     }
 }
 
-pub async fn login_openai_codex(callbacks: Arc<dyn AuthLoginCallbacks>) -> anyhow::Result<CodexOAuthTokens> {
+pub async fn login_openai_codex(
+    callbacks: Arc<dyn AuthLoginCallbacks>,
+    identity: &crate::types::ClientIdentity,
+) -> anyhow::Result<CodexOAuthTokens> {
     let (verifier, challenge) = generate_pkce().await;
     let state = create_state();
-    let auth_url = build_authorize_url(&challenge, &state, "elph");
+    let auth_url = build_authorize_url(&challenge, &state, &identity.product);
     let server = start_callback_server(1455, "/auth/callback", Some(&state), "OpenAI authentication completed").await?;
 
     callbacks.notify(AuthEvent::AuthUrl {

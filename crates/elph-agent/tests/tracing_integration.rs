@@ -57,16 +57,13 @@ fn jsonl_reporter_records_root_batch_and_property_spans() {
 #[test]
 fn init_skips_reporter_when_trace_disabled() {
     let dir = tempfile::tempdir().expect("tempdir");
-    let options = LoggingOptions {
-        app_name: "elph",
-        logs_dir: dir.path().to_path_buf(),
-        level: "info".to_string(),
-        rotation: elph_agent::logger::LogRotation::Daily,
-        max_files: None,
-        file_enabled: false,
-        console_enabled: false,
-        trace_enabled: false,
-    };
+    let options = LoggingOptions::builder()
+        .app_name("elph")
+        .logs_dir(dir.path().to_path_buf())
+        .file_enabled(false)
+        .console_enabled(false)
+        .trace_enabled(false)
+        .build();
     elph_agent::trace::init(&options);
     assert!(!is_enabled());
     assert!(!dir.path().join("elph-traces.jsonl").exists());

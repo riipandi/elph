@@ -1,7 +1,7 @@
 //! `/goal` slash command handler.
 
 use anyhow::Result;
-use elph_agent::{GoalRuntime, GoalStatus};
+use elph_agent::goals::{GoalRuntime, GoalStatus};
 
 pub async fn handle_goal_slash(goal_runtime: &GoalRuntime, args: &str) -> Result<String> {
     let store = goal_runtime.store();
@@ -51,7 +51,7 @@ pub async fn handle_goal_slash(goal_runtime: &GoalRuntime, args: &str) -> Result
     }
 }
 
-fn format_goal(goal: Option<elph_agent::Goal>) -> Result<String> {
+fn format_goal(goal: Option<elph_agent::goals::Goal>) -> Result<String> {
     let Some(goal) = goal else {
         return Ok("No goal for this session.".into());
     };

@@ -1,4 +1,5 @@
 {
+    "$schema": "https://elph.space/provider-schema.json",
     "claude-fable-5": {
         "api": "anthropic-messages",
         "baseUrl": "https://api.anthropic.com",

@@ -1,17 +1,42 @@
 use crate::utils::path::AppPaths;
 use anyhow::{Context, Result};
-use elph_agent::write_json_file;
+use elph_agent::fs::write_json_file;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+/// Fallback when `trust.json` has no decision for this folder.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum DefaultProjectTrust {
+    #[default]
+    Ask,
+    Always,
+    Never,
+}
+
+impl DefaultProjectTrust {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Ask => "ask",
+            Self::Always => "always",
+            Self::Never => "never",
+        }
+    }
+}
+
 /// Trusted workspace directories (`CONFIG_DIR/trust.json`).
 ///
 /// Paths may use `~`, `$HOME`, or absolute forms. Values are trust flags.
+/// `defaultProjectTrust` is global-only (project files do not carry this file).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TrustStore {
     #[serde(default)]
     pub directories: BTreeMap<String, bool>,
+    /// When no directory decision applies: load project WASM extensions (`always`) or skip (`ask`/`never`).
+    /// `ask` has no prompt UI yet and behaves like `never`.
+    #[serde(default)]
+    pub default_project_trust: DefaultProjectTrust,
 }
 
 impl TrustStore {
@@ -80,6 +105,15 @@ impl TrustStore {
         }
         Ok(false)
     }
+
+    /// Whether project-local WASM extensions may load.
+    pub fn project_extensions_allowed<P: AppPaths>(paths: &P, cwd: &Path) -> Result<bool> {
+        if Self::is_trusted(paths, cwd)? {
+            return Ok(true);
+        }
+        let store = Self::load(paths)?;
+        Ok(matches!(store.default_project_trust, DefaultProjectTrust::Always))
+    }
 }
 
 fn home_dir() -> Option<PathBuf> {
@@ -136,7 +170,7 @@ mod tests {
     #[test]
     fn default_serializes_empty_directories() {
         let json = serde_json::to_string(&TrustStore::default()).expect("serialize");
-        assert_eq!(json, r#"{"directories":{}}"#);
+        assert!(json.contains("\"directories\":{}"));
     }
 
     #[test]

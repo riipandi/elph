@@ -13,7 +13,9 @@ use crate::api::http_proxy::resolve_http_proxy_url_for_target;
 use crate::resilience::ResilienceError;
 use crate::types::{AssistantMessage, AssistantMessageEvent, Model, OnPayloadCallback, OnResponseCallback};
 use crate::types::{ProviderEnv, ProviderResponse, StopReason, StreamOptions};
-use crate::utils::error_body::{error_body_from_response, format_provider_error, normalize_provider_error};
+use crate::utils::error_body::{
+    error_body_from_response, format_provider_error, http_error_log_snippet, normalize_provider_error,
+};
 use crate::utils::event_stream::AssistantMessageEventStream;
 use crate::utils::headers::{has_header, headers_to_record, merge_provider_headers};
 
@@ -33,6 +35,11 @@ pub fn build_http_client_for_target(
     if let Some(target_url) = target_url
         && let Some(proxy_url) = resolve_http_proxy_url_for_target(target_url, env)?
     {
+        log::debug!(
+            "http proxy applied host={} proxy_host={}",
+            url_host(target_url),
+            url_host(proxy_url.as_str())
+        );
         let proxy = reqwest::Proxy::all(proxy_url.as_str())?;
         builder = builder.proxy(proxy);
     }
@@ -70,6 +77,7 @@ pub fn get_client_api_key_for_url(
     if id.contains("local") || id.contains("ollama") || id.contains("lmstudio") || id.contains("vllm") {
         return Ok(String::new());
     }
+    log::warn!("no API key resolved for provider={provider}");
     Err(anyhow!(
         "No API key for provider: {provider}. Set the provider API key env var, run `/provider connect`, \
          or configure auth.json. Local OpenAI-compatible servers need no key when baseUrl is localhost."
@@ -123,10 +131,11 @@ pub async fn send_with_abort(
     request: reqwest::RequestBuilder,
 ) -> Result<reqwest::Response> {
     if is_request_aborted(token) {
+        log::debug!("provider HTTP aborted before send");
         return Err(request_aborted_error());
     }
     let request = with_trace_headers(request);
-    match token {
+    let result = match token {
         Some(token) => {
             let token = token.clone();
             tokio::select! {
@@ -135,6 +144,17 @@ pub async fn send_with_abort(
             }
         }
         None => request.send().await.map_err(Into::into),
+    };
+    match result {
+        Ok(response) => Ok(response),
+        Err(e) if is_abort_error(&e) => {
+            log::debug!("provider HTTP aborted");
+            Err(e)
+        }
+        Err(e) => {
+            log::warn!("provider HTTP transport error: {e:#}");
+            Err(e)
+        }
     }
 }
 
@@ -150,6 +170,14 @@ pub fn finish_stream_error(
         StopReason::Error
     };
     output.error_message = Some(format_provider_error(&normalize_provider_error(&error), None));
+    if aborted {
+        log::debug!("provider stream aborted");
+    } else {
+        log::warn!(
+            "provider stream error: {}",
+            output.error_message.as_deref().unwrap_or("unknown")
+        );
+    }
     stream.push(AssistantMessageEvent::Error {
         reason: output.stop_reason,
         error: output.clone(),
@@ -163,6 +191,12 @@ pub async fn check_response_ok(response: reqwest::Response) -> Result<reqwest::R
     }
     let status = response.status();
     let body = error_body_from_response(response).await;
+    let snippet = http_error_log_snippet(&body);
+    if snippet.is_empty() {
+        log::warn!("provider HTTP {status}");
+    } else {
+        log::warn!("provider HTTP {status} {snippet}");
+    }
     Err(anyhow!("{status}: {body}"))
 }
 
@@ -230,17 +264,20 @@ pub fn record_provider_failure(provider_id: &str) {
 /// Combines `check_provider_resilience()` with `send_with_abort()`.
 /// Records success/failure in the circuit breaker automatically.
 /// Abort errors are not counted as provider failures.
+#[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.ai.http"))]
 pub async fn send_with_resilience(
     provider_id: &str,
     token: &Option<tokio_util::sync::CancellationToken>,
     request: reqwest::RequestBuilder,
 ) -> Result<reqwest::Response> {
+    crate::trace::add_property("provider.id", provider_id);
     check_provider_resilience(provider_id)?;
     match send_with_abort(token, request).await {
         Ok(response) => {
             // Record success for 2xx; non-2xx handled by caller
             if response.status().is_success() {
                 record_provider_success(provider_id);
+                log::debug!("provider HTTP {} provider={provider_id}", response.status().as_u16());
             }
             Ok(response)
         }
@@ -278,6 +315,7 @@ pub fn record_resilience_from_status(provider_id: &str, status: u16) {
 /// transport errors during body consumption also trigger retries.
 ///
 /// Abort errors are not retried.
+#[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.ai.http"))]
 pub async fn send_with_resilience_retry(
     provider_id: &str,
     token: &Option<tokio_util::sync::CancellationToken>,
@@ -287,6 +325,7 @@ pub async fn send_with_resilience_retry(
 ) -> Result<reqwest::Response> {
     use std::time::Duration;
 
+    crate::trace::add_property("provider.id", provider_id);
     check_provider_resilience(provider_id)?;
 
     // Build the request so we can clone it for retries
@@ -302,6 +341,7 @@ pub async fn send_with_resilience_retry(
             let delay = base_delay + Duration::from_millis(jitter);
             tokio::time::sleep(delay).await;
             log::debug!("resilience: retrying {provider_id} (attempt {attempt}/{max_retries})");
+            crate::trace::add_event("retry");
         }
 
         // Check abort before each attempt
@@ -310,13 +350,15 @@ pub async fn send_with_resilience_retry(
         }
 
         // Clone the request for this attempt
-        let req_clone = match built.try_clone() {
+        let mut req_clone = match built.try_clone() {
             Some(r) => r,
             None => {
                 // Non-cloneable body (stream) — can't retry
                 return Err(anyhow!("cannot retry non-cloneable request body"));
             }
         };
+
+        crate::trace::inject_traceparent(&mut req_clone);
 
         // Execute with abort support — client.execute() returns a future directly
         let result = match token {
@@ -337,6 +379,7 @@ pub async fn send_with_resilience_retry(
                 // 2xx — success, body untouched for SSE streaming
                 if status_code.is_success() {
                     record_provider_success(provider_id);
+                    log::debug!("provider HTTP {} provider={provider_id}", status_code.as_u16());
                     return Ok(response);
                 }
 
@@ -361,8 +404,14 @@ pub async fn send_with_resilience_retry(
                     || code == 409  // Conflict (sometimes transient)
                     || crate::resilience::retry::is_anyhow_retryable(&anyhow::anyhow!("{code}: {body}"));
 
+                let snippet = http_error_log_snippet(&body);
                 if is_retryable {
                     record_provider_failure(provider_id);
+                    if snippet.is_empty() {
+                        log::warn!("provider HTTP {code} retryable provider={provider_id} attempt={attempt}");
+                    } else {
+                        log::warn!("provider HTTP {code} retryable provider={provider_id} attempt={attempt} {snippet}");
+                    }
                     last_err = Some(anyhow!("HTTP {code}: {body}"));
                     continue;
                 }
@@ -370,6 +419,11 @@ pub async fn send_with_resilience_retry(
                 // Non-retryable error — fail immediately.
                 // 4xx errors (except 408/409/429) are client errors, not provider
                 // outages — don't trip the circuit breaker on them.
+                if snippet.is_empty() {
+                    log::warn!("provider HTTP {code} provider={provider_id}");
+                } else {
+                    log::warn!("provider HTTP {code} provider={provider_id} {snippet}");
+                }
                 if code < 500 {
                     return Err(anyhow!("{code}: {body}"));
                 }
@@ -389,7 +443,17 @@ pub async fn send_with_resilience_retry(
     }
 
     // All retries exhausted
+    log::warn!("provider HTTP retries exhausted provider={provider_id} max={max_retries}");
     Err(last_err.unwrap_or_else(|| anyhow!("max retries exhausted for {provider_id}")))
+}
+
+fn url_host(url: &str) -> &str {
+    url.split("://")
+        .nth(1)
+        .unwrap_or(url)
+        .split(['/', '?', '#'])
+        .next()
+        .unwrap_or(url)
 }
 
 #[cfg(test)]

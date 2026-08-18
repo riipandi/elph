@@ -108,7 +108,7 @@ runs:
           echo "CARGO_TERM_COLOR=always"
           echo "CARGO_INCREMENTAL=0"
           echo "SCCACHE_DIRECT=true"
-          echo "SCCACHE_MAXSIZE=50G"
+          echo "SCCACHE_MAXSIZE=20G"
           echo "SCCACHE_S3_USE_SSL=true"
         } >> "$GITHUB_ENV"
         if [ -n "${SCCACHE_BUCKET:-}" ]; then

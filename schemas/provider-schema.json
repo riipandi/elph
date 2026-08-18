@@ -1,40 +1,44 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://elph.space/provider-schema.json",
-    "title": "Elph AI provider configuration",
-    "description": "One provider per JSON file in ~/.elph/providers/<id>.json (id = filename without extension). Forward-looking contract aligned with crates/elph-ai/models/*.json. Runtime still uses the embedded catalog until override merge is implemented.",
+    "title": "Elph AI provider catalog",
+    "description": "One provider per JSON file. Filename without extension is the provider id (kebab-case). Canonical shape is crates/elph-ai/models/*.json: a map of modelId → model entry, plus optional $schema. A wrapper { name, api, baseUrl, headers, auth, models } is also accepted. Runtime merges CONFIG_DIR/providers/<id>.json over the embedded catalog by model id.",
     "type": "object",
-    "additionalProperties": false,
     "properties": {
+        "$schema": {
+            "type": "string",
+            "const": "https://elph.space/provider-schema.json",
+            "description": "JSON Schema URL (editor autocompletion). Ignored at runtime."
+        },
         "name": {
             "type": "string",
-            "description": "Display name for the provider."
+            "description": "Optional display name for the provider (wrapper form only)."
         },
         "baseUrl": {
             "type": "string",
-            "description": "Default base URL for this provider (may be overridden per model)."
+            "description": "Default base URL stamped onto models that omit or leave baseUrl empty (wrapper form)."
         },
         "api": {
             "$ref": "#/$defs/ApiKind",
-            "description": "Default wire protocol when models omit per-model api."
+            "description": "Default wire protocol when a model omits per-model api (wrapper form)."
         },
         "headers": {
             "type": "object",
             "additionalProperties": { "type": "string" },
-            "description": "Optional static HTTP headers."
+            "description": "Optional static HTTP headers. Wrapper headers apply to models that omit headers."
         },
         "auth": {
             "type": "object",
-            "description": "Reserved for future credential hints (env var names, oauth id). Not loaded by runtime yet.",
+            "description": "Reserved credential hints (env var names, oauth id). Not loaded by the catalog parser.",
             "additionalProperties": true
         },
         "models": {
             "type": "object",
-            "description": "Map of modelId → model entry (same shape as crates/elph-ai/models/<provider>.json).",
+            "description": "Wrapper-form map of modelId → model entry.",
             "additionalProperties": { "$ref": "#/$defs/ModelEntry" }
         }
     },
-    "required": ["models"],
+    "additionalProperties": { "$ref": "#/$defs/ModelEntry" },
     "$defs": {
         "ApiKind": {
             "type": "string",
@@ -47,12 +51,21 @@
                 "google-generative-ai",
                 "google-vertex",
                 "bedrock-converse-stream",
-                "mistral-conversations"
+                "mistral-conversations",
+                "openrouter-images"
             ]
+        },
+        "InputModality": {
+            "type": "string",
+            "enum": ["text", "image", "pdf", "video", "audio"]
+        },
+        "OutputModality": {
+            "type": "string",
+            "enum": ["text", "image"]
         },
         "ThinkingLevelMap": {
             "type": "object",
-            "description": "Wire mapping for reasoning effort. Keys always present; null = unsupported.",
+            "description": "Wire mapping for reasoning effort. All seven keys are always present; null = unsupported.",
             "additionalProperties": false,
             "required": ["off", "minimal", "low", "medium", "high", "xhigh", "max"],
             "properties": {
@@ -78,6 +91,7 @@
                     "type": "array",
                     "items": {
                         "type": "object",
+                        "additionalProperties": false,
                         "required": [
                             "inputTokensAbove",
                             "input",
@@ -96,45 +110,82 @@
                 }
             }
         },
+        "CompatFlags": {
+            "type": "object",
+            "description": "Provider-specific compatibility flags. Known keys are documented; extra keys are allowed.",
+            "additionalProperties": true,
+            "properties": {
+                "supportsDeveloperRole": { "type": "boolean" },
+                "supportsStore": { "type": "boolean" },
+                "supportsReasoningEffort": { "type": "boolean" },
+                "supportsUsageInStreaming": { "type": "boolean" },
+                "supportsStrictMode": { "type": "boolean" },
+                "supportsOpenAIGrammarTools": { "type": "boolean" },
+                "supportsLongCacheRetention": { "type": "boolean" },
+                "supportsToolSearch": { "type": "boolean" },
+                "supportsEagerToolInputStreaming": { "type": "boolean" },
+                "supportsCacheControlOnTools": { "type": "boolean" },
+                "supportsTemperature": { "type": "boolean" },
+                "supportsStrictTools": { "type": "boolean" },
+                "supportsToolReferences": { "type": "boolean" },
+                "supportsFinishReason": { "type": "boolean" },
+                "supportsThinkingTokenBudget": { "type": "boolean" },
+                "supportsExplicitPromptCacheMode": { "type": "boolean" },
+                "forceAdaptiveThinking": { "type": "boolean" },
+                "allowEmptySignature": { "type": "boolean" },
+                "requiresToolResultName": { "type": "boolean" },
+                "requiresAssistantAfterToolResult": { "type": "boolean" },
+                "requiresThinkingAsText": { "type": "boolean" },
+                "requiresReasoningContentOnAssistantMessages": { "type": "boolean" },
+                "sendSessionAffinityHeaders": { "type": "boolean" },
+                "sendSessionIdHeader": { "type": "boolean" },
+                "zaiToolStream": { "type": "boolean" },
+                "maxTokensField": { "type": "string" },
+                "thinkingFormat": { "type": "string" },
+                "cacheControlFormat": { "type": "string" },
+                "deferredToolsMode": { "type": "string" },
+                "sessionAffinityFormat": {
+                    "type": "string",
+                    "enum": ["openai", "openai-no-session", "openai-nosession", "openrouter"]
+                },
+                "samplingParams": {
+                    "type": "object",
+                    "additionalProperties": true
+                }
+            }
+        },
         "ModelEntry": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-                "id",
-                "name",
-                "api",
-                "baseUrl",
-                "reasoning",
-                "thinkingLevelMap",
-                "input",
-                "contextWindow",
-                "maxTokens",
-                "cost"
-            ],
+            "required": ["id", "name", "api", "provider", "baseUrl", "input", "cost"],
             "properties": {
                 "id": { "type": "string", "minLength": 1 },
                 "name": { "type": "string", "minLength": 1 },
                 "api": { "$ref": "#/$defs/ApiKind" },
                 "provider": {
                     "type": "string",
-                    "description": "Must match provider file id when set."
+                    "minLength": 1,
+                    "description": "Must match the provider file id (kebab-case)."
                 },
                 "baseUrl": { "type": "string" },
                 "reasoning": { "type": "boolean" },
                 "thinkingLevelMap": { "$ref": "#/$defs/ThinkingLevelMap" },
                 "input": {
                     "type": "array",
-                    "items": { "type": "string" },
+                    "items": { "$ref": "#/$defs/InputModality" },
                     "minItems": 1
                 },
-                "contextWindow": { "type": "integer", "minimum": 1 },
-                "maxTokens": { "type": "integer", "minimum": 1 },
-                "cost": { "$ref": "#/$defs/ModelCost" },
-                "compat": {
-                    "type": "object",
-                    "description": "Provider-specific compatibility flags.",
-                    "additionalProperties": true
+                "output": {
+                    "type": "array",
+                    "items": { "$ref": "#/$defs/OutputModality" }
                 },
+                "contextWindow": { "type": "integer", "minimum": 0 },
+                "maxTokens": { "type": "integer", "minimum": 0 },
+                "cost": { "$ref": "#/$defs/ModelCost" },
+                "description": { "type": "string" },
+                "knowledgeCutoff": { "type": "string" },
+                "releaseDate": { "type": "string" },
+                "compat": { "$ref": "#/$defs/CompatFlags" },
                 "headers": {
                     "type": "object",
                     "additionalProperties": { "type": "string" }

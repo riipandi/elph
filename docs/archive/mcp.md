@@ -4,7 +4,7 @@ Elph connects to [Model Context Protocol](https://modelcontextprotocol.io/) serv
 
 ## Config
 
-Schema: [`schemas/mcp-schema.json`](../schemas/mcp-schema.json).
+Schema: [`schemas/mcp-schema.json`](../schemas/mcp-schema.json). Bootstrap writes `"$schema": "https://elph.space/mcp-schema.json"` on a new home `mcp.json`.
 
 | Layer       | Path                       | Role                                       |
 | ----------- | -------------------------- | ------------------------------------------ |
@@ -36,6 +36,8 @@ Per-server field `loadStrategy` (default `lazy`):
 - **Partial attach:** TUI bootstrap (`bootstrap_mcp_for_session`) always attaches tools even when some servers fail — partial results are better than no tools.
 - **No stale refresh:** The old code called `refresh_server()` (drops and re-creates the session) on every tool invocation. Now `ensure_server_discovered()` fires discovery exactly once per server, after which the pooled session handles all subsequent calls.
 - **Pre-turn sweep:** before every agent turn the session calls `ensure_mcp_tools_ready()`, which discovers any enabled server still pending and hot-attaches the new tools to the harness. A lazy server that was skipped at startup (or failed earlier) is thus available to the model on the very next turn without a restart.
+- **TUI / ACP deferred load:** `defer_mcp_load` still constructs a registry from merged `mcp.json` (`McpLoadOptions.skip_startup_discovery`). TUI discovery runs after the UI is up (`bootstrap_mcp_for_session`). ACP overlays client `mcpServers` the same way, then `ensure_mcp_tools_ready` (12s) before the first prompt. An empty registry is only used if that config load itself fails.
+- **Activation vs connection:** discovered MCP tools stay **inactive** on the harness until `list_available_tools(name_prefix)` (or a later reconcile that preserves already-activated names). Connection-lazy (`loadStrategy: lazy`) and exposure-lazy are independent.
 
 **Transport note:** `call_tool` now uses `call_tool_once` (non-MRTR) internally, which works with all transports (stdio, HTTP, SSE). The MRTR-aware `call_tool()` requires HTTP transport and fails on stdio with `"Requires HTTP transport (--port)"`. Since the agent harness doesn't support interactive MRTR rounds (the default `MrtrElicitationPolicy::Decline` declines all elicitation), `call_tool_once` is the correct choice.
 
@@ -317,6 +319,7 @@ When a server sends `notifications/tools/list_changed` (or resource/prompt varia
 use elph_agent::{McpConfig, McpLoadOptions, McpToolRegistry};
 
 let mut options = McpLoadOptions::default();
+// TUI/ACP: options.skip_startup_discovery = true; then call discover_tools later.
 options.auth_store_path = Some(paths.auth_store_path());
 let registry = McpToolRegistry::load_with_options(config, options).await?;
 let tools = registry.create_agent_tools().await;

@@ -4,9 +4,10 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use elph_agent::datastore::{connect, ensure_database, open_local};
+use elph_agent::session::create_worker_id;
 use elph_agent::session::migrations::SESSION_TREE_MIGRATIONS;
-use elph_agent::{
-    FileLeaseStore, MailboxStore, PathClaimContext, SessionLeaseStore, WorkerRegistry, WorkerStatus, create_worker_id,
+use elph_agent::workers::{
+    FileLeaseStore, MailboxStore, PathClaimContext, SessionLeaseStore, WorkerRegistry, WorkerStatus,
 };
 
 async fn setup_db() -> (tempfile::TempDir, Arc<turso::Database>, std::path::PathBuf) {

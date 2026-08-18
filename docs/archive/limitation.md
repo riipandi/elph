@@ -21,7 +21,7 @@ Known release and platform constraints.
 ## Turso-native FTS: incompatible with standard SQLite tools
 
 `store.db` uses Turso-native FTS indexes (`CREATE INDEX ... USING fts`, Tantivy-backed)
-for memory (V4) and codegraph (V501). Turso stores internal metadata in
+for memory (V4). Turso stores internal metadata in
 `__turso_internal_fts_dir_*` tables whose schema contains `USING` syntax — this is
 valid in Turso but **not** recognised by standard SQLite.
 
@@ -29,15 +29,14 @@ Opening `store.db` with tools like TablePro, DB Browser for SQLite, or `sqlite3`
 will fail with:
 
 ```
-malformed database schema (__turso_internal_fts_dir_idx_cg_chunks_fts_key) - near "USING": syntax error
+malformed database schema (__turso_internal_fts_dir_idx_memories_fts_key) - near "USING": syntax error
 ```
 
 **Impact:** read-only — the database is fully functional when opened by Turso (Elph
 runtime). Third-party SQLite tools cannot open it.
 
 **Workaround:** use a libSQL-compatible GUI like [Dataflare](https://github.com/DataflareApp/Dataflare)
-instead of standard SQLite tools. Or use `elph` CLI commands (`elph memory list`,
-`elph codegraph search`, etc.) instead of external SQLite tools.
+instead of standard SQLite tools. Or use `elph` CLI commands (`elph memory list`, etc.) instead of external SQLite tools.
 
 ## Single-platform cross build
 

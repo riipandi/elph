@@ -8,7 +8,7 @@ use std::sync::Arc;
 use crate::platform::acp::commands;
 use crate::platform::acp::content::extract_prompt;
 use crate::platform::acp::state::{AcpAgentState, lookup_session, session_key};
-use crate::platform::acp::updates::{drive_turn, is_running, send_idle, send_running, send_user_message};
+use crate::platform::acp::updates::{drive_turn, fail_visible, is_running, send_idle, send_running, send_user_message};
 
 pub async fn handle_prompt(
     state: Arc<Mutex<AcpAgentState>>,
@@ -48,14 +48,19 @@ pub async fn handle_prompt(
             .unwrap_or_else(|| "msg_user_1".into())
     };
 
-    send_user_message(&connection, &session_id, &user_id, request.prompt.clone())?;
+    if let Err(error) = send_user_message(&connection, &session_id, &user_id, request.prompt.clone()) {
+        fail_visible(&state, &connection, &session_id, &format!("Failed to echo prompt: {error:#}"));
+        return Ok(());
+    }
 
     let trimmed = extracted.text.trim();
     if commands::is_slash(trimmed) {
-        send_running(&connection, &session_id)?;
+        if let Err(error) = send_running(&state, &connection, &session_id) {
+            fail_visible(&state, &connection, &session_id, &format!("Failed to start turn: {error:#}"));
+            return Ok(());
+        }
         if let Err(error) = commands::handle_slash(&state, &connection, &session_id, trimmed).await {
-            let _ = send_idle(&connection, &session_id, StopReason::EndTurn);
-            return Err(error);
+            fail_visible(&state, &connection, &session_id, &format!("Slash command failed: {error:#}"));
         }
         return Ok(());
     }
@@ -63,8 +68,8 @@ pub async fn handle_prompt(
     let (session, ui_rx, _) = match lookup_session(&state, &key) {
         Ok(ctx) => ctx,
         Err(error) => {
-            let _ = send_idle(&connection, &session_id, StopReason::EndTurn);
-            return Err(error);
+            fail_visible(&state, &connection, &session_id, &format!("Session error: {error:#}"));
+            return Ok(());
         }
     };
     let steer = is_running(&state, &session_id);
@@ -91,8 +96,8 @@ pub async fn handle_prompt(
     )
     .await
     {
-        let _ = send_idle(&connection, &session_id, StopReason::EndTurn);
-        return Err(error);
+        fail_visible(&state, &connection, &session_id, &format!("Prompt failed: {error:#}"));
+        return Ok(());
     }
     Ok(())
 }
@@ -142,6 +147,6 @@ pub async fn handle_cancel(
     crate::platform::acp::state::mark_session_cancelled(state, &key);
     let _ = session.abort().await;
     crate::platform::acp::tools::cancel_open_tools(state, connection, &notification.session_id)?;
-    send_idle(connection, &notification.session_id, StopReason::Cancelled)?;
+    send_idle(state, connection, &notification.session_id, StopReason::Cancelled)?;
     Ok(())
 }

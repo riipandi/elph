@@ -1,4 +1,5 @@
 {
+    "$schema": "https://elph.space/provider-schema.json",
     "black-forest-labs/flux.2-flex": {
         "api": "openrouter-images",
         "baseUrl": "https://openrouter.ai/api/v1",

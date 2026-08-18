@@ -131,8 +131,8 @@ pub fn scoped_models_list_nav_delta(modifiers: KeyModifiers, code: KeyCode) -> O
         return None;
     }
     match code {
-        KeyCode::Up | KeyCode::Char('k') if modifiers.is_empty() => Some(-1),
-        KeyCode::Down | KeyCode::Char('j') if modifiers.is_empty() => Some(1),
+        KeyCode::Up if modifiers.is_empty() => Some(-1),
+        KeyCode::Down if modifiers.is_empty() => Some(1),
         _ => None,
     }
 }

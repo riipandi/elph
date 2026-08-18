@@ -7,9 +7,15 @@ keywords = ["agent", "runtime", "ai", "elph"]
 categories = ["development-tools", "asynchronous"]
 homepage.workspace = true
 repository.workspace = true
-rust-version.workspace = true
-edition.workspace = true
+documentation = "https://docs.rs/elph-agent"
+rust-version = "1.89"
+edition = "2024"
 publish = true
+include = ["Cargo.toml", "src/**/*", "README.md", "CHANGELOG.md"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [lib]
 name = "elph_agent"
@@ -22,20 +28,15 @@ astral-tl.workspace = true
 async-trait.workspace = true
 ast-grep-core = { workspace = true, optional = true }
 ast-grep-language = { workspace = true, optional = true }
-backon.workspace = true
 base64.workspace = true
-bytes.workspace = true
+chrono.workspace = true
 elph-ai.workspace = true
 encoding_rs.workspace = true
-failsafe.workspace = true
 fastrace = { workspace = true, optional = true }
 fastrace-reqwest = { workspace = true, optional = true }
 fff-search = { workspace = true, optional = true }
 futures.workspace = true
-getrandom.workspace = true
 fast-glob = { workspace = true, optional = true }
-governor.workspace = true
-hex.workspace = true
 hkdf.workspace = true
 htmd.workspace = true
 http.workspace = true
@@ -57,9 +58,6 @@ serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 shell-use = { workspace = true, optional = true }
-tempfile.workspace = true
-thiserror.workspace = true
-time.workspace = true
 tokio = { workspace = true, features = [
   "fs",
   "io-util",
@@ -75,7 +73,7 @@ tokio = { workspace = true, features = [
 tokio-util = { workspace = true, features = ["rt"] }
 toml.workspace = true
 toon-format.workspace = true
-turso.workspace = true
+turso = { workspace = true, optional = true }
 url.workspace = true
 urlencoding.workspace = true
 walkdir = { workspace = true, optional = true }
@@ -87,7 +85,8 @@ rustix = { workspace = true }
 
 [features]
 default = []
-full = ["mcp", "prompt-templates", "extensions", "builtin-tools"]
+full = ["mcp", "prompt-templates", "extensions", "builtin-tools", "backend-turso"]
+backend-turso = ["dep:turso"]
 builtin-tools = ["tools-edit", "tools-search", "tools-web", "tools-collaboration"]
 extensions = ["dep:wasmtime", "dep:walkdir"]
 mcp = ["dep:rmcp"]
@@ -289,7 +288,17 @@ required-features = ["builtin-tools"]
 [[test]]
 name = "subagent"
 path = "tests/subagent.rs"
-required-features = ["builtin-tools"]
+required-features = ["builtin-tools", "backend-turso"]
+
+[[test]]
+name = "turso_session"
+path = "tests/turso_session.rs"
+required-features = ["backend-turso"]
+
+[[test]]
+name = "goals"
+path = "tests/goals.rs"
+required-features = ["backend-turso"]
 
 [[test]]
 name = "tools_fff"

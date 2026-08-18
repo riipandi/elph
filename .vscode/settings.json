@@ -3,6 +3,28 @@
     "editor.codeActionsOnSave": {
         "source.fixAll.oxc": "always"
     },
+    "json.schemas": [
+        {
+            "fileMatch": [
+                "crates/elph-ai/models/!(index).json",
+                "crates/elph-ai/models/images/*.json",
+                "**/providers/*.json"
+            ],
+            "url": "./schemas/provider-schema.json"
+        },
+        {
+            "fileMatch": ["**/settings.json"],
+            "url": "./schemas/elph-schema.json"
+        },
+        {
+            "fileMatch": ["**/mcp.json"],
+            "url": "./schemas/mcp-schema.json"
+        },
+        {
+            "fileMatch": ["**/auth.json"],
+            "url": "./schemas/auth-schema.json"
+        }
+    ],
     "files.associations": {
         "*.vars": "dotenv",
         "*.yaml.example": "yaml",

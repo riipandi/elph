@@ -2,7 +2,7 @@
 
 use elph_tui::components::{
     ConfirmButtonFocus, DIALOG_SELECT_AUTO_HEIGHT, DialogMultiChoiceContent, DialogUserInputContent, UiTheme,
-    dialog_body_min_height, dialog_header_title_fit, dialog_max_content_height,
+    dialog_body_min_height, dialog_max_content_height,
 };
 use elph_tui::types::SelectOption;
 use iocraft::prelude::*;
@@ -96,15 +96,14 @@ impl Default for UserQuestionBarProps {
     }
 }
 
-fn question_title(view: &UserQuestionView, body_width: u16) -> String {
+fn question_title(view: &UserQuestionView) -> String {
     if view.step_count > 1 {
         return String::new();
     }
     if view.is_confirm {
         return "Confirm".to_string();
     }
-    let prompt = view.question.lines().next().unwrap_or(&view.question);
-    dialog_header_title_fit(prompt, body_width, "")
+    "Question".to_string()
 }
 
 fn question_list_height(
@@ -382,7 +381,7 @@ fn render_question_body(props: &mut UserQuestionBarProps, body_width: u16, list_
                 has_focus: has_focus,
                 theme: Some(theme),
                 section_gap: Some(0),
-                show_prompt: false,
+                show_prompt: true,
                 show_footer_hint: false,
                 show_placeholder_when_focused: false,
                 dialog_chrome: true,
@@ -413,7 +412,7 @@ pub fn UserQuestionBar(props: &mut UserQuestionBarProps, hooks: Hooks) -> impl I
         option_count,
         custom_input_active,
     );
-    let title = question_title(&props.view, body_width);
+    let title = question_title(&props.view);
     let tabs = if props.view.step_count > 1 {
         Some(props.view.tabs.clone())
     } else {
@@ -437,7 +436,20 @@ pub fn UserQuestionBar(props: &mut UserQuestionBarProps, hooks: Hooks) -> impl I
 
 #[cfg(test)]
 mod tests {
-    use super::custom_input_placeholder;
+    use super::{UserQuestionView, custom_input_placeholder, question_title};
+
+    #[test]
+    fn question_title_is_chrome_not_the_prompt() {
+        let mut view = UserQuestionView {
+            question: "Rombak homepage ke arah mana? (index.vto saat ini: hero 2-col)".into(),
+            ..UserQuestionView::default()
+        };
+        assert_eq!(question_title(&view), "Question");
+        view.is_confirm = true;
+        assert_eq!(question_title(&view), "Confirm");
+        view.step_count = 2;
+        assert_eq!(question_title(&view), "");
+    }
 
     #[test]
     fn custom_input_placeholder_uses_agent_label_for_remarks() {

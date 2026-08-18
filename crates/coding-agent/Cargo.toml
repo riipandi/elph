@@ -20,21 +20,19 @@ name = "elph"
 path = "src/main.rs"
 
 [features]
-# Forward Metal GPU acceleration for local embeddings (codegraph + memory) to
+# Forward Metal GPU acceleration for local embeddings (memory) to
 # floppy. Enabling this requires building on Apple Silicon macOS (the `metal`
 # code path only compiles there). See `make build` which adds it automatically
 # on macOS aarch64.
 metal = ["floppy/metal"]
 
 [build-dependencies]
-hex.workspace = true
 sha2.workspace = true
 
 [dependencies]
 agent-client-protocol.workspace = true
 anstyle.workspace = true
 anyhow.workspace = true
-chord_macro.workspace = true
 chrono.workspace = true
 clap.workspace = true
 clap_complete.workspace = true
@@ -46,16 +44,15 @@ elph-agent = { workspace = true, features = [
   "prompt-templates",
   "extensions",
   "tools-shell-use",
+  "backend-turso",
 ] }
-elph-ai = { workspace = true, features = ["tracing"] }
+elph-ai = { workspace = true, features = ["tracing", "bedrock", "oauth-callback"] }
 elph-tui = { workspace = true }
 floppy = { workspace = true, features = ["full"] }
-futures-util.workspace = true
 git2 = { workspace = true, features = ["cred"] }
 inquire.workspace = true
 iocraft.workspace = true
 log.workspace = true
-logforth.workspace = true
 memorable-ids.workspace = true
 minijinja = { workspace = true, features = ["custom_syntax"] }
 parking_lot.workspace = true
@@ -64,7 +61,7 @@ regex.workspace = true
 rustc-hash.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-rendown.workspace = true
+rendown = { workspace = true, features = ["highlight", "mermaid", "stream"] }
 tokio = { workspace = true, features = [
   "fs",
   "io-util",
@@ -88,7 +85,6 @@ libc.workspace = true
 [dev-dependencies]
 elph-agent = { workspace = true, features = ["full"] }
 elph-ai = { workspace = true }
-libc.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time", "sync"] }
 

@@ -1,6 +1,6 @@
 //! Shared migration ledger (`app_migrations`) for multi-domain project DBs.
 //!
-//! Version bands: memory 1–99, session/platform 201–299, codegraph 500–599.
+//! Version bands: memory 1–99, session/platform 201–299.
 //! Hosts may own other bands.
 
 use anyhow::Result;
@@ -52,6 +52,7 @@ pub async fn apply_set(conn: &Connection, migrations: &[FloppyMigration]) -> Res
             (migration.version, migration.name),
         )
         .await?;
+        log::info!("floppy migration applied version={} name={}", migration.version, migration.name);
     }
     Ok(())
 }

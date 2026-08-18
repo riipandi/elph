@@ -1,4 +1,5 @@
 {
+    "$schema": "https://elph.space/provider-schema.json",
     "big-pickle": {
         "api": "openai-completions",
         "baseUrl": "https://opencode.ai/zen/v1",

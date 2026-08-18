@@ -154,6 +154,7 @@ impl ThemeTokenOverrides {
                 other => parse_color_value(other),
             };
             let Some(color) = color else {
+                log::warn!("theme token `{key}` has an unparseable color; skipped");
                 continue;
             };
             let hex = color_to_hex_string(color);
@@ -176,7 +177,7 @@ impl ThemeTokenOverrides {
                 "success" => self.success = Some(hex),
                 "warning" => self.warning = Some(hex),
                 "error" => self.error = Some(hex),
-                _ => {}
+                other => log::debug!("theme token `{other}` is unknown; skipped"),
             }
         }
     }
@@ -265,8 +266,9 @@ static ACTIVE_UI_THEME: RwLock<Option<UiTheme>> = RwLock::new(None);
 
 /// Install the resolved theme for this process (`UiTheme::default()` will use it).
 pub fn set_active_ui_theme(theme: UiTheme) {
-    if let Ok(mut guard) = ACTIVE_UI_THEME.write() {
-        *guard = Some(theme);
+    match ACTIVE_UI_THEME.write() {
+        Ok(mut guard) => *guard = Some(theme),
+        Err(_) => log::warn!("theme install skipped: active theme lock poisoned"),
     }
 }
 
@@ -290,15 +292,18 @@ pub fn active_ui_theme() -> UiTheme {
 /// Resolve config, install as process theme, and return it.
 pub fn install_theme_config(config: &ThemeConfig) -> UiTheme {
     let theme = config.resolve();
+    log::debug!("theme installed mode={}", config.mode.as_str());
     set_active_ui_theme(theme);
     theme
 }
 
 fn apply_opt(slot: &mut Color, raw: Option<&str>) {
-    if let Some(s) = raw
-        && let Some(c) = parse_color(s)
-    {
-        *slot = c;
+    if let Some(s) = raw {
+        if let Some(c) = parse_color(s) {
+            *slot = c;
+        } else {
+            log::warn!("theme color `{s}` is unparseable; kept previous value");
+        }
     }
 }
 

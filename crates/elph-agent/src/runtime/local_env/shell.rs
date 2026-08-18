@@ -23,7 +23,8 @@ impl Shell for LocalExecutionEnv {
             .map(|value| self.resolve_path(value))
             .unwrap_or_else(|| self.cwd.clone());
 
-        match exec_shell_command(&self.shell_config(), command, cwd.as_path(), options).await {
+        let command = self.prefixed_command(command);
+        match exec_shell_command(&self.shell_config(), &command, cwd.as_path(), options).await {
             Ok(result) => ok(result),
             Err(error) => err(error),
         }
@@ -35,6 +36,13 @@ impl Shell for LocalExecutionEnv {
 impl ExecutionEnv for LocalExecutionEnv {}
 
 impl LocalExecutionEnv {
+    fn prefixed_command(&self, command: &str) -> String {
+        match self.command_prefix.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+            Some(prefix) => format!("{prefix}; {command}"),
+            None => command.to_string(),
+        }
+    }
+
     pub fn shell_config(&self) -> crate::exec::ShellConfig {
         crate::exec::ShellConfig {
             shell_path: self.shell_path.clone(),

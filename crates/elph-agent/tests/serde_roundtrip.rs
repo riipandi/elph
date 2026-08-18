@@ -24,7 +24,7 @@ fn agent_message_roundtrip_assistant() {
 
 #[test]
 fn session_tree_entry_roundtrip_message() {
-    use elph_agent::SessionTreeEntry;
+    use elph_agent::session::SessionTreeEntry;
     let entry = SessionTreeEntry::Message {
         id: "abc".to_string(),
         parent_id: None,

@@ -213,10 +213,25 @@ pub fn get_oauth_providers() -> Vec<OAuthProviderInterface> {
         .unwrap_or_default()
 }
 
-pub async fn refresh_oauth_token(provider_id: &str, credential: OAuthCredential) -> anyhow::Result<OAuthCredential> {
-    let provider =
-        get_oauth_provider(provider_id).ok_or_else(|| anyhow::anyhow!("Unknown OAuth provider: {provider_id}"))?;
-    (provider.auth.refresh)(credential).await
+#[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.ai.oauth.refresh"))]
+pub async fn refresh_oauth_token(
+    provider_id: &str,
+    credential: OAuthCredential,
+) -> Result<OAuthCredential, crate::auth::ModelsError> {
+    crate::trace::add_property("provider.id", provider_id);
+    let provider = get_oauth_provider(provider_id)
+        .ok_or_else(|| crate::auth::ModelsError::oauth(format!("Unknown OAuth provider: {provider_id}")))?;
+    log::debug!("oauth refresh start provider={provider_id}");
+    match (provider.auth.refresh)(credential).await {
+        Ok(next) => {
+            log::debug!("oauth refresh ok provider={provider_id}");
+            Ok(next)
+        }
+        Err(error) => {
+            log::warn!("oauth refresh failed provider={provider_id}: {error}");
+            Err(error)
+        }
+    }
 }
 
 pub struct OAuthApiKeyResult {
@@ -227,12 +242,12 @@ pub struct OAuthApiKeyResult {
 pub async fn get_oauth_api_key(
     provider_id: &str,
     mut credential: OAuthCredential,
-) -> anyhow::Result<OAuthApiKeyResult> {
-    let provider =
-        get_oauth_provider(provider_id).ok_or_else(|| anyhow::anyhow!("Unknown OAuth provider: {provider_id}"))?;
+) -> Result<OAuthApiKeyResult, crate::auth::ModelsError> {
+    let provider = get_oauth_provider(provider_id)
+        .ok_or_else(|| crate::auth::ModelsError::oauth(format!("Unknown OAuth provider: {provider_id}")))?;
 
     if chrono::Utc::now().timestamp_millis() >= credential.expires {
-        credential = (provider.auth.refresh)(credential).await?;
+        credential = refresh_oauth_token(provider_id, credential).await?;
     }
 
     let api_key = (provider.get_api_key)(&credential);
@@ -242,18 +257,34 @@ pub async fn get_oauth_api_key(
     })
 }
 
+#[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.ai.oauth.login"))]
 pub async fn oauth_provider_login(
     provider_id: &str,
     callbacks: Arc<dyn AuthLoginCallbacks>,
-) -> anyhow::Result<OAuthCredential> {
-    let provider =
-        get_oauth_provider(provider_id).ok_or_else(|| anyhow::anyhow!("Unknown OAuth provider: {provider_id}"))?;
-    (provider.auth.login)(callbacks).await
+    identity: &crate::types::ClientIdentity,
+) -> Result<OAuthCredential, crate::auth::ModelsError> {
+    crate::trace::add_property("provider.id", provider_id);
+    let provider = get_oauth_provider(provider_id)
+        .ok_or_else(|| crate::auth::ModelsError::oauth(format!("Unknown OAuth provider: {provider_id}")))?;
+    log::info!("oauth login start provider={provider_id}");
+    match (provider.auth.login)(callbacks, identity.clone()).await {
+        Ok(cred) => {
+            log::info!("oauth login ok provider={provider_id}");
+            Ok(cred)
+        }
+        Err(error) => {
+            log::warn!("oauth login failed provider={provider_id}: {error}");
+            Err(error)
+        }
+    }
 }
 
-pub async fn oauth_provider_to_auth(provider_id: &str, credential: OAuthCredential) -> anyhow::Result<ModelAuth> {
-    let provider =
-        get_oauth_provider(provider_id).ok_or_else(|| anyhow::anyhow!("Unknown OAuth provider: {provider_id}"))?;
+pub async fn oauth_provider_to_auth(
+    provider_id: &str,
+    credential: OAuthCredential,
+) -> Result<ModelAuth, crate::auth::ModelsError> {
+    let provider = get_oauth_provider(provider_id)
+        .ok_or_else(|| crate::auth::ModelsError::oauth(format!("Unknown OAuth provider: {provider_id}")))?;
     (provider.auth.to_auth)(credential).await
 }
 

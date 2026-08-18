@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use crate::utils::path::AppPaths;
 use anyhow::Result;
-use elph_agent::write_json_file;
+use elph_agent::fs::write_json_file;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

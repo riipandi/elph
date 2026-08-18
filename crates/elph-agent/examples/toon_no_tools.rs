@@ -24,7 +24,7 @@ use common::run_agent_prompt;
 use common::sample_catalog;
 use common::toon_prompt_encoding_with_delimiter;
 use common::{DEFAULT_ROWS, NO_TOOLS_SYSTEM, NO_TOOLS_TASK};
-use elph_agent::{PromptEncodingDelimiter, PromptEncodingMode};
+use elph_agent::prompt::{PromptEncodingDelimiter, PromptEncodingMode};
 
 struct Args {
     task: String,

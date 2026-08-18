@@ -1,6 +1,6 @@
 #![cfg(feature = "prompt-templates")]
 
-use elph_agent::{PromptAssemblyMode, SystemPromptBuilder, SystemPromptTemplateContext, tool_names_context};
+use elph_agent::prompt::{PromptAssemblyMode, SystemPromptBuilder, SystemPromptTemplateContext, tool_names_context};
 
 #[test]
 fn extend_mode_renders_base_persona() {

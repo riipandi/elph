@@ -1,4 +1,5 @@
 {
+    "$schema": "https://elph.space/provider-schema.json",
     "deepseek-ai/DeepSeek-V4-Flash-0731": {
         "api": "openai-completions",
         "baseUrl": "https://inference.baseten.co/v1",

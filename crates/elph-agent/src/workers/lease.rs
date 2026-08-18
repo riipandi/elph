@@ -140,6 +140,11 @@ impl SessionLeaseStore {
                         let age = now_secs.saturating_sub(parse_iso_approx_secs(&existing.heartbeat_at).unwrap_or(0));
                         let pid_dead = !pid_alive(existing.pid);
                         if !pid_dead {
+                            log::warn!(
+                                "session lease conflict session={session_id} holder={} pid={}",
+                                existing.worker_id,
+                                existing.pid
+                            );
                             return Ok(Err(LeaseError::Conflict(LeaseConflict {
                                 message: format!(
                                     "session `{session_id}` is leased by worker `{}` \

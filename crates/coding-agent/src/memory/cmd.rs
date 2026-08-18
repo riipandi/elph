@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use elph_agent::try_block_on;
+use elph_agent::runtime::try_block_on;
 
 use super::format::{MemoryStyle, parse_category_filter, write_flush_cancelled};
 use super::ops::{MemoryOp, execute_with_style};

@@ -1,15 +1,16 @@
 use std::fs;
 
 use elph_agent::AgentMessage;
-use elph_agent::BranchSummaryOptions;
-use elph_agent::InMemorySessionStorage;
-use elph_agent::Session;
-use elph_agent::SessionDirCreateOptions;
-use elph_agent::SessionDirStorage;
-use elph_agent::SessionStorage;
-use elph_agent::SessionTreeEntry;
-use elph_agent::TursoSessionStorage;
-use elph_agent::{EVENTS_FILE, SUMMARY_FILE};
+use elph_agent::session::BranchSummaryOptions;
+use elph_agent::session::InMemorySessionStorage;
+use elph_agent::session::Session;
+use elph_agent::session::SessionDirCreateOptions;
+use elph_agent::session::SessionDirStorage;
+use elph_agent::session::SessionStorage;
+use elph_agent::session::SessionTreeEntry;
+#[cfg(feature = "backend-turso")]
+use elph_agent::session::TursoSessionStorage;
+use elph_agent::session::{EVENTS_FILE, SUMMARY_FILE};
 use elph_ai::{Message, UserContent};
 use elph_ai::{faux_assistant_message, faux_text};
 use serde_json::json;
@@ -266,6 +267,7 @@ async fn session_dir_file_layout_matches_multi_file_format() {
     }
 }
 
+#[cfg(feature = "backend-turso")]
 #[tokio::test]
 async fn session_with_turso_storage() {
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -289,6 +291,7 @@ async fn session_with_turso_storage() {
 // between leaf-write and child-write, rows pruned, partial recovery) must not
 // brick the session — open resolves to the newest real entry and reconcile
 // repairs the tree.
+#[cfg(feature = "backend-turso")]
 #[tokio::test]
 async fn turso_reopen_with_phantom_leaf_pointer_stays_openable_and_repairable() {
     let tmp = tempfile::tempdir().expect("tempdir");
@@ -342,9 +345,10 @@ async fn turso_reopen_with_phantom_leaf_pointer_stays_openable_and_repairable() 
 // unanswered and possibly a dangling custom entry. Reopen → reconcile → append a
 // new user message (the "continue" step) must all succeed, and the fresh message
 // must chain onto a real entry.
+#[cfg(feature = "backend-turso")]
 #[tokio::test]
 async fn turso_resume_after_crash_then_continue_appends_chain() {
-    use elph_agent::reconcile_session;
+    use elph_agent::session::reconcile_session;
 
     let tmp = tempfile::tempdir().expect("tempdir");
     let db = tmp.path().join("crash.db");
@@ -410,6 +414,7 @@ async fn turso_resume_after_crash_then_continue_appends_chain() {
 // Persist heal at open: a tree polluted with many phantom leaf rows is healed in
 // memory AND the stale rows are deleted from the DB, so a second open does not
 // re-heal and the tree stays self-consistent.
+#[cfg(feature = "backend-turso")]
 #[tokio::test]
 async fn turso_open_persists_leaf_heal() {
     let tmp = tempfile::tempdir().expect("tempdir");

@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
-use elph_agent::ensure_database;
+use elph_agent::AgentToolResult;
+use elph_agent::datastore::ensure_database;
 use elph_agent::goals::create_goal_tools;
 use elph_agent::goals::{GoalStatus, GoalStore};
-use elph_agent::{AgentToolResult, SESSION_TREE_MIGRATIONS};
+use elph_agent::session::SESSION_TREE_MIGRATIONS;
 use serde_json::json;
 
 fn tool_text(result: AgentToolResult) -> String {
@@ -99,7 +100,7 @@ async fn goal_tools_round_trip() {
     let tools = create_goal_tools(store, session_id.to_string());
 
     let create = tools.iter().find(|t| t.name() == "create_goal").expect("create_goal");
-    let ctx = elph_agent::ToolContext::new(std::sync::Arc::new(elph_agent::LocalExecutionEnv::new(".")));
+    let ctx = elph_agent::ToolContext::new(std::sync::Arc::new(elph_agent::runtime::LocalExecutionEnv::new(".")));
     let create_result = (create.execute)(
         "tc1".into(),
         json!({

@@ -1,6 +1,6 @@
 //! System prompt assembly for generic agent hosts.
 
-use thiserror::Error;
+use std::fmt;
 
 use super::context::SystemPromptTemplateContext;
 use super::template::{PromptRenderError, render_base_template, sanitize_system_prompt};
@@ -15,12 +15,34 @@ pub enum PromptAssemblyMode {
     Full,
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub enum SystemPromptBuildError {
-    #[error("prompt template error: {0}")]
-    Template(#[from] PromptRenderError),
-    #[error("no domain template or body configured for full assembly mode")]
+    Template(PromptRenderError),
     MissingDomain,
+}
+
+impl fmt::Display for SystemPromptBuildError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Template(err) => write!(f, "prompt template error: {err}"),
+            Self::MissingDomain => write!(f, "no domain template or body configured for full assembly mode"),
+        }
+    }
+}
+
+impl std::error::Error for SystemPromptBuildError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Template(err) => Some(err),
+            Self::MissingDomain => None,
+        }
+    }
+}
+
+impl From<PromptRenderError> for SystemPromptBuildError {
+    fn from(err: PromptRenderError) -> Self {
+        Self::Template(err)
+    }
 }
 
 /// Pi-style project context wrapper for AGENTS.md / context files.

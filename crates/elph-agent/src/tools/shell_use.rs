@@ -219,7 +219,11 @@ fn tool_parameters() -> Value {
 fn shell_use_execute_fn() -> ToolExecuteFn {
     let registry: &'static SessionRegistry = shell_use_registry();
     Arc::new(move |id, args, signal, _on_update, context| {
-        Box::pin(async move { execute_shell_use(registry, id, args, signal, context).await })
+        Box::pin(async move {
+            execute_shell_use(registry, id, args, signal, context)
+                .await
+                .map_err(crate::tools::types::ToolError::from)
+        })
     })
 }
 

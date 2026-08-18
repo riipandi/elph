@@ -1,4 +1,5 @@
 {
+    "$schema": "https://elph.space/provider-schema.json",
     "k3": {
         "api": "anthropic-messages",
         "baseUrl": "https://api.kimi.com/coding",

@@ -6,7 +6,6 @@ mod ask_user;
 mod conflict_notice;
 mod events;
 pub(crate) mod goal_slash;
-mod handover;
 mod headless_status;
 pub mod mcp_bootstrap;
 pub(crate) mod mode_change;
@@ -18,6 +17,7 @@ pub mod prompt;
 pub(crate) mod provider;
 mod provider_catalog;
 mod resource_loader;
+mod resource_paths;
 mod run_mode;
 mod runtime;
 mod session;
@@ -32,11 +32,13 @@ mod todo_hooks;
 mod tool_policy;
 mod tools_catalog;
 mod tools_slash;
+mod transfer;
+mod worker_intercom;
 mod worker_runtime;
 mod workspace_reload;
 
+pub use agents_load::agent_dir_entries;
 pub use agents_load::{AgentConflict, WorkspaceAgent, WorkspaceAgents};
-pub use agents_load::{agent_dir_entries, ensure_global_agents_md};
 pub use agents_load::{format_agent_conflict_notice, load_workspace_agents};
 pub use aside::WORKER_INBOUND_PROMPT_PREFIX;
 pub use aside::aside_answer;
@@ -49,13 +51,6 @@ pub use events::{
     UserQuestionStep,
 };
 pub use events::{ModeChangeRequest, PlanConfirmationRequest, QueuedPromptItem, QueuedPromptKind};
-pub use handover::{
-    CODEX_HANDOVER_PROMPT_PREFIX, ClaudeHandover, CodexHandover, HANDOVER_PROMPT_PREFIX, HandoverError,
-    HandoverSession, HandoverToolCall, HandoverToolResult, HandoverTurn, HandoverWarning, build_codex_handoff_prompt,
-    build_handoff_prompt, claude_config_dir, codex_config_dir, discover_claude_sessions,
-    discover_claude_sessions_with_config, discover_codex_sessions, discover_codex_sessions_with_config,
-    read_claude_session, read_codex_session, resolve_claude_session, resolve_codex_session, slugify,
-};
 pub use mcp_bootstrap::discover_mcp_registry;
 pub use model_registry::ModelSelection;
 pub use model_registry::resolve_model;
@@ -81,8 +76,8 @@ pub use skills_load::{MAX_PALETTE_DESCRIPTION_CHARS, format_skill_conflict_notic
 pub use skills_load::{parse_skill_slash, skill_slash_name};
 pub use slash_commands::{OverlayCommand, SlashDispatch};
 pub use slash_commands::{
-    SlashArgCompletion, slash_arg_completions, slash_commands_for_palette, slash_palette_submit_on_enter,
-    slash_unimplemented_message,
+    SlashArgCompletion, slash_arg_completions, slash_commands_for_palette, slash_commands_for_palette_with,
+    slash_palette_submit_on_enter, slash_unimplemented_message,
 };
 pub use slash_commands::{confetti_mode_from_args, dispatch_slash_command, format_help_message};
 pub use slash_misc::{
@@ -96,4 +91,11 @@ pub use tool_policy::from_agent_thinking;
 pub use tool_policy::thinking_level_from_setting;
 pub use tool_policy::to_agent_thinking;
 pub use tools_slash::{discovery_tools_message, tools_slash_message};
+pub use transfer::{
+    CODEX_TRANSFER_PROMPT_PREFIX, ClaudeTransfer, CodexTransfer, TRANSFER_PROMPT_PREFIX, TransferError,
+    TransferSession, TransferToolCall, TransferToolResult, TransferTurn, TransferWarning, build_codex_handoff_prompt,
+    build_handoff_prompt, claude_config_dir, codex_config_dir, discover_claude_sessions,
+    discover_claude_sessions_with_config, discover_codex_sessions, discover_codex_sessions_with_config,
+    read_claude_session, read_codex_session, resolve_claude_session, resolve_codex_session, slugify,
+};
 pub use workspace_reload::{WorkspaceReloadReport, WorkspaceReloadRequest};

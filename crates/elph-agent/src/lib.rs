@@ -1,9 +1,32 @@
-//! App-agnostic agent runtime for Elph applications.
+//! App-agnostic agent runtime: loop, tools, sessions, MCP, and harness.
+//!
+//! # Public contract
+//!
+//! Crate-root prelude: [`Agent`], [`AgentOptions`], [`HostIdentity`],
+//! [`AgentError`], [`ToolError`], and feature-gated tool constructors.
+//! Everything else is imported from its module (`harness`, [`session`],
+//! [`compaction`], [`collaboration`], [`runtime`], [`mcp`], …).
+//! Adapter internals and TypeScript-port helpers (`get_or_throw`,
+//! `get_or_undefined`) are not a stability promise.
+//!
+//! Set [`HostIdentity`] on [`AgentOptions`] (env prefix for
+//! `{PREFIX}_PROMPT_ENCODING*`). Pass the same prefix to MCP
+//! [`mcp::load_or_create_master_key_with_prefix`] and logging [`AgentBuilder::env_prefix`].
+//! Identity is not process-global.
+//!
+//! MSRV is Rust **1.89** (edition 2024). Cargo features: `mcp`, `builtin-tools`,
+//! `extensions`, `prompt-templates`, `tracing`, `backend-turso`; bundle with `full`.
+//!
+//! Consumer notes: <https://github.com/riipandi/elph/blob/main/docs/elph-agent.md>
 //!
 //! Rust port of [@earendil-works/pi-agent](https://github.com/earendil-works/pi/tree/main/packages/agent).
+
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
 pub mod agent;
 pub mod builder;
 pub mod compaction;
+#[cfg(feature = "backend-turso")]
 pub mod datastore;
 pub mod fs;
 pub mod goals;
@@ -30,312 +53,11 @@ pub mod trace;
 pub mod types;
 pub mod utils;
 
-#[cfg(unix)]
-pub use crate::exec::pty::{PtySize, open_pty};
-pub use crate::exec::{ExecError, ExecErrorCode, ShellConfig, exec_shell_command, resolve_shell};
 pub use agent::default_model;
-pub use agent::harness::AfterProviderResponseEvent;
-pub use agent::harness::AgentHarness;
-pub use agent::harness::AgentHarnessError;
-pub use agent::harness::AgentHarnessErrorCode;
-pub use agent::harness::AgentHarnessEvent;
-pub use agent::harness::AgentHarnessOptions;
-pub use agent::harness::AgentHarnessOwnEvent;
-pub use agent::harness::AgentHarnessPhase;
-pub use agent::harness::AgentHarnessPromptOptions;
-pub use agent::harness::AgentHarnessResources;
-pub use agent::harness::AgentHarnessStreamOptions;
-pub use agent::harness::AgentHarnessStreamOptionsPatch;
-pub use agent::harness::BeforeAgentStartEvent;
-pub use agent::harness::BeforeAgentStartResult;
-pub use agent::harness::BeforeProviderPayloadEvent;
-pub use agent::harness::BeforeProviderPayloadResult;
-pub use agent::harness::BeforeProviderRequestEvent;
-pub use agent::harness::BeforeProviderRequestResult;
-pub use agent::harness::BranchSummaryError;
-pub use agent::harness::BranchSummaryErrorCode;
-pub use agent::harness::BranchSummaryResult;
-pub use agent::harness::BranchSummarySummary;
-pub use agent::harness::CompactResult;
-pub use agent::harness::CompactionError;
-pub use agent::harness::CompactionErrorCode;
-pub use agent::harness::ContextEvent;
-pub use agent::harness::ContextResult;
-pub use agent::harness::CreateDirOptions;
-pub use agent::harness::CreateTempFileOptions;
-pub use agent::harness::DEFAULT_COMPACTION_SETTINGS as HARNESS_DEFAULT_COMPACTION_SETTINGS;
-pub use agent::harness::DEFAULT_MAX_BYTES;
-pub use agent::harness::DEFAULT_MAX_LINES;
-pub use agent::harness::ExecutionEnv;
-pub use agent::harness::ExecutionError;
-pub use agent::harness::ExecutionErrorCode;
-pub use agent::harness::FileError;
-pub use agent::harness::FileErrorCode;
-pub use agent::harness::FileInfo;
-pub use agent::harness::FileKind;
-pub use agent::harness::FileOperations as HarnessFileOperations;
-pub use agent::harness::FileSystem;
-pub use agent::harness::GREP_MAX_LINE_LENGTH;
-pub use agent::harness::HarnessHookResult;
-pub use agent::harness::HarnessOpResult;
-pub use agent::harness::HarnessResult;
-pub use agent::harness::MissingActiveToolsPolicy;
-pub use agent::harness::ModelUpdateEvent;
-pub use agent::harness::ModelUpdateSource;
-pub use agent::harness::NavigateTreeOptions;
-pub use agent::harness::NavigateTreeResult;
-pub use agent::harness::PendingSessionWrite;
-pub use agent::harness::PromptTemplate;
-pub use agent::harness::QueueUpdateEvent;
-pub use agent::harness::ReadTextLinesOptions;
-pub use agent::harness::RecoveryPolicy;
-pub use agent::harness::RemoveOptions;
-pub use agent::harness::ResourcesUpdateEvent;
-pub use agent::harness::RestoreOptions;
-pub use agent::harness::Result as HarnessTypedResult;
-pub use agent::harness::SavePointEvent;
-pub use agent::harness::SessionBeforeCompactEvent;
-pub use agent::harness::SessionBeforeCompactResult;
-pub use agent::harness::SessionBeforeTreeEvent;
-pub use agent::harness::SessionBeforeTreeResult;
-pub use agent::harness::SessionCompactEvent;
-pub use agent::harness::SessionTreeEvent;
-pub use agent::harness::SettledEvent;
-pub use agent::harness::Shell;
-pub use agent::harness::ShellCaptureOptions;
-pub use agent::harness::ShellExecOptions;
-pub use agent::harness::ShellExecResult;
-pub use agent::harness::Skill;
-pub use agent::harness::SystemPrompt;
-pub use agent::harness::SystemPromptContext;
-pub use agent::harness::SystemPromptFn;
-pub use agent::harness::ThinkingLevelUpdateEvent;
-pub use agent::harness::ToolCallEvent;
-pub use agent::harness::ToolCallHookResult;
-pub use agent::harness::ToolResultEvent;
-pub use agent::harness::ToolResultPatch;
-pub use agent::harness::ToolsUpdateEvent;
-pub use agent::harness::TreePreparation;
-pub use agent::harness::TruncatedBy;
-pub use agent::harness::TruncationOptions;
-pub use agent::harness::err;
-pub use agent::harness::execute_shell_with_capture;
-pub use agent::harness::filter_skills_for_context;
-pub use agent::harness::finalize_shell_capture;
-pub use agent::harness::format_size;
-pub use agent::harness::format_skills_for_context;
-pub use agent::harness::format_skills_for_system_prompt;
-pub use agent::harness::get_or_throw;
-pub use agent::harness::get_or_undefined;
-pub use agent::harness::is_known_harness_hook_type;
-pub use agent::harness::ok;
-pub use agent::harness::sanitize_binary_output;
-pub use agent::harness::to_error;
-pub use agent::harness::truncate_head;
-pub use agent::harness::truncate_line;
-pub use agent::harness::truncate_tail;
-pub use agent::harness::types::SkillsDiscoveryPaths;
-pub use agent::harness::utils::TruncationResult;
-pub use agent::subagent::AgentControl;
-pub use agent::subagent::AgentGraphStore;
-pub use agent::subagent::AgentRegistry;
-pub use agent::subagent::SubagentBootstrap;
-pub use agent::subagent::SubagentEventForwarder;
-pub use agent::subagent::SubagentHarness;
-pub use agent::subagent::SubagentInfo;
-pub use agent::subagent::SubagentLimits;
-pub use agent::subagent::SubagentOutput;
-pub use agent::subagent::SubagentSpawnConfig;
-pub use agent::subagent::SubagentStatus;
-pub use agent::subagent::generate_agent_name;
-pub use agent::subagent::subagent_persist_event;
+pub use agent::harness;
 pub use agent::{Agent, AgentListener, AgentOptions, AgentSubscription, PartialAgentState};
 pub use builder::{AgentBuilder, AgentInit, BuiltinToolsBuilder};
-pub use collaboration::ToolExposurePolicy;
-pub use collaboration::assistant_message_text;
-pub use collaboration::default_exploration_tools;
-pub use collaboration::extract_proposed_plan;
-pub use collaboration::filter_active_tools;
-pub use collaboration::implement_prompt;
-pub use collaboration::is_collaboration_tool;
-pub use collaboration::is_exploration_tool;
-pub use collaboration::is_mcp_read_only_bridge_tool;
-pub use collaboration::is_mcp_tool;
-pub use collaboration::is_mutating_tool;
-pub use collaboration::is_plan_mode_tool;
-pub use collaboration::is_read_only_mcp_tool;
-pub use collaboration::plan_mode_block_reason;
-pub use collaboration::plan_mode_blocks_tool;
-pub use collaboration::{CollaborationMode, PlanConfirmationChoice};
-pub use compaction::BranchPreparation;
-pub use compaction::BranchSummaryDetails;
-pub use compaction::CollectEntriesResult;
-pub use compaction::CompactionDetails;
-pub use compaction::CompactionPreparation;
-pub use compaction::CompactionResult;
-pub use compaction::CompactionSettings;
-pub use compaction::ContextUsageEstimate;
-pub use compaction::CutPointResult;
-pub use compaction::FileOperations;
-pub use compaction::GenerateBranchSummaryOptions;
-pub use compaction::SUMMARIZATION_SYSTEM_PROMPT;
-pub use compaction::calculate_context_tokens;
-pub use compaction::collect_entries_for_branch_summary;
-pub use compaction::compact;
-pub use compaction::compute_file_lists;
-pub use compaction::create_file_ops;
-pub use compaction::estimate_context_tokens;
-pub use compaction::estimate_tokens;
-pub use compaction::estimate_tokens_with_system_prompt;
-pub use compaction::extract_file_ops_from_message;
-pub use compaction::find_cut_point;
-pub use compaction::find_turn_start_index;
-pub use compaction::format_file_operations;
-pub use compaction::generate_branch_summary;
-pub use compaction::generate_summary;
-pub use compaction::get_last_assistant_usage;
-pub use compaction::prepare_branch_entries;
-pub use compaction::prepare_compaction;
-pub use compaction::serialize_conversation;
-pub use compaction::should_compact;
-pub use datastore::DatabaseSpec;
-pub use datastore::Migration;
-pub use datastore::{ensure_database, ensure_databases, ensure_databases_once};
-pub use elph_ai::{OnPayloadCallback, OnResponseCallback};
-pub use fs::{ensure_dirs, write_file_if_missing, write_json_file, write_private_file};
-pub use goals::{BUDGET_LIMIT_PROMPT_PREFIX, CONTINUATION_PROMPT_PREFIX};
-pub use goals::{Goal, GoalRuntime, GoalStatus, GoalStore};
-pub use goals::{GoalStatusHook, create_goal_tools, create_goal_tools_with_hook};
-pub use logger::{LogRotation, LoggingOptions};
-pub use messages::CustomMessageContent;
-pub use messages::create_branch_summary_message;
-pub use messages::create_compaction_summary_message;
-pub use messages::create_custom_message;
-pub use messages::default_convert_to_llm;
-pub use messages::default_convert_to_llm as convert_to_llm;
-pub use messages::default_convert_to_llm_fn;
-pub use messages::now_date_with_offset;
-pub use messages::now_iso_timestamp;
-pub use messages::shell_exec_execution_to_text;
-#[cfg(feature = "extensions")]
-pub use plugins::{ExtensionCommand, ExtensionManifest, ExtensionRegistry, ExtensionSlashResult, ExtensionsSettings};
-#[cfg(feature = "extensions")]
-pub use plugins::{discover_manifests, extension_roots, global_extensions_dir, load_manifest, project_extensions_dir};
-pub use prompt::LoadPromptTemplatesResult;
-pub use prompt::LoadSourcedPromptTemplatesResult;
-pub use prompt::PromptTemplateDiagnostic;
-pub use prompt::PromptTemplateDiagnosticCode;
-pub use prompt::SourcedPromptTemplate;
-pub use prompt::SourcedPromptTemplateDiagnostic;
-pub use prompt::builtin::session_name::extract_conversation_for_naming;
-pub use prompt::builtin::session_name::sanitize_session_name;
-pub use prompt::encoding::PromptEncodingConfig;
-pub use prompt::encoding::PromptEncodingDelimiter;
-pub use prompt::encoding::PromptEncodingMode;
-pub use prompt::encoding::PromptEncodingTargets;
-pub use prompt::encoding::ToonDecodeError;
-pub use prompt::encoding::apply_to_tool_result;
-pub use prompt::encoding::decode_toon_fence;
-pub use prompt::encoding::encode_value;
-pub use prompt::encoding::extract_json_value;
-pub use prompt::encoding::parse_toon_fence;
-pub use prompt::format_prompt_template_invocation;
-pub use prompt::load_prompt_templates;
-pub use prompt::load_sourced_prompt_templates;
-pub use prompt::parse_command_args;
-pub use prompt::session_name::generate_session_name;
-pub use prompt::session_name::generate_session_name_with_prompts;
-pub use prompt::substitute_args;
 pub use prompt::{DEFAULT_SYSTEM_PROMPT, resolve_system_prompt_text};
-#[cfg(feature = "prompt-templates")]
-pub use prompt::{
-    PromptAssemblyMode, PromptRenderError, SystemPromptBuildError, SystemPromptBuilder, SystemPromptTemplateContext,
-    ToolByKindContext, ToolNamesContext, format_project_context, render_base_template, tool_names_context,
-};
-pub use runtime::event_stream::{AgentEventSink, AgentEventStream};
-pub use runtime::local_env::LocalExecutionEnv;
-pub use runtime::proxy::stream_proxy;
-pub use runtime::proxy::{ProxyAssistantMessageEvent, ProxyStreamOptions};
-pub use runtime::{agent_loop, agent_loop_continue, run_agent_loop, run_agent_loop_continue};
-pub use runtime::{block_on, try_block_on, try_block_on_detached};
-pub use session::BranchSummaryOptions;
-pub use session::ContextEntryTransform;
-pub use session::CustomEntryContextMessageProjector;
-pub use session::CustomMessageEntryBlock;
-pub use session::CustomMessageEntryContent;
-pub use session::ForkEntriesOptions;
-pub use session::ForkPosition;
-pub use session::InMemorySessionCreateOptions;
-pub use session::InMemorySessionOptions;
-pub use session::InMemorySessionRepo;
-pub use session::InMemorySessionStorage;
-pub use session::Session;
-pub use session::SessionContext;
-pub use session::SessionContextBuildOptions;
-pub use session::SessionDirCreateOptions;
-pub use session::SessionDirListOptions;
-pub use session::SessionDirMetadata;
-pub use session::SessionDirRepo;
-pub use session::SessionDirRepoCreateOptions;
-pub use session::SessionDirStorage;
-pub use session::SessionError;
-pub use session::SessionErrorCode;
-pub use session::SessionMetadata;
-pub use session::SessionModelRef;
-pub use session::SessionStorage;
-pub use session::SessionTreeEntry;
-pub use session::TursoSessionCreateOptions;
-pub use session::TursoSessionListOptions;
-pub use session::TursoSessionMetadata;
-pub use session::TursoSessionRepo;
-pub use session::TursoSessionRepoCreateOptions;
-pub use session::TursoSessionStorage;
-pub use session::build_context_entries;
-pub use session::build_session_context;
-pub use session::build_session_context_with_options;
-pub use session::create_session_id;
-pub use session::create_timestamp;
-pub use session::create_worker_id;
-pub use session::create_worker_msg_id;
-pub use session::default_context_entry_transform;
-pub use session::derive_session_context_state;
-pub use session::get_entries_to_fork;
-pub use session::id::create_kalid;
-pub use session::load_durable_state;
-pub use session::load_session_metadata;
-pub use session::reconcile_session;
-pub use session::reduce_durable_state;
-pub use session::repair_unanswered_tool_calls;
-pub use session::to_session;
-pub use session::{
-    CANONICAL_SESSION_SCHEMA_SQL, EVENTS_FILE, SESSION_SUMMARY_SCHEMA_SQL, SESSION_TREE_MIGRATIONS, SUMMARY_FILE,
-    WORKERS_SCHEMA_SQL,
-};
-pub use session::{DurableHarnessState, OperationKind, OperationOutcome, QueueKind, RecoveryReport};
-pub use session::{
-    RetentionPolicy, SessionGcReport, list_session_gc_rows, run_full_session_gc, run_session_gc, set_session_pinned,
-};
-pub use session_summary::SessionSummary;
-pub use session_summary::SessionSummaryStore;
-pub use session_summary::create_session_summary_tool;
-pub use skills::LoadSkillsResult;
-pub use skills::LoadSourcedSkillsResult;
-pub use skills::SkillDiagnostic;
-pub use skills::SkillDiagnosticCode;
-pub use skills::SourcedSkill;
-pub use skills::SourcedSkillDiagnostic;
-pub use skills::format_skill_invocation;
-pub use skills::format_skill_missing_args_notice;
-pub use skills::load_skills;
-pub use skills::load_skills_with_options;
-pub use skills::load_sourced_skills;
-pub use skills::load_sourced_skills_with_options;
-pub use skills::skill_args_validation_notice;
-pub use skills::skill_requires_arguments;
-pub use todos::{
-    TodoHook, TodoItem, TodoStatus, TodoStore, TodoUpdate, WorkTracker, auto_close_done_todos, create_todo_tools,
-    create_todo_tools_with_hook,
-};
 #[cfg(any(feature = "tools-edit", feature = "tools-search"))]
 pub use tools::create_all_tools;
 #[cfg(any(feature = "tools-edit", feature = "tools-search", feature = "tools-web"))]
@@ -369,197 +91,7 @@ pub use tools::create_search_tools;
 #[cfg(feature = "tools-write-file")]
 pub use tools::create_write_file_tool;
 #[cfg(feature = "mcp")]
-pub use tools::mcp::Aes256Key;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::AuthStoreFile;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::AuthStoreGuard;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::AuthStorePathBuilder;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::DEFAULT_AUTH_FILE_NAME;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::DEFAULT_MAX_STRUCTURED_DETAIL_CHARS;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::DEFAULT_MAX_TOOL_RESULT_CHARS;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::DEFAULT_OAUTH_SCOPES;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::DEFAULT_OPERATION_TIMEOUT_SECS;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::ENC_PREFIX;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::ENV_REF_PREFIX;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::FileCredentialStore;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::FileCredentialStoreBuilder;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpAuthConflictPolicy;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpAuthSource;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpAuthSourceReport;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpCacheStore;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpClient;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpClientService;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpConfig;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpConfigValidationError;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpConnectContext;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpEventBus;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpHttpConfig;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpLifecycleMode;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpLoadReport;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpMrtrElicitationPolicy;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpOAuthClientMeta;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpOAuthFlowOptions;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpOAuthFlowResult;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpPolicyAction;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpPolicyConfig;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpProbeResult;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpPromptDescriptor;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpResourceDescriptor;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpResponseCacheConfig;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpServerConfig;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpServerEvent;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpServerLoadReport;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpServerSession;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpSessionPool;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpStdioConfig;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpToolDescriptor;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::McpToolRegistry;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::PROBE_TIMEOUT;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::auth_store_path;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::call_stdio_tool;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::call_tool_for_server;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::clear_credentials;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::clear_process_master_key_for_tests;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::connect;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::connect_http;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::connect_stdio;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::connect_with_context;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::decrypt_async;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::decrypt_json_async;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::decrypt_string_async;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::decrypt_string_sync;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::default_auth_lock_path;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::encrypt_async;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::encrypt_json_async;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::encrypt_string_async;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::encrypt_string_sync;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::expose_tool_name;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::has_stored_credentials;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::is_encrypted_value;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::list_tools;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::list_tools_for_server;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::load_or_create_master_key;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::lock_auth_store;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::looks_like_envelope;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::mcp_result_to_agent;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::mcp_result_to_agent_with_limit;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::mcp_tool_requires_approval;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::parse_and_validate_mcp_config;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::parse_and_validate_mcp_config_async;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::parse_and_validate_server_config_json;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::parse_exposed_tool_name;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::parse_stdio_config;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::pattern_matches;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::probe_server;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::probe_server_with_auth;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::probe_stdio_server;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::resolve_oauth_access_token;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::resolve_remote_auth;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::rewrap_master_key;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::run_oauth_flow;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::run_oauth_flow_with_scopes;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::set_process_master_key_for_tests;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::shutdown_client;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::truncate_chars;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::validate_mcp_config;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::validate_mcp_config_semantic;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::validate_mcp_config_value;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::validate_server_config;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::{McpLoadOptions, McpServerLoadProgress};
+pub use tools::mcp;
 #[cfg(feature = "tools-web")]
 pub use tools::{WebSearchEngine, WebSearchResult};
 #[cfg(feature = "tools-shell-exec")]
@@ -572,10 +104,4 @@ pub use tools::{close_shell_use_sessions, create_shell_use_tool, shell_use_open_
 #[cfg(feature = "tools-web")]
 pub use tools::{create_web_extract_tool, create_web_fetch_tool, create_web_search_tool, create_web_tools};
 pub use tools::{echo_tool, simple_tool};
-pub use turns::{TurnRecord, TurnStatus, TurnStore, TurnUsage};
 pub use types::*;
-pub use workers::{
-    FileLeaseStore, LeaseConflict, LeaseError, LiveWorker, MailboxStore, MessageKind, MessageStatus, PathClaimContext,
-    SessionLease, SessionLeaseStore, SharedPathClaim, WorkerMessage, WorkerRecord, WorkerRegistry, WorkerStatus,
-    WorkerToolContext, create_worker_tools, normalize_claim_path,
-};

@@ -1,7 +1,7 @@
 use parking_lot::Mutex;
 
 use elph_ai::OAuthCredential;
-use elph_ai::anthropic_oauth;
+use elph_ai::auth::anthropic_oauth;
 use elph_ai::auth::oauth::OAuthProviderInterface;
 use elph_ai::auth::oauth::unregister_oauth_provider;
 use elph_ai::auth::oauth::{builtin_oauth_provider_ids, get_oauth_provider, get_oauth_providers};
@@ -117,7 +117,7 @@ fn oauth_registry_lists_builtin_providers() {
 
 #[test]
 fn github_copilot_modify_models_filters_by_available_ids() {
-    use elph_ai::oauth_provider_modify_models;
+    use elph_ai::auth::oauth_provider_modify_models;
     use elph_ai::{OAuthCredential, get_builtin_models};
 
     let catalog = get_builtin_models("github-copilot");

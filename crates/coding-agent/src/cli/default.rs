@@ -14,20 +14,6 @@ pub fn handle(continue_session: bool, resume: Option<String>) -> ExitCode {
         }
     };
 
-    // Pre-TUI: offer codebase indexing when codegraph is enabled and index is empty.
-    // The index offer can take minutes (embedder download / first build), so make
-    // Ctrl+C abort it cleanly instead of relying on the default signal behavior.
-    {
-        let _interrupt = super::CliProgressInterruptGuard::new();
-        if let Err(err) = crate::codegraph::maybe_offer_index(&paths) {
-            log::warn!("codegraph startup index offer: {err:#}");
-            // Non-fatal — continue into TUI, but make the failure visible instead of
-            // burying it in the log file only.
-            eprintln!("warning: could not check the codebase index: {err:#}");
-            eprintln!("  Run `elph codegraph build` to index manually.");
-        }
-    }
-
     let mode = match SessionLaunchMode::from_flags(continue_session, resume) {
         Ok(m) => m,
         Err(err) => {
@@ -37,7 +23,7 @@ pub fn handle(continue_session: bool, resume: Option<String>) -> ExitCode {
     };
 
     let project_dir = paths.project_dir().clone();
-    let resume_id = match elph_agent::block_on(mode.resolve_resume_id(&paths, &project_dir)) {
+    let resume_id = match elph_agent::runtime::block_on(mode.resolve_resume_id(&paths, &project_dir)) {
         Ok(id) => id,
         Err(err) => {
             super::help::cli_error(err);
@@ -45,6 +31,11 @@ pub fn handle(continue_session: bool, resume: Option<String>) -> ExitCode {
         }
     };
 
+    log::info!(
+        "tui launch cwd={} resume={}",
+        project_dir.display(),
+        resume_id.as_deref().unwrap_or("new")
+    );
     let code = platform::run(resume_id);
 
     use std::sync::atomic::Ordering;

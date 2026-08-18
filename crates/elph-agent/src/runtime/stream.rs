@@ -4,7 +4,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use elph_ai::utils::event_stream::AssistantMessageEventStream;
+use elph_ai::AssistantMessageEventStream;
 use elph_ai::{AssistantMessage, AssistantMessageEvent, Context, SimpleStreamOptions};
 use tokio_util::sync::CancellationToken;
 

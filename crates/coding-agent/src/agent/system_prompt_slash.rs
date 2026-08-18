@@ -29,7 +29,7 @@ pub fn system_prompt_slash_message(session: Option<&Arc<CodingAgentSession>>) ->
     }
 
     let session = Arc::clone(session);
-    match elph_agent::try_block_on_detached(
+    match elph_agent::runtime::try_block_on_detached(
         async move { compiled_system_prompt_message(&session).await },
         COMPILE_TIMEOUT,
     ) {

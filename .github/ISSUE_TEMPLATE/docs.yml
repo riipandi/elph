@@ -5,7 +5,7 @@ labels: [documentation]
 body:
   - type: markdown
     attributes:
-      value: Edit source docs (`docs/`, crate READMEs). Do not hand-edit generated `openwiki/` pages.
+      value: Edit source docs (`docs/`, crate READMEs).
 
   - type: input
     id: path

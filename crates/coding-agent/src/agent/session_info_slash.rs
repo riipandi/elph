@@ -4,11 +4,11 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use chrono::{DateTime, Local, Timelike, Utc};
-use elph_agent::{
-    AgentMessage, FileSystem, SessionTreeEntry, Skill, build_session_context, estimate_context_tokens,
-    estimate_tokens_with_system_prompt,
-};
-use elph_ai::utils::estimate::count_tokens_text;
+use elph_agent::AgentMessage;
+use elph_agent::compaction::{estimate_context_tokens, estimate_tokens_with_system_prompt};
+use elph_agent::harness::{FileSystem, Skill};
+use elph_agent::session::{SessionTreeEntry, build_session_context};
+use elph_ai::estimate::count_tokens_text;
 
 use super::CodingAgentSession;
 use crate::tui::chrome::count_user_turns;
@@ -408,8 +408,8 @@ async fn format_tools_info(session: &CodingAgentSession) -> String {
     }
     let total = tools.len();
 
-    // Separate MCP tools (prefixed `mcp__`) from built-in tools.
-    let mcp_count = tools.iter().filter(|t| t.name().starts_with("mcp__")).count();
+    // Separate MCP tools (`mcp_{server}__{tool}`) from built-in tools.
+    let mcp_count = tools.iter().filter(|t| t.name().starts_with("mcp_")).count();
     let builtin_count = total.saturating_sub(mcp_count);
 
     let detail = if mcp_count > 0 && builtin_count > 0 {
@@ -448,7 +448,7 @@ pub fn session_info_slash_message(
     };
     let session = Arc::clone(session);
     let skills: Option<Vec<Skill>> = skills.map(|s| s.to_vec());
-    match elph_agent::try_block_on_detached(
+    match elph_agent::runtime::try_block_on_detached(
         async move { format_session_info(&session, skills.as_deref()).await },
         SESSION_INFO_TIMEOUT,
     ) {
@@ -466,7 +466,7 @@ pub fn session_title_for_rename(session: Option<&Arc<CodingAgentSession>>) -> Re
         return Err("Agent session required for this command.".into());
     };
     let session = Arc::clone(session);
-    match elph_agent::try_block_on_detached(
+    match elph_agent::runtime::try_block_on_detached(
         async move { session.harness().session_name().await.unwrap_or_default() },
         Duration::from_millis(400),
     ) {
@@ -484,7 +484,7 @@ pub fn rename_session_title(session: &Arc<CodingAgentSession>, title: &str) -> R
     }
     let session = Arc::clone(session);
     let title = title.to_string();
-    match elph_agent::try_block_on_detached(
+    match elph_agent::runtime::try_block_on_detached(
         async move {
             session
                 .harness()

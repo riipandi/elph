@@ -9,8 +9,9 @@
 //!
 //! OAuth providers trigger the OAuth flow when OAuth authentication is selected.
 
+use elph_ai::auth::builtin_oauth_provider_ids;
+use elph_ai::get_builtin_providers;
 use elph_ai::providers::builtin_providers;
-use elph_ai::{builtin_oauth_provider_ids, get_builtin_providers};
 use elph_tui::components::{DialogChrome, DialogUserInputContent, UiTheme, dialog_max_content_height};
 use iocraft::prelude::*;
 
@@ -193,7 +194,7 @@ fn get_provider_config_status(provider_id: &str) -> ProviderConfigStatus {
 /// Like [`get_provider_config_status`] but uses an explicit auth store path (tests / hosts).
 pub fn get_provider_config_status_at(auth_store_path: &Path, provider_id: &str) -> ProviderConfigStatus {
     // Try loading the encrypted auth store first
-    let file = match elph_agent::AuthStoreFile::load_from_path_sync(auth_store_path) {
+    let file = match elph_agent::mcp::AuthStoreFile::load_from_path_sync(auth_store_path) {
         Ok(f) => f,
         Err(_) => {
             // Fallback: try to read as plain JSON
@@ -205,7 +206,7 @@ pub fn get_provider_config_status_at(auth_store_path: &Path, provider_id: &str) 
                     .and_then(|v| v.as_object())
                 && let Some(credential) = providers.get(provider_id).and_then(|v| v.as_str())
             {
-                if let Some(var_name) = credential.strip_prefix(elph_agent::ENV_REF_PREFIX) {
+                if let Some(var_name) = credential.strip_prefix(elph_agent::mcp::ENV_REF_PREFIX) {
                     return ProviderConfigStatus::EnvVarConfigured(var_name.to_string());
                 }
                 // OAuth JSON blobs are long; short values are API keys.
@@ -219,7 +220,7 @@ pub fn get_provider_config_status_at(auth_store_path: &Path, provider_id: &str) 
     };
 
     if let Some(entry) = file.get_provider_credential(provider_id) {
-        if let Some(var_name) = entry.strip_prefix(elph_agent::ENV_REF_PREFIX) {
+        if let Some(var_name) = entry.strip_prefix(elph_agent::mcp::ENV_REF_PREFIX) {
             return ProviderConfigStatus::EnvVarConfigured(var_name.to_string());
         }
         // OAuth JSON blobs are long; short values are API keys.
@@ -529,7 +530,7 @@ pub enum ProviderFilterSeed {
 /// Printable characters that seed the filter while the list is focused.
 ///
 /// The dialog has no single-letter shortcuts, so every printable character is
-/// filter text — nothing is reserved for vim-style navigation.
+/// filter text — letters are not reserved for list navigation.
 pub fn provider_filter_seed(modifiers: KeyModifiers, code: KeyCode) -> Option<ProviderFilterSeed> {
     // Allow Shift (caps); reject Ctrl/Alt/Meta.
     if modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::META) {
@@ -688,7 +689,7 @@ fn render_select_auth_method_step(
         ) {
             View(width: w, flex_direction: FlexDirection::Column, gap: 0, flex_shrink: 0f32) {
                 // `has_focus: false` — the shell key handler owns navigation so the
-                // list never applies its own (vim-style) key bindings.
+                // list never applies its own letter key bindings.
                 crate::tui::model_option_list::ModelOptionList(
                     width: w,
                     height: 0u16,
@@ -871,7 +872,7 @@ fn render_select_provider_step(
                 }
                 // ── Provider list ──
                 // `has_focus: false` — the shell key handler owns navigation so the
-                // list never applies its own (vim-style) key bindings.
+                // list never applies its own letter key bindings.
                 View(width: w, padding_top: OPTIONS_LIST_TOP_GAP, flex_shrink: 0f32) {
                     crate::tui::model_option_list::ModelOptionList(
                         width: w,
@@ -936,7 +937,7 @@ fn render_oauth_select_step(
                     )
                 }
                 // `has_focus: false` — the shell key handler owns navigation so the
-                // list never applies its own (vim-style) key bindings.
+                // list never applies its own letter key bindings.
                 View(width: w, padding_top: OPTIONS_LIST_TOP_GAP, flex_shrink: 0f32) {
                     crate::tui::model_option_list::ModelOptionList(
                         width: w,
@@ -1140,14 +1141,14 @@ mod tests {
     fn env_ref_in_auth_counts_as_configured_even_without_env() {
         let dir = tempfile::tempdir().expect("tempdir");
         let auth_path = dir.path().join("auth.json");
-        let key = elph_agent::Aes256Key::generate();
-        elph_agent::set_process_master_key_for_tests(key);
-        let mut file = elph_agent::AuthStoreFile::default();
+        let key = elph_agent::mcp::Aes256Key::generate();
+        elph_agent::mcp::set_process_master_key_for_tests(key);
+        let mut file = elph_agent::mcp::AuthStoreFile::default();
         file.set_provider_credential(
             "opencode",
-            format!("{}{}", elph_agent::ENV_REF_PREFIX, "OPENCODE_API_KEY_DOES_NOT_EXIST_XYZ"),
+            format!("{}{}", elph_agent::mcp::ENV_REF_PREFIX, "OPENCODE_API_KEY_DOES_NOT_EXIST_XYZ"),
         );
-        elph_agent::try_block_on(async {
+        elph_agent::runtime::try_block_on(async {
             // Uses process master key override for this test process.
             file.save_to_path(&auth_path).await.unwrap();
         })
@@ -1157,7 +1158,7 @@ mod tests {
             std::env::remove_var("OPENCODE_API_KEY_DOES_NOT_EXIST_XYZ");
         }
         let status = get_provider_config_status_at(&auth_path, "opencode");
-        elph_agent::clear_process_master_key_for_tests();
+        elph_agent::mcp::clear_process_master_key_for_tests();
         assert_eq!(
             status,
             ProviderConfigStatus::EnvVarConfigured("OPENCODE_API_KEY_DOES_NOT_EXIST_XYZ".into())
@@ -1179,12 +1180,6 @@ mod tests {
     fn list_nav_delta_is_arrow_keys_only() {
         assert_eq!(provider_list_nav_delta(KeyModifiers::empty(), KeyCode::Up), Some(-1));
         assert_eq!(provider_list_nav_delta(KeyModifiers::empty(), KeyCode::Down), Some(1));
-        // Vim-style navigation is filter text, never navigation.
-        assert_eq!(provider_list_nav_delta(KeyModifiers::empty(), KeyCode::Char('k')), None);
-        assert_eq!(provider_list_nav_delta(KeyModifiers::empty(), KeyCode::Char('j')), None);
-        assert_eq!(provider_list_nav_delta(KeyModifiers::empty(), KeyCode::Char('h')), None);
-        assert_eq!(provider_list_nav_delta(KeyModifiers::empty(), KeyCode::Char('l')), None);
-        assert_eq!(provider_list_nav_delta(KeyModifiers::CONTROL, KeyCode::Up), None);
     }
 
     #[test]

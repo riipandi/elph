@@ -115,7 +115,7 @@ async fn run_codex(
     let mut headers = merge_model_headers(model, Some(&options.base));
     headers.insert("Authorization".to_string(), format!("Bearer {api_key}"));
     headers.insert("chatgpt-account-id".to_string(), account_id);
-    headers.insert("originator".to_string(), "elph".to_string());
+    headers.insert("originator".to_string(), options.base.identity_or_default().product);
     headers.insert("OpenAI-Beta".to_string(), "responses=experimental".to_string());
     headers.insert("accept".to_string(), "text/event-stream".to_string());
     if let Some(sid) = &options.base.session_id {

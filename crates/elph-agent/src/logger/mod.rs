@@ -1,9 +1,12 @@
 mod crash;
 mod options;
+mod record;
 
-pub use crash::{CRASH_LOG_FILE, crash_log_path, install_panic_hook};
-pub use options::{LogRotation, LoggingOptions};
+pub use crash::{CRASH_LOG_FILE, CrashRecord, crash_log_filename_for, crash_log_path, install_panic_hook};
+pub use options::{LogRotation, LoggingOptions, LoggingOptionsBuilder, LoggingSettings};
+pub use record::{JsonlLayout, LogRecord};
 
+use std::io::{self, Write};
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -15,11 +18,14 @@ use logforth::append::asynchronous::AsyncBuilder;
 use logforth::append::file::FileBuilder;
 use logforth::bridge::log::LogBridge;
 use logforth::filter::RustLogFilter;
-use logforth::layout::JsonLayout;
 use logforth::layout::TextLayout;
+
+use options::max_level_from_spec;
 
 /// Bounded queue for the async file writer. Caps memory under sustained log bursts.
 const FILE_WRITER_BUFFER_LINES: usize = 16_384;
+
+const DEFAULT_SIZE_ROTATION_BYTES: u64 = 10 * 1024 * 1024;
 
 /// Keeps the global logforth bridge alive so async appenders can flush on shutdown.
 pub struct LogGuard {
@@ -35,15 +41,14 @@ impl Drop for LogGuard {
 
 /// Initializes the global logforth logger bridged to the `log` crate.
 ///
-/// Returns a [`LogGuard`] that must be kept alive for the process lifetime so
-/// async appenders can flush buffered records.
-pub fn init(options: LoggingOptions) -> Option<LogGuard> {
-    if cfg!(test) {
-        return None;
-    }
-
+/// The returned [`LogGuard`] must be kept alive for the process lifetime so
+/// async appenders can flush buffered records. File-open failure degrades to
+/// no file appender (a line is written to stderr) instead of panicking.
+pub fn init(options: LoggingOptions) -> LogGuard {
     let trace_enabled = options.trace_enabled;
     crate::trace::init(&options);
+    #[cfg(feature = "tracing")]
+    elph_ai::trace::set_enabled(trace_enabled && !cfg!(test));
     RESOLVED_LOGS_DIR.get_or_init(|| options.logs_dir.clone());
     install_logger(&options, trace_enabled)
 }
@@ -98,69 +103,81 @@ pub fn redirect_stderr_to_file() {}
 /// Best-effort logs directory when logging has not been initialized.
 #[cfg(unix)]
 fn default_logs_dir() -> PathBuf {
-    if let Some(data) = std::env::var_os("ELPH_DATA_DIR") {
+    default_logs_dir_for("elph-agent", "ELPH")
+}
+
+#[cfg(unix)]
+fn default_logs_dir_for(app_name: &str, env_prefix: &str) -> PathBuf {
+    let data_key = format!("{env_prefix}_DATA_DIR");
+    if let Some(data) = std::env::var_os(&data_key) {
         return PathBuf::from(data).join("logs");
     }
     if let Some(xdg) = std::env::var_os("XDG_DATA_HOME") {
-        return PathBuf::from(xdg).join("elph").join("logs");
+        return PathBuf::from(xdg).join(app_name).join("logs");
     }
     std::env::var_os("HOME")
-        .map(|home| PathBuf::from(home).join(".local/share/elph/logs"))
-        .unwrap_or_else(|| PathBuf::from(".local/share/elph/logs"))
+        .map(|home| PathBuf::from(home).join(".local/share").join(app_name).join("logs"))
+        .unwrap_or_else(|| PathBuf::from(format!(".local/share/{app_name}/logs")))
 }
 
 fn level_filter(level: &str) -> Box<dyn Filter> {
     Box::new(RustLogFilter::from(level))
 }
 
-fn parse_max_level(level: &str) -> log::LevelFilter {
-    match level {
-        "trace" => log::LevelFilter::Trace,
-        "debug" => log::LevelFilter::Debug,
-        "info" => log::LevelFilter::Info,
-        "warn" => log::LevelFilter::Warn,
-        "error" => log::LevelFilter::Error,
-        _ => log::LevelFilter::Info,
-    }
-}
-
-fn file_appender(options: &LoggingOptions) -> append::Async {
+fn file_appender(options: &LoggingOptions) -> Result<append::Async, logforth::Error> {
     let mut builder = FileBuilder::new(&options.logs_dir, options.app_name)
-        .layout(JsonLayout::default())
-        .filename_suffix(".jsonl");
+        .layout(JsonlLayout)
+        .filename_suffix("jsonl");
 
     builder = match options.rotation {
         LogRotation::Hourly => builder.rollover_hourly(),
-        LogRotation::Daily | LogRotation::Weekly => builder.rollover_daily(),
+        LogRotation::Daily => builder.rollover_daily(),
+        LogRotation::Size => builder,
     };
+
+    let size_cap = match options.rotation {
+        LogRotation::Size => options.max_bytes.unwrap_or(DEFAULT_SIZE_ROTATION_BYTES),
+        _ => options.max_bytes.unwrap_or(0),
+    };
+    if let Some(max_bytes) = NonZeroUsize::new(size_cap as usize) {
+        builder = builder.rollover_size(max_bytes);
+    }
 
     if let Some(max_files) = options.max_files.and_then(NonZeroUsize::new) {
         builder = builder.max_log_files(max_files);
     }
 
-    let file = builder.build().expect("failed to initialize rolling log writer");
+    let file = builder.build()?;
 
-    AsyncBuilder::new(format!("{}-log-writer", options.app_name))
+    Ok(AsyncBuilder::new(format!("{}-log-writer", options.app_name))
         .overflow_drop_incoming()
         .buffered_lines_limit(Some(FILE_WRITER_BUFFER_LINES))
         .append(file)
-        .build()
+        .build())
 }
 
 #[cfg_attr(not(feature = "tracing"), allow(unused_variables))]
-fn install_logger(options: &LoggingOptions, trace_enabled: bool) -> Option<LogGuard> {
+fn install_logger(options: &LoggingOptions, trace_enabled: bool) -> LogGuard {
     let filter = level_filter(&options.level);
     let mut starter = logforth::starter_log::builder();
 
     if options.file_enabled {
-        let file = file_appender(options);
-        let file_filter = level_filter(&options.level);
-        starter = starter.dispatch(|d| d.filter(file_filter).append(file));
+        match file_appender(options) {
+            Ok(file) => {
+                let file_filter = level_filter(&options.level);
+                starter = starter.dispatch(|d| d.filter(file_filter).append(file));
+            }
+            Err(err) => {
+                let _ = writeln!(
+                    io::stderr(),
+                    "elph: failed to initialize rolling log writer under {}: {err}",
+                    options.logs_dir.display(),
+                );
+            }
+        }
     }
 
     if options.console_enabled {
-        // Diagnostics go to stderr so program output on stdout (tables, stats,
-        // scan results) stays clean and logs never corrupt piped output.
         let stderr = append::Stderr::default().with_layout(TextLayout::default());
         let console_filter = level_filter(&options.level);
         starter = starter.dispatch(|d| d.filter(console_filter).append(stderr));
@@ -178,52 +195,46 @@ fn install_logger(options: &LoggingOptions, trace_enabled: bool) -> Option<LogGu
 
     let logger = starter.build();
     let bridge = Arc::new(LogBridge::new(logger));
-    log::set_boxed_logger(Box::new(bridge.clone())).expect("failed to set global logger");
-    log::set_max_level(parse_max_level(&options.level));
+    let _ = log::set_boxed_logger(Box::new(bridge.clone()));
+    log::set_max_level(max_level_from_spec(&options.level));
 
-    Some(LogGuard { bridge })
+    log::info!(
+        "logging ready level={} file={} console={} trace={} dir={}",
+        options.level,
+        options.file_enabled,
+        options.console_enabled,
+        options.trace_enabled,
+        options.logs_dir.display(),
+    );
+
+    LogGuard { bridge }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
-
-    #[test]
-    fn parse_max_level_valid() {
-        assert_eq!(parse_max_level("trace"), log::LevelFilter::Trace);
-        assert_eq!(parse_max_level("debug"), log::LevelFilter::Debug);
-        assert_eq!(parse_max_level("info"), log::LevelFilter::Info);
-        assert_eq!(parse_max_level("warn"), log::LevelFilter::Warn);
-        assert_eq!(parse_max_level("error"), log::LevelFilter::Error);
-    }
-
-    #[test]
-    fn parse_max_level_defaults_to_info() {
-        assert_eq!(parse_max_level("unknown"), log::LevelFilter::Info);
-        assert_eq!(parse_max_level(""), log::LevelFilter::Info);
-    }
 
     #[test]
     fn log_guard_flushes_on_drop() {
         let bridge = Arc::new(LogBridge::new(logforth::starter_log::builder().build()));
         let guard = LogGuard { bridge: bridge.clone() };
         drop(guard);
-        // No panic = flush succeeded
     }
 
     #[test]
-    fn init_returns_none_in_test_mode() {
-        let options = LoggingOptions {
-            app_name: "test",
-            logs_dir: PathBuf::from("/tmp"),
-            level: "info".to_string(),
-            rotation: LogRotation::Daily,
-            max_files: None,
-            file_enabled: true,
-            console_enabled: true,
-            trace_enabled: true,
-        };
-        assert!(init(options).is_none());
+    fn file_appender_uses_jsonl_suffix_without_double_dot() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let options = LoggingOptions::builder()
+            .app_name("elph")
+            .logs_dir(dir.path().to_path_buf())
+            .file_enabled(true)
+            .console_enabled(false)
+            .trace_enabled(false)
+            .build();
+        let appender = file_appender(&options).expect("file appender");
+        drop(appender);
+        let live = dir.path().join("elph.jsonl");
+        assert!(live.exists(), "expected {} to exist", live.display());
+        assert!(!dir.path().join("elph..jsonl").exists());
     }
 }

@@ -13,7 +13,7 @@ How Elph stores sessions, restores history on `--continue` / `--resume`, and kee
 | Cross-session compaction summary | `session_summaries` (one row per session, upserted on compaction) |
 | TUI transcript cards | **Reconstructed** from the tree on resume (not a separate snapshot SoT) |
 
-Project store file: `<project>/.elph/store.db` (shared with floppy memory and codegraph).
+Project store file: `<project>/.elph/store.db` (shared with floppy memory).
 
 Session artifacts (terminals, MCP cache): `APP_DATA/sessions/<SESSION_ID>/`.
 
@@ -172,7 +172,7 @@ No need for a separate `transcript` table: reconstructing TUI cards from the mes
 
 ## Retention (`settings.json`)
 
-All knobs are under **`session.retention`** and **`compaction.physicalPrune`**. Layers: home `CONFIG_DIR/settings.json` ← project `.elph/settings.json` (project wins).
+All knobs are under **`session`** and **`compaction.physicalPrune`**. Layers: home `CONFIG_DIR/settings.json` ← project `.elph/settings.json` (project wins).
 
 ```json
 {
@@ -220,7 +220,7 @@ elph session unpin <SESSION_ID>
 elph session prune [--dry-run]
 ```
 
-GC runs automatically when `session.retention.gcOnOpen` is true (on coding session open). CLI `session prune` uses the same policy.
+GC runs automatically when `session.gcOnOpen` is true (on coding session open). CLI `session prune` uses the same policy.
 
 After compaction, when `compaction.physicalPrune` is true, entries not on the active post-compaction branch are deleted from `session_entries` (turn rollups in `session_turns` are kept).
 

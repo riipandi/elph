@@ -1,6 +1,6 @@
 # Custom models
 
-Elph embeds provider catalogs and merges disk overlays from `CONFIG_DIR/providers/`.
+Elph embeds provider catalogs and merges disk overlays from `CONFIG_DIR/providers/`. Generated and unpacked files stamp `"$schema": "https://elph.space/provider-schema.json"`.
 
 ## File shapes
 
@@ -9,6 +9,7 @@ Elph embeds provider catalogs and merges disk overlays from `CONFIG_DIR/provider
 
 ```json
 {
+  "$schema": "https://elph.space/provider-schema.json",
   "baseUrl": "https://gateway.example",
   "headers": { "X-Custom": "1" },
   "models": {
@@ -36,4 +37,14 @@ Elph embeds provider catalogs and merges disk overlays from `CONFIG_DIR/provider
 ```sh
 elph models
 elph provider
+```
+
+Limit the picker / catalog with `models.enabled` in `settings.json` (globs on `provider/model_id` or bare id). `models.scopedModels` remains the explicit Ctrl+P list and is not stripped by the glob.
+
+```json
+{
+  "models": {
+    "enabled": ["openai/*", "anthropic/claude-*", "!*-preview"]
+  }
+}
 ```

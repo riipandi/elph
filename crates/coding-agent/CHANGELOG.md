@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **ACP rate limits:** provider 429 / retry status is shown in the session instead of
+  a silent spinner. v1 no longer ignores `Status` events.
+- **ACP stream:** do not upsert a full agent message after chunks (duplicate/scrambled
+  text). Tool updates replace accumulated output instead of appending snapshots as
+  chunks. Always create the tool call before updates (`Tool call not found`).
+- **ACP errors:** slash/skill/prompt failures are written into the session (text +
+  chunk) and the turn goes idle, instead of a silent hang or a bare JSON-RPC error.
+- **ACP `session/new`:** do not attach MCP or run store GC before answering;
+  isolate open work from the stdio loop and time out after 25s so a hang/panic
+  cannot close the transport (`incoming_transport_closed`).
+- **ACP slash catalog:** `available_commands_update` is sent after `session/new` /
+  `resume` / `load` is answered (then refreshed after MCP), so Zed and similar
+  clients actually register `/help`, `/skill:…`, and the rest.
+- **ACP production contract:** v1 advertises `session/delete` and `additionalDirectories`.
+  Tools are reported `pending` then `in_progress`. v2 emits at most one idle `state_update`
+  per stretch, unique agent `messageId`s for slash/status text, `usage_update.size` as the
+  model context window (plus USD cost when known), and mapped stop reasons
+  (`max_tokens` / `max_turn_requests` / `refusal`). Wire tests cover `/help` prompt
+  lifecycle on both versions.
 - **ACP:** `elph acp --stdio` speaks **v1 (stable)**; `elph acp --stdio --experimental`
   speaks **v2 (draft)**. Bare `elph acp` aliases `--stdio`. Each process speaks one
   version. v1 holds `session/prompt` until `stopReason` and supports `session/load`.

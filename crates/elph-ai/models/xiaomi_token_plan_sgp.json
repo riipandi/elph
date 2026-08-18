@@ -1,4 +1,5 @@
 {
+    "$schema": "https://elph.space/provider-schema.json",
     "mimo-v2-pro": {
         "api": "openai-completions",
         "baseUrl": "https://token-plan-sgp.xiaomimimo.com/v1",

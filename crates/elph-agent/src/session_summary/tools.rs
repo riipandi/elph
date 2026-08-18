@@ -116,7 +116,11 @@ mod tests {
         (tmp, store)
     }
 
-    fn exec_tool(tool: &AgentTool, args: Value) -> Pin<Box<dyn Future<Output = Result<AgentToolResult>> + Send>> {
+    fn exec_tool(
+        tool: &AgentTool,
+        args: Value,
+    ) -> Pin<Box<dyn Future<Output = std::result::Result<AgentToolResult, crate::tools::types::ToolError>> + Send>>
+    {
         let ctx = crate::types::ToolContext::new(std::sync::Arc::new(
             crate::runtime::local_env::LocalExecutionEnv::new(std::path::Path::new(".")),
         ));

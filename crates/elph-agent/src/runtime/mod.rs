@@ -19,7 +19,11 @@ use tokio_util::sync::CancellationToken;
 use self::event_stream::AgentEventStream;
 use crate::types::{AgentContext, AgentEvent, AgentLoopConfig, AgentMessage};
 
+pub use event_stream::AgentEventSink;
 pub use exec::fail_tool_calls_from_truncated_message;
+pub use local_env::LocalExecutionEnv;
+pub use proxy::stream_proxy;
+pub use proxy::{ProxyAssistantMessageEvent, ProxyStreamOptions};
 
 pub type AgentEventCallback = Arc<dyn Fn(AgentEvent) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>;
 
@@ -88,7 +92,7 @@ pub async fn run_agent_loop(
     mut config: AgentLoopConfig,
     emit: AgentEventCallback,
     signal: Option<CancellationToken>,
-) -> Result<Vec<AgentMessage>, String> {
+) -> Result<Vec<AgentMessage>, crate::types::AgentError> {
     let mut new_messages = prompts.clone();
     let mut current_context = AgentContext {
         system_prompt: context.system_prompt,
@@ -113,8 +117,17 @@ pub async fn run_agent_loop(
         .await;
     }
 
-    run_loop::run_loop(&mut current_context, &mut new_messages, &mut config, signal, &emit).await?;
-    Ok(new_messages)
+    log::debug!("agent loop start messages={}", current_context.messages.len());
+    match run_loop::run_loop(&mut current_context, &mut new_messages, &mut config, signal, &emit).await {
+        Ok(()) => {
+            log::debug!("agent loop ok new_messages={}", new_messages.len());
+            Ok(new_messages)
+        }
+        Err(error) => {
+            log::warn!("agent loop failed: {error}");
+            Err(error)
+        }
+    }
 }
 
 #[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.agent.loop_continue"))]
@@ -123,7 +136,7 @@ pub async fn run_agent_loop_continue(
     config: AgentLoopConfig,
     emit: AgentEventCallback,
     signal: Option<CancellationToken>,
-) -> Result<Vec<AgentMessage>, String> {
+) -> Result<Vec<AgentMessage>, crate::types::AgentError> {
     if context.messages.is_empty() {
         panic!("Cannot continue: no messages in context");
     }
@@ -138,8 +151,17 @@ pub async fn run_agent_loop_continue(
     emit(AgentEvent::TurnStart).await;
 
     let mut config = config;
-    run_loop::run_loop(&mut current_context, &mut new_messages, &mut config, signal, &emit).await?;
-    Ok(new_messages)
+    log::debug!("agent loop continue start messages={}", current_context.messages.len());
+    match run_loop::run_loop(&mut current_context, &mut new_messages, &mut config, signal, &emit).await {
+        Ok(()) => {
+            log::debug!("agent loop continue ok new_messages={}", new_messages.len());
+            Ok(new_messages)
+        }
+        Err(error) => {
+            log::warn!("agent loop continue failed: {error}");
+            Err(error)
+        }
+    }
 }
 
 fn run_future<F, T>(future: F) -> Result<T>

@@ -5,7 +5,7 @@ use agent_client_protocol::schema::v2::{
     PlanUpdateContent, RequestPermissionRequest, SessionId, SessionUpdate,
 };
 use agent_client_protocol::{Client, ConnectionTo};
-use elph_agent::{TodoItem, TodoStatus};
+use elph_agent::todos::{TodoItem, TodoStatus};
 
 use crate::agent::PlanConfirmationRequest;
 use crate::platform::acp::updates::send_update;
@@ -39,6 +39,8 @@ pub async fn confirm_plan(
         PermissionOption::new("implement", "Implement plan", PermissionOptionKind::AllowOnce),
         PermissionOption::new("fresh", "Implement in a fresh context", PermissionOptionKind::AllowOnce),
         PermissionOption::new("stay", "Stay in plan mode", PermissionOptionKind::RejectOnce),
+        PermissionOption::new("revise", "Request changes", PermissionOptionKind::RejectOnce),
+        PermissionOption::new("quit", "Leave plan mode", PermissionOptionKind::RejectOnce),
     ];
     let request = RequestPermissionRequest::new(session_id.clone(), "Approve this plan?", options)
         .description(req.plan_text.clone());
@@ -46,9 +48,16 @@ pub async fn confirm_plan(
         .await
         .as_deref()
     {
-        Some("implement") => elph_agent::PlanConfirmationChoice::Implement,
-        Some("fresh") => elph_agent::PlanConfirmationChoice::ImplementFresh,
-        _ => elph_agent::PlanConfirmationChoice::StayInPlan,
+        Some("implement") => elph_agent::collaboration::PlanConfirmationChoice::Implement,
+        Some("fresh") => elph_agent::collaboration::PlanConfirmationChoice::ImplementFresh,
+        Some("quit") => {
+            session.clear_pending_plan().await?;
+            return session.set_agent_mode(crate::types::AgentMode::Build).await;
+        }
+        Some("revise") => {
+            return session.clear_pending_plan().await;
+        }
+        _ => elph_agent::collaboration::PlanConfirmationChoice::StayInPlan,
     };
     session.resolve_plan(choice).await
 }

@@ -189,9 +189,10 @@ impl McpToolRegistry {
             .map(|(n, c)| (n.to_string(), c.clone()))
             .collect();
         let skipped = config.server_count().saturating_sub(enabled.len());
-        let should_discover_any = enabled.iter().any(|(_, server_config)| {
-            should_auto_discover_on_startup(options.load_strategy, server_config.load_strategy())
-        });
+        let should_discover_any = !options.skip_startup_discovery
+            && enabled.iter().any(|(_, server_config)| {
+                should_auto_discover_on_startup(options.load_strategy, server_config.load_strategy())
+            });
 
         let (tools, resources, prompts, resource_capable, prompt_capable, task_capable, report) = if should_discover_any
         {
@@ -698,6 +699,23 @@ mod tests {
         assert!(!registry.is_tools_discovered());
         assert_eq!(registry.pending_server_count(), 0);
         assert!(registry.load_options().is_none());
+    }
+
+    #[tokio::test]
+    async fn skip_startup_discovery_keeps_enabled_servers_pending() {
+        let mut config = McpConfig::default();
+        config
+            .servers
+            .insert("fs".into(), McpServerConfig::stdio("echo", vec!["ok".into()]));
+        let options = McpLoadOptions {
+            skip_startup_discovery: true,
+            load_strategy: McpLoadStrategy::Eager,
+            ..McpLoadOptions::default()
+        };
+        let registry = McpToolRegistry::load_with_options(config, options).await.expect("load");
+        assert_eq!(registry.pending_server_count(), 1);
+        assert!(!registry.is_tools_discovered());
+        assert_eq!(registry.tool_count(), 0);
     }
 
     #[test]

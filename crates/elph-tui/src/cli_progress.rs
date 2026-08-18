@@ -329,6 +329,7 @@ fn start_tick_thread(inner: &Arc<SpinnerInner>) {
 /// The main thread is typically blocked in blocking I/O (DB, download) and
 /// cannot observe the flag itself, which is why the tick thread owns the abort.
 fn abort_on_interrupt() -> ! {
+    log::warn!("cli progress interrupted");
     clear_line();
     eprintln!("Interrupted.");
     std::process::exit(130);

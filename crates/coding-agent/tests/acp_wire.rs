@@ -29,6 +29,10 @@ async fn v1_initialize_and_rejects_relative_cwd() {
     assert_eq!(response["result"]["agentCapabilities"]["mcpCapabilities"]["http"], true);
     assert_eq!(response["result"]["agentCapabilities"]["loadSession"], true);
     assert!(
+        response["result"]["agentCapabilities"]["sessionCapabilities"]["delete"].is_object(),
+        "v1 must advertise session/delete: {response}"
+    );
+    assert!(
         response["result"]["agentCapabilities"]["auth"]["logout"].is_object(),
         "v1 must advertise logout: {response}"
     );
@@ -202,6 +206,11 @@ async fn v1_session_new_list_close() {
     assert!(created.get("result").is_some(), "session/new: {created}");
     let sid = created["result"]["sessionId"].as_str().expect("sessionId").to_string();
     assert!(!sid.is_empty());
+    let commands = wait_available_commands(&mut reader, Duration::from_secs(15)).await;
+    assert!(
+        commands.iter().any(|c| c == "help"),
+        "v1 must advertise slash commands after session/new: {commands:?}"
+    );
 
     write_line(&mut writer, &rpc(4, "session/list", json!({}))).await;
     let listed = read_response(&mut reader, 4).await;
@@ -210,6 +219,218 @@ async fn v1_session_new_list_close() {
     write_line(&mut writer, &rpc(5, "session/close", json!({ "sessionId": sid }))).await;
     let closed = read_response(&mut reader, 5).await;
     assert!(closed.get("result").is_some(), "session/close: {closed}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn v1_help_prompt_returns_stop_reason() {
+    let (cwd, tmp) = project_with_auth();
+    let (mut reader, mut writer) = spawn_agent_on(AcpMode::V1, tmp).await;
+    login_v1(&mut reader, &mut writer).await;
+    let sid = new_session(&mut reader, &mut writer, &cwd, 3).await;
+
+    write_line(
+        &mut writer,
+        &rpc(
+            4,
+            "session/prompt",
+            json!({
+                "sessionId": sid,
+                "prompt": [{ "type": "text", "text": "/help" }]
+            }),
+        ),
+    )
+    .await;
+    let prompt = read_response(&mut reader, 4).await;
+    assert!(prompt.get("result").is_some(), "v1 prompt: {prompt}");
+    assert_eq!(
+        prompt["result"]["stopReason"], "end_turn",
+        "v1 holds prompt until stopReason: {prompt}"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn v2_help_prompt_ack_then_idle() {
+    let (cwd, tmp) = project_with_auth();
+    let (mut reader, mut writer) = spawn_agent_on(AcpMode::V2, tmp).await;
+    login_v2(&mut reader, &mut writer).await;
+    let sid = new_session(&mut reader, &mut writer, &cwd, 3).await;
+    let commands = wait_available_commands(&mut reader, Duration::from_secs(15)).await;
+    assert!(
+        commands.iter().any(|c| c == "help"),
+        "v2 must advertise slash commands after session/new: {commands:?}"
+    );
+    drain_notifications(&mut reader, Duration::from_millis(200)).await;
+
+    write_line(
+        &mut writer,
+        &rpc(
+            4,
+            "session/prompt",
+            json!({
+                "sessionId": sid,
+                "prompt": [{ "type": "text", "text": "/help" }]
+            }),
+        ),
+    )
+    .await;
+
+    let mut saw_ack = false;
+    let mut saw_user = false;
+    let mut saw_running = false;
+    let mut saw_agent = false;
+    let mut idle_reasons = Vec::new();
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(20);
+    while tokio::time::Instant::now() < deadline {
+        let value = read_json(&mut reader).await;
+        if value.get("id") == Some(&json!(4)) {
+            assert!(value.get("result").is_some(), "v2 prompt ack: {value}");
+            assert!(
+                value["result"]
+                    .as_object()
+                    .is_some_and(|o| o.is_empty() || !o.contains_key("stopReason"))
+            );
+            saw_ack = true;
+            continue;
+        }
+        if value.get("method") != Some(&json!("session/update")) {
+            continue;
+        }
+        let update = &value["params"]["update"];
+        match update["sessionUpdate"].as_str() {
+            Some("user_message") => {
+                assert!(update.get("messageId").is_some(), "user_message needs messageId: {update}");
+                saw_user = true;
+            }
+            Some("state_update") => match update["state"].as_str() {
+                Some("running") => saw_running = true,
+                Some("idle") => idle_reasons.push(update["stopReason"].as_str().unwrap_or("").to_string()),
+                _ => {}
+            },
+            Some("agent_message") | Some("agent_message_chunk") => saw_agent = true,
+            _ => {}
+        }
+        if saw_ack && saw_user && saw_running && saw_agent && !idle_reasons.is_empty() {
+            break;
+        }
+    }
+    assert!(saw_ack, "v2 must ack session/prompt");
+    assert!(saw_user, "v2 must emit user_message");
+    assert!(saw_running, "v2 must emit running");
+    assert!(saw_agent, "v2 must emit agent text");
+    assert_eq!(
+        idle_reasons,
+        vec!["end_turn".to_string()],
+        "exactly one idle end_turn: {idle_reasons:?}"
+    );
+}
+
+fn project_with_auth() -> (std::path::PathBuf, tempfile::TempDir) {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let project = tmp.path().join("project");
+    std::fs::create_dir_all(&project).expect("project dir");
+    let cwd = project.canonicalize().unwrap_or(project);
+    std::fs::create_dir_all(cwd.join(".elph")).expect(".elph");
+    let cfg = tmp.path().join("cfg");
+    std::fs::create_dir_all(&cfg).expect("cfg");
+    std::fs::write(cfg.join("auth.json"), r#"{"provider":{"openai":{"apiKey":"sk-acp-e2e"}}}"#).expect("auth.json");
+    (cwd, tmp)
+}
+
+async fn login_v1(reader: &mut BufReader<tokio::io::DuplexStream>, writer: &mut tokio::io::DuplexStream) {
+    write_line(
+        writer,
+        &rpc(
+            1,
+            "initialize",
+            json!({
+                "protocolVersion": 1,
+                "clientCapabilities": {},
+                "clientInfo": { "name": "elph-test", "version": "0" }
+            }),
+        ),
+    )
+    .await;
+    let init = read_response(reader, 1).await;
+    assert_eq!(init["result"]["protocolVersion"], 1);
+    write_line(writer, &rpc(2, "authenticate", json!({ "methodId": "existing-credentials" }))).await;
+    let login = read_response(reader, 2).await;
+    assert!(login.get("result").is_some(), "authenticate: {login}");
+}
+
+async fn login_v2(reader: &mut BufReader<tokio::io::DuplexStream>, writer: &mut tokio::io::DuplexStream) {
+    write_line(
+        writer,
+        &rpc(
+            1,
+            "initialize",
+            json!({
+                "protocolVersion": 2,
+                "info": { "name": "elph-test", "version": "0" },
+                "capabilities": {}
+            }),
+        ),
+    )
+    .await;
+    let init = read_response(reader, 1).await;
+    assert_eq!(init["result"]["protocolVersion"], 2);
+    write_line(writer, &rpc(2, "auth/login", json!({ "methodId": "existing-credentials" }))).await;
+    let login = read_response(reader, 2).await;
+    assert!(login.get("result").is_some(), "auth/login: {login}");
+}
+
+async fn new_session(
+    reader: &mut BufReader<tokio::io::DuplexStream>,
+    writer: &mut tokio::io::DuplexStream,
+    cwd: &std::path::Path,
+    id: u64,
+) -> String {
+    write_line(writer, &rpc(id, "session/new", json!({ "cwd": cwd, "mcpServers": [] }))).await;
+    let created = read_response(reader, id).await;
+    assert!(created.get("result").is_some(), "session/new: {created}");
+    created["result"]["sessionId"].as_str().expect("sessionId").to_string()
+}
+
+async fn wait_available_commands(reader: &mut BufReader<tokio::io::DuplexStream>, wait: Duration) -> Vec<String> {
+    let deadline = tokio::time::Instant::now() + wait;
+    while tokio::time::Instant::now() < deadline {
+        let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
+        let mut line = String::new();
+        match tokio::time::timeout(remaining, reader.read_line(&mut line)).await {
+            Ok(Ok(0)) | Err(_) => break,
+            Ok(Ok(_)) => {}
+            Ok(Err(_)) => break,
+        }
+        let Ok(value) = serde_json::from_str::<Value>(line.trim()) else {
+            continue;
+        };
+        if value.get("method") != Some(&json!("session/update")) {
+            continue;
+        }
+        let update = &value["params"]["update"];
+        if update["sessionUpdate"] != "available_commands_update" {
+            continue;
+        }
+        return update["availableCommands"]
+            .as_array()
+            .unwrap_or(&Vec::new())
+            .iter()
+            .filter_map(|c| c["name"].as_str().map(str::to_string))
+            .collect();
+    }
+    Vec::new()
+}
+
+async fn drain_notifications(reader: &mut BufReader<tokio::io::DuplexStream>, wait: Duration) {
+    let deadline = tokio::time::Instant::now() + wait;
+    while tokio::time::Instant::now() < deadline {
+        let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
+        let mut line = String::new();
+        match tokio::time::timeout(remaining, reader.read_line(&mut line)).await {
+            Ok(Ok(0)) | Err(_) => break,
+            Ok(Ok(_)) => {}
+            Ok(Err(_)) => break,
+        }
+    }
 }
 
 async fn spawn_agent(mode: AcpMode) -> (BufReader<tokio::io::DuplexStream>, tokio::io::DuplexStream) {

@@ -5,8 +5,11 @@ mod wiring;
 
 use crate::types::AgentMode;
 use anyhow::Result;
-use elph_agent::{AgentHarness, AgentHarnessErrorCode, FileSystem};
-use elph_agent::{GoalRuntime, McpToolRegistry, PlanConfirmationChoice, TursoSessionStorage};
+use elph_agent::collaboration::PlanConfirmationChoice;
+use elph_agent::goals::GoalRuntime;
+use elph_agent::harness::{AgentHarness, AgentHarnessErrorCode, FileSystem};
+use elph_agent::mcp::McpToolRegistry;
+use elph_agent::session::TursoSessionStorage;
 use elph_ai::{AssistantMessage, StopReason};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU32, Ordering};
@@ -16,7 +19,6 @@ use std::time::Instant;
 use tokio::sync::Mutex;
 use tokio::sync::mpsc;
 
-use super::aside::WORKER_INBOUND_PROMPT_PREFIX;
 use super::aside::extract_worker_payload_text;
 use super::events::AgentUiEvent;
 use super::events::RETRY_CONTINUE_PROMPT;
@@ -29,8 +31,8 @@ use super::session_manager::SessionManager;
 use super::tool_policy::AgentModePolicy;
 use super::tool_policy::{from_agent_thinking, to_agent_thinking};
 use super::tools_catalog::reconcile_harness_tools;
-use crate::platform::Paths;
-use elph_agent::parse_command_args;
+use crate::platform::{Paths, Settings};
+use elph_agent::prompt::parse_command_args;
 use std::path::Path;
 
 /// System prompt for background session title generation (`crates/coding-agent/prompts/`).
@@ -59,12 +61,14 @@ pub struct CodingAgentSessionParams {
     pub preferred_chat_language: String,
     /// Settings `models.compactionModel` (`inherit` or `provider/model_id`).
     pub compaction_model_ref: String,
-    /// Whether `codegraph.enabled` is on — gates the `<codegraph>` prompt section.
-    pub codegraph_enabled: bool,
     /// Whether `simplifiedTechnicalEnglish` is on — gates the `<response_style>` section.
     pub ste_enabled: bool,
     /// Multi-worker host lifecycle (lease heartbeat + registry); None if start failed.
     pub worker_runtime: Option<super::worker_runtime::WorkerRuntime>,
+    /// Shared with the Dynamic system prompt so reentry appendix reaches the model.
+    pub plan_reentry: Arc<AtomicBool>,
+    /// `tools.default` allowlist (`None` = all builtins).
+    pub default_tools: Option<Vec<String>>,
 }
 
 pub struct CodingAgentSession {
@@ -82,6 +86,8 @@ pub struct CodingAgentSession {
     mcp_registry: Arc<RwLock<Option<Arc<McpToolRegistry>>>>,
     /// Serializes harness turns so only one prompt/template/compact runs at a time.
     turn_gate: Arc<Mutex<()>>,
+    /// Serializes inbound intercom answers among themselves (never vs user turn).
+    intercom_gate: Arc<Mutex<()>>,
     /// Watermark of the last `session_turns` record surfaced via `RunCompleted`; starts at
     /// -1 so turn index 0 counts as new. System operations that spin the UI without a real
     /// agent turn (`/compact`, ...) don't advance it, so their `RunCompleted` carries no stats.
@@ -97,8 +103,6 @@ pub struct CodingAgentSession {
     preferred_chat_language: String,
     /// Settings `models.compactionModel` (`inherit` or `provider/model_id`).
     compaction_model_ref: String,
-    /// Whether `codegraph.enabled` is on — gates the `<codegraph>` prompt section.
-    codegraph_enabled: bool,
     /// Whether `simplifiedTechnicalEnglish` is on — gates the `<response_style>` section.
     ste_enabled: bool,
     /// Bounded retry counter for background auto-title generation
@@ -106,13 +110,9 @@ pub struct CodingAgentSession {
     title_generation_attempts: Arc<AtomicU32>,
     /// Multi-worker coordination (session lease heartbeat + presence registry).
     pub(crate) worker_runtime: Option<super::worker_runtime::WorkerRuntime>,
-    /// True while an intercom (inbound worker-message) answer turn is running —
-    /// either directly via `run_prompt_turn` or drained from the follow-up queue.
-    /// Wiring and session emit paths read this to keep peer-to-peer dialogue out
-    /// of the user's transcript (deltas, tool calls, stats, errors); the worker
-    /// chat overlay is the only surface. Shared `Arc` so the harness subscriber
-    /// (wiring) sees the same state.
-    pub(crate) intercom_turn_active: Arc<AtomicBool>,
+    /// TUI “replying to peer” chrome only. Never used to suppress harness events.
+    pub(crate) intercom_replying: Arc<AtomicBool>,
+    plan_reentry: Arc<AtomicBool>,
 }
 
 impl CodingAgentSession {
@@ -131,11 +131,13 @@ impl CodingAgentSession {
             title_model,
             preferred_chat_language,
             compaction_model_ref,
-            codegraph_enabled,
             ste_enabled,
             worker_runtime,
+            plan_reentry,
+            default_tools,
         } = params;
-        let mut policy = AgentModePolicy::new(agent_mode);
+        let mut policy = AgentModePolicy::new(agent_mode).with_default_tools(default_tools);
+        policy.set_interactive(!harness.is_headless());
         let mcp_slot = Arc::new(RwLock::new(mcp_registry));
         if let Some(reg) = mcp_slot.read().clone() {
             policy = policy.with_mcp_registry(reg);
@@ -154,13 +156,13 @@ impl CodingAgentSession {
             goal_runtime,
             mcp_registry: mcp_slot,
             turn_gate: Arc::new(Mutex::new(())),
+            intercom_gate: Arc::new(Mutex::new(())),
             last_reported_turn_index: Arc::new(Mutex::new(AtomicI64::new(-1))),
             mode_gate: Arc::new(Mutex::new(())),
             system_prompt_cache: RwLock::new(None),
             title_model,
             preferred_chat_language,
             compaction_model_ref,
-            codegraph_enabled,
             ste_enabled,
             title_generation_attempts: Arc::new(AtomicU32::new(if already_named {
                 SESSION_TITLE_MAX_ATTEMPTS
@@ -168,7 +170,8 @@ impl CodingAgentSession {
                 0
             })),
             worker_runtime,
-            intercom_turn_active: Arc::new(AtomicBool::new(false)),
+            intercom_replying: Arc::new(AtomicBool::new(false)),
+            plan_reentry,
         };
         session.wire_harness(ui_tx).await?;
         session.apply_agent_mode(agent_mode).await?;
@@ -209,10 +212,9 @@ impl CodingAgentSession {
         self.worker_runtime.as_ref().map(|w| w.name.as_str())
     }
 
-    /// True while an intercom (inbound worker-message) answer turn is running —
-    /// the agent is replying to / sending a response for a peer worker.
-    pub fn is_intercom_turn_active(&self) -> bool {
-        self.intercom_turn_active.load(Ordering::Relaxed)
+    /// True while the parallel intercom loop is answering a peer (TUI chrome).
+    pub fn is_intercom_replying(&self) -> bool {
+        self.intercom_replying.load(Ordering::Relaxed)
     }
 
     /// Graceful multi-worker teardown (release lease, mark offline, stop heartbeat).
@@ -234,10 +236,10 @@ impl CodingAgentSession {
     /// message. Must have a live worker runtime.
     pub async fn tui_send_worker_message(
         &self,
-        peer: &elph_agent::LiveWorker,
+        peer: &elph_agent::workers::LiveWorker,
         text: &str,
         parent_msg_id: Option<&str>,
-    ) -> Result<elph_agent::WorkerMessage> {
+    ) -> Result<elph_agent::workers::WorkerMessage> {
         let Some(rt) = self.worker_runtime.as_ref() else {
             anyhow::bail!("worker runtime not started");
         };
@@ -283,7 +285,7 @@ impl CodingAgentSession {
     }
 
     /// All messages involving this session, oldest first (TUI worker inbox).
-    pub async fn tui_worker_inbox(&self, limit: u64) -> Result<Vec<elph_agent::WorkerMessage>> {
+    pub async fn tui_worker_inbox(&self, limit: u64) -> Result<Vec<elph_agent::workers::WorkerMessage>> {
         let Some(rt) = self.worker_runtime.as_ref() else {
             return Ok(Vec::new());
         };
@@ -295,7 +297,7 @@ impl CodingAgentSession {
         &self,
         peer_worker_id: &str,
         limit: u64,
-    ) -> Result<Vec<elph_agent::WorkerMessage>> {
+    ) -> Result<Vec<elph_agent::workers::WorkerMessage>> {
         let Some(rt) = self.worker_runtime.as_ref() else {
             return Ok(Vec::new());
         };
@@ -305,7 +307,7 @@ impl CodingAgentSession {
     }
 
     /// Live peer workers for the worker chat picker (excludes self).
-    pub async fn tui_worker_peers(&self) -> Result<Vec<elph_agent::LiveWorker>> {
+    pub async fn tui_worker_peers(&self) -> Result<Vec<elph_agent::workers::LiveWorker>> {
         let Some(rt) = self.worker_runtime.as_ref() else {
             return Ok(Vec::new());
         };
@@ -356,20 +358,13 @@ impl CodingAgentSession {
     /// Deliver one inbound worker message — **never interrupts the user's task**.
     ///
     /// The message lands in the worker chat inbox (TUI) and, **only when it is a
-    /// new message (no `parent_msg_id`)**, becomes a real agent turn (full
-    /// context, tools, reply via `worker_reply`). Threaded replies — the
-    /// `worker_reply` / TUI chat answers a peer sends back — are delivered to the
-    /// inbox only: they resolve the asker's pending ask through the mailbox
-    /// (`get_response_for`), and never spawn a reply turn. Without this guard two
-    /// idle workers replying to each other would ping-pong forever (each reply is
-    /// itself a kind-`prompt` message that would trigger another answer turn).
+    /// new message (no `parent_msg_id`)**, starts a **parallel** answer loop
+    /// (snapshot + worker tools). That loop does not take `turn_gate` and does
+    /// not call the harness, so the user's turn keeps running and mailbox
+    /// replies can land immediately.
     ///
-    /// While the main agent is busy a new-message answer turn is **enqueued as a
-    /// follow-up** so it still runs right after the user's task — the peer's
-    /// `worker_ask` does not silently time out. Never takes `turn_gate` directly
-    /// and never calls the steer queue, so a peer message can never steal or
-    /// interrupt the current agent turn.
-    async fn deliver_worker_inbound(&self, msg: elph_agent::WorkerMessage) -> Result<()> {
+    /// Threaded replies (`parent_msg_id` set) stay inbox-only (anti ping-pong).
+    async fn deliver_worker_inbound(self: &Arc<Self>, msg: elph_agent::workers::WorkerMessage) -> Result<()> {
         // Resolve display name for the sender (registry may be gone → fall back to id).
         let from_worker = if let Some(rt) = self.worker_runtime.as_ref() {
             rt.registry()
@@ -397,59 +392,59 @@ impl CodingAgentSession {
             return Ok(());
         }
 
-        // New message → answer with a real turn (full context + tools).
-        // `run_prompt_turn` takes the turn gate and waits for the user's current
-        // task to finish (never injected as a steer, never interrupting), and it
-        // sets the intercom flag so this whole turn stays out of the transcript.
-        let prompt = self.worker_inbound_prompt(&from_worker, &text, &msg.id);
-        if let Err(err) = self.run_prompt_turn(prompt, None).await {
-            log::warn!("worker answer turn failed: {err:#}");
-            self.reply_worker_answer_failed(&msg, &err.to_string()).await;
+        // New message → parallel intercom loop (no turn_gate / no harness.prompt).
+        if let Some(rt) = self.worker_runtime.as_ref()
+            && rt.stop_flag().load(Ordering::Relaxed)
+        {
+            self.reply_worker_answer_failed(&msg, "worker shutting down").await;
+            return Ok(());
+        }
+        let session = Arc::clone(self);
+        let handle = tokio::spawn(async move {
+            let _intercom = session.intercom_gate.lock().await;
+            if session
+                .worker_runtime
+                .as_ref()
+                .is_some_and(|rt| rt.stop_flag().load(Ordering::Relaxed))
+            {
+                session.reply_worker_answer_failed(&msg, "worker shutting down").await;
+                return;
+            }
+            session.intercom_replying.store(true, Ordering::Relaxed);
+            let _replying = IntercomReplyingGuard(Arc::clone(&session.intercom_replying));
+            let result = super::worker_intercom::answer_worker_inbound(&session, &from_worker, &text, &msg).await;
+            if let Err(err) = result {
+                log::warn!("worker answer loop failed: {err}");
+                session.reply_worker_answer_failed(&msg, &err).await;
+            }
+        });
+        if let Some(rt) = self.worker_runtime.as_ref() {
+            rt.set_intercom_handle(handle);
         }
         Ok(())
     }
 
-    /// Build the turn prompt for answering an inbound worker message.
-    ///
-    /// The `WORKER_INBOUND_PROMPT_PREFIX` marker lets the TUI render this as a slim
-    /// meta line instead of a user prompt card (see `worker_inbound_meta_label`).
-    /// `msg_id` is pinned so `worker_reply` targets the exact ask — no ambiguity,
-    /// no "N pending inbound messages" error when several asks are open.
-    fn worker_inbound_prompt(&self, from_worker: &str, text: &str, msg_id: &str) -> String {
-        format!(
-            "{WORKER_INBOUND_PROMPT_PREFIX} (`{from_worker}`)\n\
-             in this shared project. Answer it as part of your normal turn — you may use\n\
-             tools. Reply with the `worker_reply` tool so the peer receives your answer.\n\
-             Pass `in_reply_to` = {msg_id} (the message you are answering).\n\
-             If the message needs no answer, send a short acknowledgement.</intercom>\n\n\
-             {text}"
-        )
-    }
-
-    /// Queue a normal agent turn that answers an inbound worker message.
-    ///
-    /// Runs `run_prompt_turn` (which takes `turn_gate`, so it serializes behind
-    /// the user's current turn if racing) with a short intercom wrapper
-    /// that tells the agent this is a peer message and to reply with
-    /// `worker_reply`.
-    async fn reply_worker_answer_failed(&self, msg: &elph_agent::WorkerMessage, error: &str) {
+    async fn reply_worker_answer_failed(&self, msg: &elph_agent::workers::WorkerMessage, error: &str) {
         log::warn!("worker answer failed for {}: {error}", msg.id);
-        // The peer's ask should not hang until timeout: surface the failure as an
-        // explicit error reply (kind `response`) so their worker_await unblocks.
-        if let Some(rt) = self.worker_runtime.as_ref() {
-            let _ = rt
-                .mailbox()
-                .send_response(
-                    &msg.project_key,
-                    rt.worker_id.as_str(),
-                    &self.session_id,
-                    &msg.from_session_id,
-                    &msg.id,
-                    "",
-                    Some(error),
-                )
-                .await;
+        let Some(rt) = self.worker_runtime.as_ref() else {
+            return;
+        };
+        // Already closed (worker_reply / fallback) — do not double-write.
+        if rt.mailbox().get_response_for(&msg.id).await.ok().flatten().is_some() {
+            return;
         }
+        let _ = rt
+            .mailbox()
+            .send_response(
+                &msg.project_key,
+                rt.worker_id.as_str(),
+                &self.session_id,
+                &msg.from_session_id,
+                &msg.id,
+                "",
+                Some(error),
+            )
+            .await;
     }
 
     /// Eagerly invalidate the system prompt cache synchronously so the next
@@ -490,6 +485,15 @@ impl CodingAgentSession {
         self.mcp_registry.read().clone()
     }
 
+    /// Store the MCP registry without contacting servers or rewriting harness tools.
+    ///
+    /// Use this for ACP overlay / deferred load. Discovery + tool bind happen in
+    /// [`Self::ensure_mcp_tools_ready`] or [`Self::attach_mcp_registry`].
+    pub async fn set_mcp_registry(&self, registry: Arc<McpToolRegistry>) {
+        *self.mcp_registry.write() = Some(Arc::clone(&registry));
+        self.policy.lock().await.set_mcp_registry(registry);
+    }
+
     /// Late-bind MCP tools discovered after the TUI is visible.
     pub async fn attach_mcp_registry(&self, registry: Arc<McpToolRegistry>) -> Result<()> {
         let mcp_tools = registry.create_agent_tools().await;
@@ -505,8 +509,7 @@ impl CodingAgentSession {
             .set_tools(kept, None)
             .await
             .map_err(|e| anyhow::anyhow!("{e}"))?;
-        *self.mcp_registry.write() = Some(Arc::clone(&registry));
-        self.policy.lock().await.set_mcp_registry(registry);
+        self.set_mcp_registry(registry).await;
         let mode = *self.mode_state.lock().await;
         self.apply_agent_mode(mode).await
     }
@@ -597,7 +600,7 @@ impl CodingAgentSession {
         } else {
             None
         };
-        let text = build_coding_system_prompt(
+        let mut text = build_coding_system_prompt(
             cwd,
             &resources,
             &tool_names,
@@ -605,12 +608,14 @@ impl CodingAgentSession {
             &CodingPromptOptions {
                 mode,
                 preferred_chat_language: self.preferred_chat_language.clone(),
-                codegraph_enabled: self.codegraph_enabled,
                 ste_enabled: self.ste_enabled,
                 worker_name: self.worker_name().map(str::to_string),
                 worker_peers,
             },
         )?;
+        if mode == AgentMode::Plan && self.plan_reentry.load(Ordering::Relaxed) {
+            text.push_str(elph_agent::prompt::plan_mode_reentry_prompt());
+        }
         *self.system_prompt_cache.write() = Some(text.clone());
         Ok(text)
     }
@@ -622,6 +627,30 @@ impl CodingAgentSession {
         // Wait for any in-flight turn before reconciling tools (avoids mid-turn mode races).
         let _turn_guard = self.turn_gate.lock().await;
         self.apply_agent_mode(mode).await
+    }
+
+    /// Arm Plan for the next user prompt (TUI Shift+Tab). Badge only — tools stay as-is.
+    pub async fn arm_plan_mode(&self) -> Result<()> {
+        let _guard = self.mode_gate.lock().await;
+        *self.mode_state.lock().await = AgentMode::Plan;
+        self.harness.arm_plan_mode().await;
+        Ok(())
+    }
+
+    /// Activate a pending Plan toggle before the first prompt. Returns whether this is a reentry.
+    pub async fn commit_plan_mode_if_pending(&self) -> Result<bool> {
+        if !self.harness.plan_mode_is_pending().await {
+            return Ok(false);
+        }
+        let reentry = self
+            .harness
+            .commit_pending_plan_mode()
+            .await
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
+        self.policy.lock().await.set_mode(AgentMode::Plan);
+        self.plan_reentry.store(reentry, Ordering::Relaxed);
+        self.apply_agent_mode(AgentMode::Plan).await?;
+        Ok(reentry)
     }
 
     pub async fn set_thinking_level(&self, level: crate::types::ThinkingLevel) -> Result<()> {
@@ -658,22 +687,19 @@ impl CodingAgentSession {
     /// Start a normal harness turn (blocks until idle, emits `RunCompleted`).
     async fn run_prompt_turn(&self, text: String, images: Option<Vec<elph_ai::ImageContent>>) -> Result<()> {
         let _guard = self.turn_gate.lock().await;
-        // Intercom (worker-message) answer turns — identified by their prompt
-        // prefix — set the shared flag for the whole turn: wiring suppresses
-        // transcript events, and session emit paths (RunCompleted, retry status)
-        // skip stats/notices for them. Cleared in both normal and error paths.
-        let intercom = text.starts_with(WORKER_INBOUND_PROMPT_PREFIX);
-        if intercom {
-            self.intercom_turn_active.store(true, Ordering::Relaxed);
-        }
         // Lazy MCP: discover any still-pending servers and hot-attach tools before the model runs.
         self.ensure_mcp_tools_ready().await;
+        if *self.mode_state.lock().await == AgentMode::Plan
+            && let Err(err) = self.commit_plan_mode_if_pending().await
+        {
+            log::warn!("commit pending plan mode: {err:#}");
+        }
         // Pre-prompt guard: when history already exceeds the configured threshold, compact
         // before sending so the request never runs into the hard context limit.
         self.maybe_auto_compact(Some(&text)).await;
 
         let started = Instant::now();
-        let options = images.map(|images| elph_agent::AgentHarnessPromptOptions { images: Some(images) });
+        let options = images.map(|images| elph_agent::harness::AgentHarnessPromptOptions { images: Some(images) });
         let result = self.harness.prompt(text.clone(), options).await;
         match &result {
             Ok(message) => {
@@ -703,12 +729,10 @@ impl CodingAgentSession {
                 // The retry submits a Continue-style prompt instead of re-sending the
                 // original text, so already-completed tool work is not duplicated.
                 if elph_ai::retry::is_transient_error(&err_s) {
-                    if !intercom {
-                        let _ = self
-                            .ui_tx
-                            .send(AgentUiEvent::Status("Stream interrupted — retrying automatically…".to_string()));
-                        let _ = self.ui_tx.send(AgentUiEvent::Retrying { attempt: 1 });
-                    }
+                    let _ = self
+                        .ui_tx
+                        .send(AgentUiEvent::Status("Stream interrupted — retrying automatically…".to_string()));
+                    let _ = self.ui_tx.send(AgentUiEvent::Retrying { attempt: 1 });
                     match self.harness.prompt(RETRY_CONTINUE_PROMPT, None).await {
                         Ok(msg) => {
                             self.finish_ui_turn(started).await;
@@ -717,18 +741,12 @@ impl CodingAgentSession {
                             }
                             self.maybe_generate_session_title();
                             self.maybe_auto_compact(None).await;
-                            if intercom {
-                                self.intercom_turn_active.store(false, Ordering::Relaxed);
-                            }
                             return Ok(());
                         }
                         Err(retry_err) => {
                             self.finish_ui_turn(started).await;
                             self.emit_retryable_error(Some(&retry_err.to_string()));
                             self.maybe_auto_compact(None).await;
-                            if intercom {
-                                self.intercom_turn_active.store(false, Ordering::Relaxed);
-                            }
                             return Err(anyhow::anyhow!("{retry_err}"));
                         }
                     }
@@ -747,20 +765,11 @@ impl CodingAgentSession {
                     self.maybe_auto_compact(None).await;
                 }
                 return if recovered {
-                    if intercom {
-                        self.intercom_turn_active.store(false, Ordering::Relaxed);
-                    }
                     Ok(())
                 } else {
-                    if intercom {
-                        self.intercom_turn_active.store(false, Ordering::Relaxed);
-                    }
                     Err(anyhow::anyhow!("{err}"))
                 };
             }
-        }
-        if intercom {
-            self.intercom_turn_active.store(false, Ordering::Relaxed);
         }
         result.map(|_| ()).map_err(|err| anyhow::anyhow!("{err}"))
     }
@@ -779,9 +788,17 @@ impl CodingAgentSession {
             return;
         }
         let before = registry.tool_count();
-        if let Err(err) = registry.discover_tools().await {
-            log::warn!("MCP on-demand discovery: {err:#}");
-            // Still re-attach whatever was discovered so far.
+        match tokio::time::timeout(std::time::Duration::from_secs(12), registry.discover_tools()).await {
+            Ok(Ok(())) => {}
+            Ok(Err(err)) => {
+                log::warn!("MCP on-demand discovery: {err:#}");
+            }
+            Err(_) => {
+                log::warn!("MCP on-demand discovery timed out after 12s");
+                let _ = self
+                    .ui_tx
+                    .send(AgentUiEvent::Status("MCP discovery timed out after 12s; continuing.".into()));
+            }
         }
         let after = registry.tool_count();
         if after != before || pending > 0 {
@@ -797,10 +814,6 @@ impl CodingAgentSession {
     }
 
     fn emit_retryable_error(&self, error: Option<&str>) {
-        // Intercom turn errors go to the worker chat, not the transcript.
-        if self.intercom_turn_active.load(Ordering::Relaxed) {
-            return;
-        }
         let raw = error.unwrap_or("request failed");
         let display = crate::tui::api_error_display::format_user_facing_api_error(raw);
         let transient = elph_ai::retry::is_transient_error(raw);
@@ -824,22 +837,14 @@ impl CodingAgentSession {
     /// 1. Transient stream/network errors → one automatic Continue-style retry.
     /// 2. Context-limit errors → compact then resume once.
     async fn recover_errored_turn(&self, message: &AssistantMessage) {
-        // Intercom (worker-message) turns never auto-recover: retrying would run
-        // a user-visible turn (no intercom prefix) and leak into the transcript.
-        // The caller already replied with an explicit error through the mailbox.
-        if self.intercom_turn_active.load(Ordering::Relaxed) {
-            return;
-        }
         let error_text = message.error_message.as_deref().unwrap_or_default();
 
         // Transient stream cutoffs / 5xx / etc. — retry without compaction first.
         if elph_ai::retry::is_transient_error(error_text) {
-            if !self.intercom_turn_active.load(Ordering::Relaxed) {
-                let _ = self
-                    .ui_tx
-                    .send(AgentUiEvent::Status("Stream interrupted — retrying automatically…".to_string()));
-                let _ = self.ui_tx.send(AgentUiEvent::Retrying { attempt: 1 });
-            }
+            let _ = self
+                .ui_tx
+                .send(AgentUiEvent::Status("Stream interrupted — retrying automatically…".to_string()));
+            let _ = self.ui_tx.send(AgentUiEvent::Retrying { attempt: 1 });
             let retry_started = Instant::now();
             match self.harness.prompt(RETRY_CONTINUE_PROMPT, None).await {
                 Ok(retry_message) => {
@@ -880,9 +885,7 @@ impl CodingAgentSession {
             self.finish_ui_turn(retry_started).await;
             return;
         }
-        if !self.intercom_turn_active.load(Ordering::Relaxed) {
-            let _ = self.ui_tx.send(AgentUiEvent::Retrying { attempt: 2 });
-        }
+        let _ = self.ui_tx.send(AgentUiEvent::Retrying { attempt: 2 });
         match self.harness.prompt(RETRY_CONTINUE_PROMPT, None).await {
             Ok(retry_message) => {
                 self.finish_ui_turn(retry_started).await;
@@ -1042,7 +1045,8 @@ impl CodingAgentSession {
 
     pub async fn reload_resources(&self, paths: &Paths, cwd: &Path) -> Result<LoadResourcesResult> {
         let env = self.harness.env();
-        let loaded = load_resources(paths, cwd, env.as_ref()).await;
+        let settings = Settings::load(paths).unwrap_or_else(|_| Settings::defaults());
+        let loaded = load_resources(paths, cwd, env.as_ref(), &settings).await;
         self.harness
             .set_resources(loaded.resources.clone())
             .await
@@ -1064,7 +1068,7 @@ impl CodingAgentSession {
         let models = Arc::clone(&self.selection.read().models);
         let credential = if provider_id == "github-copilot" {
             if let elph_ai::Credential::OAuth(mut oauth) = credential {
-                let _ = elph_ai::ensure_copilot_available_model_ids(&mut oauth).await;
+                let _ = elph_ai::auth::ensure_copilot_available_model_ids(&mut oauth).await;
                 elph_ai::Credential::OAuth(oauth)
             } else {
                 credential
@@ -1188,7 +1192,7 @@ impl CodingAgentSession {
 
     /// Move the session leaf to `entry_id` (Pi `/tree` jump). Optional branch summary.
     pub async fn navigate_tree_to_with_options(&self, entry_id: &str, summarize: bool) -> Result<()> {
-        use elph_agent::NavigateTreeOptions;
+        use elph_agent::harness::NavigateTreeOptions;
         self.harness
             .navigate_tree(
                 entry_id,
@@ -1202,7 +1206,7 @@ impl CodingAgentSession {
             .map_err(|e| anyhow::anyhow!("{e}"))
     }
 
-    pub async fn branch_entries(&self) -> Result<Vec<elph_agent::SessionTreeEntry>> {
+    pub async fn branch_entries(&self) -> Result<Vec<elph_agent::session::SessionTreeEntry>> {
         self.harness
             .session_branch_entries()
             .await
@@ -1210,7 +1214,7 @@ impl CodingAgentSession {
     }
 
     /// All session tree entries (full DAG), not just the active branch path.
-    pub async fn session_tree_entries(&self) -> Result<Vec<elph_agent::SessionTreeEntry>> {
+    pub async fn session_tree_entries(&self) -> Result<Vec<elph_agent::session::SessionTreeEntry>> {
         Ok(self.harness.session_entries().await)
     }
 
@@ -1278,12 +1282,25 @@ impl CodingAgentSession {
         choice: PlanConfirmationChoice,
         plan_file: Option<String>,
     ) -> Result<()> {
+        self.resolve_plan_with_file_and_notes(choice, plan_file, None).await
+    }
+
+    pub async fn resolve_plan_with_file_and_notes(
+        &self,
+        choice: PlanConfirmationChoice,
+        plan_file: Option<String>,
+        review_notes: Option<String>,
+    ) -> Result<()> {
         if let Some(ref path) = plan_file {
             self.harness
                 .set_plan_file_path(path.clone())
                 .await
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
         }
+        self.harness
+            .set_plan_review_notes(review_notes)
+            .await
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
         self.resolve_plan(choice).await
     }
 
@@ -1297,7 +1314,14 @@ impl CodingAgentSession {
     }
 
     async fn apply_agent_mode(&self, mode: AgentMode) -> Result<()> {
-        reconcile_harness_tools(&self.harness, mode, self.mcp_registry().as_deref()).await?;
+        if mode != AgentMode::Plan {
+            self.plan_reentry.store(false, Ordering::Relaxed);
+        } else {
+            let reentry = self.harness.plan_mode_activated_as_reentry().await;
+            self.plan_reentry.store(reentry, Ordering::Relaxed);
+        }
+        let allow = self.policy.lock().await.default_tools.clone();
+        reconcile_harness_tools(&self.harness, mode, self.mcp_registry().as_deref(), allow.as_deref()).await?;
         // Best-effort cache refresh so `/system-prompt` stays available without nesting
         // block_on on the UI thread during a busy stream.
         if let Err(err) = self.refresh_system_prompt_cache().await {
@@ -1321,17 +1345,6 @@ impl CodingAgentSession {
     }
 
     async fn emit_run_completed(&self, started: Instant) {
-        // Intercom (worker-message) turns stay silent in the transcript: no stats
-        // card, no status line — the worker chat overlay is the only surface.
-        if self.intercom_turn_active.load(Ordering::Relaxed) {
-            let _ = self.ui_tx.send(AgentUiEvent::RunCompleted {
-                elapsed_secs: started.elapsed().as_secs_f64(),
-                usage: None,
-                provider_id: None,
-                model_id: None,
-            });
-            return;
-        }
         // Only surface a stats card for real agent/chat-assistant turns, never for
         // system operations that only spin the UI (e.g. `/compact` with "History is
         // already up to date") — those do not produce a `session_turns` row, so
@@ -1369,7 +1382,7 @@ impl CodingAgentSession {
         // Read the latest persisted turn record (harness writes usage right before idle)
         // so the shell can render turn-complete stats (tokens in/out/cached, model).
         // Missing store/turn degrades gracefully to `None` fields.
-        let usage = Some(elph_agent::TurnUsage {
+        let usage = Some(elph_agent::turns::TurnUsage {
             input_tokens: latest.usage.input_tokens,
             output_tokens: latest.usage.output_tokens,
             cache_read_tokens: latest.usage.cache_read_tokens,
@@ -1416,6 +1429,15 @@ impl CodingAgentSession {
     }
 }
 
+/// Clears `intercom_replying` if the answer task is aborted mid-flight.
+struct IntercomReplyingGuard(Arc<AtomicBool>);
+
+impl Drop for IntercomReplyingGuard {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::Relaxed);
+    }
+}
+
 /// Generate a session title in the background and persist it to the harness.
 ///
 /// Returns `Ok(Some(title))` when a title was stored, `Ok(None)` when there is
@@ -1430,8 +1452,8 @@ async fn generate_and_store_session_title(
         .session_branch_entries()
         .await
         .map_err(|e| anyhow::anyhow!("{e}"))?;
-    let context = elph_agent::build_session_context(&branch);
-    let conversation = elph_agent::extract_conversation_for_naming(&context.messages);
+    let context = elph_agent::session::build_session_context(&branch);
+    let conversation = elph_agent::prompt::extract_conversation_for_naming(&context.messages);
     if conversation.trim().is_empty() {
         return Ok(None);
     }
@@ -1440,7 +1462,7 @@ async fn generate_and_store_session_title(
     let user_prompt = SESSION_TITLE_USER.replace("{{conversation}}", &conversation);
     // Naming model call first; fall back to the first user message when it fails
     // or returns a generic placeholder, so sessions always end up named.
-    let title = elph_agent::generate_session_name_with_prompts(
+    let title = elph_agent::prompt::generate_session_name_with_prompts(
         &context.messages,
         models.as_ref(),
         &model,
@@ -1462,11 +1484,11 @@ async fn generate_and_store_session_title(
 }
 
 /// Deterministic fallback title when the naming model call fails: the first
-/// user message, sanitized and truncated to [`elph_agent::sanitize_session_name`].
+/// user message, sanitized and truncated to [`elph_agent::prompt::sanitize_session_name`].
 fn fallback_session_title(conversation: &str) -> Option<String> {
     let first = conversation.split("\n\n").next()?.trim();
     let text = first.strip_prefix("User:").map(str::trim).unwrap_or(first);
-    let title = elph_agent::sanitize_session_name(text);
+    let title = elph_agent::prompt::sanitize_session_name(text);
     if title.is_empty() { None } else { Some(title) }
 }
 

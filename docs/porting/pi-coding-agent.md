@@ -16,7 +16,7 @@ Track how far the **Elph coding-agent product** (`elph` crate) lags or leads mai
 This is **not** the same as `elph-agent` / `elph-ai` (runtime libraries). Those map to `packages/agent` and `packages/ai`.
 `elph` maps to the **product shell**: CLI, interactive TUI, session UX, slash commands, settings, export, extensions host, print/RPC modes, and so on.
 
-Elph deliberately **diverges** in product design (memory, codegraph, ACP, WASM extensions, goals). Treat those as **[Elph delta]**, not failures to port pi.
+Elph deliberately **diverges** in product design (memory, ACP, WASM extensions, goals). Treat those as **[Elph delta]**, not failures to port pi.
 
 **Style:** status is written as tagged bullets and short paragraphs so the page stays scannable without wide comparison tables.
 
@@ -37,15 +37,39 @@ Elph deliberately **diverges** in product design (memory, codegraph, ACP, WASM e
 - Project trust — **[Partial]**
 - Login / OAuth UX — **[Partial]** — provider CLI + oauth in `elph-ai`; interactive dialogs lag
 - Export HTML / share gist — **[Gap]** (CLI export stub)
-- Memory / codegraph / server — **[Elph delta]**
+- Memory / server — **[Elph delta]**
 
 ---
 
 ## Timeline
 
+### 2026-08-18 — Settings flatten; MCP/trust leave settings.json
+
+**Scope:** product settings + `mcp.json` + `trust.json`. **[Elph delta]** vs pi’s single flat `settings.json`.
+
+- **Hierarchy fix** — project `.elph/settings.json` always merges (defaults ← home ← project). Earlier `ask`/`never` trust gate dropped project prefs (e.g. `notifications.onStartupReady: false`); that was wrong for Elph. Trust only gates **project WASM extensions**.
+- **Less nesting** — dropped `ui.filePicker`, `models.embed`, `session.retention`, `tools`, `shell`, `network` wrappers. Keys are `ui.showHiddenFiles`, `models.embedModel` / `embedQuantized` / `embedGpuAcceleration`, `session.*`, top-level `defaultTools`, `shellPath`, `shellCommandPrefix`, `httpProxy`, `quietStartup`.
+- **MCP cache** moved to `mcp.json` (`cacheTtlSecs`, `cacheMaxEntries`); per-server `cacheTtlMs` unchanged. Matches archive layout: servers live in `mcp.json`, not `settings.json`.
+- **`defaultProjectTrust`** moved to `trust.json` beside `directories`. **[Partial]** vs pi (`defaultProjectTrust` stays in pi settings.json).
+- `notifications.*` group kept so project flags like `onStartupReady` stay one-level and still apply after merge.
+- No legacy rewrite of old nested keys (`models.embed`, `session.retention`, `settings.mcp`).
+
+### 2026-08-18 — Settings file surface: filters, trust, host knobs
+
+**Scope:** `crates/coding-agent/src/platform/settings/`, resource loader, session create. Not a TUI `/settings` overlay.
+
+Pi intent (`enabledModels`, resource path arrays, `defaultTools`, `defaultProjectTrust`, thinking budgets, shell, proxy) mapped onto Elph nested groups. No npm `packages`. No legacy settings migration.
+
+- `models.enabled` glob catalog filter; `models.thinkingBudgets` → harness stream options.
+- `resources.skills` / `prompts` / `extensions`, `disabledSkills` / `disabledExtensions`, `enableSkillCommands`.
+- `tools.default` builtin allowlist (meta tools stay).
+- `trust.defaultProjectTrust` gates **project WASM extensions** only (`ask` ≡ `never` until a prompt UI exists). Project `settings.json` / skills / prompts always merge.
+- `shell.path` / `commandPrefix`, `network.httpProxy`, `ui.quietStartup`, `compaction.reserveTokens`.
+- Dropped `migrate_settings_value` and `extensions.json` sidecar.
+
 ### 2026-08-09 — Busy-state queueing: action dispatch, not raw text (Elph delta)
 
-**Scope:** `crates/coding-agent/` product crate. Follow-up to the `/handover`
+**Scope:** `crates/coding-agent/` product crate. Follow-up to the `/transfer`
 resilience pass.
 
 Previously, when the agent was busy (`agent_turn_active`), turn-spawning slash
@@ -58,13 +82,13 @@ Now:
 - `handle_slash_submit` **always dispatches** turn-spawning commands (Continue,
   compact, skill, template, goal, reload, extension) on a background task. The
   session's internal `turn_gate` serializes them behind the active turn — the
-  same mechanism `/handover` uses. The `spawn_agent_work` field is gone.
+  same mechanism `/transfer` uses. The `spawn_agent_work` field is gone.
 - The shell no longer pushes raw slash text as a follow-up. When busy, a clear
   meta notice is shown ("Command /x queued — runs after the current task.");
   when idle, the normal echo/busy flow applies. Normal text prompts are
   unaffected (they still queue/steer as user input).
 - **Quiet background commands** — `/reload`, `/goal`, `/extension` (and
-  `/handover`) return `SlashOutcome::BackgroundTaskQuiet`: the slash input is
+  `/transfer`) return `SlashOutcome::BackgroundTaskQuiet`: the slash input is
   never echoed as a user card and never enters prompt history; the task reports
   via `AgentUiEvent` (Status / notices) and busy state derives from the agent
   loop, so a failure cannot strand a stale busy UI. (`/memory` keeps the plain
@@ -72,58 +96,58 @@ Now:
 - Consequence: `.jsonl.zst` still unsupported, but the busy-path semantic gap
   (raw text vs. real action) is closed for every turn-spawning command.
 
-### 2026-08-09 — `/handover` resilience hardening (Elph delta)
+### 2026-08-09 — `/transfer` resilience hardening (Elph delta)
 
 **Scope:** `crates/coding-agent/` product crate. Follow-up to the Claude+Codex
-handover launch.
+transfer launch.
 
 - **Bounded reads** — both readers cap a transcript at 32 MiB total, 4 MiB per
   JSONL record, and 5000 conversational records; oversized records are counted
   and skipped, over-cap transcripts surface a `transcript_truncated` warning,
   and over-size files are rejected with a clear message instead of being
   buffered whole (previously `fs::read` slurped arbitrary-size files).
-- **Background dispatch** — `/handover` now runs resolve+read+prompt-build on a
+- **Background dispatch** — `/transfer` now runs resolve+read+prompt-build on a
   `spawn_blocking` background task; the TUI render thread is never blocked. New
   `SlashOutcome::BackgroundTaskQuiet` dispatches the handoff turn without
   echoing the raw slash text as a user card; busy state is derived from the
   agent loop, so a read failure cannot strand a stale "busy" chip. Error/success
   notices flow through normal `AgentUiEvent::Status` events.
 
-### 2026-08-09 — `/handover` Codex resume (Elph delta)
+### 2026-08-09 — `/transfer` Codex resume (Elph delta)
 
-**Scope:** `crates/coding-agent/` product crate. Follow-up to the `/handover`
+**Scope:** `crates/coding-agent/` product crate. Follow-up to the `/transfer`
 Claude launch (same session); adds the Codex source.
 
-- **`/handover codex [ref]`** — discovers Codex CLI/VSCode rollout transcripts
+- **`/transfer codex [ref]`** — discovers Codex CLI/VSCode rollout transcripts
   (`~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`), resolves
   `latest`/UUID/free-text, reads the transcript as **inert history**
   (`session_meta` + `response_item` + `event_msg`; skips developer-role and
   injected AGENTS.md wrappers; applies `compacted`/`thread_rolled_back`
   reduction + duplicate collapse), and injects a Codex handoff prompt
-  (`CODEX_HANDOVER_PROMPT_PREFIX`, slim `Handover from Codex…` meta line).
+  (`CODEX_TRANSFER_PROMPT_PREFIX`, slim `Transfer from Codex…` meta line).
 - Reader lives entirely on the **rollout filesystem** — `state_N.sqlite` is
   never opened, so a live Codex process (hot WAL) is never disturbed.
-- Codex reader: `crates/coding-agent/src/agent/handover/codex.rs` + tests
+- Codex reader: `crates/coding-agent/src/agent/transfer/codex.rs` + tests
   (`codex/tests.rs`, 11 tests).
 
-### 2026-08-09 — `/handover` foreign-session resume (Elph delta)
+### 2026-08-09 — `/transfer` foreign-session resume (Elph delta)
 
 **Scope:** `crates/coding-agent/` product crate. Not a pi port — mirrors Grok Build's
 `foreign_sessions/claude` resume flow (powered by the portable Claude resume
 skills) as an **Elph delta**.
 
-- **`/handover claude [ref]`** — discovers Claude Code sessions
+- **`/transfer claude [ref]`** — discovers Claude Code sessions
   (`~/.claude/projects/<slug>/*.jsonl`), resolves `latest` / UUID / free-text
   title, reads the transcript as **inert history** (leaf chain, preserved/snipped
   compaction segments, parallel siblings; strips meta/sidechain/thinking; caps
   tool I/O and message text; stubs summarized results), and injects a handoff
   prompt into the current Elph session. New module
-  `crates/coding-agent/src/agent/handover/` + design doc
-  [handover.md](../design/handover.md).
-- **`/handover codex …`** — accepted arg (palette completions),
-  prints `Codex handover not yet implemented`.
-- `SlashDispatch::Handover`, ACP guard (`handler.rs`), TUI slim
-  `Handover from Claude Code…` meta line (`tick.rs`).
+  `crates/coding-agent/src/agent/transfer/` + design doc
+  [transfer.md](../design/transfer.md).
+- **`/transfer codex …`** — accepted arg (palette completions),
+  prints `Codex transfer not yet implemented`.
+- `SlashDispatch::Transfer`, ACP guard (`handler.rs`), TUI slim
+  `Transfer from Claude Code…` meta line (`tick.rs`).
 
 ### 2026-07-29 — Rust verify & harden + dead code cleanup
 
@@ -205,7 +229,7 @@ packages/coding-agent/                 elph/
 - Themes — **[Gap]**; keybindings — **[Partial]** / minimal
 - Telemetry / timings — **[Gap]** or not product-exposed
 - Diagnostics, footers/status — **[Partial]**
-- Memory / floppy, codegraph, local server — **[Elph delta]** (server often stub)
+- Memory / floppy, local server — **[Elph delta]** (server often stub)
 - Worktree admin CLI — **[Partial]**
 
 ---
@@ -237,8 +261,8 @@ elph built-in **names** largely mirror pi, plus `/provider`, `/help`, `/exit`. D
 - `/scoped-models` — **[Partial]** (editor + Ctrl+P cycle; no keybinding remaps / null=all semantics)
 - `/share` — **[Gap]**
 - `/goal` — **[Elph delta]** / **[Partial]** in elph (design + goal_slash)
-- `/handover` — **[Elph delta]** foreign-session resume (Claude + Codex
-  implemented; see [handover.md](../design/handover.md))
+- `/transfer` — **[Elph delta]** foreign-session resume (Claude + Codex
+  implemented; see [transfer.md](../design/transfer.md))
 - Extension commands — **[Partial]** (JS vs WASM model)
 - Prompt templates as `/name` — **[Partial]** (planned)
 
@@ -279,9 +303,9 @@ Typical flags: `--model`, `--provider`, `--thinking`, `--continue`/`-c`, `--resu
 - `export` / `import` — **[Partial]** JSONL full-tree export + import-to-new-session (Pi intent); HTML export / gist share still gap
 - `mcp` — **[Partial]** stubs (pi MCP packaging differs)
 - `plugin` / extensions — **[Partial]** vs pi extensions + package manager
-- `doctor`, `stats`, `update` — **stubs**
+- `doctor` — **implemented** (health + secret-free JSON snapshot); `stats` / `update` — **stubs**
 - `acp`, `memory` — present, **[Elph delta]**
-- `codegraph`, `server` — **stubs**, **[Elph delta]**
+- `server` — **stub**, **[Elph delta]**
 - `worktree` — **stubs**; packaging differs from pi
 
 ---
@@ -326,7 +350,6 @@ Library fixes may already be in `elph-ai` / `elph-agent` after the library sprin
 - Goals + nested subagents (product wiring); slash `/goal`
 - MCP product integration (`elph-agent` MCP + CLI)
 - Project memory (floppy) + `elph memory`
-- Codegraph CLI surface (often stubs)
 - ACP server mode (alternative to pi RPC)
 - WASM extensions (vs pi JS extensions)
 - Local REST/WS server (planned / stub)
@@ -362,7 +385,7 @@ Library fixes may already be in `elph-ai` / `elph-agent` after the library sprin
 
 ### Product (Elph-only — do not measure as pi lag)
 
-15. Memory, codegraph, server, goals polish on their own roadmaps.
+15. Memory, server, goals polish on their own roadmaps.
 
 ---
 

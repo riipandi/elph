@@ -26,6 +26,10 @@ where
         self.shared.env.clone()
     }
 
+    pub fn is_headless(&self) -> bool {
+        self.shared.headless
+    }
+
     pub fn models(&self) -> Arc<elph_ai::Models> {
         self.shared.models.clone()
     }
@@ -86,6 +90,7 @@ where
         self.shared.agent_control.lock().await.clone()
     }
 
+    #[cfg(feature = "backend-turso")]
     pub fn agent_graph(&self) -> Option<Arc<crate::agent::subagent::AgentGraphStore>> {
         self.shared
             .subagent_bootstrap
@@ -155,8 +160,16 @@ where
     ///
     /// Reads the relational `session_turns` table written by the harness turn loop.
     pub async fn current_turn_record(&self, session_id: &str) -> Option<crate::turns::TurnRecord> {
-        let store = self.shared.turn_store.as_ref()?.clone();
-        store.latest_turn(session_id).await.ok().flatten()
+        #[cfg(feature = "backend-turso")]
+        {
+            let store = self.shared.turn_store.as_ref()?.clone();
+            return store.latest_turn(session_id).await.ok().flatten();
+        }
+        #[cfg(not(feature = "backend-turso"))]
+        {
+            let _ = session_id;
+            None
+        }
     }
 
     pub fn compaction_settings(&self) -> CompactionSettings {

@@ -70,7 +70,7 @@ pub(crate) fn build_shell_view(
         mut pending_memory_flush,
         pending_mode_change,
         mut pending_model_selector,
-        pending_plan_confirmation,
+        mut pending_plan_confirmation,
         mut pending_mcp_auth,
         pending_provider_api_key,
         mut pending_provider_connect,
@@ -975,11 +975,11 @@ pub(crate) fn build_shell_view(
                     .map(|item| {
                         let finished = matches!(
                             item.status,
-                            elph_agent::TodoStatus::Completed | elph_agent::TodoStatus::Cancelled
+                            elph_agent::todos::TodoStatus::Completed | elph_agent::todos::TodoStatus::Cancelled
                         );
                         elph_tui::TodoPanelRow {
                             label: item.content.clone(),
-                            running: item.status == elph_agent::TodoStatus::InProgress,
+                            running: item.status == elph_agent::todos::TodoStatus::InProgress,
                             finished,
                         }
                     })
@@ -1258,7 +1258,7 @@ pub(crate) fn build_shell_view(
                 worker_pending_count: worker_pending_count.get(),
                 worker_replying: agent_session
                     .as_ref()
-                    .map(|s| s.is_intercom_turn_active())
+                    .map(|s| s.is_intercom_replying())
                     .unwrap_or(false),
                 chrome_revision: chrome_ui_revision.get(),
                 draft: Some(draft),
@@ -1340,6 +1340,63 @@ pub(crate) fn build_shell_view(
                 },
                 file_picker_key_handled: Some(file_picker_key_handled),
                 on_submit: move |text: String| {
+                        // Plan confirmation owns Enter while parked — do not also start a
+                        // normal user turn (that double-submitted revision notes).
+                        if pending_plan_confirmation.read().is_some() {
+                            use crate::tui::plan_review::{
+                                PlanReviewFocus, format_revision_prompt, plan_confirmation_transcript_key,
+                            };
+                            let focus = pending_plan_confirmation.read().as_ref().map(|p| p.focus);
+                            if focus != Some(PlanReviewFocus::Prompt) {
+                                return;
+                            }
+                            let feedback = format_revision_prompt(Some(text.as_str()));
+                            if feedback.trim().is_empty() {
+                                let expire_tx = ephemeral_expire.read().tx.clone();
+                                show_ephemeral_banner(
+                                    &mut ephemeral_banner,
+                                    &mut ephemeral_banner_generation,
+                                    &expire_tx,
+                                    EphemeralBanner {
+                                        key: "plan-revise-empty",
+                                        text: "Type revision notes, or press a to approve.".to_string(),
+                                        kind: EphemeralBannerKind::Notice,
+                                        expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
+                                    },
+                                );
+                                return;
+                            }
+                            if let Some(pending) = pending_plan_confirmation.write().take() {
+                                let key = plan_confirmation_transcript_key();
+                                {
+                                    let mut msgs = messages.write();
+                                    if let Some(row) =
+                                        msgs.iter_mut().find(|m| m.startup_key.as_deref() == Some(key.as_str()))
+                                    {
+                                        row.content = "Plan confirmation".to_string();
+                                        row.status_detail = Some("Revision requested".to_string());
+                                        row.style = TranscriptStyle::StatusFailed;
+                                    }
+                                }
+                                messages_revision.set(messages_revision.get().wrapping_add(1));
+                                if let Some(session) = pending.session {
+                                    tokio::spawn(async move {
+                                        if let Err(err) = session.clear_pending_plan().await {
+                                            log::error!("clear pending plan failed: {err}");
+                                        }
+                                        if let Err(err) = session.submit_prompt(feedback, false).await {
+                                            log::error!("plan revision submit failed: {err}");
+                                        }
+                                    });
+                                }
+                            }
+                            draft.set(String::new());
+                            live_draft.set(String::new());
+                            suppress_enter_newline.set(true);
+                            activity_label.set("Revised plan requested".to_string());
+                            shell_focus.set(ShellFocus::Prompt);
+                            return;
+                        }
                         shell_focus.set(ShellFocus::Prompt);
                         if is_force_quit_command(&text) || is_quit_command(&text) {
                             let expire_tx = ephemeral_expire.read().tx.clone();
@@ -1792,6 +1849,22 @@ pub(crate) fn build_shell_view(
                                 suppress_enter_newline.set(true);
                                 return;
                             }
+                            SlashOutcome::OpenViewPlanDialog { text } => {
+                                open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                                    pending: &mut pending_system_prompt,
+                                    shell_focus: &mut shell_focus,
+                                    title: "Plan".to_string(),
+                                    text,
+                                    width_pct: DEFAULT_SCROLL_TEXT_WIDTH_PCT,
+                                    body_height: None,
+                                    show_copy: true,
+                                });
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
                             SlashOutcome::OpenSessionInfoDialog { text } => {
                                 open_scroll_text_dialog(OpenScrollTextDialogArgs {
                                     pending: &mut pending_system_prompt,
@@ -1967,7 +2040,7 @@ pub(crate) fn build_shell_view(
                             }
                             SlashOutcome::BackgroundTaskQuiet => {
                                 // Like BackgroundTask, but no slash input is echoed as a user
-                                // card — the handover task delivers its own transcript events
+                                // card — the transfer task delivers its own transcript events
                                 // (slim meta line / stream) and derives busy state from the
                                 // agent loop, so a read failure never strands a stale busy UI.
                             }

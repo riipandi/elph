@@ -346,12 +346,7 @@ fn attach_orphan_url_lines_to_list_items(lines: &mut [MarkdownLine]) {
     }
 }
 
-/// Parse markdown source off the UI thread (CPU-bound).
-pub fn parse_markdown_document(source: &str) -> MarkdownDocument {
-    parse_markdown_document_with_theme(source, &MarkdownTheme::default())
-}
-
-pub fn parse_markdown_document_with_theme(source: &str, theme: &MarkdownTheme) -> MarkdownDocument {
+pub(crate) fn parse_markdown_document_with_theme(source: &str, theme: &MarkdownTheme) -> MarkdownDocument {
     if source.is_empty() {
         return MarkdownDocument::default();
     }
@@ -655,7 +650,11 @@ pub fn parse_markdown_document_with_theme(source: &str, theme: &MarkdownTheme) -
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::layout::markdown_document_row_count;
+    use crate::layout::ansi_row_count;
+
+    fn parse_markdown_document(source: &str) -> MarkdownDocument {
+        parse_markdown_document_with_theme(source, &MarkdownTheme::default())
+    }
 
     fn line_texts(doc: &MarkdownDocument) -> Vec<(MarkdownLineKind, String)> {
         doc.lines
@@ -676,7 +675,7 @@ mod tests {
             line_texts(&doc)
         );
         assert_eq!(doc.lines.len(), 2);
-        let rows = markdown_document_row_count(&doc, 40);
+        let rows = ansi_row_count(&doc, 40, &MarkdownTheme::default());
         assert!(rows <= 4, "too many rows for two short paragraphs: {rows}");
     }
 
@@ -709,7 +708,7 @@ mod tests {
     fn list_followed_by_paragraph_has_gap_row() {
         let doc = parse_markdown_document("- item\n\nnext");
         assert_eq!(doc.lines.len(), 2);
-        let rows = markdown_document_row_count(&doc, 40);
+        let rows = ansi_row_count(&doc, 40, &MarkdownTheme::default());
         assert!(rows >= 3, "expected gap after list, got {rows}");
     }
 
@@ -886,6 +885,54 @@ mod tests {
             lines[1].starts_with("    Continuation paragraph"),
             "continuation: {:?}",
             lines[1]
+        );
+    }
+
+    #[test]
+    fn autolinks_urls_in_paragraph_text() {
+        let doc = parse_markdown_document("See https://elph.space for docs");
+        let line = doc.lines.first().expect("paragraph line");
+        let url_span = line
+            .spans
+            .iter()
+            .find(|span| span.text.contains("https://elph.space"))
+            .expect("url span");
+        assert!(!url_span.underline);
+        assert_eq!(url_span.href.as_deref(), Some("https://elph.space"));
+        assert_eq!(url_span.color, MarkdownTheme::default().link);
+    }
+
+    #[test]
+    fn markdown_link_uses_destination_as_href() {
+        let doc = parse_markdown_document("[docs](https://elph.space/guide)");
+        let line = doc.lines.first().expect("paragraph line");
+        let link_span = line
+            .spans
+            .iter()
+            .find(|span| span.text.contains("docs"))
+            .expect("link label span");
+        assert!(!link_span.underline);
+        assert_eq!(link_span.href.as_deref(), Some("https://elph.space/guide"));
+        assert_eq!(link_span.color, MarkdownTheme::default().link);
+    }
+
+    #[test]
+    fn plain_path_gets_file_href() {
+        let doc = parse_markdown_document("open /tmp/demo/file.rs please");
+        let line = doc.lines.first().expect("paragraph line");
+        let path_span = line
+            .spans
+            .iter()
+            .find(|span| span.text.contains("file.rs"))
+            .expect("path span");
+        assert!(!path_span.underline);
+        assert!(
+            path_span
+                .href
+                .as_deref()
+                .is_some_and(|h| h.starts_with("file://") && h.contains("file.rs")),
+            "href={:?}",
+            path_span.href
         );
     }
 }

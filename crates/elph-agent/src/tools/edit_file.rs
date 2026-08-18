@@ -129,8 +129,13 @@ async fn execute_edit(
 
     // Refresh content hash in the claim after successful edit
     if let Some(claim) = claims.as_ref() {
+        #[cfg(not(feature = "backend-turso"))]
+        let _ = claim;
+        #[cfg(feature = "backend-turso")]
         let new_hash = content_hash(updated.as_bytes());
+        #[cfg(feature = "backend-turso")]
         let path_norm = crate::workers::normalize_claim_path(&absolute, claim.project_key());
+        #[cfg(feature = "backend-turso")]
         let _ = claim
             .store()
             .try_claim(

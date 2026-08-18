@@ -5,7 +5,8 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant};
 
-use elph_agent::{LocalExecutionEnv, PromptTemplate, Skill};
+use elph_agent::harness::{PromptTemplate, Skill};
+use elph_agent::runtime::LocalExecutionEnv;
 use elph_tui::components::{scroll_view_down, scroll_view_up};
 use elph_tui::rgb;
 use elph_tui::{
@@ -16,12 +17,12 @@ use iocraft::prelude::*;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use tokio_util::sync::CancellationToken;
 
-use crate::agent::CODEX_HANDOVER_PROMPT_PREFIX;
+use crate::agent::CODEX_TRANSFER_PROMPT_PREFIX;
 use crate::agent::CONTINUE_META_LABEL;
-use crate::agent::HANDOVER_PROMPT_PREFIX;
 use crate::agent::RETRY_CONTINUE_PROMPT;
+use crate::agent::TRANSFER_PROMPT_PREFIX;
 use crate::agent::load_resources;
-use crate::agent::slash_commands_for_palette;
+use crate::agent::slash_commands_for_palette_with;
 use crate::agent::{AgentUiEvent, CodingAgentSession, ToolApprovalChoice};
 use crate::extensions::ExtensionHost;
 use crate::platform::exit_message::{ExitSnapshot, record_if_active, session_had_user_activity};
@@ -29,7 +30,7 @@ use crate::platform::{Paths, Settings};
 use crate::types::{AgentMode, SlashCommand, ThinkingLevel};
 use crate::types::{is_force_quit_command, is_quit_command};
 use crate::utils::path::AppPaths;
-use elph_agent::{BUDGET_LIMIT_PROMPT_PREFIX, CONTINUATION_PROMPT_PREFIX};
+use elph_agent::goals::{BUDGET_LIMIT_PROMPT_PREFIX, CONTINUATION_PROMPT_PREFIX};
 
 use crate::agent::rename_session_title;
 use crate::agent::session_info_slash_message;
@@ -130,10 +131,10 @@ use crate::tui::system_prompt_dialog::{
 };
 use crate::tui::tool_approval::{
     FEEDBACK_DEFAULT_INDEX, PLAN_CONFIRM_DEFAULT_INDEX, PendingMemoryFlush, PendingModeChange, PendingPlanConfirmation,
-    PendingToolApproval, PlanChoice, TOOL_APPROVAL_DEFAULT_INDEX, choice_at_index, feedback_url_at_index, open_url,
+    PendingToolApproval, PlanChoice, TOOL_APPROVAL_DEFAULT_INDEX, choice_at_index_for, feedback_url_at_index, open_url,
     pick_feedback_index_from_key, pick_memory_flush_index_from_key, pick_mode_change_index_from_key,
-    pick_plan_confirmation_index_from_key, pick_tool_approval_index_from_key, plan_choice_at_index,
-    plan_confirmation_transcript_key, to_harness_choice, tool_approval_transcript_key,
+    pick_tool_approval_index_from_key_for, plan_confirmation_transcript_key, to_harness_choice,
+    tool_approval_transcript_key,
 };
 use crate::tui::tool_params::tool_display_verb;
 use crate::tui::transcript::{
@@ -834,7 +835,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
 mod tests {
     use super::*;
     use crate::agent::parse_skill_slash;
-    use elph_agent::Skill;
+    use elph_agent::harness::Skill;
 
     fn slash_turn_sets_busy(input: &str, templates: &[PromptTemplate], skills: &[Skill]) -> bool {
         let trimmed = input.trim();

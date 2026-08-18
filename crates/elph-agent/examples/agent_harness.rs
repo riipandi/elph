@@ -17,8 +17,9 @@ use elph_agent::agent::harness::utils::format_size;
 use elph_agent::agent::harness::utils::truncate_head;
 use elph_agent::agent::harness::utils::truncate_line;
 use elph_agent::agent::harness::utils::truncate_tail;
-use elph_agent::format_skills_for_system_prompt;
-use elph_agent::{FileSystem, LocalExecutionEnv, Shell};
+use elph_agent::harness::format_skills_for_system_prompt;
+use elph_agent::harness::{FileSystem, Shell};
+use elph_agent::runtime::LocalExecutionEnv;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

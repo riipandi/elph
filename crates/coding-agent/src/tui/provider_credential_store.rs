@@ -6,7 +6,7 @@
 
 use std::path::Path;
 
-use elph_agent::{AuthStoreFile, ENV_REF_PREFIX, lock_auth_store};
+use elph_agent::mcp::{AuthStoreFile, ENV_REF_PREFIX, lock_auth_store};
 use serde_json;
 
 /// Load auth file, falling back to plain JSON (legacy format) if sealed load fails.
@@ -26,7 +26,7 @@ async fn load_auth_file_with_fallback(path: &Path) -> anyhow::Result<AuthStoreFi
             // plain JSON parsing would return an empty store and cause data loss when
             // the caller saves.
             if let Ok(content) = tokio::fs::read_to_string(path).await
-                && !elph_agent::looks_like_envelope(content.as_bytes())
+                && !elph_agent::mcp::looks_like_envelope(content.as_bytes())
             {
                 log::warn!("auth store sealed load failed ({}): {e}; trying plain JSON", path.display());
                 if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {

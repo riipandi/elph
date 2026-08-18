@@ -2,17 +2,18 @@
 
 use iocraft::prelude::*;
 
+use rendown::link::spans_with_links;
+use rendown::{FontWeight, MarkdownDocument, MarkdownLine, MarkdownLineKind, MarkdownTheme, StyledSpan};
+
 use super::blocks::{CODE_BLOCK_INSET_H, CODE_BLOCK_INSET_V, code_content_width, segment_end, segment_gap_after};
+use super::convert::{from_iocraft_color, to_iocraft_color, to_iocraft_weight};
 use super::layout::wrap_with_hanging_ranges;
-use super::linkify::spans_with_links;
-use super::model::{MarkdownDocument, MarkdownLine, MarkdownLineKind, StyledSpan};
 use super::table::render_markdown_table;
-use super::theme::MarkdownTheme;
 
 fn span_to_mixed(span: &StyledSpan) -> MixedTextContent {
-    let mut part = MixedTextContent::new(span.text.as_str()).color(span.color);
-    if span.weight == Weight::Bold {
-        part = part.weight(Weight::Bold);
+    let mut part = MixedTextContent::new(span.text.as_str()).color(to_iocraft_color(span.color));
+    if span.weight == FontWeight::Bold {
+        part = part.weight(to_iocraft_weight(span.weight));
     }
     if span.italic {
         part = part.italic();
@@ -71,7 +72,7 @@ fn recolor_range(spans: &[StyledSpan], start: usize, end: usize) -> Vec<StyledSp
 /// Wrap a code line's styled spans to `inner` columns, preserving the line's leading whitespace
 /// as a hanging indent on continuation rows. Each returned sub-vector is one visual row. Mirrors
 /// [`super::layout::wrap_with_hanging_ranges`], which measures the same rows.
-fn wrap_code_spans(spans: &[StyledSpan], inner: u16, body: Color) -> Vec<Vec<StyledSpan>> {
+fn wrap_code_spans(spans: &[StyledSpan], inner: u16, body: rendown::RgbColor) -> Vec<Vec<StyledSpan>> {
     let inner = inner.max(1);
     let plain: String = spans.iter().map(|s| s.text.as_str()).collect();
     let indent = plain
@@ -163,7 +164,7 @@ fn render_code_block(
         View(
             width: width,
             margin_bottom: margin_bottom,
-            background_color: theme.code_bg,
+            background_color: to_iocraft_color(theme.code_bg),
             padding_top: CODE_BLOCK_INSET_V,
             padding_bottom: CODE_BLOCK_INSET_V,
             padding_left: CODE_BLOCK_INSET_H,
@@ -187,15 +188,14 @@ fn render_mermaid_card(
     margin_bottom: u16,
 ) -> AnyElement<'static> {
     // Render with strict width; on failure (TooWide / invalid) fall back to raw source lines.
-    let rendered =
-        super::highlight::render_mermaid_at_width(source, inner_width).unwrap_or_else(|_| source.to_string());
+    let rendered = rendown::mermaid_display_shared(source, inner_width);
     let row_elements: Vec<AnyElement<'static>> = rendered
         .lines()
         .map(|line| {
             element! {
-                View(width: inner_width, flex_shrink: 0f32) {
+                View(width: inner_width, flex_shrink: 0f32, overflow: Overflow::Hidden) {
                     MixedText(
-                        contents: vec![MixedTextContent::new(line).color(theme.body)],
+                        contents: vec![MixedTextContent::new(line).color(to_iocraft_color(theme.body))],
                         wrap: TextWrap::NoWrap,
                     )
                 }
@@ -207,7 +207,7 @@ fn render_mermaid_card(
         View(
             width: outer_width,
             margin_bottom: margin_bottom,
-            background_color: theme.code_bg,
+            background_color: to_iocraft_color(theme.code_bg),
             padding_top: CODE_BLOCK_INSET_V,
             padding_bottom: CODE_BLOCK_INSET_V,
             padding_left: CODE_BLOCK_INSET_H,
@@ -215,6 +215,7 @@ fn render_mermaid_card(
             flex_direction: FlexDirection::Column,
             gap: 0,
             flex_shrink: 0f32,
+            overflow: Overflow::Hidden,
         ) {
             #(row_elements)
         }
@@ -246,7 +247,7 @@ fn render_rule_line(width: u16, theme: &MarkdownTheme, margin_bottom: u16) -> An
         View(width: width, margin_bottom: margin_bottom, flex_shrink: 0f32) {
             Text(
                 content: markdown_horizontal_rule_text(width),
-                color: theme.horizontal_rule,
+                color: to_iocraft_color(theme.horizontal_rule),
                 wrap: TextWrap::NoWrap,
             )
         }
@@ -346,7 +347,7 @@ pub fn render_markdown_block_with_theme(
     if document.is_empty() {
         return element! {
             View(width: width, flex_shrink: 0f32) {
-                Text(content: "", color: theme.body)
+                Text(content: "", color: to_iocraft_color(theme.body))
             }
         }
         .into();
@@ -371,7 +372,7 @@ pub fn streaming_tail_document(text: &str) -> MarkdownDocument {
     if text.is_empty() {
         return MarkdownDocument::default();
     }
-    super::parse::parse_markdown_document(text)
+    super::parse_markdown_document(text)
 }
 
 /// Convert plain/unparsed source into linkified document lines (streaming tail).
@@ -396,7 +397,7 @@ pub fn plain_text_document(text: &str, foreground: Color) -> MarkdownDocument {
             };
             lines.push(MarkdownLine {
                 kind,
-                spans: spans_with_links(line, foreground, Weight::Normal, false, theme.link),
+                spans: spans_with_links(line, from_iocraft_color(foreground), FontWeight::Normal, false, theme.link),
                 code_background: false,
                 table: None,
                 mermaid_source: None,
@@ -406,7 +407,7 @@ pub fn plain_text_document(text: &str, foreground: Color) -> MarkdownDocument {
     if lines.is_empty() {
         lines.push(MarkdownLine {
             kind: MarkdownLineKind::Paragraph,
-            spans: spans_with_links(text, foreground, Weight::Normal, false, theme.link),
+            spans: spans_with_links(text, from_iocraft_color(foreground), FontWeight::Normal, false, theme.link),
             code_background: false,
             table: None,
             mermaid_source: None,
@@ -422,7 +423,7 @@ pub fn render_markdown_document(document: &MarkdownDocument) -> Vec<AnyElement<'
 
 /// Convenience API used by [`super::MarkdownView`] and existing tests.
 pub fn render_markdown_lines(source: &str) -> Vec<AnyElement<'static>> {
-    let document = super::parse::parse_markdown_document(source);
+    let document = super::parse_markdown_document(source);
     vec![render_markdown_block(&document, 80)]
 }
 
@@ -445,8 +446,8 @@ mod tests {
     fn wrap_code_spans_preserves_hanging_indent() {
         let body =
             "    let value = a_really_long_variable_name_that_exceeds_the_wrap_width_and_should_wrap_now = compute();";
-        let spans = vec![StyledSpan::plain(body, Color::Reset)];
-        let rows = wrap_code_spans(&spans, 24, Color::Reset);
+        let spans = vec![StyledSpan::plain(body, MarkdownTheme::default().body)];
+        let rows = wrap_code_spans(&spans, 24, MarkdownTheme::default().body);
         assert!(rows.len() >= 2, "long line should wrap: {rows:?}");
         // First row keeps the 4-space leading indent from the source line.
         let first: String = rows[0].iter().map(|s| s.text.as_str()).collect();
@@ -544,19 +545,6 @@ mod tests {
         let rendered = element! { View(width: 40) { #(vec![block]) } }.to_string();
         assert!(rendered.contains("hello"));
         assert!(!doc.lines[0].code_background);
-    }
-
-    #[test]
-    fn mermaid_fence_produces_code_line_with_deferred_source() {
-        let src = "```mermaid\ngraph LR; A[Build] --> B[Deploy]\n```";
-        let doc = parse_markdown_document(src);
-        let mermaid_line = doc
-            .lines
-            .iter()
-            .find(|line| line.mermaid_source.is_some())
-            .expect("mermaid fence produces a deferred line");
-        assert_eq!(mermaid_line.kind, MarkdownLineKind::Code);
-        assert!(mermaid_line.code_background);
     }
 
     #[test]

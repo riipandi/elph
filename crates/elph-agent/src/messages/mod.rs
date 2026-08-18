@@ -18,25 +18,28 @@ pub const BRANCH_SUMMARY_PREFIX: &str =
 pub const BRANCH_SUMMARY_SUFFIX: &str = "</summary>";
 
 fn iso_to_millis(timestamp: &str) -> i64 {
-    time::OffsetDateTime::parse(timestamp, &time::format_description::well_known::Rfc3339)
-        .or_else(|_| time::OffsetDateTime::parse(timestamp, &time::format_description::well_known::Iso8601::DEFAULT))
-        .map(|dt| (dt.unix_timestamp_nanos() / 1_000_000) as i64)
-        .unwrap_or(0)
+    if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(timestamp) {
+        return dt.timestamp_millis();
+    }
+    if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(timestamp, "%Y-%m-%dT%H:%M:%S%.f") {
+        return dt.and_utc().timestamp_millis();
+    }
+    if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(timestamp, "%Y-%m-%dT%H:%M:%S") {
+        return dt.and_utc().timestamp_millis();
+    }
+    0
 }
 
 pub fn now_iso_timestamp() -> String {
-    time::OffsetDateTime::now_utc()
-        .format(&time::format_description::well_known::Rfc3339)
-        .unwrap_or_else(|_| "1970-01-01T00:00:00Z".to_string())
+    chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
 }
 
 /// Return the current local date with its UTC offset, formatted as
 /// `YYYY-MM-DD UTC±H` (e.g. `2026-08-16 UTC+7`). Falls back to UTC when
 /// the system timezone is unavailable.
 pub fn now_date_with_offset() -> String {
-    let dt = time::OffsetDateTime::now_local().unwrap_or_else(|_| time::OffsetDateTime::now_utc());
-    let offset = dt.offset();
-    let hours = offset.whole_hours();
+    let dt = chrono::Local::now();
+    let hours = dt.offset().local_minus_utc() / 3600;
     let tz = if hours == 0 {
         "UTC".to_string()
     } else if hours > 0 {
@@ -44,12 +47,7 @@ pub fn now_date_with_offset() -> String {
     } else {
         format!("UTC{}", hours)
     };
-    format!(
-        "{} {}",
-        dt.format(&time::format_description::well_known::Iso8601::DATE)
-            .unwrap_or_default(),
-        tz
-    )
+    format!("{} {tz}", dt.format("%Y-%m-%d"))
 }
 
 pub fn create_branch_summary_message(summary: &str, from_id: &str, timestamp: &str) -> AgentMessage {

@@ -1,9 +1,9 @@
-use elph_agent::Migration;
-use elph_agent::{CANONICAL_SESSION_SCHEMA_SQL, SESSION_SUMMARY_SCHEMA_SQL, WORKERS_SCHEMA_SQL};
+use elph_agent::session::Migration;
+use elph_agent::session::{CANONICAL_SESSION_SCHEMA_SQL, SESSION_SUMMARY_SCHEMA_SQL, WORKERS_SCHEMA_SQL};
 
 /// Platform schema migrations, applied into the shared `.elph/store.db` ledger.
 ///
-/// Version bands: floppy memory 1–99, **platform/session 201–203**, floppy codegraph 500–599.
+/// Version bands: floppy memory 1–99, **platform/session 201–203**.
 ///
 /// - v201: hybrid session tree + turns/todos/goals with FK + indexes (rebuild).
 /// - v202: multi-worker leases, registry, mailbox, file claims (additive).
@@ -31,9 +31,11 @@ pub fn metadata_migrations() -> &'static [Migration] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use elph_agent::{
-        GoalStore, SessionLeaseStore, TodoStore, TursoSessionRepo, TursoSessionRepoCreateOptions, ensure_database,
-    };
+    use elph_agent::datastore::ensure_database;
+    use elph_agent::goals::GoalStore;
+    use elph_agent::session::{TursoSessionRepo, TursoSessionRepoCreateOptions};
+    use elph_agent::todos::TodoStore;
+    use elph_agent::workers::SessionLeaseStore;
 
     #[test]
     fn platform_migrations_include_workers() {
@@ -74,10 +76,10 @@ mod tests {
         let _ = todos
             .replace(
                 "sess_platform",
-                vec![elph_agent::TodoUpdate {
+                vec![elph_agent::todos::TodoUpdate {
                     id: Some("todo_aaaaaaaaaaaaaaaa".into()),
                     content: Some("item".into()),
-                    status: Some(elph_agent::TodoStatus::Pending),
+                    status: Some(elph_agent::todos::TodoStatus::Pending),
                     reason: None,
                 }],
             )

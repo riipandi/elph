@@ -13,8 +13,9 @@ use std::path::{Path, PathBuf};
 
 use crate::utils::path::AppPaths;
 use anyhow::{Context, Result};
-use elph_agent::{McpConfig, McpServerConfig};
-use elph_agent::{parse_and_validate_mcp_config, parse_and_validate_server_config_json, write_json_file};
+use elph_agent::fs::write_json_file;
+use elph_agent::mcp::{McpConfig, McpServerConfig};
+use elph_agent::mcp::{parse_and_validate_mcp_config, parse_and_validate_server_config_json};
 
 use super::paths::Paths;
 
@@ -45,6 +46,15 @@ pub fn config_path(paths: &Paths, scope: McpConfigScope) -> PathBuf {
     }
 }
 
+/// Create home `mcp.json` with `$schema` and an empty server map when missing.
+pub fn ensure(paths: &Paths) -> Result<()> {
+    let path = config_path(paths, McpConfigScope::Home);
+    if path.exists() {
+        return Ok(());
+    }
+    save_layer(paths, McpConfigScope::Home, &McpConfig::default())
+}
+
 /// Load one layer (missing file → empty config).
 pub fn load_layer(paths: &Paths, scope: McpConfigScope) -> Result<McpConfig> {
     load_file(&config_path(paths, scope))
@@ -52,7 +62,7 @@ pub fn load_layer(paths: &Paths, scope: McpConfigScope) -> Result<McpConfig> {
 
 /// Save one layer (validates first). Creates parent dirs for project scope.
 pub fn save_layer(paths: &Paths, scope: McpConfigScope, config: &McpConfig) -> Result<()> {
-    elph_agent::validate_mcp_config(config).map_err(|e| anyhow::anyhow!("{e}"))?;
+    elph_agent::mcp::validate_mcp_config(config).map_err(|e| anyhow::anyhow!("{e}"))?;
     let path = config_path(paths, scope);
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).with_context(|| format!("create {}", parent.display()))?;
@@ -116,7 +126,7 @@ async fn load_layer_async(paths: &Paths, scope: McpConfigScope) -> Result<McpCon
     let content = tokio::fs::read_to_string(&path)
         .await
         .with_context(|| format!("read {}", path.display()))?;
-    elph_agent::parse_and_validate_mcp_config_async(content)
+    elph_agent::mcp::parse_and_validate_mcp_config_async(content)
         .await
         .with_context(|| format!("validate {}", path.display()))
 }
@@ -230,6 +240,19 @@ mod tests {
         let project = tmp.path().join("repo");
         std::fs::create_dir_all(project.join(".elph")).unwrap();
         Paths::from_dirs(config, data, project)
+    }
+
+    #[test]
+    fn ensure_writes_schema_when_missing() {
+        let tmp = tempdir().unwrap();
+        let paths = test_paths(&tmp);
+        ensure(&paths).unwrap();
+        let raw = std::fs::read_to_string(paths.mcp_config_path()).unwrap();
+        assert!(raw.contains("\"$schema\": \"https://elph.space/mcp-schema.json\""));
+        let loaded = load_layer(&paths, McpConfigScope::Home).unwrap();
+        assert!(loaded.is_empty());
+        ensure(&paths).unwrap();
+        assert_eq!(std::fs::read_to_string(paths.mcp_config_path()).unwrap(), raw);
     }
 
     #[test]

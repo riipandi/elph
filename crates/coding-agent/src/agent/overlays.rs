@@ -2,7 +2,7 @@
 
 use crate::types::{SelectItem, SelectItemKind};
 use anyhow::{Context, Result};
-use elph_agent::{CustomMessageEntryBlock, CustomMessageEntryContent, SessionTreeEntry};
+use elph_agent::session::{CustomMessageEntryBlock, CustomMessageEntryContent, SessionTreeEntry};
 use elph_ai::{AssistantContentBlock, Message, UserContent};
 use elph_ai::{get_builtin_model, get_builtin_providers};
 use std::collections::HashSet;

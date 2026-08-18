@@ -74,7 +74,7 @@ never trigger auto-close. Closed items emit `TodoUpdated` like a normal
 
 System prompt (`coding_base.txt` → `<operating_loop>`) biases to **See → Do → Check**, not ceremony:
 
-1. **See** — conversation + already-injected memory/codegraph/tool results
+1. **See** — conversation + already-injected memory/tool results
 2. **Do** — smallest tool set that advances the request
 3. **Check** — validation that covers your change only
 

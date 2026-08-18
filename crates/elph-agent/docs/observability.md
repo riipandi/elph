@@ -1,32 +1,60 @@
 # Observability
 
-**Status: partially implemented** via [`fastrace`](https://crates.io/crates/fastrace) and [`logforth`](https://crates.io/crates/logforth).
+**Status: implemented** via [`log`](https://crates.io/crates/log) + [`logforth`](https://crates.io/crates/logforth) (dispatch, filters, async file, fastrace bridge) and [`serde-jsonlines`](https://crates.io/crates/serde-jsonlines) (typed JSONL records).
 
 Design lineage: [pi-agent observability](https://github.com/earendil-works/pi/blob/main/packages/agent/docs/observability.md). Elph uses a two-layer stack — structured **logging** and distributed **tracing** — without binding core crates to OpenTelemetry, Sentry, or any APM vendor.
 
 ## Architecture
 
-| Layer   | Crate stack               | Output                                      |
-| ------- | ------------------------- | ------------------------------------------- |
-| Logging | `log` → `logforth`        | `{logs_dir}/{app}.jsonl` (rolling)          |
-| Tracing | `fastrace`                | `{logs_dir}/{app}-traces.jsonl`             |
-| Bridge  | `logforth::FastraceEvent` | Log events attached to the active span tree |
+| Layer   | Crate stack                                      | Output                                      |
+| ------- | ------------------------------------------------ | ------------------------------------------- |
+| Logging | `log` → `logforth` → typed `LogRecord` JSONL     | `{logs_dir}/{app}.jsonl` (rolling)          |
+| Tracing | `fastrace` + non-blocking `JsonlReporter`        | `{logs_dir}/{app}-traces.jsonl`             |
+| Crash   | panic hook → `CrashRecord` JSONL                 | `{logs_dir}/crash-YYMMDDhh.jsonl` (UTC)     |
+| Bridge  | `logforth::FastraceEvent`                        | Log events attached to the active span tree |
 
-Logging and tracing are initialized together through `AgentBuilder`'s logging initializer. The returned [`LogGuard`](../src/logger/mod.rs) must live for the process lifetime; on drop it flushes async log writers and calls `fastrace::flush()`.
+Library crates emit through the `log` facade. Only the process (`elph` / an embedder) calls [`logger::init`](../src/logger/mod.rs). The returned [`LogGuard`](../src/logger/mod.rs) must live for the process lifetime; on drop it flushes async log writers and `fastrace::flush()`.
 
-Third-party libraries that bypass the `log` crate by writing straight to fd 2 — the MCP (rmcp) client — are redirected to `{logs_dir}/mcp.log` on first use so their output stays out of the TUI. See [`logger::redirect_stderr_to_file`](../src/logger/mod.rs).
+Configure with [`LoggingOptions::builder`](../src/logger/options.rs). Merge order: defaults → `settings.json` `logging` → `{PREFIX}_LOG_*` / `{PREFIX}_TRACE` (env wins). File-open failure degrades (stderr warning, no file appender) instead of panicking.
+
+Third-party libraries that write straight to fd 2 — the MCP (rmcp) client — are redirected to `{logs_dir}/mcp.log`. See [`logger::redirect_stderr_to_file`](../src/logger/mod.rs).
 
 ```rust
 let init = AgentBuilder::new(env!("CARGO_PKG_VERSION"))
     .env_prefix("ELPH")
     .app_name("elph")
     .logs_dir(paths.logs_dir())
+    .logging_settings(settings.logging)
+    .console_enabled(false)
     .build();
 
-let _log_guard = init.logging.init();
+let _log_guard = elph_agent::logger::init(init.logging);
 ```
 
-Tracing initialization runs inside the logging initializer and installs a [`JsonlReporter`](../src/trace/reporter.rs) when tracing is enabled.
+Tracing initialization runs inside the logging initializer and installs a [`JsonlReporter`](../src/trace/reporter.rs) when tracing is enabled. `elph-ai` only receives `trace::set_enabled` so stream/HTTP helpers attach to the same reporter.
+
+### App log record
+
+Each file line is one `LogRecord`:
+
+```json
+{
+    "ts": "2026-08-18T12:00:00.123Z",
+    "level": "INFO",
+    "target": "elph_agent::session",
+    "module": "elph_agent::session",
+    "file": "session/mod.rs",
+    "line": 225,
+    "message": "release session lease",
+    "thread": "main"
+}
+```
+
+Timestamps are UTC. Optional `kv` is omitted when empty. Prompts, completions, tool args, and credentials are not attached.
+
+### Crash logs
+
+Panics append one `CrashRecord` to `{logs_dir}/crash-YYMMDDhh.jsonl` (2-digit year + month + day + UTC hour). Example: `2026-08-18T14:07:00Z` → `crash-26081814.jsonl`. Multiple panics in the same hour append extra lines.
 
 ## Cargo features
 
@@ -49,15 +77,30 @@ Without the `tracing` feature, span macros compile to no-ops and `with_trace_hea
 
 ## Environment variables
 
-Resolved by [`LoggingOptions::resolve`](../src/logger/options.rs) via [`AgentBuilder`](../src/builder.rs). The `elph` binary uses prefix `ELPH`.
+Resolved by [`LoggingOptions::builder`](../src/logger/options.rs) via [`AgentBuilder`](../src/builder.rs). The `elph` binary uses prefix `ELPH`. Env vars, when set, override `settings.json` `logging`.
 
-| Variable                 | Default | Effect                                                                                             |
-| ------------------------ | ------- | -------------------------------------------------------------------------------------------------- |
-| `{PREFIX}_TRACE`         | on      | Set to `0`, `false`, `off`, or `no` to disable tracing (file output, log bridge, HTTP propagation) |
-| `{PREFIX}_LOG_LEVEL`     | `info`  | `trace` / `debug` / `info` / `warn` / `error`                                                      |
-| `{PREFIX}_LOG_FILE`      | on      | Set to `0` to disable rolling JSONL logs                                                           |
-| `{PREFIX}_LOG_ROTATION`  | `daily` | `hourly`, `daily`, or `weekly`                                                                     |
-| `{PREFIX}_LOG_MAX_FILES` | —       | Cap retained rotated log files                                                                     |
+| Variable                  | Default | Effect                                                                                          |
+| ------------------------- | ------- | ----------------------------------------------------------------------------------------------- |
+| `{PREFIX}_TRACE`          | on      | Set to `0`, `false`, `off`, or `no` to disable tracing                                          |
+| `{PREFIX}_LOG_LEVEL`      | `info`  | rustlog spec: `info` or `elph_agent=debug,elph_ai=warn`                                         |
+| `{PREFIX}_LOG_FILE`       | on      | Set to `0` to disable rolling JSONL logs                                                        |
+| `{PREFIX}_LOG_ROTATION`   | `daily` | `hourly`, `daily`, or `size`                                                                    |
+| `{PREFIX}_LOG_MAX_FILES`  | —       | Cap retained rotated log files                                                                  |
+| `{PREFIX}_LOG_MAX_BYTES`  | —       | Size trigger (used with `size` rotation; default 10 MiB when rotation is `size`)                |
+| `{PREFIX}_LOG_CONSOLE`    | off     | Set to `1` to also write human text on stderr (the `elph` binary keeps this off for TUI/pipes)  |
+
+`settings.json` group (optional; restart required):
+
+```json
+"logging": {
+    "level": "info",
+    "file": true,
+    "rotation": "daily",
+    "maxFiles": null,
+    "maxBytes": null,
+    "trace": true
+}
+```
 
 Trace collection is skipped when `trace_enabled` is false, in unit tests (`cfg!(test)`), or when the reporter cannot be created (a warning is logged and execution continues).
 
@@ -88,12 +131,44 @@ Spans use stable `elph.*` names. Instrumentation is gated behind `#[cfg_attr(fea
 
 | Span name                  | Location                     | Notes                                 |
 | -------------------------- | ---------------------------- | ------------------------------------- |
-| `elph.agent.turn`          | `AgentHarness::prompt`       | Root of a user prompt turn            |
-| `elph.agent.execute_turn`  | `execute_turn`               | Turn body after queue drain           |
-| `elph.agent.loop`          | `run_agent_loop`             | Full agent loop for one turn          |
-| `elph.agent.loop_continue` | loop continuation            | Follow-up iterations in the same turn |
-| `elph.agent.tool_batch`    | tool batch dispatch          | Parallel tool call batch              |
-| `elph.agent.tool`          | `execute_prepared_tool_call` | Single tool execution                 |
+| `elph.agent.turn`            | `AgentHarness::prompt`            | Root of a user prompt turn              |
+| `elph.agent.skill`           | `AgentHarness::skill`             | `skill.name`                            |
+| `elph.agent.prompt_template` | `AgentHarness::prompt_from_template` | `template.name`                      |
+| `elph.agent.execute_turn`    | `execute_turn`                    | Turn body after queue drain             |
+| `elph.agent.loop`            | `run_agent_loop`                  | Full agent loop for one turn            |
+| `elph.agent.loop_continue`   | loop continuation                 | Follow-up iterations in the same turn   |
+| `elph.agent.tool_batch`      | tool batch dispatch               | Parallel tool call batch                |
+| `elph.agent.tool`            | `execute_prepared_tool_call`      | `tool.name`                             |
+| `elph.agent.compaction`      | `compact`                         | `model.id`, `model.provider`            |
+| `elph.agent.subagent_spawn`  | `AgentControl::spawn_agent`       | `subagent.id`                           |
+
+### Markdown (`rendown`)
+
+Library crate: no logger init, no fastrace spans. Emits `log` for mermaid render failure, syntax-highlight fallback, and ANSI write/stream I/O errors. Source markdown is never logged.
+
+Filter: `ELPH_LOG_LEVEL=rendown=debug`.
+
+### Memory (`floppy`)
+
+Library crate: no logger init, no fastrace spans. Emits `log` for store open/init/close, migrations, embedder load, decay/consolidate/purge/flush, and embed fallbacks. Memory **content** and search queries are never logged.
+
+Filter: `ELPH_LOG_LEVEL=floppy=debug`.
+
+### Host / CLI (`elph` binary, `coding-agent`)
+
+The binary initializes logging, then emits `log` records for process lifecycle. Filter with `ELPH_LOG_LEVEL=elph=debug`.
+
+- CLI dispatch (`cli start command=…`), TUI launch, headless `elph run`
+- Settings load/save
+- Session pin/delete
+- `/reload` workspace summary
+- All `cli_error` paths (`error:` on stderr + JSONL)
+
+Prompt text is never logged.
+
+### Terminal UI (`elph-tui`)
+
+`elph-tui` is a widget library: it does **not** initialize the logger and has no fastrace spans. It emits `log` records for I/O and config edges only (clipboard, theme, QR encode, CLI progress interrupt, paste size). Render/keystroke paths stay silent.
 
 ### MCP (`elph-agent`)
 
@@ -104,9 +179,15 @@ Spans use stable `elph.*` names. Instrumentation is gated behind `#[cfg_attr(fea
 
 ### Provider streaming (`elph-ai`)
 
-| Span name        | Location                                        | Properties                                |
-| ---------------- | ----------------------------------------------- | ----------------------------------------- |
-| `elph.ai.stream` | `Models::lazy_stream` via `trace::spawn_stream` | `model.id`, `model.provider`, `model.api` |
+| Span name                | Location                                              | Properties / events                                      |
+| ------------------------ | ----------------------------------------------------- | -------------------------------------------------------- |
+| `elph.ai.stream`         | `Models::lazy_stream` via `trace::spawn_stream`       | `model.id`, `model.provider`, `model.api`; event `first_token` |
+| `elph.ai.http`           | `send_with_resilience` / `send_with_resilience_retry` | `provider.id`; event `retry`                             |
+| `elph.ai.auth`           | `resolve_provider_auth`                               | `provider.id`                                            |
+| `elph.ai.oauth.login`    | `oauth_provider_login`                                | `provider.id`                                            |
+| `elph.ai.oauth.refresh`  | `refresh_oauth_token`                                 | `provider.id`                                            |
+| `elph.ai.images`         | `ImagesModels::generate_images`                       | `model.id`, `model.provider`                             |
+| `elph.ai.websocket`      | `connect_websocket_with_proxy`                        | `ws.host`, `ws.port`                                     |
 
 Example trace tree for one prompt turn:
 
@@ -115,6 +196,8 @@ elph.agent.turn
 └─ elph.agent.execute_turn
    └─ elph.agent.loop
       ├─ elph.ai.stream          (model.id, model.provider, model.api)
+      │  ├─ elph.ai.auth
+      │  └─ elph.ai.http         (retry events)
       ├─ elph.agent.tool_batch
       │  └─ elph.agent.tool
       └─ elph.agent.loop_continue
@@ -163,6 +246,16 @@ Unsafe by default (not captured):
 - provider request/response bodies
 - API keys and auth headers
 
+### Provider HTTP logs (`elph-ai`)
+
+| Event | Level | Fields |
+| ----- | ----- | ------ |
+| Successful provider HTTP | `debug` | status, `provider=` — no body |
+| Stream complete | `info` | `provider=`, `model=`, token usage (`in`/`out`/`cache_read`/`cache_write`/`total`), stop `reason` |
+| HTTP 4xx/5xx | `warn` | status, `provider=`, short snippet from JSON `error`/`message`/`code`/`type` (≤160 chars) |
+
+Non-JSON error bodies log as `(non-json error body)` so HTML or echoed prompts never land in the file. The `anyhow` error returned to callers still includes the truncated (4000-char) body.
+
 Opt-in content capture and redaction hooks remain future work.
 
 ## Tests
@@ -186,9 +279,9 @@ The original runtime-agnostic `ElphObservability` trait design (custom event bus
 
 | Area                 | Planned span / capability                                                 |
 | -------------------- | ------------------------------------------------------------------------- |
-| Harness entry points | `elph.agent.skill`, `elph.agent.prompt_template`, `elph.agent.compaction` |
+| Harness entry points | remaining hook/plan-mode spans |
 | Session I/O          | `elph.session.append_entry`, `elph.session.read`, `elph.session.write`    |
-| Provider detail      | `elph.ai.provider.request`, retry/first-token/usage events                |
+| Provider detail      | usage token fields on fastrace stream spans (JSONL usage log is implemented) |
 | User context         | `run_with_elph_context` — arbitrary key/value on every event              |
 | Adapters             | OTel span export, Sentry bridge, custom `Reporter` implementations        |
 | Redaction            | Opt-in payload capture with explicit scrubbing hooks                      |

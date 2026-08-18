@@ -12,7 +12,7 @@ pub mod paths;
 mod project;
 pub mod scaffold;
 mod session;
-mod settings;
+pub mod settings;
 
 pub use crate::utils::path::AppPaths;
 #[cfg(unix)]
@@ -26,7 +26,8 @@ pub use interrupt::PromptInterrupt;
 pub use interrupt::{handle_prompt_interrupt, handle_prompt_interrupt_text};
 pub use paths::Paths;
 pub use project::ensure as ensure_project;
+pub use scaffold::DefaultProjectTrust;
 pub use settings::{
-    CodegraphSettings, EmbedSettings, FilePickerSettings, GpuAcceleration, McpSettings, MemorySettings, ModelsSettings,
-    NotificationSettings, Settings, SettingsScope, UiSettings,
+    EmbedSettings, GpuAcceleration, MemorySettings, ModelsSettings, NotificationSettings, ResourcesSettings,
+    SessionSettings, Settings, SettingsScope, UiSettings,
 };

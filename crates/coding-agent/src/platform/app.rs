@@ -41,7 +41,7 @@ pub const EXIT_INTERRUPTED: ExitCode = 130;
 /// Launch the TUI app. Returns a process exit code.
 pub fn run(resume_id: Option<String>) -> ExitCode {
     // `try_block_on` wraps the future result: outer = runtime errors, inner = TUI errors.
-    let result = elph_agent::try_block_on(crate::tui::run_tui(crate::tui::TuiOptions { resume_id }));
+    let result = elph_agent::runtime::try_block_on(crate::tui::run_tui(crate::tui::TuiOptions { resume_id }));
     exit_message::print_and_clear();
     match result {
         Ok(Ok(())) => EXIT_SUCCESS,

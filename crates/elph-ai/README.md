@@ -85,9 +85,13 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-elph-ai = "0.0.21"
+elph-ai = "0.0.28"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
+
+Optional features: `bedrock` (Amazon Bedrock SDK), `oauth-callback` (local browser OAuth server), `tracing`. Catalog regen is `generate-models` (not pulled by library users).
+
+MSRV is **Rust 1.88** (edition 2024). Third-party hosts set [`ClientIdentity`](src/types/mod.rs) on `CreateModelsOptions` and pass the same identity into OAuth login / `ResilienceManager::with_env_prefix`. Default remains `elph` / `ELPH`. See [the consumer contract](../../docs/elph-ai.md) and <https://docs.rs/elph-ai>.
 
 Or from the workspace:
 
@@ -185,7 +189,7 @@ async fn main() -> anyhow::Result<()> {
 }
 ```
 
-See [`examples/opencode_big_pickle.rs`](examples/opencode_big_pickle.rs) for a runnable example with progress output and streaming flags.
+See [`examples/basic.rs`](examples/basic.rs) for a runnable example with streaming flags.
 
 ## Providers and Models
 
@@ -1023,7 +1027,7 @@ Subcommands:
 | `test-image` | local fixture                  | `tests/data/red-circle.png`                     |
 | `all`        | chat + image + test-image      | everything                                      |
 
-User override schema: [`schemas/provider-schema.json`](../../schemas/provider-schema.json) — files matching it are merged over the embedded catalogs by `install_provider_catalog_dir`.
+User override schema: [`schemas/provider-schema.json`](../../schemas/provider-schema.json) (`https://elph.space/provider-schema.json`). Generated and unpacked catalogs stamp `$schema`; disk files are merged over the embedded catalogs by `install_provider_catalog_dir`.
 
 ### Adding a New Provider
 

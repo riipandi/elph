@@ -13,4 +13,4 @@
 
 <!-- `make check-elph && make lint-elph && make test-elph` (or tui), plus any manual CLI/TUI path. -->
 
-Update `docs/` in this PR if CLI, crate API, config, or user-visible behavior changed. Do not edit generated OpenWiki pages.
+Update `docs/` in this PR if CLI, crate API, config, or user-visible behavior changed.

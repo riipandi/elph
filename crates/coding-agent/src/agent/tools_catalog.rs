@@ -6,9 +6,12 @@
 //! `name_prefix` + `added_tool_names`.
 
 use anyhow::Result;
+use elph_agent::collaboration::is_mcp_tool;
 use elph_agent::create_list_available_tools;
 use elph_agent::create_list_skills_tool;
-use elph_agent::{AgentHarness, CollaborationMode, McpToolRegistry, TursoSessionStorage, is_mcp_tool};
+use elph_agent::harness::AgentHarness;
+use elph_agent::mcp::McpToolRegistry;
+use elph_agent::session::TursoSessionStorage;
 
 use crate::types::AgentMode;
 
@@ -92,6 +95,7 @@ pub async fn reconcile_harness_tools(
     harness: &AgentHarness<TursoSessionStorage>,
     mode: AgentMode,
     mcp_registry: Option<&McpToolRegistry>,
+    default_tools: Option<&[String]>,
 ) -> Result<()> {
     let all_registered: Vec<String> = harness
         .get_tools()
@@ -106,7 +110,8 @@ pub async fn reconcile_harness_tools(
         .map(|tool| tool.name().to_string())
         .collect();
 
-    let base = AgentModePolicy::active_tool_names_for_mode(mode, &all_registered, mcp_registry);
+    let mut base = AgentModePolicy::active_tool_names_for_mode(mode, &all_registered, mcp_registry);
+    base = crate::platform::settings::apply::filter_default_tools(&base, default_tools);
     let active = preserve_activated_mcp(mode, &base, &currently_active, &all_registered, mcp_registry);
 
     match mode {
@@ -120,10 +125,7 @@ pub async fn reconcile_harness_tools(
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
         }
         AgentMode::Build | AgentMode::Brave | AgentMode::Ask => {
-            harness
-                .set_collaboration_mode(CollaborationMode::Default)
-                .await
-                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            harness.exit_plan_mode().await.map_err(|e| anyhow::anyhow!("{e}"))?;
             harness
                 .set_active_tools(active.clone())
                 .await

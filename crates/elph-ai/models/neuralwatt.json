@@ -1,4 +1,5 @@
 {
+    "$schema": "https://elph.space/provider-schema.json",
     "deepseek-v4-flash": {
         "api": "openai-completions",
         "baseUrl": "https://api.neuralwatt.com/v1",

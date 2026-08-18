@@ -29,13 +29,20 @@ pub fn radius_oauth_loader() -> OAuthLoader {
 fn radius_oauth_impl() -> OAuthAuth {
     OAuthAuth {
         name: "Inflection AI (pi-messages)".to_string(),
-        login: Arc::new(|callbacks: Arc<dyn AuthLoginCallbacks>| {
+        login: Arc::new(|callbacks, _identity| {
             Box::pin(async move {
-                let creds = login_radius(&callbacks).await?;
-                Ok(creds)
+                login_radius(&callbacks)
+                    .await
+                    .map_err(super::map_oauth("Radius login failed"))
             })
         }),
-        refresh: Arc::new(|credential| Box::pin(async move { refresh_radius_token(&credential.refresh).await })),
+        refresh: Arc::new(|credential| {
+            Box::pin(async move {
+                refresh_radius_token(&credential.refresh)
+                    .await
+                    .map_err(super::map_oauth("Radius token refresh failed"))
+            })
+        }),
         to_auth: Arc::new(|credential| {
             Box::pin(async move {
                 Ok(crate::auth::types::ModelAuth {

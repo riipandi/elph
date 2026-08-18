@@ -1,4 +1,5 @@
 {
+    "$schema": "https://elph.space/provider-schema.json",
     "accounts/fireworks/models/deepseek-v4-flash": {
         "api": "anthropic-messages",
         "baseUrl": "https://api.fireworks.ai/inference",

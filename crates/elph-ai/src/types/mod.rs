@@ -1,7 +1,4 @@
-//! Core types for elph-ai provider streaming.
-//!
-//! Full type definitions will be expanded separately; this module provides the
-//! contract assumed by the API implementation layer.
+//! Core types for elph-ai: messages, models, stream options, and host identity.
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -57,7 +54,7 @@ pub enum Transport {
     Auto,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ThinkingBudgets {
     pub minimal: Option<u32>,
     pub low: Option<u32>,
@@ -69,6 +66,47 @@ pub struct ThinkingBudgets {
 pub struct ProviderResponse {
     pub status: u16,
     pub headers: HashMap<String, String>,
+}
+
+/// Host product identity used for provider headers and prefixed environment keys.
+///
+/// Defaults keep the Elph product names (`product = "elph"`, `env_prefix = "ELPH"`).
+/// Set this on [`crate::CreateModelsOptions`] for a collection, and pass the same
+/// value to [`crate::auth::oauth_provider_login`] / [`crate::resilience::ResilienceManager::with_env_prefix`].
+/// Identity is **not** process-global: two collections can use different prefixes.
+///
+/// `env_prefix` is the first segment of process env keys, without a trailing underscore:
+/// `MYAPP` → `MYAPP_CACHE_RETENTION`, `MYAPP_GITHUB_HOST`, `MYAPP_RATE_LIMIT_*`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientIdentity {
+    /// Sent as Codex `originator`, xAI `referrer`, and similar client tags.
+    pub product: String,
+    /// Prefix for process env keys (`CACHE_RETENTION`, `GITHUB_HOST`, rate-limit vars).
+    pub env_prefix: String,
+}
+
+impl Default for ClientIdentity {
+    fn default() -> Self {
+        Self {
+            product: "elph".to_string(),
+            env_prefix: "ELPH".to_string(),
+        }
+    }
+}
+
+impl ClientIdentity {
+    /// Build an identity. `env_prefix` should be `SCREAMING_SNAKE` without a trailing `_`.
+    pub fn new(product: impl Into<String>, env_prefix: impl Into<String>) -> Self {
+        Self {
+            product: product.into(),
+            env_prefix: env_prefix.into(),
+        }
+    }
+
+    /// `{env_prefix}_{suffix}`, e.g. `ELPH` + `CACHE_RETENTION`.
+    pub fn env_key(&self, suffix: &str) -> String {
+        format!("{}_{suffix}", self.env_prefix)
+    }
 }
 
 #[derive(Clone, Default)]
@@ -95,6 +133,15 @@ pub struct StreamOptions {
     /// Arbitrary sampling parameters (e.g. `top_p`, `top_k`, `min_p`, `repetition_penalty`)
     /// merged into OpenAI-compatible request bodies. Overrides any model-level defaults.
     pub sampling_params: Option<HashMap<String, Value>>,
+    /// Host identity for this request. Filled from [`crate::CreateModelsOptions`] when unset.
+    pub identity: Option<ClientIdentity>,
+}
+
+impl StreamOptions {
+    /// Identity on this request, else [`ClientIdentity::default`] (`elph` / `ELPH`).
+    pub fn identity_or_default(&self) -> ClientIdentity {
+        self.identity.clone().unwrap_or_default()
+    }
 }
 
 pub type OnPayloadCallback =

@@ -30,8 +30,8 @@ pub fn slider_key_to_value(current: f32, min: f32, max: f32, code: KeyCode, step
 /// Step delta from a focused [`Slider`] key press.
 pub fn slider_key_delta(code: KeyCode, step: f32) -> Option<f32> {
     match code {
-        KeyCode::Left | KeyCode::Char('h') => Some(-step),
-        KeyCode::Right | KeyCode::Char('l') => Some(step),
+        KeyCode::Left => Some(-step),
+        KeyCode::Right => Some(step),
         _ => None,
     }
 }

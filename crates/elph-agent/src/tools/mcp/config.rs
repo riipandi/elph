@@ -57,15 +57,40 @@ fn default_true() -> bool {
 /// Typical locations:
 /// - **Home / global:** `~/.elph/mcp.json` (host config dir)
 /// - **Project override:** `<project>/.elph/mcp.json` (merged on top of home)
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct McpConfig {
+    /// JSON Schema URL for editor autocompletion. Ignored at runtime.
+    #[serde(rename = "$schema", default = "default_mcp_schema")]
+    pub schema: String,
     /// Named server definitions (key is `mcpServers` in JSON).
     #[serde(rename = "mcpServers", default)]
     pub servers: BTreeMap<String, McpServerConfig>,
     /// Global tool policy (merged with per-server `policy`).
     #[serde(default, skip_serializing_if = "McpPolicyConfig::is_empty")]
     pub policy: McpPolicyConfig,
+    /// Default tool-result cache TTL in seconds. `0` disables caching. Per-server `cacheTtlMs` wins.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cache_ttl_secs: Option<u64>,
+    /// Max cache entries before eviction.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cache_max_entries: Option<usize>,
+}
+
+fn default_mcp_schema() -> String {
+    "https://elph.space/mcp-schema.json".to_string()
+}
+
+impl Default for McpConfig {
+    fn default() -> Self {
+        Self {
+            schema: default_mcp_schema(),
+            servers: BTreeMap::new(),
+            policy: McpPolicyConfig::default(),
+            cache_ttl_secs: None,
+            cache_max_entries: None,
+        }
+    }
 }
 
 impl McpConfig {
@@ -78,7 +103,20 @@ impl McpConfig {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.servers.is_empty() && self.policy.is_empty()
+        self.servers.is_empty()
+            && self.policy.is_empty()
+            && self.cache_ttl_secs.is_none()
+            && self.cache_max_entries.is_none()
+    }
+
+    /// Effective cache TTL in seconds (`60` when unset). `0` disables caching.
+    pub fn cache_ttl_secs_or_default(&self) -> u64 {
+        self.cache_ttl_secs.unwrap_or(60)
+    }
+
+    /// Effective cache capacity (`2048` when unset).
+    pub fn cache_max_entries_or_default(&self) -> usize {
+        self.cache_max_entries.unwrap_or(2048)
     }
 
     pub fn server_count(&self) -> usize {
@@ -108,6 +146,15 @@ impl McpConfig {
         }
         for (name, server) in &overlay.servers {
             out.servers.insert(name.clone(), server.clone());
+        }
+        if overlay.cache_ttl_secs.is_some() {
+            out.cache_ttl_secs = overlay.cache_ttl_secs;
+        }
+        if overlay.cache_max_entries.is_some() {
+            out.cache_max_entries = overlay.cache_max_entries;
+        }
+        if !overlay.schema.is_empty() {
+            out.schema = overlay.schema.clone();
         }
         out
     }
@@ -571,6 +618,9 @@ pub struct McpLoadOptions {
     pub progress_tx: Option<mpsc::UnboundedSender<McpServerLoadProgress>>,
     /// Tool discovery strategy (default `lazy`).
     pub load_strategy: McpLoadStrategy,
+    /// When true, skip contacting servers during [`McpToolRegistry::load_with_options`].
+    /// Per-server `eager` is also deferred (TUI / ACP attach the catalog later).
+    pub skip_startup_discovery: bool,
     /// Optional persistent tool call result cache.
     pub cache_store: Option<std::sync::Arc<super::cache::McpCacheStore>>,
     /// Default tool result cache TTL (ms) when a server does not override it.
@@ -590,6 +640,7 @@ impl Default for McpLoadOptions {
             response_cache: McpResponseCacheConfig::default(),
             progress_tx: None,
             load_strategy: McpLoadStrategy::default(),
+            skip_startup_discovery: false,
             cache_store: None,
             default_cache_ttl_ms: super::cache::DEFAULT_CACHE_TTL_MS,
         }

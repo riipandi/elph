@@ -238,7 +238,9 @@ pub async fn spawn_subagent_harness(
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
         compaction_settings: crate::agent::harness::types::DEFAULT_COMPACTION_SETTINGS,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: Some(bootstrap.clone()),
         shared_registry: Some(shared_registry),

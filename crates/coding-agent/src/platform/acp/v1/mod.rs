@@ -13,11 +13,11 @@ use agent_client_protocol::schema::v1::{
     ListSessionsResponse, LoadSessionRequest, LoadSessionResponse, LogoutCapabilities, LogoutRequest, LogoutResponse,
     NewSessionRequest, NewSessionResponse, PermissionOption, PermissionOptionKind, Plan, PlanEntry, PlanEntryPriority,
     PlanEntryStatus, PromptCapabilities, PromptRequest, PromptResponse, RequestPermissionOutcome,
-    RequestPermissionRequest, ResumeSessionRequest, ResumeSessionResponse, SessionConfigOption,
-    SessionConfigOptionCategory, SessionConfigSelectOption, SessionId, SessionInfo, SessionListCapabilities,
-    SessionMode, SessionModeState, SessionNotification, SessionUpdate, SetSessionConfigOptionRequest,
-    SetSessionConfigOptionResponse, SetSessionModeRequest, SetSessionModeResponse, StopReason, TextContent, ToolCall,
-    ToolCallStatus, ToolCallUpdate, ToolKind,
+    RequestPermissionRequest, ResumeSessionRequest, ResumeSessionResponse, SessionAdditionalDirectoriesCapabilities,
+    SessionConfigOption, SessionConfigOptionCategory, SessionConfigSelectOption, SessionDeleteCapabilities, SessionId,
+    SessionInfo, SessionListCapabilities, SessionMode, SessionModeState, SessionNotification, SessionUpdate,
+    SetSessionConfigOptionRequest, SetSessionConfigOptionResponse, SetSessionModeRequest, SetSessionModeResponse,
+    StopReason, TextContent, ToolCall, ToolCallStatus, ToolCallUpdate, ToolKind,
 };
 use agent_client_protocol::{Agent, Client, ConnectionTo, Result as AcpResult};
 use parking_lot::Mutex;
@@ -112,19 +112,32 @@ where
                     let state = Arc::clone(&state);
                     let conn = connection.clone();
                     if let Err(error) = connection.spawn(async move {
-                        match open_or_create(&state, &request.cwd, request.additional_directories.clone(), None).await {
-                            Ok(id) => {
-                                v1_after_open(&state, &conn, &id, mcp::map_v1_servers(&request.mcp_servers)).await;
+                        let opened = tokio::spawn({
+                            let state = Arc::clone(&state);
+                            let cwd = request.cwd.clone();
+                            let extra = request.additional_directories.clone();
+                            async move { open_or_create(&state, &cwd, extra, None).await }
+                        })
+                        .await;
+                        match opened {
+                            Ok(Ok(id)) => {
                                 let (modes, options) = v1_config_extras(&state, &id).await;
                                 let _ = responder.respond(
                                     NewSessionResponse::new(SessionId::from(id.clone()))
                                         .modes(modes)
                                         .config_options(options),
                                 );
+                                v1_after_open(&state, &conn, &id, mcp::map_v1_servers(&request.mcp_servers)).await;
                             }
-                            Err(error) => {
+                            Ok(Err(error)) => {
                                 let _ = responder
                                     .respond_with_error(agent_client_protocol::util::internal_error(error.to_string()));
+                            }
+                            Err(join) => {
+                                log::error!("ACP v1 session/new panicked: {join}");
+                                let _ = responder.respond_with_error(agent_client_protocol::util::internal_error(
+                                    format!("session/new panicked: {join}"),
+                                ));
                             }
                         }
                         Ok(())
@@ -156,13 +169,13 @@ where
                         .await
                         {
                             Ok(id) => {
-                                v1_after_open(&state, &conn, &id, mcp::map_v1_servers(&request.mcp_servers)).await;
                                 let (modes, options) = v1_config_extras(&state, &id).await;
                                 let _ =
                                     responder.respond(LoadSessionResponse::new().modes(modes).config_options(options));
                                 if let Ok((session, _, _)) = lookup_session(&state, &id) {
                                     let _ = replay_v1(&conn, &id, &session).await;
                                 }
+                                v1_after_open(&state, &conn, &id, mcp::map_v1_servers(&request.mcp_servers)).await;
                             }
                             Err(error) => {
                                 let _ = responder
@@ -198,10 +211,10 @@ where
                         .await
                         {
                             Ok(id) => {
-                                v1_after_open(&state, &conn, &id, mcp::map_v1_servers(&request.mcp_servers)).await;
                                 let (modes, options) = v1_config_extras(&state, &id).await;
                                 let _ = responder
                                     .respond(ResumeSessionResponse::new().modes(modes).config_options(options));
+                                v1_after_open(&state, &conn, &id, mcp::map_v1_servers(&request.mcp_servers)).await;
                             }
                             Err(error) => {
                                 let _ = responder
@@ -417,7 +430,7 @@ where
 async fn attach_v1_mcp(
     state: &Arc<Mutex<AcpAgentState>>,
     session_id: &str,
-    servers: Vec<(String, elph_agent::McpServerConfig)>,
+    servers: Vec<(String, elph_agent::mcp::McpServerConfig)>,
 ) {
     if servers.is_empty() {
         return;
@@ -464,8 +477,13 @@ async fn v1_after_open(
     state: &Arc<Mutex<AcpAgentState>>,
     connection: &ConnectionTo<Client>,
     session_id: &str,
-    servers: Vec<(String, elph_agent::McpServerConfig)>,
+    servers: Vec<(String, elph_agent::mcp::McpServerConfig)>,
 ) {
+    if let Ok((session, _, _)) = lookup_session(state, session_id)
+        && let Err(error) = send_v1_commands(connection, session_id, &session).await
+    {
+        log::warn!("ACP v1 available commands: {error:#}");
+    }
     attach_v1_mcp(state, session_id, servers).await;
     if let Ok((session, _, _)) = lookup_session(state, session_id) {
         session.ensure_mcp_tools_ready().await;
@@ -549,7 +567,9 @@ fn v1_capabilities() -> AgentCapabilities {
             agent_client_protocol::schema::v1::SessionCapabilities::new()
                 .list(SessionListCapabilities::new())
                 .resume(agent_client_protocol::schema::v1::SessionResumeCapabilities::new())
-                .close(agent_client_protocol::schema::v1::SessionCloseCapabilities::new()),
+                .close(agent_client_protocol::schema::v1::SessionCloseCapabilities::new())
+                .delete(SessionDeleteCapabilities::new())
+                .additional_directories(SessionAdditionalDirectoriesCapabilities::new()),
         )
 }
 
@@ -643,7 +663,19 @@ async fn run_prompt(
 ) -> anyhow::Result<StopReason> {
     let key = request.session_id.0.as_ref().to_string();
     let (session, ui_rx, _) = lookup_session(state, &key)?;
-    let mut text = extract_text(&request.prompt)?;
+    let mut text = match extract_text(&request.prompt) {
+        Ok(text) => text,
+        Err(error) => {
+            notify(
+                connection,
+                &key,
+                SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::Text(TextContent::new(format!(
+                    "Could not read prompt: {error:#}"
+                ))))),
+            )?;
+            return Ok(StopReason::EndTurn);
+        }
+    };
     if state.lock().client_fs_read {
         text = hydrate_v1_files(connection, &key, text).await;
     }
@@ -694,16 +726,10 @@ where
     let gate = crate::platform::acp::state::session_stream_gate(state, key);
     let mut submit = tokio::spawn(submit);
     let Some(gate) = gate else {
-        return submit
-            .await
-            .unwrap_or_else(|e| Err(anyhow::anyhow!("{e}")))
-            .map(|()| StopReason::EndTurn);
+        return v1_finish_submit_only(connection, key, submit).await;
     };
     let Ok(_permit) = gate.try_lock() else {
-        return submit
-            .await
-            .unwrap_or_else(|e| Err(anyhow::anyhow!("{e}")))
-            .map(|()| StopReason::EndTurn);
+        return v1_finish_submit_only(connection, key, submit).await;
     };
 
     let mut submit_done = false;
@@ -770,10 +796,35 @@ where
         }
     }
 
-    match submit_err {
-        Some(error) => Err(error),
-        None => Ok(StopReason::EndTurn),
+    if let Some(error) = submit_err {
+        let _ = notify(
+            connection,
+            key,
+            SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::Text(TextContent::new(format!(
+                "Error: {error:#}"
+            ))))),
+        );
+        return Ok(StopReason::EndTurn);
     }
+    Ok(StopReason::EndTurn)
+}
+
+async fn v1_finish_submit_only(
+    connection: &ConnectionTo<Client>,
+    key: &str,
+    submit: tokio::task::JoinHandle<anyhow::Result<()>>,
+) -> anyhow::Result<StopReason> {
+    let message = match submit.await {
+        Ok(Ok(())) => "Turn finished, but output could not be streamed.".to_string(),
+        Ok(Err(error)) => format!("Error: {error:#}"),
+        Err(join) => format!("Turn panicked: {join}"),
+    };
+    let _ = notify(
+        connection,
+        key,
+        SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::Text(TextContent::new(message)))),
+    );
+    Ok(StopReason::EndTurn)
 }
 
 async fn run_slash_v1(
@@ -782,7 +833,20 @@ async fn run_slash_v1(
     key: &str,
     input: &str,
 ) -> anyhow::Result<StopReason> {
-    match crate::platform::acp::commands::resolve_slash(state, key, input).await? {
+    let outcome = match crate::platform::acp::commands::resolve_slash(state, key, input).await {
+        Ok(outcome) => outcome,
+        Err(error) => {
+            notify(
+                connection,
+                key,
+                SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::Text(TextContent::new(format!(
+                    "Slash command failed: {error:#}"
+                ))))),
+            )?;
+            return Ok(StopReason::EndTurn);
+        }
+    };
+    match outcome {
         crate::platform::acp::commands::SlashOutcome::Text(text) => {
             notify(
                 connection,
@@ -809,25 +873,57 @@ async fn run_slash_v1(
         }
         crate::platform::acp::commands::SlashOutcome::Skill { name, args } => {
             let (session, ui_rx, _) = lookup_session(state, key)?;
-            race_v1(
+            match race_v1(
                 state,
                 connection,
                 key,
-                async move { session.invoke_skill(&name, &args).await },
+                {
+                    let name = name.clone();
+                    async move { session.invoke_skill(&name, &args).await }
+                },
                 &ui_rx,
             )
             .await
+            {
+                Ok(reason) => Ok(reason),
+                Err(error) => {
+                    notify(
+                        connection,
+                        key,
+                        SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::Text(TextContent::new(
+                            format!("Skill `/{name}` failed: {error:#}"),
+                        )))),
+                    )?;
+                    Ok(StopReason::EndTurn)
+                }
+            }
         }
         crate::platform::acp::commands::SlashOutcome::PromptTemplate { name, args } => {
             let (session, ui_rx, _) = lookup_session(state, key)?;
-            race_v1(
+            match race_v1(
                 state,
                 connection,
                 key,
-                async move { session.prompt_from_template(&name, &args).await },
+                {
+                    let name = name.clone();
+                    async move { session.prompt_from_template(&name, &args).await }
+                },
                 &ui_rx,
             )
             .await
+            {
+                Ok(reason) => Ok(reason),
+                Err(error) => {
+                    notify(
+                        connection,
+                        key,
+                        SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::Text(TextContent::new(
+                            format!("Template `/{name}` failed: {error:#}"),
+                        )))),
+                    )?;
+                    Ok(StopReason::EndTurn)
+                }
+            }
         }
         crate::platform::acp::commands::SlashOutcome::Reloaded(text) => {
             if let Ok((session, _, _)) = lookup_session(state, key) {
@@ -893,23 +989,52 @@ async fn apply_v1_event(
                 )))),
             )?;
         }
-        AgentUiEvent::Retrying { .. } | AgentUiEvent::Status(_) => {}
+        AgentUiEvent::Retrying { attempt } => {
+            notify(
+                connection,
+                key,
+                SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::Text(TextContent::new(format!(
+                    "Provider is rate-limited or busy — retrying (attempt {attempt})…"
+                ))))),
+            )?;
+        }
+        AgentUiEvent::Status(line) if !line.is_empty() => {
+            notify(
+                connection,
+                key,
+                SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::Text(TextContent::new(
+                    crate::platform::acp::updates::acp_status_text(&line),
+                )))),
+            )?;
+        }
+        AgentUiEvent::Status(_) => {}
         AgentUiEvent::ToolStart {
             id, name, args_summary, ..
         } => {
-            crate::platform::acp::tools::track_tool_start(
-                state,
-                &agent_client_protocol::schema::v2::SessionId::from(key.to_string()),
-                &id,
-                &name,
-            );
-            let call = ToolCall::new(id, name.clone())
-                .kind(map_kind(&name))
-                .status(ToolCallStatus::InProgress)
-                .raw_input(serde_json::json!({ "summary": args_summary }));
-            notify(connection, key, SessionUpdate::ToolCall(call))?;
+            let sid = agent_client_protocol::schema::v2::SessionId::from(key.to_string());
+            let already = crate::platform::acp::tools::is_open_tool(state, &sid, &id);
+            if !already {
+                let call = ToolCall::new(id.clone(), name.clone())
+                    .kind(map_kind(&name))
+                    .status(ToolCallStatus::Pending)
+                    .raw_input(serde_json::json!({ "summary": args_summary }));
+                notify(connection, key, SessionUpdate::ToolCall(call))?;
+            }
+            crate::platform::acp::tools::track_tool_start(state, &sid, &id, &name);
+            let mut fields = agent_client_protocol::schema::v1::ToolCallUpdateFields::new();
+            fields.status = Some(ToolCallStatus::InProgress);
+            notify(connection, key, SessionUpdate::ToolCallUpdate(ToolCallUpdate::new(id, fields)))?;
         }
         AgentUiEvent::ToolUpdate { id, output } => {
+            let sid = agent_client_protocol::schema::v2::SessionId::from(key.to_string());
+            if !crate::platform::acp::tools::is_open_tool(state, &sid, &id) {
+                notify(
+                    connection,
+                    key,
+                    SessionUpdate::ToolCall(ToolCall::new(id.clone(), "tool").status(ToolCallStatus::InProgress)),
+                )?;
+                crate::platform::acp::tools::track_tool_start(state, &sid, &id, "tool");
+            }
             notify(
                 connection,
                 key,
@@ -943,8 +1068,8 @@ async fn apply_v1_event(
                         item.content.clone(),
                         PlanEntryPriority::Medium,
                         match item.status {
-                            elph_agent::TodoStatus::Completed => PlanEntryStatus::Completed,
-                            elph_agent::TodoStatus::InProgress => PlanEntryStatus::InProgress,
+                            elph_agent::todos::TodoStatus::Completed => PlanEntryStatus::Completed,
+                            elph_agent::todos::TodoStatus::InProgress => PlanEntryStatus::InProgress,
                             _ => PlanEntryStatus::Pending,
                         },
                     )
@@ -954,6 +1079,17 @@ async fn apply_v1_event(
         }
         AgentUiEvent::RunCompleted { .. } => {}
         AgentUiEvent::ToolApprovalRequired(req) => {
+            crate::platform::acp::tools::track_tool_start(
+                state,
+                &agent_client_protocol::schema::v2::SessionId::from(key.to_string()),
+                &req.tool_call_id,
+                &req.tool_name,
+            );
+            let call = ToolCall::new(req.tool_call_id.clone(), req.tool_name.clone())
+                .kind(map_kind(&req.tool_name))
+                .status(ToolCallStatus::Pending)
+                .raw_input(serde_json::json!({ "summary": req.args_summary }));
+            notify(connection, key, SessionUpdate::ToolCall(call))?;
             let choice = request_v1_tool_approval(connection, key, &req, cancel).await;
             let _ = req.response_tx.send(choice);
         }
@@ -980,6 +1116,8 @@ async fn apply_v1_event(
                     PermissionOption::new("implement", "Implement plan", PermissionOptionKind::AllowOnce),
                     PermissionOption::new("fresh", "Implement in a fresh context", PermissionOptionKind::AllowOnce),
                     PermissionOption::new("stay", "Stay in plan mode", PermissionOptionKind::RejectOnce),
+                    PermissionOption::new("revise", "Request changes", PermissionOptionKind::RejectOnce),
+                    PermissionOption::new("quit", "Leave plan mode", PermissionOptionKind::RejectOnce),
                 ];
                 let mut fields = agent_client_protocol::schema::v1::ToolCallUpdateFields::new();
                 fields.title = Some("Approve plan".into());
@@ -989,12 +1127,30 @@ async fn apply_v1_event(
                     ToolCallUpdate::new("plan_confirm", fields),
                     options,
                 );
-                let choice = match send_v1_permission(connection, request, cancel.clone()).await.as_deref() {
-                    Some("implement") => elph_agent::PlanConfirmationChoice::Implement,
-                    Some("fresh") => elph_agent::PlanConfirmationChoice::ImplementFresh,
-                    _ => elph_agent::PlanConfirmationChoice::StayInPlan,
-                };
-                let _ = session.resolve_plan(choice).await;
+                match send_v1_permission(connection, request, cancel.clone()).await.as_deref() {
+                    Some("implement") => {
+                        let _ = session
+                            .resolve_plan(elph_agent::collaboration::PlanConfirmationChoice::Implement)
+                            .await;
+                    }
+                    Some("fresh") => {
+                        let _ = session
+                            .resolve_plan(elph_agent::collaboration::PlanConfirmationChoice::ImplementFresh)
+                            .await;
+                    }
+                    Some("revise") => {
+                        let _ = session.clear_pending_plan().await;
+                    }
+                    Some("quit") => {
+                        let _ = session.clear_pending_plan().await;
+                        let _ = session.set_agent_mode(crate::types::AgentMode::Build).await;
+                    }
+                    _ => {
+                        let _ = session
+                            .resolve_plan(elph_agent::collaboration::PlanConfirmationChoice::StayInPlan)
+                            .await;
+                    }
+                }
             }
         }
         _ => {}
@@ -1102,12 +1258,19 @@ async fn request_v1_tool_approval(
     req: &crate::agent::ToolApprovalRequest,
     cancel: Option<Arc<tokio::sync::Notify>>,
 ) -> crate::agent::ToolApprovalChoice {
-    let options = vec![
-        PermissionOption::new("allow-once", "Allow once", PermissionOptionKind::AllowOnce),
-        PermissionOption::new("allow-session", "Allow for session", PermissionOptionKind::AllowAlways),
-        PermissionOption::new("allow-all", "Allow all tools", PermissionOptionKind::AllowAlways),
-        PermissionOption::new("reject", "Reject", PermissionOptionKind::RejectOnce),
-    ];
+    let options = if req.once_only {
+        vec![
+            PermissionOption::new("allow-once", "Allow once", PermissionOptionKind::AllowOnce),
+            PermissionOption::new("reject", "Reject", PermissionOptionKind::RejectOnce),
+        ]
+    } else {
+        vec![
+            PermissionOption::new("allow-once", "Allow once", PermissionOptionKind::AllowOnce),
+            PermissionOption::new("allow-session", "Allow for session", PermissionOptionKind::AllowAlways),
+            PermissionOption::new("allow-all", "Allow all tools", PermissionOptionKind::AllowAlways),
+            PermissionOption::new("reject", "Reject", PermissionOptionKind::RejectOnce),
+        ]
+    };
     let mut fields = agent_client_protocol::schema::v1::ToolCallUpdateFields::new();
     fields.title = Some(req.tool_name.clone());
     let request = RequestPermissionRequest::new(

@@ -24,8 +24,11 @@ where
         options: Option<AgentHarnessPromptOptions>,
     ) -> HarnessOpResult<AssistantMessage> {
         if self.phase_async().await != AgentHarnessPhase::Idle {
+            log::warn!("harness prompt rejected: busy");
             return Err(AgentHarnessError::new(AgentHarnessErrorCode::Busy, "AgentHarness is busy"));
         }
+        log::debug!("harness turn start");
+        crate::trace::add_event("turn_start");
         *self.shared.phase.lock().await = AgentHarnessPhase::Turn;
         self.begin_run().await;
         let op_id = self
@@ -46,16 +49,26 @@ where
             .journal_operation_finished(op_id, outcome, result.as_ref().err().map(|e| e.to_string()))
             .await;
         if result.is_err() {
+            log::warn!(
+                "harness turn failed: {}",
+                result.as_ref().err().map(|e| e.to_string()).unwrap_or_default()
+            );
             *self.shared.phase.lock().await = AgentHarnessPhase::Idle;
+        } else {
+            log::debug!("harness turn ok");
         }
         self.finish_run().await;
         result
     }
 
+    #[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.agent.skill"))]
     pub async fn skill(&self, name: &str, additional_instructions: Option<&str>) -> HarnessOpResult<AssistantMessage> {
+        crate::trace::add_property("skill.name", name);
         if self.phase_async().await != AgentHarnessPhase::Idle {
+            log::warn!("harness skill rejected: busy name={name}");
             return Err(AgentHarnessError::new(AgentHarnessErrorCode::Busy, "AgentHarness is busy"));
         }
+        log::debug!("harness skill start name={name}");
         *self.shared.phase.lock().await = AgentHarnessPhase::Turn;
         self.begin_run().await;
         let op_id = self
@@ -76,6 +89,7 @@ where
                 .iter()
                 .find(|skill| skill.name == name)
                 .ok_or_else(|| {
+                    log::warn!("harness skill unknown name={name}");
                     AgentHarnessError::new(AgentHarnessErrorCode::InvalidArgument, format!("Unknown skill: {name}"))
                 })?;
             let text = format_skill_invocation(skill, additional_instructions);
@@ -98,10 +112,14 @@ where
         result
     }
 
+    #[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.agent.prompt_template"))]
     pub async fn prompt_from_template(&self, name: &str, args: &[String]) -> HarnessOpResult<AssistantMessage> {
+        crate::trace::add_property("template.name", name);
         if self.phase_async().await != AgentHarnessPhase::Idle {
+            log::warn!("harness template rejected: busy name={name}");
             return Err(AgentHarnessError::new(AgentHarnessErrorCode::Busy, "AgentHarness is busy"));
         }
+        log::debug!("harness template start name={name}");
         *self.shared.phase.lock().await = AgentHarnessPhase::Turn;
         self.begin_run().await;
         let op_id = self
@@ -123,6 +141,7 @@ where
                 .iter()
                 .find(|template| template.name == name)
                 .ok_or_else(|| {
+                    log::warn!("harness template unknown name={name}");
                     AgentHarnessError::new(
                         AgentHarnessErrorCode::InvalidArgument,
                         format!("Unknown prompt template: {name}"),

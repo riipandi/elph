@@ -18,12 +18,19 @@ pub async fn request_tool_approval(
     req: &ToolApprovalRequest,
     cancel: Option<Arc<Notify>>,
 ) -> ToolApprovalChoice {
-    let options = vec![
-        PermissionOption::new("allow-once", "Allow once", PermissionOptionKind::AllowOnce),
-        PermissionOption::new("allow-session", "Allow for session", PermissionOptionKind::AllowAlways),
-        PermissionOption::new("allow-all", "Allow all tools", PermissionOptionKind::AllowAlways),
-        PermissionOption::new("reject", "Reject", PermissionOptionKind::RejectOnce),
-    ];
+    let options = if req.once_only {
+        vec![
+            PermissionOption::new("allow-once", "Allow once", PermissionOptionKind::AllowOnce),
+            PermissionOption::new("reject", "Reject", PermissionOptionKind::RejectOnce),
+        ]
+    } else {
+        vec![
+            PermissionOption::new("allow-once", "Allow once", PermissionOptionKind::AllowOnce),
+            PermissionOption::new("allow-session", "Allow for session", PermissionOptionKind::AllowAlways),
+            PermissionOption::new("allow-all", "Allow all tools", PermissionOptionKind::AllowAlways),
+            PermissionOption::new("reject", "Reject", PermissionOptionKind::RejectOnce),
+        ]
+    };
     let subject = RequestPermissionSubject::from(
         ToolCallUpdate::new(req.tool_call_id.clone())
             .title(req.tool_name.clone())

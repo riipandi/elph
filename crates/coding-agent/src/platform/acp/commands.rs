@@ -13,7 +13,7 @@ use crate::agent::{
 };
 use crate::platform::Paths;
 use crate::platform::acp::state::{AcpAgentState, lookup_session};
-use crate::platform::acp::updates::{send_agent_text, send_idle, send_update};
+use crate::platform::acp::updates::{fail_visible, send_agent_text, send_idle, send_update};
 use crate::types::{SlashCommand, SlashCommandKind};
 
 use parking_lot::Mutex;
@@ -146,6 +146,14 @@ pub async fn resolve_slash(state: &Arc<Mutex<AcpAgentState>>, key: &str, input: 
         Some(SlashDispatch::SystemPrompt) => {
             let (session, _, _) = lookup_session(state, key)?;
             system_prompt_slash_message(Some(&session)).map_err(|e| anyhow::anyhow!("{e}"))?
+        }
+        Some(SlashDispatch::ViewPlan) => {
+            let (session, _, _) = lookup_session(state, key)?;
+            let paths = Paths::resolve().map_err(|e| anyhow::anyhow!("{e}"))?;
+            match crate::agent::plan_files::latest_plan_path(&paths, Some(session.session_id())) {
+                Some(path) => std::fs::read_to_string(path).unwrap_or_else(|e| format!("Could not read plan: {e}")),
+                None => "No plan written yet.".into(),
+            }
         }
         Some(SlashDispatch::SessionInfo) => {
             let (session, _, _) = lookup_session(state, key)?;
@@ -300,15 +308,33 @@ pub async fn handle_slash(
     input: &str,
 ) -> anyhow::Result<()> {
     let key = session_id.0.as_ref();
-    match resolve_slash(state, key, input).await? {
+    let outcome = match resolve_slash(state, key, input).await {
+        Ok(outcome) => outcome,
+        Err(error) => {
+            fail_visible(state, connection, session_id, &format!("Slash command failed: {error:#}"));
+            return Ok(());
+        }
+    };
+    match outcome {
         SlashOutcome::Text(text) => {
-            send_agent_text(connection, session_id, &text)?;
-            send_idle(connection, session_id, agent_client_protocol::schema::v2::StopReason::EndTurn)?;
+            send_agent_text(state, connection, session_id, &text)?;
+            send_idle(
+                state,
+                connection,
+                session_id,
+                agent_client_protocol::schema::v2::StopReason::EndTurn,
+            )?;
             Ok(())
         }
         SlashOutcome::Continue => {
-            let (session, ui_rx, _) = lookup_session(state, key)?;
-            crate::platform::acp::updates::drive_turn(
+            let (session, ui_rx, _) = match lookup_session(state, key) {
+                Ok(ctx) => ctx,
+                Err(error) => {
+                    fail_visible(state, connection, session_id, &format!("Slash command failed: {error:#}"));
+                    return Ok(());
+                }
+            };
+            if let Err(error) = crate::platform::acp::updates::drive_turn(
                 state,
                 connection,
                 session_id,
@@ -319,10 +345,20 @@ pub async fn handle_slash(
                 &ui_rx,
             )
             .await
+            {
+                fail_visible(state, connection, session_id, &format!("/continue failed: {error:#}"));
+            }
+            Ok(())
         }
         SlashOutcome::SubmitPrompt => {
-            let (session, ui_rx, _) = lookup_session(state, key)?;
-            crate::platform::acp::updates::drive_turn(
+            let (session, ui_rx, _) = match lookup_session(state, key) {
+                Ok(ctx) => ctx,
+                Err(error) => {
+                    fail_visible(state, connection, session_id, &format!("Slash command failed: {error:#}"));
+                    return Ok(());
+                }
+            };
+            if let Err(error) = crate::platform::acp::updates::drive_turn(
                 state,
                 connection,
                 session_id,
@@ -333,22 +369,68 @@ pub async fn handle_slash(
                 &ui_rx,
             )
             .await
+            {
+                fail_visible(state, connection, session_id, &format!("Prompt failed: {error:#}"));
+            }
+            Ok(())
         }
         SlashOutcome::Skill { name, args } => {
-            let (session, ui_rx, _) = lookup_session(state, key)?;
-            crate::platform::acp::updates::drive_skill(state, connection, session_id, session, name, args, &ui_rx).await
+            let (session, ui_rx, _) = match lookup_session(state, key) {
+                Ok(ctx) => ctx,
+                Err(error) => {
+                    fail_visible(state, connection, session_id, &format!("Slash command failed: {error:#}"));
+                    return Ok(());
+                }
+            };
+            if let Err(error) = crate::platform::acp::updates::drive_skill(
+                state,
+                connection,
+                session_id,
+                session,
+                name.clone(),
+                args,
+                &ui_rx,
+            )
+            .await
+            {
+                fail_visible(state, connection, session_id, &format!("Skill `/{name}` failed: {error:#}"));
+            }
+            Ok(())
         }
         SlashOutcome::PromptTemplate { name, args } => {
-            let (session, ui_rx, _) = lookup_session(state, key)?;
-            crate::platform::acp::updates::drive_template(state, connection, session_id, session, name, args, &ui_rx)
-                .await
+            let (session, ui_rx, _) = match lookup_session(state, key) {
+                Ok(ctx) => ctx,
+                Err(error) => {
+                    fail_visible(state, connection, session_id, &format!("Slash command failed: {error:#}"));
+                    return Ok(());
+                }
+            };
+            if let Err(error) = crate::platform::acp::updates::drive_template(
+                state,
+                connection,
+                session_id,
+                session,
+                name.clone(),
+                args,
+                &ui_rx,
+            )
+            .await
+            {
+                fail_visible(state, connection, session_id, &format!("Template `/{name}` failed: {error:#}"));
+            }
+            Ok(())
         }
         SlashOutcome::Reloaded(text) => {
             if let Ok((session, _, _)) = lookup_session(state, key) {
                 let _ = send_available_commands(connection, session_id, &session).await;
             }
-            send_agent_text(connection, session_id, &text)?;
-            send_idle(connection, session_id, agent_client_protocol::schema::v2::StopReason::EndTurn)?;
+            send_agent_text(state, connection, session_id, &text)?;
+            send_idle(
+                state,
+                connection,
+                session_id,
+                agent_client_protocol::schema::v2::StopReason::EndTurn,
+            )?;
             Ok(())
         }
     }
@@ -367,7 +449,7 @@ fn tui_only_message(dispatch: &SlashDispatch) -> String {
         SlashDispatch::ProviderUpdate { .. } => "Use `elph provider update`.".into(),
         SlashDispatch::McpAuth { .. } => "Use `elph mcp auth <name>` — ACP cannot open the TUI OAuth dialog.".into(),
         SlashDispatch::WorkerChat => "/intercom is TUI-only.".into(),
-        SlashDispatch::Handover { .. } => "/handover is TUI-only.".into(),
+        SlashDispatch::Transfer { .. } => "/transfer is TUI-only.".into(),
         SlashDispatch::Unimplemented(cmd) => format!("Slash command '{cmd}' is not available via ACP."),
         other => format!("Command {other:?} is not available via ACP."),
     }

@@ -1,6 +1,6 @@
 //! Context token estimation and cut-point selection.
 
-use elph_ai::utils::estimate::count_tokens_text;
+use elph_ai::estimate::count_tokens_text;
 use elph_ai::{AssistantContentBlock, Message, StopReason, Usage};
 use serde_json::Value;
 
@@ -222,7 +222,11 @@ fn find_valid_cut_points(entries: &[SessionTreeEntry], start_index: usize, end_i
 }
 
 /// Find the user-visible message that starts the turn containing an entry.
-pub fn find_turn_start_index(entries: &[SessionTreeEntry], entry_index: usize, start_index: usize) -> Option<usize> {
+pub(crate) fn find_turn_start_index(
+    entries: &[SessionTreeEntry],
+    entry_index: usize,
+    start_index: usize,
+) -> Option<usize> {
     for i in (start_index..=entry_index).rev() {
         match &entries[i] {
             SessionTreeEntry::BranchSummary { .. } | SessionTreeEntry::CustomMessage { .. } => return Some(i),
@@ -245,7 +249,7 @@ pub struct CutPointResult {
 }
 
 /// Find the compaction cut point that keeps approximately the requested recent-token budget.
-pub fn find_cut_point(
+pub(crate) fn find_cut_point(
     entries: &[SessionTreeEntry],
     start_index: usize,
     end_index: usize,
@@ -338,5 +342,52 @@ mod tests {
         assert_eq!(estimate_tokens_with_system_prompt(est, None), 1234);
         let est = estimate(1234, None);
         assert_eq!(estimate_tokens_with_system_prompt(est, None), 1234);
+    }
+
+    fn user_message(text: &str) -> crate::types::AgentMessage {
+        crate::types::AgentMessage::Llm(Box::new(elph_ai::Message::User {
+            content: elph_ai::UserContent::Text(text.to_string()),
+            timestamp: 0,
+        }))
+    }
+
+    fn assistant_message(text: &str) -> crate::types::AgentMessage {
+        crate::types::AgentMessage::Llm(Box::new(elph_ai::Message::Assistant(elph_ai::faux_assistant_message(
+            vec![elph_ai::faux_text(text)],
+            None,
+        ))))
+    }
+
+    fn message_entry(id: &str, parent_id: Option<&str>, message: crate::types::AgentMessage) -> SessionTreeEntry {
+        SessionTreeEntry::Message {
+            id: id.to_string(),
+            parent_id: parent_id.map(str::to_string),
+            timestamp: "2024-01-01T00:00:00Z".to_string(),
+            prompt_title: String::new(),
+            prompt_kind: String::new(),
+            message,
+        }
+    }
+
+    #[test]
+    fn find_cut_point_keeps_recent_tokens() {
+        let entries = vec![
+            message_entry("u1", None, user_message(&"a".repeat(400))),
+            message_entry("a1", Some("u1"), assistant_message("short")),
+            message_entry("u2", Some("a1"), user_message(&"b".repeat(400))),
+            message_entry("a2", Some("u2"), assistant_message("tail")),
+        ];
+        let cut = find_cut_point(&entries, 0, entries.len(), 50);
+        assert!(cut.first_kept_entry_index >= 2);
+    }
+
+    #[test]
+    fn find_turn_start_index_finds_user_turn() {
+        let entries = vec![
+            message_entry("u1", None, user_message("start")),
+            message_entry("a1", Some("u1"), assistant_message("middle")),
+            message_entry("a2", Some("a1"), assistant_message("end")),
+        ];
+        assert_eq!(find_turn_start_index(&entries, 2, 0), Some(0));
     }
 }

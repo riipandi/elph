@@ -205,12 +205,18 @@ async fn open_stream(ws_url: &str, env: Option<&ProviderEnv>) -> Result<CodexWsI
 }
 
 /// Open a WebSocket connection, optionally routing through HTTP proxy env vars.
+#[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.ai.websocket"))]
 pub async fn connect_websocket_with_proxy(
     ws_url: &str,
     headers: &std::collections::HashMap<String, String>,
     timeout_ms: u64,
     env: Option<&ProviderEnv>,
 ) -> Result<WsStream> {
+    if let Ok((_, host, port)) = parse_websocket_endpoint(ws_url) {
+        crate::trace::add_property("ws.host", host.clone());
+        crate::trace::add_property("ws.port", port.to_string());
+        log::debug!("websocket connect start host={host} port={port}");
+    }
     let mut request = ws_url.into_client_request()?;
     for (k, v) in headers {
         if k.eq_ignore_ascii_case("accept") {
@@ -230,7 +236,20 @@ pub async fn connect_websocket_with_proxy(
             .map(|(socket, _)| socket)
             .map_err(Into::into)
     });
-    connect.await.map_err(|_| anyhow!("WebSocket connect timeout"))?
+    match connect.await {
+        Ok(Ok(socket)) => {
+            log::debug!("websocket connect ok");
+            Ok(socket)
+        }
+        Ok(Err(error)) => {
+            log::warn!("websocket connect failed: {error:#}");
+            Err(error)
+        }
+        Err(_) => {
+            log::warn!("websocket connect timeout after {timeout_ms}ms");
+            Err(anyhow!("WebSocket connect timeout"))
+        }
+    }
 }
 
 #[cfg(test)]

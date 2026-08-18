@@ -20,9 +20,24 @@ pub mod session_name;
 
 mod invoke;
 
+pub use builtin::plan_mode_reentry_prompt;
+pub use builtin::session_name::extract_conversation_for_naming;
+pub use builtin::session_name::sanitize_session_name;
 pub use defaults::{DEFAULT_SYSTEM_PROMPT, resolve_system_prompt_text};
+pub use encoding::PromptEncodingConfig;
+pub use encoding::PromptEncodingDelimiter;
+pub use encoding::PromptEncodingMode;
+pub use encoding::PromptEncodingTargets;
+pub use encoding::ToonDecodeError;
+pub use encoding::apply_to_tool_result;
+pub use encoding::decode_toon_fence;
+pub use encoding::encode_value;
+pub use encoding::extract_json_value;
+pub use encoding::parse_toon_fence;
 pub use external::{load_prompt_templates, load_sourced_prompt_templates};
 pub use invoke::{format_prompt_template_invocation, parse_command_args, substitute_args};
+pub use session_name::generate_session_name;
+pub use session_name::generate_session_name_with_prompts;
 
 #[cfg(feature = "prompt-templates")]
 pub use context::{SystemPromptTemplateContext, ToolByKindContext, ToolNamesContext, tool_names_context};

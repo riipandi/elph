@@ -2,16 +2,47 @@ use std::fs::{self};
 use std::fs::{File, OpenOptions};
 use std::io::{self};
 use std::path::PathBuf;
+use std::sync::Mutex;
+use std::sync::mpsc::{self, RecvTimeoutError, SyncSender, TrySendError};
+use std::thread::JoinHandle;
+use std::time::Duration;
 
 use fastrace::collector::{EventRecord, Reporter, SpanRecord};
-use parking_lot::Mutex as ParkingMutex;
 use serde_json::json;
 use serde_jsonlines::JsonLinesWriter;
 
+const TRACE_QUEUE_CAP: usize = 256;
+
+enum TraceWrite {
+    Spans(Vec<SpanRecord>),
+    Flush(SyncSender<()>),
+}
+
+static ACTIVE_TX: Mutex<Option<SyncSender<TraceWrite>>> = Mutex::new(None);
+
+/// Wait until the background writer has flushed queued spans (or 1s timeout).
+pub fn flush_writer() {
+    let tx = { ACTIVE_TX.lock().unwrap_or_else(|e| e.into_inner()).clone() };
+    let Some(tx) = tx else {
+        return;
+    };
+    let (ack_tx, ack_rx) = mpsc::sync_channel(1);
+    if tx.send(TraceWrite::Flush(ack_tx)).is_err() {
+        return;
+    }
+    match ack_rx.recv_timeout(Duration::from_secs(1)) {
+        Ok(()) | Err(RecvTimeoutError::Timeout | RecvTimeoutError::Disconnected) => {}
+    }
+}
+
 /// Writes collected span trees as JSON lines under the application logs directory.
+///
+/// `report` is non-blocking: spans are queued to a dedicated writer thread.
+/// Incoming batches are dropped when the queue is full.
 pub struct JsonlReporter {
     path: PathBuf,
-    writer: ParkingMutex<JsonLinesWriter<File>>,
+    tx: Option<SyncSender<TraceWrite>>,
+    writer: Option<JoinHandle<()>>,
 }
 
 impl JsonlReporter {
@@ -19,9 +50,16 @@ impl JsonlReporter {
         fs::create_dir_all(logs_dir)?;
         let path = logs_dir.join(format!("{app_name}-traces.jsonl"));
         let file = OpenOptions::new().create(true).append(true).open(&path)?;
+        let (tx, rx) = mpsc::sync_channel(TRACE_QUEUE_CAP);
+        let writer = std::thread::Builder::new()
+            .name(format!("{app_name}-trace-writer"))
+            .spawn(move || writer_loop(file, rx))
+            .map_err(io::Error::other)?;
+        *ACTIVE_TX.lock().unwrap_or_else(|e| e.into_inner()) = Some(tx.clone());
         Ok(Self {
             path,
-            writer: ParkingMutex::new(JsonLinesWriter::new(file)),
+            tx: Some(tx),
+            writer: Some(writer),
         })
     }
 
@@ -30,15 +68,45 @@ impl JsonlReporter {
     }
 }
 
+impl Drop for JsonlReporter {
+    fn drop(&mut self) {
+        *ACTIVE_TX.lock().unwrap_or_else(|e| e.into_inner()) = None;
+        drop(self.tx.take());
+        if let Some(handle) = self.writer.take() {
+            let _ = handle.join();
+        }
+    }
+}
+
 impl Reporter for JsonlReporter {
     fn report(&mut self, spans: Vec<SpanRecord>) {
-        let mut writer = self.writer.lock();
-        for span in spans {
-            if writer.write(&span_to_json(&span)).is_err() {
-                break;
+        let Some(tx) = self.tx.as_ref() else {
+            return;
+        };
+        match tx.try_send(TraceWrite::Spans(spans)) {
+            Ok(()) | Err(TrySendError::Full(_)) => {}
+            Err(TrySendError::Disconnected(_)) => {}
+        }
+    }
+}
+
+fn writer_loop(file: File, rx: mpsc::Receiver<TraceWrite>) {
+    let mut writer = JsonLinesWriter::new(file);
+    while let Ok(cmd) = rx.recv() {
+        match cmd {
+            TraceWrite::Spans(spans) => {
+                for span in spans {
+                    if writer.write(&span_to_json(&span)).is_err() {
+                        return;
+                    }
+                }
+                let _ = writer.flush();
+            }
+            TraceWrite::Flush(ack) => {
+                let _ = writer.flush();
+                let _ = ack.send(());
             }
         }
-        let _ = writer.flush();
     }
 }
 
@@ -75,11 +143,10 @@ fn properties_to_json(
 
 #[cfg(test)]
 mod tests {
-    use std::borrow::Cow;
-    use std::io::{BufRead, BufReader};
-
     use fastrace::collector::{EventRecord, Reporter, SpanRecord};
     use fastrace::prelude::{SpanId, TraceId};
+    use std::borrow::Cow;
+    use std::io::{BufRead, BufReader};
 
     use super::JsonlReporter;
 
@@ -106,8 +173,9 @@ mod tests {
         let dir = tempfile::tempdir().expect("tempdir");
         let mut reporter = JsonlReporter::new(dir.path(), "elph").expect("reporter");
         reporter.report(vec![sample_span()]);
+        drop(reporter);
 
-        let file = std::fs::File::open(reporter.path()).expect("trace file");
+        let file = std::fs::File::open(dir.path().join("elph-traces.jsonl")).expect("trace file");
         let line = BufReader::new(file).lines().next().expect("line").expect("read");
         let value: serde_json::Value = serde_json::from_str(&line).expect("json");
         assert_eq!(value["name"], "elph.test.span");

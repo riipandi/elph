@@ -1,7 +1,6 @@
 # Plan: Fix `elph` TUI Transcript Rendering (laggy scroll + partial-blank content + memory usage)
 
-**Repo:** `riipandi/elph`, branch `codegraph` (TUI code is unrelated to the codegraph feature —
-same repo state, different subsystem).
+**Repo:** `riipandi/elph`.
 **Scope:** `crates/coding-agent/src/tui/transcript/*` (panel, layout, card/builder, markdown/*, archive),
 `crates/elph-tui/src/components/scroll_box.rs` and related scroll primitives,
 `crates/coding-agent/src/platform/settings.rs` (new config section).
@@ -216,7 +215,7 @@ there is duplicated state, apply 3.2's settle+compact treatment to it too.
 
 ## Phase 4 — User-configurable settings (`settings.json`)
 
-Follow the same convention already used for `CodegraphSettings`/`EmbedSettings` in
+Follow the same convention already used for `EmbedSettings` in
 `crates/coding-agent/src/platform/settings.rs` — `#[serde(default = "fn_name")]` per field, camelCase JSON,
 doc comment per field. Add a new `TranscriptSettings` struct (nested under the existing `ui`
 section, i.e. `UiSettings.transcript: TranscriptSettings`, since transcript rendering is a UI
@@ -248,7 +247,7 @@ convention to match).
    minimums (e.g. overscan ≥ 0, tail ≥ 1) so a bad hand-edited `settings.json` can't produce a
    degenerate always-empty or always-full window.
 5. Document all five fields in the user-guide (`assets/user-guide/05-configuration.md`), same as
-   the codegraph settings from the prior plan.
+   the other settings groups.
 
 ---
 

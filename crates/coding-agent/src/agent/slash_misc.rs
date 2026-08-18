@@ -3,7 +3,7 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use elph_agent::ForkEntriesOptions;
+use elph_agent::session::ForkEntriesOptions;
 
 use super::CodingAgentSession;
 use super::overlays::{list_session_select_items, list_tree_select_items};
@@ -22,6 +22,7 @@ Keyboard shortcuts
   Shift+↑/↓          Scroll transcript
   PageUp / PageDown  Scroll transcript (faster)
   Ctrl+C / Ctrl+D    Interrupt / quit (context-dependent)
+  :q / :q!           Quit (force-quit mid-turn)
   /help              List slash commands
   /aside <question>  Side question (does not interrupt the main turn)
   /hotkeys           This list
@@ -69,7 +70,9 @@ pub fn settings_slash_message(paths: &Paths) -> String {
          Project: {} {}\n\
          \n\
          Edit JSON with your editor, then `/reload` in the TUI (or restart).\n\
-         Key groups: ui, models, memory, workers, session.retention, codegraph, notifications.\n\
+         Key groups: ui, models, resources, memory, workers, session, notifications.\n\
+         Also top-level: defaultTools, shellPath, httpProxy, quietStartup.\n\
+         MCP cache lives in mcp.json; project trust in trust.json.\n\
          \n\
          Workers example:\n\
            \"workers\": {{ \"enabled\": true, \"name\": null, \"tuiShowPeers\": true }}\n\
@@ -113,7 +116,7 @@ pub async fn workers_slash_message(session: Option<&Arc<CodingAgentSession>>) ->
         "Tools: worker_list · worker_send · worker_reply · worker_ask · worker_get · worker_await · worker_pending"
             .into(),
     );
-    lines.push("Chat: Alt+M or /intercom — threaded 1:1 messaging (never interrupts your turn).".into());
+    lines.push("Chat: Alt+M or /intercom — threaded 1:1 messaging (answers in parallel with your turn).".into());
     lines.push("Tip: peers share .elph/store.db; file claims protect parallel edits.".into());
     Ok(lines.join("\n"))
 }
@@ -262,7 +265,7 @@ async fn tree_branch_only_message(session: &CodingAgentSession) -> Result<String
 }
 
 fn render_session_tree_lines(
-    entries: &[elph_agent::SessionTreeEntry],
+    entries: &[elph_agent::session::SessionTreeEntry],
     leaf_id: Option<&str>,
     max_rows: usize,
 ) -> Vec<String> {
@@ -273,7 +276,7 @@ fn render_session_tree_lines(
     }
     let mut out = Vec::new();
     fn walk(
-        entries: &[elph_agent::SessionTreeEntry],
+        entries: &[elph_agent::session::SessionTreeEntry],
         children: &HashMap<Option<String>, Vec<usize>>,
         parent: Option<&str>,
         prefix: &str,
@@ -316,8 +319,8 @@ fn render_session_tree_lines(
     out
 }
 
-fn tree_entry_label(entry: &elph_agent::SessionTreeEntry) -> String {
-    use elph_agent::SessionTreeEntry;
+fn tree_entry_label(entry: &elph_agent::session::SessionTreeEntry) -> String {
+    use elph_agent::session::SessionTreeEntry;
     match entry {
         SessionTreeEntry::Message { message, .. } => {
             let role = message.role();

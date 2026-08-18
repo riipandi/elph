@@ -1,5 +1,7 @@
 //! Decode TOON fenced blocks from model-visible text.
 
+use std::fmt;
+
 use serde_json::Value;
 use toon_format::ToonError;
 use toon_format::decode_strict;
@@ -7,12 +9,34 @@ use toon_format::decode_strict;
 use super::fence::parse_toon_fence;
 
 /// Error decoding a TOON fenced block.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 pub enum ToonDecodeError {
-    #[error("no ```toon fenced block found")]
     MissingFence,
-    #[error(transparent)]
-    Toon(#[from] ToonError),
+    Toon(ToonError),
+}
+
+impl fmt::Display for ToonDecodeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::MissingFence => write!(f, "no ```toon fenced block found"),
+            Self::Toon(err) => write!(f, "{err}"),
+        }
+    }
+}
+
+impl std::error::Error for ToonDecodeError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Toon(err) => Some(err),
+            Self::MissingFence => None,
+        }
+    }
+}
+
+impl From<ToonError> for ToonDecodeError {
+    fn from(err: ToonError) -> Self {
+        Self::Toon(err)
+    }
 }
 
 /// Extract and strictly decode a ```toon fenced block from text.

@@ -50,6 +50,9 @@ impl MemoryStore {
             }
             total += n;
         }
+        if total > 0 {
+            log::info!("memory embed_pending embedded={total}");
+        }
         Ok(total)
     }
 

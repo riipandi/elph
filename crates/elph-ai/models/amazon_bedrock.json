@@ -1,4 +1,5 @@
 {
+    "$schema": "https://elph.space/provider-schema.json",
     "amazon.nova-2-lite-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",

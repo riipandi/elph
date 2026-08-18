@@ -1,4 +1,4 @@
-//! Shared local Turso open/connect helpers (memory + codegraph).
+//! Shared local Turso open/connect helpers (memory and host stores).
 //!
 //! Hosts pass an open [`Database`] through `ConnectionPool` or builder APIs.
 //! Standalone paths use the same multiprocess-WAL builder configuration.
@@ -79,10 +79,18 @@ async fn open_local_internal(path: &Path, configure: impl Fn(Builder) -> Builder
             .build()
             .await
         {
-            Ok(db) => return Ok(db),
+            Ok(db) => {
+                if attempt > 0 {
+                    log::info!("database opened after {attempt} retries path={}", path.display());
+                } else {
+                    log::debug!("database opened path={}", path.display());
+                }
+                return Ok(db);
+            }
             Err(error) => {
                 let message = error.to_string();
                 if attempt >= MAX_RETRIES || !is_open_retryable(&message) {
+                    log::error!("open_local failed: {} ({message})", path.display());
                     return Err(error).with_context(|| format!("open_local: {}", path.display()));
                 }
                 log::warn!("Database open attempt {} failed with lock error: {message}", attempt + 1);
@@ -101,6 +109,7 @@ async fn connect_retry(db: &Database) -> Result<Connection> {
             Err(error) => {
                 let message = error.to_string();
                 if attempt >= MAX_RETRIES || !is_open_retryable(&message) {
+                    log::error!("database connect failed: {message}");
                     return Err(error).context("connect: connection failed");
                 }
                 log::warn!("Database connection attempt {} failed: {message}", attempt + 1);
@@ -134,7 +143,10 @@ pub async fn open_local_db(db_path: &str) -> Result<Database> {
         open_local_internal(Path::new(db_path), multiprocess_wal),
     )
     .await
-    .map_err(|_| anyhow::anyhow!("database open timeout after {DB_OPEN_TIMEOUT_MS}ms"))?
+    .map_err(|_| {
+        log::error!("database open timeout after {DB_OPEN_TIMEOUT_MS}ms path={db_path}");
+        anyhow::anyhow!("database open timeout after {DB_OPEN_TIMEOUT_MS}ms")
+    })?
 }
 
 pub async fn open_memory_db(db_path: &str) -> Result<Database> {
@@ -144,7 +156,10 @@ pub async fn open_memory_db(db_path: &str) -> Result<Database> {
         open_local_internal(Path::new(db_path), multiprocess_wal),
     )
     .await
-    .map_err(|_| anyhow::anyhow!("database open timeout after {DB_OPEN_TIMEOUT_MS}ms"))?
+    .map_err(|_| {
+        log::error!("database open timeout after {DB_OPEN_TIMEOUT_MS}ms path={db_path}");
+        anyhow::anyhow!("database open timeout after {DB_OPEN_TIMEOUT_MS}ms")
+    })?
 }
 
 fn ensure_parent(db_path: &str) -> Result<()> {

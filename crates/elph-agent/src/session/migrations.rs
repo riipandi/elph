@@ -1,12 +1,18 @@
 //! Canonical session schema for Turso backends (hybrid tree + relational metrics).
 //!
-//! Platform band version **201** (shared with coding-agent). Floppy memory stays 1–99;
-//! codegraph 500+. Clean break: no data migration from pre-v201 tables.
+//! Platform band version **201** (shared with coding-agent). Floppy memory stays 1–99.
+//! Clean break: no data migration from pre-v201 tables.
 //!
 //! Foreign keys are declared in DDL; connections must run `PRAGMA foreign_keys = ON`
 //! (see [`crate::datastore::connect`]).
 
-use crate::datastore::Migration;
+/// Ordered schema step applied by the Turso migration runner (`backend-turso`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Migration {
+    pub version: i64,
+    pub name: &'static str,
+    pub up: &'static str,
+}
 
 /// Full session-related DDL with PK / FK / indexes.
 ///

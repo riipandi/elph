@@ -1,42 +1,60 @@
+use std::fmt;
 use std::sync::Arc;
-
-use thiserror::Error;
 
 use super::types::{ApiKeyCredential, AuthContext, AuthModel, AuthResult, BoxFuture, Credential, CredentialStore};
 use super::types::{OAuthCredential, ProviderAuth};
 use crate::types::ProviderEnv;
 
-use std::fmt;
-
+/// Class of a [`ModelsError`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModelsErrorCode {
+    /// Dynamic model list / catalog refresh failed.
     ModelSource,
+    /// A catalog or model record failed validation.
     ModelValidation,
+    /// Unknown provider or missing API adapter.
     Provider,
+    /// Reserved for stream setup (generation errors stay in-band).
     Stream,
+    /// API key / credential store resolution failed.
     Auth,
+    /// OAuth login, refresh, or token derivation failed.
     OAuth,
 }
 
-/// Error from model resolution or streaming.
+/// Out-of-band error: catalog, auth, OAuth login/refresh, or provider lookup.
 ///
-/// The Display includes the underlying cause message when present,
-/// so auth failures report the provider response instead of a bare wrapper.
-#[derive(Debug, Error)]
+/// Chat/image **generation** failures stay in-band
+/// (`AssistantMessageEvent::Error` / `StopReason::Error` / `Aborted`).
 pub struct ModelsError {
     pub code: ModelsErrorCode,
     pub message: String,
-    #[source]
-    pub cause: Option<anyhow::Error>,
+    pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
+}
+
+impl fmt::Debug for ModelsError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ModelsError")
+            .field("code", &self.code)
+            .field("message", &self.message)
+            .field("source", &self.source.as_ref().map(ToString::to_string))
+            .finish()
+    }
 }
 
 impl fmt::Display for ModelsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}: {}", self.code, self.message)?;
-        if let Some(ref cause) = self.cause {
-            write!(f, " — {}", cause)?;
+        if let Some(ref source) = self.source {
+            write!(f, " — {source}")?;
         }
         Ok(())
+    }
+}
+
+impl std::error::Error for ModelsError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.source.as_deref().map(|e| e as _)
     }
 }
 
@@ -45,16 +63,33 @@ impl ModelsError {
         Self {
             code,
             message: message.into(),
-            cause: None,
+            source: None,
         }
     }
 
-    pub fn with_cause(code: ModelsErrorCode, message: impl Into<String>, cause: anyhow::Error) -> Self {
+    pub fn with_source(
+        code: ModelsErrorCode,
+        message: impl Into<String>,
+        source: impl Into<Box<dyn std::error::Error + Send + Sync + 'static>>,
+    ) -> Self {
         Self {
             code,
             message: message.into(),
-            cause: Some(cause),
+            source: Some(source.into()),
         }
+    }
+
+    /// OAuth login, refresh, or token derivation failure.
+    pub fn oauth(message: impl Into<String>) -> Self {
+        Self::new(ModelsErrorCode::OAuth, message)
+    }
+
+    /// Wrap an underlying OAuth error.
+    pub fn oauth_source(
+        message: impl Into<String>,
+        source: impl Into<Box<dyn std::error::Error + Send + Sync + 'static>>,
+    ) -> Self {
+        Self::with_source(ModelsErrorCode::OAuth, message, source)
     }
 }
 
@@ -63,6 +98,7 @@ pub struct AuthResolutionOverrides {
     pub env: Option<ProviderEnv>,
 }
 
+#[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.ai.auth"))]
 pub async fn resolve_provider_auth(
     provider: &ProviderAuthHolder,
     model: AuthModel,
@@ -70,6 +106,7 @@ pub async fn resolve_provider_auth(
     auth_context: Arc<dyn AuthContext>,
     overrides: Option<AuthResolutionOverrides>,
 ) -> Result<Option<AuthResult>, ModelsError> {
+    crate::trace::add_property("provider.id", provider.id.clone());
     let ctx = if let Some(env) = overrides.as_ref().and_then(|o| o.env.clone()) {
         Arc::new(OverlayAuthContext {
             base: auth_context.clone(),
@@ -82,6 +119,7 @@ pub async fn resolve_provider_auth(
     if let Some(key) = overrides.as_ref().and_then(|o| o.api_key.clone())
         && let Some(api_key) = &provider.auth.api_key
     {
+        log::debug!("auth resolve provider={} source=override", provider.id);
         return resolve_api_key(
             ctx,
             api_key,
@@ -97,12 +135,15 @@ pub async fn resolve_provider_auth(
         return match stored {
             Credential::OAuth(cred) => {
                 if let Some(oauth) = &provider.auth.oauth {
+                    log::debug!("auth resolve provider={} source=oauth", provider.id);
                     resolve_stored_oauth(credentials, &provider.id, oauth, cred).await
                 } else {
+                    log::debug!("auth unresolved provider={} source=oauth_no_handler", provider.id);
                     Ok(None)
                 }
             }
             Credential::ApiKey(cred) => {
+                log::debug!("auth resolve provider={} source=stored_api_key", provider.id);
                 if let Some(api_key) = &provider.auth.api_key {
                     let merged = if let Some(env) = overrides.as_ref().and_then(|o| o.env.clone()) {
                         let mut c = cred.clone();
@@ -120,9 +161,16 @@ pub async fn resolve_provider_auth(
     }
 
     if let Some(api_key) = &provider.auth.api_key {
-        return resolve_api_key(ctx, api_key, model, None, overrides.and_then(|o| o.env)).await;
+        let result = resolve_api_key(ctx, api_key, model, None, overrides.and_then(|o| o.env)).await;
+        match &result {
+            Ok(Some(_)) => log::debug!("auth resolved provider={} source=api_key", provider.id),
+            Ok(None) => log::debug!("auth unresolved provider={} source=api_key", provider.id),
+            Err(e) => log::warn!("auth resolve failed provider={}: {e}", provider.id),
+        }
+        return result;
     }
 
+    log::debug!("auth unresolved provider={} source=none", provider.id);
     Ok(None)
 }
 
@@ -182,7 +230,8 @@ async fn resolve_stored_oauth(
                     );
                     return Ok(None);
                 }
-                return Err(ModelsError::with_cause(
+                log::warn!("OAuth refresh failed for {provider_id}: {detail}");
+                return Err(ModelsError::with_source(
                     ModelsErrorCode::OAuth,
                     format!("OAuth refresh failed for {provider_id}"),
                     e,
@@ -225,7 +274,7 @@ async fn resolve_stored_oauth(
             env: None,
             source: Some("OAuth".to_string()),
         })),
-        Err(e) => Err(ModelsError::with_cause(
+        Err(e) => Err(ModelsError::with_source(
             ModelsErrorCode::OAuth,
             format!("OAuth auth derivation failed for {provider_id}"),
             e,

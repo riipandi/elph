@@ -3,8 +3,8 @@
 use std::sync::Arc;
 
 use agent_client_protocol::schema::v2::{
-    ContentBlock, SessionId, SessionUpdate, TextContent, ToolCallContent, ToolCallContentChunk, ToolCallLocation,
-    ToolCallStatus, ToolCallUpdate, ToolKind,
+    ContentBlock, SessionId, SessionUpdate, TextContent, ToolCallContent, ToolCallLocation, ToolCallStatus,
+    ToolCallUpdate, ToolKind,
 };
 use agent_client_protocol::{Client, ConnectionTo};
 use parking_lot::Mutex;
@@ -33,16 +33,27 @@ pub fn kind_for_tool(name: &str) -> ToolKind {
 pub fn track_tool_start(state: &Arc<Mutex<AcpAgentState>>, session_id: &SessionId, id: &str, name: &str) {
     if let Some(entry) = state.lock().sessions.get(&session_key(session_id)) {
         entry.open_tools.lock().insert(id.to_string());
+        entry.tool_outputs.lock().entry(id.to_string()).or_default();
         if terminals::is_local_shell_tool(name) {
             entry.open_shells.lock().insert(id.to_string());
         }
     }
 }
 
+pub fn is_open_tool(state: &Arc<Mutex<AcpAgentState>>, session_id: &SessionId, id: &str) -> bool {
+    state
+        .lock()
+        .sessions
+        .get(&session_key(session_id))
+        .is_some_and(|entry| entry.open_tools.lock().contains(id))
+}
+
 pub fn track_tool_end(state: &Arc<Mutex<AcpAgentState>>, session_id: &SessionId, id: &str) {
     if let Some(entry) = state.lock().sessions.get(&session_key(session_id)) {
         entry.open_tools.lock().remove(id);
         entry.open_shells.lock().remove(id);
+        entry.tool_outputs.lock().remove(id);
+        entry.terminal_sent.lock().remove(id);
     }
 }
 
@@ -82,13 +93,21 @@ pub fn on_tool_start(
     let mut update = ToolCallUpdate::new(id)
         .title(name.to_string())
         .kind(kind.clone())
-        .status(ToolCallStatus::InProgress)
+        .status(ToolCallStatus::Pending)
         .raw_input(json!({ "summary": truncate_text(args_summary) }));
     if let Some(path) = path_from_summary(args_summary) {
         update = update.locations(vec![ToolCallLocation::new(path)]);
     }
     send_update(connection, session_id, SessionUpdate::ToolCallUpdate(update))?;
     Ok(())
+}
+
+pub fn on_tool_in_progress(connection: &ConnectionTo<Client>, session_id: &SessionId, id: &str) -> anyhow::Result<()> {
+    send_update(
+        connection,
+        session_id,
+        SessionUpdate::ToolCallUpdate(ToolCallUpdate::new(id).status(ToolCallStatus::InProgress)),
+    )
 }
 
 pub fn on_shell_start(
@@ -109,21 +128,41 @@ pub fn on_tool_update(
     id: &str,
     output: &str,
 ) -> anyhow::Result<()> {
-    let output = truncate_text(output);
+    if !is_open_tool(state, session_id, id) {
+        track_tool_start(state, session_id, id, "tool");
+        on_tool_start(connection, session_id, id, "tool", "")?;
+        on_tool_in_progress(connection, session_id, id)?;
+    }
+    let snapshot = append_tool_output(state, session_id, id, output);
+    let shown = truncate_text(&snapshot);
+    // Replace (not chunk): harness updates are deltas we accumulate. Chunks would
+    // append each snapshot/delta twice on clients that also apply end `content`.
     send_update(
         connection,
         session_id,
-        SessionUpdate::ToolCallContentChunk(ToolCallContentChunk::new(
-            id,
+        SessionUpdate::ToolCallUpdate(ToolCallUpdate::new(id).status(ToolCallStatus::InProgress).content(vec![
             ToolCallContent::Content(Box::new(agent_client_protocol::schema::v2::Content::new(ContentBlock::Text(
-                TextContent::new(output.clone()),
+                TextContent::new(shown.clone()),
             )))),
-        )),
+        ])),
     )?;
     if is_tracked_shell(state, session_id, id) {
-        terminals::on_shell_output(connection, session_id, id, &output)?;
+        terminals::on_shell_output(state, connection, session_id, id, output)?;
     }
     Ok(())
+}
+
+fn append_tool_output(state: &Arc<Mutex<AcpAgentState>>, session_id: &SessionId, id: &str, delta: &str) -> String {
+    let key = session_key(session_id);
+    let guard = state.lock();
+    let Some(outputs) = guard.sessions.get(&key).map(|entry| Arc::clone(&entry.tool_outputs)) else {
+        return delta.to_string();
+    };
+    drop(guard);
+    let mut map = outputs.lock();
+    let buf = map.entry(id.to_string()).or_default();
+    buf.push_str(delta);
+    buf.clone()
 }
 
 pub fn on_tool_end(
@@ -135,6 +174,10 @@ pub fn on_tool_end(
     output: &str,
     details: &serde_json::Value,
 ) -> anyhow::Result<()> {
+    if !is_open_tool(state, session_id, id) {
+        track_tool_start(state, session_id, id, "tool");
+        on_tool_start(connection, session_id, id, "tool", "")?;
+    }
     let status = if is_error {
         ToolCallStatus::Failed
     } else {

@@ -2,7 +2,7 @@ use std::future::Future;
 
 use fastrace::collector::SpanContext;
 use fastrace::future::FutureExt;
-use fastrace::prelude::Span;
+use fastrace::prelude::{Event, LocalSpan, Span};
 use reqwest::RequestBuilder;
 
 use super as trace;
@@ -13,6 +13,31 @@ pub fn with_trace_headers(request: RequestBuilder) -> RequestBuilder {
         return request;
     }
     request.headers(fastrace_reqwest::traceparent_headers())
+}
+
+/// Inject W3C `traceparent` onto an already-built request (retry / `Client::execute`).
+pub fn inject_traceparent(request: &mut reqwest::Request) {
+    if !trace::is_enabled() {
+        return;
+    }
+    for (key, value) in fastrace_reqwest::traceparent_headers().iter() {
+        request.headers_mut().insert(key, value.clone());
+    }
+}
+
+pub fn add_property(key: &'static str, value: impl Into<String>) {
+    if !trace::is_enabled() {
+        return;
+    }
+    let value = value.into();
+    LocalSpan::add_property(move || (key, value));
+}
+
+pub fn add_event(name: &'static str) {
+    if !trace::is_enabled() {
+        return;
+    }
+    LocalSpan::add_event(Event::new(name));
 }
 
 pub fn model_stream_span(model: &Model) -> Span {

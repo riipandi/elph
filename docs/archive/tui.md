@@ -365,7 +365,7 @@ Until a full refresh runs, `[+N -N]` may show stale values while the branch name
 | `Ctrl+V`                  | Paste image from clipboard (**Cmd+V** on macOS); falls back to text paste                                                                        |
 | `Ctrl+O`                  | Preview/edit pasted block (input); else expand/collapse newest collapsible block                                                                 |
 | Click header/footer       | Expand/collapse that specific block                                                                                                              |
-| `:q` / `:q!`              | Quit (vim-style)                                                                                                                                 |
+| `:q` / `:q!`              | Quit                                                                                                                                             |
 
 Agent modes (`build`, `plan`, `ask`, `brave`) are also clickable in the footer. Mode is **per-session** (default `build` for new sessions) and is not written to shared `settings.json` — see [agent-runtime.md](./agent-runtime.md).
 
@@ -411,7 +411,7 @@ By default (`settings.models.showConfiguredOnly: false`), the **All** list and *
 
 | Key                      | Action                                              |
 | ------------------------ | --------------------------------------------------- |
-| `↑` / `↓` (or `k` / `j`) | Move selection                                      |
+| `↑` / `↓`                | Move selection                                      |
 | `Enter`                  | Toggle model for Ctrl+P cycling                     |
 | `Ctrl+A`                 | Enable all models (or all matching the filter)      |
 | `Ctrl+X`                 | Clear all (or clear matching the filter)            |

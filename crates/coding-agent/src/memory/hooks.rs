@@ -7,10 +7,11 @@ use std::sync::Arc;
 use anyhow::Result;
 use serde_json::Value;
 
-use elph_agent::{
-    AgentEvent, AgentHarness, AgentHarnessEvent, BeforeAgentStartEvent, BeforeAgentStartResult, ToolResultEvent,
-    TursoSessionStorage,
+use elph_agent::AgentEvent;
+use elph_agent::harness::{
+    AgentHarness, AgentHarnessEvent, BeforeAgentStartEvent, BeforeAgentStartResult, ToolResultEvent,
 };
+use elph_agent::session::TursoSessionStorage;
 use elph_ai::{Message, Usage};
 use floppy::{ReportCorrectionInput, ReportUserInput, UserInputSource};
 

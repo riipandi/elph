@@ -42,11 +42,20 @@ pub struct ProvidersUnpackReport {
     pub skipped: usize,
 }
 
+const PROVIDER_SCHEMA_URL: &str = "https://elph.space/provider-schema.json";
+
+fn with_provider_schema(mut value: serde_json::Value) -> serde_json::Value {
+    if let serde_json::Value::Object(map) = &mut value {
+        map.insert("$schema".into(), serde_json::Value::String(PROVIDER_SCHEMA_URL.into()));
+    }
+    value
+}
+
 fn write_pretty_json(path: &Path, raw: &str) -> Result<()> {
     // Re-serialize for stable pretty output; fall back to raw bytes if parse fails.
     let body = match serde_json::from_str::<serde_json::Value>(raw) {
         Ok(value) => {
-            let mut s = serde_json::to_string_pretty(&value)?;
+            let mut s = serde_json::to_string_pretty(&with_provider_schema(value))?;
             s.push('\n');
             s
         }
@@ -85,6 +94,10 @@ mod tests {
         let anthropic = paths.providers_dir().join("anthropic.json");
         assert!(anthropic.is_file());
         let original = fs::read_to_string(&anthropic).unwrap();
+        assert!(
+            original.contains("\"$schema\": \"https://elph.space/provider-schema.json\""),
+            "unpacked catalog must stamp provider schema"
+        );
         // User override marker
         fs::write(&anthropic, "{\n  \"user\": true\n}\n").unwrap();
 

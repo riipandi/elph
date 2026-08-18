@@ -142,27 +142,19 @@ fn fetch_json(url: &str, cache_path: &Path, offline: bool, force: bool, label: &
     }
 
     term::fetch(format!("Fetching {url}…"));
-    let fetch = reqwest::blocking::Client::builder()
-        .timeout(std::time::Duration::from_secs(120))
-        .build()
-        .context("build HTTP client")?
-        .get(url)
-        .send();
-
-    match fetch {
-        Ok(resp) if resp.status().is_success() => {
-            let text = resp.text().context("read models.dev body")?;
+    match super::common::http_get_text(url, std::time::Duration::from_secs(120), None) {
+        Ok((status, text)) if status.is_success() => {
             fs::write(cache_path, &text).with_context(|| format!("write {}", cache_path.display()))?;
             term::fetch(format!("Got {label} (cached → {})", cache_path.display()));
             serde_json::from_str(&text).with_context(|| format!("parse {label}"))
         }
-        Ok(resp) => {
+        Ok((status, _)) => {
             if cache_path.is_file() {
-                term::warn(format!("{url} returned {} — using cached {label}", resp.status()));
+                term::warn(format!("{url} returned {status} — using cached {label}"));
                 let text = fs::read_to_string(cache_path).with_context(|| format!("read {}", cache_path.display()))?;
                 serde_json::from_str(&text).with_context(|| format!("parse cached {label}"))
             } else {
-                bail!("{url} returned {}", resp.status());
+                bail!("{url} returned {status}");
             }
         }
         Err(e) => {

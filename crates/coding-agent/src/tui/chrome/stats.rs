@@ -3,8 +3,9 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use elph_agent::SessionTreeEntry;
-use elph_agent::{build_session_context, estimate_context_tokens, estimate_tokens_with_system_prompt};
+use elph_agent::compaction::{estimate_context_tokens, estimate_tokens_with_system_prompt};
+use elph_agent::session::SessionTreeEntry;
+use elph_agent::session::build_session_context;
 use elph_ai::get_builtin_model;
 
 use crate::agent::CodingAgentSession;
@@ -146,7 +147,7 @@ pub async fn refresh_chrome_stats(
 }
 
 fn effective_model_ids<'a>(
-    context_model: Option<&'a elph_agent::SessionModelRef>,
+    context_model: Option<&'a elph_agent::session::SessionModelRef>,
     live_provider: &'a str,
     live_model_id: &'a str,
 ) -> (&'a str, &'a str) {
@@ -158,7 +159,7 @@ fn effective_model_ids<'a>(
 }
 
 fn resolve_model_chrome(
-    context: &elph_agent::SessionContext,
+    context: &elph_agent::session::SessionContext,
     live_provider: &str,
     live_model_id: &str,
     fallback_context_limit: u64,
@@ -234,7 +235,7 @@ mod tests {
 
     #[test]
     fn effective_model_ids_prefers_context_then_live_selection() {
-        use elph_agent::SessionModelRef;
+        use elph_agent::session::SessionModelRef;
 
         let context_model = SessionModelRef {
             provider: "anthropic".to_string(),

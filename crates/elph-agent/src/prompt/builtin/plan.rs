@@ -1,9 +1,19 @@
 //! Plan mode system prompt and implementation prompts.
 
+/// Extra appendix when Plan is re-entered in the same session.
+pub fn plan_mode_reentry_prompt() -> &'static str {
+    "\n\n# Returning to Plan mode\n\
+     You are entering Plan mode again after having previously exited it.\n\
+     A previous plan may exist under `.elph/plans/`.\n\
+     End the turn with `<proposed_plan>...</proposed_plan>` or `ask_user_question`."
+}
+
 /// System prompt appendix for Plan mode.
 pub fn plan_mode_system_prompt() -> &'static str {
     "\n\n# Plan mode\n\
-     You are in **Plan mode**: read-only exploration — no file edits, shell commands, or patches.\n\
+     You are in **Plan mode**: design a plan. Exploration tools run freely.\n\
+     Workspace mutating tools need one-shot user approval and are for investigation only.\n\
+     They do not start implementation. Do not spawn subagents.\n\
      Workflow:\n\
      1. Ground yourself in the repository and environment.\n\
      2. Ask clarifying questions when requirements are ambiguous.\n\
@@ -20,8 +30,8 @@ pub fn plan_mode_system_prompt() -> &'static str {
 /// When `plan_file` is `Some(path)`, the agent is instructed to read the plan
 /// from the saved file and update its frontmatter fields (`Status`, `Updated`)
 /// as work progresses. Otherwise the plan text is embedded inline.
-pub fn implement_prompt(plan_text: &str, plan_file: Option<&str>) -> String {
-    if let Some(file_path) = plan_file {
+pub fn implement_prompt(plan_text: &str, plan_file: Option<&str>, review_notes: Option<&str>) -> String {
+    let mut body = if let Some(file_path) = plan_file {
         format!(
             "The plan has been approved and saved to:\n{file_path}\n\n\
              The frontmatter has been auto-updated to `Status: in_progress`.\n\n\
@@ -35,5 +45,32 @@ pub fn implement_prompt(plan_text: &str, plan_file: Option<&str>) -> String {
         )
     } else {
         format!("Implement this plan:\n\n{plan_text}")
+    };
+    if let Some(notes) = review_notes.map(str::trim).filter(|s| !s.is_empty()) {
+        body.push_str("\n\nThe user approved the plan with the following review comments:\n\n");
+        body.push_str(notes);
+    }
+    body
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn implement_prompt_omits_empty_review_notes() {
+        let text = implement_prompt("Do X", None, None);
+        assert!(text.contains("Implement this plan"));
+        assert!(!text.contains("review comments"));
+        let text = implement_prompt("Do X", None, Some("   "));
+        assert!(!text.contains("review comments"));
+    }
+
+    #[test]
+    fn implement_prompt_appends_review_notes() {
+        let text = implement_prompt("Do X", None, Some("prefer helper Y"));
+        assert!(text.contains("Implement this plan"));
+        assert!(text.contains("prefer helper Y"));
+        assert!(text.contains("review comments"));
     }
 }

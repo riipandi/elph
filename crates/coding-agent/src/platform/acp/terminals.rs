@@ -36,21 +36,36 @@ pub fn on_shell_start(
 }
 
 pub fn on_shell_output(
+    state: &std::sync::Arc<parking_lot::Mutex<crate::platform::acp::state::AcpAgentState>>,
     connection: &ConnectionTo<Client>,
     session_id: &SessionId,
     tool_call_id: &str,
-    output: &str,
+    delta: &str,
 ) -> anyhow::Result<()> {
-    if output.is_empty() {
+    if delta.is_empty() {
         return Ok(());
     }
-    let output = crate::platform::acp::limits::truncate_text(output);
+    let already = {
+        let key = crate::platform::acp::state::session_key(session_id);
+        state
+            .lock()
+            .sessions
+            .get(&key)
+            .map(|entry| {
+                let mut sent = entry.terminal_sent.lock();
+                let n = sent.entry(tool_call_id.to_string()).or_insert(0);
+                let chunk = crate::platform::acp::limits::truncate_text(delta);
+                *n = n.saturating_add(chunk.len());
+                chunk
+            })
+            .unwrap_or_else(|| crate::platform::acp::limits::truncate_text(delta))
+    };
     send_update(
         connection,
         session_id,
         SessionUpdate::TerminalOutputChunk(TerminalOutputChunk::new(
             terminal_id(tool_call_id),
-            encode_base64(output.as_bytes()),
+            encode_base64(already.as_bytes()),
         )),
     )
 }

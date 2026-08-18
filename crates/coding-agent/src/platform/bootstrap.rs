@@ -1,10 +1,10 @@
-use crate::agent::ensure_global_agents_md;
 use crate::platform::scaffold::{
     BundledAssets, BundledManifest, ChangelogScaffold, ProvidersUnpack, TrustStore, VersionFile,
 };
 use crate::utils::path::AppPaths;
 use anyhow::Result;
-use elph_agent::{ensure_dirs, try_block_on};
+use elph_agent::fs::ensure_dirs;
+use elph_agent::runtime::try_block_on;
 use elph_tui::CliSpinner;
 
 use super::paths::Paths;
@@ -88,11 +88,11 @@ fn ensure_home_dirs(paths: &Paths) -> Result<()> {
 
 fn ensure_files(paths: &Paths, app_version: &str) -> Result<()> {
     super::settings::Settings::ensure(paths)?;
+    super::mcp::ensure(paths)?;
     TrustStore::ensure(paths)?;
     VersionFile::ensure(paths, app_version)?;
     ChangelogScaffold::ensure(paths)?;
     BundledManifest::ensure(paths, APP_ID, app_version)?;
-    let _ = ensure_global_agents_md(paths);
     super::project::ensure(paths)?;
     Ok(())
 }

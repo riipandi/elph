@@ -37,6 +37,7 @@ async fn main() -> anyhow::Result<()> {
     let models = elph_ai::builtin_models(Some(CreateModelsOptions {
         credentials: Some(Arc::new(InMemoryCredentialStore::new())),
         auth_context: Some(Arc::new(PrefixedEnv)),
+        ..Default::default()
     }));
 
     // ── env_api_key_auth builder ──

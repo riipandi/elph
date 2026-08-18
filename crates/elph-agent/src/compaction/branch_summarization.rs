@@ -104,7 +104,7 @@ Use this EXACT format:
 Keep each section concise. Preserve exact file paths, function names, and error messages.";
 
 fn now_millis() -> i64 {
-    (time::OffsetDateTime::now_utc().unix_timestamp_nanos() / 1_000_000) as i64
+    chrono::Utc::now().timestamp_millis()
 }
 
 /// Collect entries that should be summarized before navigating to a different session tree entry.

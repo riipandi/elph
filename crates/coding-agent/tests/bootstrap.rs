@@ -25,7 +25,7 @@ async fn ensure_creates_full_home() {
     // Goals, platform schema, and sessions share the project store DB
     // (`.elph/store.db`); ensure() creates the file with the platform band.
     assert!(paths.memory_db_path().exists());
-    // Floppy memory/codegraph bands are applied lazily by MemoryStore/indexing.
+    // Floppy memory band is applied by MemoryStore on first use.
     assert!(paths.project_elph_dir().exists());
     assert!(paths.project_gitignore_path().exists());
     assert!(paths.bundled_dir().join("agents").is_dir());
@@ -50,7 +50,9 @@ async fn ensure_creates_full_home() {
         paths.bundled_dir().join("skills/create-skill/SKILL.md").is_file(),
         "bootstrap should unpack create-skill"
     );
-    assert!(paths.config_dir().join("AGENTS.md").is_file());
+    assert!(!paths.config_dir().join("AGENTS.md").exists());
+    assert!(!paths.project_extensions_dir().exists());
+    assert!(!paths.plans_dir().exists());
     assert!(paths.host_mcp_cache_dir().is_dir());
     assert!(paths.sessions_dir().is_dir());
     assert!(paths.skills_dir().is_dir());

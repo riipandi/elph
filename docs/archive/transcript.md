@@ -347,10 +347,10 @@ card renders collapsed without its inline diff.
 ### Database Location
 
 ```
-<project>/.elph/store.db       // floppy memory + codegraph (no transcript tables)
+<project>/.elph/store.db       // floppy memory (no transcript tables)
 ```
 
-floppy `store.db` (memory + codegraph). It is not merged into `store.db`, and it is unrelated
+floppy `store.db` (memory). It is not merged into `store.db`, and it is unrelated
 which stays a separate file.
 
 The transcript schema is created with idempotent DDL (`CREATE TABLE IF NOT EXISTS` +

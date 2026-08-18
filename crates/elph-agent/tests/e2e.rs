@@ -6,21 +6,22 @@ use std::sync::Arc;
 use common::{faux_stream_fn, new_faux, new_faux_with_options, user_agent_message};
 use elph_agent::Agent;
 use elph_agent::AgentEvent;
-use elph_agent::AgentHarness;
-use elph_agent::AgentHarnessOptions;
-use elph_agent::AgentHarnessResources;
 use elph_agent::AgentMessage;
 use elph_agent::AgentOptions;
 use elph_agent::AgentThinkingLevel;
 use elph_agent::AgentTool;
-use elph_agent::CompactionSettings;
-use elph_agent::InMemorySessionStorage;
-use elph_agent::LocalExecutionEnv;
 use elph_agent::PartialAgentState;
-use elph_agent::Session;
-use elph_agent::SystemPrompt;
 use elph_agent::ToolExecutionMode;
-use elph_agent::{llm_message_to_agent, simple_tool};
+use elph_agent::compaction::CompactionSettings;
+use elph_agent::harness::AgentHarness;
+use elph_agent::harness::AgentHarnessOptions;
+use elph_agent::harness::AgentHarnessResources;
+use elph_agent::harness::SystemPrompt;
+use elph_agent::llm_message_to_agent;
+use elph_agent::runtime::LocalExecutionEnv;
+use elph_agent::session::InMemorySessionStorage;
+use elph_agent::session::Session;
+use elph_agent::simple_tool;
 use elph_ai::api::faux::{FauxModelDefinition, RegisterFauxProviderOptions};
 use elph_ai::{AssistantContentBlock, ContentBlock, FauxResponseStep, Message, StopReason, Tool, UserContent};
 use elph_ai::{builtin_models, faux_assistant_message, faux_text, faux_thinking, faux_tool_call};
@@ -156,7 +157,9 @@ async fn harness_prompt_persists_session_messages() {
         active_tool_names: vec![],
         steering_mode: Default::default(),
         follow_up_mode: Default::default(),
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),

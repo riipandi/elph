@@ -1,4 +1,5 @@
 {
+    "$schema": "https://elph.space/provider-schema.json",
     "deep-research-max-preview-04-2026": {
         "api": "google-generative-ai",
         "baseUrl": "https://generativelanguage.googleapis.com/v1beta",

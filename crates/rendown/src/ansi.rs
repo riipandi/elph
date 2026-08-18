@@ -3,7 +3,8 @@
 use std::io::{self, Write};
 
 use crate::blocks::{CODE_BLOCK_INSET_H, CODE_BLOCK_INSET_V, block_gap_after, code_content_width};
-use crate::colors::span_anstyle;
+use crate::colors::{ColorLevel, span_anstyle};
+use crate::mermaid::mermaid_display_text;
 use crate::model::{MarkdownDocument, MarkdownLineKind, StyledSpan};
 use crate::table::format_table_lines;
 use crate::theme::MarkdownTheme;
@@ -14,11 +15,12 @@ pub fn write_document_ansi(
     doc: &MarkdownDocument,
     width: u16,
     theme: &MarkdownTheme,
+    color_level: ColorLevel,
     out: &mut impl Write,
 ) -> io::Result<()> {
     let lines = flatten_visual_lines(doc, width, theme);
     for (i, visual) in lines.iter().enumerate() {
-        write_visual_line(visual, theme, out)?;
+        write_visual_line(visual, theme, color_level, out)?;
         if i + 1 < lines.len() || !visual.is_empty() {
             writeln!(out)?;
         }
@@ -56,6 +58,37 @@ pub fn flatten_visual_lines(doc: &MarkdownDocument, width: u16, theme: &Markdown
         let line = &lines[index];
         if line.is_blank() {
             out.push(VisualLine::blank());
+            index += 1;
+            continue;
+        }
+
+        if let Some(source) = line.mermaid_source.as_deref() {
+            let inner = code_content_width(width);
+            let text = mermaid_display_text(source, inner);
+            for _ in 0..CODE_BLOCK_INSET_V {
+                out.push(VisualLine {
+                    spans: vec![StyledSpan::plain("", theme.body)],
+                    code_background: true,
+                });
+            }
+            for src_line in text.lines() {
+                let mut spans = vec![StyledSpan::plain(" ".repeat(CODE_BLOCK_INSET_H as usize), theme.body)];
+                spans.push(StyledSpan::plain(src_line, theme.body));
+                out.push(VisualLine {
+                    spans,
+                    code_background: true,
+                });
+            }
+            for _ in 0..CODE_BLOCK_INSET_V {
+                out.push(VisualLine {
+                    spans: vec![StyledSpan::plain("", theme.body)],
+                    code_background: true,
+                });
+            }
+            let gap = block_gap_after(lines, index);
+            for _ in 0..gap {
+                out.push(VisualLine::blank());
+            }
             index += 1;
             continue;
         }
@@ -244,28 +277,38 @@ impl DefaultBody for Option<crate::model::RgbColor> {
     }
 }
 
-fn write_visual_line(line: &VisualLine, theme: &MarkdownTheme, out: &mut impl Write) -> io::Result<()> {
+fn write_visual_line(
+    line: &VisualLine,
+    theme: &MarkdownTheme,
+    color_level: ColorLevel,
+    out: &mut impl Write,
+) -> io::Result<()> {
     if line.is_empty() {
         return Ok(());
     }
-    let bg = if line.code_background {
+    let bg = if line.code_background && color_level != ColorLevel::None {
         Some(anstyle::RgbColor(theme.code_bg.r, theme.code_bg.g, theme.code_bg.b))
     } else {
         None
     };
     for span in &line.spans {
-        write_span(span, bg, out)?;
+        write_span(span, bg, color_level, out)?;
     }
     // Pad code background to full remaining — skip for simplicity (fg-only tint via spaces already).
     let _ = display_width;
     Ok(())
 }
 
-fn write_span(span: &StyledSpan, bg: Option<anstyle::RgbColor>, out: &mut impl Write) -> io::Result<()> {
+fn write_span(
+    span: &StyledSpan,
+    bg: Option<anstyle::RgbColor>,
+    color_level: ColorLevel,
+    out: &mut impl Write,
+) -> io::Result<()> {
     if span.text.is_empty() {
         return Ok(());
     }
-    let mut style = span_anstyle(span);
+    let mut style = span_anstyle(span, color_level);
     if let Some(bg) = bg {
         style = style.bg_color(Some(anstyle::Color::Rgb(bg)));
     }
@@ -287,6 +330,8 @@ pub fn document_to_plain(doc: &MarkdownDocument) -> String {
         .map(|line| {
             if line.kind == MarkdownLineKind::Rule {
                 "─".repeat(40)
+            } else if let Some(source) = &line.mermaid_source {
+                source.clone()
             } else if let Some(table) = &line.table {
                 table
                     .rows
@@ -305,13 +350,13 @@ pub fn document_to_plain(doc: &MarkdownDocument) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parse::parse_markdown_document;
+    use crate::parse::parse_markdown_document_with_theme;
 
     #[test]
     fn ansi_contains_heading_text() {
-        let doc = parse_markdown_document("# Hello\n\nworld");
+        let doc = parse_markdown_document_with_theme("# Hello\n\nworld", &MarkdownTheme::default());
         let mut buf = Vec::new();
-        write_document_ansi(&doc, 80, &MarkdownTheme::default(), &mut buf).unwrap();
+        write_document_ansi(&doc, 80, &MarkdownTheme::default(), ColorLevel::TrueColor, &mut buf).unwrap();
         let s = String::from_utf8_lossy(&buf);
         assert!(s.contains("Hello"));
         assert!(s.contains("world"));

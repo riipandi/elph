@@ -2,17 +2,13 @@ use anyhow::Result;
 use sha2::{Digest, Sha256};
 use turso::Connection;
 
-pub struct Migration {
-    pub version: i64,
-    pub name: &'static str,
-    pub up: &'static str,
-}
+pub use crate::session::migrations::Migration;
 
 /// Apply an ordered migration set via the shared `app_migrations` ledger.
 ///
 /// Uses **per-version** membership (not `MAX(version)`) so disjoint version
 /// bands coexist in one ledger: floppy memory (1–99), the session tree (100),
-/// elph host platform (101–199), and floppy codegraph (500–599) all share the
+/// and elph host platform (101–199) all share the
 /// same `app_migrations` table in `.elph/store.db`.
 pub async fn run(conn: &Connection, migrations: &[Migration]) -> Result<()> {
     crate::datastore::with_write_transaction(conn, || async {
@@ -51,7 +47,7 @@ pub async fn run(conn: &Connection, migrations: &[Migration]) -> Result<()> {
 
             let mut hasher = Sha256::new();
             hasher.update(migration.up.as_bytes());
-            let sql_sha256 = hex::encode(hasher.finalize());
+            let sql_sha256 = crate::utils::hex::encode(hasher.finalize());
 
             if let Some(applied_name) = applied_name {
                 if applied_name != migration.name {

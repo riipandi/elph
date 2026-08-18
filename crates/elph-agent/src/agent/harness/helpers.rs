@@ -96,6 +96,9 @@ pub(super) fn merge_harness_into_simple(
         simple.base.metadata = Some(map.iter().map(|(k, v)| (k.clone(), v.clone())).collect());
     }
     simple.base.session_id = Some(session_id.to_string());
+    if simple.thinking_budgets.is_none() {
+        simple.thinking_budgets = harness.thinking_budgets.clone();
+    }
     simple
 }
 

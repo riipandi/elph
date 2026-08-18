@@ -4,15 +4,15 @@
 
 use std::sync::Arc;
 
-use elph_agent::Aes256Key;
-use elph_agent::ENC_PREFIX;
-use elph_agent::decrypt_json_async;
-use elph_agent::decrypt_string_async;
-use elph_agent::decrypt_string_sync;
-use elph_agent::encrypt_json_async;
-use elph_agent::encrypt_string_async;
-use elph_agent::encrypt_string_sync;
-use elph_agent::is_encrypted_value;
+use elph_agent::mcp::Aes256Key;
+use elph_agent::mcp::ENC_PREFIX;
+use elph_agent::mcp::decrypt_json_async;
+use elph_agent::mcp::decrypt_string_async;
+use elph_agent::mcp::decrypt_string_sync;
+use elph_agent::mcp::encrypt_json_async;
+use elph_agent::mcp::encrypt_string_async;
+use elph_agent::mcp::encrypt_string_sync;
+use elph_agent::mcp::is_encrypted_value;
 use tempfile::tempdir;
 
 #[tokio::test]

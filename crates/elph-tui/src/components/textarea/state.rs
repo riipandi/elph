@@ -241,7 +241,7 @@ impl TextareaState {
         self.vertical_col_preference = None;
     }
 
-    /// Arrow / Home / End with Shift extends the selection (vim visual-ish).
+    /// Arrow / Home / End with Shift extends the selection.
     ///
     /// Only navigation keys may start a selection. Shifted *characters* (e.g. `@` via
     /// Shift+2) must not set [`Self::selection_anchor`] — otherwise the next keystroke

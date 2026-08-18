@@ -1,4 +1,5 @@
 {
+    "$schema": "https://elph.space/provider-schema.json",
     "MiniMax-M2.7-highspeed": {
         "api": "openai-completions",
         "baseUrl": "https://ai.sumopod.com/v1",

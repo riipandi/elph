@@ -61,18 +61,17 @@ impl Paths {
         dirs.extend(self.standard_required_dirs());
         dirs.push(self.global_extensions_dir());
         dirs.push(self.project_elph_dir());
-        dirs.push(self.project_extensions_dir());
         dirs
     }
 
     /// `CONFIG_DIR/extensions/`
     pub fn global_extensions_dir(&self) -> PathBuf {
-        elph_agent::global_extensions_dir(self.config_dir())
+        elph_agent::plugins::global_extensions_dir(self.config_dir())
     }
 
     /// `<project>/.elph/extensions/`
     pub fn project_extensions_dir(&self) -> PathBuf {
-        elph_agent::project_extensions_dir(&self.project_elph_dir())
+        elph_agent::plugins::project_extensions_dir(&self.project_elph_dir())
     }
 
     /// Project MCP override: `<project>/.elph/mcp.json` (merged over home `mcp.json`).
@@ -202,9 +201,9 @@ mod tests {
             data.join("logs/mcp/my_server/tool_name.stderr.log")
         );
         // 4 bundled + 14 standard (sessions, no projects) = 18
-        // + config + data + global_ext + project_elph + project_ext = 18+2+1+1+1 = 23
+        // + config + data + global_ext + project_elph = 18+2+1+1 = 22
         assert_eq!(paths.standard_required_dirs().len(), 18);
-        assert_eq!(paths.required_dirs().len(), 23);
+        assert_eq!(paths.required_dirs().len(), 22);
     }
 
     #[test]

@@ -1,13 +1,8 @@
 //! Basic chat completion — pick a built-in model, authenticate, stream tokens.
 //!
 //! ```sh
-//! # Requires a provider API key (see example header for which one)
 //! cargo run -p elph-ai --example basic
-//!
-//! # Stream tokens as they arrive:
 //! cargo run -p elph-ai --example basic -- --stream
-//!
-//! # Stream and print reasoning tokens to stderr:
 //! cargo run -p elph-ai --example basic -- --stream --show-thinking
 //! ```
 
@@ -17,10 +12,7 @@ use std::io::stderr;
 use elph_ai::Context;
 use elph_ai::{AssistantContentBlock, AssistantMessageEvent, Message, StopReason, UserContent};
 use elph_ai::{builtin_models, get_builtin_model};
-use elph_tui::CliSpinner;
-use elph_tui::progress_spinner;
 
-// Override via env: ELPH_PROVIDER=opencode ELPH_MODEL=big-pickle
 const PROVIDER: &str = "opencode";
 const MODEL_ID: &str = "big-pickle";
 
@@ -54,10 +46,8 @@ async fn main() -> anyhow::Result<()> {
     println!("Mode:     {}", if args.stream { "streaming" } else { "buffered" });
     println!();
 
-    let setup = progress_spinner("Resolving auth...");
     let models = builtin_models(None);
     let auth = models.get_auth(&model).await?;
-    setup.finish_and_clear();
 
     if let Some(auth) = &auth {
         println!("Auth:     configured via {}", auth.source.as_deref().unwrap_or("unknown"));
@@ -77,58 +67,36 @@ async fn main() -> anyhow::Result<()> {
         tools: None,
     };
 
-    let generating = progress_spinner(if args.stream {
-        "Streaming from big-pickle..."
-    } else {
-        "Waiting for big-pickle..."
-    });
-
     let stream = models.stream(&model, &context, None);
     let mut events = stream.into_stream();
 
     if args.stream {
-        run_streaming(&mut events, &generating, args.show_thinking).await?;
+        run_streaming(&mut events, args.show_thinking).await?;
     } else {
-        run_buffered(&mut events, &generating).await?;
+        run_buffered(&mut events).await?;
     }
 
     Ok(())
 }
 
-async fn run_streaming(
-    events: &mut elph_ai::EventStreamIterator,
-    progress: &CliSpinner,
-    show_thinking: bool,
-) -> anyhow::Result<()> {
+async fn run_streaming(events: &mut elph_ai::EventStreamIterator, show_thinking: bool) -> anyhow::Result<()> {
     print!("Assistant: ");
     let _ = stdout().flush();
 
-    let mut started = false;
     let mut printed_text = false;
 
     while let Some(event) = events.next().await {
         match event {
             AssistantMessageEvent::TextDelta { delta, .. } => {
-                if !started {
-                    progress.finish_and_clear();
-                    started = true;
-                }
                 print!("{delta}");
                 printed_text = true;
                 let _ = stdout().flush();
             }
             AssistantMessageEvent::ThinkingDelta { delta, .. } if show_thinking => {
-                if !started {
-                    progress.finish_and_clear();
-                    started = true;
-                }
                 eprint!("{delta}");
                 let _ = stderr().flush();
             }
             AssistantMessageEvent::Done { reason, message } => {
-                if !started {
-                    progress.finish_and_clear();
-                }
                 if !printed_text {
                     for block in &message.content {
                         if let AssistantContentBlock::Text(text) = block {
@@ -140,7 +108,6 @@ async fn run_streaming(
                 print_usage(&message, reason);
             }
             AssistantMessageEvent::Error { error, .. } => {
-                progress.finish_and_clear();
                 println!();
                 anyhow::bail!("stream error: {}", error.error_message.unwrap_or_else(|| "unknown".into()));
             }
@@ -148,14 +115,10 @@ async fn run_streaming(
         }
     }
 
-    if !started {
-        progress.finish_and_clear();
-    }
-
     Ok(())
 }
 
-async fn run_buffered(events: &mut elph_ai::EventStreamIterator, progress: &CliSpinner) -> anyhow::Result<()> {
+async fn run_buffered(events: &mut elph_ai::EventStreamIterator) -> anyhow::Result<()> {
     let mut final_message = None;
     let mut stop_reason = StopReason::Stop;
 
@@ -166,14 +129,11 @@ async fn run_buffered(events: &mut elph_ai::EventStreamIterator, progress: &CliS
                 stop_reason = reason;
             }
             AssistantMessageEvent::Error { error, .. } => {
-                progress.finish_and_clear();
                 anyhow::bail!("stream error: {}", error.error_message.unwrap_or_else(|| "unknown".into()));
             }
             _ => {}
         }
     }
-
-    progress.finish_and_clear();
 
     let message = final_message.ok_or_else(|| anyhow::anyhow!("stream ended without a response"))?;
     print!("Assistant: ");

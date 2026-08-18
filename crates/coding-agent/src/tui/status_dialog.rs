@@ -10,8 +10,8 @@ use crate::tui::inline_dialog::{InlineDialogShell, OPTIONS_LIST_TOP_GAP, inline_
 use crate::tui::provider_connect_dialog::{PendingProviderApiKeyDialog, ProviderConnectFocus, ProviderConnectStep};
 use crate::tui::tool_approval::{
     PendingModeChange, PendingToolApproval, feedback_footer_hint, feedback_select_options, memory_flush_footer_hint,
-    memory_flush_select_options, mode_change_footer_hint, mode_change_select_options, plan_confirmation_footer_hint,
-    plan_confirmation_select_options, tool_approval_footer_hint, tool_approval_select_options,
+    memory_flush_select_options, mode_change_footer_hint, mode_change_select_options, tool_approval_footer_hint_for,
+    tool_approval_select_options_for,
 };
 use crate::tui::tool_params::{format_tool_approval_summary, tool_approval_summary_row_count_for_summary};
 
@@ -44,10 +44,11 @@ fn tool_approval_layout_plan(
     screen_height: u16,
     summary: &str,
     body_width: u16,
+    once_only: bool,
 ) -> ToolApprovalLayoutPlan {
     let theme = UiTheme::default();
     let max_body = tool_approval_max_body_rows(screen_height);
-    let options = tool_approval_select_options();
+    let options = tool_approval_select_options_for(once_only);
     let list_rows = select_list_total_rows(&options, false, body_width, theme, true) as u16;
     let has_args = !summary.is_empty();
     let args_rows = if has_args {
@@ -103,12 +104,13 @@ fn render_tool_approval_dialog(
     props: &mut StatusZoneProps,
     tool_name: &str,
     args_summary: &str,
+    once_only: bool,
 ) -> AnyElement<'static> {
     let theme = UiTheme::default();
     let body_width = inline_body_width(props.screen_width);
     let summary = format_tool_approval_summary(tool_name, args_summary);
-    let plan = tool_approval_layout_plan(props.screen_width, props.screen_height, &summary, body_width);
-    let options = tool_approval_select_options();
+    let plan = tool_approval_layout_plan(props.screen_width, props.screen_height, &summary, body_width, once_only);
+    let options = tool_approval_select_options_for(once_only);
     let has_args = !summary.is_empty();
 
     element! {
@@ -116,7 +118,7 @@ fn render_tool_approval_dialog(
             screen_width: props.screen_width,
             title: format!("Allow tool: {tool_name}"),
             has_focus: props.approval_has_focus,
-            footer_hint: Some(tool_approval_footer_hint()),
+            footer_hint: Some(tool_approval_footer_hint_for(once_only)),
         ) {
             View(
                 width: body_width,
@@ -167,29 +169,33 @@ fn render_tool_approval_dialog(
     .into()
 }
 
-fn render_plan_confirmation_dialog(props: &mut StatusZoneProps, plan_text: &str) -> AnyElement<'static> {
+fn render_plan_confirmation_dialog(
+    props: &mut StatusZoneProps,
+    plan_text: &str,
+    plan_file: Option<&str>,
+    focus: crate::tui::plan_review::PlanReviewFocus,
+) -> AnyElement<'static> {
+    use crate::tui::plan_review::{plan_review_footer_hint, shorten_plan_path};
+
     let theme = UiTheme::default();
     let body_width = inline_body_width(props.screen_width);
-    let options = plan_confirmation_select_options();
-    // Show first 8 lines of the plan, truncated per line.
-    let plan_preview: String = plan_text
-        .lines()
-        .take(8)
-        .map(|line| elph_tui::utils::truncate_with_ellipsis(line, body_width as usize))
-        .collect::<Vec<_>>()
-        .join("\n");
+    let options = crate::tui::plan_review::plan_confirmation_select_options();
+    let subject = crate::agent::plan_files::extract_plan_subject(plan_text);
+    let path = plan_file
+        .map(shorten_plan_path)
+        .unwrap_or_else(|| ".elph/plans/ (not saved)".to_string());
+    let summary = format!("{subject}\n{path}");
 
     element! {
         InlineDialogShell(
             screen_width: props.screen_width,
-            title: "Plan confirmation".to_string(),
+            title: "Review plan".to_string(),
             has_focus: props.approval_has_focus,
-            footer_hint: Some(plan_confirmation_footer_hint()),
+            footer_hint: Some(plan_review_footer_hint(focus)),
         ) {
             View(
                 width: body_width,
                 flex_direction: FlexDirection::Column,
-                gap: 1,
                 flex_shrink: 0f32,
             ) {
                 View(
@@ -198,7 +204,7 @@ fn render_plan_confirmation_dialog(props: &mut StatusZoneProps, plan_text: &str)
                     overflow: Overflow::Hidden,
                 ) {
                     Text(
-                        content: plan_preview,
+                        content: summary,
                         color: theme.text_secondary,
                         wrap: TextWrap::Wrap,
                     )
@@ -213,7 +219,7 @@ fn render_plan_confirmation_dialog(props: &mut StatusZoneProps, plan_text: &str)
                         height: 5u16,
                         options: options,
                         selected_index: props.approval_selected,
-                        has_focus: props.approval_has_focus,
+                        has_focus: props.approval_has_focus && matches!(focus, crate::tui::plan_review::PlanReviewFocus::Preview),
                         show_description: false,
                         compact: true,
                         theme: Some(theme),
@@ -320,21 +326,18 @@ pub enum StatusDialogKind {
     ToolApproval {
         tool_name: String,
         args_summary: String,
+        once_only: bool,
     },
     /// Mode-change approval dialog (Switch to Build/Brave).
-    ModeChange {
-        target_mode: String,
-        reason: String,
-    },
-    /// Plan confirmation dialog (Implement / Implement fresh / Stay in Plan).
+    ModeChange { target_mode: String, reason: String },
+    /// Compact plan confirmation (subject + saved path; body lives in the transcript).
     PlanConfirmation {
         plan_text: String,
+        plan_file: Option<String>,
+        focus: crate::tui::plan_review::PlanReviewFocus,
     },
     /// Confirm wiping the entire memory store (`/memory flush`).
-    MemoryFlush {
-        memory_count: u32,
-        task_count: u32,
-    },
+    MemoryFlush { memory_count: u32, task_count: u32 },
     /// Feedback dialog (Report a Bug / Join Community).
     Feedback,
     /// Provider connection dialog with OAuth or API key input.
@@ -355,14 +358,9 @@ pub enum StatusDialogKind {
         oauth_prompt_message: String,
     },
     /// Dedicated API key input dialog (separate from provider selection).
-    ProviderApiKey {
-        provider_id: String,
-        provider_name: String,
-    },
+    ProviderApiKey { provider_id: String, provider_name: String },
     /// Provider disconnect dialog (remove stored credentials).
-    ProviderDisconnect {
-        provider_ids: Vec<String>,
-    },
+    ProviderDisconnect { provider_ids: Vec<String> },
     /// MCP OAuth dialog (`/mcp auth`).
     McpAuth {
         pending: crate::tui::mcp_auth_dialog::PendingMcpAuthDialog,
@@ -507,13 +505,16 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
         Some(StatusDialogKind::ToolApproval {
             tool_name,
             args_summary,
-        }) => Some(render_tool_approval_dialog(props, &tool_name, &args_summary)),
+            once_only,
+        }) => Some(render_tool_approval_dialog(props, &tool_name, &args_summary, once_only)),
         Some(StatusDialogKind::ModeChange { target_mode, reason }) => {
             Some(render_mode_change_dialog(props, &target_mode, &reason))
         }
-        Some(StatusDialogKind::PlanConfirmation { plan_text, .. }) => {
-            Some(render_plan_confirmation_dialog(props, &plan_text))
-        }
+        Some(StatusDialogKind::PlanConfirmation {
+            plan_text,
+            plan_file,
+            focus,
+        }) => Some(render_plan_confirmation_dialog(props, &plan_text, plan_file.as_deref(), focus)),
         Some(StatusDialogKind::MemoryFlush {
             memory_count,
             task_count,
@@ -720,6 +721,7 @@ pub fn build_status_dialog_kind(tool: Option<&PendingToolApproval>) -> Option<St
     Some(StatusDialogKind::ToolApproval {
         tool_name: pending.tool_name.clone(),
         args_summary: pending.args_summary.clone(),
+        once_only: pending.once_only,
     })
 }
 
@@ -739,6 +741,8 @@ pub fn build_plan_confirmation_dialog_kind(
     let pending = pending?;
     Some(StatusDialogKind::PlanConfirmation {
         plan_text: pending.plan_text.clone(),
+        plan_file: pending.plan_file.clone(),
+        focus: pending.focus,
     })
 }
 
@@ -1095,7 +1099,7 @@ mod tests {
         let raw = long_args_json();
         let summary = format_tool_approval_summary("shell_exec", &raw);
         let summary_rows = tool_approval_summary_row_count_for_summary(&summary, body_width);
-        let plan = tool_approval_layout_plan(80, 24, &summary, body_width);
+        let plan = tool_approval_layout_plan(80, 24, &summary, body_width, false);
         assert!(summary_rows <= TOOL_PARAMS_MAX_VIEWPORT);
         if let Some(viewport) = plan.args_viewport {
             assert!(viewport <= TOOL_PARAMS_MAX_VIEWPORT);
@@ -1106,7 +1110,7 @@ mod tests {
     fn layout_plan_grows_naturally_when_space_allows() {
         let body_width = inline_body_width(100);
         let summary = format_tool_approval_summary("read_file", r#"{"path":"src/lib.rs"}"#);
-        let plan = tool_approval_layout_plan(100, 60, &summary, body_width);
+        let plan = tool_approval_layout_plan(100, 60, &summary, body_width, false);
         assert!(plan.args_viewport.is_none());
         assert_eq!(plan.list_height, SELECT_LIST_AUTO_HEIGHT);
     }
@@ -1115,10 +1119,10 @@ mod tests {
     fn layout_plan_keeps_approval_list_rows_reserved() {
         let body_width = inline_body_width(80);
         let theme = UiTheme::default();
-        let options = tool_approval_select_options();
+        let options = tool_approval_select_options_for(false);
         let list_rows = select_list_total_rows(&options, false, body_width, theme, true) as u16;
         let summary = format_tool_approval_summary("shell_exec", &long_args_json());
-        let plan = tool_approval_layout_plan(80, 24, &summary, body_width);
+        let plan = tool_approval_layout_plan(80, 24, &summary, body_width, false);
         assert!(plan.list_height == SELECT_LIST_AUTO_HEIGHT || plan.list_height >= list_rows.min(3));
     }
 

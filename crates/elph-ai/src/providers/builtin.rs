@@ -13,7 +13,7 @@ use crate::models::catalog::builtin_catalog;
 use crate::models::{CreateModelsOptions, CreateProviderOptions, MutableModels, Provider, ProviderApi};
 use crate::models::{create_models, create_provider};
 use crate::providers::adapter::openai_responses_api;
-use crate::providers::adapter::{anthropic_messages_api, azure_openai_responses_api, bedrock_converse_stream_api};
+use crate::providers::adapter::{anthropic_messages_api, azure_openai_responses_api};
 use crate::providers::adapter::{google_generative_ai_api, google_vertex_api};
 use crate::providers::adapter::{
     mistral_conversations_api, mixed_gateway_apis, mixed_openai_apis, openai_codex_responses_api,
@@ -39,6 +39,7 @@ macro_rules! simple_provider {
     };
 }
 
+#[cfg(feature = "bedrock")]
 pub fn amazon_bedrock_provider() -> Provider {
     create_provider(CreateProviderOptions {
         id: "amazon-bedrock".to_string(),
@@ -51,10 +52,11 @@ pub fn amazon_bedrock_provider() -> Provider {
         },
         models: builtin_catalog("amazon-bedrock").as_ref().clone(),
         refresh_models: None,
-        api: ProviderApi::Single(bedrock_converse_stream_api()),
+        api: ProviderApi::Single(crate::providers::adapter::bedrock_converse_stream_api()),
     })
 }
 
+#[cfg(feature = "bedrock")]
 fn bedrock_auth() -> crate::auth::ApiKeyAuth {
     crate::auth::ApiKeyAuth {
         name: "AWS credentials".to_string(),
@@ -492,8 +494,8 @@ pub fn wafer_provider() -> Provider {
 }
 
 pub fn builtin_providers() -> Vec<Provider> {
-    vec![
-        amazon_bedrock_provider(),
+    #[allow(unused_mut)]
+    let mut providers = vec![
         simple_provider!(
             "ant-ling",
             "Ant Ling",
@@ -684,7 +686,10 @@ pub fn builtin_providers() -> Vec<Provider> {
             openai_completions_api,
             (vec!["ZAI_API_KEY"], "ZAI API key")
         ),
-    ]
+    ];
+    #[cfg(feature = "bedrock")]
+    providers.insert(0, amazon_bedrock_provider());
+    providers
 }
 
 pub fn builtin_models(options: Option<CreateModelsOptions>) -> MutableModels {

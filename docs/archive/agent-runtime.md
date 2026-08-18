@@ -272,4 +272,3 @@ Multi-agent tools are injected by `AgentHarness` when `tools-multi-agent` is ena
 - [tools.md](./tools.md) — catalog and approval
 - [configuration.md](./configuration.md) — settings and paths
 - [tui.md](./tui.md) — layout and keybindings
-- [openwiki/architecture.md](../openwiki/architecture.md) — current implementation

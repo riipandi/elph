@@ -5,8 +5,6 @@ use std::sync::Arc;
 use parking_lot::Mutex;
 
 use common::new_faux_with_options;
-use elph_agent::CompactionErrorCode;
-use elph_agent::build_session_context;
 use elph_agent::compaction::DEFAULT_COMPACTION_SETTINGS;
 use elph_agent::compaction::calculate_context_tokens;
 use elph_agent::compaction::compact;
@@ -15,8 +13,8 @@ use elph_agent::compaction::create_file_ops;
 use elph_agent::compaction::estimate_context_tokens;
 use elph_agent::compaction::estimate_tokens;
 use elph_agent::compaction::extract_file_ops_from_message;
-use elph_agent::compaction::find_cut_point;
-use elph_agent::compaction::find_turn_start_index;
+use elph_agent::session::build_session_context;
+
 use elph_agent::compaction::format_file_operations;
 use elph_agent::compaction::generate_summary;
 use elph_agent::compaction::get_last_assistant_usage;
@@ -24,6 +22,7 @@ use elph_agent::compaction::prepare_compaction;
 use elph_agent::compaction::serialize_conversation;
 use elph_agent::compaction::should_compact;
 use elph_agent::compaction::{CompactionPreparation, CompactionSettings};
+use elph_agent::harness::CompactionErrorCode;
 use elph_agent::session::SessionTreeEntry;
 use elph_agent::types::{AgentMessage, CustomAgentMessage};
 use elph_ai::AssistantContentBlock;
@@ -54,7 +53,7 @@ impl ProviderStreamsDyn for CapturingFauxStreams {
         model: &elph_ai::Model,
         context: &elph_ai::Context,
         options: Option<elph_ai::StreamOptions>,
-    ) -> elph_ai::utils::event_stream::AssistantMessageEventStream {
+    ) -> elph_ai::AssistantMessageEventStream {
         self.inner.stream(model, context, options)
     }
 
@@ -63,7 +62,7 @@ impl ProviderStreamsDyn for CapturingFauxStreams {
         model: &elph_ai::Model,
         context: &elph_ai::Context,
         options: Option<SimpleStreamOptions>,
-    ) -> elph_ai::utils::event_stream::AssistantMessageEventStream {
+    ) -> elph_ai::AssistantMessageEventStream {
         if let Some(opts) = options.clone() {
             self.captured.lock().push(opts);
         }
@@ -293,121 +292,6 @@ fn should_compact_respects_settings() {
             ..settings
         }
     ));
-}
-
-#[test]
-fn find_cut_point_keeps_recent_tokens() {
-    let entries = vec![
-        message_entry("u1", None, user_message(&"a".repeat(400))),
-        message_entry("a1", Some("u1"), assistant_message("short", None)),
-        message_entry("u2", Some("a1"), user_message(&"b".repeat(400))),
-        message_entry("a2", Some("u2"), assistant_message("tail", None)),
-    ];
-    let cut = find_cut_point(&entries, 0, entries.len(), 50);
-    assert!(cut.first_kept_entry_index >= 2);
-}
-
-#[test]
-fn find_cut_point_uses_token_differences() {
-    let mut entries = Vec::new();
-    for i in 0..10 {
-        let parent_id = if i == 0 { None } else { Some(format!("a{}", i - 1)) };
-        entries.push(message_entry(
-            &format!("u{i}"),
-            parent_id.as_deref(),
-            user_message(&format!("User {i}")),
-        ));
-        entries.push(message_entry(
-            &format!("a{i}"),
-            Some(&format!("u{i}")),
-            assistant_message(&"x".repeat((i + 1) * 1000), None),
-        ));
-    }
-
-    let cut = find_cut_point(&entries, 0, entries.len(), 2500);
-    assert!(matches!(entries[cut.first_kept_entry_index], SessionTreeEntry::Message { .. }));
-}
-
-#[test]
-fn find_turn_start_index_finds_user_turn() {
-    let entries = vec![
-        message_entry("u1", None, user_message("start")),
-        message_entry("a1", Some("u1"), assistant_message("middle", None)),
-        message_entry("a2", Some("a1"), assistant_message("end", None)),
-    ];
-    assert_eq!(find_turn_start_index(&entries, 2, 0), Some(0));
-}
-
-#[test]
-fn find_cut_point_and_turn_start_edge_cases() {
-    let thinking = thinking_level_entry("thinking", None, "high");
-    let model_change = model_change_entry("model", Some("thinking"), "openai", "gpt-4");
-    assert_eq!(
-        find_cut_point(&[thinking.clone(), model_change.clone()], 0, 2, 1),
-        elph_agent::compaction::CutPointResult {
-            first_kept_entry_index: 0,
-            turn_start_index: None,
-            is_split_turn: false,
-        }
-    );
-
-    let branch_summary = branch_summary_entry("branch", Some("model"), "branch", "branch summary");
-    let custom_message = custom_message_entry("custom", Some("branch"), "custom content");
-    assert_eq!(
-        find_turn_start_index(&[thinking.clone(), branch_summary.clone()], 1, 0),
-        Some(1)
-    );
-    assert_eq!(
-        find_turn_start_index(&[thinking.clone(), custom_message.clone()], 1, 0),
-        Some(1)
-    );
-    assert_eq!(find_turn_start_index(&[thinking, model_change], 1, 0), None);
-
-    let cut = find_cut_point(
-        &[
-            branch_summary_entry("branch2", None, "branch", "branch summary"),
-            custom_message_entry("custom2", Some("branch2"), "custom content"),
-            message_entry("keep", Some("custom2"), user_message("keep")),
-        ],
-        0,
-        3,
-        1,
-    );
-    assert_eq!(cut.first_kept_entry_index, 0);
-
-    let tool_result = message_entry(
-        "tool",
-        None,
-        AgentMessage::Llm(Box::new(Message::ToolResult {
-            tool_call_id: "call-1".to_string(),
-            tool_name: "read_file".to_string(),
-            content: vec![ContentBlock::Text {
-                text: "tool output".to_string(),
-            }],
-            details: None,
-            added_tool_names: None,
-            is_error: false,
-            usage: None,
-
-            timestamp: 0,
-        })),
-    );
-    assert_eq!(
-        find_cut_point(&[tool_result], 0, 1, 1),
-        elph_agent::compaction::CutPointResult {
-            first_kept_entry_index: 0,
-            turn_start_index: None,
-            is_split_turn: false,
-        }
-    );
-
-    let user = message_entry("user", None, user_message("user"));
-    let compaction = compaction_entry("compact", Some("user"), "summary", "user", None);
-    let assistant = message_entry("assistant", Some("compact"), assistant_message("assistant", None));
-    assert_eq!(
-        find_cut_point(&[user, compaction, assistant], 0, 3, 1).first_kept_entry_index,
-        2
-    );
 }
 
 #[test]

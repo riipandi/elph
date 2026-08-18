@@ -21,6 +21,7 @@ mod model_selector;
 mod model_selector_bar;
 mod model_selector_shell;
 mod notifier;
+pub(crate) mod plan_review;
 mod prompt;
 mod prompt_history;
 pub(crate) mod provider_connect_dialog;
@@ -54,7 +55,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use iocraft::prelude::*;
 
-use elph_agent::LocalExecutionEnv;
+use elph_agent::runtime::LocalExecutionEnv;
 
 use elph_ai::get_builtin_model;
 use elph_tui::install_theme_config;
@@ -73,7 +74,7 @@ impl Drop for ShellUseTeardownGuard {
     }
 }
 
-use crate::agent::{load_resources, resolve_provider_and_model, slash_commands_for_palette};
+use crate::agent::{load_resources, resolve_provider_and_model, slash_commands_for_palette_with};
 use crate::extensions::ExtensionHost;
 use crate::platform::{Paths, Settings};
 use crate::tui::transcript::LogDensity;
@@ -95,22 +96,33 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
     let paths = Paths::resolve()?;
     Settings::ensure(&paths)?;
     let settings = Settings::load(&paths)?;
+    log::info!(
+        "tui start project={} resume={}",
+        paths.project_dir().display(),
+        options.resume_id.as_deref().unwrap_or("new")
+    );
 
     let extension_host = ExtensionHost::new();
     if let Err(err) = ExtensionHost::ensure_dirs(&paths) {
         log::warn!("extension dirs unavailable: {err}");
-    } else if let Err(err) = extension_host.reload(&paths, true) {
+    } else if let Err(err) = extension_host.reload(&paths, &settings) {
         log::warn!("extension reload failed: {err}");
     }
 
     let cwd = paths.project_dir().clone();
     let execution_env = Arc::new(LocalExecutionEnv::new(&cwd));
     let env = execution_env.clone();
-    let bootstrap_resources = load_resources(&paths, &cwd, &env).await;
+    settings.apply_http_proxy_env();
+    settings.apply_quiet_startup_env();
+    let bootstrap_resources = load_resources(&paths, &cwd, &env, &settings).await;
     let prompt_templates = bootstrap_resources.resources.prompt_templates.clone();
     let skills = bootstrap_resources.resources.skills.clone();
-    let slash_commands =
-        slash_commands_for_palette(Some(&extension_host.registry().read()), Some(&prompt_templates), Some(&skills));
+    let slash_commands = slash_commands_for_palette_with(
+        Some(&extension_host.registry().read()),
+        Some(&prompt_templates),
+        Some(&skills),
+        settings.resources.enable_skill_commands,
+    );
 
     let session_id = options.resume_id.clone().unwrap_or_else(|| "starting…".to_string());
     let (boot_provider, boot_model_id) =
@@ -175,7 +187,7 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
         cwd: cwd,
         execution_env: execution_env,
         paths: paths,
-        file_picker_show_hidden: settings.ui.file_picker.show_hidden_files,
+        file_picker_show_hidden: settings.ui.show_hidden_files,
         allow_mode_change_while_busy: settings.ui.allow_mode_change_while_busy,
         turn_stats_enabled: settings.ui.turn_stats,
         initial_git_footer: git_footer,

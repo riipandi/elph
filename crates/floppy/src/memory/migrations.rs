@@ -121,7 +121,10 @@ pub async fn apply(conn: &Connection) -> Result<()> {
             set_meta(conn, "fts_available", "0").await?;
             Ok(())
         }
-        Err(e) => Err(e),
+        Err(e) => {
+            log::error!("memory migrations failed: {e:#}");
+            Err(e)
+        }
     }
 }
 

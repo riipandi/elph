@@ -1,12 +1,14 @@
 //! Terminal color adaptation for markdown spans (`supports-color` + `anstyle`).
 
-use std::sync::OnceLock;
-
 use anstyle::{Ansi256Color, AnsiColor, Color as AnstyleColor, Effects, RgbColor as AnstyleRgb};
+#[cfg(feature = "highlight")]
 use anstyle_syntect::to_anstyle;
+#[cfg(feature = "highlight")]
 use syntect::highlighting::Style as SyntectStyle;
 
-use crate::model::{FontWeight, RgbColor, StyledSpan};
+#[cfg(feature = "highlight")]
+use crate::model::RgbColor;
+use crate::model::{FontWeight, StyledSpan};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum ColorLevel {
@@ -17,32 +19,28 @@ pub enum ColorLevel {
     TrueColor,
 }
 
-static COLOR_LEVEL: OnceLock<ColorLevel> = OnceLock::new();
-
 pub fn detect_color_level() -> ColorLevel {
-    *COLOR_LEVEL.get_or_init(|| {
-        if std::env::var_os("NO_COLOR").is_some() {
-            return ColorLevel::None;
-        }
-        match supports_color::on(supports_color::Stream::Stdout) {
-            None => ColorLevel::TrueColor,
-            Some(level) => {
-                if level.has_16m {
-                    ColorLevel::TrueColor
-                } else if level.has_256 {
-                    ColorLevel::Ansi256
-                } else if level.has_basic {
-                    ColorLevel::Basic
-                } else {
-                    ColorLevel::None
-                }
+    if std::env::var_os("NO_COLOR").is_some() {
+        return ColorLevel::None;
+    }
+    match supports_color::on(supports_color::Stream::Stdout) {
+        None => ColorLevel::TrueColor,
+        Some(level) => {
+            if level.has_16m {
+                ColorLevel::TrueColor
+            } else if level.has_256 {
+                ColorLevel::Ansi256
+            } else if level.has_basic {
+                ColorLevel::Basic
+            } else {
+                ColorLevel::None
             }
         }
-    })
+    }
 }
 
-fn adapt_anstyle_color(color: AnstyleColor) -> Option<AnstyleColor> {
-    match detect_color_level() {
+fn adapt_anstyle_color(color: AnstyleColor, level: ColorLevel) -> Option<AnstyleColor> {
+    match level {
         ColorLevel::None => None,
         ColorLevel::TrueColor => Some(color),
         ColorLevel::Ansi256 => Some(match color {
@@ -90,6 +88,40 @@ fn rgb_to_ansi16(rgb: AnstyleRgb) -> AnsiColor {
     }
 }
 
+#[cfg(feature = "highlight")]
+fn ansi256_index_to_rgb(index: u8) -> RgbColor {
+    match index {
+        0 => RgbColor::new(0x00, 0x00, 0x00),
+        1 => RgbColor::new(0x80, 0x00, 0x00),
+        2 => RgbColor::new(0x00, 0x80, 0x00),
+        3 => RgbColor::new(0x80, 0x80, 0x00),
+        4 => RgbColor::new(0x00, 0x00, 0x80),
+        5 => RgbColor::new(0x80, 0x00, 0x80),
+        6 => RgbColor::new(0x00, 0x80, 0x80),
+        7 => RgbColor::new(0xc0, 0xc0, 0xc0),
+        8 => RgbColor::new(0x80, 0x80, 0x80),
+        9 => RgbColor::new(0xff, 0x00, 0x00),
+        10 => RgbColor::new(0x00, 0xff, 0x00),
+        11 => RgbColor::new(0xff, 0xff, 0x00),
+        12 => RgbColor::new(0x00, 0x00, 0xff),
+        13 => RgbColor::new(0xff, 0x00, 0xff),
+        14 => RgbColor::new(0x00, 0xff, 0xff),
+        15 => RgbColor::new(0xff, 0xff, 0xff),
+        16..=231 => {
+            let n = index - 16;
+            let r = n / 36;
+            let g = (n % 36) / 6;
+            let b = n % 6;
+            let step = |v: u8| if v == 0 { 0 } else { 55 + 40 * v };
+            RgbColor::new(step(r), step(g), step(b))
+        }
+        232..=255 => {
+            let gray = 8 + (index - 232) * 10;
+            RgbColor::new(gray, gray, gray)
+        }
+    }
+}
+
 fn ansi256_to_ansi16(index: Ansi256Color) -> AnsiColor {
     let idx = index.index();
     if idx < 16 {
@@ -116,7 +148,8 @@ fn ansi256_to_ansi16(index: Ansi256Color) -> AnsiColor {
     }
 }
 
-fn anstyle_color_to_rgb(color: AnstyleColor, fallback: RgbColor) -> RgbColor {
+#[cfg(feature = "highlight")]
+fn anstyle_color_to_rgb(color: AnstyleColor, _fallback: RgbColor) -> RgbColor {
     match color {
         AnstyleColor::Rgb(rgb) => RgbColor::new(rgb.0, rgb.1, rgb.2),
         AnstyleColor::Ansi(ansi) => match ansi {
@@ -129,20 +162,17 @@ fn anstyle_color_to_rgb(color: AnstyleColor, fallback: RgbColor) -> RgbColor {
             AnsiColor::Cyan | AnsiColor::BrightCyan => RgbColor::new(0x4d, 0xd0, 0xe1),
             AnsiColor::White | AnsiColor::BrightWhite => RgbColor::new(0xb0, 0xb3, 0xb9),
         },
-        AnstyleColor::Ansi256(index) => {
-            if let Some(adapted) = adapt_anstyle_color(AnstyleColor::Ansi256(index)) {
-                return anstyle_color_to_rgb(adapted, fallback);
-            }
-            fallback
-        }
+        AnstyleColor::Ansi256(index) => ansi256_index_to_rgb(index.index()),
     }
 }
 
+/// Convert a syntect style to an IR span. Always stores **truecolor RGB** — terminal
+/// adaptation happens at ANSI write time via [`span_anstyle`].
+#[cfg(feature = "highlight")]
 pub fn syntect_to_styled_span(style: SyntectStyle, text: impl Into<String>, fallback: RgbColor) -> StyledSpan {
     let anstyle = to_anstyle(style);
     let color = anstyle
         .get_fg_color()
-        .and_then(adapt_anstyle_color)
         .map(|c| anstyle_color_to_rgb(c, fallback))
         .unwrap_or(fallback);
     let effects = anstyle.get_effects();
@@ -161,11 +191,11 @@ pub fn syntect_to_styled_span(style: SyntectStyle, text: impl Into<String>, fall
 }
 
 /// Build anstyle Style for a span (for ANSI emission).
-pub fn span_anstyle(span: &StyledSpan) -> anstyle::Style {
+pub fn span_anstyle(span: &StyledSpan, level: ColorLevel) -> anstyle::Style {
     let mut style = anstyle::Style::new();
-    if detect_color_level() != ColorLevel::None {
+    if level != ColorLevel::None {
         let rgb = AnstyleRgb(span.color.r, span.color.g, span.color.b);
-        if let Some(fg) = adapt_anstyle_color(AnstyleColor::Rgb(rgb)) {
+        if let Some(fg) = adapt_anstyle_color(AnstyleColor::Rgb(rgb), level) {
             style = style.fg_color(Some(fg));
         }
     }

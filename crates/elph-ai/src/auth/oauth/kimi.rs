@@ -31,13 +31,20 @@ pub fn kimi_oauth_loader() -> OAuthLoader {
 fn kimi_oauth_impl() -> OAuthAuth {
     OAuthAuth {
         name: "Kimi Code Subscription".to_string(),
-        login: Arc::new(|callbacks: Arc<dyn AuthLoginCallbacks>| {
+        login: Arc::new(|callbacks, _identity| {
             Box::pin(async move {
-                let creds = login_kimi(&callbacks).await?;
-                Ok(creds)
+                login_kimi(&callbacks)
+                    .await
+                    .map_err(super::map_oauth("Kimi login failed"))
             })
         }),
-        refresh: Arc::new(|credential| Box::pin(async move { refresh_kimi_token(&credential.refresh).await })),
+        refresh: Arc::new(|credential| {
+            Box::pin(async move {
+                refresh_kimi_token(&credential.refresh)
+                    .await
+                    .map_err(super::map_oauth("Kimi token refresh failed"))
+            })
+        }),
         to_auth: Arc::new(|credential| {
             Box::pin(async move {
                 Ok(crate::auth::types::ModelAuth {
@@ -72,7 +79,9 @@ fn oauth_credential(access: String, refresh: String, expires: i64) -> OAuthCrede
 
 async fn post_form(url: &str, fields: Vec<(&str, &str)>) -> Result<(bool, Value)> {
     let client = reqwest::Client::new();
-    let body_str = serde_urlencoded::to_string(fields)?;
+    let body_str = url::form_urlencoded::Serializer::new(String::new())
+        .extend_pairs(fields)
+        .finish();
     let response = client
         .post(url)
         .header("Accept", "application/json")

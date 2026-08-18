@@ -38,7 +38,7 @@ Inspired by [memelord](https://github.com/glommer/memelord) (MIT License, Copyri
 ```
 PROJECT_DIR/
 └── .elph/
-    ├── store.db          # gitignored; memory + codegraph
+    ├── store.db          # gitignored; sessions + memory
     └── .gitignore
 ```
 
@@ -204,13 +204,12 @@ In `~/.elph/settings.json`:
 
 | Field                       | Default         | Description                                              |
 | --------------------------- | --------------- | -------------------------------------------------------- |
-| `models.embed.model`        | `AllMiniLML6V2` | Local embedding model (shared with codegraph)            |
+| `models.embed.model`        | `AllMiniLML6V2` | Local embedding model for floppy memory                  |
 | `models.embed.quantized`    | `true`          | Prefer quantized catalog variant when available          |
 | `memory.enabled`            | `true`          | Auto hooks / bootstrap injection                         |
 | `memory.topK`               | `8`             | Semantic hits pulled into active per-turn recall         |
 | `memory.contextBudgetChars` | `4000`          | Budget for injected memory XML                           |
 | `memory.minQueryLength`     | `8`             | Min prompt length (task-like short prompts still recall) |
-| `codegraph.enabled`         | `false`         | Agent codegraph tools (CLI always available)             |
 
 Legacy `memory.embedModel` / `memory.embedQuantized` are migrated into `models.embed` on load.
 
@@ -247,7 +246,7 @@ Embeddings are fixed-size blobs for `vector32` queries. Changing to a model with
 
 Migrations run through the shared `app_migrations` ledger (`apply_set` in
 `floppy::core::migration`) — per-version membership, applied once, no `PRAGMA user_version`.
-Memory uses band 1–99, codegraph 500–599 (see [`codegraph.md`](./codegraph.md#schema-v1)). The
+Memory uses band 1–99. The
 and no version band.
 
 ## Related
@@ -255,4 +254,3 @@ and no version band.
 - [configuration.md](./configuration.md) — paths and settings
 - [cli.md](./cli.md) — `elph memory`
 - [agent-runtime.md](./agent-runtime.md) — runtime integration
-- [openwiki](../openwiki/quickstart.md) — implementation details

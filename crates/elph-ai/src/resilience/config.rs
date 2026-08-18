@@ -97,44 +97,42 @@ impl ResilienceConfig {
         self
     }
 
-    /// Load configuration from environment variables for a provider.
-    ///
-    /// Environment variables:
-    /// - `ELPH_RATE_LIMIT_{PROVIDER}_RPS` — requests per second
-    /// - `ELPH_CIRCUIT_BREAKER_{PROVIDER}_THRESHOLD` — failure threshold
-    /// - `ELPH_CIRCUIT_BREAKER_{PROVIDER}_TIMEOUT_MS` — recovery timeout in ms
-    /// - `ELPH_MAX_RETRIES` — max retry attempts (global)
-    /// - `ELPH_MAX_RETRY_DELAY_MS` — max backoff delay in ms (global)
+    /// Load `{ELPH}_RATE_LIMIT_*` keys. For a custom prefix use [`Self::from_env_prefixed`].
     pub fn from_env(provider_id: impl Into<String>) -> Self {
+        Self::from_env_prefixed(provider_id, "ELPH")
+    }
+
+    /// Load configuration using `{prefix}_RATE_LIMIT_*` / `{prefix}_CIRCUIT_BREAKER_*`.
+    pub fn from_env_prefixed(provider_id: impl Into<String>, prefix: &str) -> Self {
         let provider = provider_id.into();
         let upper = provider.to_uppercase().replace('-', "_");
 
-        let requests_per_second = std::env::var(format!("ELPH_RATE_LIMIT_{upper}_RPS"))
+        let requests_per_second = std::env::var(format!("{prefix}_RATE_LIMIT_{upper}_RPS"))
             .ok()
             .and_then(|v| v.parse().ok())
             .unwrap_or(10);
 
-        let burst_size = std::env::var(format!("ELPH_RATE_LIMIT_{upper}_BURST"))
+        let burst_size = std::env::var(format!("{prefix}_RATE_LIMIT_{upper}_BURST"))
             .ok()
             .and_then(|v| v.parse().ok())
             .unwrap_or(5);
 
-        let failure_threshold = std::env::var(format!("ELPH_CIRCUIT_BREAKER_{upper}_THRESHOLD"))
+        let failure_threshold = std::env::var(format!("{prefix}_CIRCUIT_BREAKER_{upper}_THRESHOLD"))
             .ok()
             .and_then(|v| v.parse().ok())
             .unwrap_or(5);
 
-        let recovery_timeout_ms = std::env::var(format!("ELPH_CIRCUIT_BREAKER_{upper}_TIMEOUT_MS"))
+        let recovery_timeout_ms = std::env::var(format!("{prefix}_CIRCUIT_BREAKER_{upper}_TIMEOUT_MS"))
             .ok()
             .and_then(|v| v.parse().ok())
             .unwrap_or(30_000);
 
-        let max_retries = std::env::var("ELPH_MAX_RETRIES")
+        let max_retries = std::env::var(format!("{prefix}_MAX_RETRIES"))
             .ok()
             .and_then(|v| v.parse().ok())
-            .unwrap_or(5); // Increased from 3 to 5 for better handling of transient transport errors
+            .unwrap_or(5);
 
-        let max_backoff_ms = std::env::var("ELPH_MAX_RETRY_DELAY_MS")
+        let max_backoff_ms = std::env::var(format!("{prefix}_MAX_RETRY_DELAY_MS"))
             .ok()
             .and_then(|v| v.parse().ok())
             .unwrap_or(30_000);

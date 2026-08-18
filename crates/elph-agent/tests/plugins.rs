@@ -1,7 +1,7 @@
 //! Extension discovery and manifest parsing.
 
-use elph_agent::{ExtensionRegistry, ExtensionsSettings};
-use elph_agent::{discover_manifests, load_manifest};
+use elph_agent::plugins::{ExtensionRegistry, ExtensionsSettings};
+use elph_agent::plugins::{discover_manifests, load_manifest};
 use std::path::PathBuf;
 
 #[test]

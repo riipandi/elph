@@ -1,10 +1,12 @@
 //! Compaction UX: lifecycle notices, auto-compact, model-switch fit, model refs.
 
 use anyhow::Result;
+use elph_agent::compaction::CompactionSettings;
 use elph_agent::compaction::{estimate_context_tokens, estimate_tokens_with_system_prompt, should_compact};
-use elph_agent::{CompactResult, CompactionSettings, build_session_context};
+use elph_agent::harness::CompactResult;
+use elph_agent::session::build_session_context;
 use elph_ai::Model;
-use elph_ai::utils::estimate::count_tokens_text;
+use elph_ai::estimate::count_tokens_text;
 
 use super::super::events::AgentUiEvent;
 use super::CodingAgentSession;
@@ -73,11 +75,6 @@ impl CodingAgentSession {
     }
 
     fn notice(&self, message: impl Into<String>) {
-        // Intercom (worker-message) turns stay silent: compaction affecting a
-        // peer-to-peer turn is internal, not user-visible transcript news.
-        if self.intercom_turn_active.load(std::sync::atomic::Ordering::Relaxed) {
-            return;
-        }
         let _ = self.ui_tx.send(AgentUiEvent::TranscriptNotice(message.into()));
     }
 
@@ -112,10 +109,7 @@ impl CodingAgentSession {
         // agent is actively compacting history — not frozen — while the turn is still busy.
         // The status text must exactly match the sticky notice so the transcript applier
         // collapses the pair into a single card (see `TranscriptEventApplier::push_status`).
-        // (Intercom turns skip both — see `notice`.)
-        if !self.intercom_turn_active.load(std::sync::atomic::Ordering::Relaxed) {
-            let _ = self.ui_tx.send(AgentUiEvent::Status(running.clone()));
-        }
+        let _ = self.ui_tx.send(AgentUiEvent::Status(running.clone()));
 
         let before = self.estimate_context_usage().await.ok().map(|(t, _)| t);
         let result = self

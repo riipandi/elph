@@ -214,12 +214,12 @@ pub fn lazy_oauth(name: impl Into<String>, load: OAuthLoader) -> OAuthAuth {
 
     OAuthAuth {
         name: name.clone(),
-        login: Arc::new(move |callbacks| {
+        login: Arc::new(move |callbacks, identity| {
             let inner = inner_login.clone();
             let load = load_login.clone();
             Box::pin(async move {
                 let auth = loaded(&inner, &load).await;
-                (auth.login)(callbacks).await
+                (auth.login)(callbacks, identity).await
             })
         }),
         refresh: Arc::new(move |credential| {

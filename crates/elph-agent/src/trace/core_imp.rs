@@ -55,6 +55,7 @@ pub fn set_reporter(reporter: JsonlReporter, config: fastrace::collector::Config
 pub fn flush() {
     if is_enabled() {
         fastrace_flush();
+        super::reporter::flush_writer();
     }
 }
 

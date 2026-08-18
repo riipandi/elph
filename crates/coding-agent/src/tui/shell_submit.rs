@@ -5,7 +5,8 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use elph_agent::agent::harness::types::Result as HarnessResult;
-use elph_agent::{ExecutionErrorCode, FileSystem, LocalExecutionEnv, Shell, ShellExecOptions, finalize_shell_capture};
+use elph_agent::harness::{ExecutionErrorCode, FileSystem, Shell, ShellExecOptions, finalize_shell_capture};
+use elph_agent::runtime::LocalExecutionEnv;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio_util::sync::CancellationToken;
 

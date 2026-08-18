@@ -7,7 +7,7 @@ use parking_lot::Mutex as SyncMutex;
 
 use anyhow::Result;
 use anyhow::anyhow;
-use futures_util::{SinkExt, StreamExt};
+use futures::{SinkExt, StreamExt};
 use serde_json::Value;
 use tokio_tungstenite::tungstenite::Message as WsMessage;
 
@@ -174,7 +174,7 @@ fn close_cache_entry_sync(entry: &CachedWebSocketConnection) {
         handle.abort();
     }
     if let Ok(mut socket) = entry.socket.try_lock() {
-        let _ = futures_util::future::FutureExt::now_or_never(socket.close(None));
+        let _ = futures::future::FutureExt::now_or_never(socket.close(None));
     }
 }
 
@@ -233,7 +233,7 @@ pub fn close_codex_websocket_sessions(session_id: Option<&str>) {
             handle.abort();
         }
         if let Ok(mut socket) = entry.socket.try_lock() {
-            let _ = futures_util::future::FutureExt::now_or_never(socket.close(None));
+            let _ = futures::future::FutureExt::now_or_never(socket.close(None));
         }
     };
 

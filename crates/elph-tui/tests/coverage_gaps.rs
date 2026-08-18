@@ -337,7 +337,7 @@ async fn select_slider_keyboard_matrix() {
         press(KeyCode::Enter),
         press(KeyCode::Char('x')),
         press(KeyCode::Up),
-        press(KeyCode::Char('k')),
+        press(KeyCode::Down),
     ])))
     .map(|c| c.to_string())
     .collect::<Vec<_>>()

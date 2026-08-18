@@ -55,6 +55,7 @@ pub struct AgentHarnessStreamOptions {
     pub headers: Option<std::collections::HashMap<String, String>>,
     pub metadata: Option<Value>,
     pub cache_retention: Option<String>,
+    pub thinking_budgets: Option<elph_ai::ThinkingBudgets>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -82,6 +83,7 @@ pub fn clone_stream_options(stream_options: &AgentHarnessStreamOptions) -> Agent
         headers: stream_options.headers.clone(),
         metadata: stream_options.metadata.clone(),
         cache_retention: stream_options.cache_retention.clone(),
+        thinking_budgets: stream_options.thinking_budgets.clone(),
     }
 }
 
@@ -277,8 +279,10 @@ where
     pub active_tool_names: Vec<String>,
     pub steering_mode: QueueMode,
     pub follow_up_mode: QueueMode,
+    #[cfg(feature = "backend-turso")]
     pub goal_runtime: Option<std::sync::Arc<crate::goals::GoalRuntime>>,
     /// Optional relational turn accounting (`session_turns` + session rollups).
+    #[cfg(feature = "backend-turso")]
     pub turn_store: Option<std::sync::Arc<crate::turns::TurnStore>>,
     pub subagent_bootstrap: Option<crate::agent::subagent::SubagentBootstrap>,
     pub compaction_settings: CompactionSettings,

@@ -227,7 +227,7 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
 
         let count = catalog.len();
         total_models += count;
-        let json = Value::Object(catalog.into_iter().collect());
+        let json = super::common::with_provider_schema(Value::Object(catalog.into_iter().collect()));
         let pretty = serde_json::to_string_pretty(&json).context("serialize catalog")?;
         fs::write(&out_path, format!("{pretty}\n")).with_context(|| format!("write {}", out_path.display()))?;
         let file_name = out_path.file_name().and_then(|n| n.to_str()).unwrap_or("?");

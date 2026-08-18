@@ -1,4 +1,5 @@
 {
+    "$schema": "https://elph.space/provider-schema.json",
     "CohereLabs/aya-expanse-32b": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",

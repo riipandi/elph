@@ -1,6 +1,6 @@
 //! Tool call preparation and argument validation.
 
-use elph_ai::validation::validate_tool_call;
+use elph_ai::validate_tool_call;
 use elph_ai::{AssistantMessage, ToolCall};
 use tokio_util::sync::CancellationToken;
 

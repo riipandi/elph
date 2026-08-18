@@ -52,7 +52,7 @@ pub fn base_loop_config(model: Model, stream_fn: elph_agent::StreamFn) -> elph_a
             reasoning: None,
             thinking_budgets: None,
         },
-        convert_to_llm: elph_agent::default_convert_to_llm_fn(),
+        convert_to_llm: elph_agent::messages::default_convert_to_llm_fn(),
         transform_context: None,
         get_api_key: None,
         should_stop_after_turn: None,
@@ -64,7 +64,9 @@ pub fn base_loop_config(model: Model, stream_fn: elph_agent::StreamFn) -> elph_a
         after_tool_call: None,
         stream_fn: Some(stream_fn),
         prompt_encoding: Default::default(),
-        tool_context: elph_agent::ToolContext::new(std::sync::Arc::new(elph_agent::LocalExecutionEnv::new("."))),
+        tool_context: elph_agent::ToolContext::new(std::sync::Arc::new(elph_agent::runtime::LocalExecutionEnv::new(
+            ".",
+        ))),
         execution_tools: Vec::new(),
     }
 }
@@ -123,7 +125,7 @@ pub fn user_texts(messages: &[elph_ai::Message]) -> Vec<String> {
 pub fn hanging_until_abort_stream_fn(model: &Model) -> elph_agent::StreamFn {
     let model = model.clone();
     Arc::new(move |_model, _context, options| {
-        let stream = elph_ai::utils::event_stream::AssistantMessageEventStream::new();
+        let stream = elph_ai::AssistantMessageEventStream::new();
         let signal = options.and_then(|o| o.base.signal.clone());
         let s = stream.clone();
         let model = model.clone();
@@ -177,8 +179,8 @@ pub fn message_entry(
     id: &str,
     parent_id: Option<&str>,
     message: elph_agent::AgentMessage,
-) -> elph_agent::SessionTreeEntry {
-    elph_agent::SessionTreeEntry::Message {
+) -> elph_agent::session::SessionTreeEntry {
+    elph_agent::session::SessionTreeEntry::Message {
         id: id.to_string(),
         parent_id: parent_id.map(str::to_string),
         timestamp: "2026-01-01T00:00:00.000Z".to_string(),
@@ -194,8 +196,8 @@ pub fn label_entry(
     target_id: &str,
     label: Option<&str>,
     timestamp: &str,
-) -> elph_agent::SessionTreeEntry {
-    elph_agent::SessionTreeEntry::Label {
+) -> elph_agent::session::SessionTreeEntry {
+    elph_agent::session::SessionTreeEntry::Label {
         id: id.to_string(),
         parent_id: Some(parent_id.to_string()),
         timestamp: timestamp.to_string(),
@@ -206,7 +208,7 @@ pub fn label_entry(
 
 pub fn error_stream_fn(message: &'static str) -> elph_agent::StreamFn {
     Arc::new(move |model, _context, _options| {
-        let stream = elph_ai::utils::event_stream::AssistantMessageEventStream::new();
+        let stream = elph_ai::AssistantMessageEventStream::new();
         let model = model.clone();
         let s = stream.clone();
         tokio::spawn(async move {

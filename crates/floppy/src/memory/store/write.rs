@@ -52,6 +52,11 @@ impl MemoryStore {
             })
         })
         .await
+        .inspect(|r| {
+            if r.decayed > 0 || r.deleted > 0 {
+                log::debug!("memory decay decayed={} deleted={}", r.decayed, r.deleted);
+            }
+        })
     }
 
     /// Merge near-duplicate memories (same category, high embedding similarity, low weight).
@@ -170,6 +175,9 @@ impl MemoryStore {
             }
         }
 
+        if merged > 0 {
+            log::debug!("memory consolidate merged={merged} deleted={deleted}");
+        }
         Ok(ConsolidateResult { merged, deleted })
     }
 
@@ -183,6 +191,11 @@ impl MemoryStore {
             Ok(n as u32)
         })
         .await
+        .inspect(|&n| {
+            if n > 0 {
+                log::info!("memory purge deleted={n}");
+            }
+        })
     }
 
     /// Delete **all** memories, retrieval links, and tasks (full store wipe).
@@ -210,6 +223,9 @@ impl MemoryStore {
             Ok(FlushResult { memories, tasks })
         })
         .await
+        .inspect(|r| {
+            log::info!("memory flush memories={} tasks={}", r.memories, r.tasks);
+        })
     }
 
     pub async fn penalize_memory(&self, memory_id: &str, factor: f64) -> Result<()> {
@@ -229,6 +245,7 @@ impl MemoryStore {
     pub async fn close(&self) -> Result<()> {
         // No persistent conn — with_db opens/closes per op.
         *self.initialized.lock().unwrap() = false;
+        log::debug!("memory store closed path={}", self.db_path);
         Ok(())
     }
 }

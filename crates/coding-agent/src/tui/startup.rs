@@ -3,7 +3,8 @@
 use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
-use elph_agent::{FileSystem, McpLoadReport, McpServerLoadProgress};
+use elph_agent::harness::FileSystem;
+use elph_agent::mcp::{McpLoadReport, McpServerLoadProgress};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 use chrono::{DateTime, Utc};
@@ -395,7 +396,7 @@ async fn load_chat_history(session: &CodingAgentSession, _paths: &crate::platfor
 
 /// Reconstruct transcript cards from the LLM session tree (fallback path).
 fn reconstruct_transcript_from_llm_entries(
-    entries: &[elph_agent::SessionTreeEntry],
+    entries: &[elph_agent::session::SessionTreeEntry],
     cwd: &str,
 ) -> Vec<TranscriptMessage> {
     use elph_ai::{AssistantContentBlock, ContentBlock, Message, UserContent};
@@ -404,7 +405,7 @@ fn reconstruct_transcript_from_llm_entries(
     // --- first pass: index tool results by tool_call_id ---
     let mut tool_results: HashMap<String, ToolResultInfo> = HashMap::new();
     for entry in entries {
-        let elph_agent::SessionTreeEntry::Message { message, .. } = entry else {
+        let elph_agent::session::SessionTreeEntry::Message { message, .. } = entry else {
             continue;
         };
         let Some(llm) = message.as_llm() else {
@@ -444,7 +445,7 @@ fn reconstruct_transcript_from_llm_entries(
     let mut last_event_ms: Option<i64> = None;
 
     for entry in entries {
-        let elph_agent::SessionTreeEntry::Message {
+        let elph_agent::session::SessionTreeEntry::Message {
             message,
             timestamp,
             prompt_title,
@@ -742,7 +743,8 @@ pub async fn bootstrap_mcp_for_session(
         on_update(McpBootstrapUpdate::TranscriptLine(line));
     }
     // Attach whatever tools we have (even if discovery partially failed).
-    session.attach_mcp_registry(registry).await?;
+    session.attach_mcp_registry(Arc::clone(&registry)).await?;
+    crate::agent::mcp_bootstrap::start_mcp_notifications(session, registry, Vec::new());
     Ok(())
 }
 
@@ -970,7 +972,8 @@ mod tests {
     /// the live applier shows for finished tools.
     #[test]
     fn reconstructed_edit_file_tool_card_starts_collapsed() {
-        use elph_agent::{AgentMessage, SessionTreeEntry};
+        use elph_agent::AgentMessage;
+        use elph_agent::session::SessionTreeEntry;
         use elph_ai::{AssistantContentBlock, ContentBlock, Message, StopReason, ToolCall, UserContent};
 
         let call_id = "call-edit-1";
@@ -1046,7 +1049,8 @@ mod tests {
     /// rendering in shell/tick.rs.
     #[test]
     fn resumed_retry_continue_prompt_renders_as_meta_label() {
-        use elph_agent::{AgentMessage, SessionTreeEntry};
+        use elph_agent::AgentMessage;
+        use elph_agent::session::SessionTreeEntry;
         use elph_ai::{Message, UserContent};
 
         let entries = vec![
@@ -1088,7 +1092,8 @@ mod tests {
     /// live `UserPromptCommitted` rendering in shell/tick.rs.
     #[test]
     fn resumed_worker_inbound_prompt_renders_as_meta_label() {
-        use elph_agent::{AgentMessage, SessionTreeEntry};
+        use elph_agent::AgentMessage;
+        use elph_agent::session::SessionTreeEntry;
         use elph_ai::{Message, UserContent};
 
         let prompt = format!(

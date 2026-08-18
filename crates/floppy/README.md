@@ -1,6 +1,6 @@
 # floppy
 
-Agent **memory** and optional **semantic code indexing** for coding agents, powered by [Turso](https://turso.tech) (embedded SQLite + vectors + FTS5).
+Agent **memory** for coding agents, powered by [Turso](https://turso.tech) (embedded SQLite + vectors + FTS5).
 
 Designed as:
 
@@ -10,9 +10,8 @@ Designed as:
 ## Domains
 
 ```text
-floppy::core       # always — db open, embed adapters, paths, migration ledger
-floppy::memory     # feature "memory" (default) — task-scoped memories
-floppy::codegraph  # feature "codegraph" — AST chunks, hybrid search, thin graph
+floppy::core    # always — db open, embed adapters, paths, migration ledger
+floppy::memory  # feature "memory" (default) — task-scoped memories
 ```
 
 | Feature            | Enables                                                                            |
@@ -20,8 +19,7 @@ floppy::codegraph  # feature "codegraph" — AST chunks, hybrid search, thin gra
 | `memory` (default) | `MemoryStore`, scoring, task lifecycle                                             |
 | `embed`            | Local MiniLM via `embed_anything` (Accelerate on macOS; Candle CPU elsewhere)      |
 | `mkl`              | Intel MKL CPU backend for embeddings (x86_64; not compatible with the wild linker) |
-| `codegraph`        | Code index + hybrid FTS/vector search                                              |
-| `full`             | `memory` + `embed` + `codegraph`                                                   |
+| `full`             | `memory` + `embed`                                                                 |
 
 ## Example
 
@@ -39,10 +37,9 @@ store.init().await?;
 
 ## Migration bands (shared `store.db`)
 
-| Band    | Owner       |
-| ------- | ----------- |
-| 1–99    | `memory`    |
-| 500–599 | `codegraph` |
+| Band | Owner    |
+| ---- | -------- |
+| 1–99 | `memory` |
 
 Ledger: `app_migrations` via [`core::apply_set`].
 

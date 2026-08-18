@@ -3,3 +3,47 @@ allowBuilds:
   "*": true
   esbuild: true
   workerd: true
+minimumReleaseAgeExclude:
+  - '@oxfmt/binding-android-arm-eabi@0.64.0'
+  - '@oxfmt/binding-android-arm64@0.64.0'
+  - '@oxfmt/binding-darwin-arm64@0.64.0'
+  - '@oxfmt/binding-darwin-x64@0.64.0'
+  - '@oxfmt/binding-freebsd-x64@0.64.0'
+  - '@oxfmt/binding-linux-arm-gnueabihf@0.64.0'
+  - '@oxfmt/binding-linux-arm-musleabihf@0.64.0'
+  - '@oxfmt/binding-linux-arm64-gnu@0.64.0'
+  - '@oxfmt/binding-linux-arm64-musl@0.64.0'
+  - '@oxfmt/binding-linux-ppc64-gnu@0.64.0'
+  - '@oxfmt/binding-linux-riscv64-gnu@0.64.0'
+  - '@oxfmt/binding-linux-riscv64-musl@0.64.0'
+  - '@oxfmt/binding-linux-s390x-gnu@0.64.0'
+  - '@oxfmt/binding-linux-x64-gnu@0.64.0'
+  - '@oxfmt/binding-linux-x64-musl@0.64.0'
+  - '@oxfmt/binding-openharmony-arm64@0.64.0'
+  - '@oxfmt/binding-win32-arm64-msvc@0.64.0'
+  - '@oxfmt/binding-win32-ia32-msvc@0.64.0'
+  - '@oxfmt/binding-win32-x64-msvc@0.64.0'
+  - '@oxlint/binding-android-arm-eabi@1.79.0'
+  - '@oxlint/binding-android-arm64@1.79.0'
+  - '@oxlint/binding-darwin-arm64@1.79.0'
+  - '@oxlint/binding-darwin-x64@1.79.0'
+  - '@oxlint/binding-freebsd-x64@1.79.0'
+  - '@oxlint/binding-linux-arm-gnueabihf@1.79.0'
+  - '@oxlint/binding-linux-arm-musleabihf@1.79.0'
+  - '@oxlint/binding-linux-arm64-gnu@1.79.0'
+  - '@oxlint/binding-linux-arm64-musl@1.79.0'
+  - '@oxlint/binding-linux-ppc64-gnu@1.79.0'
+  - '@oxlint/binding-linux-riscv64-gnu@1.79.0'
+  - '@oxlint/binding-linux-riscv64-musl@1.79.0'
+  - '@oxlint/binding-linux-s390x-gnu@1.79.0'
+  - '@oxlint/binding-linux-x64-gnu@1.79.0'
+  - '@oxlint/binding-linux-x64-musl@1.79.0'
+  - '@oxlint/binding-openharmony-arm64@1.79.0'
+  - '@oxlint/binding-win32-arm64-msvc@1.79.0'
+  - '@oxlint/binding-win32-ia32-msvc@1.79.0'
+  - '@oxlint/binding-win32-x64-msvc@1.79.0'
+  - '@types/markdown-it@14.2.0'
+  - miniflare@5.20260815.0-alpha
+  - oxfmt@0.64.0
+  - oxlint@1.79.0
+  - wrangler@4.124.0

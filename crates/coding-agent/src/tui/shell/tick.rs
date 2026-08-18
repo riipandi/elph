@@ -222,7 +222,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             let settings = Settings::load(&paths_for_load).ok();
             if let Some(settings) = settings {
                 let env = Arc::new(LocalExecutionEnv::new(&cwd_for_load));
-                let loaded = load_resources(&paths_for_load, &cwd_for_load, &env).await;
+                let loaded = load_resources(&paths_for_load, &cwd_for_load, &env, &settings).await;
 
                 let new_templates = loaded.resources.prompt_templates.clone();
                 let new_skills = loaded.resources.skills.clone();
@@ -231,10 +231,11 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 {
                     let ext_registry = extension_host_for_loop.registry();
                     let reg = ext_registry.read();
-                    slash_commands.set(slash_commands_for_palette(
+                    slash_commands.set(slash_commands_for_palette_with(
                         Some(&reg),
                         Some(&prompt_templates.read()),
                         Some(&skills.read()),
+                        settings.resources.enable_skill_commands,
                     ));
                 }
 
@@ -289,10 +290,14 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 let loaded_skills = resources.skills.clone();
                 prompt_templates.set(templates.clone());
                 skills.set(loaded_skills.clone());
-                slash_commands.set(slash_commands_for_palette(
+                let enable_skill_commands = Settings::load(&paths.read())
+                    .map(|s| s.resources.enable_skill_commands)
+                    .unwrap_or(true);
+                slash_commands.set(slash_commands_for_palette_with(
                     Some(&extension_host_for_palette.registry().read()),
                     Some(&templates),
                     Some(&loaded_skills),
+                    enable_skill_commands,
                 ));
             }
             palette_refresh_pending.set(false);
@@ -789,11 +794,10 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 activity_label.set("Plan proposed".to_string());
                 approval_selected.set(PLAN_CONFIRM_DEFAULT_INDEX);
                 shell_focus.set(ShellFocus::StatusDialog);
-                pending_plan_confirmation.set(Some(PendingPlanConfirmation {
-                    plan_text: req.plan_text.clone(),
-                    plan_file,
-                    session: agent_session_for_loop.clone(),
-                }));
+                let mut pending = PendingPlanConfirmation::from_plan_text(req.plan_text.clone());
+                pending.plan_file = plan_file;
+                pending.session = agent_session_for_loop.clone();
+                pending_plan_confirmation.set(Some(pending));
                 // Push a status row for the transcript.
                 {
                     let mut msgs = messages_arc_inner.write().unwrap();
@@ -849,11 +853,11 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     transcript_changed = true;
                     continue;
                 }
-                // Handover prompt injected by `/handover claude` — render as a slim
+                // Transfer prompt injected by `/transfer claude` — render as a slim
                 // sticky meta label instead of flooding the transcript with a giant
                 // inert-JSON user card.
-                if text.starts_with(HANDOVER_PROMPT_PREFIX) {
-                    let mut notice = TranscriptMessage::text("Handover from Claude Code…", TranscriptStyle::Meta);
+                if text.starts_with(TRANSFER_PROMPT_PREFIX) {
+                    let mut notice = TranscriptMessage::text("Transfer from Claude Code…", TranscriptStyle::Meta);
                     notice.sticky_meta = true;
                     {
                         let mut msgs = messages_arc_inner.write().unwrap();
@@ -862,9 +866,9 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     transcript_changed = true;
                     continue;
                 }
-                // Handover prompt injected by `/handover codex`.
-                if text.starts_with(CODEX_HANDOVER_PROMPT_PREFIX) {
-                    let mut notice = TranscriptMessage::text("Handover from Codex…", TranscriptStyle::Meta);
+                // Transfer prompt injected by `/transfer codex`.
+                if text.starts_with(CODEX_TRANSFER_PROMPT_PREFIX) {
+                    let mut notice = TranscriptMessage::text("Transfer from Codex…", TranscriptStyle::Meta);
                     notice.sticky_meta = true;
                     {
                         let mut msgs = messages_arc_inner.write().unwrap();

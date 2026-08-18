@@ -1,10 +1,12 @@
 //! Integration tests for websearch ranking and webfetch URL validation.
 
 use elph_agent::WebSearchEngine;
+use elph_agent::create_web_extract_tool;
+use elph_agent::create_web_fetch_tool;
+use elph_agent::create_web_search_tool;
 use elph_agent::tools::web::engines::parse_ddg_html;
 use elph_agent::tools::web::ranking::Engine;
 use elph_agent::tools::web::ranking::ordered_try_list;
-use elph_agent::{create_web_extract_tool, create_web_fetch_tool, create_web_search_tool};
 
 #[test]
 fn ordered_try_list_explicit_engine_is_pinned() {

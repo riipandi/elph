@@ -83,5 +83,5 @@ pub async fn generate_session_name_with_prompts(
 }
 
 fn now_millis() -> i64 {
-    (time::OffsetDateTime::now_utc().unix_timestamp_nanos() / 1_000_000) as i64
+    chrono::Utc::now().timestamp_millis()
 }

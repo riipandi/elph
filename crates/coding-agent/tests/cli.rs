@@ -108,6 +108,28 @@ fn completions_writes_to_output_file() {
 }
 
 #[test]
+fn doctor_json_is_secret_free_snapshot() {
+    let project = tempfile::tempdir().expect("project");
+    let (_dir, mut command) = elph_command();
+    let output = command
+        .env("ELPH_PROJECT_DIR", project.path())
+        .args(["doctor", "--json"])
+        .output()
+        .expect("elph doctor --json");
+    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let v: serde_json::Value = serde_json::from_str(&stdout).expect("json");
+    assert_eq!(v.get("schemaVersion").and_then(|s| s.as_str()), Some("1"));
+    assert!(v.get("identity").and_then(|i| i.get("version")).is_some());
+    assert!(v.get("terminal").and_then(|t| t.get("color")).is_some());
+    assert!(v.get("clipboard").and_then(|c| c.get("backend")).is_some());
+    assert!(v.get("checks").and_then(|c| c.as_array()).is_some());
+    assert!(v.get("paths").and_then(|p| p.get("configDir")).is_some());
+    let dumped = stdout.to_ascii_lowercase();
+    assert!(!dumped.contains("sk-"), "must not dump api-key-shaped secrets");
+}
+
+#[test]
 fn version_flag_prints_something() {
     let (_dir, mut command) = elph_command();
     let output = command.arg("--version").output().expect("failed to run elph --version");

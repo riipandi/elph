@@ -81,21 +81,8 @@ pub fn fetch_live_model_ids(src: &ProviderSource) -> Option<Vec<String>> {
     } else {
         format!("{}/models", base.trim_end_matches('/'))
     };
-    let client = reqwest::blocking::Client::builder()
-        .timeout(std::time::Duration::from_secs(20))
-        .build()
-        .ok()?;
-    let mut req = client.get(&url);
-    if let Some(var) = src.live_pricing_env
-        && let Ok(key) = env::var(var)
-    {
-        req = req.bearer_auth(key);
-    }
-    let resp = req.send().ok()?;
-    if !resp.status().is_success() {
-        return None;
-    }
-    let body: Value = resp.json().ok()?;
+    let bearer = src.live_pricing_env.and_then(|var| env::var(var).ok());
+    let body = super::common::http_get_json(&url, Duration::from_secs(20), bearer.as_deref())?;
     let ids: Vec<String> = body
         .get("data")
         .and_then(|d| d.as_array())
@@ -119,25 +106,8 @@ fn fetch_live_provider_data(src: &ProviderSource, base_url: &str) -> LiveProbeRe
     } else {
         format!("{}/models", base_url.trim_end_matches('/'))
     };
-    let Ok(client) = reqwest::blocking::Client::builder()
-        .timeout(std::time::Duration::from_secs(20))
-        .build()
-    else {
-        return LiveProbeResult::default();
-    };
-    let mut req = client.get(&url);
-    if let Some(var) = src.live_pricing_env
-        && let Ok(key) = env::var(var)
-    {
-        req = req.bearer_auth(key);
-    }
-    let Ok(resp) = req.send() else {
-        return LiveProbeResult::default();
-    };
-    if !resp.status().is_success() {
-        return LiveProbeResult::default();
-    }
-    let Ok(body) = resp.json::<Value>() else {
+    let bearer = src.live_pricing_env.and_then(|var| env::var(var).ok());
+    let Some(body) = super::common::http_get_json(&url, Duration::from_secs(20), bearer.as_deref()) else {
         return LiveProbeResult::default();
     };
 
@@ -402,22 +372,11 @@ pub fn fetch_ai_model_directory(cache_dir: &Path, offline: bool) -> AIModelDir {
             }
         }
     } else {
-        match reqwest::blocking::Client::builder()
-            .timeout(Duration::from_secs(60))
-            .build()
-            .ok()
-            .and_then(|c| c.get(AIMD_URL).send().ok())
-        {
-            Some(resp) if resp.status().is_success() => match resp.text() {
-                Ok(t) => {
-                    let _ = fs::write(&path, &t);
-                    t
-                }
-                Err(_) => match fs::read_to_string(&path) {
-                    Ok(t) => t,
-                    Err(_) => return AIModelDir::new(),
-                },
-            },
+        match super::common::http_get_text(AIMD_URL, Duration::from_secs(60), None) {
+            Ok((status, t)) if status.is_success() => {
+                let _ = fs::write(&path, &t);
+                t
+            }
             _ => match fs::read_to_string(&path) {
                 Ok(t) => {
                     term::warn("ai-model-directory fetch failed — using cache");
@@ -508,24 +467,15 @@ pub fn fetch_nara_pricing(cache_dir: &Path, offline: bool) -> NaraPricing {
             }
         }
     } else {
-        match reqwest::blocking::Client::builder()
-            .timeout(Duration::from_secs(30))
-            .build()
-            .ok()
-            .and_then(|c| {
-                let mut req = c.get(NARA_PRICING_URL);
-                if let Ok(key) = env::var("NARA_API_KEY") {
-                    req = req.bearer_auth(key);
-                }
-                req.send().ok()
-            }) {
-            Some(resp) if resp.status().is_success() => match resp.text() {
-                Ok(t) => {
-                    let _ = fs::write(&path, &t);
-                    t
-                }
-                Err(_) => fs::read_to_string(&path).unwrap_or_default(),
-            },
+        match super::common::http_get_text(
+            NARA_PRICING_URL,
+            Duration::from_secs(30),
+            env::var("NARA_API_KEY").ok().as_deref(),
+        ) {
+            Ok((status, t)) if status.is_success() => {
+                let _ = fs::write(&path, &t);
+                t
+            }
             _ => fs::read_to_string(&path).unwrap_or_default(),
         }
     };

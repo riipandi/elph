@@ -140,6 +140,12 @@ pub fn handle(args: &RunArgs) -> ExitCode {
         }
     };
 
+    log::info!(
+        "headless run start mode={mode:?} format={output_format:?} continue={} session_id={}",
+        args.r#continue,
+        args.session_id.as_deref().unwrap_or("-")
+    );
+
     let effort = match args.effort.as_deref() {
         Some(raw) => match parse_effort(raw) {
             Ok(e) => Some(e),
@@ -180,7 +186,11 @@ pub fn handle(args: &RunArgs) -> ExitCode {
         }
     };
     let settings = match Settings::load(&paths) {
-        Ok(s) => s,
+        Ok(s) => {
+            s.apply_http_proxy_env();
+            s.apply_quiet_startup_env();
+            s
+        }
         Err(err) => {
             help::cli_error(format!("load settings: {err}"));
             return EXIT_ERROR;
@@ -202,7 +212,8 @@ pub fn handle(args: &RunArgs) -> ExitCode {
         }
     };
 
-    let (resume_id, create_if_missing) = match elph_agent::block_on(mode_launch.resolve(&paths, &project_dir)) {
+    let (resume_id, create_if_missing) = match elph_agent::runtime::block_on(mode_launch.resolve(&paths, &project_dir))
+    {
         Ok(v) => v,
         Err(err) => {
             help::cli_error(err);
@@ -219,9 +230,9 @@ pub fn handle(args: &RunArgs) -> ExitCode {
 
     let system_prompt_ref = system_prompt_override.as_deref();
     // Binary is `#[tokio::main]` (already multi-thread). Never nest Runtime::block_on —
-    // use elph_agent::block_on which does block_in_place + Handle::block_on on the
+    // use elph_agent::runtime::block_on which does block_in_place + Handle::block_on on the
     // existing runtime (spawned tasks + wait-line OS thread stay concurrent).
-    let result = elph_agent::block_on(run_non_interactive(RunModeOptions {
+    let result = elph_agent::runtime::block_on(run_non_interactive(RunModeOptions {
         paths: &paths,
         settings: &settings,
         cwd: &cwd,

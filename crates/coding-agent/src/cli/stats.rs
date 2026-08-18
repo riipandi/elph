@@ -27,7 +27,7 @@ pub fn handle(args: &StatsArgs) -> ExitCode {
         return EXIT_ERROR;
     }
 
-    match elph_agent::block_on(collect_stats(&paths, args.session.as_deref())) {
+    match elph_agent::runtime::block_on(collect_stats(&paths, args.session.as_deref())) {
         Ok(report) => {
             if args.json {
                 match serde_json::to_string_pretty(&report) {

@@ -1,4 +1,5 @@
 {
+    "$schema": "https://elph.space/provider-schema.json",
     "agnes-2.0-flash": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",

@@ -12,6 +12,7 @@ use super::summarization::{generate_summary, generate_turn_prefix_summary};
 use super::types::{CompactionDetails, CompactionResult};
 
 /// Generate compaction summary data from prepared session history.
+#[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.agent.compaction"))]
 pub async fn compact(
     preparation: CompactionPreparation,
     models: &Models,
@@ -20,6 +21,14 @@ pub async fn compact(
     signal: Option<CancellationToken>,
     thinking_level: Option<ThinkingLevel>,
 ) -> std::result::Result<CompactionResult, CompactionError> {
+    crate::trace::add_property("model.id", model.id.clone());
+    crate::trace::add_property("model.provider", model.provider.clone());
+    log::debug!(
+        "compaction start provider={} model={} tokens_before={}",
+        model.provider,
+        model.id,
+        preparation.tokens_before
+    );
     let CompactionPreparation {
         first_kept_entry_id,
         messages_to_summarize,
@@ -56,7 +65,10 @@ pub async fn compact(
         };
         let history = match history_result {
             Ok(value) => value,
-            Err(error) => return Err(error),
+            Err(error) => {
+                log::warn!("compaction summary failed: {error}");
+                return Err(error);
+            }
         };
         let turn_prefix = generate_turn_prefix_summary(
             &turn_prefix_messages,
@@ -86,7 +98,10 @@ pub async fn compact(
         .await
         {
             Ok(value) => value,
-            Err(error) => return Err(error),
+            Err(error) => {
+                log::warn!("compaction summary failed: {error}");
+                return Err(error);
+            }
         }
     };
 
@@ -94,6 +109,7 @@ pub async fn compact(
     let mut summary_with_files = summary;
     summary_with_files.push_str(&format_file_operations(&read_files, &modified_files));
 
+    log::debug!("compaction ok tokens_before={tokens_before}");
     Ok(CompactionResult {
         summary: summary_with_files,
         first_kept_entry_id,

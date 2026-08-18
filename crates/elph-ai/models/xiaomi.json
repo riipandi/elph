@@ -1,4 +1,5 @@
 {
+    "$schema": "https://elph.space/provider-schema.json",
     "mimo-v2-flash": {
         "api": "openai-completions",
         "baseUrl": "https://api.xiaomimimo.com/v1",

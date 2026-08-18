@@ -26,13 +26,13 @@ use common::run_agent_prompt;
 use common::toon_prompt_encoding;
 use common::{DEEPWIKI_MCP_URL, MCP_DEFAULT_REPO, MCP_DEFAULT_TOOL, MCP_SYSTEM};
 use elph_agent::AgentEvent;
-use elph_agent::McpConfig;
-use elph_agent::McpHttpConfig;
-use elph_agent::McpLoadOptions;
-use elph_agent::McpServerConfig;
-use elph_agent::McpToolRegistry;
-use elph_agent::PromptEncodingMode;
-use elph_agent::{expose_tool_name, parse_and_validate_mcp_config};
+use elph_agent::mcp::McpConfig;
+use elph_agent::mcp::McpHttpConfig;
+use elph_agent::mcp::McpLoadOptions;
+use elph_agent::mcp::McpServerConfig;
+use elph_agent::mcp::McpToolRegistry;
+use elph_agent::mcp::{expose_tool_name, parse_and_validate_mcp_config};
+use elph_agent::prompt::PromptEncodingMode;
 
 struct Args {
     repo: String,

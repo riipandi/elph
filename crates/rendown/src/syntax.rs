@@ -1,5 +1,7 @@
 //! Syntax highlighting via syntect and the two-face extended syntax set.
 
+pub use crate::colors::syntect_to_styled_span;
+
 use std::io::Cursor;
 use std::path::Path;
 use std::sync::OnceLock;
@@ -76,7 +78,13 @@ pub fn syntax_highlight_raw(fence_info: &str, text: &str) -> Option<Vec<Vec<(syn
     let mut hl = highlighter.highlight_lines_for_fence_info(fence_info)?;
     let mut lines = Vec::new();
     for line in LinesWithEndings::from(text) {
-        let highlighted = hl.highlight_line(line, &highlighter.syntax_set).ok()?;
+        let highlighted = match hl.highlight_line(line, &highlighter.syntax_set) {
+            Ok(regions) => regions,
+            Err(err) => {
+                log::debug!("syntax highlight failed lang={fence_info}: {err}");
+                return None;
+            }
+        };
         lines.push(
             highlighted
                 .into_iter()

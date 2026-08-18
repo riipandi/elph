@@ -1,7 +1,8 @@
 //! Resource formatting tests.
 
-use elph_agent::{PromptTemplate, Skill};
-use elph_agent::{format_prompt_template_invocation, format_skill_invocation};
+use elph_agent::harness::{PromptTemplate, Skill};
+use elph_agent::prompt::format_prompt_template_invocation;
+use elph_agent::skills::format_skill_invocation;
 
 #[test]
 fn format_skill_invocation_includes_additional_instructions() {

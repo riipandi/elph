@@ -7,7 +7,11 @@
 //!
 //! On-disk format:
 //! ```json
-//! { "mcp": { "<server>": "enc:…" | "env:VAR" }, "provider": { "<id>": "enc:…" | "env:VAR" } }
+//! {
+//!   "$schema": "https://elph.space/auth-schema.json",
+//!   "mcp": { "<server>": "enc:…" | "env:VAR" },
+//!   "provider": { "<id>": "enc:…" | "env:VAR" }
+//! }
 //! ```
 //!
 //! `env:` references are stored in plaintext — they are not secrets, only references
@@ -52,7 +56,7 @@ pub const DEFAULT_AUTH_FILE_NAME: &str = "auth.json";
 ///
 /// ```
 /// use std::path::PathBuf;
-/// use elph_agent::AuthStorePathBuilder;
+/// use elph_agent::mcp::AuthStorePathBuilder;
 ///
 /// let path = AuthStorePathBuilder::new()
 ///     .base_dir("/home/user/.elph")
@@ -127,15 +131,32 @@ pub const ENV_REF_PREFIX: &str = "env:";
 ///
 /// On disk, individual string values are encrypted with `enc:` prefix (AES-256-GCM)
 /// while `env:` references are stored as-is. The whole file is valid JSON.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AuthStoreFile {
+    /// JSON Schema URL for editor autocompletion. Ignored at runtime.
+    #[serde(rename = "$schema", default = "default_auth_schema")]
+    pub schema: String,
     /// Map of MCP server name → OAuth credential JSON object (or null).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub mcp: BTreeMap<String, Value>,
     /// Map of provider ID → API key string or `env:VAR` reference.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub provider: BTreeMap<String, Value>,
+}
+
+fn default_auth_schema() -> String {
+    "https://elph.space/auth-schema.json".to_string()
+}
+
+impl Default for AuthStoreFile {
+    fn default() -> Self {
+        Self {
+            schema: default_auth_schema(),
+            mcp: BTreeMap::new(),
+            provider: BTreeMap::new(),
+        }
+    }
 }
 
 impl AuthStoreFile {
@@ -600,6 +621,10 @@ mod sealed_store_tests {
         assert!(!raw.contains("\"v\": 2"), "should not be an envelope: {raw}");
         assert!(!raw.contains("sk-test-secret"), "plaintext must not appear: {raw}");
         assert!(raw.contains("enc:"), "value should be encrypted with enc: prefix: {raw}");
+        assert!(
+            raw.contains("\"$schema\": \"https://elph.space/auth-schema.json\""),
+            "saved store must stamp auth schema: {raw}"
+        );
 
         let loaded = AuthStoreFile::load_from_path_with_key(&path, &key).await.unwrap();
         assert_eq!(loaded.get_provider_credential("opencode"), Some("sk-test-secret"));

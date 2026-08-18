@@ -1,4 +1,5 @@
 {
+    "$schema": "https://elph.space/provider-schema.json",
     "alibaba/qwen-3-14b": {
         "api": "anthropic-messages",
         "baseUrl": "https://ai-gateway.vercel.sh",

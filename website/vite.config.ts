@@ -19,7 +19,7 @@ export default defineConfig({
         title: "Elph — opinionated AI coding agent harness",
         description:
           "Opinionated AI coding agent harness. Extensible TUI, mouse support, minimal overhead, with maximum extensibility and control.",
-        keywords: ["elph", "coding agent", "cli", "tui", "rust", "ai agent", "acp", "codegraph"],
+        keywords: ["elph", "coding agent", "cli", "tui", "rust", "ai agent", "acp"],
         author: "Aris Ripandi",
         language: "en",
         url: "https://elph.space",

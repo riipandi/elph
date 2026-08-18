@@ -2,17 +2,26 @@
 
 use std::sync::Arc;
 
-use elph_ai::{Message, Model, UserContent};
+use elph_ai::Model;
+#[cfg(feature = "backend-turso")]
+use elph_ai::{Message, UserContent};
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 
+#[cfg(feature = "backend-turso")]
 use super::harness::SubagentHarness;
+#[cfg(feature = "backend-turso")]
 use super::harness::spawn_subagent_harness;
+#[cfg(feature = "backend-turso")]
 use super::id::MAX_NAME_ATTEMPTS;
+#[cfg(feature = "backend-turso")]
 use super::id::generate_agent_name;
-use super::registry::{AgentRegistry, SubagentRecord};
+use super::registry::AgentRegistry;
+#[cfg(feature = "backend-turso")]
+use super::registry::SubagentRecord;
 use super::types::{SubagentBootstrap, SubagentInfo, SubagentLimits, SubagentStatus};
 use crate::runtime::local_env::LocalExecutionEnv;
+#[cfg(feature = "backend-turso")]
 use crate::types::llm_message_to_agent;
 use crate::types::{AgentEvent, AgentTool, StreamFn};
 
@@ -70,6 +79,7 @@ impl AgentControl {
     }
 
     /// Fetch a spawned subagent's harness by id (used for inspection/testing).
+    #[cfg(feature = "backend-turso")]
     pub async fn subagent_harness(&self, id: &str) -> Option<Arc<SubagentHarness>> {
         self.registry.get(id).await.map(|record| record.harness)
     }
@@ -105,6 +115,7 @@ impl AgentControl {
     }
 
     /// Reconcile registry output state from the harness after a completed turn.
+    #[cfg(feature = "backend-turso")]
     async fn refresh_record_output(&self, agent_id: &str) {
         let Some(record) = self.registry.get(agent_id).await else {
             return;
@@ -119,11 +130,15 @@ impl AgentControl {
         }
     }
 
+    #[cfg(feature = "backend-turso")]
+    #[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.agent.subagent_spawn"))]
     pub async fn spawn_agent(&self, task_name: impl Into<String>, message: Option<String>) -> Result<String, String> {
         if self.depth >= self.limits.max_depth {
+            log::warn!("subagent spawn rejected: max_depth={}", self.limits.max_depth);
             return Err(format!("Subagent depth limit ({}) reached", self.limits.max_depth));
         }
         if self.registry.count_active().await >= self.limits.max_concurrent {
+            log::warn!("subagent spawn rejected: max_concurrent={}", self.limits.max_concurrent);
             return Err(format!("Concurrent subagent limit ({}) reached", self.limits.max_concurrent));
         }
 
@@ -185,10 +200,12 @@ impl AgentControl {
         {
             Ok(Ok(h)) => h,
             Ok(Err(error)) => {
+                log::warn!("subagent harness spawn failed path={agent_path}: {error}");
                 self.registry.release_path(&agent_path).await;
                 return Err(format!("Failed to spawn subagent harness: {error}"));
             }
             Err(_) => {
+                log::warn!("subagent harness spawn timed out path={agent_path}");
                 self.registry.release_path(&agent_path).await;
                 return Err("Subagent spawn timed out after 30 seconds".to_string());
             }
@@ -229,9 +246,12 @@ impl AgentControl {
             }
         }
 
+        log::info!("subagent spawned id={id} path={agent_path} depth={child_depth}");
+        crate::trace::add_property("subagent.id", id.clone());
         Ok(id)
     }
 
+    #[cfg(feature = "backend-turso")]
     pub async fn send_message(&self, agent_id: &str, message: String) -> Result<(), String> {
         let record = self
             .registry
@@ -254,6 +274,7 @@ impl AgentControl {
     ///
     /// The turn runs in a background task; callers that need the result should
     /// use [`Self::wait_agent_for_output`] to block on completion.
+    #[cfg(feature = "backend-turso")]
     pub async fn followup_task(&self, agent_id: &str, message: String) -> Result<(), String> {
         let record = self
             .registry
@@ -309,6 +330,7 @@ impl AgentControl {
         Ok(())
     }
 
+    #[cfg(feature = "backend-turso")]
     pub async fn wait_agent_cancellable_for_output(
         &self,
         agent_id: &str,
@@ -363,7 +385,39 @@ impl AgentControl {
         }
     }
 
+    #[cfg(not(feature = "backend-turso"))]
+    pub async fn spawn_agent(&self, task_name: impl Into<String>, message: Option<String>) -> Result<String, String> {
+        let _ = (task_name, message);
+        Err("subagent spawn requires the elph-agent `backend-turso` feature".into())
+    }
+
+    #[cfg(not(feature = "backend-turso"))]
+    pub async fn send_message(&self, agent_id: &str, message: String) -> Result<(), String> {
+        let _ = (agent_id, message);
+        Err("subagent control requires the elph-agent `backend-turso` feature".into())
+    }
+
+    #[cfg(not(feature = "backend-turso"))]
+    pub async fn followup_task(&self, agent_id: &str, message: String) -> Result<(), String> {
+        let _ = (agent_id, message);
+        Err("subagent control requires the elph-agent `backend-turso` feature".into())
+    }
+
+    #[cfg(not(feature = "backend-turso"))]
+    pub async fn wait_agent_cancellable_for_output(
+        &self,
+        agent_id: &str,
+        signal: Option<&CancellationToken>,
+    ) -> Result<String, String> {
+        let _ = (agent_id, signal);
+        Err("subagent control requires the elph-agent `backend-turso` feature".into())
+    }
+
+    #[cfg(not(feature = "backend-turso"))]
+    pub async fn abort_all_running(&self) {}
+
     /// Abort every subagent that is still pending or running.
+    #[cfg(feature = "backend-turso")]
     pub async fn abort_all_running(&self) {
         for record in self.registry.running_records().await {
             let id = record.info.id.clone();

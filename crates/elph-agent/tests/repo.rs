@@ -4,14 +4,14 @@ mod common;
 use std::sync::Arc;
 
 use common::{assistant_agent_message, user_agent_message};
-use elph_agent::ForkEntriesOptions;
-use elph_agent::InMemorySessionCreateOptions;
-use elph_agent::InMemorySessionRepo;
-use elph_agent::LocalExecutionEnv;
-use elph_agent::SUMMARY_FILE;
-use elph_agent::SessionDirListOptions;
-use elph_agent::SessionDirRepo;
-use elph_agent::SessionDirRepoCreateOptions;
+use elph_agent::runtime::LocalExecutionEnv;
+use elph_agent::session::ForkEntriesOptions;
+use elph_agent::session::InMemorySessionCreateOptions;
+use elph_agent::session::InMemorySessionRepo;
+use elph_agent::session::SUMMARY_FILE;
+use elph_agent::session::SessionDirListOptions;
+use elph_agent::session::SessionDirRepo;
+use elph_agent::session::SessionDirRepoCreateOptions;
 use tempfile::TempDir;
 
 fn temp_root() -> (TempDir, Arc<LocalExecutionEnv>) {

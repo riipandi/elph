@@ -80,6 +80,8 @@ pub struct AgentOptions {
     pub max_retry_delay_ms: Option<u64>,
     pub tool_execution: ToolExecutionMode,
     pub prompt_encoding: Option<PromptEncodingConfig>,
+    /// Host name + env prefix. Used when `prompt_encoding` is unset.
+    pub identity: Option<crate::types::HostIdentity>,
 }
 
 struct ActiveRun {
@@ -138,7 +140,14 @@ impl Agent {
             transport: options.transport.unwrap_or(Transport::Auto),
             max_retry_delay_ms: options.max_retry_delay_ms,
             tool_execution: options.tool_execution,
-            prompt_encoding: options.prompt_encoding.unwrap_or_else(PromptEncodingConfig::from_env),
+            prompt_encoding: options.prompt_encoding.unwrap_or_else(|| {
+                let prefix = options
+                    .identity
+                    .as_ref()
+                    .map(|id| id.env_prefix.as_str())
+                    .unwrap_or("ELPH");
+                PromptEncodingConfig::from_env_prefixed(prefix)
+            }),
             active_run: Mutex::new(None),
             skip_initial_steering: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         }
@@ -259,9 +268,11 @@ impl Agent {
         }
     }
 
-    pub async fn reset(&self) -> Result<(), anyhow::Error> {
+    pub async fn reset(&self) -> Result<(), crate::types::AgentError> {
         if self.active_run.lock().await.is_some() {
-            anyhow::bail!("Agent is already processing. Wait for completion before resetting.");
+            return Err(crate::types::AgentError::busy(
+                "Agent is already processing. Wait for completion before resetting.",
+            ));
         }
         self.state.lock().await.reset();
         self.clear_all_queues();

@@ -67,9 +67,11 @@ async fn fetch_url(raw_url: &str) -> anyhow::Result<FetchResult> {
     // Check resilience before fetching
     elph_ai::resilience::check_provider_resilience(&provider_id)?;
 
+    log::debug!("web fetch start host={provider_id}");
     let result = match super::html::fetch_page(parsed.as_str()).await {
         Ok(page) => page,
         Err(e) => {
+            log::warn!("web fetch failed host={provider_id}: {e:#}");
             elph_ai::resilience::record_provider_failure(&provider_id);
             return Err(e);
         }

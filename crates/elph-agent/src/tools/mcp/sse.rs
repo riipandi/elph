@@ -8,6 +8,7 @@
 
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -26,17 +27,26 @@ use super::config::McpHttpConfig;
 
 const ENDPOINT_WAIT: Duration = Duration::from_secs(30);
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 pub enum SseTransportError {
-    #[error("HTTP error: {0}")]
     Http(String),
-    #[error("SSE stream ended before endpoint event")]
     NoEndpoint,
-    #[error("endpoint wait timed out")]
     EndpointTimeout,
-    #[error("channel error: {0}")]
     Channel(String),
 }
+
+impl fmt::Display for SseTransportError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Http(msg) => write!(f, "HTTP error: {msg}"),
+            Self::NoEndpoint => write!(f, "SSE stream ended before endpoint event"),
+            Self::EndpointTimeout => write!(f, "endpoint wait timed out"),
+            Self::Channel(msg) => write!(f, "channel error: {msg}"),
+        }
+    }
+}
+
+impl std::error::Error for SseTransportError {}
 
 /// Legacy SSE MCP transport implementing [`Transport`] for [`RoleClient`].
 pub struct SseClientTransport {

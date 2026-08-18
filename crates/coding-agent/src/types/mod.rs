@@ -197,7 +197,7 @@ pub enum PromptAction {
     CycleMode,
 }
 
-/// Returns true when submitted text is the Neovim-style quit command (`:q`).
+/// Returns true when submitted text is the quit command (`:q`).
 pub fn is_quit_command(text: &str) -> bool {
     text.trim() == ":q"
 }

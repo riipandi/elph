@@ -2,7 +2,8 @@
 
 use crate::agent::{MAX_PALETTE_DESCRIPTION_CHARS, parse_skill_slash, skill_slash_name, truncate_palette_description};
 use crate::types::{SlashCommand, SlashCommandKind};
-use elph_agent::{ExtensionRegistry, PromptTemplate, Skill};
+use elph_agent::harness::{PromptTemplate, Skill};
+use elph_agent::plugins::ExtensionRegistry;
 
 #[derive(Debug, Clone)]
 pub struct BuiltinSlashCommand {
@@ -64,7 +65,7 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("tree", "Navigate session tree"),
         builtin("trust", "Save project trust decision"),
         builtin_with_args("provider", "Manage providers"),
-        builtin_with_args("handover", "Resume a foreign coding-agent session"),
+        builtin_with_args("transfer", "Resume a foreign coding-agent session"),
         builtin_with_args("mcp", "MCP servers"),
         builtin("new", "Start a new session"),
         builtin_with_args("compact", "Compact conversation history"),
@@ -79,6 +80,7 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("help", "List commands"),
         builtin_with_args("aside", "Ask a side question without interrupting"),
         builtin("tools", "Show active tools"),
+        builtin("view-plan", "Preview the saved plan"),
         builtin("system-prompt", "Show compiled system prompt"),
         builtin("exit", "Quit Elph"),
         builtin_with_args("goal", "Manage session goals"),
@@ -92,6 +94,15 @@ pub fn slash_commands_for_palette(
     extensions: Option<&ExtensionRegistry>,
     prompt_templates: Option<&[PromptTemplate]>,
     skills: Option<&[Skill]>,
+) -> Vec<SlashCommand> {
+    slash_commands_for_palette_with(extensions, prompt_templates, skills, true)
+}
+
+pub fn slash_commands_for_palette_with(
+    extensions: Option<&ExtensionRegistry>,
+    prompt_templates: Option<&[PromptTemplate]>,
+    skills: Option<&[Skill]>,
+    enable_skill_commands: bool,
 ) -> Vec<SlashCommand> {
     // Include hidden builtins (e.g. `/confetti`) so Tab can still complete them when the
     // typed query matches. Empty-query palette + `/help` filter them out via `hidden`.
@@ -135,7 +146,7 @@ pub fn slash_commands_for_palette(
             }
         }
     }
-    if let Some(skills) = skills {
+    if enable_skill_commands && let Some(skills) = skills {
         for skill in skills {
             let name = skill_slash_name(&skill.name);
             if !builtin_names.contains(&name) {
@@ -196,6 +207,8 @@ pub enum SlashDispatch {
         args: String,
     },
     SystemPrompt,
+    /// Open the latest saved plan preview.
+    ViewPlan,
     /// Show current session metadata (title, id, model, context, …).
     SessionInfo,
     /// Open rename dialog; `args` is optional prefill when non-empty.
@@ -249,12 +262,12 @@ pub enum SlashDispatch {
     },
     /// List MCP servers in the transcript (`/mcp list`).
     McpList,
-    /// Resume a foreign coding-agent session (`/handover claude [ref]`).
+    /// Resume a foreign coding-agent session (`/transfer claude [ref]`).
     ///
-    /// `args` is the raw slash body after `/handover ` — the first token selects
+    /// `args` is the raw slash body after `/transfer ` — the first token selects
     /// the source tool (`claude` or `codex`), the rest is a session reference
     /// (empty / `latest` / session UUID / free-text title).
-    Handover {
+    Transfer {
         args: String,
     },
     /// Live multi-worker peers (`/workers`).
@@ -412,7 +425,7 @@ const MCP_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
     },
 ];
 
-const HANDOVER_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
+const TRANSFER_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
     SlashArgCompletion {
         value: "claude",
         description: "Resume work from a Claude Code session",
@@ -459,7 +472,7 @@ pub fn slash_arg_completions(command_name: &str) -> Option<&'static [SlashArgCom
         "memory" | "mem" => Some(MEMORY_ARG_COMPLETIONS),
         "provider" => Some(PROVIDER_ARG_COMPLETIONS),
         "mcp" => Some(MCP_ARG_COMPLETIONS),
-        "handover" => Some(HANDOVER_ARG_COMPLETIONS),
+        "transfer" => Some(TRANSFER_ARG_COMPLETIONS),
         _ => None,
     }
 }
@@ -634,6 +647,7 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
         "aside" => Some(SlashDispatch::Aside { question: args }),
         "tools" => Some(SlashDispatch::Tools { args }),
         "system-prompt" | "systemprompt" | "prompt" => Some(SlashDispatch::SystemPrompt),
+        "view-plan" | "show-plan" | "plan-view" => Some(SlashDispatch::ViewPlan),
         "session" => Some(SlashDispatch::SessionInfo),
         "rename" | "name" => Some(SlashDispatch::Rename { args }),
         "confetti" | "conffety" | "confetty" => Some(SlashDispatch::Confetti { args }),
@@ -713,7 +727,7 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
                 Some(SlashDispatch::Unimplemented(format!("/mcp {args}")))
             }
         }
-        "handover" => Some(SlashDispatch::Handover { args }),
+        "transfer" => Some(SlashDispatch::Transfer { args }),
         _ => None,
     }
 }
@@ -723,6 +737,16 @@ pub fn dispatch_slash_command(
     extensions: Option<&ExtensionRegistry>,
     prompt_templates: Option<&[PromptTemplate]>,
     skills: Option<&[Skill]>,
+) -> Option<SlashDispatch> {
+    dispatch_slash_command_with(input, extensions, prompt_templates, skills, true)
+}
+
+pub fn dispatch_slash_command_with(
+    input: &str,
+    extensions: Option<&ExtensionRegistry>,
+    prompt_templates: Option<&[PromptTemplate]>,
+    skills: Option<&[Skill]>,
+    enable_skill_commands: bool,
 ) -> Option<SlashDispatch> {
     let trimmed = input.trim();
     if !trimmed.starts_with('/') {
@@ -759,8 +783,9 @@ pub fn dispatch_slash_command(
         return Some(SlashDispatch::PromptTemplate { name, args });
     }
 
-    // Match skill by raw name (no prefix needed).
-    if let Some(skills) = skills
+    // Match skill by raw name (no prefix needed) when skill slash commands are enabled.
+    if enable_skill_commands
+        && let Some(skills) = skills
         && skills.iter().any(|skill| skill.name == name)
     {
         return Some(SlashDispatch::Skill { name, args });
@@ -831,34 +856,32 @@ mod tests {
     }
 
     #[test]
-    fn handover_dispatch_and_completions() {
+    fn transfer_dispatch_and_completions() {
         assert_eq!(
-            dispatch_slash_command("/handover claude", None, None, None),
-            Some(SlashDispatch::Handover { args: "claude".into() })
+            dispatch_slash_command("/transfer claude", None, None, None),
+            Some(SlashDispatch::Transfer { args: "claude".into() })
         );
         assert_eq!(
-            dispatch_slash_command("/handover claude latest", None, None, None),
-            Some(SlashDispatch::Handover {
+            dispatch_slash_command("/transfer claude latest", None, None, None),
+            Some(SlashDispatch::Transfer {
                 args: "claude latest".into()
             })
         );
         assert_eq!(
-            dispatch_slash_command("/handover codex", None, None, None),
-            Some(SlashDispatch::Handover { args: "codex".into() })
+            dispatch_slash_command("/transfer codex", None, None, None),
+            Some(SlashDispatch::Transfer { args: "codex".into() })
         );
         assert_eq!(
-            dispatch_slash_command("/handover", None, None, None),
-            Some(SlashDispatch::Handover { args: String::new() })
+            dispatch_slash_command("/transfer", None, None, None),
+            Some(SlashDispatch::Transfer { args: String::new() })
         );
-        // Arg completions exist and cover both tools.
-        let completions = slash_arg_completions("handover").expect("handover completions");
+        let completions = slash_arg_completions("transfer").expect("transfer completions");
         assert!(completions.iter().any(|c| c.value == "claude"));
         assert!(completions.iter().any(|c| c.value == "codex"));
-        // Palette lists the command with the args hint.
         let commands = slash_commands_for_palette(None, None, None);
-        let handover = commands.iter().find(|cmd| cmd.name == "handover").expect("handover");
-        assert_eq!(handover.args_hint.as_deref(), Some("[args]"));
-        assert!(!handover.hidden);
+        let transfer = commands.iter().find(|cmd| cmd.name == "transfer").expect("transfer");
+        assert_eq!(transfer.args_hint.as_deref(), Some("[args]"));
+        assert!(!transfer.hidden);
     }
 
     #[test]

@@ -16,35 +16,24 @@ name = "elph_tui"
 path = "src/lib.rs"
 
 [dependencies]
-anstyle-syntect.workspace = true
-anstyle.workspace = true
 anyhow.workspace = true
 chrono.workspace = true
 clipboard-rs.workspace = true
 figlet-rs.workspace = true
-html-escape.workspace = true
 iocraft.workspace = true
-linkify.workspace = true
 log.workspace = true
-memchr.workspace = true
-mermaid-text.workspace = true
-pulldown-cmark.workspace = true
 qrcode.workspace = true
-reqwest.workspace = true
+rendown = { workspace = true, features = ["highlight", "mermaid"] }
 serde.workspace = true
 serde_json.workspace = true
 similar.workspace = true
 # iocraft `use_future` runs on smol; use smol timers so mock tests (no Tokio RT) work.
 smol.workspace = true
-supports-color.workspace = true
-syntect.workspace = true
 textwrap.workspace = true
 tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "signal", "sync", "time"] }
-two-face = { workspace = true, default-features = false, features = ["syntect-fancy"] }
 unicode-linebreak.workspace = true
 unicode-segmentation.workspace = true
 unicode-width.workspace = true
-url.workspace = true
 
 # Wayland clipboard backend (Linux). macOS/Windows use platform-native APIs.
 [target.'cfg(target_os = "linux")'.dependencies]
@@ -53,6 +42,7 @@ clipboard-rs = { workspace = true, features = ["wayland"] }
 [dev-dependencies]
 futures.workspace = true
 lipsum.workspace = true
+reqwest.workspace = true
 macro_rules_attribute.workspace = true
 mexprp = { workspace = true, default-features = false }
 smol-macros.workspace = true

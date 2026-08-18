@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use agent_client_protocol::schema::v2::McpServer;
-use elph_agent::{McpConfig, McpHttpConfig, McpLoadOptions, McpServerConfig, McpToolRegistry};
+use elph_agent::mcp::{McpConfig, McpHttpConfig, McpLoadOptions, McpServerConfig, McpToolRegistry};
 
 use crate::agent::CodingAgentSession;
 use crate::platform::Paths;
@@ -78,7 +78,10 @@ pub fn map_v1_servers(servers: &[agent_client_protocol::schema::v1::McpServer]) 
     out
 }
 
-/// Overlay client servers on file MCP config and bind tools into the session.
+/// Overlay client servers on file MCP config and bind the registry into the session.
+///
+/// Does **not** contact servers. Discovery is `ensure_mcp_tools_ready` (12s cap)
+/// so `session/new` extras cannot hang on a stuck stdio/HTTP MCP.
 pub async fn attach_client_servers(
     session: &CodingAgentSession,
     paths: &Paths,
@@ -86,34 +89,50 @@ pub async fn attach_client_servers(
 ) -> anyhow::Result<usize> {
     let (mut config, warnings) = crate::platform::mcp::load_config_best_effort(paths);
     if client_servers.is_empty() && config.is_empty() {
+        if let Some(registry) = session.mcp_registry() {
+            crate::agent::mcp_bootstrap::start_mcp_notifications(session, registry, warnings);
+        }
         return Ok(0);
     }
     for warning in &warnings {
         log::warn!("{warning}");
     }
     let count = client_servers.len();
-    for (name, server) in client_servers {
-        config.servers.insert(name, server);
+    overlay_client_servers(&mut config, client_servers);
+    match load_registry(paths, config).await {
+        Ok(registry) => {
+            session.set_mcp_registry(Arc::clone(&registry)).await;
+            crate::agent::mcp_bootstrap::start_mcp_notifications(session, registry, warnings);
+        }
+        Err(error) => {
+            log::warn!("ACP client MCP attach failed: {error}");
+            if let Some(registry) = session.mcp_registry() {
+                crate::agent::mcp_bootstrap::start_mcp_notifications(session, registry, warnings);
+            }
+        }
     }
-    let _ = config;
-    let registry = load_registry(paths, config).await;
-    session.attach_mcp_registry(registry).await?;
     Ok(count)
 }
 
-async fn load_registry(paths: &Paths, config: McpConfig) -> Arc<McpToolRegistry> {
-    let load_options = McpLoadOptions {
+pub(crate) fn overlay_client_servers(config: &mut McpConfig, client_servers: Vec<(String, McpServerConfig)>) {
+    for (name, server) in client_servers {
+        config.servers.insert(name, server);
+    }
+}
+
+fn attach_load_options(paths: &Paths) -> McpLoadOptions {
+    McpLoadOptions {
         auth_store_path: Some(paths.auth_store_path()),
         default_cache_ttl_ms: 60_000,
+        skip_startup_discovery: true,
         ..McpLoadOptions::default()
-    };
-    match McpToolRegistry::load_with_options(config, load_options).await {
-        Ok(registry) => Arc::new(registry),
-        Err(error) => {
-            log::warn!("ACP client MCP attach failed: {error}");
-            Arc::new(McpToolRegistry::empty())
-        }
     }
+}
+
+async fn load_registry(paths: &Paths, config: McpConfig) -> anyhow::Result<Arc<McpToolRegistry>> {
+    Ok(Arc::new(
+        McpToolRegistry::load_with_options(config, attach_load_options(paths)).await?,
+    ))
 }
 
 fn env_map(vars: &[agent_client_protocol::schema::v2::EnvVariable]) -> BTreeMap<String, String> {
@@ -177,5 +196,37 @@ mod tests {
             }
             other => panic!("expected http, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn overlay_client_servers_last_wins() {
+        let mut config = McpConfig::default();
+        config
+            .servers
+            .insert("shared".into(), McpServerConfig::http("https://home.example/mcp"));
+        overlay_client_servers(
+            &mut config,
+            vec![
+                ("shared".into(), McpServerConfig::http("https://client.example/mcp")),
+                ("zed".into(), McpServerConfig::stdio("npx", vec!["-y".into(), "demo".into()])),
+            ],
+        );
+        assert_eq!(config.server_count(), 2);
+        match config.servers.get("shared") {
+            Some(McpServerConfig::Http(http)) => assert_eq!(http.url, "https://client.example/mcp"),
+            other => panic!("expected client http overlay, got {other:?}"),
+        }
+        assert!(config.servers.contains_key("zed"));
+    }
+
+    #[test]
+    fn acp_attach_skips_startup_discovery() {
+        let opts = McpLoadOptions {
+            skip_startup_discovery: true,
+            default_cache_ttl_ms: 60_000,
+            ..McpLoadOptions::default()
+        };
+        assert!(opts.skip_startup_discovery);
+        assert_eq!(opts.load_strategy.as_str(), "lazy");
     }
 }

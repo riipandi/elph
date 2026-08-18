@@ -1,8 +1,10 @@
 //! Harness event wiring and UI event mapping.
 
 use anyhow::Result;
-use elph_agent::{AgentEvent, AgentHarnessEvent, AgentHarnessOwnEvent, FileSystem};
-use elph_agent::{SubagentEventForwarder, SubagentInfo, ToolCallEvent, ToolCallHookResult};
+use elph_agent::AgentEvent;
+use elph_agent::agent::subagent::{SubagentEventForwarder, SubagentInfo};
+use elph_agent::harness::{AgentHarnessEvent, AgentHarnessOwnEvent, FileSystem};
+use elph_agent::harness::{ToolCallEvent, ToolCallHookResult};
 use elph_ai::AssistantMessageEvent;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -62,14 +64,12 @@ impl CodingAgentSession {
             .subscribe({
                 let ui_tx = ui_tx.clone();
                 let cwd = cwd.clone();
-                let intercom_turn = self.intercom_turn_active.clone();
                 move |event, _| {
                     let ui_tx = ui_tx.clone();
                     let cwd = cwd.clone();
-                    let intercom_turn = intercom_turn.clone();
                     Box::pin(async move {
                         if let AgentHarnessEvent::Agent(agent_event) = event {
-                            map_agent_event(&ui_tx, agent_event, show_thinking, &cwd, &intercom_turn);
+                            map_agent_event(&ui_tx, agent_event, show_thinking, &cwd);
                         } else if let AgentHarnessEvent::Own(AgentHarnessOwnEvent::QueueUpdate(update)) = event {
                             let items = map_queue_update(&update);
                             let _ = ui_tx.send(AgentUiEvent::QueueUpdate { items });
@@ -174,7 +174,7 @@ impl CodingAgentSession {
                         };
                         entry.0.push_str(delta);
                         if let Some(dir) = &persist_event_dir {
-                            elph_agent::subagent_persist_event(dir, "text_delta", delta);
+                            elph_agent::agent::subagent::subagent_persist_event(dir, "text_delta", delta);
                         }
                         entry.1 += 1;
                         if entry.1 >= BATCH_INTERVAL {
@@ -240,7 +240,7 @@ impl CodingAgentSession {
         let tool_sink = harness_for_tool_output.clone();
         tool_sink
             .on_tool_result({
-                move |event: &elph_agent::ToolResultEvent| {
+                move |event: &elph_agent::harness::ToolResultEvent| {
                     let tool_outputs_dir = tool_outputs_dir.clone();
                     let event = event.clone();
                     Box::pin(async move {
@@ -265,7 +265,7 @@ impl CodingAgentSession {
                             output_path,
                         )
                         .await;
-                        None::<elph_agent::ToolResultPatch>
+                        None::<elph_agent::harness::ToolResultPatch>
                     })
                 }
             })
@@ -276,32 +276,7 @@ impl CodingAgentSession {
 }
 
 /// Map one harness agent event to UI events.
-///
-/// Intercom (worker-message) answer turns are suppressed from the transcript:
-/// once a user `MessageStart` carries the `WORKER_INBOUND_PROMPT_PREFIX` (the
-/// poller's answer prompt, idle or follow-up), all deltas / tool calls / error
-/// lines are dropped until the turn ends — the worker chat overlay is the only
-/// surface. Plan confirmations still pass so a tool approval never hangs.
-fn map_agent_event(
-    ui_tx: &mpsc::UnboundedSender<AgentUiEvent>,
-    event: AgentEvent,
-    show_thinking: bool,
-    cwd: &str,
-    intercom_turn: &std::sync::atomic::AtomicBool,
-) {
-    use std::sync::atomic::Ordering;
-    // Intercom (worker-message) answer turns are suppressed from the transcript:
-    // deltas, tool calls, error lines all drop — the worker chat overlay is the
-    // only surface. Plan confirmations still pass so a tool approval never hangs.
-    if intercom_turn.load(Ordering::Relaxed) {
-        if let AgentEvent::PlanConfirmationRequired { plan_id, plan_text } = &event {
-            let _ = ui_tx.send(AgentUiEvent::PlanConfirmationRequired(PlanConfirmationRequest {
-                plan_id: plan_id.clone(),
-                plan_text: plan_text.clone(),
-            }));
-        }
-        return;
-    }
+fn map_agent_event(ui_tx: &mpsc::UnboundedSender<AgentUiEvent>, event: AgentEvent, show_thinking: bool, cwd: &str) {
     match event {
         AgentEvent::MessageStart { message } => {
             // User messages injected mid-run (drained follow-up / steer). Shell may skip if it
@@ -421,7 +396,7 @@ fn summarize_tool_result(result: &elph_agent::AgentToolResult) -> String {
 }
 
 /// Map harness queue snapshot to numbered UI items (follow-ups first, then steer).
-fn map_queue_update(update: &elph_agent::QueueUpdateEvent) -> Vec<QueuedPromptItem> {
+fn map_queue_update(update: &elph_agent::harness::QueueUpdateEvent) -> Vec<QueuedPromptItem> {
     let mut items = Vec::with_capacity(update.follow_up.len() + update.steer.len());
     let mut seq = 1u32;
     for (kind_index, message) in update.follow_up.iter().enumerate() {

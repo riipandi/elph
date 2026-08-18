@@ -11,12 +11,14 @@ Add both crates to your workspace:
 
 ```toml
 [dependencies]
-elph-agent = { path = "../elph-agent", features = ["full"] }
-elph-ai = { path = "../elph-ai" }
+elph-agent = { version = "0.0.28", features = ["full"] }
+elph-ai = "0.0.28"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
 
-Cargo features: `mcp`, `prompt-templates` (MiniJinja), `builtin-tools`, `extensions`. Bundle with `full`.
+MSRV is **Rust 1.89**. Set [`HostIdentity`](src/types/mod.rs) on `AgentOptions` for a non-Elph env prefix. See [the consumer contract](../../docs/elph-agent.md).
+
+Cargo features: `mcp`, `prompt-templates`, `builtin-tools`, `extensions`, `backend-turso` (none on by default). Bundle with `full`.
 Default system prompt: `elph_agent::DEFAULT_SYSTEM_PROMPT`.
 
 ## Quick Start
@@ -65,7 +67,7 @@ async fn main() -> anyhow::Result<()> {
 With the `mcp` feature (default), load remote MCP servers and expose them as agent tools:
 
 ```rust
-use elph_agent::{McpConfig, McpServerConfig, McpToolRegistry};
+use elph_agent::mcp::{McpConfig, McpServerConfig, McpToolRegistry};
 use std::sync::Arc;
 
 let mut config = McpConfig::default();

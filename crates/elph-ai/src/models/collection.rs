@@ -11,7 +11,9 @@ use crate::auth::resolve::resolve_provider_auth;
 use crate::auth::resolve::{AuthResolutionOverrides, ModelsError, ModelsErrorCode};
 use crate::auth::types::{Credential, OAuthCredential};
 use crate::auth::{AuthContext, AuthModel, AuthResult, CredentialStore, InMemoryCredentialStore, ProviderAuth};
-use crate::types::{AssistantMessage, Context, Model, ProviderHeaders, SimpleStreamOptions, StreamOptions};
+use crate::types::{
+    AssistantMessage, ClientIdentity, Context, Model, ProviderHeaders, SimpleStreamOptions, StreamOptions,
+};
 use crate::utils::event_stream::AssistantMessageEventStream;
 
 pub trait ProviderStreamsDyn: Send + Sync {
@@ -88,7 +90,7 @@ impl Provider {
             return Ok(());
         };
         refresh().await.map_err(|e| {
-            ModelsError::with_cause(ModelsErrorCode::ModelSource, format!("Model refresh failed for {}", self.id), e)
+            ModelsError::with_source(ModelsErrorCode::ModelSource, format!("Model refresh failed for {}", self.id), e)
         })?;
         Ok(())
     }
@@ -141,16 +143,23 @@ pub fn create_provider(input: CreateProviderOptions) -> Provider {
     }
 }
 
+/// Options for [`create_models`] / [`crate::builtin_models`].
 #[derive(Default)]
 pub struct CreateModelsOptions {
+    /// Persistent or in-memory credential store. Default: empty in-memory store.
     pub credentials: Option<Arc<dyn CredentialStore>>,
+    /// How env vars and files are read for auth. Default: process environment.
     pub auth_context: Option<Arc<dyn AuthContext>>,
+    /// Product name and env-var prefix for this collection only.
+    pub identity: Option<ClientIdentity>,
 }
 
+/// Shared provider collection: sync reads, async auth/refresh, streaming dispatch.
 pub struct Models {
     providers: HashMap<String, Provider>,
     credentials: Arc<dyn CredentialStore>,
     auth_context: Arc<dyn AuthContext>,
+    identity: ClientIdentity,
 }
 
 pub struct MutableModels {
@@ -158,6 +167,11 @@ pub struct MutableModels {
 }
 
 impl Models {
+    /// Host identity for this collection (stream headers and env-prefix on requests).
+    pub fn identity(&self) -> &ClientIdentity {
+        &self.identity
+    }
+
     /// Shared credential store used by [`Self::get_auth`] / streaming auth resolution.
     ///
     /// Host apps should update this after `/provider connect` so the live session
@@ -226,12 +240,15 @@ impl Models {
                     .providers
                     .get(id)
                     .ok_or_else(|| ModelsError::new(ModelsErrorCode::Provider, format!("Unknown provider: {id}")))?;
-                p.refresh_models().await
+                p.refresh_models().await.inspect_err(|e| {
+                    log::warn!("provider refresh failed provider={id}: {e}");
+                })
             }
             None => {
                 let mut errors = vec![];
                 for p in self.providers.values() {
                     if let Err(e) = p.refresh_models().await {
+                        log::warn!("provider refresh failed provider={}: {e}", p.id);
                         errors.push(e);
                     }
                 }
@@ -310,6 +327,7 @@ impl Models {
             providers: self.providers.clone(),
             credentials: self.credentials.clone(),
             auth_context: self.auth_context.clone(),
+            identity: self.identity.clone(),
         }
     }
 
@@ -340,7 +358,7 @@ impl Models {
             overrides,
         )
         .await?;
-        Ok(merge_auth(model, options, resolution, provider))
+        Ok(merge_auth(model, options, resolution, provider, &self.identity))
     }
 
     async fn apply_auth_simple(
@@ -383,9 +401,13 @@ fn merge_auth(
     options: Option<StreamOptions>,
     resolution: Option<AuthResult>,
     provider: &Provider,
+    identity: &ClientIdentity,
 ) -> (Model, Option<StreamOptions>) {
     let mut request_model = model.clone();
     let mut request_options = options.unwrap_or_default();
+    if request_options.identity.is_none() {
+        request_options.identity = Some(identity.clone());
+    }
 
     if let Some(res) = resolution {
         if let Some(url) = res.auth.base_url {
@@ -421,9 +443,47 @@ where
     let output = stream.clone_handle();
     let trace_model = model.clone();
     crate::trace::spawn_stream(&trace_model, async move {
+        log::debug!("provider stream start provider={} model={}", model.provider, model.id);
         match setup().await {
             Ok(mut inner) => {
+                let mut saw_first_token = false;
                 while let Some(event) = inner.next_event().await {
+                    if !saw_first_token
+                        && matches!(
+                            event,
+                            crate::types::AssistantMessageEvent::TextStart { .. }
+                                | crate::types::AssistantMessageEvent::ThinkingStart { .. }
+                                | crate::types::AssistantMessageEvent::ToolcallStart { .. }
+                        )
+                    {
+                        saw_first_token = true;
+                        crate::trace::add_event("first_token");
+                        log::debug!("provider stream first token provider={} model={}", model.provider, model.id);
+                    }
+                    match &event {
+                        crate::types::AssistantMessageEvent::Done { reason, message } => {
+                            let usage = &message.usage;
+                            log::info!(
+                                "provider usage provider={} model={} in={} out={} cache_read={} cache_write={} total={} reason={reason:?}",
+                                model.provider,
+                                model.id,
+                                usage.input,
+                                usage.output,
+                                usage.cache_read,
+                                usage.cache_write,
+                                usage.total_tokens,
+                            );
+                        }
+                        crate::types::AssistantMessageEvent::Error { reason, error } => {
+                            log::warn!(
+                                "provider stream error provider={} model={} reason={reason:?} msg={}",
+                                model.provider,
+                                model.id,
+                                error.error_message.as_deref().unwrap_or("unknown")
+                            );
+                        }
+                        _ => {}
+                    }
                     let terminal = matches!(
                         &event,
                         crate::types::AssistantMessageEvent::Done { .. }
@@ -436,6 +496,12 @@ where
                 }
             }
             Err(e) => {
+                log::warn!(
+                    "provider stream failed provider={} model={}: {}",
+                    model.provider,
+                    model.id,
+                    e.message
+                );
                 let mut partial = crate::types::AssistantMessage::empty(&model);
                 partial.stop_reason = crate::types::StopReason::Error;
                 partial.error_message = Some(e.message);
@@ -450,7 +516,11 @@ where
     stream
 }
 
+/// Build an empty [`Models`] collection.
+///
+/// [`CreateModelsOptions::identity`] is stored on the collection only (not process-global).
 pub fn create_models(options: Option<CreateModelsOptions>) -> MutableModels {
+    let identity = options.as_ref().and_then(|o| o.identity.clone()).unwrap_or_default();
     MutableModels {
         inner: Models {
             providers: HashMap::new(),
@@ -462,11 +532,17 @@ pub fn create_models(options: Option<CreateModelsOptions>) -> MutableModels {
                 .as_ref()
                 .and_then(|o| o.auth_context.clone())
                 .unwrap_or_else(|| Arc::new(crate::auth::DefaultAuthContext::new())),
+            identity,
         },
     }
 }
 
 impl MutableModels {
+    /// Host identity stored on this collection.
+    pub fn identity(&self) -> &ClientIdentity {
+        self.inner.identity()
+    }
+
     /// Consume the mutable wrapper and share the underlying [`Models`] via [`Arc`].
     pub fn into_arc(self) -> std::sync::Arc<Models> {
         std::sync::Arc::new(self.inner)

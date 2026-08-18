@@ -6,20 +6,20 @@ use std::sync::Arc;
 
 use parking_lot::Mutex;
 
-use elph_agent::AgentHarness;
-use elph_agent::AgentHarnessEvent;
-use elph_agent::AgentHarnessOptions;
-use elph_agent::AgentHarnessOwnEvent;
-use elph_agent::AgentHarnessResources;
-use elph_agent::AgentHarnessStreamOptions;
 use elph_agent::AgentThinkingLevel;
-use elph_agent::CompactionSettings;
-use elph_agent::InMemorySessionStorage;
-use elph_agent::LocalExecutionEnv;
-use elph_agent::Session;
-use elph_agent::SystemPrompt;
 use elph_agent::agent::harness::types::AgentHarnessStreamOptionsPatch;
+use elph_agent::compaction::CompactionSettings;
+use elph_agent::harness::AgentHarness;
+use elph_agent::harness::AgentHarnessEvent;
+use elph_agent::harness::AgentHarnessOptions;
+use elph_agent::harness::AgentHarnessOwnEvent;
+use elph_agent::harness::AgentHarnessResources;
+use elph_agent::harness::AgentHarnessStreamOptions;
+use elph_agent::harness::SystemPrompt;
+use elph_agent::runtime::LocalExecutionEnv;
 use elph_agent::runtime::try_block_on;
+use elph_agent::session::InMemorySessionStorage;
+use elph_agent::session::Session;
 use elph_agent::session::types::HasSessionId;
 use elph_agent::simple_tool;
 use elph_ai::{FauxResponseStep, StopReason, Tool};
@@ -105,7 +105,9 @@ async fn harness_snapshots_stream_options_before_provider_request() {
         active_tool_names: vec![],
         steering_mode: elph_agent::QueueMode::OneAtATime,
         follow_up_mode: elph_agent::QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -184,7 +186,9 @@ async fn harness_save_point_refreshes_stream_options_without_mutating_active_req
             active_tool_names: vec!["calculate".into()],
             steering_mode: elph_agent::QueueMode::OneAtATime,
             follow_up_mode: elph_agent::QueueMode::OneAtATime,
+            #[cfg(feature = "backend-turso")]
             goal_runtime: None,
+            #[cfg(feature = "backend-turso")]
             turn_store: None,
             subagent_bootstrap: None,
             compaction_settings: CompactionSettings::default(),
@@ -255,7 +259,9 @@ async fn harness_chains_provider_request_patches_with_deletion() {
         active_tool_names: vec![],
         steering_mode: elph_agent::QueueMode::OneAtATime,
         follow_up_mode: elph_agent::QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -276,7 +282,7 @@ async fn harness_chains_provider_request_patches_with_deletion() {
                 .cloned();
             async move {
                 assert_eq!(keep.as_deref(), Some("base"));
-                Some(elph_agent::BeforeProviderRequestResult {
+                Some(elph_agent::harness::BeforeProviderRequestResult {
                     stream_options: Some(AgentHarnessStreamOptionsPatch {
                         headers: Some(Some(HashMap::from([
                             ("first".into(), Some("1".into())),
@@ -310,7 +316,7 @@ async fn harness_chains_provider_request_patches_with_deletion() {
             async move {
                 assert_eq!(first_header.as_deref(), Some("1"));
                 assert_eq!(first_metadata, Some(json!(1)));
-                Some(elph_agent::BeforeProviderRequestResult {
+                Some(elph_agent::harness::BeforeProviderRequestResult {
                     stream_options: Some(AgentHarnessStreamOptionsPatch {
                         timeout_ms: Some(None),
                         headers: Some(Some(HashMap::from([("second".into(), Some("2".into()))]))),
@@ -373,7 +379,9 @@ async fn harness_chains_provider_payload_hooks() {
         active_tool_names: vec![],
         steering_mode: elph_agent::QueueMode::OneAtATime,
         follow_up_mode: elph_agent::QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -391,7 +399,7 @@ async fn harness_chains_provider_payload_hooks() {
             let seen_payloads = seen_payloads_first.clone();
             async move {
                 seen_payloads.lock().push(payload);
-                Some(elph_agent::BeforeProviderPayloadResult {
+                Some(elph_agent::harness::BeforeProviderPayloadResult {
                     payload: json!({ "steps": ["provider", "first"] }),
                 })
             }
@@ -405,7 +413,7 @@ async fn harness_chains_provider_payload_hooks() {
             let seen_payloads = seen_payloads_second.clone();
             async move {
                 seen_payloads.lock().push(payload);
-                Some(elph_agent::BeforeProviderPayloadResult {
+                Some(elph_agent::harness::BeforeProviderPayloadResult {
                     payload: json!({ "steps": ["provider", "first", "second"] }),
                 })
             }
@@ -466,7 +474,9 @@ async fn harness_on_chains_provider_payload_hooks() {
         active_tool_names: vec![],
         steering_mode: elph_agent::QueueMode::OneAtATime,
         follow_up_mode: elph_agent::QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -482,12 +492,12 @@ async fn harness_on_chains_provider_payload_hooks() {
         .on("before_provider_payload", move |event| {
             let seen_payloads = seen_payloads_first.clone();
             async move {
-                let elph_agent::AgentHarnessOwnEvent::BeforeProviderPayload(event) = event else {
+                let elph_agent::harness::AgentHarnessOwnEvent::BeforeProviderPayload(event) = event else {
                     return None;
                 };
                 seen_payloads.lock().push(event.payload.clone());
-                Some(elph_agent::HarnessHookResult::BeforeProviderPayload(
-                    elph_agent::BeforeProviderPayloadResult {
+                Some(elph_agent::harness::HarnessHookResult::BeforeProviderPayload(
+                    elph_agent::harness::BeforeProviderPayloadResult {
                         payload: json!({ "steps": ["provider", "first"] }),
                     },
                 ))
@@ -501,12 +511,12 @@ async fn harness_on_chains_provider_payload_hooks() {
         .on("before_provider_payload", move |event| {
             let seen_payloads = seen_payloads_second.clone();
             async move {
-                let elph_agent::AgentHarnessOwnEvent::BeforeProviderPayload(event) = event else {
+                let elph_agent::harness::AgentHarnessOwnEvent::BeforeProviderPayload(event) = event else {
                     return None;
                 };
                 seen_payloads.lock().push(event.payload.clone());
-                Some(elph_agent::HarnessHookResult::BeforeProviderPayload(
-                    elph_agent::BeforeProviderPayloadResult {
+                Some(elph_agent::harness::HarnessHookResult::BeforeProviderPayload(
+                    elph_agent::harness::BeforeProviderPayloadResult {
                         payload: json!({ "steps": ["provider", "first", "second"] }),
                     },
                 ))
@@ -549,7 +559,9 @@ async fn harness_on_rejects_unknown_hook_type() {
         active_tool_names: vec![],
         steering_mode: elph_agent::QueueMode::OneAtATime,
         follow_up_mode: elph_agent::QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -594,7 +606,9 @@ async fn harness_after_provider_response_captures_status_and_headers() {
         active_tool_names: vec![],
         steering_mode: elph_agent::QueueMode::OneAtATime,
         follow_up_mode: elph_agent::QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -649,7 +663,9 @@ async fn harness_subscribe_receives_after_provider_response_own_event() {
         active_tool_names: vec![],
         steering_mode: elph_agent::QueueMode::OneAtATime,
         follow_up_mode: elph_agent::QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),

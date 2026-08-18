@@ -1,6 +1,7 @@
 //! Agent → TUI event bridge.
 
-use elph_agent::{TodoItem, TurnUsage};
+use elph_agent::todos::TodoItem;
+use elph_agent::turns::TurnUsage;
 
 /// Recovery prompt submitted instead of re-sending the original text when a transient
 /// stream/provider error interrupts a turn. The model resumes from the last persisted
@@ -207,6 +208,8 @@ pub struct ToolApprovalRequest {
     pub tool_call_id: String,
     pub tool_name: String,
     pub args_summary: String,
+    /// Plan mode: Allow once / Deny only — no session or all-tools grant.
+    pub once_only: bool,
     pub response_tx: tokio::sync::oneshot::Sender<ToolApprovalChoice>,
 }
 

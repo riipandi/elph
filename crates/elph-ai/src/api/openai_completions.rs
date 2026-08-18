@@ -999,7 +999,8 @@ fn resolve_cache_retention(options: &StreamOptions) -> crate::types::CacheRetent
     if let Some(r) = options.cache_retention {
         return r;
     }
-    if get_provider_env_value("ELPH_CACHE_RETENTION", options.env.as_ref()) == Some("long".to_string()) {
+    let cache_key = options.identity_or_default().env_key("CACHE_RETENTION");
+    if get_provider_env_value(&cache_key, options.env.as_ref()) == Some("long".to_string()) {
         crate::types::CacheRetention::Long
     } else {
         crate::types::CacheRetention::Short

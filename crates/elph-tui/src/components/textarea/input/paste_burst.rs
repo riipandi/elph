@@ -62,6 +62,11 @@ pub(crate) fn handle_bracketed_paste(
     burst: &mut PasteBurstState,
     last_key_at: &mut Option<Instant>,
 ) -> TextareaInputResult {
+    log::debug!(
+        "bracketed paste chars={} newlines={}",
+        data.chars().count(),
+        crate::paste::newline_count(data)
+    );
     paste_burst_reset(burst);
     state.apply_paste(data);
     *last_key_at = None;

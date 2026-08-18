@@ -7,7 +7,7 @@ UNAME_S  := $(shell uname -s)
 UNAME_M  := $(shell uname -m)
 
 # On Apple Silicon macOS, default to Metal GPU acceleration for local embeddings
-# (codegraph + memory). The `metal` feature only compiles there; other platforms
+# (memory). The `metal` feature only compiles there; other platforms
 # stay on the CPU backend. Override with `make build ELPH_METAL=`.
 ifeq ($(UNAME_S),Darwin)
   ifeq ($(UNAME_M),arm64)
@@ -44,7 +44,7 @@ ifneq ($(SCCACHE_OK),)
     export SCCACHE_DIRECT := true
     # Cap remote cache at 50 GB so it never eclipses local disk. The bucket is shared
     # across sessions — anything beyond this size is unlikely to be re-used soon.
-    export SCCACHE_MAXSIZE := 50G
+    export SCCACHE_MAXSIZE := 20G
   endif
 endif
 
@@ -208,7 +208,7 @@ check-elph-tui: ## Check elph-tui compiles (lib, tests, examples)
 	@$(CARGO) check $(CARGO_QA_FLAGS) -p elph-tui --all-targets 2>&1
 
 generate-models: ## Regenerate elph-ai model catalogs (pi packages/ai; ARGS=--skip-scripts)
-	@$(CARGO) run -p elph-ai --bin generate-models -- all $(ARGS)
+	@$(CARGO) run -p elph-ai --features generate-models --bin generate-models -- all $(ARGS)
 	@pnpm dlx --silent oxfmt crates/elph-ai/models/
 
 # ─── Cross-Compilation ─────────────────────────────────────────────────────────
@@ -251,8 +251,7 @@ lint-elph-tui: ## Run clippy for elph-tui
 
 fmt: ## Format all code
 	@$(CARGO) fmt --all -- --style-edition 2024
-	@pnpm dlx --silent oxfmt crates/elph-ai/models/
-	@pnpm dlx --silent oxfmt openwiki/ schemas/
+	@pnpm dlx --silent oxfmt crates/elph-ai/models/ schemas/
 
 coverage: ## Run tests with coverage (requires cargo-llvm-cov)
 	@$(CARGO) llvm-cov nextest --no-cfg-coverage 2>&1
@@ -379,7 +378,7 @@ endif
 _BUMP_LEVEL := $(firstword $(_RESIDUAL_))
 _BUMP_PY    := python3 -c "import sys;m,M,p=sys.argv[1].split('.');l=sys.argv[2];print(f'{m}.{M}.{int(p)+1}' if l=='patch' else f'{m}.{int(M)+1}.0' if l=='minor' else f'{int(m)+1}.0.0')"
 
-_LIBS := elph-ai elph-agent elph-swarm
+_LIBS := elph-ai elph-agent
 
 define _require_bump_level
 	@case "$(1)" in patch|minor|major) ;; *) \

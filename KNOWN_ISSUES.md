@@ -84,7 +84,7 @@ Platform details: [docs/limitation.md](./docs/limitation.md).
 ## 2026-08-03 — Turso-native FTS: incompatible with standard SQLite tools
 
 `store.db` uses Turso-native FTS indexes (`CREATE INDEX ... USING fts`, Tantivy-backed)
-for memory (V4) and codegraph (V501). Turso stores internal metadata in
+for memory (V4). Turso stores internal metadata in
 `__turso_internal_fts_dir_*` tables whose schema contains `USING` syntax — this is
 valid in Turso but **not** recognised by standard SQLite.
 
@@ -92,15 +92,14 @@ Opening `store.db` with tools like TablePro, DB Browser for SQLite, or `sqlite3`
 will fail with:
 
 ```
-malformed database schema (__turso_internal_fts_dir_idx_cg_chunks_fts_key) - near "USING": syntax error
+malformed database schema (__turso_internal_fts_dir_idx_memories_fts_key) - near "USING": syntax error
 ```
 
 **Impact:** read-only — the database is fully functional when opened by Turso (Elph
 runtime). Third-party SQLite tools cannot open it.
 
 **Workaround:** use a libSQL-compatible GUI like [Dataflare](https://github.com/DataflareApp/Dataflare)
-instead of standard SQLite tools. Or use `elph` CLI commands (`elph memory list`,
-`elph codegraph search`, etc.).
+instead of standard SQLite tools. Or use `elph` CLI commands (`elph memory list`, etc.).
 
 ## 2026-07-26 — Vendor iocraft: OSC 8 Hyperlinks
 
@@ -181,4 +180,4 @@ Options:
 
 ### Current Limitation
 
-GPU device selection is handled at **compile time** via cargo features, not at runtime. The `models.embed.gpuAcceleration` setting controls whether GPU is attempted (on/off/auto) but cannot switch between CPU/GPU dynamically without rebuilding. To use GPU, you must rebuild with the appropriate feature flag.
+GPU device selection is handled at **compile time** via cargo features, not at runtime. The `models.embedGpuAcceleration` setting controls whether GPU is attempted (on/off/auto) but cannot switch between CPU/GPU dynamically without rebuilding. To use GPU, you must rebuild with the appropriate feature flag.

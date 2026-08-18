@@ -9,8 +9,8 @@
 
 use std::collections::HashMap;
 
-use elph_agent::WorkerMessage;
 use elph_agent::workers::MessageKind;
+use elph_agent::workers::WorkerMessage;
 use iocraft::prelude::*;
 
 use crate::agent::AgentUiEvent;
@@ -72,7 +72,7 @@ impl WorkerChatState {
     }
 
     /// Rebuild the picker rows from the last messages + live peer names.
-    pub fn rebuild_peers(&mut self, live: Vec<elph_agent::LiveWorker>) {
+    pub fn rebuild_peers(&mut self, live: Vec<elph_agent::workers::LiveWorker>) {
         let live_names: HashMap<String, String> = live
             .into_iter()
             .map(|w| (w.worker_id.clone(), w.name.clone()))
@@ -287,7 +287,7 @@ pub fn open_worker_chat_overlay(
     draft: &mut State<String>,
     live_draft: &mut Ref<String>,
     shell_focus: &mut State<ShellFocus>,
-    peers: Vec<elph_agent::LiveWorker>,
+    peers: Vec<elph_agent::workers::LiveWorker>,
     history: Vec<WorkerMessage>,
 ) {
     let stashed = {

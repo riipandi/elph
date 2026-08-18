@@ -3,6 +3,7 @@
 use elph_ai::StopReason;
 use tokio_util::sync::CancellationToken;
 
+use crate::types::AgentError;
 use crate::types::{AgentContext, AgentEvent, AgentLoopConfig, AgentMessage};
 use crate::types::{assistant_message_to_agent, extract_tool_calls, tool_result_to_agent};
 
@@ -17,7 +18,7 @@ pub(super) async fn run_loop(
     config: &mut AgentLoopConfig,
     signal: Option<CancellationToken>,
     emit: &AgentEventCallback,
-) -> Result<(), String> {
+) -> Result<(), AgentError> {
     let mut first_turn = true;
     let mut pending_messages = if let Some(get_steering) = &config.get_steering_messages {
         get_steering().await
@@ -50,10 +51,17 @@ pub(super) async fn run_loop(
                 }
             }
 
-            let message = stream_assistant_response(current_context, config, signal.clone(), emit).await?;
+            let message = match stream_assistant_response(current_context, config, signal.clone(), emit).await {
+                Ok(message) => message,
+                Err(error) => {
+                    log::warn!("agent loop stream failed: {error}");
+                    return Err(AgentError::loop_failed(error));
+                }
+            };
             new_messages.push(assistant_message_to_agent(message.clone()));
 
             if matches!(message.stop_reason, StopReason::Error | StopReason::Aborted) {
+                log::debug!("agent loop stop reason={:?}", message.stop_reason);
                 emit(AgentEvent::TurnEnd {
                     message: assistant_message_to_agent(message),
                     tool_results: Vec::new(),
@@ -71,6 +79,7 @@ pub(super) async fn run_loop(
             has_more_tool_calls = false;
 
             if !tool_calls.is_empty() {
+                log::debug!("agent loop tool batch size={}", tool_calls.len());
                 let batch: ExecutedToolBatch = if message.stop_reason == StopReason::Length {
                     fail_tool_calls_from_truncated_message(&tool_calls, emit).await
                 } else {

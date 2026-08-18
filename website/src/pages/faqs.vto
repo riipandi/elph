@@ -22,7 +22,7 @@
       <details class="faq" open>
         <summary>What is Elph?</summary>
         <p class="mt-3 text-sm leading-relaxed">
-          An opinionated AI coding agent harness that runs locally. The session loop follows <a href="https://pi.dev/docs/latest">Pi</a>; Elph adds a local store, codegraph, floppy memory, worktrees, MCP, and extra surfaces. Interactive TUI (<code class="font-mono" style="color: var(--chrome-fg)">elph</code>), headless prompts (<code class="font-mono" style="color: var(--chrome-fg)">elph run</code>), and ACP for editors (<code class="font-mono" style="color: var(--chrome-fg)">elph acp --stdio</code>).
+          An opinionated AI coding agent harness that runs locally. The session loop follows <a href="https://pi.dev/docs/latest">Pi</a>; Elph adds a local store, floppy memory, worktrees, MCP, and extra surfaces. Interactive TUI (<code class="font-mono" style="color: var(--chrome-fg)">elph</code>), headless prompts (<code class="font-mono" style="color: var(--chrome-fg)">elph run</code>), and ACP for editors (<code class="font-mono" style="color: var(--chrome-fg)">elph acp --stdio</code>).
         </p>
       </details>
 
@@ -54,14 +54,7 @@
       <details class="faq">
         <summary>Where does Elph store data?</summary>
         <p class="mt-3 text-sm leading-relaxed">
-          Config under <code class="font-mono" style="color: var(--chrome-fg)">~/.config/elph/</code> (or <code class="font-mono" style="color: var(--chrome-fg)">ELPH_HOME</code>). Project sessions, memory, and the code index live in <code class="font-mono" style="color: var(--chrome-fg)">.elph/store.db</code> — Turso / SQLite with FTS and vectors. There is no required cloud agent backend.
-        </p>
-      </details>
-
-      <details class="faq">
-        <summary>What is codegraph?</summary>
-        <p class="mt-3 text-sm leading-relaxed">
-          A local semantic index: AST chunks, hybrid keyword + vector search, and a shallow impact graph. Build it with <code class="font-mono" style="color: var(--chrome-fg)">elph codegraph build</code>. The agent can search and query impact when the index is enabled. Floppy memory sits in the same store and can recall lessons from earlier work.
+          Config under <code class="font-mono" style="color: var(--chrome-fg)">~/.config/elph/</code> (or <code class="font-mono" style="color: var(--chrome-fg)">ELPH_HOME</code>). Project sessions and memory live in <code class="font-mono" style="color: var(--chrome-fg)">.elph/store.db</code> — Turso / SQLite with FTS and vectors. There is no required cloud agent backend.
         </p>
       </details>
 

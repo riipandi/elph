@@ -1,7 +1,7 @@
 use crate::utils::path::AppPaths;
 use anyhow::Result;
 use chrono::{SecondsFormat, Utc};
-use elph_agent::write_json_file;
+use elph_agent::fs::write_json_file;
 use serde::{Deserialize, Serialize};
 
 /// Release / update metadata written to `APP_DATA/version.json`.

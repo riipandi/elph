@@ -208,7 +208,11 @@ pub fn build_bedrock_converse_body(model: &Model, context: &Context, options: &B
 }
 
 fn build_converse_body(model: &Model, context: &Context, options: &BedrockOptions) -> Result<Value> {
-    let cache_retention = resolve_cache_retention(options.base.cache_retention, options.base.env.as_ref());
+    let cache_retention = resolve_cache_retention(
+        options.base.cache_retention,
+        options.base.env.as_ref(),
+        options.base.identity.as_ref(),
+    );
     let mut messages = convert_messages(context, model);
     append_cache_point_to_last_user_message(&mut messages, cache_retention);
     let mut body = json!({

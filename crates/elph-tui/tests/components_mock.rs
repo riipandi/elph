@@ -244,10 +244,8 @@ async fn select_list_navigates_with_keys() {
         ],
         vec![
             key(KeyCode::Down),
-            key(KeyCode::Char('j')),
             key_mod(KeyCode::Down, KeyModifiers::SHIFT),
             key(KeyCode::Up),
-            key(KeyCode::Char('k')),
             key(KeyCode::Enter),
         ],
     )
@@ -291,12 +289,7 @@ async fn slider_renders_and_adjusts() {
             }
             .into(),
         ],
-        vec![
-            key(KeyCode::Right),
-            key(KeyCode::Char('l')),
-            key(KeyCode::Left),
-            key(KeyCode::Char('h')),
-        ],
+        vec![key(KeyCode::Right), key(KeyCode::Left)],
     )
     .await;
     assert!(frames.iter().any(|f| f.contains("Vol")));
@@ -333,8 +326,6 @@ async fn tab_select_switches_tabs() {
             key(KeyCode::Tab),
             key(KeyCode::Left),
             key(KeyCode::BackTab),
-            key(KeyCode::Char('l')),
-            key(KeyCode::Char('h')),
         ],
     )
     .await;

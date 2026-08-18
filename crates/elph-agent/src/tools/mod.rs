@@ -105,7 +105,7 @@ pub fn simple_tool(
 ) -> AgentTool {
     let execute_fn: ToolExecuteFn = Arc::new(move |id, args, _signal, _on_update, _context| {
         let fut = execute(id, args);
-        Box::pin(fut)
+        Box::pin(async move { fut.await.map_err(crate::tools::types::ToolError::from) })
     });
     AgentTool {
         tool,

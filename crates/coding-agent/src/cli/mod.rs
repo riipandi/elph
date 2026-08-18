@@ -1,5 +1,4 @@
 mod acp;
-mod codegraph;
 mod completions;
 mod default;
 mod doctor;
@@ -32,8 +31,8 @@ use crate::platform::ExitCode;
 /// progress-ticker interrupt flag while alive, restoring the previous
 /// disposition on drop.
 ///
-/// Only active around CLI progress phases (boot, datastore init, codegraph
-/// index) where the tick threads can observe the flag and abort with a clean
+/// Only active around CLI progress phases (boot, datastore init)
+/// where the tick threads can observe the flag and abort with a clean
 /// "Interrupted." message + exit 130. Long-running phases (`server`, `run`,
 /// the TUI) never have the guard installed, so Ctrl+C keeps its default
 /// terminate behavior there.
@@ -74,7 +73,6 @@ impl Drop for CliProgressInterruptGuard {
 }
 
 pub use acp::AcpArgs;
-pub use codegraph::{CodegraphArgs, CodegraphCommands};
 pub use completions::CompletionsArgs;
 pub use doctor::DoctorArgs;
 pub use export::ExportArgs;
@@ -125,11 +123,9 @@ pub struct Cli {
 pub enum Commands {
     /// Run Elph as an Agent Client Protocol (ACP) server
     Acp(AcpArgs),
-    /// Semantic code index + thin impact graph
-    Codegraph(CodegraphArgs),
     /// Generate shell completion scripts (bash, zsh, fish, powershell, etc)
     Completions(CompletionsArgs),
-    /// Show the configuration Elph discovers for this directory
+    /// Diagnose terminal, clipboard, config, and print a secret-free bug-report snapshot
     Doctor(DoctorArgs),
     /// Export a session transcript or archive
     Export(ExportArgs),
@@ -158,6 +154,30 @@ pub enum Commands {
     Update(UpdateArgs),
     /// Manage git worktrees
     Worktree(WorktreeArgs),
+}
+
+fn command_label(cli: &Cli) -> &'static str {
+    match &cli.command {
+        None if cli.resume.is_some() => "tui-resume",
+        None if cli.continue_session => "tui-continue",
+        None => "tui",
+        Some(Commands::Acp(_)) => "acp",
+        Some(Commands::Completions(_)) => "completions",
+        Some(Commands::Doctor(_)) => "doctor",
+        Some(Commands::Export(_)) => "export",
+        Some(Commands::Import(_)) => "import",
+        Some(Commands::Mcp(_)) => "mcp",
+        Some(Commands::Memory(_)) => "memory",
+        Some(Commands::Models(_)) => "models",
+        Some(Commands::Extensions(_)) => "extensions",
+        Some(Commands::Provider(_)) => "provider",
+        Some(Commands::Run(_)) => "run",
+        Some(Commands::Server(_)) => "server",
+        Some(Commands::Session(_)) => "session",
+        Some(Commands::Stats(_)) => "stats",
+        Some(Commands::Update(_)) => "update",
+        Some(Commands::Worktree(_)) => "worktree",
+    }
 }
 
 fn init_home() -> Result<crate::platform::Paths, ExitCode> {
@@ -212,13 +232,17 @@ pub fn run(cli: &Cli) -> ExitCode {
 
     let _log_guard = match crate::platform::Paths::resolve() {
         Ok(paths) => {
-            // Panic → APP_DATA/logs/crash.log-YYYYMMDD
             elph_agent::logger::install_panic_hook(paths.logs_dir());
-            let init = agent_builder.logs_dir(paths.logs_dir()).build();
+            let logging = crate::platform::Settings::peek_logging(&paths);
+            let init = agent_builder
+                .clone()
+                .logging_settings(logging)
+                .logs_dir(paths.logs_dir())
+                .build();
             elph_agent::logger::init(init.logging)
         }
         Err(_) => {
-            // Best-effort crash path if full path resolution failed.
+            log::warn!("path resolve failed; using fallback logs directory");
             if let Some(logs) = fallback_logs_dir() {
                 elph_agent::logger::install_panic_hook(logs);
             }
@@ -226,6 +250,8 @@ pub fn run(cli: &Cli) -> ExitCode {
             elph_agent::logger::init(init.logging)
         }
     };
+
+    log::debug!("cli start version={} command={}", env!("CARGO_PKG_VERSION"), command_label(cli));
 
     // Boot phases (home scaffold + datastore init) render progress on stderr;
     // keep Ctrl+C interactive there, then restore default signal behavior
@@ -245,7 +271,6 @@ pub fn run(cli: &Cli) -> ExitCode {
         if let Err(code) = init_datastore(&paths) {
             return code;
         }
-        // default::handle reinstalls the guard for the index-offer phase itself.
         return default::handle(cli.continue_session, cli.resume.clone());
     };
 
@@ -258,7 +283,6 @@ pub fn run(cli: &Cli) -> ExitCode {
 
     match cmd {
         Commands::Acp(args) => acp::handle(args),
-        Commands::Codegraph(args) => codegraph::handle(args),
         Commands::Completions(args) => completions::handle(args),
         Commands::Doctor(args) => doctor::handle(args),
         Commands::Export(args) => export::handle(args),

@@ -1,30 +1,32 @@
-//! Circuit breaker wrapper around the `failsafe` crate.
+//! Per-provider circuit breaker.
 //!
-//! Provides per-provider circuit breaking to stop hammering a failing provider
-//! and allow it time to recover.
-//!
-//! The `failsafe::StateMachine` has complex generic parameters that are hard to
-//! name. This wrapper stores the state machine operations as closures, providing
-//! a clean, object-safe interface.
+//! Consecutive failures trip the circuit open so a failing provider is not
+//! hammered. After `recovery_timeout` a single probe is allowed (half-open);
+//! success closes the circuit, failure re-opens it.
 
 use std::sync::Arc;
+use std::time::Instant;
+
+use parking_lot::Mutex;
 
 use super::config::ResilienceConfig;
 
 /// A thread-safe circuit breaker for a single provider.
-///
-/// Wraps `failsafe::StateMachine` operations as closures to avoid
-/// naming the complex concrete generic type.
 #[derive(Clone)]
 pub struct ProviderCircuitBreaker {
-    inner: Arc<CircuitBreakerInner>,
+    inner: Arc<Mutex<BreakerState>>,
 }
 
-/// Internal state machine operations, stored as closures.
-struct CircuitBreakerInner {
-    is_call_possible: Box<dyn Fn() -> bool + Send + Sync>,
-    on_success: Box<dyn Fn() + Send + Sync>,
-    on_error: Box<dyn Fn() + Send + Sync>,
+struct BreakerState {
+    failure_threshold: u32,
+    recovery_timeout: std::time::Duration,
+    phase: Phase,
+}
+
+enum Phase {
+    Closed { failures: u32 },
+    Open { until: Instant },
+    HalfOpen,
 }
 
 impl ProviderCircuitBreaker {
@@ -35,26 +37,12 @@ impl ProviderCircuitBreaker {
 
     /// Create a circuit breaker with explicit parameters.
     pub fn with_params(failure_threshold: u32, recovery_timeout: std::time::Duration) -> Self {
-        use failsafe::{Config, backoff, failure_policy};
-
-        // Exponential backoff: starts at 1s, grows to recovery_timeout
-        let bo = backoff::exponential(std::time::Duration::from_secs(1), recovery_timeout);
-
-        // Trip after N consecutive failures
-        let policy = failure_policy::consecutive_failures(failure_threshold, bo);
-
-        let sm = Config::new().failure_policy(policy).build();
-
-        // Wrap in closures to avoid naming the concrete StateMachine type
-        let sm_success = sm.clone();
-        let sm_error = sm.clone();
-
         Self {
-            inner: Arc::new(CircuitBreakerInner {
-                is_call_possible: Box::new(move || sm.is_call_permitted()),
-                on_success: Box::new(move || sm_success.on_success()),
-                on_error: Box::new(move || sm_error.on_error()),
-            }),
+            inner: Arc::new(Mutex::new(BreakerState {
+                failure_threshold,
+                recovery_timeout,
+                phase: Phase::Closed { failures: 0 },
+            })),
         }
     }
 
@@ -63,21 +51,45 @@ impl ProviderCircuitBreaker {
     /// Returns `true` if the circuit is closed or half-open (probe allowed).
     /// Returns `false` if the circuit is open (fail fast).
     pub fn is_call_possible(&self) -> bool {
-        (self.inner.is_call_possible)()
+        let mut state = self.inner.lock();
+        match state.phase {
+            Phase::Closed { .. } | Phase::HalfOpen => true,
+            Phase::Open { until } if Instant::now() >= until => {
+                state.phase = Phase::HalfOpen;
+                true
+            }
+            Phase::Open { .. } => false,
+        }
     }
 
     /// Record a successful call.
     ///
     /// If the circuit was half-open, this closes it.
     pub fn on_success(&self) {
-        (self.inner.on_success)()
+        let mut state = self.inner.lock();
+        state.phase = Phase::Closed { failures: 0 };
     }
 
     /// Record a failed call.
     ///
     /// If failures exceed the threshold, the circuit opens.
     pub fn on_error(&self) {
-        (self.inner.on_error)()
+        let mut state = self.inner.lock();
+        let until = Instant::now() + state.recovery_timeout;
+        match state.phase {
+            Phase::HalfOpen => {
+                state.phase = Phase::Open { until };
+            }
+            Phase::Closed { failures } => {
+                let next = failures.saturating_add(1);
+                if next >= state.failure_threshold {
+                    state.phase = Phase::Open { until };
+                } else {
+                    state.phase = Phase::Closed { failures: next };
+                }
+            }
+            Phase::Open { .. } => {}
+        }
     }
 
     /// Execute a closure with circuit breaker protection.

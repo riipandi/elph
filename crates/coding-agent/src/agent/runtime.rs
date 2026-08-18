@@ -2,14 +2,20 @@
 
 use crate::utils::path::AppPaths;
 use anyhow::Result;
-use elph_agent::create_goal_tools_with_hook;
-use elph_agent::{
-    AgentGraphStore, AgentHarness, AgentHarnessOptions, AgentHarnessStreamOptions, BuiltinToolsBuilder, GoalRuntime,
-    GoalStore, LocalExecutionEnv, QueueMode, RestoreOptions, SessionSummaryStore, SubagentBootstrap, SystemPrompt,
-    TodoHook, TodoStore, TurnStore, WorkTracker, create_session_summary_tool, create_todo_tools_with_hook, is_mcp_tool,
-};
+use elph_agent::BuiltinToolsBuilder;
+use elph_agent::QueueMode;
+use elph_agent::agent::subagent::{AgentGraphStore, SubagentBootstrap};
+use elph_agent::collaboration::is_mcp_tool;
+use elph_agent::goals::create_goal_tools_with_hook;
+use elph_agent::goals::{GoalRuntime, GoalStore};
+use elph_agent::harness::{AgentHarness, AgentHarnessOptions, AgentHarnessStreamOptions, RestoreOptions, SystemPrompt};
+use elph_agent::runtime::LocalExecutionEnv;
+use elph_agent::session_summary::{SessionSummaryStore, create_session_summary_tool};
+use elph_agent::todos::{TodoHook, TodoStore, WorkTracker, create_todo_tools_with_hook};
+use elph_agent::turns::TurnStore;
 use std::path::Path;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::sync::Mutex;
 
 use super::mcp_bootstrap::{discover_mcp_registry, start_mcp_notifications};
@@ -59,9 +65,9 @@ pub async fn create_coding_session_with_events(
     let database = Arc::new(crate::platform::datastore::ensure_database(options.paths).await?);
 
     // Best-effort session retention GC (settings-driven). Never mid-turn; skip if disabled.
-    if options.settings.session.retention.enabled && options.settings.session.retention.gc_on_open {
-        let r = &options.settings.session.retention;
-        let policy = elph_agent::RetentionPolicy {
+    if options.settings.session.enabled && options.settings.session.gc_on_open {
+        let r = &options.settings.session;
+        let policy = elph_agent::session::RetentionPolicy {
             enabled: true,
             max_sessions_per_cwd: r.max_sessions_per_cwd,
             max_session_age_days: r.max_session_age_days,
@@ -69,7 +75,7 @@ pub async fn create_coding_session_with_events(
             protect_latest_per_cwd: r.protect_latest_per_cwd,
             protect_session_id: options.resume_id.map(|s| s.to_string()),
         };
-        match elph_agent::run_full_session_gc(
+        match elph_agent::session::run_full_session_gc(
             Arc::clone(&database),
             options.paths.memory_db_path(),
             Some(options.paths.data_dir().join("sessions")),
@@ -90,7 +96,33 @@ pub async fn create_coding_session_with_events(
         }
     }
 
-    let env = Arc::new(LocalExecutionEnv::new(options.cwd));
+    let mut env = LocalExecutionEnv::new(options.cwd);
+    if let Some(path) = options
+        .settings
+        .shell_path
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        let expanded = if let Some(rest) = path.strip_prefix("~/") {
+            std::env::var_os("HOME")
+                .map(|h| std::path::PathBuf::from(h).join(rest))
+                .unwrap_or_else(|| std::path::PathBuf::from(path))
+        } else {
+            std::path::PathBuf::from(path)
+        };
+        env = env.with_shell_path(expanded);
+    }
+    if let Some(prefix) = options
+        .settings
+        .shell_command_prefix
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        env = env.with_command_prefix(prefix);
+    }
+    let env = Arc::new(env);
     let workers_cfg = &options.settings.workers;
     // One worker_id for lease + registry + file claims for this process.
     let worker_id = WorkerRuntime::new_worker_id();
@@ -120,22 +152,43 @@ pub async fn create_coding_session_with_events(
         Some(&auth_store),
     )
     .await?;
+    let mcp_cache_path = session_manager.mcp_cache_path(&session_id);
+    let mcp_cfg = crate::platform::mcp::load_config(options.paths).unwrap_or_default();
+    let mcp_cache = elph_agent::mcp::McpCacheStore::open(&mcp_cache_path, mcp_cfg.cache_max_entries_or_default())
+        .ok()
+        .map(Arc::new);
+    let default_cache_ttl_ms = mcp_cfg.cache_ttl_secs_or_default().saturating_mul(1000);
     let (mcp_registry, mcp_config_warnings) = if options.defer_mcp_load {
-        (Arc::new(elph_agent::McpToolRegistry::empty()), Vec::new())
+        let (mcp_config, warnings) = crate::platform::mcp::load_config_best_effort(options.paths);
+        for warning in &warnings {
+            log::warn!("{warning}");
+        }
+        let load_options = elph_agent::mcp::McpLoadOptions {
+            auth_store_path: Some(options.paths.auth_store_path()),
+            cache_store: mcp_cache.clone(),
+            default_cache_ttl_ms,
+            skip_startup_discovery: true,
+            ..elph_agent::mcp::McpLoadOptions::default()
+        };
+        let registry = match elph_agent::mcp::McpToolRegistry::load_with_options(mcp_config, load_options).await {
+            Ok(registry) => Arc::new(registry),
+            Err(error) => {
+                log::warn!("MCP deferred registry load failed: {error}");
+                Arc::new(elph_agent::mcp::McpToolRegistry::empty())
+            }
+        };
+        (registry, warnings)
     } else {
-        let mcp_cache_path = session_manager.mcp_cache_path(&session_id);
-        let mcp_cache = elph_agent::McpCacheStore::open(&mcp_cache_path, options.settings.mcp.cache_max_entries).ok();
-        discover_mcp_registry(
-            options.paths,
-            mcp_cache.map(Arc::new),
-            options.settings.mcp.cache_ttl_secs.saturating_mul(1000),
-        )
-        .await
+        discover_mcp_registry(options.paths, mcp_cache, default_cache_ttl_ms).await
     };
 
     let resources = match options.preloaded_resources {
         Some(loaded) => loaded.resources,
-        None => load_resources(options.paths, options.cwd, env.as_ref()).await.resources,
+        None => {
+            load_resources(options.paths, options.cwd, env.as_ref(), options.settings)
+                .await
+                .resources
+        }
     };
 
     // Multi-worker: start before built-in tools so path claims + worker_* tools wire in.
@@ -183,7 +236,7 @@ pub async fn create_coding_session_with_events(
         if !rt.file_leases_enabled() {
             return None;
         }
-        Some(std::sync::Arc::new(elph_agent::PathClaimContext::new(
+        Some(std::sync::Arc::new(elph_agent::workers::PathClaimContext::new(
             rt.file_leases(),
             rt.project_key.clone(),
             rt.worker_id.clone(),
@@ -211,12 +264,6 @@ pub async fn create_coding_session_with_events(
         Some(database.clone()),
     ));
     tools.extend(crate::memory::tools::create_memory_tools(Arc::clone(&memory_runtime)));
-    if options.settings.codegraph.enabled {
-        tools.extend(crate::codegraph::tools::create_codegraph_tools_with_db(
-            options.paths.clone(),
-            Some(database.clone()),
-        ));
-    }
 
     // Create shared UI event channel for ask_user tool and session.
     let (ui_tx, ui_rx) = tokio::sync::mpsc::unbounded_channel();
@@ -231,7 +278,7 @@ pub async fn create_coding_session_with_events(
     let goal_runtime = Arc::new(GoalRuntime::new(goal_store.clone(), session_id.clone()));
     // Goals bridge: terminal goal status → work memory for future recall.
     let memory_for_goals = Arc::clone(&memory_runtime);
-    let goal_hook: Option<elph_agent::GoalStatusHook> = Some(Arc::new(move |goal| {
+    let goal_hook: Option<elph_agent::goals::GoalStatusHook> = Some(Arc::new(move |goal| {
         let runtime = Arc::clone(&memory_for_goals);
         Box::pin(async move {
             let status = goal.status.as_str();
@@ -286,6 +333,7 @@ pub async fn create_coding_session_with_events(
     let stream_options = AgentHarnessStreamOptions {
         timeout_ms: options.settings.provider_timeout_ms(),
         max_retries: Some(options.settings.max_retries),
+        thinking_budgets: options.settings.models.thinking_budgets.clone(),
         ..AgentHarnessStreamOptions::default()
     };
     let subagent_bootstrap = SubagentBootstrap {
@@ -307,6 +355,8 @@ pub async fn create_coding_session_with_events(
     let cwd = options.cwd.to_path_buf();
     let agents_md = agents_md_for_cwd(options.cwd);
     let mode_for_prompt = Arc::clone(&mode_state);
+    let plan_reentry = Arc::new(AtomicBool::new(false));
+    let plan_reentry_for_prompt = Arc::clone(&plan_reentry);
 
     // Build memory context from top-weighted memories for the system prompt.
     // Lock errors are handled internally (logged + empty context returned).
@@ -318,7 +368,6 @@ pub async fn create_coding_session_with_events(
     let prompt_options = CodingPromptOptions {
         mode: agent_mode,
         preferred_chat_language: options.settings.preferred_chat_language.clone(),
-        codegraph_enabled: options.settings.codegraph.enabled,
         ste_enabled: options.settings.simplified_technical_english,
         worker_name: worker_runtime.as_ref().map(|w| w.name.clone()),
         worker_peers: None,
@@ -363,6 +412,7 @@ pub async fn create_coding_session_with_events(
             let cwd = cwd.clone();
             let agents_md = agents_md.clone();
             let mode_state = Arc::clone(&mode_for_prompt);
+            let plan_reentry = Arc::clone(&plan_reentry_for_prompt);
             let memory_section = injected_memory.clone();
             let mut prompt_options = prompt_options.clone();
             let peers_registry = peers_registry.clone();
@@ -395,6 +445,9 @@ pub async fn create_coding_session_with_events(
                     log::warn!("coding system prompt render failed: {error}");
                     elph_agent::DEFAULT_SYSTEM_PROMPT.to_string()
                 });
+                if prompt_options.mode == AgentMode::Plan && plan_reentry.load(Ordering::Relaxed) {
+                    prompt.push_str(elph_agent::prompt::plan_mode_reentry_prompt());
+                }
 
                 // Append memory context section at the end of the system prompt.
                 if let Some(ref mem) = memory_section {
@@ -420,11 +473,14 @@ pub async fn create_coding_session_with_events(
     // from the initial active set so empty/`None` restore does not activate every
     // connected MCP server's schemas. Session-tree `ActiveToolsChange` (lazy activation
     // or resume mid-session) still restores previously activated MCP names.
-    let active_tool_names: Vec<String> = tools
-        .iter()
-        .map(|t| t.name().to_string())
-        .filter(|name| !is_mcp_tool(name))
-        .collect();
+    let active_tool_names: Vec<String> = {
+        let names: Vec<String> = tools
+            .iter()
+            .map(|t| t.name().to_string())
+            .filter(|name| !is_mcp_tool(name))
+            .collect();
+        crate::platform::settings::apply::filter_default_tools(&names, options.settings.default_tools.as_deref())
+    };
     // Prefer restore for semi-durable recovery (queues, ops, tool-result repair, config rehydrate).
     let harness = AgentHarness::restore(
         AgentHarnessOptions {
@@ -469,7 +525,7 @@ pub async fn create_coding_session_with_events(
     // `todo_write` can enforce that `completed` items actually did real work.
     let work_tracker_for_hook = work_tracker.clone();
     harness
-        .on_tool_result(move |event: &elph_agent::ToolResultEvent| {
+        .on_tool_result(move |event: &elph_agent::harness::ToolResultEvent| {
             let tracker = work_tracker_for_hook.clone();
             let tool_name = event.tool_name.clone();
             let is_error = event.is_error;
@@ -507,7 +563,7 @@ pub async fn create_coding_session_with_events(
             let session_id = session_id_for_hook.clone();
             Box::pin(async move {
                 let compact = match &event {
-                    elph_agent::AgentHarnessOwnEvent::SessionCompact(e) => &e.compaction_entry,
+                    elph_agent::harness::AgentHarnessOwnEvent::SessionCompact(e) => &e.compaction_entry,
                     _ => return None,
                 };
                 let fields = compact.as_compaction()?;
@@ -557,9 +613,10 @@ pub async fn create_coding_session_with_events(
         title_model: options.settings.models.session_title_model.clone(),
         preferred_chat_language: options.settings.preferred_chat_language.clone(),
         compaction_model_ref: options.settings.models.compaction_model.clone(),
-        codegraph_enabled: options.settings.codegraph.enabled,
         ste_enabled: options.settings.simplified_technical_english,
         worker_runtime,
+        plan_reentry,
+        default_tools: options.settings.default_tools.clone(),
     })
     .await?;
 
@@ -581,9 +638,9 @@ struct ContinuityStores {
 }
 
 impl ContinuityStores {
-    async fn build_section<S>(&self, session: elph_agent::Session<S>) -> Option<String>
+    async fn build_section<S>(&self, session: elph_agent::session::Session<S>) -> Option<String>
     where
-        S: elph_agent::SessionStorage + Clone + Send + Sync + 'static,
+        S: elph_agent::session::SessionStorage + Clone + Send + Sync + 'static,
     {
         // New sessions must never receive prior session state. Only resume/continue do.
         if self.is_new_session {

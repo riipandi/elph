@@ -31,7 +31,12 @@ struct RawCost {
 }
 
 fn parse_image_models(json: &str) -> Vec<ImagesModel> {
-    let raw: HashMap<String, RawImageModel> = serde_json::from_str(json).expect("invalid embedded image model catalog");
+    let mut value: serde_json::Value = serde_json::from_str(json).expect("invalid embedded image model catalog JSON");
+    if let serde_json::Value::Object(ref mut map) = value {
+        map.remove("$schema");
+    }
+    let raw: HashMap<String, RawImageModel> =
+        serde_json::from_value(value).expect("invalid embedded image model catalog");
     raw.into_values().map(convert_image_model).collect()
 }
 

@@ -1,4 +1,4 @@
-//! Shared infrastructure used by all floppy domains (memory, codegraph, …).
+//! Shared infrastructure used by floppy domains (memory, …).
 //!
 //! Host-agnostic: Turso open helpers, embedding adapters, paths, migration ledger.
 

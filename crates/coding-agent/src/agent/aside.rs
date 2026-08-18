@@ -5,7 +5,7 @@
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use elph_agent::default_convert_to_llm;
+use elph_agent::messages::default_convert_to_llm;
 use elph_agent::types::AgentMessage;
 use elph_ai::{AssistantContentBlock, Context, Message, SimpleStreamOptions, StopReason, StreamOptions, UserContent};
 
@@ -56,16 +56,11 @@ fn side_question_user_text(question: &str) -> String {
     )
 }
 
-/// Prefix of the worker-message turn prompt (`queue_answer_worker_inbound`).
+/// Marker on the intercom-loop user instruction (not a harness / transcript turn).
 ///
-/// The TUI matches this exact prefix to render inbound worker messages as a slim
-/// meta line instead of a user prompt card — never show `<intercom>` or a peer's
-/// message as if the user typed it.
+/// Older session trees may still contain this prefix; the TUI still maps those
+/// rows to a slim meta label.
 pub const WORKER_INBOUND_PROMPT_PREFIX: &str = "<intercom>This is a message from another Elph worker";
-
-fn now_millis() -> i64 {
-    chrono::Utc::now().timestamp_millis()
-}
 
 /// Drop a trailing assistant message that still has tool calls without matching
 /// tool results (mid-turn snapshot). Mirrors Grok `pop_trailing_tool_run`.
@@ -129,27 +124,33 @@ pub async fn run_aside(session: &CodingAgentSession, question: &str, request_id:
     }
 }
 
-/// Run a one-shot, tool-free completion against the session's conversation snapshot.
+/// Snapshot session messages for `/aside` and the intercom answer loop.
 ///
-/// Shared by `/aside` (side question) and non-interrupting **inbound worker
-/// messages**: the latest system prompt + harness state are snapshotted, the
-/// trailing unpaired tool run is dropped, and the model answers without any
-/// tool access. The response is **not** appended to the session message list,
-/// so the main agent turn is never interrupted or even made aware.
-async fn side_completion(
-    session: &CodingAgentSession,
-    user_instruction: String,
-    max_tokens_override: Option<u32>,
-) -> Result<String, String> {
+/// Drops a trailing unpaired tool run so a mid-turn snapshot is valid LLM input.
+/// The snapshot is not appended back onto the session tree.
+pub(crate) async fn snapshot_side_messages(session: &CodingAgentSession) -> Result<Vec<Message>, String> {
     let harness = session.harness();
     let branch = harness
         .session_branch_entries()
         .await
         .map_err(|e| format!("session branch: {e}"))?;
-    let session_ctx = elph_agent::build_session_context(&branch);
+    let session_ctx = elph_agent::session::build_session_context(&branch);
     let agent_messages: Vec<AgentMessage> = session_ctx.messages;
     let mut llm_messages = default_convert_to_llm(agent_messages);
     pop_trailing_unpaired_tool_run(&mut llm_messages);
+    Ok(llm_messages)
+}
+
+pub(crate) fn now_millis() -> i64 {
+    chrono::Utc::now().timestamp_millis()
+}
+
+async fn side_completion(
+    session: &CodingAgentSession,
+    user_instruction: String,
+    max_tokens_override: Option<u32>,
+) -> Result<String, String> {
+    let mut llm_messages = snapshot_side_messages(session).await?;
 
     llm_messages.push(Message::User {
         content: UserContent::Text(user_instruction),

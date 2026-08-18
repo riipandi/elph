@@ -23,8 +23,9 @@ use common::require_opencode_key;
 use common::resolve_model;
 use common::run_agent_prompt;
 use common::{DEEPWIKI_MCP_URL, MCP_DEFAULT_REPO, MCP_DEFAULT_TOOL, MCP_SYSTEM};
-use elph_agent::{AgentEvent, McpConfig, McpHttpConfig, McpLoadOptions, McpServerConfig, McpToolRegistry};
-use elph_agent::{expose_tool_name, parse_and_validate_mcp_config};
+use elph_agent::AgentEvent;
+use elph_agent::mcp::{McpConfig, McpHttpConfig, McpLoadOptions, McpServerConfig, McpToolRegistry};
+use elph_agent::mcp::{expose_tool_name, parse_and_validate_mcp_config};
 
 struct Args {
     repo: String,

@@ -43,7 +43,7 @@ pub enum SessionCommands {
         /// Session ID to unpin
         id: String,
     },
-    /// Run session retention GC using settings (`session.retention`)
+    /// Run session retention GC using settings (`session`)
     Prune {
         /// Report candidates only; do not delete
         #[arg(long)]
@@ -83,7 +83,7 @@ pub fn handle(args: &SessionArgs) -> ExitCode {
         SessionCommands::List => list_sessions(&manager, &cwd, None),
         SessionCommands::Search { query } => list_sessions(&manager, &cwd, query.as_deref()),
         SessionCommands::Delete { id } => {
-            match elph_agent::block_on(async {
+            match elph_agent::runtime::block_on(async {
                 let sessions = manager.list().await?;
                 let meta = sessions
                     .into_iter()
@@ -92,6 +92,7 @@ pub fn handle(args: &SessionArgs) -> ExitCode {
                 manager.delete(&meta).await
             }) {
                 Ok(()) => {
+                    log::info!("session deleted id={id}");
                     let mut out = String::new();
                     style::success(&mut out, CliStyle::auto(), format!("Deleted session {id}"));
                     print!("{out}");
@@ -110,15 +111,16 @@ pub fn handle(args: &SessionArgs) -> ExitCode {
 }
 
 fn pin_session(paths: &Paths, id: &str, pinned: bool) -> ExitCode {
-    match elph_agent::block_on(async {
+    match elph_agent::runtime::block_on(async {
         let db = crate::platform::datastore::ensure_database(paths).await?;
-        elph_agent::set_session_pinned(&db, id, pinned).await
+        elph_agent::session::set_session_pinned(&db, id, pinned).await
     }) {
         Ok(()) => {
             let mut out = String::new();
             let verb = if pinned { "Pinned" } else { "Unpinned" };
             style::success(&mut out, CliStyle::auto(), format!("{verb} session {id}"));
             print!("{out}");
+            log::info!("session {} id={id}", if pinned { "pinned" } else { "unpinned" });
             EXIT_SUCCESS
         }
         Err(err) => {
@@ -129,14 +131,14 @@ fn pin_session(paths: &Paths, id: &str, pinned: bool) -> ExitCode {
 }
 
 fn prune_sessions(paths: &Paths, dry_run: bool) -> ExitCode {
-    match elph_agent::block_on(async {
+    match elph_agent::runtime::block_on(async {
         let settings = crate::platform::Settings::load(paths)?;
-        let r = &settings.session.retention;
+        let r = &settings.session;
         if !r.enabled && !dry_run {
-            anyhow::bail!("session.retention.enabled is false (enable in settings.json or use --dry-run)");
+            anyhow::bail!("session.enabled is false (enable in settings.json or use --dry-run)");
         }
         let db = std::sync::Arc::new(crate::platform::datastore::ensure_database(paths).await?);
-        let policy = elph_agent::RetentionPolicy {
+        let policy = elph_agent::session::RetentionPolicy {
             enabled: true, // CLI prune always plans; dry_run controls delete
             max_sessions_per_cwd: r.max_sessions_per_cwd,
             max_session_age_days: r.max_session_age_days,
@@ -144,7 +146,7 @@ fn prune_sessions(paths: &Paths, dry_run: bool) -> ExitCode {
             protect_latest_per_cwd: r.protect_latest_per_cwd,
             protect_session_id: None,
         };
-        elph_agent::run_full_session_gc(
+        elph_agent::session::run_full_session_gc(
             db,
             paths.memory_db_path(),
             Some(paths.data_dir().join("sessions")),
@@ -182,7 +184,7 @@ fn prune_sessions(paths: &Paths, dry_run: bool) -> ExitCode {
 }
 
 fn list_sessions(manager: &SessionManager, cwd: &std::path::Path, query: Option<&str>) -> ExitCode {
-    match elph_agent::block_on(manager.list()) {
+    match elph_agent::runtime::block_on(manager.list()) {
         Ok(sessions) => {
             let sessions: Vec<_> = match query {
                 Some(q) if !q.trim().is_empty() => {

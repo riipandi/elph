@@ -16,7 +16,9 @@ use crate::platform::acp::limits::truncate_text;
 use crate::platform::acp::permission;
 use crate::platform::acp::plan;
 use crate::platform::acp::state::MessageIds;
-use crate::platform::acp::state::{AcpAgentState, session_cancel_notify, session_key, session_stream_gate};
+use crate::platform::acp::state::{
+    AcpAgentState, next_message_id, session_cancel_notify, session_key, session_stream_gate, take_idle_slot,
+};
 use crate::platform::acp::tools;
 
 pub fn send_update(
@@ -29,7 +31,12 @@ pub fn send_update(
         .map_err(|e| anyhow::anyhow!("{e}"))
 }
 
-pub fn send_running(connection: &ConnectionTo<Client>, session_id: &SessionId) -> anyhow::Result<()> {
+pub fn send_running(
+    state: &Arc<Mutex<AcpAgentState>>,
+    connection: &ConnectionTo<Client>,
+    session_id: &SessionId,
+) -> anyhow::Result<()> {
+    mark_running(state, session_id);
     send_update(
         connection,
         session_id,
@@ -45,12 +52,37 @@ pub fn send_requires_action(connection: &ConnectionTo<Client>, session_id: &Sess
     )
 }
 
-pub fn send_idle(connection: &ConnectionTo<Client>, session_id: &SessionId, reason: StopReason) -> anyhow::Result<()> {
+pub fn send_idle(
+    state: &Arc<Mutex<AcpAgentState>>,
+    connection: &ConnectionTo<Client>,
+    session_id: &SessionId,
+    reason: StopReason,
+) -> anyhow::Result<()> {
+    if !take_idle_slot(state, session_id) {
+        return Ok(());
+    }
     send_update(
         connection,
         session_id,
         SessionUpdate::StateUpdate(StateUpdate::Idle(IdleStateUpdate::new().stop_reason(reason))),
     )
+}
+
+pub fn stop_reason_from_error(error: &anyhow::Error) -> StopReason {
+    let text = error.to_string().to_ascii_lowercase();
+    if text.contains("max token")
+        || text.contains("maximum token")
+        || text.contains("context length")
+        || text.contains("context window")
+    {
+        StopReason::MaxTokens
+    } else if text.contains("max turn") || text.contains("too many requests") || text.contains("turn limit") {
+        StopReason::MaxTurnRequests
+    } else if text.contains("refus") || text.contains("content policy") || text.contains("safety") {
+        StopReason::Refusal
+    } else {
+        StopReason::EndTurn
+    }
 }
 
 pub fn send_user_message(
@@ -66,17 +98,43 @@ pub fn send_user_message(
     )
 }
 
-pub fn send_agent_text(connection: &ConnectionTo<Client>, session_id: &SessionId, text: &str) -> anyhow::Result<()> {
+pub fn send_agent_text(
+    state: &Arc<Mutex<AcpAgentState>>,
+    connection: &ConnectionTo<Client>,
+    session_id: &SessionId,
+    text: &str,
+) -> anyhow::Result<()> {
     if text.is_empty() {
         return Ok(());
     }
+    let message_id = next_message_id(state, session_id, "msg_agent");
     send_update(
         connection,
         session_id,
         SessionUpdate::AgentMessage(
-            AgentMessage::new("msg_slash").content(vec![ContentBlock::Text(TextContent::new(text.to_string()))]),
+            AgentMessage::new(message_id).content(vec![ContentBlock::Text(TextContent::new(text.to_string()))]),
         ),
     )
+}
+
+/// Show `message` in the session and go idle. Never fails the JSON-RPC loop.
+pub fn fail_visible(
+    state: &Arc<Mutex<AcpAgentState>>,
+    connection: &ConnectionTo<Client>,
+    session_id: &SessionId,
+    message: &str,
+) {
+    let body = if message.trim().is_empty() {
+        "Something went wrong.".to_string()
+    } else {
+        message.trim().to_string()
+    };
+    if let Err(error) = send_agent_text(state, connection, session_id, &body) {
+        log::warn!("ACP fail_visible text: {error:#}");
+    }
+    if let Err(error) = send_idle(state, connection, session_id, StopReason::EndTurn) {
+        log::warn!("ACP fail_visible idle: {error:#}");
+    }
 }
 
 pub fn send_agent_chunk(
@@ -117,8 +175,7 @@ pub async fn drive_turn(
     images: Option<Vec<elph_ai::ImageContent>>,
     ui_rx: &Arc<tokio::sync::Mutex<mpsc::UnboundedReceiver<AgentUiEvent>>>,
 ) -> anyhow::Result<()> {
-    mark_running(state, session_id);
-    send_running(connection, session_id)?;
+    send_running(state, connection, session_id)?;
     let submit = async move { session.submit_prompt_with(text, steer, images).await };
     race_submit_and_stream(state, connection, session_id, submit, ui_rx).await
 }
@@ -132,8 +189,7 @@ pub async fn drive_skill(
     args: String,
     ui_rx: &Arc<tokio::sync::Mutex<mpsc::UnboundedReceiver<AgentUiEvent>>>,
 ) -> anyhow::Result<()> {
-    mark_running(state, session_id);
-    send_running(connection, session_id)?;
+    send_running(state, connection, session_id)?;
     let submit = async move { session.invoke_skill(&name, &args).await };
     race_submit_and_stream(state, connection, session_id, submit, ui_rx).await
 }
@@ -147,8 +203,7 @@ pub async fn drive_template(
     args: String,
     ui_rx: &Arc<tokio::sync::Mutex<mpsc::UnboundedReceiver<AgentUiEvent>>>,
 ) -> anyhow::Result<()> {
-    mark_running(state, session_id);
-    send_running(connection, session_id)?;
+    send_running(state, connection, session_id)?;
     let submit = async move { session.prompt_from_template(&name, &args).await };
     race_submit_and_stream(state, connection, session_id, submit, ui_rx).await
 }
@@ -169,11 +224,11 @@ where
     let submit = tokio::spawn(submit);
 
     let Some(gate) = gate else {
-        return submit.await.unwrap_or_else(|e| Err(anyhow::anyhow!("{e}")));
+        return finish_submit_only(state, connection, session_id, submit).await;
     };
     let Ok(_stream_permit) = gate.try_lock() else {
         // Another turn owns the UI stream; this submit (steer) still runs.
-        return submit.await.unwrap_or_else(|e| Err(anyhow::anyhow!("{e}")));
+        return finish_submit_only(state, connection, session_id, submit).await;
     };
 
     let ids = {
@@ -198,7 +253,7 @@ where
         if cancelled(state, session_id) {
             let _ = tools::cancel_open_tools(state, connection, session_id);
             mark_idle(state, session_id);
-            let _ = send_idle(connection, session_id, StopReason::Cancelled);
+            let _ = send_idle(state, connection, session_id, StopReason::Cancelled);
             return Ok(());
         }
 
@@ -218,7 +273,13 @@ where
                         match result {
                             Ok(Ok(())) => {}
                             Ok(Err(error)) => {
-                                let _ = send_agent_text(connection, session_id, &format!("Prompt failed: {error:#}"));
+                                ctx.saw_text = true;
+                                let _ = send_agent_text(
+                                    state,
+                                    connection,
+                                    session_id,
+                                    &format!("Prompt failed: {error:#}"),
+                                );
                                 submit_err = Some(error);
                             }
                             Err(error) => submit_err = Some(anyhow::anyhow!("{error}")),
@@ -237,7 +298,7 @@ where
                     } => {
                         let _ = tools::cancel_open_tools(state, connection, session_id);
                         mark_idle(state, session_id);
-                        let _ = send_idle(connection, session_id, StopReason::Cancelled);
+                        let _ = send_idle(state, connection, session_id, StopReason::Cancelled);
                         return Ok(());
                     }
                 }
@@ -250,10 +311,54 @@ where
     }
 
     mark_idle(state, session_id);
-    let _ = send_idle(connection, session_id, StopReason::EndTurn);
-    match submit_err {
-        Some(error) => Err(error),
-        None => Ok(()),
+    if !ctx.saw_text {
+        if let Some(error) = &submit_err {
+            fail_visible(state, connection, session_id, &format!("Error: {error:#}"));
+        } else {
+            fail_visible(
+                state,
+                connection,
+                session_id,
+                "Command finished with no output. The model or skill produced no text.",
+            );
+        }
+        return Ok(());
+    }
+    let reason = submit_err
+        .as_ref()
+        .map(stop_reason_from_error)
+        .unwrap_or(StopReason::EndTurn);
+    if let Some(error) = &submit_err {
+        let _ = send_agent_text(state, connection, session_id, &format!("Error: {error:#}"));
+    }
+    let _ = send_idle(state, connection, session_id, reason);
+    Ok(())
+}
+
+async fn finish_submit_only(
+    state: &Arc<Mutex<AcpAgentState>>,
+    connection: &ConnectionTo<Client>,
+    session_id: &SessionId,
+    submit: tokio::task::JoinHandle<anyhow::Result<()>>,
+) -> anyhow::Result<()> {
+    match submit.await {
+        Ok(Ok(())) => {
+            fail_visible(
+                state,
+                connection,
+                session_id,
+                "Turn finished, but this session is already streaming another prompt so output was not shown.",
+            );
+            Ok(())
+        }
+        Ok(Err(error)) => {
+            fail_visible(state, connection, session_id, &format!("Error: {error:#}"));
+            Ok(())
+        }
+        Err(join) => {
+            fail_visible(state, connection, session_id, &format!("Turn panicked: {join}"));
+            Ok(())
+        }
     }
 }
 
@@ -267,15 +372,41 @@ pub(crate) fn is_interactive_event(event: &AgentUiEvent) -> bool {
     )
 }
 
+/// Events that must not be dropped while the stream lock is briefly released.
+pub(crate) fn is_user_visible_event(event: &AgentUiEvent) -> bool {
+    is_interactive_event(event)
+        || matches!(
+            event,
+            AgentUiEvent::Status(_)
+                | AgentUiEvent::Retrying { .. }
+                | AgentUiEvent::TextDelta(_)
+                | AgentUiEvent::ThinkingDelta(_)
+                | AgentUiEvent::ToolStart { .. }
+                | AgentUiEvent::ToolUpdate { .. }
+                | AgentUiEvent::ToolEnd { .. }
+        )
+}
+
 pub(crate) fn drain_stale(
     rx: &mut mpsc::UnboundedReceiver<AgentUiEvent>,
     pending: &mut std::collections::VecDeque<AgentUiEvent>,
 ) {
     while let Ok(event) = rx.try_recv() {
-        if is_interactive_event(&event) {
+        if is_user_visible_event(&event) {
             pending.push_back(event);
         }
     }
+}
+
+pub fn acp_status_text(line: &str) -> String {
+    let trimmed = line.trim();
+    if trimmed.contains(crate::tui::api_error_display::RETRY_HINT) {
+        return trimmed.replace(
+            crate::tui::api_error_display::RETRY_HINT,
+            "Send the prompt again after waiting a moment.",
+        );
+    }
+    trimmed.to_string()
 }
 
 struct StreamCtx {
@@ -306,7 +437,7 @@ async fn apply_ui_event(
     match event {
         AgentUiEvent::TextDelta(text) if !text.is_empty() => {
             if !ctx.saw_text {
-                let _ = send_running(connection, session_id);
+                let _ = send_running(state, connection, session_id);
                 ctx.saw_text = true;
             }
             ctx.agent_text.push_str(&text);
@@ -319,18 +450,34 @@ async fn apply_ui_event(
                 log::warn!("ACP thought chunk: {error:#}");
             }
         }
-        AgentUiEvent::Retrying { .. } => {
-            let _ = send_running(connection, session_id);
+        AgentUiEvent::Retrying { attempt } => {
+            ctx.saw_text = true;
+            let _ = send_running(state, connection, session_id);
+            let _ = send_agent_text(
+                state,
+                connection,
+                session_id,
+                &format!("Provider is rate-limited or busy — retrying (attempt {attempt})…"),
+            );
         }
         AgentUiEvent::Status(line) if !line.is_empty() => {
-            let _ = send_agent_text(connection, session_id, &line);
+            ctx.saw_text = true;
+            let _ = send_agent_text(state, connection, session_id, &acp_status_text(&line));
         }
         AgentUiEvent::ToolStart {
             id, name, args_summary, ..
         } => {
+            let already = state
+                .lock()
+                .sessions
+                .get(&session_key(session_id))
+                .is_some_and(|s| s.open_tools.lock().contains(&id));
             tools::track_tool_start(state, session_id, &id, &name);
-            if let Err(error) = tools::on_tool_start(connection, session_id, &id, &name, &args_summary) {
+            if !already && let Err(error) = tools::on_tool_start(connection, session_id, &id, &name, &args_summary) {
                 log::warn!("ACP tool start: {error:#}");
+            }
+            if let Err(error) = tools::on_tool_in_progress(connection, session_id, &id) {
+                log::warn!("ACP tool in_progress: {error:#}");
             }
             if super::terminals::is_local_shell_tool(&name)
                 && let Err(error) = tools::on_shell_start(state, connection, session_id, &id, &args_summary)
@@ -360,11 +507,17 @@ async fn apply_ui_event(
             }
         }
         AgentUiEvent::ToolApprovalRequired(req) => {
+            tools::track_tool_start(state, session_id, &req.tool_call_id, &req.tool_name);
+            if let Err(error) =
+                tools::on_tool_start(connection, session_id, &req.tool_call_id, &req.tool_name, &req.args_summary)
+            {
+                log::warn!("ACP tool pending: {error:#}");
+            }
             let _ = send_requires_action(connection, session_id);
             let choice = permission::request_tool_approval(connection, session_id, &req, cancel).await;
             let _ = req.response_tx.send(choice);
             if !matches!(choice, ToolApprovalChoice::Reject) {
-                let _ = send_running(connection, session_id);
+                let _ = send_running(state, connection, session_id);
             }
         }
         AgentUiEvent::PlanConfirmationRequired(req) => {
@@ -379,7 +532,7 @@ async fn apply_ui_event(
             {
                 log::warn!("ACP plan confirm: {error:#}");
             }
-            let _ = send_running(connection, session_id);
+            let _ = send_running(state, connection, session_id);
         }
         AgentUiEvent::UserQuestionRequired(req) => {
             let _ = send_requires_action(connection, session_id);
@@ -389,7 +542,7 @@ async fn apply_ui_event(
             {
                 log::warn!("ACP ask_user: {error:#}");
             }
-            let _ = send_running(connection, session_id);
+            let _ = send_running(state, connection, session_id);
         }
         AgentUiEvent::ModeChangeRequired(req) => {
             let _ = send_requires_action(connection, session_id);
@@ -406,36 +559,38 @@ async fn apply_ui_event(
             } else {
                 let _ = req.response_tx.send("false".into());
             }
-            let _ = send_running(connection, session_id);
+            let _ = send_running(state, connection, session_id);
         }
         AgentUiEvent::RunCompleted { usage, .. } => {
-            if !ctx.agent_text.is_empty() {
-                let _ = send_update(
-                    connection,
-                    session_id,
-                    SessionUpdate::AgentMessage(
-                        AgentMessage::new(ctx.agent_msg.clone())
-                            .content(vec![ContentBlock::Text(TextContent::new(ctx.agent_text.clone()))]),
-                    ),
-                );
-                ctx.agent_text.clear();
-            }
+            // Do not upsert a full `agent_message` after streaming chunks — clients that
+            // append instead of replace would duplicate or scramble the reply.
+            ctx.agent_text.clear();
             if let Some(usage) = usage {
-                let used = usage.input_tokens.saturating_add(usage.output_tokens).max(0) as u64;
-                let _ = send_update(
-                    connection,
-                    session_id,
-                    SessionUpdate::UsageUpdate(UsageUpdate::new(used, used.max(1))),
-                );
+                let used = usage
+                    .total_tokens
+                    .max(usage.input_tokens.saturating_add(usage.output_tokens))
+                    .max(0) as u64;
+                let window = state
+                    .lock()
+                    .sessions
+                    .get(&session_key(session_id))
+                    .map(|s| s.session.context_window() as u64)
+                    .unwrap_or(0)
+                    .max(used.max(1));
+                let mut update = UsageUpdate::new(used, window);
+                if usage.cost > 0.0 {
+                    update = update.cost(agent_client_protocol::schema::v2::Cost::new(usage.cost, "USD"));
+                }
+                let _ = send_update(connection, session_id, SessionUpdate::UsageUpdate(update));
             }
             ctx.rotate_messages();
-            let _ = send_running(connection, session_id);
+            let _ = send_running(state, connection, session_id);
         }
         AgentUiEvent::AsideFinished { answer, question, .. } => {
-            let _ = send_agent_text(connection, session_id, &format!("/aside {question}\n\n{answer}"));
+            let _ = send_agent_text(state, connection, session_id, &format!("/aside {question}\n\n{answer}"));
         }
         AgentUiEvent::AsideFailed { error, .. } => {
-            let _ = send_agent_text(connection, session_id, &format!("/aside error: {error}"));
+            let _ = send_agent_text(state, connection, session_id, &format!("/aside error: {error}"));
         }
         _ => {}
     }
@@ -460,6 +615,7 @@ pub fn mark_running(state: &Arc<Mutex<AcpAgentState>>, session_id: &SessionId) {
     if let Some(s) = state.lock().sessions.get(&session_key(session_id)) {
         s.running.store(true, Ordering::Relaxed);
         s.cancelled.store(false, Ordering::Relaxed);
+        s.idle_emitted.store(false, Ordering::Relaxed);
     }
 }
 
@@ -484,10 +640,13 @@ mod tests {
                 tool_call_id: "t".into(),
                 tool_name: "read_file".into(),
                 args_summary: String::new(),
+                once_only: false,
                 response_tx: tokio::sync::oneshot::channel().0,
             }
         )));
         assert!(!is_interactive_event(&AgentUiEvent::TextDelta("x".into())));
+        assert!(is_user_visible_event(&AgentUiEvent::Status("Rate limited".into())));
+        assert!(is_user_visible_event(&AgentUiEvent::Retrying { attempt: 1 }));
         assert!(!is_interactive_event(&AgentUiEvent::RunCompleted {
             elapsed_secs: 0.0,
             usage: None,
@@ -497,7 +656,24 @@ mod tests {
     }
 
     #[test]
-    fn drain_keeps_approval_drops_text() {
+    fn maps_stop_reasons() {
+        assert_eq!(
+            stop_reason_from_error(&anyhow::anyhow!("max tokens exceeded")),
+            StopReason::MaxTokens
+        );
+        assert_eq!(
+            stop_reason_from_error(&anyhow::anyhow!("turn limit reached")),
+            StopReason::MaxTurnRequests
+        );
+        assert_eq!(
+            stop_reason_from_error(&anyhow::anyhow!("model refused the request")),
+            StopReason::Refusal
+        );
+        assert_eq!(stop_reason_from_error(&anyhow::anyhow!("network timeout")), StopReason::EndTurn);
+    }
+
+    #[test]
+    fn drain_keeps_visible_and_approval() {
         let (tx, rx) = mpsc::unbounded_channel();
         let _ = tx.send(AgentUiEvent::TextDelta("gone".into()));
         let (response_tx, _rx) = tokio::sync::oneshot::channel();
@@ -505,6 +681,7 @@ mod tests {
             tool_call_id: "t1".into(),
             tool_name: "shell_exec".into(),
             args_summary: "ls".into(),
+            once_only: false,
             response_tx,
         }));
         let _ = tx.send(AgentUiEvent::Status("nope".into()));
@@ -512,7 +689,9 @@ mod tests {
         let mut rx = rx;
         let mut pending = std::collections::VecDeque::new();
         drain_stale(&mut rx, &mut pending);
-        assert_eq!(pending.len(), 1);
-        assert!(matches!(pending[0], AgentUiEvent::ToolApprovalRequired(_)));
+        assert_eq!(pending.len(), 3);
+        assert!(matches!(pending[0], AgentUiEvent::TextDelta(_)));
+        assert!(matches!(pending[1], AgentUiEvent::ToolApprovalRequired(_)));
+        assert!(matches!(pending[2], AgentUiEvent::Status(_)));
     }
 }

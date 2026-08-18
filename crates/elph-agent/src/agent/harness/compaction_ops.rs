@@ -94,6 +94,7 @@ where
                     let error_msg = error.to_string();
                     last_error = Some(error_msg.clone());
 
+                    log::warn!("compaction attempt {attempt}/{max_retries} failed: {error_msg}");
                     if attempt < max_retries {
                         let delay_ms = COMPACTION_RETRY_BASE_DELAY_MS * (1u64 << (attempt - 1));
                         self.shared
@@ -118,6 +119,7 @@ where
 
         // All retries exhausted
         let error_msg = last_error.unwrap_or_else(|| "Unknown compaction error".to_string());
+        log::warn!("compaction failed after {max_retries} retries: {error_msg}");
         self.shared
             .hooks
             .emit_subscriber(

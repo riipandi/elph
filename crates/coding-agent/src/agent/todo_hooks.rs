@@ -18,10 +18,11 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use anyhow::Result;
-use elph_agent::{
-    AgentEvent, AgentHarness, AgentHarnessEvent, AgentMessage, TodoHook, TodoStore, TursoSessionStorage, WorkTracker,
-    auto_close_done_todos,
-};
+use elph_agent::AgentEvent;
+use elph_agent::AgentMessage;
+use elph_agent::harness::{AgentHarness, AgentHarnessEvent};
+use elph_agent::session::TursoSessionStorage;
+use elph_agent::todos::{TodoHook, TodoStore, WorkTracker, auto_close_done_todos};
 use elph_ai::{AssistantContentBlock, Message, StopReason};
 
 /// Continuation markers — signals that the turn is *not* finished. Checked

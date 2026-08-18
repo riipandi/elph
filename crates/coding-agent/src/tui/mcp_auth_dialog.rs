@@ -7,7 +7,7 @@
 
 use std::time::Instant;
 
-use elph_agent::{McpOAuthFlowOptions, has_stored_credentials, run_oauth_flow};
+use elph_agent::mcp::{McpOAuthFlowOptions, has_stored_credentials, run_oauth_flow};
 use elph_tui::components::UiTheme;
 use iocraft::prelude::*;
 
@@ -263,7 +263,7 @@ pub fn logout_mcp_server(paths: &Paths, server_name: &str) -> Result<String, Str
         return Ok(format!("No OAuth credentials stored for MCP server '{server_name}'."));
     }
     let result = tokio::task::block_in_place(|| {
-        tokio::runtime::Handle::current().block_on(elph_agent::clear_credentials(&auth_path, server_name))
+        tokio::runtime::Handle::current().block_on(elph_agent::mcp::clear_credentials(&auth_path, server_name))
     });
     match result {
         Ok(true) => Ok(format!("Cleared OAuth credentials for MCP server '{server_name}'.")),
@@ -294,9 +294,9 @@ pub fn mcp_list_slash_message(paths: &Paths) -> String {
             ""
         };
         let lifecycle = match server.lifecycle_mode() {
-            elph_agent::McpLifecycleMode::Auto => "auto",
-            elph_agent::McpLifecycleMode::Legacy => "legacy",
-            elph_agent::McpLifecycleMode::Discover => "discover",
+            elph_agent::mcp::McpLifecycleMode::Auto => "auto",
+            elph_agent::mcp::McpLifecycleMode::Legacy => "legacy",
+            elph_agent::mcp::McpLifecycleMode::Discover => "discover",
         };
         let url = server.remote_url().unwrap_or("-");
         lines.push(format!(

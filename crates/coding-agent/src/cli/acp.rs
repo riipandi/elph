@@ -28,14 +28,19 @@ pub fn handle(args: &AcpArgs) -> ExitCode {
     let paths = match ensure_home_blocking(env!("CARGO_PKG_VERSION")) {
         Ok(paths) => paths,
         Err(error) => {
+            log::error!("ACP home bootstrap failed: {error:#}");
             eprintln!("{error}");
             return EXIT_ERROR;
         }
     };
 
     let settings = match Settings::load(&paths) {
-        Ok(settings) => settings,
+        Ok(settings) => {
+            settings.apply_http_proxy_env();
+            settings
+        }
         Err(error) => {
+            log::error!("ACP settings load failed: {error:#}");
             eprintln!("{error}");
             return EXIT_ERROR;
         }
@@ -44,17 +49,21 @@ pub fn handle(args: &AcpArgs) -> ExitCode {
     // Initialize datastore before starting the server so session/new
     // does not block on database creation for every request.
     if let Err(error) = ensure_datastore_blocking(&paths) {
+        log::error!("ACP datastore init failed: {error:#}");
         eprintln!("failed to initialize datastore: {error}");
         return EXIT_ERROR;
     }
 
-    match elph_agent::try_block_on(crate::platform::acp::run_agent_stdio(paths, settings, mode)) {
+    log::info!("ACP server starting mode={mode:?}");
+    match elph_agent::runtime::try_block_on(crate::platform::acp::run_agent_stdio(paths, settings, mode)) {
         Ok(Ok(())) => EXIT_SUCCESS,
         Ok(Err(error)) => {
+            log::error!("ACP server error: {error:#}");
             eprintln!("ACP server error: {error}");
             EXIT_ERROR
         }
         Err(error) => {
+            log::error!("ACP runtime start failed: {error:#}");
             eprintln!("failed to start runtime: {error}");
             EXIT_ERROR
         }

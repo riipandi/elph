@@ -3,21 +3,22 @@ mod common;
 
 use std::sync::Arc;
 
-use elph_agent::AgentHarness;
-use elph_agent::AgentHarnessEvent;
-use elph_agent::AgentHarnessOptions;
-use elph_agent::AgentHarnessResources;
 use elph_agent::AgentThinkingLevel;
 use elph_agent::BuiltinToolsBuilder;
-use elph_agent::CollaborationMode;
-use elph_agent::CompactionSettings;
-use elph_agent::InMemorySessionStorage;
-use elph_agent::LocalExecutionEnv;
-use elph_agent::PlanConfirmationChoice;
 use elph_agent::QueueMode;
-use elph_agent::Session;
-use elph_agent::SystemPrompt;
-use elph_agent::{create_search_tools, extract_proposed_plan, plan_mode_blocks_tool};
+use elph_agent::collaboration::CollaborationMode;
+use elph_agent::collaboration::PlanConfirmationChoice;
+use elph_agent::collaboration::{extract_proposed_plan, plan_mode_blocks_tool};
+use elph_agent::compaction::CompactionSettings;
+use elph_agent::create_search_tools;
+use elph_agent::harness::AgentHarness;
+use elph_agent::harness::AgentHarnessEvent;
+use elph_agent::harness::AgentHarnessOptions;
+use elph_agent::harness::AgentHarnessResources;
+use elph_agent::harness::SystemPrompt;
+use elph_agent::runtime::LocalExecutionEnv;
+use elph_agent::session::InMemorySessionStorage;
+use elph_agent::session::Session;
 use elph_ai::FauxResponseStep;
 use elph_ai::{faux_assistant_message, faux_text};
 use tempfile::TempDir;
@@ -35,12 +36,13 @@ fn extract_proposed_plan_parses_block() {
 }
 
 #[test]
-fn plan_mode_blocks_write_tool() {
-    // write_file is now blocked in Plan mode (system handles plan file creation).
-    assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "write_file", None));
+fn plan_mode_does_not_hard_block_workspace_writes() {
+    assert!(!plan_mode_blocks_tool(CollaborationMode::Plan, "write_file", None));
     assert!(!plan_mode_blocks_tool(CollaborationMode::Default, "write_file", None));
-    // shell_exec remains blocked.
-    assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "shell_exec", None));
+    assert!(!plan_mode_blocks_tool(CollaborationMode::Plan, "shell_exec", None));
+    assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "spawn_agent", None));
+    assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "mcp_fs__write_file", None));
+    assert!(!plan_mode_blocks_tool(CollaborationMode::Plan, "mcp_wiki__read_wiki", None));
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -63,7 +65,9 @@ async fn harness_enter_plan_mode_filters_active_tools() {
         active_tool_names: vec![],
         steering_mode: QueueMode::default(),
         follow_up_mode: QueueMode::default(),
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -83,8 +87,9 @@ async fn harness_enter_plan_mode_filters_active_tools() {
         .map(|t| t.name().to_string())
         .collect();
     assert!(active.contains(&"read_file".to_string()));
-    assert!(!active.contains(&"write_file".to_string())); // blocked — system handles plan files
-    assert!(!active.contains(&"shell_exec".to_string()));
+    assert!(active.contains(&"write_file".to_string()));
+    assert!(active.contains(&"shell_exec".to_string()));
+    assert!(!active.contains(&"spawn_agent".to_string()));
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -116,7 +121,9 @@ async fn harness_emits_plan_confirmation_events() {
         active_tool_names: vec![],
         steering_mode: QueueMode::default(),
         follow_up_mode: QueueMode::default(),
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),

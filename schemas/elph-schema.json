@@ -2,12 +2,13 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://elph.space/elph-schema.json",
     "title": "Elph settings configuration",
-    "description": "User preferences for the Elph coding agent, grouped by domain (ui, models, memory, codegraph, notifications, compaction). Active model, thinking level, and agent mode are per-session (not stored here). Home: ~/.elph/settings.json. Optional project overrides: <workDir>/.elph/settings.json (same shape). Merge: defaults \u2190 home \u2190 project (project wins per nested key). Runtime saves write the home layer only. Legacy session group, flat keys, and memory.embedModel/embedQuantized are migrated on load; unknown keys are ignored. Top-level transport: maxRetries, defaultTimeout. Legacy nested provider group is migrated on load.",
+    "description": "User preferences for the Elph coding agent. Active model, thinking level, and agent mode are per-session (not stored here). Home: CONFIG_DIR/settings.json. Project: <workDir>/.elph/settings.json. Merge: defaults \u2190 home \u2190 project always (project wins per nested key; arrays replace). MCP cache is in mcp.json; project-extension trust is in trust.json. Runtime saves write the home layer only. Unknown keys are ignored.",
     "type": "object",
     "additionalProperties": false,
     "properties": {
         "$schema": {
             "type": "string",
+            "const": "https://elph.space/elph-schema.json",
             "description": "JSON Schema URL (editor autocompletion). Ignored at runtime."
         },
         "preferredChatLanguage": {
@@ -43,20 +44,83 @@
         "memory": {
             "$ref": "#/definitions/memory"
         },
-        "codegraph": {
-            "$ref": "#/definitions/codegraph"
-        },
-        "mcp": {
-            "$ref": "#/definitions/mcp"
-        },
         "notifications": {
             "$ref": "#/definitions/notifications"
         },
         "compaction": {
             "$ref": "#/definitions/compaction"
+        },
+        "session": {
+            "$ref": "#/definitions/session"
+        },
+        "workers": {
+            "$ref": "#/definitions/workers"
+        },
+        "resources": {
+            "$ref": "#/definitions/resources"
+        },
+        "defaultTools": {
+            "oneOf": [{ "type": "null" }, { "type": "array", "items": { "type": "string" } }],
+            "description": "Built-in tool allowlist. null/omitted = all builtins. [] = none (list_available_tools and list_skills stay). MCP and WASM tools are not filtered."
+        },
+        "shellPath": {
+            "oneOf": [{ "type": "string" }, { "type": "null" }],
+            "description": "Custom shell binary. Leading ~ is expanded."
+        },
+        "shellCommandPrefix": {
+            "oneOf": [{ "type": "string" }, { "type": "null" }],
+            "description": "Prefix prepended to every shell_exec command."
+        },
+        "httpProxy": {
+            "oneOf": [{ "type": "string" }, { "type": "null" }],
+            "description": "HTTP proxy URL applied as HTTP_PROXY and HTTPS_PROXY when those env vars are unset."
+        },
+        "quietStartup": {
+            "type": "boolean",
+            "default": false,
+            "description": "Hide bootstrap spinner / startup chatter. ELPH_QUIET still wins when set."
+        },
+        "logging": {
+            "$ref": "#/definitions/logging"
         }
     },
     "definitions": {
+        "logging": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Process logger. Applied at start; restart after edits. Env ELPH_LOG_* / ELPH_TRACE win over this group.",
+            "properties": {
+                "level": {
+                    "type": "string",
+                    "default": "info",
+                    "description": "Global level or rustlog spec (e.g. info, or elph_agent=debug,elph_ai=warn)."
+                },
+                "file": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Write rolling JSONL to APP_DATA/logs/{app}.jsonl."
+                },
+                "rotation": {
+                    "type": "string",
+                    "enum": ["hourly", "daily", "size"],
+                    "default": "daily",
+                    "description": "Log file rotation. size uses maxBytes (default 10 MiB)."
+                },
+                "maxFiles": {
+                    "oneOf": [{ "type": "integer", "minimum": 1 }, { "type": "null" }],
+                    "description": "Cap of retained rotated log files."
+                },
+                "maxBytes": {
+                    "oneOf": [{ "type": "integer", "minimum": 1 }, { "type": "null" }],
+                    "description": "Rotate when the current file exceeds this many bytes (used with rotation=size, or as an extra cap)."
+                },
+                "trace": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Write APP_DATA/logs/{app}-traces.jsonl (fastrace). ELPH_TRACE overrides."
+                }
+            }
+        },
         "ui": {
             "type": "object",
             "additionalProperties": false,
@@ -104,8 +168,10 @@
                     "enum": ["compact", "loose"],
                     "description": "Transcript log density: compact (default) packs collapsed tool call items into a grouped log (no blank line between them). Expanded (accessed) tool call items, Thinking, and AI chat response/assistant items always keep line breaks above and below. Loose keeps a blank line between every process-log row."
                 },
-                "filePicker": {
-                    "$ref": "#/definitions/filePicker"
+                "showHiddenFiles": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "When true, @ file search includes dotfiles and dot-directories."
                 },
                 "allowModeChangeWhileBusy": {
                     "type": "boolean",
@@ -226,18 +292,6 @@
                 }
             ]
         },
-        "filePicker": {
-            "type": "object",
-            "additionalProperties": false,
-            "description": "@-mention file picker preferences.",
-            "properties": {
-                "showHiddenFiles": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "When true, @ file search includes dotfiles and dot-directories."
-                }
-            }
-        },
         "models": {
             "type": "object",
             "additionalProperties": false,
@@ -283,40 +337,38 @@
                     },
                     "description": "Models for Ctrl+P cycling and the Scoped tab. Edit via /scoped-models."
                 },
-                "embed": {
-                    "$ref": "#/definitions/embed",
-                    "description": "Local ONNX / Hugging Face embedding model shared by floppy memory and codegraph."
-                }
-            }
-        },
-        "embed": {
-            "type": "object",
-            "additionalProperties": false,
-            "description": "Local embedding model for vector search (memory + codegraph).",
-            "properties": {
-                "model": {
+                "enabled": {
+                    "type": "array",
+                    "default": [],
+                    "items": { "type": "string", "minLength": 1 },
+                    "description": "Glob filter for the model catalog (provider/model_id or bare id). Supports * wildcards, !exclude, +exact, -exact. Empty = no filter."
+                },
+                "thinkingBudgets": {
+                    "type": ["object", "null"],
+                    "additionalProperties": false,
+                    "properties": {
+                        "minimal": { "type": "integer", "minimum": 0 },
+                        "low": { "type": "integer", "minimum": 0 },
+                        "medium": { "type": "integer", "minimum": 0 },
+                        "high": { "type": "integer", "minimum": 0 }
+                    },
+                    "description": "Custom thinking token budgets per level."
+                },
+                "embedModel": {
                     "type": "string",
                     "default": "allMiniLML6V2",
-                    "enum": [
-                        "allMiniLML6V2",
-                        "jinaEmbeddingsV2BaseEn",
-                        "jinaEmbeddingsV2SmallEn",
-                        "nomicEmbedTextV15",
-                        "qwen3Embedding06B",
-                        "gemmaEmbedding300M"
-                    ],
-                    "description": "Embedding model: allMiniLML6V2 (fast, 384d), jinaEmbeddingsV2BaseEn (768d, better), jinaEmbeddingsV2SmallEn (512d, faster), nomicEmbedTextV15 (768d, 8192 context), qwen3Embedding06B (modern), gemmaEmbedding300M (Google)."
+                    "description": "Local embedding model id (catalog name or Hugging Face repo)."
                 },
-                "quantized": {
+                "embedQuantized": {
                     "type": "boolean",
                     "default": true,
                     "description": "Prefer quantized ONNX weights when a *Q variant exists."
                 },
-                "gpuAcceleration": {
+                "embedGpuAcceleration": {
                     "type": "string",
                     "enum": ["on", "off", "auto"],
                     "default": "auto",
-                    "description": "GPU acceleration mode: on (always use GPU), off (CPU-only), auto (detect and use GPU if available, default). GPU selection is compile-time via cargo features (metal or cuda), not runtime."
+                    "description": "GPU acceleration: on, off, or auto. Device selection is compile-time (metal/cuda features)."
                 }
             }
         },
@@ -384,7 +436,7 @@
         "memory": {
             "type": "object",
             "additionalProperties": false,
-            "description": "Floppy project memory hooks and retrieval. Embedding model is under models.embed.",
+            "description": "Floppy project memory hooks and retrieval. Embedding model is models.embedModel.",
             "properties": {
                 "enabled": {
                     "type": "boolean",
@@ -423,68 +475,6 @@
                     "minimum": 0,
                     "default": 8,
                     "description": "Minimum user prompt length to trigger auto-recall. Task-like short prompts still recall."
-                }
-            }
-        },
-        "codegraph": {
-            "type": "object",
-            "additionalProperties": false,
-            "description": "Semantic codebase index wiring in the coding agent. CLI elph codegraph is always available; agent tools are gated by enabled.",
-            "properties": {
-                "enabled": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "When true, register agent tools code_search, code_impact, code_status, and code_reindex. Default false."
-                },
-                "maxChunkLines": {
-                    "type": "integer",
-                    "minimum": 10,
-                    "maximum": 500,
-                    "default": 120,
-                    "description": "Max lines per chunk before splitting (larger chunks = fewer chunks, slower embedding)."
-                },
-                "maxFileBytes": {
-                    "type": "integer",
-                    "minimum": 1024,
-                    "maximum": 104857600,
-                    "default": 524288,
-                    "description": "Skip files larger than this many bytes (default 512KB)."
-                },
-                "maxDbConnections": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 16,
-                    "default": 4,
-                    "description": "Max concurrent DB connections for parallel writes (more = faster, more memory)."
-                },
-                "includePatterns": {
-                    "type": "array",
-                    "default": [],
-                    "items": {
-                        "type": "string",
-                        "minLength": 1,
-                        "description": "Glob patterns for files to include or exclude. Supports **, *, and ? wildcards. Patterns starting with ! are exclude patterns. Examples: \"**/*.rs\" (include all .rs files), \"!**/test/**\" (exclude test directories)."
-                    },
-                    "description": "File inclusion/exclusion patterns for codegraph indexing. Applied in order; first matching pattern wins. Examples: [\"**/*.rs\", \"!**/test/**/*.rs\", \"!**/vendor/**\"] to index only Rust files outside test and vendor directories."
-                }
-            }
-        },
-        "mcp": {
-            "type": "object",
-            "additionalProperties": false,
-            "description": "MCP client preferences — tool result cache retention.",
-            "properties": {
-                "cacheTtlSecs": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "default": 60,
-                    "description": "Tool result cache TTL in seconds. 0 disables caching. Per-server cacheTtlMs in mcp.json overrides this."
-                },
-                "cacheMaxEntries": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "default": 2048,
-                    "description": "Maximum cache entries before eviction."
                 }
             }
         },
@@ -559,6 +549,91 @@
                     "minimum": 0,
                     "default": 20000,
                     "description": "Number of recent tokens to retain after compaction."
+                },
+                "physicalPrune": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Physically DELETE pre-boundary session_entries after compact."
+                },
+                "reserveTokens": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 16384,
+                    "description": "Tokens reserved for the model response during compaction."
+                }
+            }
+        },
+        "session": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Session storage and retention (not live model/mode state).",
+            "properties": {
+                "enabled": { "type": "boolean", "default": true },
+                "gcOnOpen": { "type": "boolean", "default": true },
+                "maxSessionsPerCwd": { "type": "integer", "minimum": 0, "default": 40 },
+                "maxSessionAgeDays": { "type": "integer", "minimum": 0, "default": 30 },
+                "maxEntriesPerSession": { "type": "integer", "minimum": 0, "default": 8000 },
+                "maxStoreDbBytes": { "type": "integer", "minimum": 0, "default": 536870912 },
+                "protectLatestPerCwd": { "type": "boolean", "default": true },
+                "maxEntryPayloadBytes": { "type": "integer", "minimum": 0, "default": 262144 },
+                "journalKeepTurns": { "type": "integer", "minimum": 0, "default": 20 },
+                "maxTerminalFilesPerSession": { "type": "integer", "minimum": 0, "default": 50 }
+            }
+        },
+        "workers": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "enabled": { "type": "boolean", "default": true },
+                "name": { "type": ["string", "null"] },
+                "purpose": { "type": "string", "default": "" },
+                "heartbeatSecs": { "type": "integer", "minimum": 1, "default": 10 },
+                "leaseStaleSecs": { "type": "integer", "minimum": 1, "default": 30 },
+                "inboxPollMs": { "type": "integer", "minimum": 1, "default": 750 },
+                "askTimeoutMs": { "type": "integer", "minimum": 1, "default": 600000 },
+                "maxHops": { "type": "integer", "minimum": 1, "default": 5 },
+                "tuiShowPeers": { "type": "boolean", "default": true },
+                "fileLeases": { "type": "boolean", "default": true }
+            }
+        },
+        "resources": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Extra paths and filters for skills, prompts, and WASM extensions.",
+            "properties": {
+                "skills": {
+                    "type": "array",
+                    "default": [],
+                    "items": { "type": "string" },
+                    "description": "Extra skill files/directories. Supports globs, !exclude, +exact, -exact."
+                },
+                "prompts": {
+                    "type": "array",
+                    "default": [],
+                    "items": { "type": "string" }
+                },
+                "extensions": {
+                    "type": "array",
+                    "default": [],
+                    "items": { "type": "string" },
+                    "description": "Extra extension directories."
+                },
+                "disabledSkills": {
+                    "type": "array",
+                    "default": [],
+                    "items": { "type": "string" },
+                    "description": "Skill names (globs) to drop after discovery."
+                },
+                "disabledExtensions": {
+                    "type": "array",
+                    "default": [],
+                    "items": { "type": "string" },
+                    "description": "Extension names to skip."
+                },
+                "enableSkillCommands": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Register discovered skills as /name slash commands."
                 }
             }
         }

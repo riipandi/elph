@@ -10,7 +10,7 @@
 //! 1. **Rate limiter** (`governor`): Token bucket per provider. Prevents hitting
 //!    provider RPM/TPM limits. Non-blocking check; if denied, the caller waits.
 //!
-//! 2. **Circuit breaker** (`failsafe`): Trips open after N consecutive failures.
+//! 2. **Circuit breaker**: Trips open after N consecutive failures.
 //!    Gives a failing provider time to recover. Half-open probes test recovery.
 //!
 //! 3. **Retry** (`backon`): Exponential backoff with jitter for transient errors.

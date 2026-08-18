@@ -34,7 +34,6 @@ elph -r <id>              # same as --resume
 | Command       | Description                                |
 | ------------- | ------------------------------------------ |
 | `acp`         | Agent Client Protocol server over stdio    |
-| `codegraph`   | Semantic code index + shallow impact graph |
 | `completions` | Shell completion scripts                   |
 | `doctor`      | Show discovered configuration              |
 | `export`      | Export session transcript or archive       |
@@ -151,12 +150,6 @@ When conflicts exist and neither `--yes` nor `--overwrite` is given, the CLI ope
 Interactive prompts require a TTY; pipe a non-interactive run with conflicts through `--yes` or
 `--overwrite`, otherwise the command errors.
 
-### `codegraph`
-
-Subcommands: `build`, `update`, `status`, `search`, `impact`, `purge`.
-
-Semantic code index (hybrid FTS + vector) and shallow impact graph in project `store.db`. See [codegraph.md](./codegraph.md).
-
 ### `mcp`
 
 Subcommands: `list`, `add`, `remove`, `doctor`, `auth`, `logout`.
@@ -193,7 +186,7 @@ Export formats: `json`, `markdown`, `zip`. Flags: `--output`, `--clipboard`, `--
 ## Bootstrap
 
 
-Startup and scan phases (bootstrap, datastore init, `codegraph build`/`update`) render an interactive progress line on **stderr**: an animated spinner, a stepped bar with `pos/total`, the message, and a running elapsed timer (e.g. `⠙ Initializing databases [━╸──────────] 1/2 · 3s`). Pressing `Ctrl+C` during one of these phases aborts cleanly with `Interrupted.` and exit code `130`.
+Startup and scan phases (bootstrap, datastore init) render an interactive progress line on **stderr**: an animated spinner, a stepped bar with `pos/total`, the message, and a running elapsed timer (e.g. `⠙ Initializing databases [━╸──────────] 1/2 · 3s`). Pressing `Ctrl+C` during one of these phases aborts cleanly with `Interrupted.` and exit code `130`.
 
 Diagnostic logs also go to **stderr**, keeping stdout reserved for program output (tables, stats, scan results). Piped stdout therefore stays machine-readable and free of log interleaving.
 

@@ -9,28 +9,30 @@ use std::time::Duration;
 
 use elph_ai::api::faux::{FauxModelDefinition, RegisterFauxProviderOptions};
 
-use elph_agent::AgentHarness;
-use elph_agent::AgentHarnessErrorCode;
-use elph_agent::AgentHarnessEvent;
-use elph_agent::AgentHarnessOptions;
-use elph_agent::AgentHarnessOwnEvent;
-use elph_agent::AgentHarnessResources;
 use elph_agent::AgentThinkingLevel;
 use elph_agent::AgentTool;
-use elph_agent::BranchSummarySummary;
-use elph_agent::CompactionSettings;
-use elph_agent::CustomMessageContent;
-use elph_agent::InMemorySessionStorage;
-use elph_agent::LocalExecutionEnv;
-use elph_agent::NavigateTreeOptions;
 use elph_agent::QueueMode;
-use elph_agent::Session;
-use elph_agent::SessionBeforeTreeResult;
-use elph_agent::Skill;
-use elph_agent::SystemPrompt;
-use elph_agent::ToolResultPatch;
+use elph_agent::compaction::CompactionSettings;
+use elph_agent::harness::AgentHarness;
+use elph_agent::harness::AgentHarnessErrorCode;
+use elph_agent::harness::AgentHarnessEvent;
+use elph_agent::harness::AgentHarnessOptions;
+use elph_agent::harness::AgentHarnessOwnEvent;
+use elph_agent::harness::AgentHarnessResources;
+use elph_agent::harness::BranchSummarySummary;
+use elph_agent::harness::NavigateTreeOptions;
+use elph_agent::harness::SessionBeforeTreeResult;
+use elph_agent::harness::Skill;
+use elph_agent::harness::SystemPrompt;
+use elph_agent::harness::ToolResultPatch;
+use elph_agent::llm_message_to_agent;
+use elph_agent::messages::CustomMessageContent;
+use elph_agent::messages::create_custom_message;
+use elph_agent::runtime::LocalExecutionEnv;
+use elph_agent::session::InMemorySessionStorage;
+use elph_agent::session::Session;
 use elph_agent::session::types::SessionTreeEntry;
-use elph_agent::{create_custom_message, llm_message_to_agent, simple_tool};
+use elph_agent::simple_tool;
 use elph_ai::{ContentBlock, FauxResponseStep, Message, Models, StopReason, Tool, UserContent};
 use elph_ai::{builtin_models, faux_assistant_message, faux_provider, faux_text, faux_tool_call};
 use serde_json::json;
@@ -127,7 +129,9 @@ fn make_harness(
         active_tool_names: options.active_tool_names,
         steering_mode: options.steering_mode,
         follow_up_mode: options.follow_up_mode,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -182,7 +186,9 @@ async fn harness_exposes_queue_modes() {
         active_tool_names: vec![],
         steering_mode: QueueMode::All,
         follow_up_mode: QueueMode::All,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -313,7 +319,9 @@ async fn harness_before_agent_start_appends_messages() {
         active_tool_names: vec![],
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -326,7 +334,7 @@ async fn harness_before_agent_start_appends_messages() {
 
     harness
         .on_before_agent_start(|_| async {
-            Some(elph_agent::BeforeAgentStartResult {
+            Some(elph_agent::harness::BeforeAgentStartResult {
                 messages: Some(vec![llm_message_to_agent(Message::User {
                     content: UserContent::Text("hook".into()),
                     timestamp: 1,
@@ -369,7 +377,9 @@ async fn harness_tool_result_hook_patches_output() {
         active_tool_names: vec!["calculate".into()],
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -562,7 +572,9 @@ async fn harness_settles_context_hook_failures() {
         active_tool_names: vec![],
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -575,8 +587,8 @@ async fn harness_settles_context_hook_failures() {
 
     harness
         .on_context(|_| async {
-            Err(elph_agent::AgentHarnessError::new(
-                elph_agent::AgentHarnessErrorCode::Hook,
+            Err(elph_agent::harness::AgentHarnessError::new(
+                elph_agent::harness::AgentHarnessErrorCode::Hook,
                 "context exploded",
             ))
         })
@@ -826,7 +838,9 @@ async fn harness_save_point_refreshes_config_at_tool_execution() {
             active_tool_names: vec!["calculate".into()],
             steering_mode: QueueMode::OneAtATime,
             follow_up_mode: QueueMode::OneAtATime,
+            #[cfg(feature = "backend-turso")]
             goal_runtime: None,
+            #[cfg(feature = "backend-turso")]
             turn_store: None,
             subagent_bootstrap: None,
             compaction_settings: CompactionSettings::default(),
@@ -1048,7 +1062,9 @@ async fn harness_validates_constructor_tool_names() {
         active_tool_names: vec!["missing".into()],
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -1075,7 +1091,9 @@ async fn harness_validates_constructor_tool_names() {
         active_tool_names: vec!["calculate".into()],
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -1102,7 +1120,9 @@ async fn harness_validates_constructor_tool_names() {
         active_tool_names: vec!["calculate".into(), "calculate".into()],
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -1139,7 +1159,9 @@ async fn harness_tools_update_events_and_validation() {
         active_tool_names: vec!["inspect".into()],
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -1243,7 +1265,9 @@ async fn harness_resources_update_events_clone_resources() {
         active_tool_names: vec![],
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -1287,7 +1311,7 @@ async fn harness_resources_update_events_clone_resources() {
             allowed_tools: None,
             argument_hint: None,
         }],
-        prompt_templates: vec![elph_agent::PromptTemplate {
+        prompt_templates: vec![elph_agent::harness::PromptTemplate {
             name: "review".into(),
             description: "Review".into(),
             content: "Review $1".into(),
@@ -1379,7 +1403,9 @@ async fn harness_session_before_compact_overrides_custom_instructions() {
         active_tool_names: vec![],
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -1395,7 +1421,7 @@ async fn harness_session_before_compact_overrides_custom_instructions() {
             let custom_instructions = event.custom_instructions.clone();
             async move {
                 assert_eq!(custom_instructions.as_deref(), Some("original"));
-                Some(elph_agent::SessionBeforeCompactResult {
+                Some(elph_agent::harness::SessionBeforeCompactResult {
                     custom_instructions: Some("hook override".into()),
                     ..Default::default()
                 })
@@ -1453,7 +1479,9 @@ async fn harness_session_before_tree_runs_during_navigate_tree() {
         active_tool_names: vec![],
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -1599,7 +1627,8 @@ async fn harness_queue_remove_and_promote_follow_up_to_steer() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn harness_restore_rehydrates_next_turn_queue() {
-    use elph_agent::{RestoreOptions, load_durable_state, reduce_durable_state};
+    use elph_agent::harness::RestoreOptions;
+    use elph_agent::session::{load_durable_state, reduce_durable_state};
 
     let (_temp, env) = test_env();
     let faux = faux_provider(Default::default());
@@ -1654,7 +1683,9 @@ async fn harness_restore_rehydrates_next_turn_queue() {
             active_tool_names: vec![],
             steering_mode: QueueMode::OneAtATime,
             follow_up_mode: QueueMode::OneAtATime,
+            #[cfg(feature = "backend-turso")]
             goal_runtime: None,
+            #[cfg(feature = "backend-turso")]
             turn_store: None,
             subagent_bootstrap: None,
             compaction_settings: CompactionSettings::default(),
@@ -1761,7 +1792,11 @@ async fn concurrent_aborts_do_not_deadlock() {
 
     // All harnesses back to Idle.
     for (i, h) in harnesses.iter().enumerate() {
-        assert_eq!(h.phase().await, elph_agent::AgentHarnessPhase::Idle, "harness #{i} not idle");
+        assert_eq!(
+            h.phase().await,
+            elph_agent::harness::AgentHarnessPhase::Idle,
+            "harness #{i} not idle"
+        );
     }
 }
 
@@ -1875,7 +1910,9 @@ async fn harness_lazy_activates_mcp_tools_via_list_available_tools() {
         active_tool_names: active,
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -2005,7 +2042,9 @@ async fn harness_executes_inactive_mcp_tools_from_execution_registry() {
         active_tool_names: vec!["list_available_tools".into()],
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),

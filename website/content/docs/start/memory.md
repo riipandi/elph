@@ -1,6 +1,6 @@
 # Memory
 
-Project long-term memory (floppy) lives in `<project>/.elph/store.db` — Turso/SQLite plus embeddings and FTS. Codegraph shares that store.
+Project long-term memory (floppy) lives in `<project>/.elph/store.db` — Turso/SQLite plus embeddings and FTS.
 
 ## CLI
 

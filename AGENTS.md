@@ -1,20 +1,5 @@
 # Agent Instructions
 
-<!-- OPENWIKI:START -->
-
-## OpenWiki
-
-This repository has a generated `openwiki/` evidence index. It is optional just-in-time context, not required startup reading.
-
-- Treat source code and tests as authoritative. A brief's unknowns and review items are verification gaps, not automatic requirements.
-- Prefer the narrowest quiet validation that proves the changed behavior. Preserve complete failure output.
-
-The scheduled OpenWiki GitHub Actions workflow refreshes the repository wiki. Do not hand-edit generated OpenWiki pages unless explicitly asked; prefer updating source code/docs and letting OpenWiki regenerate.
-
-<!-- OPENWIKI:END -->
-
----
-
 ## Documentation Updates
 
 After completing a task that introduces a **significant change** — new feature, bug fix that alters behavior/contract, breaking change, new config/env var, new public API, or architectural change — update the relevant docs in `docs/` **before** considering the task done.
@@ -34,7 +19,6 @@ Not significant (skip docs update): internal refactor with no behavior change, f
 1. Find existing doc(s) in `docs/` covering the affected area (search by feature/module name first — do not assume a doc doesn't exist).
 2. If found: update in place — keep structure/tone consistent with the rest of the file, only touch sections affected by the change.
 3. If not found and the change warrants one: create a new doc under `docs/` following the existing naming/structure convention in that folder.
-4. Do **not** edit generated OpenWiki pages (see OpenWiki section above) — if the change should surface there, it will regenerate on the next scheduled run. Update source docs/comments instead if OpenWiki pulls from them.
 
 ### Rules
 
@@ -87,7 +71,7 @@ Do not mix types (structs, enums, type aliases) and functions in one braced `use
 | Stats         | `make stats` (sccache hit rate + target/ breakdown)               |
 | Space reclaim | `make gc` (incremental >7d, deps >60d) · `make gc DRY=1`          |
 
-`make` automatically sets `RUSTC_WRAPPER=sccache`, `SCCACHE_DIRECT=true`, and `SCCACHE_MAXSIZE=50G`. Do **not** run `cargo build/test/check/clippy` directly in this project — you will bypass sccache, waste remote-cache hits, and inflate `target/` with redundant incremental artefacts.
+`make` automatically sets `RUSTC_WRAPPER=sccache`, `SCCACHE_DIRECT=true`, and `SCCACHE_MAXSIZE=20G`. Do **not** run `cargo build/test/check/clippy` directly in this project — you will bypass sccache, waste remote-cache hits, and inflate `target/` with redundant incremental artefacts.
 
 If a make target does not exist for the operation you need, append `CARGO=` to call cargo directly but still set the wrapper:
 
@@ -110,15 +94,22 @@ Follow these rules strictly.
 
 ### Unit Tests
 
-- Located **in the same file** as the implementation.
+- Located **in the same file** as the implementation (or `src/<module>/tests.rs` included from that module).
 - Use `#[cfg(test)]` modules.
-- Test internal logic directly.
+- Test internal logic directly, including `pub(crate)` helpers.
 
 ### Integration Tests
 
-- Located in the root-level `tests/` directory.
-- Each file is a separate test crate.
-- Test only public APIs (no private/internal access).
+- Located in the crate’s `tests/` directory (a separate crate).
+- Test only the **public contract** a third-party host would use: crate-root prelude and documented modules (`harness`, `session`, `mcp`, `compaction`, …).
+- Do **not** `pub` (or flatten at crate root) an item so `tests/` can see it. If the test cannot compile, it is a unit test — move it next to the implementation.
+
+### Library crate surface (`elph-ai`, `elph-agent`)
+
+- Crate root is a **prelude**: types a host needs for a first program (`Agent`, `Models`, constructors, identity, typed errors).
+- Domain APIs stay on **`pub mod`** (`elph_agent::compaction::should_compact`, not `elph_agent::should_compact`).
+- Host crates in this repo (`coding-agent`) import those modules; they do not justify flattening helpers at the crate root.
+- Do not add a `test-utils` / `integration-test` Cargo feature to leak internals. `#[doc(hidden)]` is only for existing test fixtures that must stay `pub` (e.g. process-wide MCP key helpers).
 
 ### General Rules
 

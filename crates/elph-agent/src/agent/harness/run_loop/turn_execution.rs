@@ -9,9 +9,12 @@ use crate::agent::harness::types::AgentHarnessError;
 use crate::agent::harness::types::AgentHarnessErrorCode;
 use crate::agent::harness::types::AgentHarnessPromptOptions;
 use crate::agent::harness::types::BeforeAgentStartEvent;
+#[cfg(feature = "backend-turso")]
 use crate::goals::{GoalRuntime, GoalTurnFinish, GoalTurnStart};
 use crate::runtime::run_agent_loop;
-use crate::turns::{TurnStatus, TurnUsage};
+#[cfg(feature = "backend-turso")]
+use crate::turns::TurnStatus;
+use crate::turns::TurnUsage;
 use crate::types::AgentEvent;
 use crate::types::llm_message_to_agent;
 
@@ -105,6 +108,9 @@ where
             .unwrap_or_else(|_| crate::session::durability::new_id("turn"));
 
         // Relational turn accounting (best-effort; tree journal remains authoritative for recovery).
+        #[cfg(not(feature = "backend-turso"))]
+        let db_turn_id: Option<String> = None;
+        #[cfg(feature = "backend-turso")]
         let db_turn_id = if let Some(store) = &self.shared.turn_store {
             let model = turn_state.model.clone();
             let thinking = *self.shared.thinking_level.lock().await;
@@ -146,6 +152,7 @@ where
                 let _ = self
                     .journal_turn_finished(turn_id, operation_id, crate::session::durability::OperationOutcome::Failed)
                     .await;
+                #[cfg(feature = "backend-turso")]
                 if let (Some(store), Some(db_id)) = (&self.shared.turn_store, db_turn_id.as_deref()) {
                     let _ = store
                         .finish_turn(
@@ -175,6 +182,7 @@ where
                 .unwrap_or_else(CancellationToken::new)
         };
 
+        #[cfg(feature = "backend-turso")]
         if let Some(goal_runtime) = &self.shared.goal_runtime {
             let mode = *self.shared.collaboration_mode.lock().await;
             match goal_runtime.start_turn(mode).await {
@@ -187,6 +195,7 @@ where
                             crate::session::durability::OperationOutcome::Failed,
                         )
                         .await;
+                    #[cfg(feature = "backend-turso")]
                     if let (Some(store), Some(db_id)) = (&self.shared.turn_store, db_turn_id.as_deref()) {
                         let _ = store
                             .finish_turn(
@@ -210,6 +219,7 @@ where
                             crate::session::durability::OperationOutcome::Failed,
                         )
                         .await;
+                    #[cfg(feature = "backend-turso")]
                     if let (Some(store), Some(db_id)) = (&self.shared.turn_store, db_turn_id.as_deref()) {
                         let _ = store
                             .finish_turn(
@@ -256,6 +266,7 @@ where
                     crate::session::durability::OperationOutcome::Failed
                 };
                 let _ = self.journal_turn_finished(turn_id, operation_id, outcome).await;
+                #[cfg(feature = "backend-turso")]
                 if let (Some(store), Some(db_id)) = (&self.shared.turn_store, db_turn_id.as_deref()) {
                     let status = if abort_token.is_cancelled() {
                         TurnStatus::Interrupted
@@ -270,12 +281,12 @@ where
                             (now_ms() - turn_started_ms).max(0),
                             None,
                             None,
-                            Some(&error),
+                            Some(&error.message),
                         )
                         .await;
                 }
                 return self
-                    .emit_run_failure(&model, &error, abort_token.is_cancelled(), &emit)
+                    .emit_run_failure(&model, &error.message, abort_token.is_cancelled(), &emit)
                     .await;
             }
         };
@@ -284,6 +295,7 @@ where
             let _ = self
                 .journal_turn_finished(turn_id, operation_id, crate::session::durability::OperationOutcome::Failed)
                 .await;
+            #[cfg(feature = "backend-turso")]
             if let (Some(store), Some(db_id)) = (&self.shared.turn_store, db_turn_id.as_deref()) {
                 let _ = store
                     .finish_turn(
@@ -320,6 +332,8 @@ where
             if let Some(assistant) = message.as_llm()
                 && let Message::Assistant(assistant) = assistant
             {
+                #[cfg(feature = "backend-turso")]
+                #[cfg(feature = "backend-turso")]
                 if let (Some(store), Some(db_id)) = (&self.shared.turn_store, db_turn_id.as_deref())
                     && let Err(err) = store
                         .finish_turn(
@@ -335,6 +349,7 @@ where
                 {
                     log::warn!("session_turns finish failed: {err:#}");
                 }
+                #[cfg(feature = "backend-turso")]
                 if let Some(goal_runtime) = &self.shared.goal_runtime {
                     let mode = *self.shared.collaboration_mode.lock().await;
                     match goal_runtime.finish_turn(mode, Some(&assistant.usage)).await {
@@ -372,6 +387,7 @@ where
             }
         }
 
+        #[cfg(feature = "backend-turso")]
         if let (Some(store), Some(db_id)) = (&self.shared.turn_store, db_turn_id.as_deref()) {
             let _ = store
                 .finish_turn(

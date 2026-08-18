@@ -4,7 +4,7 @@
 **Goal:** Reduce per-turn system prompt token footprint without degrading structure, tool discipline, or memory/skill recall quality.
 **Non-goal:** Do not touch model routing, agent modes' behavioral semantics, or MCP transport code. Prompt copy and gating logic only.
 
-**Ground rule:** every phase must pass `cargo fmt && cargo check && cargo clippy && cargo test` (workspace-wide, or scoped to touched crates if the full run is too slow) before being marked done. Do not use `code_search` as a tool reference anywhere in prompt copy unless it's confirmed registered — see Phase 1.
+**Ground rule:** every phase must pass `cargo fmt && cargo check && cargo clippy && cargo test` (workspace-wide, or scoped to touched crates if the full run is too slow) before being marked done. Prompt copy may only name tools that are actually registered.
 
 ---
 
@@ -27,12 +27,10 @@ Acceptance: baseline doc exists with concrete token numbers, not estimates.
 
 **File:** `crates/coding-agent/prompts/coding_base.txt`
 
-1. `<execution>` step 3 currently hardcodes the literal string `` `code_search` / `grep` / targeted `read_file` `` regardless of whether codegraph tools are actually active this turn. This is inconsistent with the `<codegraph>` block above it, which correctly gates on `${% if codegraph.code_search %}`.
-    - Fix: make step 3 conditional the same way — when `codegraph.code_search` is set, mention it; otherwise say `` `grep` / targeted `read_file` `` only. Reuse the existing `codegraph.code_search` template variable, don't introduce a new one.
-    - Add/update the existing test in `crates/coding-agent/src/agent/prompt/builder.rs` (`coding_prompt_includes_codegraph_when_tools_present` and a sibling "...without codegraph tools" case) to assert the literal `code_search` string never appears when codegraph tools are absent from `active_tool_names`.
-2. Grep the whole `templates/` tree and `elph-agent/src/prompt/` for any other hardcoded tool-name strings that should instead go through the `tools.*` / `codegraph.*` template context (the pattern used everywhere else in this file). Fix each the same way.
+1. Code search in the harness is `grep` / targeted `read_file` only. Prompt copy must not mention a removed codebase-index tool.
+2. Grep the whole `templates/` tree and `elph-agent/src/prompt/` for hardcoded tool-name strings that should go through the `tools.*` template context. Fix each the same way.
 
-Acceptance: `cargo test -p coding-agent` green, no literal tool-name strings outside the `tools.*`/`codegraph.*` template variable pattern.
+Acceptance: `cargo test -p coding-agent` green, no literal tool-name strings outside the `tools.*` template variable pattern.
 
 ---
 

@@ -4,7 +4,9 @@ use std::collections::HashMap;
 
 use common::fake_auth_context;
 use elph_ai::CreateModelsOptions;
-use elph_ai::providers::{amazon_bedrock_provider, anthropic_provider, builtin_models, builtin_providers};
+#[cfg(feature = "bedrock")]
+use elph_ai::providers::amazon_bedrock_provider;
+use elph_ai::providers::{anthropic_provider, builtin_models, builtin_providers};
 use elph_ai::providers::{cloudflare_ai_gateway_provider, cloudflare_workers_ai_provider, google_vertex_provider};
 use elph_ai::{create_models, get_builtin_model};
 
@@ -76,6 +78,7 @@ async fn anthropic_auth_prefers_oauth_token_env() {
             ]),
             vec![],
         )),
+        ..Default::default()
     }));
     models.set_provider(anthropic_provider());
     let model = models
@@ -89,6 +92,7 @@ async fn anthropic_auth_prefers_oauth_token_env() {
     assert_eq!(result.source.as_deref(), Some("ANTHROPIC_OAUTH_TOKEN"));
 }
 
+#[cfg(feature = "bedrock")]
 #[tokio::test]
 async fn bedrock_configured_from_aws_profile_without_api_key() {
     let mut models = create_models(Some(CreateModelsOptions {
@@ -97,6 +101,7 @@ async fn bedrock_configured_from_aws_profile_without_api_key() {
             HashMap::from([("AWS_PROFILE".to_string(), "dev".to_string())]),
             vec![],
         )),
+        ..Default::default()
     }));
     models.set_provider(amazon_bedrock_provider());
     let model = models.get_models(Some("amazon-bedrock"))[0].clone();
@@ -108,6 +113,7 @@ async fn bedrock_configured_from_aws_profile_without_api_key() {
     let mut unconfigured = create_models(Some(CreateModelsOptions {
         credentials: None,
         auth_context: Some(fake_auth_context(HashMap::new(), vec![])),
+        ..Default::default()
     }));
     unconfigured.set_provider(amazon_bedrock_provider());
     assert!(unconfigured.get_auth(&model).await.expect("auth").is_none());
@@ -121,6 +127,7 @@ async fn cloudflare_workers_ai_requires_account_id() {
             HashMap::from([("CLOUDFLARE_API_KEY".to_string(), "cf-key".to_string())]),
             vec![],
         )),
+        ..Default::default()
     }));
     missing.set_provider(cloudflare_workers_ai_provider());
     let model = missing.get_models(Some("cloudflare-workers-ai"))[0].clone();
@@ -135,6 +142,7 @@ async fn cloudflare_workers_ai_requires_account_id() {
             ]),
             vec![],
         )),
+        ..Default::default()
     }));
     configured.set_provider(cloudflare_workers_ai_provider());
     let result = configured.get_auth(&model).await.expect("auth").expect("configured");
@@ -156,6 +164,7 @@ async fn cloudflare_ai_gateway_requires_gateway_id() {
             ]),
             vec![],
         )),
+        ..Default::default()
     }));
     missing.set_provider(cloudflare_ai_gateway_provider());
     let model = get_builtin_model("cloudflare-ai-gateway", "claude-3-5-haiku").expect("anthropic gateway model");
@@ -171,6 +180,7 @@ async fn cloudflare_ai_gateway_requires_gateway_id() {
             ]),
             vec![],
         )),
+        ..Default::default()
     }));
     configured.set_provider(cloudflare_ai_gateway_provider());
     let result = configured.get_auth(&model).await.expect("auth").expect("configured");
@@ -200,6 +210,7 @@ async fn vertex_resolves_via_adc_file_project_and_location() {
             ]),
             vec!["~/.config/gcloud/application_default_credentials.json"],
         )),
+        ..Default::default()
     }));
     models.set_provider(google_vertex_provider());
     let model = models.get_models(Some("google-vertex"))[0].clone();

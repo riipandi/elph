@@ -1,4 +1,5 @@
 {
+    "$schema": "https://elph.space/provider-schema.json",
     "gemma-4-31b": {
         "api": "openai-completions",
         "baseUrl": "https://api.cerebras.ai/v1",

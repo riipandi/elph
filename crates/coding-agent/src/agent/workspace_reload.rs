@@ -128,6 +128,13 @@ impl CodingAgentSession {
         if report.summary.is_empty() {
             report.push_summary("Reload unavailable.");
         }
+        log::info!(
+            "workspace reload skills={} templates={} providers={} disk_adapters={}",
+            report.skill_count,
+            report.template_count,
+            report.provider_catalog_files,
+            report.disk_providers_registered
+        );
         report
     }
 
@@ -147,10 +154,11 @@ impl CodingAgentSession {
             .await
             .map_err(|e| anyhow::anyhow!("{e}"))?;
         self.harness()
-            .set_stream_options(elph_agent::AgentHarnessStreamOptions {
+            .set_stream_options(elph_agent::harness::AgentHarnessStreamOptions {
                 timeout_ms: settings.provider_timeout_ms(),
                 max_retries: Some(settings.max_retries),
-                ..elph_agent::AgentHarnessStreamOptions::default()
+                thinking_budgets: settings.models.thinking_budgets.clone(),
+                ..elph_agent::harness::AgentHarnessStreamOptions::default()
             })
             .await;
 

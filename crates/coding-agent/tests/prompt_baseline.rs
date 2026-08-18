@@ -10,7 +10,7 @@
 
 use std::path::Path;
 
-use elph_agent::{AgentHarnessResources, Skill};
+use elph_agent::harness::{AgentHarnessResources, Skill};
 
 use elph::agent::prompt::{CodingPromptOptions, build_coding_system_prompt};
 use elph::types::AgentMode;
@@ -163,7 +163,7 @@ const NATIVE_TOOL_NAMES: &[&str] = &[
 ];
 
 fn count_tokens(text: &str) -> u64 {
-    elph_ai::utils::estimate::count_tokens_text(text)
+    elph_ai::estimate::count_tokens_text(text)
 }
 
 fn prompt_tokens(mode: AgentMode) -> usize {

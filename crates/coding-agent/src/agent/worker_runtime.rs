@@ -6,9 +6,9 @@
 //! owns delivery: claiming marks the mailbox message `delivered` **before** the
 //! peer's ask can be answered, so a delivery failure can never replay/loop and
 //! the peer's ask times out instead of wedging either agent. Inbound messages
-//! never steal the current turn — while the harness is busy the answer is
-//! enqueued as a follow-up (never a steer), and once idle the poller starts a
-//! real agent turn that answers with `worker_reply`.
+//! never steal the current turn. New inbound asks are answered on a parallel
+//! snapshot loop (worker tools only) so the peer's `worker_ask` does not wait
+//! for the user's task to finish.
 //!
 //! **Loop guard:** only *new* messages (no `parent_msg_id`) trigger an answer
 //! turn. Threaded replies (`worker_reply` / TUI chat answers) land in the inbox
@@ -22,9 +22,10 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::Duration;
 
 use anyhow::{Context, Result};
+use elph_agent::session::create_worker_id;
 use elph_agent::types::AgentTool;
-use elph_agent::{
-    FileLeaseStore, MailboxStore, SessionLeaseStore, WorkerRegistry, WorkerStatus, WorkerToolContext, create_worker_id,
+use elph_agent::workers::{
+    FileLeaseStore, MailboxStore, SessionLeaseStore, WorkerRegistry, WorkerStatus, WorkerToolContext,
     create_worker_tools,
 };
 use parking_lot::Mutex;
@@ -51,6 +52,7 @@ pub struct WorkerRuntime {
     heartbeat_handle: Arc<Mutex<Option<JoinHandle<()>>>>,
     /// Interior mut so inbox can attach after session is behind `Arc`.
     inbox_handle: Arc<Mutex<Option<JoinHandle<()>>>>,
+    intercom_handles: Arc<Mutex<Vec<JoinHandle<()>>>>,
     inbox_poll_ms: u64,
 }
 
@@ -188,6 +190,7 @@ impl WorkerRuntime {
             live_count,
             heartbeat_handle: Arc::new(Mutex::new(Some(heartbeat_handle))),
             inbox_handle: Arc::new(Mutex::new(None)),
+            intercom_handles: Arc::new(Mutex::new(Vec::new())),
             inbox_poll_ms: opts.inbox_poll_ms.max(100),
         })
     }
@@ -265,11 +268,32 @@ impl WorkerRuntime {
         create_worker_tools(ctx)
     }
 
+    /// Inbox-answer tools only (no `worker_ask` / `worker_await` — those would block).
+    pub fn create_intercom_tools(&self) -> Vec<AgentTool> {
+        let ctx = Arc::new(WorkerToolContext {
+            registry: Arc::clone(&self.registry),
+            mailbox: Arc::clone(&self.mailbox),
+            worker_id: self.worker_id.clone(),
+            session_id: self.session_id.clone(),
+            project_key: self.project_key.clone(),
+            stale_secs: self.stale_secs,
+            ask_timeout_ms: self.ask_timeout_ms,
+            max_hops: self.max_hops,
+        });
+        elph_agent::workers::create_intercom_tools(ctx)
+    }
+
     /// Attach a host-provided inbox poller handle (called after session Arc is ready).
     pub fn set_inbox_handle(&self, handle: JoinHandle<()>) {
         if let Some(old) = self.inbox_handle.lock().replace(handle) {
             old.abort();
         }
+    }
+
+    pub fn set_intercom_handle(&self, handle: JoinHandle<()>) {
+        let mut handles = self.intercom_handles.lock();
+        handles.retain(|h| !h.is_finished());
+        handles.push(handle);
     }
 
     /// Stop heartbeat and release coordination rows (best-effort). Safe from `Arc` session.
@@ -279,6 +303,9 @@ impl WorkerRuntime {
             handle.abort();
         }
         if let Some(handle) = self.inbox_handle.lock().take() {
+            handle.abort();
+        }
+        for handle in self.intercom_handles.lock().drain(..) {
             handle.abort();
         }
         if let Err(err) = self.file_leases.release_all_for_worker(&self.worker_id).await {
@@ -304,6 +331,9 @@ impl Drop for WorkerRuntime {
             handle.abort();
         }
         if let Some(handle) = self.inbox_handle.lock().take() {
+            handle.abort();
+        }
+        for handle in self.intercom_handles.lock().drain(..) {
             handle.abort();
         }
         let lease = self.lease.clone();

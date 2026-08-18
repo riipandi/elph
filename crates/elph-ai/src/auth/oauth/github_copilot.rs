@@ -30,16 +30,19 @@ pub fn github_copilot_oauth_loader() -> OAuthLoader {
 fn github_copilot_oauth_impl() -> OAuthAuth {
     OAuthAuth {
         name: "GitHub Copilot".to_string(),
-        login: Arc::new(|callbacks: Arc<dyn AuthLoginCallbacks>| {
+        login: Arc::new(|callbacks, identity| {
             Box::pin(async move {
-                let creds = login_github_copilot(&callbacks).await?;
+                let creds = login_github_copilot(&callbacks, &identity)
+                    .await
+                    .map_err(super::map_oauth("GitHub Copilot login failed"))?;
                 Ok(to_oauth_credential(creds))
             })
         }),
         refresh: Arc::new(|credential| {
             Box::pin(async move {
-                let creds =
-                    refresh_github_copilot_token(&credential.refresh, credential.enterprise_url.as_deref()).await?;
+                let creds = refresh_github_copilot_token(&credential.refresh, credential.enterprise_url.as_deref())
+                    .await
+                    .map_err(super::map_oauth("GitHub Copilot token refresh failed"))?;
                 Ok(to_oauth_credential(creds))
             })
         }),
@@ -48,7 +51,9 @@ fn github_copilot_oauth_impl() -> OAuthAuth {
                 let enterprise_domain = copilot_enterprise_domain(&credential);
                 // OAuth `access` is already the Copilot session token (`tid=…;exp=…;…`).
                 // If a plain GitHub token was stored by mistake, exchange it.
-                let session = ensure_copilot_session_token(&credential.access, enterprise_domain.as_deref()).await?;
+                let session = ensure_copilot_session_token(&credential.access, enterprise_domain.as_deref())
+                    .await
+                    .map_err(super::map_oauth("GitHub Copilot session token"))?;
                 Ok(ModelAuth {
                     api_key: Some(session.clone()),
                     headers: None,
@@ -159,14 +164,17 @@ fn copilot_urls(domain: &str) -> (String, String, String) {
     )
 }
 
-pub async fn login_github_copilot(callbacks: &Arc<dyn AuthLoginCallbacks>) -> anyhow::Result<CopilotOAuthTokens> {
-    // Optional enterprise host: blank → github.com. Env ELPH_GITHUB_HOST skips the prompt.
-    let enterprise_domain = if let Ok(host) = std::env::var("ELPH_GITHUB_HOST") {
+pub async fn login_github_copilot(
+    callbacks: &Arc<dyn AuthLoginCallbacks>,
+    identity: &crate::types::ClientIdentity,
+) -> anyhow::Result<CopilotOAuthTokens> {
+    let host_key = identity.env_key("GITHUB_HOST");
+    let enterprise_domain = if let Ok(host) = std::env::var(&host_key) {
         let host = host.trim().to_string();
         if host.is_empty() {
             None
         } else {
-            Some(normalize_domain(&host).ok_or_else(|| anyhow::anyhow!("Invalid ELPH_GITHUB_HOST: {host}"))?)
+            Some(normalize_domain(&host).ok_or_else(|| anyhow::anyhow!("Invalid {host_key}: {host}"))?)
         }
     } else {
         callbacks.notify(AuthEvent::Progress {

@@ -2,27 +2,37 @@
 name = "rendown"
 version = "0.0.1"
 license = "MIT"
-description = "Streaming CommonMark/markdown renderer for terminal (ANSI)."
+description = "CommonMark/markdown renderer for terminals (ANSI)."
 homepage.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 edition.workspace = true
 publish = true
+keywords = ["markdown", "ansi", "terminal", "commonmark", "renderer"]
+categories = ["command-line-interface", "text-processing"]
 
 [lib]
 name = "rendown"
 path = "src/lib.rs"
 
+[features]
+default = []
+stream = ["dep:crossterm"]
+mermaid = ["dep:mermaid-text"]
+highlight = ["dep:syntect", "dep:two-face", "dep:anstyle-syntect"]
+
 [dependencies]
 anstyle.workspace = true
-anstyle-syntect.workspace = true
-crossterm = { workspace = true, default-features = false }
+anstyle-syntect = { workspace = true, optional = true }
+crossterm = { workspace = true, optional = true, default-features = false, features = [] }
 html-escape.workspace = true
 linkify.workspace = true
+log.workspace = true
+mermaid-text = { workspace = true, optional = true }
 pulldown-cmark.workspace = true
 supports-color.workspace = true
-syntect.workspace = true
-two-face = { workspace = true, default-features = false, features = ["syntect-fancy"] }
+syntect = { workspace = true, optional = true }
+two-face = { workspace = true, optional = true, default-features = false, features = ["syntect-fancy"] }
 unicode-linebreak.workspace = true
 unicode-segmentation.workspace = true
 unicode-width.workspace = true

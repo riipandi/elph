@@ -52,15 +52,19 @@ fn hyper_json_headers() -> std::collections::HashMap<String, String> {
 fn hyper_oauth_impl() -> OAuthAuth {
     OAuthAuth {
         name: "Charm Hyper".to_string(),
-        login: Arc::new(|callbacks: Arc<dyn AuthLoginCallbacks>| {
+        login: Arc::new(|callbacks, _identity| {
             Box::pin(async move {
-                let creds = login_hyper(&callbacks).await?;
+                let creds = login_hyper(&callbacks)
+                    .await
+                    .map_err(super::map_oauth("Hyper login failed"))?;
                 Ok(to_oauth_credential(creds))
             })
         }),
         refresh: Arc::new(|credential| {
             Box::pin(async move {
-                let creds = refresh_hyper_token(&credential.refresh).await?;
+                let creds = refresh_hyper_token(&credential.refresh)
+                    .await
+                    .map_err(super::map_oauth("Hyper token refresh failed"))?;
                 Ok(to_oauth_credential(creds))
             })
         }),

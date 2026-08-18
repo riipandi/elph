@@ -14,8 +14,11 @@ use std::io::Write;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use elph_agent::Agent;
+use elph_agent::AgentEvent;
+use elph_agent::AgentOptions;
+use elph_agent::PartialAgentState;
 use elph_agent::create_all_tools_with_web;
-use elph_agent::{Agent, AgentEvent, AgentOptions, PartialAgentState};
 use elph_ai::{Message, StopReason};
 use elph_ai::{builtin_models, get_builtin_model};
 
@@ -73,7 +76,7 @@ async fn main() -> anyhow::Result<()> {
 
     // ── Create execution environment with all tools including web ──
     let cwd = std::env::current_dir()?;
-    let env = Arc::new(elph_agent::LocalExecutionEnv::new(&cwd));
+    let env = Arc::new(elph_agent::runtime::LocalExecutionEnv::new(&cwd));
     let agent_tools = create_all_tools_with_web(env);
 
     // ── Build agent ──

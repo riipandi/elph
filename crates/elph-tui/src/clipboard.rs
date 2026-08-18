@@ -5,20 +5,46 @@
 use anyhow::{Result, bail};
 use clipboard_rs::{Clipboard, ClipboardContext};
 
+/// Probe whether the system clipboard can be opened (no read/write).
+pub fn clipboard_available() -> bool {
+    ClipboardContext::new().is_ok()
+}
+
+/// Short backend label for doctor / diagnostics (no secrets).
+pub fn clipboard_backend() -> &'static str {
+    if cfg!(target_os = "macos") {
+        "native (clipboard_rs / pbcopy)"
+    } else {
+        "native (clipboard_rs)"
+    }
+}
+
 /// Copy plain text to the system clipboard.
 ///
 /// Empty strings are accepted (clears to empty clipboard content where supported).
 pub fn copy_to_clipboard(text: &str) -> Result<()> {
-    let ctx = ClipboardContext::new().map_err(|err| anyhow::anyhow!("open system clipboard: {err}"))?;
-    ctx.set_text(text.to_string())
-        .map_err(|err| anyhow::anyhow!("set clipboard text: {err}"))
+    let ctx = ClipboardContext::new().map_err(|err| {
+        log::warn!("clipboard open failed: {err}");
+        anyhow::anyhow!("open system clipboard: {err}")
+    })?;
+    ctx.set_text(text.to_string()).map_err(|err| {
+        log::warn!("clipboard write failed: {err}");
+        anyhow::anyhow!("set clipboard text: {err}")
+    })?;
+    log::debug!("clipboard write ok chars={}", text.chars().count());
+    Ok(())
 }
 
 /// Read plain text from the system clipboard.
 pub fn read_from_clipboard() -> Result<String> {
-    let ctx = ClipboardContext::new().map_err(|err| anyhow::anyhow!("open system clipboard: {err}"))?;
-    ctx.get_text()
-        .map_err(|err| anyhow::anyhow!("get clipboard text: {err}"))
+    let ctx = ClipboardContext::new().map_err(|err| {
+        log::warn!("clipboard open failed: {err}");
+        anyhow::anyhow!("open system clipboard: {err}")
+    })?;
+    ctx.get_text().map_err(|err| {
+        log::warn!("clipboard read failed: {err}");
+        anyhow::anyhow!("get clipboard text: {err}")
+    })
 }
 
 /// Copy text and return a short human status for a11y / toast banners.

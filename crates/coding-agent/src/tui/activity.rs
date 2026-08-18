@@ -281,7 +281,7 @@ pub struct TurnCompleteStats {
 impl TurnCompleteStats {
     pub fn from_event(
         elapsed_secs: f64,
-        usage: Option<&elph_agent::TurnUsage>,
+        usage: Option<&elph_agent::turns::TurnUsage>,
         provider_id: Option<&str>,
         model_id: Option<&str>,
     ) -> Self {
@@ -766,7 +766,7 @@ mod tests {
     fn turn_complete_stats_from_event_maps_usage() {
         let stats = TurnCompleteStats::from_event(
             110.0,
-            Some(&elph_agent::TurnUsage {
+            Some(&elph_agent::turns::TurnUsage {
                 input_tokens: 3100,
                 output_tokens: 2400,
                 cache_read_tokens: 1200,

@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use crate::utils::path::AppPaths;
 use anyhow::Result;
-use elph_agent::{McpCacheStore, McpLoadOptions, McpServerLoadProgress, McpToolRegistry};
+use elph_agent::mcp::{McpCacheStore, McpLoadOptions, McpServerLoadProgress, McpToolRegistry};
 use tokio::sync::mpsc;
 
 use super::events::AgentUiEvent;
@@ -97,7 +97,7 @@ fn spawn_mcp_event_loop(session: &CodingAgentSession, mcp_registry: Arc<McpToolR
                     return;
                 }
                 let mode = *mode_state.lock().await;
-                if let Err(error) = reconcile_harness_tools(&harness, mode, Some(registry.as_ref())).await {
+                if let Err(error) = reconcile_harness_tools(&harness, mode, Some(registry.as_ref()), None).await {
                     log::warn!("failed to reconcile tools after MCP hot-reload: {error}");
                 } else {
                     log::info!("MCP tools hot-reloaded into agent harness");
@@ -114,7 +114,7 @@ fn spawn_mcp_event_loop(session: &CodingAgentSession, mcp_registry: Arc<McpToolR
 }
 
 async fn apply_mcp_tools_to_harness(
-    harness: &elph_agent::AgentHarness<elph_agent::TursoSessionStorage>,
+    harness: &elph_agent::harness::AgentHarness<elph_agent::session::TursoSessionStorage>,
     registry: &Arc<McpToolRegistry>,
 ) -> Result<()> {
     let mcp_tools = registry.create_agent_tools().await;
