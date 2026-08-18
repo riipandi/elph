@@ -2,16 +2,11 @@
 
 `docs/` holds **product design** — intended behavior, UX layout, feature contracts, and high-level architecture. It is not implementation documentation.
 
-Living documentation (how the code works today, source maps, usage) lives in **[openwiki/](../openwiki/quickstart.md)**.
-
 ## Roles
 
-| Folder      | Contents                               | Audience                  |
-| ----------- | -------------------------------------- | ------------------------- |
-| `docs/`     | Specifications — _what_ Elph should do | Product, UX, architecture |
-| `openwiki/` | Repository docs — _how_ it works now   | Developers, operators     |
-
-When a design is implemented, technical detail belongs in openwiki — not duplicated here.
+| Folder  | Contents                               | Audience                  |
+| ------- | -------------------------------------- | ------------------------- |
+| `docs/` | Specifications — _what_ Elph should do | Product, UX, architecture |
 
 ## Design map
 
@@ -57,8 +52,6 @@ Living **gap logs** for the TypeScript → Rust port (timestamps, pi vs elph mat
 
 ## Implementation snapshot
 
-Details and source maps: [openwiki/quickstart.md](../openwiki/quickstart.md).
-
 | Area                        | Target      | Notes                                         |
 | --------------------------- | ----------- | --------------------------------------------- |
 | Agent loop + tools          | Done        | `elph-agent` harness; `builtin-tools` feature |
@@ -75,4 +68,3 @@ Details and source maps: [openwiki/quickstart.md](../openwiki/quickstart.md).
 ## Where to start
 
 - Design: [agent-runtime.md](./agent-runtime.md), [configuration.md](./configuration.md)
-- Implementation: [openwiki/architecture.md](../openwiki/architecture.md)

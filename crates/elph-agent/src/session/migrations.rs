@@ -1,7 +1,7 @@
 //! Canonical session schema for Turso backends (hybrid tree + relational metrics).
 //!
-//! Platform band version **201** (shared with coding-agent). Floppy memory stays 1–99;
-//! codegraph 500+. Clean break: no data migration from pre-v201 tables.
+//! Platform band version **201** (shared with coding-agent). Floppy memory stays 1–99.
+//! Clean break: no data migration from pre-v201 tables.
 //!
 //! Foreign keys are declared in DDL; connections must run `PRAGMA foreign_keys = ON`
 //! (see [`crate::datastore::connect`]).

@@ -6,13 +6,13 @@ The current hardening pass validates durable filesystem paths before enabling mu
 
 Cross-process crash/reopen, checkpoint, schema-refresh, vacuum-exclusion, and unsupported-filesystem tests remain deployment validation work.
 
-**Scope:** `crates/elph-agent`, `crates/coding-agent`, `crates/floppy`, workspace dependency configuration, database opening, migrations, transactions, session persistence, worker coordination, memory/codegraph stores, WAL sidecars, and multiprocess access.
+**Scope:** `crates/elph-agent`, `crates/coding-agent`, `crates/floppy`, workspace dependency configuration, database opening, migrations, transactions, session persistence, worker coordination, memory stores, WAL sidecars, and multiprocess access.
 
 **Turso dependency:** `turso = 0.8.0-pre.4`
 
 ## Executive summary
 
-The project enables Turso's experimental multiprocess WAL mode consistently on its primary local database paths. The high-level architecture is sound: the host opens one `Database`, shares it through `Arc<Database>`, and stores sessions, goals, todos, workers, memory, and codegraph data in `.elph/store.db`.
+The project enables Turso's experimental multiprocess WAL mode consistently on its primary local database paths. The high-level architecture is sound: the host opens one `Database`, shares it through `Arc<Database>`, and stores sessions, goals, todos, workers, and memory data in `.elph/store.db`.
 
 The integration is not yet safe to classify as production-ready for concurrent OS processes. The main risks are:
 
@@ -73,7 +73,6 @@ The returned `Database` is intended to be wrapped in `Arc` and shared with:
 - `WorkerRegistry`
 - `SessionLeaseStore`
 - `MemoryStore`
-- `CodegraphStore`
 
 This is the preferred in-process model because it avoids creating multiple database authorities for the same file.
 
@@ -278,7 +277,7 @@ Worker registration performs stale demotion, name selection, deletion, and inser
 
 `floppy::ConnectionPool` uses a semaphore only around the connection acquisition call. The permit is released before the returned `Connection` is used. It therefore limits concurrent connection attempts, not live connections or database operations. The implementation documents this, but the type name can imply stronger pooling guarantees.
 
-## Floppy memory and codegraph findings
+## Floppy memory findings
 
 `floppy` enables multiprocess WAL and, for some paths, experimental vacuum and index methods. Memory migrations use the shared `app_migrations` ledger and fall back from FTS migration based on error-message substrings such as `fts` or `index method`.
 

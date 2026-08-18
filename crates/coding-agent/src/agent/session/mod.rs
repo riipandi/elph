@@ -58,8 +58,6 @@ pub struct CodingAgentSessionParams {
     pub preferred_chat_language: String,
     /// Settings `models.compactionModel` (`inherit` or `provider/model_id`).
     pub compaction_model_ref: String,
-    /// Whether `codegraph.enabled` is on — gates the `<codegraph>` prompt section.
-    pub codegraph_enabled: bool,
     /// Whether `simplifiedTechnicalEnglish` is on — gates the `<response_style>` section.
     pub ste_enabled: bool,
     /// Multi-worker host lifecycle (lease heartbeat + registry); None if start failed.
@@ -100,8 +98,6 @@ pub struct CodingAgentSession {
     preferred_chat_language: String,
     /// Settings `models.compactionModel` (`inherit` or `provider/model_id`).
     compaction_model_ref: String,
-    /// Whether `codegraph.enabled` is on — gates the `<codegraph>` prompt section.
-    codegraph_enabled: bool,
     /// Whether `simplifiedTechnicalEnglish` is on — gates the `<response_style>` section.
     ste_enabled: bool,
     /// Bounded retry counter for background auto-title generation
@@ -130,7 +126,6 @@ impl CodingAgentSession {
             title_model,
             preferred_chat_language,
             compaction_model_ref,
-            codegraph_enabled,
             ste_enabled,
             worker_runtime,
             plan_reentry,
@@ -162,7 +157,6 @@ impl CodingAgentSession {
             title_model,
             preferred_chat_language,
             compaction_model_ref,
-            codegraph_enabled,
             ste_enabled,
             title_generation_attempts: Arc::new(AtomicU32::new(if already_named {
                 SESSION_TITLE_MAX_ATTEMPTS
@@ -600,7 +594,6 @@ impl CodingAgentSession {
             &CodingPromptOptions {
                 mode,
                 preferred_chat_language: self.preferred_chat_language.clone(),
-                codegraph_enabled: self.codegraph_enabled,
                 ste_enabled: self.ste_enabled,
                 worker_name: self.worker_name().map(str::to_string),
                 worker_peers,

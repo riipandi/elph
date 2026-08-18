@@ -305,8 +305,6 @@ Update to match **implemented** behavior:
 - `website/content/docs/start/plan-mode.md` — same, keep CLI `--mode=plan` (skips Pending)
 - `crates/elph-agent/docs/agent-harness.md` — tracker + `implement_prompt` review-notes argument if those docs mention plan APIs
 
-Do not edit generated `openwiki/`.
-
 ## Layout / a11y constraints (from `tui-design`)
 
 - Keyboard-complete: every action has a key; mouse is optional

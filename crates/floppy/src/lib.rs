@@ -1,7 +1,7 @@
 //! # floppy
 //!
-//! Domain-oriented library for **agent memory** and optional **semantic code indexing**,
-//! backed by Turso (embedded SQLite + vectors + FTS).
+//! Domain-oriented library for **agent memory**, backed by Turso
+//! (embedded SQLite + vectors + FTS).
 //!
 //! ## Crate layout
 //!
@@ -9,7 +9,6 @@
 //! | ------ | ------ | ------- |
 //! | [`core`] | Shared DB open, embed adapters, paths, FTS query sanitizer, migration ledger | always |
 //! | [`memory`] | Task-scoped memory store (memelord-compatible design) | `memory` (default) |
-//! | [`codegraph`] | Codebase chunk index + hybrid search | `codegraph` |
 //!
 //! Designed for use as an **in-process library** (e.g. Elph) or a future **standalone CLI / MCP server**.
 //! Configuration is always explicit — no environment variables are read inside this crate
@@ -31,9 +30,6 @@ pub mod core;
 
 #[cfg(feature = "memory")]
 pub mod memory;
-
-#[cfg(feature = "codegraph")]
-pub mod codegraph;
 
 // ── Core re-exports (always available) ──────────────────────────────────────
 
@@ -67,18 +63,6 @@ pub use memory::{
     MemoryReportType, MemoryStats, MemoryStore, ReportCorrectionInput, ReportUserInput, SelfReportEntry,
     StartTaskResult, StoreStatus, TaskBaseline, TaskCreatedMemory, TaskEndInput, TaskRecord, TaskRetrieval, TaskStatus,
     TimelineEvent, TimelineEventKind, TopMemory, UserInputSource, VectorType, category_str,
-};
-
-// ── Codegraph re-exports (feature = "codegraph") ────────────────────────────
-
-/// Codegraph migrations module (hosts map into their own runners).
-#[cfg(feature = "codegraph")]
-pub use codegraph::migrations as codegraph_migrations;
-
-#[cfg(feature = "codegraph")]
-pub use codegraph::{
-    ChunkHit, CodegraphConfig, CodegraphStatus, CodegraphStore, ImpactNode, IndexPhase, IndexProgress, ProgressFn,
-    ScanStats, SearchOptions,
 };
 
 #[cfg(all(test, feature = "memory"))]

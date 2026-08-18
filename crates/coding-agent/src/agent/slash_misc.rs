@@ -69,7 +69,7 @@ pub fn settings_slash_message(paths: &Paths) -> String {
          Project: {} {}\n\
          \n\
          Edit JSON with your editor, then `/reload` in the TUI (or restart).\n\
-         Key groups: ui, models, memory, workers, session.retention, codegraph, notifications.\n\
+         Key groups: ui, models, memory, workers, session.retention, notifications.\n\
          \n\
          Workers example:\n\
            \"workers\": {{ \"enabled\": true, \"name\": null, \"tuiShowPeers\": true }}\n\

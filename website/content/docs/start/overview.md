@@ -2,9 +2,9 @@
 
 Elph is a local AI coding agent harness. It runs as an interactive TUI (`elph`), as a headless prompt (`elph run`), and as an ACP server for editors (`elph acp --stdio`).
 
-The core harness follows [Pi](https://pi.dev/docs/latest): a small session loop, tools, providers, and a terminal UI you can extend. Elph keeps that model and adds a local project store, codegraph, floppy memory, worktrees, MCP, WASM extensions, Plan vs Build, and Claude/Codex import.
+The core harness follows [Pi](https://pi.dev/docs/latest): a small session loop, tools, providers, and a terminal UI you can extend. Elph keeps that model and adds a local project store, floppy memory, worktrees, MCP, WASM extensions, Plan vs Build, and Claude/Codex import.
 
-You bring the model. Sessions, memory, and the code index stay on disk in the project `.elph/` store. There is no required cloud agent backend.
+You bring the model. Sessions and memory stay on disk in the project `.elph/` store. There is no required cloud agent backend.
 
 Elph is **pre-alpha**. Breaking changes and bugs are expected. Check [GitHub Releases](https://github.com/riipandi/elph/releases) before you upgrade.
 
@@ -20,7 +20,7 @@ Elph is **pre-alpha**. Breaking changes and bugs are expected. Check [GitHub Rel
 
 - Config: `~/.config/elph/` (`ELPH_HOME`)
 - Data: `~/.local/share/elph/` (`ELPH_DATA_DIR`)
-- Project: `<cwd>/.elph/` — sessions, memory, codegraph (`store.db`)
+- Project: `<cwd>/.elph/` — sessions, memory (`store.db`)
 
 ## Start here
 

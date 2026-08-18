@@ -263,7 +263,6 @@ Use `Client.v2()` against in-process `Agent.v2()` (or piped stdio). Cover:
 - `assets/user-guide/01-getting-started.md` — ACP v2, not v1.
 - `docs/session-persistence.md` — resume/list/delete via ACP.
 - `crates/coding-agent/CHANGELOG.md` — breaking: v1 clients will not connect.
-- Do not edit generated `openwiki/`.
 
 ## Implementation order
 

@@ -1,5 +1,4 @@
 mod acp;
-mod codegraph;
 mod completions;
 mod default;
 mod doctor;
@@ -32,8 +31,8 @@ use crate::platform::ExitCode;
 /// progress-ticker interrupt flag while alive, restoring the previous
 /// disposition on drop.
 ///
-/// Only active around CLI progress phases (boot, datastore init, codegraph
-/// index) where the tick threads can observe the flag and abort with a clean
+/// Only active around CLI progress phases (boot, datastore init)
+/// where the tick threads can observe the flag and abort with a clean
 /// "Interrupted." message + exit 130. Long-running phases (`server`, `run`,
 /// the TUI) never have the guard installed, so Ctrl+C keeps its default
 /// terminate behavior there.
@@ -74,7 +73,6 @@ impl Drop for CliProgressInterruptGuard {
 }
 
 pub use acp::AcpArgs;
-pub use codegraph::{CodegraphArgs, CodegraphCommands};
 pub use completions::CompletionsArgs;
 pub use doctor::DoctorArgs;
 pub use export::ExportArgs;
@@ -125,8 +123,6 @@ pub struct Cli {
 pub enum Commands {
     /// Run Elph as an Agent Client Protocol (ACP) server
     Acp(AcpArgs),
-    /// Semantic code index + thin impact graph
-    Codegraph(CodegraphArgs),
     /// Generate shell completion scripts (bash, zsh, fish, powershell, etc)
     Completions(CompletionsArgs),
     /// Show the configuration Elph discovers for this directory
@@ -245,7 +241,6 @@ pub fn run(cli: &Cli) -> ExitCode {
         if let Err(code) = init_datastore(&paths) {
             return code;
         }
-        // default::handle reinstalls the guard for the index-offer phase itself.
         return default::handle(cli.continue_session, cli.resume.clone());
     };
 
@@ -258,7 +253,6 @@ pub fn run(cli: &Cli) -> ExitCode {
 
     match cmd {
         Commands::Acp(args) => acp::handle(args),
-        Commands::Codegraph(args) => codegraph::handle(args),
         Commands::Completions(args) => completions::handle(args),
         Commands::Doctor(args) => doctor::handle(args),
         Commands::Export(args) => export::handle(args),

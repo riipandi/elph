@@ -1,4 +1,4 @@
-//! Shared local Turso open/connect helpers (memory + codegraph).
+//! Shared local Turso open/connect helpers (memory and host stores).
 //!
 //! Hosts pass an open [`Database`] through `ConnectionPool` or builder APIs.
 //! Standalone paths use the same multiprocess-WAL builder configuration.

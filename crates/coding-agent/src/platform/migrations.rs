@@ -3,7 +3,7 @@ use elph_agent::{CANONICAL_SESSION_SCHEMA_SQL, SESSION_SUMMARY_SCHEMA_SQL, WORKE
 
 /// Platform schema migrations, applied into the shared `.elph/store.db` ledger.
 ///
-/// Version bands: floppy memory 1–99, **platform/session 201–203**, floppy codegraph 500–599.
+/// Version bands: floppy memory 1–99, **platform/session 201–203**.
 ///
 /// - v201: hybrid session tree + turns/todos/goals with FK + indexes (rebuild).
 /// - v202: multi-worker leases, registry, mailbox, file claims (additive).

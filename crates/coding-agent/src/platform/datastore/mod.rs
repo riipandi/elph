@@ -6,22 +6,21 @@ use turso::Database;
 
 use super::migrations;
 use super::paths::Paths;
-use floppy::codegraph_migrations;
 use floppy::memory::migrations as memory_migrations;
 
 /// Open the shared project database, apply all migration bands, and return the
 /// live handle.
 ///
 /// The store DB (`.elph/store.db`) hosts the platform schema band via
-/// `metadata_migrations()`, plus the floppy memory band (v1–4) and codegraph
-/// band (v500–501) so all tables exist immediately — not lazily on first use.
+/// `metadata_migrations()`, plus the floppy memory band (v1–4) so all
+/// tables exist immediately — not lazily on first use.
 ///
 /// All migrations are applied through a single connection to avoid WAL lock
 /// contention from opening and closing multiple connections in sequence.
 ///
 /// The returned [`Database`] is meant to be wrapped in an [`Arc`] and shared
 /// with every store (`TursoSessionRepo`, `GoalStore`, `AgentGraphStore`,
-/// floppy's `MemoryStore`/`CodegraphStore`) so they all connect from one
+/// floppy's `MemoryStore`) so they all connect from one
 /// open handle instead of each opening the file on every operation.
 pub async fn ensure_database(paths: &Paths) -> Result<Database> {
     let store_db = paths.memory_db_path();
@@ -39,9 +38,8 @@ pub async fn ensure_database(paths: &Paths) -> Result<Database> {
     // Platform band (v101–107).
     elph_agent::datastore::run_migrations(&conn, migrations::metadata_migrations()).await?;
 
-    // Floppy memory (v1–4) and codegraph (v500–501).
+    // Floppy memory (v1–4).
     memory_migrations::apply(&conn).await?;
-    codegraph_migrations::apply(&conn).await?;
 
     log::info!("Databases ready");
     spinner.finish_and_clear();

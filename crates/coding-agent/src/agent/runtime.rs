@@ -212,12 +212,6 @@ pub async fn create_coding_session_with_events(
         Some(database.clone()),
     ));
     tools.extend(crate::memory::tools::create_memory_tools(Arc::clone(&memory_runtime)));
-    if options.settings.codegraph.enabled {
-        tools.extend(crate::codegraph::tools::create_codegraph_tools_with_db(
-            options.paths.clone(),
-            Some(database.clone()),
-        ));
-    }
 
     // Create shared UI event channel for ask_user tool and session.
     let (ui_tx, ui_rx) = tokio::sync::mpsc::unbounded_channel();
@@ -321,7 +315,6 @@ pub async fn create_coding_session_with_events(
     let prompt_options = CodingPromptOptions {
         mode: agent_mode,
         preferred_chat_language: options.settings.preferred_chat_language.clone(),
-        codegraph_enabled: options.settings.codegraph.enabled,
         ste_enabled: options.settings.simplified_technical_english,
         worker_name: worker_runtime.as_ref().map(|w| w.name.clone()),
         worker_peers: None,
@@ -564,7 +557,6 @@ pub async fn create_coding_session_with_events(
         title_model: options.settings.models.session_title_model.clone(),
         preferred_chat_language: options.settings.preferred_chat_language.clone(),
         compaction_model_ref: options.settings.models.compaction_model.clone(),
-        codegraph_enabled: options.settings.codegraph.enabled,
         ste_enabled: options.settings.simplified_technical_english,
         worker_runtime,
         plan_reentry,

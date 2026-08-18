@@ -25,7 +25,7 @@ async fn ensure_creates_full_home() {
     // Goals, platform schema, and sessions share the project store DB
     // (`.elph/store.db`); ensure() creates the file with the platform band.
     assert!(paths.memory_db_path().exists());
-    // Floppy memory/codegraph bands are applied lazily by MemoryStore/indexing.
+    // Floppy memory band is applied by MemoryStore on first use.
     assert!(paths.project_elph_dir().exists());
     assert!(paths.project_gitignore_path().exists());
     assert!(paths.bundled_dir().join("agents").is_dir());

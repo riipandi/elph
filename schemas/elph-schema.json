@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://elph.space/elph-schema.json",
     "title": "Elph settings configuration",
-    "description": "User preferences for the Elph coding agent, grouped by domain (ui, models, memory, codegraph, notifications, compaction). Active model, thinking level, and agent mode are per-session (not stored here). Home: ~/.elph/settings.json. Optional project overrides: <workDir>/.elph/settings.json (same shape). Merge: defaults \u2190 home \u2190 project (project wins per nested key). Runtime saves write the home layer only. Legacy session group, flat keys, and memory.embedModel/embedQuantized are migrated on load; unknown keys are ignored. Top-level transport: maxRetries, defaultTimeout. Legacy nested provider group is migrated on load.",
+    "description": "User preferences for the Elph coding agent, grouped by domain (ui, models, memory, notifications, compaction). Active model, thinking level, and agent mode are per-session (not stored here). Home: ~/.elph/settings.json. Optional project overrides: <workDir>/.elph/settings.json (same shape). Merge: defaults \u2190 home \u2190 project (project wins per nested key). Runtime saves write the home layer only. Legacy session group, flat keys, and memory.embedModel/embedQuantized are migrated on load; unknown keys are ignored. Top-level transport: maxRetries, defaultTimeout. Legacy nested provider group is migrated on load.",
     "type": "object",
     "additionalProperties": false,
     "properties": {
@@ -42,9 +42,6 @@
         },
         "memory": {
             "$ref": "#/definitions/memory"
-        },
-        "codegraph": {
-            "$ref": "#/definitions/codegraph"
         },
         "mcp": {
             "$ref": "#/definitions/mcp"
@@ -285,14 +282,14 @@
                 },
                 "embed": {
                     "$ref": "#/definitions/embed",
-                    "description": "Local ONNX / Hugging Face embedding model shared by floppy memory and codegraph."
+                    "description": "Local ONNX / Hugging Face embedding model for floppy memory."
                 }
             }
         },
         "embed": {
             "type": "object",
             "additionalProperties": false,
-            "description": "Local embedding model for vector search (memory + codegraph).",
+            "description": "Local embedding model for vector search (memory).",
             "properties": {
                 "model": {
                     "type": "string",
@@ -423,49 +420,6 @@
                     "minimum": 0,
                     "default": 8,
                     "description": "Minimum user prompt length to trigger auto-recall. Task-like short prompts still recall."
-                }
-            }
-        },
-        "codegraph": {
-            "type": "object",
-            "additionalProperties": false,
-            "description": "Semantic codebase index wiring in the coding agent. CLI elph codegraph is always available; agent tools are gated by enabled.",
-            "properties": {
-                "enabled": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "When true, register agent tools code_search, code_impact, code_status, and code_reindex. Default false."
-                },
-                "maxChunkLines": {
-                    "type": "integer",
-                    "minimum": 10,
-                    "maximum": 500,
-                    "default": 120,
-                    "description": "Max lines per chunk before splitting (larger chunks = fewer chunks, slower embedding)."
-                },
-                "maxFileBytes": {
-                    "type": "integer",
-                    "minimum": 1024,
-                    "maximum": 104857600,
-                    "default": 524288,
-                    "description": "Skip files larger than this many bytes (default 512KB)."
-                },
-                "maxDbConnections": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 16,
-                    "default": 4,
-                    "description": "Max concurrent DB connections for parallel writes (more = faster, more memory)."
-                },
-                "includePatterns": {
-                    "type": "array",
-                    "default": [],
-                    "items": {
-                        "type": "string",
-                        "minLength": 1,
-                        "description": "Glob patterns for files to include or exclude. Supports **, *, and ? wildcards. Patterns starting with ! are exclude patterns. Examples: \"**/*.rs\" (include all .rs files), \"!**/test/**\" (exclude test directories)."
-                    },
-                    "description": "File inclusion/exclusion patterns for codegraph indexing. Applied in order; first matching pattern wins. Examples: [\"**/*.rs\", \"!**/test/**/*.rs\", \"!**/vendor/**\"] to index only Rust files outside test and vendor directories."
                 }
             }
         },

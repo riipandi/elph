@@ -47,7 +47,6 @@ Follow existing domain groups (`camelCase`, serde defaults, home ← project mer
     "ui": { "...": "..." },
     "models": { "...": "..." },
     "memory": { "...": "..." },
-    "codegraph": { "...": "..." },
     "mcp": {
         "cacheTtlSecs": 60,
         "cacheMaxEntries": 2048
@@ -186,7 +185,7 @@ pub physical_prune: bool, // default true — DELETE pre-boundary entries after 
 
 ## Phase 1 — Database redesign (best-fit for Elph)
 
-Clean break: replace platform band **v101–107** and elph-agent session SQL with one **canonical platform band `200+`** (floppy memory 1–99 / codegraph 500+ unchanged). Shared SQL constants live in **elph-agent**; coding-agent migrations re-export them.
+Clean break: replace platform band **v101–107** and elph-agent session SQL with one **canonical platform band `200+`** (floppy memory 1–99 unchanged). Shared SQL constants live in **elph-agent**; coding-agent migrations re-export them.
 
 ### Design principles
 
@@ -475,7 +474,7 @@ Single tool **`todo_write`** (name aligned with grok; document alias in tools.md
 
 Update `coding_base.txt` (and mode snippets as needed):
 
-1. **Observe** — use conversation, memory blocks, codegraph, todos
+1. **Observe** — use conversation, memory blocks, todos
 2. **Plan** — for multi-step (≥3) non-trivial work, call `todo_write` early; keep exactly one `in_progress`
 3. **Act** — tools; do not re-do completed todos
 4. **Evaluate** — mark completed/cancelled; only then move next item

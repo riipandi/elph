@@ -20,7 +20,7 @@ name = "elph"
 path = "src/main.rs"
 
 [features]
-# Forward Metal GPU acceleration for local embeddings (codegraph + memory) to
+# Forward Metal GPU acceleration for local embeddings (memory) to
 # floppy. Enabling this requires building on Apple Silicon macOS (the `metal`
 # code path only compiles there). See `make build` which adds it automatically
 # on macOS aarch64.

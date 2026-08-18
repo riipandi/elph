@@ -1,6 +1,6 @@
 # Dependency Considerations
 
-Design log for evaluating third-party libraries. Verdicts guide adoption — implementation detail lives in [openwiki](../openwiki/quickstart.md).
+Design log for evaluating third-party libraries. Verdicts guide adoption.
 
 **Verdicts:** **Adopt** · **Keep** · **Done** · **Defer** · **Ref** (study only) · **Skip**
 

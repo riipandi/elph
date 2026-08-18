@@ -31,7 +31,6 @@
 //!   },
 //!   "promptEncoding": null,
 //!   "memory": { ... },
-//!   "codegraph": { "enabled": false, "toolTimeoutMs": 15000 },
 //!   "notifications": { ... },
 //!   "compaction": { "thresholdPct": 80, "keepRecentTokens": 20000, "physicalPrune": true },
 //!   "session": {
@@ -136,9 +135,6 @@ pub struct Settings {
     /// Local floppy memory (hooks / retrieval; embed model lives under `models.embed`).
     #[serde(default)]
     pub memory: MemorySettings,
-    /// Semantic codebase index (agent tools + index prefs). Default off.
-    #[serde(default)]
-    pub codegraph: CodegraphSettings,
     /// MCP client preferences (tool result cache retention).
     #[serde(default)]
     pub mcp: McpSettings,
@@ -459,7 +455,7 @@ pub struct ModelsSettings {
     /// Edit via `/scoped-models`.
     #[serde(default)]
     pub scoped_models: Vec<String>,
-    /// Local ONNX / Hugging Face embedding model (shared by floppy memory + codegraph).
+    /// Local ONNX / Hugging Face embedding model for floppy memory.
     #[serde(default)]
     pub embed: EmbedSettings,
 }
@@ -502,7 +498,7 @@ impl std::fmt::Display for GpuAcceleration {
     }
 }
 
-/// Local embedding model for vector search (memory + codegraph).
+/// Local embedding model for vector search (memory).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct EmbedSettings {
@@ -654,76 +650,6 @@ impl Default for MemorySettings {
     }
 }
 
-/// Semantic codebase indexing (agent tools; CLI always available).
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct CodegraphSettings {
-    /// When true, register agent tools (`code_search`, `code_impact`, `code_status`, `code_reindex`).
-    /// Default **false** — enable explicitly. CLI `elph codegraph` is unaffected.
-    #[serde(default = "default_false")]
-    pub enabled: bool,
-    /// Max lines per chunk before splitting (default: 120).
-    #[serde(default = "default_codegraph_max_chunk_lines")]
-    pub max_chunk_lines: u32,
-    /// Skip files larger than this many bytes (default: 512KB).
-    #[serde(default = "default_codegraph_max_file_bytes")]
-    pub max_file_bytes: u64,
-    /// Max concurrent DB connections for parallel writes (default: 4).
-    #[serde(default = "default_codegraph_max_db_connections")]
-    pub max_db_connections: usize,
-    /// Per-call timeout for agent `code_*` tools in milliseconds (default: 15000).
-    /// `0` disables the timeout. On timeout the tool returns an error and the
-    /// agent falls back to `grep` / `read_file` / `shell_exec`.
-    #[serde(default = "default_codegraph_tool_timeout_ms")]
-    pub tool_timeout_ms: u64,
-    /// Number of chunk texts sent to the embedder in a single batched call (default: 128).
-    /// Lower on memory-constrained machines; raise with a strong GPU for throughput.
-    #[serde(default = "default_codegraph_embed_batch_size")]
-    pub embed_batch_size: usize,
-    /// Number of files' chunks/nodes/edges committed per DB transaction (default: 200).
-    /// Smaller = more frequent durability checkpoints; larger = fewer fsyncs.
-    #[serde(default = "default_codegraph_db_commit_batch_files")]
-    pub db_commit_batch_files: usize,
-    /// Number of embedding batches dispatched concurrently (default: 1; advanced).
-    /// Only helps if the embedding backend is safely callable from multiple tasks
-    /// at once; otherwise batches run sequentially regardless of this value.
-    #[serde(default = "default_codegraph_embed_concurrency")]
-    pub embed_concurrency: usize,
-    /// File inclusion/exclusion patterns for codegraph indexing.
-    /// Supports globs with **, *, ? and !negation. Applied in order; first matching pattern wins.
-    /// Examples: ["**/*.rs", "!**/test/**/*.rs", "!**/vendor/**"]
-    #[serde(default)]
-    pub include_patterns: Vec<String>,
-}
-
-fn default_codegraph_max_chunk_lines() -> u32 {
-    120
-}
-
-fn default_codegraph_max_file_bytes() -> u64 {
-    512 * 1024 // 512KB
-}
-
-fn default_codegraph_max_db_connections() -> usize {
-    4
-}
-
-fn default_codegraph_tool_timeout_ms() -> u64 {
-    15_000
-}
-
-fn default_codegraph_embed_batch_size() -> usize {
-    128
-}
-
-fn default_codegraph_db_commit_batch_files() -> usize {
-    200
-}
-
-fn default_codegraph_embed_concurrency() -> usize {
-    1
-}
-
 /// MCP client preferences (tool result cache retention).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -866,7 +792,6 @@ impl Settings {
             models: ModelsSettings::default(),
             prompt_encoding: None,
             memory: MemorySettings::default(),
-            codegraph: CodegraphSettings::default(),
             mcp: McpSettings::default(),
             notifications: NotificationSettings::default(),
             compaction: CompactionConfig::default(),
@@ -1305,7 +1230,6 @@ mod tests {
         assert_eq!(decoded.models.embed.model, EmbedModel::AllMiniLML6V2);
         assert!(decoded.models.embed.quantized);
         assert_eq!(decoded.models.embed.gpu_acceleration, GpuAcceleration::Auto);
-        assert!(!decoded.codegraph.enabled);
         assert!(decoded.models.default_model.is_none());
         assert_eq!(decoded.models.session_title_model, "inherit");
         assert_eq!(decoded.models.compaction_model, "inherit");
@@ -1481,7 +1405,6 @@ mod tests {
         Settings::ensure(&paths).expect("ensure");
         let loaded = Settings::load(&paths).expect("load");
         assert_eq!(loaded.models.embed.model, EmbedModel::AllMiniLML6V2);
-        assert!(!loaded.codegraph.enabled);
         // New knobs default when section/fields are missing.
         assert!(loaded.memory.enabled);
         assert!(loaded.memory.auto_recall);
@@ -1516,26 +1439,6 @@ mod tests {
         assert_eq!(settings.models.embed.model, EmbedModel::Custom("BGESmallENV15".to_string()));
         assert!(!settings.models.embed.quantized);
         assert!(settings.memory.enabled);
-        assert!(!settings.codegraph.enabled);
-    }
-
-    #[test]
-    fn codegraph_settings_default_disabled() {
-        let s = Settings::defaults();
-        assert!(!s.codegraph.enabled);
-        let decoded: CodegraphSettings = serde_json::from_str("{}").expect("parse");
-        assert!(!decoded.enabled);
-        assert_eq!(decoded.tool_timeout_ms, 15_000);
-    }
-
-    #[test]
-    fn codegraph_tool_timeout_round_trip() {
-        let decoded: CodegraphSettings =
-            serde_json::from_str(r#"{"enabled": true, "toolTimeoutMs": 30000}"#).expect("parse");
-        assert!(decoded.enabled);
-        assert_eq!(decoded.tool_timeout_ms, 30_000);
-        let encoded = serde_json::to_string(&decoded).expect("serialize");
-        assert!(encoded.contains("\"toolTimeoutMs\":30000"));
     }
 
     #[test]

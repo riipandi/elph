@@ -2,8 +2,6 @@
 
 Design for how workspace crates are organized — separation of concerns, test placement, file-size limits, and scaling rules.
 
-Implementation detail lives in [openwiki](../openwiki/quickstart.md); this document defines the **intended** module map.
-
 ## Principles
 
 1. **Pi coding-agent port** — `agent/` owns session orchestration above `elph-agent`; not mixed with CLI or TUI chrome.

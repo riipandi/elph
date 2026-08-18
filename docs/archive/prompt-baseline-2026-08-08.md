@@ -5,7 +5,7 @@ the same one the compaction module reuses) via
 `crates/coding-agent/tests/prompt_baseline.rs`.
 
 Fixture: 18 registered skills + 33 native/memory tools (no MCP), cwd
-`/tmp/elph-project`, `codegraph_enabled=true`, no AGENTS.md.
+`/tmp/elph-project`, no AGENTS.md.
 
 ## Before (pre-Phase 1)
 

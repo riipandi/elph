@@ -13,7 +13,7 @@ How Elph stores sessions, restores history on `--continue` / `--resume`, and kee
 | Cross-session compaction summary | `session_summaries` (one row per session, upserted on compaction) |
 | TUI transcript cards | **Reconstructed** from the tree on resume (not a separate snapshot SoT) |
 
-Project store file: `<project>/.elph/store.db` (shared with floppy memory and codegraph).
+Project store file: `<project>/.elph/store.db` (shared with floppy memory).
 
 Session artifacts (terminals, MCP cache): `APP_DATA/sessions/<SESSION_ID>/`.
 

@@ -16,7 +16,7 @@ Track how far the **Elph coding-agent product** (`elph` crate) lags or leads mai
 This is **not** the same as `elph-agent` / `elph-ai` (runtime libraries). Those map to `packages/agent` and `packages/ai`.
 `elph` maps to the **product shell**: CLI, interactive TUI, session UX, slash commands, settings, export, extensions host, print/RPC modes, and so on.
 
-Elph deliberately **diverges** in product design (memory, codegraph, ACP, WASM extensions, goals). Treat those as **[Elph delta]**, not failures to port pi.
+Elph deliberately **diverges** in product design (memory, ACP, WASM extensions, goals). Treat those as **[Elph delta]**, not failures to port pi.
 
 **Style:** status is written as tagged bullets and short paragraphs so the page stays scannable without wide comparison tables.
 
@@ -37,7 +37,7 @@ Elph deliberately **diverges** in product design (memory, codegraph, ACP, WASM e
 - Project trust — **[Partial]**
 - Login / OAuth UX — **[Partial]** — provider CLI + oauth in `elph-ai`; interactive dialogs lag
 - Export HTML / share gist — **[Gap]** (CLI export stub)
-- Memory / codegraph / server — **[Elph delta]**
+- Memory / server — **[Elph delta]**
 
 ---
 
@@ -205,7 +205,7 @@ packages/coding-agent/                 elph/
 - Themes — **[Gap]**; keybindings — **[Partial]** / minimal
 - Telemetry / timings — **[Gap]** or not product-exposed
 - Diagnostics, footers/status — **[Partial]**
-- Memory / floppy, codegraph, local server — **[Elph delta]** (server often stub)
+- Memory / floppy, local server — **[Elph delta]** (server often stub)
 - Worktree admin CLI — **[Partial]**
 
 ---
@@ -281,7 +281,7 @@ Typical flags: `--model`, `--provider`, `--thinking`, `--continue`/`-c`, `--resu
 - `plugin` / extensions — **[Partial]** vs pi extensions + package manager
 - `doctor`, `stats`, `update` — **stubs**
 - `acp`, `memory` — present, **[Elph delta]**
-- `codegraph`, `server` — **stubs**, **[Elph delta]**
+- `server` — **stub**, **[Elph delta]**
 - `worktree` — **stubs**; packaging differs from pi
 
 ---
@@ -326,7 +326,6 @@ Library fixes may already be in `elph-ai` / `elph-agent` after the library sprin
 - Goals + nested subagents (product wiring); slash `/goal`
 - MCP product integration (`elph-agent` MCP + CLI)
 - Project memory (floppy) + `elph memory`
-- Codegraph CLI surface (often stubs)
 - ACP server mode (alternative to pi RPC)
 - WASM extensions (vs pi JS extensions)
 - Local REST/WS server (planned / stub)
@@ -362,7 +361,7 @@ Library fixes may already be in `elph-ai` / `elph-agent` after the library sprin
 
 ### Product (Elph-only — do not measure as pi lag)
 
-15. Memory, codegraph, server, goals polish on their own roadmaps.
+15. Memory, server, goals polish on their own roadmaps.
 
 ---
 

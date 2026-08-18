@@ -366,7 +366,7 @@ mod tests {
 
     #[test]
     fn rapid_paste_stream_stays_visible_while_bursting() {
-        let paste = "# Elph — OpenWiki Quickstart";
+        let paste = "# Elph — Quickstart";
         let mut state = TextareaState::default();
         let mut esc = false;
         let mut burst = PasteBurstState::default();

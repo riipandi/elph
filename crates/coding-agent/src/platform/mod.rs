@@ -27,6 +27,6 @@ pub use interrupt::{handle_prompt_interrupt, handle_prompt_interrupt_text};
 pub use paths::Paths;
 pub use project::ensure as ensure_project;
 pub use settings::{
-    CodegraphSettings, EmbedSettings, FilePickerSettings, GpuAcceleration, McpSettings, MemorySettings, ModelsSettings,
+    EmbedSettings, FilePickerSettings, GpuAcceleration, McpSettings, MemorySettings, ModelsSettings,
     NotificationSettings, Settings, SettingsScope, UiSettings,
 };

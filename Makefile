@@ -7,7 +7,7 @@ UNAME_S  := $(shell uname -s)
 UNAME_M  := $(shell uname -m)
 
 # On Apple Silicon macOS, default to Metal GPU acceleration for local embeddings
-# (codegraph + memory). The `metal` feature only compiles there; other platforms
+# (memory). The `metal` feature only compiles there; other platforms
 # stay on the CPU backend. Override with `make build ELPH_METAL=`.
 ifeq ($(UNAME_S),Darwin)
   ifeq ($(UNAME_M),arm64)
@@ -251,8 +251,7 @@ lint-elph-tui: ## Run clippy for elph-tui
 
 fmt: ## Format all code
 	@$(CARGO) fmt --all -- --style-edition 2024
-	@pnpm dlx --silent oxfmt crates/elph-ai/models/
-	@pnpm dlx --silent oxfmt openwiki/ schemas/
+	@pnpm dlx --silent oxfmt crates/elph-ai/models/ schemas/
 
 coverage: ## Run tests with coverage (requires cargo-llvm-cov)
 	@$(CARGO) llvm-cov nextest --no-cfg-coverage 2>&1

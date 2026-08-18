@@ -16,7 +16,7 @@ use std::str::FromStr;
 /// Future returned by [`EmbedFn`].
 pub type EmbedFuture = Pin<Box<dyn Future<Output = Result<Vec<Vec<f32>>>> + Send>>;
 
-/// Shared embedder callback used by memory and codegraph domains.
+/// Shared embedder callback used by the memory domain.
 ///
 /// Batch-first: callers pass a slice of texts and receive one embedding vector
 /// per input, in the same order. Batching many chunks into one call is the

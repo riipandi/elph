@@ -4,18 +4,17 @@
 //! ```text
 //! (session)  elph-agent / platform migration ──┐
 //!                                              ├─► .elph/store.db
-//! (memory, codegraph)  floppy migration ───────┘
+//! (memory)  floppy migration ──────────────────┘
 //! ```
 
 use elph::platform::migrations::metadata_migrations;
 use elph_agent::{SESSION_TREE_MIGRATIONS, ensure_database};
-use floppy::codegraph_migrations;
 use floppy::memory::migrations as memory_migrations;
 use turso::Builder;
 
 /// Expected ledger contents across all bands, in version order.
 /// Platform and session tree share versions 201–203 (whichever applies first wins per version).
-const EXPECTED_VERSIONS: &[i64] = &[1, 2, 3, 4, 201, 202, 203, 500, 501];
+const EXPECTED_VERSIONS: &[i64] = &[1, 2, 3, 4, 201, 202, 203];
 
 #[tokio::test]
 async fn all_bands_share_one_store_db_and_one_ledger() {
@@ -32,7 +31,7 @@ async fn all_bands_share_one_store_db_and_one_ledger() {
         .await
         .expect("session band");
 
-    // Floppy memory (1–4) and codegraph (500–501) bands.
+    // Floppy memory (1–4).
     let db = Builder::new_local(store_db.to_string_lossy().as_ref())
         .experimental_multiprocess_wal(true)
         .experimental_index_method(true)
@@ -41,7 +40,6 @@ async fn all_bands_share_one_store_db_and_one_ledger() {
         .expect("open store");
     let conn = db.connect().expect("connect");
     memory_migrations::apply(&conn).await.expect("memory band");
-    codegraph_migrations::apply(&conn).await.expect("codegraph band");
 
     // One ledger, every version exactly once, in order.
     let mut rows = conn
@@ -56,7 +54,6 @@ async fn all_bands_share_one_store_db_and_one_ledger() {
 
     // Re-running all bands is a no-op (per-version membership).
     memory_migrations::apply(&conn).await.expect("reapply memory");
-    codegraph_migrations::apply(&conn).await.expect("reapply codegraph");
     ensure_database(&store_db, &SESSION_TREE_MIGRATIONS)
         .await
         .expect("reapply session");
@@ -88,12 +85,6 @@ async fn all_bands_share_one_store_db_and_one_ledger() {
         "memories",
         "tasks",
         "meta",
-        // codegraph band
-        "cg_chunks",
-        "cg_files",
-        "cg_nodes",
-        "cg_edges",
-        "cg_meta",
         // session schema v2
         "sessions",
         "session_entries",

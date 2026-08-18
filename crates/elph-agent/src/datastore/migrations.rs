@@ -12,7 +12,7 @@ pub struct Migration {
 ///
 /// Uses **per-version** membership (not `MAX(version)`) so disjoint version
 /// bands coexist in one ledger: floppy memory (1–99), the session tree (100),
-/// elph host platform (101–199), and floppy codegraph (500–599) all share the
+/// and elph host platform (101–199) all share the
 /// same `app_migrations` table in `.elph/store.db`.
 pub async fn run(conn: &Connection, migrations: &[Migration]) -> Result<()> {
     crate::datastore::with_write_transaction(conn, || async {
