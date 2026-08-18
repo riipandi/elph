@@ -146,6 +146,12 @@ Common keys: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENCODE_API_KEY`, `DEEPSEE
 
 Settings and providers use standard JSON (pretty-printed on save).
 
+## `auth.json`
+
+Schema: [schemas/auth-schema.json](../schemas/auth-schema.json) (`https://elph.space/auth-schema.json`).
+
+Logical shape: `{ "$schema"?, "provider": { "<id>": "enc:…" | "env:VAR" }, "mcp": { "<server>": "enc:…" } }`. Field-level `enc:` ciphertext; `env:` refs stay plaintext. Do not commit this file.
+
 ## `settings.json`
 
 Schema: [schemas/elph-schema.json](../schemas/elph-schema.json).

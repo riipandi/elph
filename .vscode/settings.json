@@ -19,6 +19,10 @@
         {
             "fileMatch": ["**/mcp.json"],
             "url": "./schemas/mcp-schema.json"
+        },
+        {
+            "fileMatch": ["**/auth.json"],
+            "url": "./schemas/auth-schema.json"
         }
     ],
     "files.associations": {

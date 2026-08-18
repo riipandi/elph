@@ -9,11 +9,11 @@ User preferences live in JSON. The host (`elph`) maps them into `elph-agent` / `
 | Settings | `CONFIG_DIR/settings.json` + `<cwd>/.elph/settings.json` | UI, models, memory, notifications, compaction, session, workers, resources, logging |
 | MCP | `CONFIG_DIR/mcp.json` + `<cwd>/.elph/mcp.json` | Servers, policy, **cache TTL / max entries** |
 | Trust | `CONFIG_DIR/trust.json` | Trusted directories + `defaultProjectTrust` (WASM extensions only) |
-| Auth | `CONFIG_DIR/auth.json` | Credentials |
+| Auth | `CONFIG_DIR/auth.json` | Credentials (`schemas/auth-schema.json`) |
 
 Merge for settings and MCP: defaults ← home ← **project always** (nested objects deep-merge; arrays replace). Runtime `Settings::save` writes **home** only.
 
-Schema: `schemas/elph-schema.json`, `schemas/mcp-schema.json`. Generated files stamp `$schema` (`https://elph.space/elph-schema.json`, `https://elph.space/mcp-schema.json`, `https://elph.space/provider-schema.json`).
+Schema: `schemas/elph-schema.json`, `schemas/mcp-schema.json`, `schemas/auth-schema.json`, `schemas/provider-schema.json`. Generated files stamp `$schema` (`https://elph.space/elph-schema.json`, `https://elph.space/mcp-schema.json`, `https://elph.space/auth-schema.json`, `https://elph.space/provider-schema.json`).
 
 ## Shape (one nesting level)
 
