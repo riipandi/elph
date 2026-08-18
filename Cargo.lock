@@ -3159,7 +3159,6 @@ dependencies = [
  "base64 0.23.1",
  "chrono",
  "clap",
- "elph-tui",
  "eventsource-stream",
  "fastrace",
  "fastrace-reqwest",

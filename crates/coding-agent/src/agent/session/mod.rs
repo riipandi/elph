@@ -1065,7 +1065,7 @@ impl CodingAgentSession {
         let models = Arc::clone(&self.selection.read().models);
         let credential = if provider_id == "github-copilot" {
             if let elph_ai::Credential::OAuth(mut oauth) = credential {
-                let _ = elph_ai::ensure_copilot_available_model_ids(&mut oauth).await;
+                let _ = elph_ai::auth::ensure_copilot_available_model_ids(&mut oauth).await;
                 elph_ai::Credential::OAuth(oauth)
             } else {
                 credential

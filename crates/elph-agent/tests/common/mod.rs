@@ -123,7 +123,7 @@ pub fn user_texts(messages: &[elph_ai::Message]) -> Vec<String> {
 pub fn hanging_until_abort_stream_fn(model: &Model) -> elph_agent::StreamFn {
     let model = model.clone();
     Arc::new(move |_model, _context, options| {
-        let stream = elph_ai::utils::event_stream::AssistantMessageEventStream::new();
+        let stream = elph_ai::AssistantMessageEventStream::new();
         let signal = options.and_then(|o| o.base.signal.clone());
         let s = stream.clone();
         let model = model.clone();
@@ -206,7 +206,7 @@ pub fn label_entry(
 
 pub fn error_stream_fn(message: &'static str) -> elph_agent::StreamFn {
     Arc::new(move |model, _context, _options| {
-        let stream = elph_ai::utils::event_stream::AssistantMessageEventStream::new();
+        let stream = elph_ai::AssistantMessageEventStream::new();
         let model = model.clone();
         let s = stream.clone();
         tokio::spawn(async move {

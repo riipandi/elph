@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::api::{AnthropicMessagesApi, AzureOpenAIResponsesApi, BedrockConverseStreamApi, FauxApi};
+use crate::api::{AnthropicMessagesApi, AzureOpenAIResponsesApi, FauxApi};
 use crate::api::{GoogleGenerativeAIApi, GoogleVertexApi, MistralConversationsApi, OpenAICodexResponsesApi};
 use crate::api::{OpenAICompletionsApi, OpenAIResponsesApi};
 use crate::models::{ProviderApi, ProviderStreamsDyn};
@@ -64,8 +64,9 @@ pub fn mistral_conversations_api() -> Arc<dyn ProviderStreamsDyn> {
     arc_api(MistralConversationsApi)
 }
 
+#[cfg(feature = "bedrock")]
 pub fn bedrock_converse_stream_api() -> Arc<dyn ProviderStreamsDyn> {
-    arc_api(BedrockConverseStreamApi)
+    arc_api(crate::api::BedrockConverseStreamApi)
 }
 
 pub fn faux_api(api: FauxApi) -> Arc<dyn ProviderStreamsDyn> {

@@ -85,9 +85,13 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-elph-ai = "0.0.21"
+elph-ai = "0.0.28"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
+
+Optional features: `bedrock` (Amazon Bedrock SDK), `oauth-callback` (local browser OAuth server), `tracing`. Catalog regen is `generate-models` (not pulled by library users).
+
+Third-party hosts should set [`ClientIdentity`](src/types/mod.rs) on `CreateModelsOptions` (product name + env prefix). Default remains `elph` / `ELPH`. See [the consumer contract](../../docs/elph-ai.md).
 
 Or from the workspace:
 
@@ -185,7 +189,7 @@ async fn main() -> anyhow::Result<()> {
 }
 ```
 
-See [`examples/opencode_big_pickle.rs`](examples/opencode_big_pickle.rs) for a runnable example with progress output and streaming flags.
+See [`examples/basic.rs`](examples/basic.rs) for a runnable example with streaming flags.
 
 ## Providers and Models
 

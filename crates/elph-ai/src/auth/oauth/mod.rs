@@ -8,6 +8,7 @@ mod hyper;
 mod kimi;
 mod openai_codex;
 mod openrouter;
+#[cfg(feature = "oauth-callback")]
 mod pages;
 mod pkce;
 mod radius;

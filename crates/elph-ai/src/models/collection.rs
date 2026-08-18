@@ -11,7 +11,9 @@ use crate::auth::resolve::resolve_provider_auth;
 use crate::auth::resolve::{AuthResolutionOverrides, ModelsError, ModelsErrorCode};
 use crate::auth::types::{Credential, OAuthCredential};
 use crate::auth::{AuthContext, AuthModel, AuthResult, CredentialStore, InMemoryCredentialStore, ProviderAuth};
-use crate::types::{AssistantMessage, Context, Model, ProviderHeaders, SimpleStreamOptions, StreamOptions};
+use crate::types::{
+    AssistantMessage, ClientIdentity, Context, Model, ProviderHeaders, SimpleStreamOptions, StreamOptions,
+};
 use crate::utils::event_stream::AssistantMessageEventStream;
 
 pub trait ProviderStreamsDyn: Send + Sync {
@@ -88,7 +90,7 @@ impl Provider {
             return Ok(());
         };
         refresh().await.map_err(|e| {
-            ModelsError::with_cause(ModelsErrorCode::ModelSource, format!("Model refresh failed for {}", self.id), e)
+            ModelsError::with_source(ModelsErrorCode::ModelSource, format!("Model refresh failed for {}", self.id), e)
         })?;
         Ok(())
     }
@@ -145,12 +147,15 @@ pub fn create_provider(input: CreateProviderOptions) -> Provider {
 pub struct CreateModelsOptions {
     pub credentials: Option<Arc<dyn CredentialStore>>,
     pub auth_context: Option<Arc<dyn AuthContext>>,
+    /// Product name and env-var prefix for this collection.
+    pub identity: Option<ClientIdentity>,
 }
 
 pub struct Models {
     providers: HashMap<String, Provider>,
     credentials: Arc<dyn CredentialStore>,
     auth_context: Arc<dyn AuthContext>,
+    identity: ClientIdentity,
 }
 
 pub struct MutableModels {
@@ -313,6 +318,7 @@ impl Models {
             providers: self.providers.clone(),
             credentials: self.credentials.clone(),
             auth_context: self.auth_context.clone(),
+            identity: self.identity.clone(),
         }
     }
 
@@ -343,7 +349,7 @@ impl Models {
             overrides,
         )
         .await?;
-        Ok(merge_auth(model, options, resolution, provider))
+        Ok(merge_auth(model, options, resolution, provider, &self.identity))
     }
 
     async fn apply_auth_simple(
@@ -386,9 +392,13 @@ fn merge_auth(
     options: Option<StreamOptions>,
     resolution: Option<AuthResult>,
     provider: &Provider,
+    identity: &ClientIdentity,
 ) -> (Model, Option<StreamOptions>) {
     let mut request_model = model.clone();
     let mut request_options = options.unwrap_or_default();
+    if request_options.identity.is_none() {
+        request_options.identity = Some(identity.clone());
+    }
 
     if let Some(res) = resolution {
         if let Some(url) = res.auth.base_url {
@@ -509,6 +519,7 @@ pub fn create_models(options: Option<CreateModelsOptions>) -> MutableModels {
                 .as_ref()
                 .and_then(|o| o.auth_context.clone())
                 .unwrap_or_else(|| Arc::new(crate::auth::DefaultAuthContext::new())),
+            identity: options.as_ref().and_then(|o| o.identity.clone()).unwrap_or_default(),
         },
     }
 }

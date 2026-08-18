@@ -70,6 +70,7 @@ pub async fn resolve_model(
     let credentials = load_credentials_from_auth_json(auth_store_path).await?;
     let mut mutable = elph_ai::builtin_models(Some(CreateModelsOptions {
         credentials: Some(Arc::new(credentials)),
+        identity: Some(elph_ai::ClientIdentity::new("elph", "ELPH")),
         ..Default::default()
     }));
     // Register streaming adapters for disk-only provider ids (builtin catalogs already
@@ -80,7 +81,7 @@ pub async fn resolve_model(
     // Lazily fill Copilot plan model ids for older auth.json entries, then filter
     // the live catalog (Free/Student = auto / plan-available models only).
     if let Some(Credential::OAuth(mut oauth)) = mutable.credentials().read("github-copilot").await {
-        let _ = elph_ai::ensure_copilot_available_model_ids(&mut oauth).await;
+        let _ = elph_ai::auth::ensure_copilot_available_model_ids(&mut oauth).await;
         mutable.set_credential("github-copilot", Credential::OAuth(oauth)).await;
     } else {
         mutable.apply_oauth_model_filters().await;

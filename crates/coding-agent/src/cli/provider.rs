@@ -357,7 +357,7 @@ fn handle_connect(provider: Option<&str>, env_var: Option<&str>) -> ExitCode {
 
             match run_async(move || {
                 let rt = new_rt();
-                let credential = rt.block_on(elph_ai::oauth_provider_login(&provider_id, callbacks))?;
+                let credential = rt.block_on(elph_ai::auth::oauth_provider_login(&provider_id, callbacks))?;
                 if let Ok(json) = serde_json::to_string(&credential) {
                     rt.block_on(save_provider_credential(&auth_store, &provider_id, &json))?;
                 }

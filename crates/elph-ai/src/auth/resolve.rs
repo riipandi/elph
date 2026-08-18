@@ -15,22 +15,30 @@ pub enum ModelsErrorCode {
     OAuth,
 }
 
-/// Error from model resolution or streaming.
+/// Error from model resolution, catalog refresh, or auth — not from token streams.
 ///
-/// The Display includes the underlying cause message when present,
-/// so auth failures report the provider response instead of a bare wrapper.
-#[derive(Debug)]
+/// Generation failures stay in-band (`AssistantMessageEvent::Error` / `StopReason::Error`).
 pub struct ModelsError {
     pub code: ModelsErrorCode,
     pub message: String,
-    pub cause: Option<anyhow::Error>,
+    pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
+}
+
+impl fmt::Debug for ModelsError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ModelsError")
+            .field("code", &self.code)
+            .field("message", &self.message)
+            .field("source", &self.source.as_ref().map(ToString::to_string))
+            .finish()
+    }
 }
 
 impl fmt::Display for ModelsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}: {}", self.code, self.message)?;
-        if let Some(ref cause) = self.cause {
-            write!(f, " — {}", cause)?;
+        if let Some(ref source) = self.source {
+            write!(f, " — {source}")?;
         }
         Ok(())
     }
@@ -38,7 +46,7 @@ impl fmt::Display for ModelsError {
 
 impl std::error::Error for ModelsError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        self.cause.as_ref().map(|e| e.as_ref())
+        self.source.as_deref().map(|e| e as _)
     }
 }
 
@@ -47,15 +55,19 @@ impl ModelsError {
         Self {
             code,
             message: message.into(),
-            cause: None,
+            source: None,
         }
     }
 
-    pub fn with_cause(code: ModelsErrorCode, message: impl Into<String>, cause: anyhow::Error) -> Self {
+    pub fn with_source(
+        code: ModelsErrorCode,
+        message: impl Into<String>,
+        source: impl Into<Box<dyn std::error::Error + Send + Sync + 'static>>,
+    ) -> Self {
         Self {
             code,
             message: message.into(),
-            cause: Some(cause),
+            source: Some(source.into()),
         }
     }
 }
@@ -198,7 +210,7 @@ async fn resolve_stored_oauth(
                     return Ok(None);
                 }
                 log::warn!("OAuth refresh failed for {provider_id}: {detail}");
-                return Err(ModelsError::with_cause(
+                return Err(ModelsError::with_source(
                     ModelsErrorCode::OAuth,
                     format!("OAuth refresh failed for {provider_id}"),
                     e,
@@ -241,7 +253,7 @@ async fn resolve_stored_oauth(
             env: None,
             source: Some("OAuth".to_string()),
         })),
-        Err(e) => Err(ModelsError::with_cause(
+        Err(e) => Err(ModelsError::with_source(
             ModelsErrorCode::OAuth,
             format!("OAuth auth derivation failed for {provider_id}"),
             e,

@@ -1,7 +1,4 @@
-//! Core types for elph-ai provider streaming.
-//!
-//! Full type definitions will be expanded separately; this module provides the
-//! contract assumed by the API implementation layer.
+//! Core types for elph-ai: messages, models, stream options, and host identity.
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -71,6 +68,40 @@ pub struct ProviderResponse {
     pub headers: HashMap<String, String>,
 }
 
+/// Host product identity used for provider headers and prefixed environment keys.
+///
+/// Defaults keep the Elph product names (`product = "elph"`, `env_prefix = "ELPH"`).
+/// Third-party hosts should set this on [`crate::CreateModelsOptions`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientIdentity {
+    /// Sent as Codex `originator`, xAI `referrer`, and similar client tags.
+    pub product: String,
+    /// Prefix for process env keys (`CACHE_RETENTION`, `GITHUB_HOST`, rate-limit vars).
+    pub env_prefix: String,
+}
+
+impl Default for ClientIdentity {
+    fn default() -> Self {
+        Self {
+            product: "elph".to_string(),
+            env_prefix: "ELPH".to_string(),
+        }
+    }
+}
+
+impl ClientIdentity {
+    pub fn new(product: impl Into<String>, env_prefix: impl Into<String>) -> Self {
+        Self {
+            product: product.into(),
+            env_prefix: env_prefix.into(),
+        }
+    }
+
+    pub fn env_key(&self, suffix: &str) -> String {
+        format!("{}_{suffix}", self.env_prefix)
+    }
+}
+
 #[derive(Clone, Default)]
 pub struct StreamOptions {
     pub temperature: Option<f64>,
@@ -95,6 +126,14 @@ pub struct StreamOptions {
     /// Arbitrary sampling parameters (e.g. `top_p`, `top_k`, `min_p`, `repetition_penalty`)
     /// merged into OpenAI-compatible request bodies. Overrides any model-level defaults.
     pub sampling_params: Option<HashMap<String, Value>>,
+    /// Host identity for this request. Filled from [`crate::CreateModelsOptions`] when unset.
+    pub identity: Option<ClientIdentity>,
+}
+
+impl StreamOptions {
+    pub fn identity_or_default(&self) -> ClientIdentity {
+        self.identity.clone().unwrap_or_default()
+    }
 }
 
 pub type OnPayloadCallback =

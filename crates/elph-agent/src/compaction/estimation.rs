@@ -1,6 +1,6 @@
 //! Context token estimation and cut-point selection.
 
-use elph_ai::utils::estimate::count_tokens_text;
+use elph_ai::estimate::count_tokens_text;
 use elph_ai::{AssistantContentBlock, Message, StopReason, Usage};
 use serde_json::Value;
 

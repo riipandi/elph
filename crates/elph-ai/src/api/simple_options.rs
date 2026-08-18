@@ -45,6 +45,7 @@ pub fn build_base_options(
         signal: opts.and_then(|o| o.signal.clone()),
         client: opts.and_then(|o| o.client.clone()),
         sampling_params: opts.and_then(|o| o.sampling_params.clone()),
+        identity: opts.and_then(|o| o.identity.clone()),
     }
 }
 

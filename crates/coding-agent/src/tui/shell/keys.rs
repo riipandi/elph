@@ -2429,12 +2429,12 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                                 // Build AuthLoginCallbacks that sends events through the channel
                                 let callbacks = Arc::new(OAuthLoginCallbacksImpl { tx: oauth_event_tx });
 
-                                match elph_ai::oauth_provider_login(&provider_id_for_task, callbacks).await {
+                                match elph_ai::auth::oauth_provider_login(&provider_id_for_task, callbacks).await {
                                     Ok(credential) => {
                                         log::info!("OAuth login succeeded for provider: {}", provider_id_for_task);
 
                                         // Prefer refreshed credential from get_oauth_api_key when needed.
-                                        let credential = match elph_ai::get_oauth_api_key(
+                                        let credential = match elph_ai::auth::get_oauth_api_key(
                                             &provider_id_for_task,
                                             credential.clone(),
                                         )

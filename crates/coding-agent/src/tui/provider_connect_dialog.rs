@@ -9,8 +9,9 @@
 //!
 //! OAuth providers trigger the OAuth flow when OAuth authentication is selected.
 
+use elph_ai::auth::builtin_oauth_provider_ids;
+use elph_ai::get_builtin_providers;
 use elph_ai::providers::builtin_providers;
-use elph_ai::{builtin_oauth_provider_ids, get_builtin_providers};
 use elph_tui::components::{DialogChrome, DialogUserInputContent, UiTheme, dialog_max_content_height};
 use iocraft::prelude::*;
 

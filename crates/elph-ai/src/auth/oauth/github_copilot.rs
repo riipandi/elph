@@ -160,13 +160,13 @@ fn copilot_urls(domain: &str) -> (String, String, String) {
 }
 
 pub async fn login_github_copilot(callbacks: &Arc<dyn AuthLoginCallbacks>) -> anyhow::Result<CopilotOAuthTokens> {
-    // Optional enterprise host: blank → github.com. Env ELPH_GITHUB_HOST skips the prompt.
-    let enterprise_domain = if let Ok(host) = std::env::var("ELPH_GITHUB_HOST") {
+    let host_key = crate::types::ClientIdentity::default().env_key("GITHUB_HOST");
+    let enterprise_domain = if let Ok(host) = std::env::var(&host_key) {
         let host = host.trim().to_string();
         if host.is_empty() {
             None
         } else {
-            Some(normalize_domain(&host).ok_or_else(|| anyhow::anyhow!("Invalid ELPH_GITHUB_HOST: {host}"))?)
+            Some(normalize_domain(&host).ok_or_else(|| anyhow::anyhow!("Invalid {host_key}: {host}"))?)
         }
     } else {
         callbacks.notify(AuthEvent::Progress {

@@ -54,7 +54,7 @@ impl ProviderStreamsDyn for CapturingFauxStreams {
         model: &elph_ai::Model,
         context: &elph_ai::Context,
         options: Option<elph_ai::StreamOptions>,
-    ) -> elph_ai::utils::event_stream::AssistantMessageEventStream {
+    ) -> elph_ai::AssistantMessageEventStream {
         self.inner.stream(model, context, options)
     }
 
@@ -63,7 +63,7 @@ impl ProviderStreamsDyn for CapturingFauxStreams {
         model: &elph_ai::Model,
         context: &elph_ai::Context,
         options: Option<SimpleStreamOptions>,
-    ) -> elph_ai::utils::event_stream::AssistantMessageEventStream {
+    ) -> elph_ai::AssistantMessageEventStream {
         if let Some(opts) = options.clone() {
             self.captured.lock().push(opts);
         }

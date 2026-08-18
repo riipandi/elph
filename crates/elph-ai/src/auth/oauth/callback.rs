@@ -1,15 +1,23 @@
-use std::net::SocketAddr;
 use std::sync::Arc;
 
+#[cfg(feature = "oauth-callback")]
+use std::net::SocketAddr;
+
+#[cfg(feature = "oauth-callback")]
 use axum::Router;
+#[cfg(feature = "oauth-callback")]
 use axum::extract::Query;
+#[cfg(feature = "oauth-callback")]
 use axum::response::Html;
+#[cfg(feature = "oauth-callback")]
 use axum::routing::get;
 use parking_lot::Mutex;
+#[cfg(feature = "oauth-callback")]
 use serde::Deserialize;
 
 use tokio::sync::oneshot;
 
+#[cfg(feature = "oauth-callback")]
 use super::pages::{oauth_error_html, oauth_success_html};
 
 #[derive(Debug, Clone)]
@@ -23,6 +31,7 @@ pub struct CallbackServer {
     result_rx: oneshot::Receiver<Option<CallbackResult>>,
 }
 
+#[cfg(feature = "oauth-callback")]
 #[derive(Debug, Deserialize)]
 struct CallbackQuery {
     code: Option<String>,
@@ -30,6 +39,17 @@ struct CallbackQuery {
     error: Option<String>,
 }
 
+#[cfg(not(feature = "oauth-callback"))]
+pub async fn start_callback_server(
+    _port: u16,
+    _path: &str,
+    _expected_state: Option<&str>,
+    _success_title: &str,
+) -> anyhow::Result<CallbackServer> {
+    anyhow::bail!("browser OAuth login requires the `oauth-callback` Cargo feature")
+}
+
+#[cfg(feature = "oauth-callback")]
 pub async fn start_callback_server(
     port: u16,
     path: &str,

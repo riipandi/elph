@@ -163,7 +163,7 @@ const NATIVE_TOOL_NAMES: &[&str] = &[
 ];
 
 fn count_tokens(text: &str) -> u64 {
-    elph_ai::utils::estimate::count_tokens_text(text)
+    elph_ai::estimate::count_tokens_text(text)
 }
 
 fn prompt_tokens(mode: AgentMode) -> usize {

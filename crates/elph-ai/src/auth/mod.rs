@@ -18,6 +18,7 @@ pub use models_store::{InMemoryModelsStore, ModelsStore, ModelsStoreEntry, Provi
 pub use oauth::OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD;
 pub use oauth::{OAuthApiKeyResult, OAuthProviderInterface, OPENAI_CODEX_BROWSER_LOGIN_METHOD};
 pub use oauth::{anthropic_oauth, builtin_oauth_provider_ids, get_oauth_api_key, get_oauth_provider};
+pub use oauth::{ensure_copilot_available_model_ids, oauth_provider_login};
 pub use oauth::{get_oauth_providers, github_copilot_oauth, oauth_provider_modify_models, openai_codex_oauth};
 pub use oauth::{refresh_oauth_token, register_oauth_provider, reset_oauth_providers, unregister_oauth_provider};
 pub use resolve::resolve_provider_auth;

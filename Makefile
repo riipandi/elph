@@ -208,7 +208,7 @@ check-elph-tui: ## Check elph-tui compiles (lib, tests, examples)
 	@$(CARGO) check $(CARGO_QA_FLAGS) -p elph-tui --all-targets 2>&1
 
 generate-models: ## Regenerate elph-ai model catalogs (pi packages/ai; ARGS=--skip-scripts)
-	@$(CARGO) run -p elph-ai --bin generate-models -- all $(ARGS)
+	@$(CARGO) run -p elph-ai --features generate-models --bin generate-models -- all $(ARGS)
 	@pnpm dlx --silent oxfmt crates/elph-ai/models/
 
 # ─── Cross-Compilation ─────────────────────────────────────────────────────────

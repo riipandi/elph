@@ -8,7 +8,7 @@ use elph_agent::{
     AgentMessage, FileSystem, SessionTreeEntry, Skill, build_session_context, estimate_context_tokens,
     estimate_tokens_with_system_prompt,
 };
-use elph_ai::utils::estimate::count_tokens_text;
+use elph_ai::estimate::count_tokens_text;
 
 use super::CodingAgentSession;
 use crate::tui::chrome::count_user_turns;

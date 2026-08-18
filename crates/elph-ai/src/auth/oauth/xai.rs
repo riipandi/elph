@@ -190,7 +190,12 @@ async fn post_form(url: &str, fields: Vec<(&str, &str)>) -> Result<(bool, Value)
 
 /// Request device code from xAI OAuth server.
 async fn request_device_code() -> Result<DeviceCodeResponse> {
-    let fields = vec![("client_id", XAI_CLIENT_ID), ("scope", XAI_SCOPE), ("referrer", "elph")];
+    let product = crate::types::ClientIdentity::default().product;
+    let fields = vec![
+        ("client_id", XAI_CLIENT_ID),
+        ("scope", XAI_SCOPE),
+        ("referrer", product.as_str()),
+    ];
 
     let (ok, body) = post_form(XAI_DEVICE_CODE_URL, fields).await?;
     if !ok {
