@@ -1,10 +1,14 @@
 //! Terminal color adaptation for markdown spans (`supports-color` + `anstyle`).
 
 use anstyle::{Ansi256Color, AnsiColor, Color as AnstyleColor, Effects, RgbColor as AnstyleRgb};
+#[cfg(feature = "highlight")]
 use anstyle_syntect::to_anstyle;
+#[cfg(feature = "highlight")]
 use syntect::highlighting::Style as SyntectStyle;
 
-use crate::model::{FontWeight, RgbColor, StyledSpan};
+#[cfg(feature = "highlight")]
+use crate::model::RgbColor;
+use crate::model::{FontWeight, StyledSpan};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum ColorLevel {
@@ -84,6 +88,7 @@ fn rgb_to_ansi16(rgb: AnstyleRgb) -> AnsiColor {
     }
 }
 
+#[cfg(feature = "highlight")]
 fn ansi256_index_to_rgb(index: u8) -> RgbColor {
     match index {
         0 => RgbColor::new(0x00, 0x00, 0x00),
@@ -143,6 +148,7 @@ fn ansi256_to_ansi16(index: Ansi256Color) -> AnsiColor {
     }
 }
 
+#[cfg(feature = "highlight")]
 fn anstyle_color_to_rgb(color: AnstyleColor, _fallback: RgbColor) -> RgbColor {
     match color {
         AnstyleColor::Rgb(rgb) => RgbColor::new(rgb.0, rgb.1, rgb.2),
@@ -162,6 +168,7 @@ fn anstyle_color_to_rgb(color: AnstyleColor, _fallback: RgbColor) -> RgbColor {
 
 /// Convert a syntect style to an IR span. Always stores **truecolor RGB** — terminal
 /// adaptation happens at ANSI write time via [`span_anstyle`].
+#[cfg(feature = "highlight")]
 pub fn syntect_to_styled_span(style: SyntectStyle, text: impl Into<String>, fallback: RgbColor) -> StyledSpan {
     let anstyle = to_anstyle(style);
     let color = anstyle

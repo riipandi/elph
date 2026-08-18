@@ -1,5 +1,7 @@
 //! Syntax highlighting via syntect and the two-face extended syntax set.
 
+pub use crate::colors::syntect_to_styled_span;
+
 use std::io::Cursor;
 use std::path::Path;
 use std::sync::OnceLock;

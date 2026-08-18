@@ -23,7 +23,7 @@ figlet-rs.workspace = true
 iocraft.workspace = true
 log.workspace = true
 qrcode.workspace = true
-rendown = { workspace = true, features = ["mermaid"] }
+rendown = { workspace = true, features = ["highlight", "mermaid"] }
 serde.workspace = true
 serde_json.workspace = true
 similar.workspace = true

@@ -9,7 +9,8 @@ use std::path::Path;
 use iocraft::prelude::*;
 use similar::ChangeTag;
 
-use rendown::{FontWeight, syntax_highlight_raw, syntect_to_styled_span};
+use rendown::FontWeight;
+use rendown::syntax::{syntax_highlight_raw, syntect_to_styled_span};
 
 use super::render::diff_line_color;
 use crate::components::markdown::convert::{from_iocraft_color, to_iocraft_color, to_iocraft_weight};

@@ -4,7 +4,7 @@ use std::io::{self, Write};
 
 use crate::ansi::{document_to_plain, write_document_ansi};
 use crate::colors::{ColorLevel, detect_color_level};
-use crate::layout::markdown_document_row_count;
+use crate::layout::ansi_row_count;
 use crate::model::MarkdownDocument;
 use crate::parse::parse_markdown_document_with_theme;
 use crate::theme::MarkdownTheme;
@@ -74,7 +74,7 @@ impl Rendown {
     }
 
     pub fn row_count(&self, doc: &MarkdownDocument) -> u16 {
-        markdown_document_row_count(doc, self.width, &self.theme)
+        ansi_row_count(doc, self.width, &self.theme)
     }
 
     #[cfg(feature = "stream")]

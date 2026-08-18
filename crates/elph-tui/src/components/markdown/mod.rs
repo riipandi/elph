@@ -10,17 +10,24 @@ mod theme;
 pub use layout::{markdown_document_row_count, markdown_source_row_count};
 pub use render::{plain_text_document, render_linkified_plain_text, render_markdown_block, render_markdown_children};
 pub use render::{render_markdown_document, render_markdown_lines, streaming_tail_document};
+pub use rendown::has_open_container_at as markdown_has_open_container_at;
+pub use rendown::link::{path_to_file_url, spans_with_links};
 pub use rendown::{MarkdownDocument, MarkdownLine, MarkdownLineKind, MarkdownTable, MarkdownTheme, StyledSpan};
-pub use rendown::{has_open_container_at as markdown_has_open_container_at, path_to_file_url, spans_with_links};
 
 use super::scroll_box::ScrollBox;
 use super::theme::{UiTheme, resolve_ui_theme};
 use iocraft::prelude::*;
 use rendown::Rendown;
 
-/// Parse markdown with the default theme.
+fn active_markdown_theme() -> MarkdownTheme {
+    crate::theme_config::try_active_ui_theme()
+        .map(theme::theme_from_ui)
+        .unwrap_or_default()
+}
+
+/// Parse markdown with the active UI theme (or the dark default).
 pub fn parse_markdown_document(source: &str) -> MarkdownDocument {
-    Rendown::new().parse(source)
+    Rendown::new().theme(active_markdown_theme()).parse(source)
 }
 
 /// Parse markdown with an explicit theme.

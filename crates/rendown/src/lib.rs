@@ -1,7 +1,9 @@
 //! CommonMark/markdown renderer for terminals (ANSI).
 //!
 //! Parse once into a cacheable [`MarkdownDocument`], then write styled ANSI. Streaming
-//! token deltas and mermaid diagrams are optional crate features.
+//! token deltas, mermaid diagrams, and syntect highlighting are optional crate features.
+//!
+//! Headless ANSI wrap and TUI (iocraft) wrap are **not** guaranteed to match row-for-row.
 //!
 //! ```
 //! use rendown::{ColorLevel, MarkdownTheme, Rendown};
@@ -19,32 +21,30 @@ mod blocks;
 mod builder;
 mod colors;
 mod highlight;
-mod layout;
 mod linkify;
 mod mermaid;
 mod model;
 mod parse;
 mod parser_config;
-mod syntax;
 mod table;
 mod theme;
 mod wrap;
 
+pub mod layout;
+pub mod link;
+
+#[cfg(feature = "highlight")]
+pub mod syntax;
+
 #[cfg(feature = "stream")]
 mod stream;
 
-pub use blocks::{BLOCK_GAP_ROWS, CODE_BLOCK_INSET_H, CODE_BLOCK_INSET_V, CODE_VERTICAL_PADDING};
-pub use blocks::{block_gap_after, code_content_width, segment_end, segment_gap_after};
 pub use builder::Rendown;
-pub use colors::{ColorLevel, detect_color_level, syntect_to_styled_span};
-pub use layout::markdown_document_row_count;
-pub use linkify::{path_to_file_url, spans_with_links};
-pub use mermaid::mermaid_display_text;
+pub use colors::{ColorLevel, detect_color_level};
+pub use mermaid::{mermaid_display_shared, mermaid_display_text};
 pub use model::{FontWeight, MarkdownDocument, MarkdownLine, MarkdownLineKind, MarkdownTable, RgbColor, StyledSpan};
 pub use parser_config::has_open_container_at;
-pub use syntax::syntax_highlight_raw;
 pub use theme::{MarkdownTheme, MarkdownThemeBuilder};
-pub use wrap::wrap_with_hanging_ranges;
 
 #[cfg(feature = "mermaid")]
 pub use mermaid::render_mermaid_at_width;

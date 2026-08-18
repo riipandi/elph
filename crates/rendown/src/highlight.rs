@@ -1,9 +1,7 @@
 //! Fenced code block highlighting via syntect.
 
 use crate::blocks::code_block_uses_card_background;
-use crate::colors::syntect_to_styled_span;
 use crate::model::{MarkdownLine, MarkdownLineKind, StyledSpan};
-use crate::syntax::syntax_highlight_raw;
 use crate::theme::MarkdownTheme;
 
 /// Highlight a fenced code block into per-line styled spans.
@@ -23,32 +21,40 @@ pub fn highlight_code_block(language: Option<&str>, code: &str, theme: &Markdown
         }];
     }
 
-    let fence_info = language.unwrap_or("");
-    if let Some(highlighted) = syntax_highlight_raw(fence_info, code) {
-        return highlighted
-            .into_iter()
-            .map(|regions| {
-                let spans: Vec<StyledSpan> = regions
-                    .into_iter()
-                    .map(|(style, text)| (style, text.trim_end_matches(['\n', '\r']).to_string()))
-                    .filter(|(_, text)| !text.is_empty())
-                    .map(|(style, text)| syntect_to_styled_span(style, text, theme.body))
-                    .collect();
-                MarkdownLine {
-                    kind: MarkdownLineKind::Code,
-                    spans: if spans.is_empty() {
-                        vec![StyledSpan::plain("", theme.body)]
-                    } else {
-                        spans
-                    },
-                    code_background: use_card,
-                    table: None,
-                    mermaid_source: None,
-                }
-            })
-            .collect();
+    #[cfg(feature = "highlight")]
+    {
+        use crate::colors::syntect_to_styled_span;
+        use crate::syntax::syntax_highlight_raw;
+
+        let fence_info = language.unwrap_or("");
+        if let Some(highlighted) = syntax_highlight_raw(fence_info, code) {
+            return highlighted
+                .into_iter()
+                .map(|regions| {
+                    let spans: Vec<StyledSpan> = regions
+                        .into_iter()
+                        .map(|(style, text)| (style, text.trim_end_matches(['\n', '\r']).to_string()))
+                        .filter(|(_, text)| !text.is_empty())
+                        .map(|(style, text)| syntect_to_styled_span(style, text, theme.body))
+                        .collect();
+                    MarkdownLine {
+                        kind: MarkdownLineKind::Code,
+                        spans: if spans.is_empty() {
+                            vec![StyledSpan::plain("", theme.body)]
+                        } else {
+                            spans
+                        },
+                        code_background: use_card,
+                        table: None,
+                        mermaid_source: None,
+                    }
+                })
+                .collect();
+        }
     }
 
+    #[cfg(not(feature = "highlight"))]
+    let _ = language;
     fallback_plain_code_block(code, theme, use_card)
 }
 
@@ -111,6 +117,7 @@ mod tests {
         assert_eq!(lines[0].mermaid_source.as_deref(), Some(src));
     }
 
+    #[cfg(feature = "highlight")]
     #[test]
     fn non_mermaid_language_uses_syntect_path() {
         let src = "let x = 1;";

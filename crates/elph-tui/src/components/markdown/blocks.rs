@@ -1,6 +1,6 @@
 //! Re-export rendown block metrics used by iocraft paint / measure.
 
-pub use rendown::{
+pub use rendown::layout::{
     CODE_BLOCK_INSET_H, CODE_BLOCK_INSET_V, CODE_VERTICAL_PADDING, code_content_width, segment_end, segment_gap_after,
 };
 
@@ -8,7 +8,7 @@ pub use rendown::{
 mod tests {
     use super::*;
     use crate::components::markdown::parse_markdown_document;
-    use rendown::BLOCK_GAP_ROWS;
+    use rendown::layout::BLOCK_GAP_ROWS;
 
     #[test]
     fn segment_gap_after_last_code_block_is_zero() {

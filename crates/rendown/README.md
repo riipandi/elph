@@ -2,8 +2,11 @@
 
 CommonMark/markdown → ANSI for terminals.
 
-Parse once into a cacheable document (GFM, syntect highlighting, OSC 8 links), then write
-styled text. Incremental streaming and mermaid diagrams are optional features.
+Parse once into a cacheable document (GFM, optional syntect highlighting, OSC 8 links), then
+write styled text. Incremental streaming and mermaid diagrams are optional features.
+
+Headless ANSI wrap and a TUI toolkit’s wrap (for example iocraft) are **not** guaranteed to
+match row-for-row. Tables and paragraph wrapping can differ; do not assert pixel parity.
 
 ## Usage
 
@@ -11,7 +14,7 @@ styled text. Incremental streaming and mermaid diagrams are optional features.
 [dependencies]
 rendown = "0.0.1"
 # Optional:
-# rendown = { version = "0.0.1", features = ["stream", "mermaid"] }
+# rendown = { version = "0.0.1", features = ["stream", "mermaid", "highlight"] }
 ```
 
 ```rust
@@ -41,25 +44,13 @@ let theme = MarkdownTheme::builder()
 
 | Feature | Default | Adds |
 | --- | --- | --- |
-| *(none)* | yes | Parse + ANSI write |
-| `stream` | off | `Rendown::stream()` / `StreamRenderer` + `terminal_width()` (crossterm) |
-| `mermaid` | off | `render_mermaid_at_width` (mermaid-text). Fences always store `mermaid_source` in the IR; without this feature, ANSI prints the source as a code card. Only exact (strict-width) diagrams are cached — clipped fallbacks are not, so a bad first frame cannot stick until restart |
+| *(none)* | yes | Parse + ANSI write (plain fenced code, no syntect) |
+| `highlight` | off | syntect / two-face fence highlighting |
+| `stream` | off | `Rendown::stream()` / `StreamRenderer` + `terminal_width()` |
+| `mermaid` | off | Diagram render. Fences always store `mermaid_source`. Measure and paint should call `mermaid_display_shared` so they share one `Arc<str>` |
 
-```rust
-#[cfg(feature = "stream")]
-{
-    use rendown::Rendown;
-    let mut stream = Rendown::new().width(80).stream();
-    stream.push("# Hel", &mut out)?;
-    stream.finish(&mut out)?;
-}
-```
-
-## Notes
-
-- Colors are neutral RGB (`RgbColor`, `FontWeight`). No TUI toolkit dependency.
-- `NO_COLOR` and `supports-color` control auto color level unless you call `.color_level(...)`.
-- Mermaid fences are deferred at parse time so width-aware rendering can happen later.
+Layout helpers live under `rendown::layout` (insets, `ansi_row_count`, hanging wrap).
+Link helpers live under `rendown::link`. Syntect helpers live under `rendown::syntax`.
 
 ## License
 

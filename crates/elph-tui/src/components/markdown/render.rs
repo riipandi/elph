@@ -2,9 +2,8 @@
 
 use iocraft::prelude::*;
 
-use rendown::{
-    FontWeight, MarkdownDocument, MarkdownLine, MarkdownLineKind, MarkdownTheme, StyledSpan, spans_with_links,
-};
+use rendown::link::spans_with_links;
+use rendown::{FontWeight, MarkdownDocument, MarkdownLine, MarkdownLineKind, MarkdownTheme, StyledSpan};
 
 use super::blocks::{CODE_BLOCK_INSET_H, CODE_BLOCK_INSET_V, code_content_width, segment_end, segment_gap_after};
 use super::convert::{from_iocraft_color, to_iocraft_color, to_iocraft_weight};
@@ -189,7 +188,7 @@ fn render_mermaid_card(
     margin_bottom: u16,
 ) -> AnyElement<'static> {
     // Render with strict width; on failure (TooWide / invalid) fall back to raw source lines.
-    let rendered = rendown::mermaid_display_text(source, inner_width);
+    let rendered = rendown::mermaid_display_shared(source, inner_width);
     let row_elements: Vec<AnyElement<'static>> = rendered
         .lines()
         .map(|line| {

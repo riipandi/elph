@@ -19,18 +19,19 @@ path = "src/lib.rs"
 default = []
 stream = ["dep:crossterm"]
 mermaid = ["dep:mermaid-text"]
+highlight = ["dep:syntect", "dep:two-face", "dep:anstyle-syntect"]
 
 [dependencies]
 anstyle.workspace = true
-anstyle-syntect.workspace = true
+anstyle-syntect = { workspace = true, optional = true }
 crossterm = { workspace = true, optional = true, default-features = false, features = [] }
 html-escape.workspace = true
 linkify.workspace = true
 mermaid-text = { workspace = true, optional = true }
 pulldown-cmark.workspace = true
 supports-color.workspace = true
-syntect.workspace = true
-two-face = { workspace = true, default-features = false, features = ["syntect-fancy"] }
+syntect = { workspace = true, optional = true }
+two-face = { workspace = true, optional = true, default-features = false, features = ["syntect-fancy"] }
 unicode-linebreak.workspace = true
 unicode-segmentation.workspace = true
 unicode-width.workspace = true

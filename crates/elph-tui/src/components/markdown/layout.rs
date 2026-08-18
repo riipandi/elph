@@ -7,7 +7,7 @@ use super::blocks::CODE_VERTICAL_PADDING;
 use super::blocks::{code_content_width, segment_end, segment_gap_after};
 use super::table::markdown_table_row_count;
 
-pub(crate) use rendown::wrap_with_hanging_ranges;
+pub(crate) use rendown::layout::wrap_with_hanging_ranges;
 
 /// Visual row count for one code line, honoring hanging-indent wrapping.
 pub(crate) fn code_line_row_count(text: &str, inner: u16) -> u16 {
@@ -40,7 +40,7 @@ fn line_row_count(line: &MarkdownLine, wrap_width: u16) -> u16 {
     // and paint in parity — the row count matches exactly what render_mermaid_card paints.
     if let Some(source) = &line.mermaid_source {
         let inner = code_content_width(wrap_width);
-        let rendered = rendown::mermaid_display_text(source, inner);
+        let rendered = rendown::mermaid_display_shared(source, inner);
         return rendered.lines().count().max(1) as u16;
     }
     if line.code_background {
@@ -165,7 +165,7 @@ mod tests {
 
     #[test]
     fn code_blocks_use_same_gap_as_paragraphs() {
-        use rendown::BLOCK_GAP_ROWS;
+        use rendown::layout::BLOCK_GAP_ROWS;
 
         let para_code = markdown_document_row_count(&parse_markdown_document("Text\n\n```\ncode\n```"), 40);
         let code_para = markdown_document_row_count(&parse_markdown_document("```\ncode\n```\n\nText"), 40);

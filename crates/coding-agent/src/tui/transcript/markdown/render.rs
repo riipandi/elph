@@ -1,6 +1,6 @@
 //! Paint cached markdown documents into transcript cards.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::sync::Mutex;
 
 use elph_tui::MarkdownDocument;
@@ -10,12 +10,6 @@ use iocraft::prelude::*;
 use super::buffer::AssistantMarkdownBuffer;
 
 /// Cache key for the built (merged) markdown document per (stable_hash, wrap_width).
-///
-/// `build_assistant_markdown_document` clones the cached `MarkdownDocument` and merges
-/// it with the streaming tail — an O(n) allocation that runs on every paint for every
-/// visible assistant message. For completed messages (which don't change), we cache the
-/// built document and reuse it across frames. This eliminates the per-frame clone for
-/// the vast majority of visible messages in a long session.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 struct BuiltDocCacheKey {
     stable_hash: u64,
@@ -23,17 +17,63 @@ struct BuiltDocCacheKey {
     stream_complete: bool,
 }
 
-/// Global cache for built documents. Keyed by (stable_hash, wrap_width, stream_complete).
-/// Each entry holds a `MarkdownDocument` (a few KB to a few hundred KB). Bounded to 64 entries.
-static BUILT_DOC_CACHE: std::sync::OnceLock<Mutex<HashMap<BuiltDocCacheKey, MarkdownDocument>>> =
-    std::sync::OnceLock::new();
-
-fn built_doc_cache() -> &'static Mutex<HashMap<BuiltDocCacheKey, MarkdownDocument>> {
-    BUILT_DOC_CACHE.get_or_init(|| Mutex::new(HashMap::with_capacity(32)))
+struct BuiltDocLru {
+    map: HashMap<BuiltDocCacheKey, MarkdownDocument>,
+    order: VecDeque<BuiltDocCacheKey>,
 }
 
-/// Max cached built documents. When exceeded, half the cache is drained (oldest first).
-const BUILT_DOC_CACHE_MAX: usize = 64;
+impl BuiltDocLru {
+    fn new() -> Self {
+        Self {
+            map: HashMap::with_capacity(BUILT_DOC_CACHE_MAX),
+            order: VecDeque::with_capacity(BUILT_DOC_CACHE_MAX),
+        }
+    }
+
+    fn get(&mut self, key: &BuiltDocCacheKey) -> Option<&MarkdownDocument> {
+        if !self.map.contains_key(key) {
+            return None;
+        }
+        if let Some(i) = self.order.iter().position(|k| k == key) {
+            self.order.remove(i);
+            self.order.push_back(*key);
+        }
+        self.map.get(key)
+    }
+
+    #[cfg(test)]
+    fn len(&self) -> usize {
+        self.map.len()
+    }
+
+    #[cfg(test)]
+    fn is_empty(&self) -> bool {
+        self.map.is_empty()
+    }
+
+    fn insert(&mut self, key: BuiltDocCacheKey, doc: MarkdownDocument) {
+        if self.map.remove(&key).is_some() {
+            self.order.retain(|k| k != &key);
+        }
+        while self.map.len() >= BUILT_DOC_CACHE_MAX {
+            if let Some(old) = self.order.pop_front() {
+                self.map.remove(&old);
+            } else {
+                break;
+            }
+        }
+        self.map.insert(key, doc);
+        self.order.push_back(key);
+    }
+}
+
+static BUILT_DOC_CACHE: std::sync::OnceLock<Mutex<BuiltDocLru>> = std::sync::OnceLock::new();
+
+fn built_doc_cache() -> &'static Mutex<BuiltDocLru> {
+    BUILT_DOC_CACHE.get_or_init(|| Mutex::new(BuiltDocLru::new()))
+}
+
+const BUILT_DOC_CACHE_MAX: usize = 32;
 
 fn merge_documents(mut base: MarkdownDocument, extension: MarkdownDocument) -> MarkdownDocument {
     if !extension.lines.is_empty() {
@@ -240,25 +280,14 @@ fn build_cached_document(
             stream_complete: true,
         };
 
-        // Cache hit — return cloned cached document.
-        if let Ok(cache) = built_doc_cache().lock()
+        if let Ok(mut cache) = built_doc_cache().lock()
             && let Some(cached) = cache.get(&key)
         {
             return cached.clone();
         }
 
-        // Cache miss — build and cache.
         let doc = buffer.built_document(raw, tail_foreground);
         if let Ok(mut cache) = built_doc_cache().lock() {
-            if cache.len() >= BUILT_DOC_CACHE_MAX {
-                // Drain half (oldest-first via iteration order) while holding the lock,
-                // so a concurrent writer can't re-overfill the cache between drain and insert.
-                let to_remove = cache.len() / 2;
-                let keys: Vec<_> = cache.keys().take(to_remove).copied().collect();
-                for k in keys {
-                    cache.remove(&k);
-                }
-            }
             cache.insert(key, doc.clone());
         }
         return doc;

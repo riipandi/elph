@@ -1,5 +1,7 @@
 //! Mermaid fence handling: deferred IR always; diagram render behind `feature = "mermaid"`.
 
+use std::sync::Arc;
+
 /// Skip mermaid-text for implausibly narrow measure passes (layout flicker).
 #[cfg(feature = "mermaid")]
 const MIN_RENDER_WIDTH: u16 = 12;
@@ -10,20 +12,26 @@ const MIN_CACHE_WIDTH: u16 = 24;
 #[cfg(feature = "mermaid")]
 const MAX_SOURCE_BYTES: usize = 8 * 1024;
 
-/// Text to paint for a deferred mermaid fence at `inner` columns.
+/// Shared diagram (or source fallback) for a fence at `inner` columns.
 ///
-/// With `feature = "mermaid"`, this is a box-drawing diagram (or the source on error).
-/// Without the feature, this is the raw mermaid source.
-pub fn mermaid_display_text(source: &str, inner: u16) -> String {
+/// Measure and paint must call this so they see the **same** string in one frame,
+/// including clipped fallbacks. Errors (invalid / too-narrow / oversize) return the
+/// raw source and are not cached.
+pub fn mermaid_display_shared(source: &str, inner: u16) -> Arc<str> {
     #[cfg(feature = "mermaid")]
     {
-        render_mermaid_at_width(source, inner).unwrap_or_else(|_| source.to_string())
+        render::display_shared(source, inner)
     }
     #[cfg(not(feature = "mermaid"))]
     {
         let _ = inner;
-        source.to_string()
+        Arc::<str>::from(source)
     }
+}
+
+/// Owned copy of [`mermaid_display_shared`].
+pub fn mermaid_display_text(source: &str, inner: u16) -> String {
+    mermaid_display_shared(source, inner).to_string()
 }
 
 #[cfg(feature = "mermaid")]
@@ -113,9 +121,17 @@ mod render {
     /// At most two mermaid-text calls (strict Unicode, then strict ASCII). Each call already
     /// runs progressive compaction internally — do not stack four full pipelines.
     ///
-    /// Only **exact** (strict-width) results are cached. Truncated fallbacks and errors are
-    /// never stored, so a bad first frame cannot pin clipped output until process restart.
+    /// Successful renders (exact or clipped-to-width) are cached per `(source, width)` so
+    /// measure and paint share one `Arc<str>`. Errors are not cached.
     pub fn render_mermaid_at_width(source: &str, max_width: u16) -> Result<String, mermaid_text::Error> {
+        render_shared(source, max_width).map(|text| text.to_string())
+    }
+
+    pub(super) fn display_shared(source: &str, inner: u16) -> Arc<str> {
+        render_shared(source, inner).unwrap_or_else(|_| Arc::<str>::from(source))
+    }
+
+    fn render_shared(source: &str, max_width: u16) -> Result<Arc<str>, mermaid_text::Error> {
         if source.trim().is_empty() {
             return Err(mermaid_text::Error::EmptyInput);
         }
@@ -129,7 +145,6 @@ mod render {
             });
         }
 
-        let max_width_usize = max_width as usize;
         let cache_key = MermaidCacheKey {
             source_hash: source_hash(source),
             max_width,
@@ -139,19 +154,17 @@ mod render {
             && let Ok(mut cache) = mermaid_cache().lock()
             && let Some(cached) = cache.get(&cache_key)
         {
-            return Ok(cached.to_string());
+            return Ok(cached);
         }
 
-        let (output, quality) = render_mermaid_uncached(source, max_width_usize)?;
-
-        if quality == Quality::Exact
-            && max_width >= MIN_CACHE_WIDTH
+        let (output, _quality) = render_mermaid_uncached(source, max_width as usize)?;
+        let shared = Arc::<str>::from(output);
+        if max_width >= MIN_CACHE_WIDTH
             && let Ok(mut cache) = mermaid_cache().lock()
         {
-            cache.insert(cache_key, Arc::<str>::from(output.as_str()));
+            cache.insert(cache_key, Arc::clone(&shared));
         }
-
-        Ok(output)
+        Ok(shared)
     }
 
     fn render_mermaid_uncached(source: &str, max_width: usize) -> Result<(String, Quality), mermaid_text::Error> {

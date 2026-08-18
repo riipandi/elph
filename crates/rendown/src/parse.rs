@@ -650,7 +650,7 @@ pub(crate) fn parse_markdown_document_with_theme(source: &str, theme: &MarkdownT
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::layout::markdown_document_row_count;
+    use crate::layout::ansi_row_count;
 
     fn parse_markdown_document(source: &str) -> MarkdownDocument {
         parse_markdown_document_with_theme(source, &MarkdownTheme::default())
@@ -675,7 +675,7 @@ mod tests {
             line_texts(&doc)
         );
         assert_eq!(doc.lines.len(), 2);
-        let rows = markdown_document_row_count(&doc, 40, &MarkdownTheme::default());
+        let rows = ansi_row_count(&doc, 40, &MarkdownTheme::default());
         assert!(rows <= 4, "too many rows for two short paragraphs: {rows}");
     }
 
@@ -708,7 +708,7 @@ mod tests {
     fn list_followed_by_paragraph_has_gap_row() {
         let doc = parse_markdown_document("- item\n\nnext");
         assert_eq!(doc.lines.len(), 2);
-        let rows = markdown_document_row_count(&doc, 40, &MarkdownTheme::default());
+        let rows = ansi_row_count(&doc, 40, &MarkdownTheme::default());
         assert!(rows >= 3, "expected gap after list, got {rows}");
     }
 
