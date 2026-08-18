@@ -116,8 +116,7 @@ pub fn plan_preview_action(modifiers: KeyModifiers, code: KeyCode, selected_inde
 pub fn plan_review_footer_hint(focus: PlanReviewFocus) -> String {
     match focus {
         PlanReviewFocus::Preview => {
-            "↑↓ move · Enter confirm · a implement · f fresh · s revise · q quit · y copy · Esc stay"
-                .to_string()
+            "↑↓ move · Enter confirm · a implement · f fresh · s revise · q quit · y copy · Esc stay".to_string()
         }
         PlanReviewFocus::Prompt => "Type revision notes · Enter send · Esc/Tab back".to_string(),
     }
