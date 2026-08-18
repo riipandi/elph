@@ -270,7 +270,7 @@ mod tests {
         .expect("prompt");
 
         assert!(prompt.contains("<proposed_plan>"));
-        assert!(prompt.contains("Plan — read-only exploration"));
+        assert!(prompt.contains("Plan — design an implementation-ready plan"));
         assert!(prompt.contains("implementation-ready plan"));
     }
 

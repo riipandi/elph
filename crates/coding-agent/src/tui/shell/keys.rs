@@ -1666,14 +1666,15 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         let approval_choice = {
             let user_question_active = pending_user_question.read().is_some();
             if pending_tool_approval.read().is_some() && !user_question_active {
+                let once_only = pending_tool_approval.read().as_ref().is_some_and(|p| p.once_only);
                 if modifiers.is_empty() && code == KeyCode::Esc {
                     Some(ToolApprovalChoice::Reject)
                 } else {
-                    pick_tool_approval_index_from_key(modifiers, code)
-                        .and_then(choice_at_index)
+                    pick_tool_approval_index_from_key_for(modifiers, code, once_only)
+                        .and_then(|idx| choice_at_index_for(idx, once_only))
                         .or_else(|| {
                             (modifiers.is_empty() && code == KeyCode::Enter)
-                                .then(|| choice_at_index(approval_selected.get()))
+                                .then(|| choice_at_index_for(approval_selected.get(), once_only))
                                 .flatten()
                         })
                 }

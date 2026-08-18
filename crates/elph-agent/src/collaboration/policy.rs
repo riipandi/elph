@@ -124,6 +124,16 @@ pub fn is_plan_mode_tool(name: &str, policy: Option<&ToolExposurePolicy>) -> boo
     is_exploration_tool(name, policy) || is_goal_tool(name) || is_plan_file_tool(name) || is_read_only_mcp_tool(name)
 }
 
+/// Workspace mutating tools allowed in Plan (per-call approval). Excludes multi-agent tools.
+pub fn is_plan_workspace_mutating_tool(name: &str, policy: Option<&ToolExposurePolicy>) -> bool {
+    is_mutating_tool(name, policy) && !is_collaboration_tool(name, policy)
+}
+
+/// Tools the model may invoke while Plan is active (read-only plus approved workspace mutations).
+pub fn is_plan_exposed_tool(name: &str, policy: Option<&ToolExposurePolicy>) -> bool {
+    is_plan_mode_tool(name, policy) || is_plan_workspace_mutating_tool(name, policy)
+}
+
 pub fn is_mutating_tool(name: &str, policy: Option<&ToolExposurePolicy>) -> bool {
     if active_policy(policy).mutating_tools.iter().any(|tool| tool == name) {
         return true;
@@ -156,29 +166,28 @@ pub fn filter_active_tools(
         CollaborationMode::Default => all_names.to_vec(),
         CollaborationMode::Plan => all_names
             .iter()
-            .filter(|name| is_plan_mode_tool(name, policy))
+            .filter(|name| is_plan_exposed_tool(name, policy))
             .cloned()
             .collect(),
     }
 }
 
-/// Whether a tool call should be blocked in Plan mode.
+/// Whether a tool call is hard-blocked in Plan (collaboration / unlisted tools).
 ///
-/// Plan mode is read-only. Mutating tools are blocked — the agent must use
-/// `<proposed_plan>` tags to propose plans; the system handles file creation
-/// via `save_plan_to_disk`.
+/// Workspace mutating tools stay available; the host must approve each call.
+/// Implementing a plan still requires `<proposed_plan>` confirmation.
 pub fn plan_mode_blocks_tool(mode: CollaborationMode, tool_name: &str, policy: Option<&ToolExposurePolicy>) -> bool {
     if mode != CollaborationMode::Plan {
         return false;
     }
-    // Plan mode is read-only — all mutating tools are blocked.
-    is_mutating_tool(tool_name, policy) || !is_plan_mode_tool(tool_name, policy)
+    !is_plan_exposed_tool(tool_name, policy)
 }
 
 pub fn plan_mode_block_reason(tool_name: &str) -> String {
     format!(
-        "Tool \"{tool_name}\" is not available in Plan mode. Use read-only tools to explore, \
-         then wrap your implementation plan in <proposed_plan>...</proposed_plan> for user confirmation."
+        "Tool \"{tool_name}\" is not available in Plan mode. Use exploration or per-call \
+         approved workspace tools to investigate, then wrap the implementation plan in \
+         <proposed_plan>...</proposed_plan> for user confirmation."
     )
 }
 
@@ -187,7 +196,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn plan_mode_filters_mutating_tools() {
+    fn plan_mode_exposes_workspace_mutating_tools() {
         let all = vec![
             "read_file".into(),
             "shell_exec".into(),
@@ -195,15 +204,16 @@ mod tests {
             "edit_file".into(),
             "create_dir".into(),
             "grep".into(),
+            "spawn_agent".into(),
         ];
-        // Plan mode is read-only — write_file, edit_file, create_dir, shell_exec all blocked.
         let filtered = filter_active_tools(CollaborationMode::Plan, &all, None);
-        assert!(!filtered.contains(&"write_file".to_string()));
-        assert!(!filtered.contains(&"edit_file".to_string()));
-        assert!(!filtered.contains(&"create_dir".to_string()));
-        assert!(!filtered.contains(&"shell_exec".to_string()));
+        assert!(filtered.contains(&"write_file".to_string()));
+        assert!(filtered.contains(&"edit_file".to_string()));
+        assert!(filtered.contains(&"create_dir".to_string()));
+        assert!(filtered.contains(&"shell_exec".to_string()));
         assert!(filtered.contains(&"read_file".to_string()));
         assert!(filtered.contains(&"grep".to_string()));
+        assert!(!filtered.contains(&"spawn_agent".to_string()));
     }
 
     #[test]
@@ -217,7 +227,7 @@ mod tests {
             None,
         );
         assert!(filtered.contains(&"ask_user_question".to_string()));
-        assert!(!filtered.contains(&"write_file".to_string()));
+        assert!(filtered.contains(&"write_file".to_string()));
     }
 
     #[test]
@@ -232,34 +242,24 @@ mod tests {
             None,
         );
         assert!(filtered.contains(&"request_mode_change".to_string()));
-        assert!(!filtered.contains(&"shell_exec".to_string()));
+        assert!(filtered.contains(&"shell_exec".to_string()));
     }
 
     #[test]
-    fn blocks_shell_exec_in_plan_mode() {
-        assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "shell_exec", None));
+    fn does_not_hard_block_workspace_mutating_in_plan_mode() {
+        assert!(!plan_mode_blocks_tool(CollaborationMode::Plan, "shell_exec", None));
+        assert!(!plan_mode_blocks_tool(CollaborationMode::Plan, "shell_use", None));
+        assert!(!plan_mode_blocks_tool(CollaborationMode::Plan, "write_file", None));
+        assert!(!plan_mode_blocks_tool(CollaborationMode::Plan, "edit_file", None));
+        assert!(!plan_mode_blocks_tool(CollaborationMode::Plan, "create_dir", None));
         assert!(!plan_mode_blocks_tool(CollaborationMode::Default, "shell_exec", None));
     }
 
     #[test]
-    fn blocks_shell_use_in_plan_mode() {
-        assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "shell_use", None));
-        assert!(!plan_mode_blocks_tool(CollaborationMode::Default, "shell_use", None));
-    }
-
-    #[test]
-    fn plan_mode_rejects_file_tools() {
-        // System now handles plan file creation — write/edit/create_dir are blocked.
-        assert!(!is_plan_mode_tool("write_file", None));
-        assert!(!is_plan_mode_tool("edit_file", None));
-        assert!(!is_plan_mode_tool("create_dir", None));
-    }
-
-    #[test]
-    fn plan_mode_blocks_file_tools() {
-        assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "write_file", None));
-        assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "edit_file", None));
-        assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "create_dir", None));
+    fn plan_mode_hard_blocks_collaboration_tools() {
+        assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "spawn_agent", None));
+        assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "send_message", None));
+        assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "list_agents", None));
     }
 
     #[test]

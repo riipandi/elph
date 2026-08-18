@@ -160,7 +160,7 @@ impl AgentModePolicy {
             return false;
         }
         if self.mode == AgentMode::Plan {
-            return false;
+            return is_mutating_tool(tool_name, Some(coding_tool_exposure_policy()));
         }
         if is_mcp_tool(tool_name) {
             if let Some(reg) = &self.mcp_registry {
@@ -178,29 +178,34 @@ impl AgentModePolicy {
         args_summary: String,
         ui_tx: &tokio::sync::mpsc::UnboundedSender<AgentUiEvent>,
     ) -> Result<bool, String> {
-        if *self.session_allow_all.lock().await {
-            return Ok(true);
-        }
-        if self.session_allowed.lock().await.contains(&tool_name) {
-            return Ok(true);
+        let once_only = self.mode == AgentMode::Plan;
+        if !once_only {
+            if *self.session_allow_all.lock().await {
+                return Ok(true);
+            }
+            if self.session_allowed.lock().await.contains(&tool_name) {
+                return Ok(true);
+            }
         }
         let (response_tx, response_rx) = tokio::sync::oneshot::channel();
         let _ = ui_tx.send(AgentUiEvent::ToolApprovalRequired(ToolApprovalRequest {
             tool_call_id,
             tool_name: tool_name.clone(),
             args_summary,
+            once_only,
             response_tx,
         }));
         match response_rx.await {
             Ok(ToolApprovalChoice::Approve) => Ok(true),
-            Ok(ToolApprovalChoice::AllowSession) => {
+            Ok(ToolApprovalChoice::AllowSession) if !once_only => {
                 self.session_allowed.lock().await.insert(tool_name);
                 Ok(true)
             }
-            Ok(ToolApprovalChoice::AllowAllTools) => {
+            Ok(ToolApprovalChoice::AllowAllTools) if !once_only => {
                 *self.session_allow_all.lock().await = true;
                 Ok(true)
             }
+            Ok(ToolApprovalChoice::AllowSession | ToolApprovalChoice::AllowAllTools) => Ok(true),
             Ok(ToolApprovalChoice::Reject) => Ok(false),
             Err(_) => Err("Tool approval channel closed".into()),
         }
@@ -379,7 +384,7 @@ mod tests {
         assert!(active.contains(&"code_impact".to_string()));
         assert!(active.contains(&"code_status".to_string()));
         assert!(active.contains(&"code_reindex".to_string()));
-        assert!(!active.contains(&"write_file".to_string()));
+        assert!(active.contains(&"write_file".to_string()));
     }
 
     #[test]
@@ -402,15 +407,22 @@ mod tests {
             "request_mode_change".into(),
         ];
         let active = AgentModePolicy::active_tool_names_for_mode(AgentMode::Plan, &all, None);
-        // Plan mode blocks write/edit/create_dir — system handles plan file creation.
         assert!(active.contains(&"read_file".to_string()));
         assert!(active.contains(&"web_search".to_string()));
-        assert!(!active.contains(&"edit_file".to_string()));
-        assert!(!active.contains(&"write_file".to_string()));
-        assert!(!active.contains(&"create_dir".to_string()));
-        // ask_user_question and request_mode_change are safe in Plan mode.
+        assert!(active.contains(&"edit_file".to_string()));
+        assert!(active.contains(&"write_file".to_string()));
+        assert!(active.contains(&"create_dir".to_string()));
         assert!(active.contains(&"ask_user_question".to_string()));
         assert!(active.contains(&"request_mode_change".to_string()));
+    }
+
+    #[test]
+    fn plan_mode_requires_approval_for_mutating_tools() {
+        let policy = AgentModePolicy::new(AgentMode::Plan);
+        assert!(policy.needs_approval("write_file"));
+        assert!(policy.needs_approval("shell_exec"));
+        assert!(!policy.needs_approval("read_file"));
+        assert!(!policy.needs_approval("grep"));
     }
 
     #[tokio::test]
@@ -482,6 +494,42 @@ mod tests {
             Some(AgentUiEvent::ToolApprovalRequired(req)) => req,
             other => panic!("expected second ToolApprovalRequired, got {other:?}"),
         };
+        let _ = req2.response_tx.send(ToolApprovalChoice::Approve);
+        assert_eq!(approve2.await.expect("join"), Ok(true));
+    }
+
+    #[tokio::test]
+    async fn plan_mode_always_prompts_even_after_allow_session_choice() {
+        let policy = Arc::new(AgentModePolicy::new(AgentMode::Plan));
+        let (ui_tx, mut ui_rx) = tokio::sync::mpsc::unbounded_channel();
+
+        let policy_task = Arc::clone(&policy);
+        let ui_tx_clone = ui_tx.clone();
+        let approve = tokio::spawn(async move {
+            policy_task
+                .request_approval("c1".into(), "write_file".into(), "{}".into(), &ui_tx_clone)
+                .await
+        });
+        let req = match ui_rx.recv().await {
+            Some(AgentUiEvent::ToolApprovalRequired(req)) => req,
+            other => panic!("expected ToolApprovalRequired, got {other:?}"),
+        };
+        assert!(req.once_only);
+        let _ = req.response_tx.send(ToolApprovalChoice::AllowSession);
+        assert_eq!(approve.await.expect("join"), Ok(true));
+
+        let policy_task = Arc::clone(&policy);
+        let ui_tx_clone = ui_tx.clone();
+        let approve2 = tokio::spawn(async move {
+            policy_task
+                .request_approval("c2".into(), "write_file".into(), "{}".into(), &ui_tx_clone)
+                .await
+        });
+        let req2 = match ui_rx.recv().await {
+            Some(AgentUiEvent::ToolApprovalRequired(req)) => req,
+            other => panic!("expected second ToolApprovalRequired, got {other:?}"),
+        };
+        assert!(req2.once_only);
         let _ = req2.response_tx.send(ToolApprovalChoice::Approve);
         assert_eq!(approve2.await.expect("join"), Ok(true));
     }

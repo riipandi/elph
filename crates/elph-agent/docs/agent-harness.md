@@ -184,7 +184,7 @@ Agent-emitted messages are persisted on `message_end` to preserve transcript ord
 `AgentHarness` tracks `CollaborationMode`:
 
 - `Default` — full tool catalog (subject to `active_tool_names`)
-- `Plan` — read-only exploration; implementation blocked until the user confirms a proposed plan
+- `Plan` — exploration plus per-call approved workspace mutations; implementation blocked until the user confirms a proposed plan
 
 Public API:
 
@@ -206,7 +206,7 @@ When the assistant emits `<proposed_plan>...</proposed_plan>` at turn end, subsc
 
 `resolve_plan_confirmation` clears the pending plan. `Implement` / `ImplementFresh` exit Plan mode and queue an implementation prompt derived from the plan text (optional review notes from `set_plan_review_notes`).
 
-A process-local `PlanModeTracker` (`Inactive` / `Pending` / `Active`) sits next to `CollaborationMode`. TUI Shift+Tab to Plan calls `arm_plan_mode()` (Pending, tools unchanged). The first user prompt or `enter_plan_mode()` activates Plan and applies the read-only tool filter. Resume seeds Active from a restored `CollaborationMode::Plan`.
+A process-local `PlanModeTracker` (`Inactive` / `Pending` / `Active`) sits next to `CollaborationMode`. TUI Shift+Tab to Plan calls `arm_plan_mode()` (Pending, tools unchanged). The first user prompt or `enter_plan_mode()` activates Plan and applies the Plan tool filter (exploration plus workspace mutating tools). Multi-agent tools stay out of the Plan set; mutating calls are not hard-blocked so the host can approve them one call at a time. Implementation still requires plan confirmation. Resume seeds Active from a restored `CollaborationMode::Plan`.
 
 Multi-agent tools are registered in the harness tool map and included in the default active-tool set. When `active_tool_names` is explicit, multi-agent tools remain registered but are not activated unless named. They are unavailable in Plan mode.
 

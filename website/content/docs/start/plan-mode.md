@@ -8,4 +8,4 @@ Shift+Tab arms Plan (badge only) until the next prompt; `elph run --mode=plan` a
 elph run --mode=plan "design the architecture"
 ```
 
-Risky shell and file actions stay visible through approval prompts. Workspace trust is recorded in `CONFIG_DIR/trust.json`.
+In Plan, mutating workspace tools prompt **Allow once** or **Deny** only. That permission is investigation-scoped; implementation still waits for the plan confirmation card. Multi-agent tools stay unavailable. Workspace trust is recorded in `CONFIG_DIR/trust.json`.

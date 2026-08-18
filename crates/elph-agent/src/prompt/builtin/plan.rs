@@ -11,7 +11,9 @@ pub fn plan_mode_reentry_prompt() -> &'static str {
 /// System prompt appendix for Plan mode.
 pub fn plan_mode_system_prompt() -> &'static str {
     "\n\n# Plan mode\n\
-     You are in **Plan mode**: read-only exploration — no file edits, shell commands, or patches.\n\
+     You are in **Plan mode**: design a plan. Exploration tools run freely.\n\
+     Workspace mutating tools need one-shot user approval and are for investigation only.\n\
+     They do not start implementation. Do not spawn subagents.\n\
      Workflow:\n\
      1. Ground yourself in the repository and environment.\n\
      2. Ask clarifying questions when requirements are ambiguous.\n\

@@ -162,6 +162,7 @@ pub use collaboration::is_exploration_tool;
 pub use collaboration::is_mcp_read_only_bridge_tool;
 pub use collaboration::is_mcp_tool;
 pub use collaboration::is_mutating_tool;
+pub use collaboration::is_plan_exposed_tool;
 pub use collaboration::is_plan_mode_tool;
 pub use collaboration::is_read_only_mcp_tool;
 pub use collaboration::plan_mode_block_reason;

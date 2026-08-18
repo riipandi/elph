@@ -19,6 +19,7 @@ pub struct PendingToolApproval {
     pub tool_call_id: String,
     pub tool_name: String,
     pub args_summary: String,
+    pub once_only: bool,
     pub response_tx: tokio::sync::oneshot::Sender<ToolApprovalChoice>,
 }
 
@@ -28,6 +29,7 @@ impl PendingToolApproval {
             tool_call_id: req.tool_call_id,
             tool_name: req.tool_name,
             args_summary: req.args_summary,
+            once_only: req.once_only,
             response_tx: req.response_tx,
         }
     }
@@ -48,21 +50,42 @@ pub fn tool_approval_transcript_key(tool_call_id: &str) -> String {
 }
 
 /// Footer hint for the tool-permission dialog (keyboard shortcuts live here, not on each row).
+#[cfg(test)]
 pub fn tool_approval_footer_hint() -> String {
-    "↑↓ move · Enter confirm · y once · a session · * all · n/Esc deny".to_string()
+    tool_approval_footer_hint_for(false)
+}
+
+pub fn tool_approval_footer_hint_for(once_only: bool) -> String {
+    if once_only {
+        "↑↓ move · Enter confirm · y once · n/Esc deny".to_string()
+    } else {
+        "↑↓ move · Enter confirm · y once · a session · * all · n/Esc deny".to_string()
+    }
 }
 
 /// Select-list rows for the tool-permission dialog (default selection: Allow once).
+#[cfg(test)]
 pub fn tool_approval_select_options() -> Vec<SelectOption> {
-    [
-        ("Allow once", "This call only"),
-        ("Allow session", "This tool for the rest of the session"),
-        ("Allow all tools", "All tools for the rest of the session"),
-        ("Deny", "Ask again next time"),
-    ]
-    .into_iter()
-    .map(|(name, detail)| SelectOption::new(name, detail))
-    .collect()
+    tool_approval_select_options_for(false)
+}
+
+pub fn tool_approval_select_options_for(once_only: bool) -> Vec<SelectOption> {
+    let rows: &[(&str, &str)] = if once_only {
+        &[
+            ("Allow once", "This call only — does not implement the plan"),
+            ("Deny", "Ask again next time"),
+        ]
+    } else {
+        &[
+            ("Allow once", "This call only"),
+            ("Allow session", "This tool for the rest of the session"),
+            ("Allow all tools", "All tools for the rest of the session"),
+            ("Deny", "Ask again next time"),
+        ]
+    };
+    rows.iter()
+        .map(|(name, detail)| SelectOption::new(*name, *detail))
+        .collect()
 }
 
 /// Map shortcut keys to tool-approval list indices.
@@ -73,9 +96,21 @@ pub fn tool_approval_select_options() -> Vec<SelectOption> {
 /// | 1     | Allow session    | `a` `2` |
 /// | 2     | Allow all tools  | `*` `3` |
 /// | 3     | Deny             | `n` `4` |
+#[cfg(test)]
 pub fn pick_tool_approval_index_from_key(modifiers: KeyModifiers, code: KeyCode) -> Option<usize> {
+    pick_tool_approval_index_from_key_for(modifiers, code, false)
+}
+
+pub fn pick_tool_approval_index_from_key_for(modifiers: KeyModifiers, code: KeyCode, once_only: bool) -> Option<usize> {
     if !modifiers.is_empty() {
         return None;
+    }
+    if once_only {
+        return match code {
+            KeyCode::Char('y') | KeyCode::Char('Y') | KeyCode::Char('1') => Some(0),
+            KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Char('2') => Some(1),
+            _ => None,
+        };
     }
     match code {
         KeyCode::Char('y') | KeyCode::Char('Y') | KeyCode::Char('1') => Some(0),
@@ -87,7 +122,19 @@ pub fn pick_tool_approval_index_from_key(modifiers: KeyModifiers, code: KeyCode)
 }
 
 /// Map a zero-based list index to an approval choice.
+#[cfg(test)]
 pub fn choice_at_index(index: usize) -> Option<ToolApprovalChoice> {
+    choice_at_index_for(index, false)
+}
+
+pub fn choice_at_index_for(index: usize, once_only: bool) -> Option<ToolApprovalChoice> {
+    if once_only {
+        return match index {
+            0 => Some(ToolApprovalChoice::Approve),
+            1 => Some(ToolApprovalChoice::Reject),
+            _ => None,
+        };
+    }
     match index {
         0 => Some(ToolApprovalChoice::Approve),
         1 => Some(ToolApprovalChoice::AllowSession),
@@ -403,6 +450,27 @@ mod tests {
         assert!(hint.contains("a session"));
         assert!(hint.contains("* all"));
         assert!(hint.contains("n/Esc deny"));
+    }
+
+    #[test]
+    fn plan_once_only_has_two_actions() {
+        let options = tool_approval_select_options_for(true);
+        assert_eq!(options.len(), 2);
+        assert_eq!(options[0].name, "Allow once");
+        assert_eq!(options[1].name, "Deny");
+        assert_eq!(choice_at_index_for(0, true), Some(ToolApprovalChoice::Approve));
+        assert_eq!(choice_at_index_for(1, true), Some(ToolApprovalChoice::Reject));
+        assert_eq!(
+            pick_tool_approval_index_from_key_for(KeyModifiers::NONE, KeyCode::Char('a'), true),
+            None
+        );
+        assert_eq!(
+            pick_tool_approval_index_from_key_for(KeyModifiers::NONE, KeyCode::Char('n'), true),
+            Some(1)
+        );
+        let hint = tool_approval_footer_hint_for(true);
+        assert!(hint.contains("y once"));
+        assert!(!hint.contains("a session"));
     }
 
     // ── Plan confirmation ──────────────────────────────────────────────

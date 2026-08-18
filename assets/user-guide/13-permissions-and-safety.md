@@ -11,7 +11,9 @@ after trust.
 ## Tool policy
 
 Built-in tools (edit, shell, web, …) and MCP tools follow host approval / mode settings.
-Plan mode restricts the active tool surface.
+In Plan mode, exploration tools run freely; mutating workspace tools require one-shot
+approval (no session/all-tools grant). Multi-agent tools stay hidden. Implementing a
+plan still requires the plan confirmation card.
 
 ## Logs
 

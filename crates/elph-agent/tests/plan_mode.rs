@@ -35,12 +35,11 @@ fn extract_proposed_plan_parses_block() {
 }
 
 #[test]
-fn plan_mode_blocks_write_tool() {
-    // write_file is now blocked in Plan mode (system handles plan file creation).
-    assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "write_file", None));
+fn plan_mode_does_not_hard_block_workspace_writes() {
+    assert!(!plan_mode_blocks_tool(CollaborationMode::Plan, "write_file", None));
     assert!(!plan_mode_blocks_tool(CollaborationMode::Default, "write_file", None));
-    // shell_exec remains blocked.
-    assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "shell_exec", None));
+    assert!(!plan_mode_blocks_tool(CollaborationMode::Plan, "shell_exec", None));
+    assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "spawn_agent", None));
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -83,8 +82,9 @@ async fn harness_enter_plan_mode_filters_active_tools() {
         .map(|t| t.name().to_string())
         .collect();
     assert!(active.contains(&"read_file".to_string()));
-    assert!(!active.contains(&"write_file".to_string())); // blocked — system handles plan files
-    assert!(!active.contains(&"shell_exec".to_string()));
+    assert!(active.contains(&"write_file".to_string()));
+    assert!(active.contains(&"shell_exec".to_string()));
+    assert!(!active.contains(&"spawn_agent".to_string()));
 }
 
 #[tokio::test(flavor = "multi_thread")]

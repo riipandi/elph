@@ -6,7 +6,7 @@ Trusted workspace directories are recorded in `CONFIG_DIR/trust.json`. Use `/tru
 
 ## Tool policy
 
-Built-in tools (edit, shell, web, …) and MCP tools follow host approval / mode settings. Plan mode restricts the active tool surface.
+Built-in tools (edit, shell, web, …) and MCP tools follow host approval / mode settings. In Plan mode mutating workspace tools need one-shot approval; implementing a plan still requires the confirmation card.
 
 ## Logs
 

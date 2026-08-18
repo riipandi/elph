@@ -640,6 +640,7 @@ mod tests {
                 tool_call_id: "t".into(),
                 tool_name: "read_file".into(),
                 args_summary: String::new(),
+                once_only: false,
                 response_tx: tokio::sync::oneshot::channel().0,
             }
         )));
@@ -680,6 +681,7 @@ mod tests {
             tool_call_id: "t1".into(),
             tool_name: "shell_exec".into(),
             args_summary: "ls".into(),
+            once_only: false,
             response_tx,
         }));
         let _ = tx.send(AgentUiEvent::Status("nope".into()));

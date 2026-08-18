@@ -34,7 +34,7 @@ const TIPS: &[&str] = &[
     "Shift+←/→ selects in the prompt · Esc clears the selection",
     "Ctrl+S text select (wheel off; Shift+↑/↓ scrolls) · Ctrl+C clears or cancels",
     "Brave mode skips tool-approval prompts",
-    "Plan mode is for read-only exploration and planning",
+    "Plan mode plans first; mutating tools need one-shot approval",
     "Enter sends · Ctrl+D exits · Ctrl+C cancels a busy turn",
     "While busy: Enter queues · Ctrl+Enter sends next queued · Ctrl+Q manages",
 ];

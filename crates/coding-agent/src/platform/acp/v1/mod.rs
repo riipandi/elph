@@ -1258,12 +1258,19 @@ async fn request_v1_tool_approval(
     req: &crate::agent::ToolApprovalRequest,
     cancel: Option<Arc<tokio::sync::Notify>>,
 ) -> crate::agent::ToolApprovalChoice {
-    let options = vec![
-        PermissionOption::new("allow-once", "Allow once", PermissionOptionKind::AllowOnce),
-        PermissionOption::new("allow-session", "Allow for session", PermissionOptionKind::AllowAlways),
-        PermissionOption::new("allow-all", "Allow all tools", PermissionOptionKind::AllowAlways),
-        PermissionOption::new("reject", "Reject", PermissionOptionKind::RejectOnce),
-    ];
+    let options = if req.once_only {
+        vec![
+            PermissionOption::new("allow-once", "Allow once", PermissionOptionKind::AllowOnce),
+            PermissionOption::new("reject", "Reject", PermissionOptionKind::RejectOnce),
+        ]
+    } else {
+        vec![
+            PermissionOption::new("allow-once", "Allow once", PermissionOptionKind::AllowOnce),
+            PermissionOption::new("allow-session", "Allow for session", PermissionOptionKind::AllowAlways),
+            PermissionOption::new("allow-all", "Allow all tools", PermissionOptionKind::AllowAlways),
+            PermissionOption::new("reject", "Reject", PermissionOptionKind::RejectOnce),
+        ]
+    };
     let mut fields = agent_client_protocol::schema::v1::ToolCallUpdateFields::new();
     fields.title = Some(req.tool_name.clone());
     let request = RequestPermissionRequest::new(

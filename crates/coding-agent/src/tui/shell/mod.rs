@@ -130,9 +130,9 @@ use crate::tui::system_prompt_dialog::{
 };
 use crate::tui::tool_approval::{
     FEEDBACK_DEFAULT_INDEX, PLAN_CONFIRM_DEFAULT_INDEX, PendingMemoryFlush, PendingModeChange, PendingPlanConfirmation,
-    PendingToolApproval, PlanChoice, TOOL_APPROVAL_DEFAULT_INDEX, choice_at_index, feedback_url_at_index, open_url,
+    PendingToolApproval, PlanChoice, TOOL_APPROVAL_DEFAULT_INDEX, choice_at_index_for, feedback_url_at_index, open_url,
     pick_feedback_index_from_key, pick_memory_flush_index_from_key, pick_mode_change_index_from_key,
-    pick_tool_approval_index_from_key, plan_confirmation_transcript_key, to_harness_choice,
+    pick_tool_approval_index_from_key_for, plan_confirmation_transcript_key, to_harness_choice,
     tool_approval_transcript_key,
 };
 use crate::tui::tool_params::tool_display_verb;
