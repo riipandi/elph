@@ -121,9 +121,13 @@ Inbound mail is polled (`inboxPollMs`), then delivered:
   workers from replying to each other forever.
 
 Inbound messages **never steer or interrupt** the user's current agent turn —
-the answer loop never takes `turn_gate` and never calls the harness steer queue.
-The intercom loop is **not appended to the user transcript** (same as `/aside`):
-the worker chat overlay is the only surface for that dialogue.
+the answer loop never takes `turn_gate`, never calls the harness, and never
+sets a flag that would suppress user-turn transcript events. A TUI “replying”
+badge (`intercom_replying`) is chrome only. The intercom loop is **not
+appended to the user transcript** (same as `/aside`): the worker chat overlay
+is the only surface for that dialogue. Shutdown aborts in-flight intercom
+tasks; if the mailbox already has a reply, the loop does not write a second
+one.
 
 Compared to classic intercom: delivery is **poll-based durable SoT** (survives
 restart); latency ≈ `inboxPollMs` / reaper interval, not sub-ms IPC.

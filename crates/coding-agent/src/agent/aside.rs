@@ -56,11 +56,10 @@ fn side_question_user_text(question: &str) -> String {
     )
 }
 
-/// Prefix of the worker-message turn prompt (`queue_answer_worker_inbound`).
+/// Marker on the intercom-loop user instruction (not a harness / transcript turn).
 ///
-/// The TUI matches this exact prefix to render inbound worker messages as a slim
-/// meta line instead of a user prompt card — never show `<intercom>` or a peer's
-/// message as if the user typed it.
+/// Older session trees may still contain this prefix; the TUI still maps those
+/// rows to a slim meta label.
 pub const WORKER_INBOUND_PROMPT_PREFIX: &str = "<intercom>This is a message from another Elph worker";
 
 /// Drop a trailing assistant message that still has tool calls without matching
@@ -125,14 +124,10 @@ pub async fn run_aside(session: &CodingAgentSession, question: &str, request_id:
     }
 }
 
-/// Run a one-shot, tool-free completion against the session's conversation snapshot.
+/// Snapshot session messages for `/aside` and the intercom answer loop.
 ///
-/// Shared by `/aside` (side question) and non-interrupting **inbound worker
-/// messages**: the latest system prompt + harness state are snapshotted, the
-/// trailing unpaired tool run is dropped, and the model answers without any
-/// tool access. The response is **not** appended to the session message list,
-/// so the main agent turn is never interrupted or even made aware.
-/// Snapshot harness messages for a side-channel completion (aside / intercom).
+/// Drops a trailing unpaired tool run so a mid-turn snapshot is valid LLM input.
+/// The snapshot is not appended back onto the session tree.
 pub(crate) async fn snapshot_side_messages(session: &CodingAgentSession) -> Result<Vec<Message>, String> {
     let harness = session.harness();
     let branch = harness

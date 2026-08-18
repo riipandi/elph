@@ -51,6 +51,7 @@ pub struct WorkerRuntime {
     heartbeat_handle: Arc<Mutex<Option<JoinHandle<()>>>>,
     /// Interior mut so inbox can attach after session is behind `Arc`.
     inbox_handle: Arc<Mutex<Option<JoinHandle<()>>>>,
+    intercom_handles: Arc<Mutex<Vec<JoinHandle<()>>>>,
     inbox_poll_ms: u64,
 }
 
@@ -188,6 +189,7 @@ impl WorkerRuntime {
             live_count,
             heartbeat_handle: Arc::new(Mutex::new(Some(heartbeat_handle))),
             inbox_handle: Arc::new(Mutex::new(None)),
+            intercom_handles: Arc::new(Mutex::new(Vec::new())),
             inbox_poll_ms: opts.inbox_poll_ms.max(100),
         })
     }
@@ -287,6 +289,12 @@ impl WorkerRuntime {
         }
     }
 
+    pub fn set_intercom_handle(&self, handle: JoinHandle<()>) {
+        let mut handles = self.intercom_handles.lock();
+        handles.retain(|h| !h.is_finished());
+        handles.push(handle);
+    }
+
     /// Stop heartbeat and release coordination rows (best-effort). Safe from `Arc` session.
     pub async fn shutdown(&self) {
         self.stop.store(true, Ordering::Relaxed);
@@ -294,6 +302,9 @@ impl WorkerRuntime {
             handle.abort();
         }
         if let Some(handle) = self.inbox_handle.lock().take() {
+            handle.abort();
+        }
+        for handle in self.intercom_handles.lock().drain(..) {
             handle.abort();
         }
         if let Err(err) = self.file_leases.release_all_for_worker(&self.worker_id).await {
@@ -319,6 +330,9 @@ impl Drop for WorkerRuntime {
             handle.abort();
         }
         if let Some(handle) = self.inbox_handle.lock().take() {
+            handle.abort();
+        }
+        for handle in self.intercom_handles.lock().drain(..) {
             handle.abort();
         }
         let lease = self.lease.clone();

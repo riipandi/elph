@@ -1258,7 +1258,7 @@ pub(crate) fn build_shell_view(
                 worker_pending_count: worker_pending_count.get(),
                 worker_replying: agent_session
                     .as_ref()
-                    .map(|s| s.is_intercom_turn_active())
+                    .map(|s| s.is_intercom_replying())
                     .unwrap_or(false),
                 chrome_revision: chrome_ui_revision.get(),
                 draft: Some(draft),

@@ -62,14 +62,12 @@ impl CodingAgentSession {
             .subscribe({
                 let ui_tx = ui_tx.clone();
                 let cwd = cwd.clone();
-                let intercom_turn = self.intercom_turn_active.clone();
                 move |event, _| {
                     let ui_tx = ui_tx.clone();
                     let cwd = cwd.clone();
-                    let intercom_turn = intercom_turn.clone();
                     Box::pin(async move {
                         if let AgentHarnessEvent::Agent(agent_event) = event {
-                            map_agent_event(&ui_tx, agent_event, show_thinking, &cwd, &intercom_turn);
+                            map_agent_event(&ui_tx, agent_event, show_thinking, &cwd);
                         } else if let AgentHarnessEvent::Own(AgentHarnessOwnEvent::QueueUpdate(update)) = event {
                             let items = map_queue_update(&update);
                             let _ = ui_tx.send(AgentUiEvent::QueueUpdate { items });
@@ -276,32 +274,7 @@ impl CodingAgentSession {
 }
 
 /// Map one harness agent event to UI events.
-///
-/// Intercom (worker-message) answer turns are suppressed from the transcript:
-/// once a user `MessageStart` carries the `WORKER_INBOUND_PROMPT_PREFIX` (the
-/// poller's answer prompt, idle or follow-up), all deltas / tool calls / error
-/// lines are dropped until the turn ends — the worker chat overlay is the only
-/// surface. Plan confirmations still pass so a tool approval never hangs.
-fn map_agent_event(
-    ui_tx: &mpsc::UnboundedSender<AgentUiEvent>,
-    event: AgentEvent,
-    show_thinking: bool,
-    cwd: &str,
-    intercom_turn: &std::sync::atomic::AtomicBool,
-) {
-    use std::sync::atomic::Ordering;
-    // Intercom (worker-message) answer turns are suppressed from the transcript:
-    // deltas, tool calls, error lines all drop — the worker chat overlay is the
-    // only surface. Plan confirmations still pass so a tool approval never hangs.
-    if intercom_turn.load(Ordering::Relaxed) {
-        if let AgentEvent::PlanConfirmationRequired { plan_id, plan_text } = &event {
-            let _ = ui_tx.send(AgentUiEvent::PlanConfirmationRequired(PlanConfirmationRequest {
-                plan_id: plan_id.clone(),
-                plan_text: plan_text.clone(),
-            }));
-        }
-        return;
-    }
+fn map_agent_event(ui_tx: &mpsc::UnboundedSender<AgentUiEvent>, event: AgentEvent, show_thinking: bool, cwd: &str) {
     match event {
         AgentEvent::MessageStart { message } => {
             // User messages injected mid-run (drained follow-up / steer). Shell may skip if it

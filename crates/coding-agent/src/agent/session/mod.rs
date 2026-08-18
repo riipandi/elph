@@ -16,7 +16,6 @@ use std::time::Instant;
 use tokio::sync::Mutex;
 use tokio::sync::mpsc;
 
-use super::aside::WORKER_INBOUND_PROMPT_PREFIX;
 use super::aside::extract_worker_payload_text;
 use super::events::AgentUiEvent;
 use super::events::RETRY_CONTINUE_PROMPT;
@@ -110,12 +109,8 @@ pub struct CodingAgentSession {
     title_generation_attempts: Arc<AtomicU32>,
     /// Multi-worker coordination (session lease heartbeat + presence registry).
     pub(crate) worker_runtime: Option<super::worker_runtime::WorkerRuntime>,
-    /// True while an intercom (inbound worker-message) answer loop is running.
-    /// Wiring and session emit paths read this to keep peer-to-peer dialogue out
-    /// of the user's transcript (deltas, tool calls, stats, errors); the worker
-    /// chat overlay is the only surface. Shared `Arc` so the harness subscriber
-    /// (wiring) sees the same state.
-    pub(crate) intercom_turn_active: Arc<AtomicBool>,
+    /// TUI “replying to peer” chrome only. Never used to suppress harness events.
+    pub(crate) intercom_replying: Arc<AtomicBool>,
     plan_reentry: Arc<AtomicBool>,
 }
 
@@ -175,7 +170,7 @@ impl CodingAgentSession {
                 0
             })),
             worker_runtime,
-            intercom_turn_active: Arc::new(AtomicBool::new(false)),
+            intercom_replying: Arc::new(AtomicBool::new(false)),
             plan_reentry,
         };
         session.wire_harness(ui_tx).await?;
@@ -217,10 +212,9 @@ impl CodingAgentSession {
         self.worker_runtime.as_ref().map(|w| w.name.as_str())
     }
 
-    /// True while an intercom (inbound worker-message) answer turn is running —
-    /// the agent is replying to / sending a response for a peer worker.
-    pub fn is_intercom_turn_active(&self) -> bool {
-        self.intercom_turn_active.load(Ordering::Relaxed)
+    /// True while the parallel intercom loop is answering a peer (TUI chrome).
+    pub fn is_intercom_replying(&self) -> bool {
+        self.intercom_replying.load(Ordering::Relaxed)
     }
 
     /// Graceful multi-worker teardown (release lease, mark offline, stop heartbeat).
@@ -399,38 +393,58 @@ impl CodingAgentSession {
         }
 
         // New message → parallel intercom loop (no turn_gate / no harness.prompt).
+        if let Some(rt) = self.worker_runtime.as_ref()
+            && rt.stop_flag().load(Ordering::Relaxed)
+        {
+            self.reply_worker_answer_failed(&msg, "worker shutting down").await;
+            return Ok(());
+        }
         let session = Arc::clone(self);
-        tokio::spawn(async move {
+        let handle = tokio::spawn(async move {
             let _intercom = session.intercom_gate.lock().await;
-            session.intercom_turn_active.store(true, Ordering::Relaxed);
+            if session
+                .worker_runtime
+                .as_ref()
+                .is_some_and(|rt| rt.stop_flag().load(Ordering::Relaxed))
+            {
+                session.reply_worker_answer_failed(&msg, "worker shutting down").await;
+                return;
+            }
+            session.intercom_replying.store(true, Ordering::Relaxed);
+            let _replying = IntercomReplyingGuard(Arc::clone(&session.intercom_replying));
             let result = super::worker_intercom::answer_worker_inbound(&session, &from_worker, &text, &msg).await;
-            session.intercom_turn_active.store(false, Ordering::Relaxed);
             if let Err(err) = result {
                 log::warn!("worker answer loop failed: {err}");
                 session.reply_worker_answer_failed(&msg, &err).await;
             }
         });
+        if let Some(rt) = self.worker_runtime.as_ref() {
+            rt.set_intercom_handle(handle);
+        }
         Ok(())
     }
 
     async fn reply_worker_answer_failed(&self, msg: &elph_agent::WorkerMessage, error: &str) {
         log::warn!("worker answer failed for {}: {error}", msg.id);
-        // The peer's ask should not hang until timeout: surface the failure as an
-        // explicit error reply (kind `response`) so their worker_await unblocks.
-        if let Some(rt) = self.worker_runtime.as_ref() {
-            let _ = rt
-                .mailbox()
-                .send_response(
-                    &msg.project_key,
-                    rt.worker_id.as_str(),
-                    &self.session_id,
-                    &msg.from_session_id,
-                    &msg.id,
-                    "",
-                    Some(error),
-                )
-                .await;
+        let Some(rt) = self.worker_runtime.as_ref() else {
+            return;
+        };
+        // Already closed (worker_reply / fallback) — do not double-write.
+        if rt.mailbox().get_response_for(&msg.id).await.ok().flatten().is_some() {
+            return;
         }
+        let _ = rt
+            .mailbox()
+            .send_response(
+                &msg.project_key,
+                rt.worker_id.as_str(),
+                &self.session_id,
+                &msg.from_session_id,
+                &msg.id,
+                "",
+                Some(error),
+            )
+            .await;
     }
 
     /// Eagerly invalidate the system prompt cache synchronously so the next
@@ -666,14 +680,6 @@ impl CodingAgentSession {
     /// Start a normal harness turn (blocks until idle, emits `RunCompleted`).
     async fn run_prompt_turn(&self, text: String, images: Option<Vec<elph_ai::ImageContent>>) -> Result<()> {
         let _guard = self.turn_gate.lock().await;
-        // Intercom (worker-message) answer turns — identified by their prompt
-        // prefix — set the shared flag for the whole turn: wiring suppresses
-        // transcript events, and session emit paths (RunCompleted, retry status)
-        // skip stats/notices for them. Cleared in both normal and error paths.
-        let intercom = text.starts_with(WORKER_INBOUND_PROMPT_PREFIX);
-        if intercom {
-            self.intercom_turn_active.store(true, Ordering::Relaxed);
-        }
         // Lazy MCP: discover any still-pending servers and hot-attach tools before the model runs.
         self.ensure_mcp_tools_ready().await;
         if *self.mode_state.lock().await == AgentMode::Plan
@@ -716,12 +722,10 @@ impl CodingAgentSession {
                 // The retry submits a Continue-style prompt instead of re-sending the
                 // original text, so already-completed tool work is not duplicated.
                 if elph_ai::retry::is_transient_error(&err_s) {
-                    if !intercom {
-                        let _ = self
-                            .ui_tx
-                            .send(AgentUiEvent::Status("Stream interrupted — retrying automatically…".to_string()));
-                        let _ = self.ui_tx.send(AgentUiEvent::Retrying { attempt: 1 });
-                    }
+                    let _ = self
+                        .ui_tx
+                        .send(AgentUiEvent::Status("Stream interrupted — retrying automatically…".to_string()));
+                    let _ = self.ui_tx.send(AgentUiEvent::Retrying { attempt: 1 });
                     match self.harness.prompt(RETRY_CONTINUE_PROMPT, None).await {
                         Ok(msg) => {
                             self.finish_ui_turn(started).await;
@@ -730,18 +734,12 @@ impl CodingAgentSession {
                             }
                             self.maybe_generate_session_title();
                             self.maybe_auto_compact(None).await;
-                            if intercom {
-                                self.intercom_turn_active.store(false, Ordering::Relaxed);
-                            }
                             return Ok(());
                         }
                         Err(retry_err) => {
                             self.finish_ui_turn(started).await;
                             self.emit_retryable_error(Some(&retry_err.to_string()));
                             self.maybe_auto_compact(None).await;
-                            if intercom {
-                                self.intercom_turn_active.store(false, Ordering::Relaxed);
-                            }
                             return Err(anyhow::anyhow!("{retry_err}"));
                         }
                     }
@@ -760,20 +758,11 @@ impl CodingAgentSession {
                     self.maybe_auto_compact(None).await;
                 }
                 return if recovered {
-                    if intercom {
-                        self.intercom_turn_active.store(false, Ordering::Relaxed);
-                    }
                     Ok(())
                 } else {
-                    if intercom {
-                        self.intercom_turn_active.store(false, Ordering::Relaxed);
-                    }
                     Err(anyhow::anyhow!("{err}"))
                 };
             }
-        }
-        if intercom {
-            self.intercom_turn_active.store(false, Ordering::Relaxed);
         }
         result.map(|_| ()).map_err(|err| anyhow::anyhow!("{err}"))
     }
@@ -818,10 +807,6 @@ impl CodingAgentSession {
     }
 
     fn emit_retryable_error(&self, error: Option<&str>) {
-        // Intercom turn errors go to the worker chat, not the transcript.
-        if self.intercom_turn_active.load(Ordering::Relaxed) {
-            return;
-        }
         let raw = error.unwrap_or("request failed");
         let display = crate::tui::api_error_display::format_user_facing_api_error(raw);
         let transient = elph_ai::retry::is_transient_error(raw);
@@ -845,22 +830,14 @@ impl CodingAgentSession {
     /// 1. Transient stream/network errors → one automatic Continue-style retry.
     /// 2. Context-limit errors → compact then resume once.
     async fn recover_errored_turn(&self, message: &AssistantMessage) {
-        // Intercom (worker-message) turns never auto-recover: retrying would run
-        // a user-visible turn (no intercom prefix) and leak into the transcript.
-        // The caller already replied with an explicit error through the mailbox.
-        if self.intercom_turn_active.load(Ordering::Relaxed) {
-            return;
-        }
         let error_text = message.error_message.as_deref().unwrap_or_default();
 
         // Transient stream cutoffs / 5xx / etc. — retry without compaction first.
         if elph_ai::retry::is_transient_error(error_text) {
-            if !self.intercom_turn_active.load(Ordering::Relaxed) {
-                let _ = self
-                    .ui_tx
-                    .send(AgentUiEvent::Status("Stream interrupted — retrying automatically…".to_string()));
-                let _ = self.ui_tx.send(AgentUiEvent::Retrying { attempt: 1 });
-            }
+            let _ = self
+                .ui_tx
+                .send(AgentUiEvent::Status("Stream interrupted — retrying automatically…".to_string()));
+            let _ = self.ui_tx.send(AgentUiEvent::Retrying { attempt: 1 });
             let retry_started = Instant::now();
             match self.harness.prompt(RETRY_CONTINUE_PROMPT, None).await {
                 Ok(retry_message) => {
@@ -901,9 +878,7 @@ impl CodingAgentSession {
             self.finish_ui_turn(retry_started).await;
             return;
         }
-        if !self.intercom_turn_active.load(Ordering::Relaxed) {
-            let _ = self.ui_tx.send(AgentUiEvent::Retrying { attempt: 2 });
-        }
+        let _ = self.ui_tx.send(AgentUiEvent::Retrying { attempt: 2 });
         match self.harness.prompt(RETRY_CONTINUE_PROMPT, None).await {
             Ok(retry_message) => {
                 self.finish_ui_turn(retry_started).await;
@@ -1361,17 +1336,6 @@ impl CodingAgentSession {
     }
 
     async fn emit_run_completed(&self, started: Instant) {
-        // Intercom (worker-message) turns stay silent in the transcript: no stats
-        // card, no status line — the worker chat overlay is the only surface.
-        if self.intercom_turn_active.load(Ordering::Relaxed) {
-            let _ = self.ui_tx.send(AgentUiEvent::RunCompleted {
-                elapsed_secs: started.elapsed().as_secs_f64(),
-                usage: None,
-                provider_id: None,
-                model_id: None,
-            });
-            return;
-        }
         // Only surface a stats card for real agent/chat-assistant turns, never for
         // system operations that only spin the UI (e.g. `/compact` with "History is
         // already up to date") — those do not produce a `session_turns` row, so
@@ -1453,6 +1417,15 @@ impl CodingAgentSession {
                 Err(err) => log::debug!("auto session title skipped: {err:#}"),
             }
         });
+    }
+}
+
+/// Clears `intercom_replying` if the answer task is aborted mid-flight.
+struct IntercomReplyingGuard(Arc<AtomicBool>);
+
+impl Drop for IntercomReplyingGuard {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::Relaxed);
     }
 }
 

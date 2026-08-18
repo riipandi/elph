@@ -26,6 +26,12 @@ pub async fn answer_worker_inbound(
     let Some(rt) = session.worker_runtime.as_ref() else {
         return Err("worker runtime is not available".into());
     };
+    if rt.stop_flag().load(std::sync::atomic::Ordering::Relaxed) {
+        return Err("worker shutting down".into());
+    }
+    if mailbox_already_answered(rt, &msg.id).await {
+        return Ok(());
+    }
 
     let tools = rt.create_intercom_tools();
     let ai_tools: Vec<elph_ai::Tool> = tools.iter().map(|t| t.tool.clone()).collect();
@@ -64,6 +70,12 @@ pub async fn answer_worker_inbound(
     let mut replied = false;
 
     for _ in 0..MAX_INTERCOM_STEPS {
+        if rt.stop_flag().load(std::sync::atomic::Ordering::Relaxed) {
+            return Err("worker shutting down".into());
+        }
+        if mailbox_already_answered(rt, &msg.id).await {
+            return Ok(());
+        }
         let response = models
             .complete_simple(
                 &model,
@@ -76,8 +88,14 @@ pub async fn answer_worker_inbound(
             )
             .await;
 
-        if response.stop_reason == StopReason::Error {
-            let detail = response.error_message.clone().unwrap_or_else(|| "model error".into());
+        if matches!(response.stop_reason, StopReason::Error | StopReason::Aborted) {
+            let detail = response.error_message.clone().unwrap_or_else(|| {
+                if response.stop_reason == StopReason::Aborted {
+                    "model aborted".into()
+                } else {
+                    "model error".into()
+                }
+            });
             return Err(detail);
         }
 
@@ -121,7 +139,7 @@ pub async fn answer_worker_inbound(
         }
     }
 
-    if replied {
+    if replied || mailbox_already_answered(rt, &msg.id).await {
         return Ok(());
     }
 
@@ -155,6 +173,10 @@ fn worker_inbound_instruction(from_worker: &str, text: &str, msg_id: &str) -> St
          If the message needs no answer, send a short acknowledgement.</intercom>\n\n\
          {text}"
     )
+}
+
+async fn mailbox_already_answered(rt: &super::worker_runtime::WorkerRuntime, msg_id: &str) -> bool {
+    rt.mailbox().get_response_for(msg_id).await.ok().flatten().is_some()
 }
 
 fn dummy_tool_context() -> ToolContext {
