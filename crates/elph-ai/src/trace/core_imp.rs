@@ -7,8 +7,6 @@ pub use fastrace::prelude::{LocalSpan, Span};
 pub use fastrace::{flush as fastrace_flush, set_reporter as fastrace_set_reporter};
 pub use fastrace_reqwest::traceparent_headers;
 
-use crate::logger::LoggingOptions;
-
 static TRACING_ENABLED: AtomicBool = AtomicBool::new(false);
 
 /// Whether runtime tracing is active (`{PREFIX}_TRACE` and successful init).
@@ -22,15 +20,22 @@ pub struct RootSpanGuard {
     inner: Option<(Span, fastrace::local::LocalParentGuard)>,
 }
 
+/// Set the process-wide enabled flag without installing a reporter.
+///
+/// The `elph` binary installs the reporter from `elph-agent` and only needs
+/// this flag so stream/HTTP helpers attach spans.
+pub fn set_enabled(enabled: bool) {
+    TRACING_ENABLED.store(enabled && !cfg!(test), Ordering::Relaxed);
+}
+
 /// Initialize the global fastrace reporter. No-op when tracing is disabled.
-pub fn init(options: &LoggingOptions) {
-    let enabled = !cfg!(test) && options.trace_enabled;
-    TRACING_ENABLED.store(enabled, Ordering::Relaxed);
-    if !enabled {
+pub fn init(logs_dir: &std::path::Path, app_name: &str, enabled: bool) {
+    set_enabled(enabled);
+    if !is_enabled() {
         return;
     }
 
-    let reporter = match JsonlReporter::new(&options.logs_dir, options.app_name) {
+    let reporter = match JsonlReporter::new(logs_dir, app_name) {
         Ok(reporter) => reporter,
         Err(error) => {
             TRACING_ENABLED.store(false, Ordering::Relaxed);
@@ -55,6 +60,7 @@ pub fn set_reporter(reporter: JsonlReporter, config: fastrace::collector::Config
 pub fn flush() {
     if is_enabled() {
         fastrace_flush();
+        super::reporter::flush_writer();
     }
 }
 

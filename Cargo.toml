@@ -85,7 +85,6 @@ logforth = { version = "0.30.1", features = [
   "append-file",
   "diagnostic-fastrace",
   "filter-rustlog",
-  "layout-json",
   "layout-text",
   "starter-log",
 ] }

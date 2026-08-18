@@ -208,7 +208,7 @@ pub use fs::{ensure_dirs, write_file_if_missing, write_json_file, write_private_
 pub use goals::{BUDGET_LIMIT_PROMPT_PREFIX, CONTINUATION_PROMPT_PREFIX};
 pub use goals::{Goal, GoalRuntime, GoalStatus, GoalStore};
 pub use goals::{GoalStatusHook, create_goal_tools, create_goal_tools_with_hook};
-pub use logger::{LogRotation, LoggingOptions};
+pub use logger::{LogRotation, LoggingOptions, LoggingOptionsBuilder, LoggingSettings};
 pub use messages::CustomMessageContent;
 pub use messages::create_branch_summary_message;
 pub use messages::create_compaction_summary_message;

@@ -83,6 +83,7 @@ async fn open_local_internal(path: &Path, configure: impl Fn(Builder) -> Builder
             Err(error) => {
                 let message = error.to_string();
                 if attempt >= MAX_RETRIES || !is_open_retryable(&message) {
+                    log::error!("open_local failed: {} ({message})", path.display());
                     return Err(error).with_context(|| format!("open_local: {}", path.display()));
                 }
                 log::warn!("Database open attempt {} failed with lock error: {message}", attempt + 1);

@@ -10,8 +10,10 @@ use clipboard_rs::{Clipboard, ClipboardContext};
 /// Empty strings are accepted (clears to empty clipboard content where supported).
 pub fn copy_to_clipboard(text: &str) -> Result<()> {
     let ctx = ClipboardContext::new().map_err(|err| anyhow::anyhow!("open system clipboard: {err}"))?;
-    ctx.set_text(text.to_string())
-        .map_err(|err| anyhow::anyhow!("set clipboard text: {err}"))
+    ctx.set_text(text.to_string()).map_err(|err| {
+        log::warn!("clipboard write failed: {err}");
+        anyhow::anyhow!("set clipboard text: {err}")
+    })
 }
 
 /// Read plain text from the system clipboard.

@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::logger::LoggingOptions;
+use crate::logger::LoggingSettings;
 
 use crate::runtime::local_env::LocalExecutionEnv;
 use crate::types::AgentTool;
@@ -26,6 +27,7 @@ pub struct AgentBuilder {
     quiet_env: Option<&'static str>,
     logs_dir: Option<PathBuf>,
     console_enabled: bool,
+    logging_settings: LoggingSettings,
 }
 
 impl AgentBuilder {
@@ -33,10 +35,11 @@ impl AgentBuilder {
         Self {
             app_version,
             env_prefix: "",
-            app_name: "",
+            app_name: "elph",
             quiet_env: None,
             logs_dir: None,
             console_enabled: true,
+            logging_settings: LoggingSettings::default(),
         }
     }
 
@@ -65,11 +68,22 @@ impl AgentBuilder {
         self
     }
 
+    pub fn logging_settings(mut self, settings: LoggingSettings) -> Self {
+        self.logging_settings = settings;
+        self
+    }
+
     pub fn build(self) -> AgentInit {
         AgentInit {
             app_version: self.app_version,
             quiet_env: self.quiet_env,
-            logging: LoggingOptions::resolve(self.env_prefix, self.app_name, self.logs_dir, self.console_enabled),
+            logging: LoggingOptions::builder()
+                .app_name(self.app_name)
+                .logs_dir_opt(self.logs_dir)
+                .console_enabled(self.console_enabled)
+                .settings(self.logging_settings)
+                .env_prefix(self.env_prefix)
+                .build(),
         }
     }
 }

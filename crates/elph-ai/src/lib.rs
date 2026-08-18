@@ -7,7 +7,6 @@ pub use anyhow::Result;
 pub mod api;
 pub mod auth;
 pub mod images;
-pub mod logger;
 pub mod models;
 pub mod providers;
 pub mod resilience;

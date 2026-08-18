@@ -6,7 +6,7 @@ User preferences live in JSON. The host (`elph`) maps them into `elph-agent` / `
 
 | File | Path | Role |
 | --- | --- | --- |
-| Settings | `CONFIG_DIR/settings.json` + `<cwd>/.elph/settings.json` | UI, models, memory, notifications, compaction, session, workers, resources |
+| Settings | `CONFIG_DIR/settings.json` + `<cwd>/.elph/settings.json` | UI, models, memory, notifications, compaction, session, workers, resources, logging |
 | MCP | `CONFIG_DIR/mcp.json` + `<cwd>/.elph/mcp.json` | Servers, policy, **cache TTL / max entries** |
 | Trust | `CONFIG_DIR/trust.json` | Trusted directories + `defaultProjectTrust` (WASM extensions only) |
 | Auth | `CONFIG_DIR/auth.json` | Credentials |
@@ -53,11 +53,29 @@ Schema: `schemas/elph-schema.json`, `schemas/mcp-schema.json`.
   "compaction": { "thresholdPct": 80, "keepRecentTokens": 20000, "reserveTokens": 16384 },
   "session": { "enabled": true, "gcOnOpen": true, "maxSessionsPerCwd": 40 },
   "workers": { "enabled": true },
-  "resources": { "skills": [], "disabledSkills": [], "enableSkillCommands": true }
+  "resources": { "skills": [], "disabledSkills": [], "enableSkillCommands": true },
+  "logging": { "level": "info", "file": true, "rotation": "daily", "trace": true }
 }
 ```
 
 `notifications.onStartupReady` in a **project** `.elph/settings.json` overrides home. Restart or `/reload` after edits.
+
+## Logging
+
+`logging` is applied at process start (restart after edits). Merge: defaults ← `settings.json` `logging` ← `ELPH_LOG_*` / `ELPH_TRACE` (env wins).
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `level` | `info` | rustlog spec (`info` or `elph_agent=debug,elph_ai=warn`) |
+| `file` | `true` | Rolling JSONL at `APP_DATA/logs/elph.jsonl` |
+| `rotation` | `daily` | `hourly` / `daily` / `size` |
+| `maxFiles` | unset | Cap of retained rotated files |
+| `maxBytes` | unset | Size trigger (`size` rotation defaults to 10 MiB) |
+| `trace` | `true` | `APP_DATA/logs/elph-traces.jsonl` |
+
+Crash reports: `APP_DATA/logs/crash-YYMMDDhh.jsonl` (UTC hour). Console JSONL is not a settings key; the `elph` binary keeps stderr logging off.
+
+See [elph-agent observability](../crates/elph-agent/docs/observability.md).
 
 ## Not in settings.json
 

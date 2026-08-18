@@ -1,5 +1,3 @@
-use crate::logger::LoggingOptions;
-
 /// No-op root span guard when the `tracing` feature is disabled.
 pub struct RootSpanGuard;
 
@@ -8,8 +6,11 @@ pub fn is_enabled() -> bool {
     false
 }
 
+/// No-op enabled flag without the `tracing` feature.
+pub fn set_enabled(_enabled: bool) {}
+
 /// Initialize tracing. No-op without the `tracing` feature.
-pub fn init(_options: &LoggingOptions) {}
+pub fn init(_logs_dir: &std::path::Path, _app_name: &str, _enabled: bool) {}
 
 /// Flush pending spans. No-op without the `tracing` feature.
 pub fn flush() {}

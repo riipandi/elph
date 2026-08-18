@@ -154,6 +154,7 @@ impl ThemeTokenOverrides {
                 other => parse_color_value(other),
             };
             let Some(color) = color else {
+                log::warn!("theme token `{key}` has an unparseable color; skipped");
                 continue;
             };
             let hex = color_to_hex_string(color);

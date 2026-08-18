@@ -27,6 +27,7 @@ anstyle-syntect = { workspace = true, optional = true }
 crossterm = { workspace = true, optional = true, default-features = false, features = [] }
 html-escape.workspace = true
 linkify.workspace = true
+log.workspace = true
 mermaid-text = { workspace = true, optional = true }
 pulldown-cmark.workspace = true
 supports-color.workspace = true

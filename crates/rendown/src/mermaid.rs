@@ -117,7 +117,10 @@ mod render {
     }
 
     pub(super) fn display_shared(source: &str, inner: u16) -> Arc<str> {
-        render_shared(source, inner).unwrap_or_else(|_| Arc::<str>::from(source))
+        render_shared(source, inner).unwrap_or_else(|err| {
+            log::warn!("mermaid render failed: {err}");
+            Arc::<str>::from(source)
+        })
     }
 
     fn render_shared(source: &str, max_width: u16) -> Result<Arc<str>, mermaid_text::Error> {

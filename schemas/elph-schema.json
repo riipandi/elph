@@ -78,9 +78,48 @@
             "type": "boolean",
             "default": false,
             "description": "Hide bootstrap spinner / startup chatter. ELPH_QUIET still wins when set."
+        },
+        "logging": {
+            "$ref": "#/definitions/logging"
         }
     },
     "definitions": {
+        "logging": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Process logger. Applied at start; restart after edits. Env ELPH_LOG_* / ELPH_TRACE win over this group.",
+            "properties": {
+                "level": {
+                    "type": "string",
+                    "default": "info",
+                    "description": "Global level or rustlog spec (e.g. info, or elph_agent=debug,elph_ai=warn)."
+                },
+                "file": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Write rolling JSONL to APP_DATA/logs/{app}.jsonl."
+                },
+                "rotation": {
+                    "type": "string",
+                    "enum": ["hourly", "daily", "size"],
+                    "default": "daily",
+                    "description": "Log file rotation. size uses maxBytes (default 10 MiB)."
+                },
+                "maxFiles": {
+                    "oneOf": [{ "type": "integer", "minimum": 1 }, { "type": "null" }],
+                    "description": "Cap of retained rotated log files."
+                },
+                "maxBytes": {
+                    "oneOf": [{ "type": "integer", "minimum": 1 }, { "type": "null" }],
+                    "description": "Rotate when the current file exceeds this many bytes (used with rotation=size, or as an extra cap)."
+                },
+                "trace": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Write APP_DATA/logs/{app}-traces.jsonl (fastrace). ELPH_TRACE overrides."
+                }
+            }
+        },
         "ui": {
             "type": "object",
             "additionalProperties": false,

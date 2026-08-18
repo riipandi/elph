@@ -29,7 +29,10 @@ Catalog filter: `models.enabled` (globs). Skill filter: `resources.disabledSkill
 | ------------------------------ | --------------------------- |
 | `ELPH_PROVIDER` / `ELPH_MODEL` | Force provider and model    |
 | `ELPH_QUIET`                   | Suppress bootstrap progress |
-| `ELPH_LOG_LEVEL`               | `trace` … `error`           |
+| `ELPH_LOG_LEVEL`               | rustlog spec (`info`, or `elph_agent=debug`) |
+| `ELPH_LOG_FILE`                | `0` disables rolling JSONL                   |
+| `ELPH_LOG_ROTATION`            | `hourly` / `daily` / `size`                  |
+| `ELPH_TRACE`                   | Distributed tracing on/off                   |
 
 Inspect what Elph discovered:
 

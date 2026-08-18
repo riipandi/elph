@@ -22,7 +22,7 @@ Switching to implementation still requires the plan confirmation card.
 | Path                        | Content             |
 | --------------------------- | ------------------- |
 | `APP_DATA/logs/elph.jsonl`  | App log             |
-| `APP_DATA/logs/crash.log-*` | Panic reports       |
+| `APP_DATA/logs/crash-YYMMDDhh.jsonl` | Panic reports (UTC hour) |
 | `APP_DATA/logs/mcp/`        | MCP stderr captures |
 
 ## Never auto-run untrusted code

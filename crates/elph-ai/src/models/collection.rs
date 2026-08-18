@@ -421,6 +421,7 @@ where
     let output = stream.clone_handle();
     let trace_model = model.clone();
     crate::trace::spawn_stream(&trace_model, async move {
+        log::debug!("provider stream start provider={} model={}", model.provider, model.id);
         match setup().await {
             Ok(mut inner) => {
                 while let Some(event) = inner.next_event().await {
@@ -436,6 +437,12 @@ where
                 }
             }
             Err(e) => {
+                log::warn!(
+                    "provider stream failed provider={} model={}: {}",
+                    model.provider,
+                    model.id,
+                    e.message
+                );
                 let mut partial = crate::types::AssistantMessage::empty(&model);
                 partial.stop_reason = crate::types::StopReason::Error;
                 partial.error_message = Some(e.message);

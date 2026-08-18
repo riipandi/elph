@@ -75,9 +75,14 @@ fn main() {
     println!("  Starting runtime...");
     println!("  (startup steps completed)");
 
-    // ── 7. LoggingOptions::resolve directly ──
-    println!("\n=== LoggingOptions resolusi langsung ===");
-    let opts = LoggingOptions::resolve("MYAPP", "demo", Some(PathBuf::from("/tmp/demo-logs")), true);
+    // ── 7. LoggingOptions::builder directly ──
+    println!("\n=== LoggingOptions builder ===");
+    let opts = LoggingOptions::builder()
+        .app_name("demo")
+        .logs_dir(PathBuf::from("/tmp/demo-logs"))
+        .env_prefix("MYAPP")
+        .console_enabled(true)
+        .build();
     println!(
         "  app_name={}, logs_dir={:?}, rotation={:?}",
         opts.app_name, opts.logs_dir, opts.rotation,
@@ -87,7 +92,7 @@ fn main() {
     println!("\n=== LogRotation ===");
     println!("  Hourly: {:?}", LogRotation::Hourly);
     println!("  Daily:  {:?}", LogRotation::Daily);
-    println!("  Weekly: {:?}", LogRotation::Weekly);
+    println!("  Size:   {:?}", LogRotation::Size);
 
     println!("\nDone.");
 }

@@ -52,7 +52,6 @@ git2 = { workspace = true, features = ["cred"] }
 inquire.workspace = true
 iocraft.workspace = true
 log.workspace = true
-logforth.workspace = true
 memorable-ids.workspace = true
 minijinja = { workspace = true, features = ["custom_syntax"] }
 parking_lot.workspace = true

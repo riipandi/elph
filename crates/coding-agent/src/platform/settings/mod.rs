@@ -48,6 +48,7 @@
 //!       "maxTerminalFilesPerSession": 50
 //!     }
 //!   },
+//!   "logging": { "level": "info", "file": true, "rotation": "daily", "trace": true },
 //!   "workers": {
 //!     "enabled": true,
 //!     "name": null,
@@ -170,6 +171,9 @@ pub struct Settings {
     /// Hide bootstrap spinner / startup chatter. `ELPH_QUIET` still wins when set.
     #[serde(default = "default_false")]
     pub quiet_startup: bool,
+    /// Process logger (file JSONL + fastrace). Applied at process start; restart required.
+    #[serde(default)]
+    pub logging: elph_agent::LoggingSettings,
     /// Set at load time: a project settings file was merged.
     #[serde(skip)]
     pub project_layer_loaded: bool,
@@ -844,6 +848,7 @@ impl Settings {
             shell_command_prefix: None,
             http_proxy: None,
             quiet_startup: false,
+            logging: elph_agent::LoggingSettings::default(),
             project_layer_loaded: false,
         }
     }
@@ -859,6 +864,30 @@ impl Settings {
             SettingsScope::Home => paths.settings_path(),
             SettingsScope::Project => paths.project_settings_path(),
         }
+    }
+
+    /// Best-effort `logging` overlay from existing home + project files.
+    ///
+    /// Does not scaffold missing files (safe to call before logger init).
+    pub fn peek_logging(paths: &Paths) -> elph_agent::LoggingSettings {
+        fn logging_value(path: &Path) -> Value {
+            std::fs::read_to_string(path)
+                .ok()
+                .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
+                .and_then(|value| value.get("logging").cloned())
+                .unwrap_or(Value::Null)
+        }
+
+        let mut merged = logging_value(&paths.settings_path());
+        let project = logging_value(&paths.project_settings_path());
+        if !project.is_null() {
+            if merged.is_null() {
+                merged = project;
+            } else {
+                deep_merge(&mut merged, &project);
+            }
+        }
+        serde_json::from_value(merged).unwrap_or_default()
     }
 
     /// Create home `settings.json` with defaults when missing.

@@ -46,7 +46,9 @@ Filter the catalog with `models.enabled` (globs). Filter skills with `resources.
 | ------------------------------ | --------------------------- |
 | `ELPH_PROVIDER` / `ELPH_MODEL` | Force provider/model        |
 | `ELPH_QUIET`                   | Suppress bootstrap progress |
-| `ELPH_LOG_LEVEL`               | `trace` … `error`           |
-| `ELPH_TRACE`                   | Distributed tracing on/off  |
+| `ELPH_LOG_LEVEL`               | rustlog spec (`info`, or `elph_agent=debug`) |
+| `ELPH_LOG_FILE`                | `0` disables `APP_DATA/logs/elph.jsonl`      |
+| `ELPH_LOG_ROTATION`            | `hourly` / `daily` / `size`                  |
+| `ELPH_TRACE`                   | Distributed tracing on/off                   |
 
-Full layout: repo `docs/configuration.md`.
+Logs live under `APP_DATA/logs/`: `elph.jsonl`, `elph-traces.jsonl`, `crash-YYMMDDhh.jsonl`, `mcp.log`. Optional `settings.json` `logging` group (restart required); env wins. See repo `docs/settings.md`.
