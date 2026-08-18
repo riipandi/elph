@@ -50,7 +50,9 @@ async fn ensure_creates_full_home() {
         paths.bundled_dir().join("skills/create-skill/SKILL.md").is_file(),
         "bootstrap should unpack create-skill"
     );
-    assert!(paths.config_dir().join("AGENTS.md").is_file());
+    assert!(!paths.config_dir().join("AGENTS.md").exists());
+    assert!(!paths.project_extensions_dir().exists());
+    assert!(!paths.plans_dir().exists());
     assert!(paths.host_mcp_cache_dir().is_dir());
     assert!(paths.sessions_dir().is_dir());
     assert!(paths.skills_dir().is_dir());

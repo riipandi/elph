@@ -1,4 +1,3 @@
-use crate::agent::ensure_global_agents_md;
 use crate::platform::scaffold::{
     BundledAssets, BundledManifest, ChangelogScaffold, ProvidersUnpack, TrustStore, VersionFile,
 };
@@ -92,7 +91,6 @@ fn ensure_files(paths: &Paths, app_version: &str) -> Result<()> {
     VersionFile::ensure(paths, app_version)?;
     ChangelogScaffold::ensure(paths)?;
     BundledManifest::ensure(paths, APP_ID, app_version)?;
-    let _ = ensure_global_agents_md(paths);
     super::project::ensure(paths)?;
     Ok(())
 }

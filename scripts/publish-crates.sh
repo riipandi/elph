@@ -15,7 +15,6 @@ PACKAGES=(
     elph-ai
     elph-exec
     elph-agent
-    elph-swarm
     elph-tui
     elph
 )

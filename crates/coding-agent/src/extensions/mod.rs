@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use elph_agent::{ExtensionCommand, ExtensionRegistry, ExtensionSlashResult, ExtensionsSettings};
-use elph_agent::{global_extensions_dir, project_extensions_dir, write_json_file};
+use elph_agent::{global_extensions_dir, write_json_file};
 use parking_lot::RwLock;
 
 use crate::platform::{AppPaths, Paths};
@@ -65,7 +65,6 @@ impl ExtensionHost {
 
     pub fn ensure_dirs(paths: &Paths) -> Result<()> {
         std::fs::create_dir_all(global_extensions_dir(paths.config_dir()))?;
-        std::fs::create_dir_all(project_extensions_dir(&paths.project_elph_dir()))?;
         Ok(())
     }
 

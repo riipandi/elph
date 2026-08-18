@@ -82,7 +82,7 @@ See [NOTICE.md](./NOTICE.md) for details and license texts.
 This workspace uses a mixed license model:
 
 - **Application** (`elph`) — [Apache License 2.0][license-apache] ([LICENSE-APACHE](./LICENSE-APACHE))
-- **Libraries** (`elph-ai`, `elph-agent`, `elph-tui`, `elph-swarm`) — [MIT License][license-mit] ([LICENSE-MIT](./LICENSE-MIT))
+- **Libraries** (`elph-ai`, `elph-agent`, `elph-tui`) — [MIT License][license-mit] ([LICENSE-MIT](./LICENSE-MIT))
 
 Third-party attributions and upstream license requirements are listed in [NOTICE.md](./NOTICE.md).
 

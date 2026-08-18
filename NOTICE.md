@@ -4,10 +4,10 @@
 
 This repository uses a mixed license model:
 
-| Component       | Crates                                            | License                                |
-| --------------- | ------------------------------------------------- | -------------------------------------- |
-| **Application** | `elph`                                            | [Apache License 2.0](./LICENSE-APACHE) |
-| **Libraries**   | `elph-ai`, `elph-agent`, `elph-tui`, `elph-swarm` | [MIT License](./LICENSE-MIT)           |
+| Component       | Crates                              | License                                |
+| --------------- | ----------------------------------- | -------------------------------------- |
+| **Application** | `elph`                              | [Apache License 2.0](./LICENSE-APACHE) |
+| **Libraries**   | `elph-ai`, `elph-agent`, `elph-tui` | [MIT License](./LICENSE-MIT)           |
 
 When distributing binaries built from `elph`, include the Apache 2.0 license and this notice file.
 When using or redistributing the library crates, include the MIT license and retain upstream attributions below.
@@ -33,7 +33,6 @@ Elph re-implements these concepts in Rust with the following key differences:
 - **Memory store**: Turso-backed vector embeddings for lifelong agent context
 - **MCP**: Built-in Model Context Protocol client integration
 - **Subagents**: Built-in sub-agent orchestration (spawn, steer, resume)
-- **Agent Swarm**: Multi-agent swarm coordination via `elph-swarm` crate
 - **Extension system (planned)**: WASM instead of npm packages
 
 The architectural design — tool system, provider abstraction, streaming event model,

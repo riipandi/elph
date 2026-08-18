@@ -194,19 +194,6 @@ pub fn format_agent_conflict_notice(conflicts: &[AgentConflict]) -> Option<Strin
     Some(lines.join("\n"))
 }
 
-/// Ensure global `CONFIG_DIR/AGENTS.md` exists as an empty template (optional).
-pub fn ensure_global_agents_md(paths: &Paths) -> Result<(), std::io::Error> {
-    let path = paths.config_dir().join("AGENTS.md");
-    if path.exists() {
-        return Ok(());
-    }
-    fs::write(
-        path,
-        "# Global agent instructions\n\n\
-         Instructions in this file apply to all projects unless overridden by a nearer `AGENTS.md`.\n",
-    )
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

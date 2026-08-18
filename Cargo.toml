@@ -1,14 +1,7 @@
 [workspace]
 resolver = "2"
 members = ["crates/coding-agent", "crates/elph-agent", "crates/elph-ai", "crates/floppy", "crates/rendown"]
-exclude = [
-  "crates/control-plane",
-  "crates/elph-cron",
-  "crates/elph-sandbox",
-  "crates/elph-swarm",
-  "crates/ext-hello",
-  "vendor/iocraft",
-]
+exclude = ["crates/control-plane", "crates/elph-cron", "crates/elph-sandbox", "crates/ext-hello", "vendor/iocraft"]
 
 [workspace.package]
 homepage = "https://elph.space"

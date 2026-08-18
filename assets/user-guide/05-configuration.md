@@ -18,7 +18,7 @@ Important config files:
 | `providers/*.json`       | Model catalogs (disk overlay)       |
 | `skills/<name>/SKILL.md` | User skills                         |
 | `bundled/`               | Built-in agents, skills, user-guide |
-| `AGENTS.md`              | Global agent instructions           |
+| `AGENTS.md`              | Optional global agent instructions (not created on first run) |
 
 Project overrides: `<project>/.elph/settings.json`, `mcp.json`, `skills/`, `prompts/`.
 

@@ -20,7 +20,7 @@ Elph is **pre-alpha**. Breaking changes and bugs are expected. Check [GitHub Rel
 
 - Config: `~/.config/elph/` (`ELPH_HOME`)
 - Data: `~/.local/share/elph/` (`ELPH_DATA_DIR`)
-- Project: `<cwd>/.elph/` — sessions, memory (`store.db`)
+- Project: `<cwd>/.elph/` — memory (`store.db`). `.elph/extensions/` and `.elph/plans/` are created only when you install a project extension or save a plan. Global `AGENTS.md` is optional and is not written on first run.
 
 ## Start here
 
