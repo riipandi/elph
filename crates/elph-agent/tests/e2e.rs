@@ -156,7 +156,9 @@ async fn harness_prompt_persists_session_messages() {
         active_tool_names: vec![],
         steering_mode: Default::default(),
         follow_up_mode: Default::default(),
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),

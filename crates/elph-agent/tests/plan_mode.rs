@@ -64,7 +64,9 @@ async fn harness_enter_plan_mode_filters_active_tools() {
         active_tool_names: vec![],
         steering_mode: QueueMode::default(),
         follow_up_mode: QueueMode::default(),
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -118,7 +120,9 @@ async fn harness_emits_plan_confirmation_events() {
         active_tool_names: vec![],
         steering_mode: QueueMode::default(),
         follow_up_mode: QueueMode::default(),
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),

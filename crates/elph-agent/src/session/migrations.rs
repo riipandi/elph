@@ -6,7 +6,13 @@
 //! Foreign keys are declared in DDL; connections must run `PRAGMA foreign_keys = ON`
 //! (see [`crate::datastore::connect`]).
 
-use crate::datastore::Migration;
+/// Ordered schema step applied by the Turso migration runner (`backend-turso`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Migration {
+    pub version: i64,
+    pub name: &'static str,
+    pub up: &'static str,
+}
 
 /// Full session-related DDL with PK / FK / indexes.
 ///

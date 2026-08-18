@@ -1,14 +1,18 @@
 //! Sub-agent orchestration (Codex-style multi-agent control plane).
 
 mod control;
+#[cfg(feature = "backend-turso")]
 mod graph;
+#[cfg(feature = "backend-turso")]
 mod harness;
 mod id;
 mod registry;
 mod types;
 
 pub use control::{AgentControl, SubagentEventForwarder, SubagentSpawnConfig};
+#[cfg(feature = "backend-turso")]
 pub use graph::AgentGraphStore;
+#[cfg(feature = "backend-turso")]
 pub use harness::SubagentHarness;
 pub use id::generate_agent_name;
 pub use registry::{AgentRegistry, SubagentRecord};

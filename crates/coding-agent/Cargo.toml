@@ -44,6 +44,7 @@ elph-agent = { workspace = true, features = [
   "prompt-templates",
   "extensions",
   "tools-shell-use",
+  "backend-turso",
 ] }
 elph-ai = { workspace = true, features = ["tracing", "bedrock", "oauth-callback"] }
 elph-tui = { workspace = true }

@@ -1,11 +1,13 @@
 //! Subagent types.
 
 use std::path::{Path, PathBuf};
+#[cfg(feature = "backend-turso")]
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
 use crate::agent::harness::{AgentHarnessResources, AgentHarnessStreamOptions};
+#[cfg(feature = "backend-turso")]
 use crate::agent::subagent::graph::AgentGraphStore;
 use crate::prompt::encoding::PromptEncodingConfig;
 use crate::types::AgentThinkingLevel;
@@ -96,9 +98,11 @@ pub struct SubagentBootstrap {
     pub thinking_level: AgentThinkingLevel,
     /// TOON prompt-encoding config inherited from the parent; `None` falls back to env.
     pub prompt_encoding: Option<PromptEncodingConfig>,
+    #[cfg(feature = "backend-turso")]
     pub agent_graph: Option<Arc<AgentGraphStore>>,
     /// Shared, already-open database handle. When present, child repos connect
     /// from this handle instead of opening [`store_db_path`] themselves.
+    #[cfg(feature = "backend-turso")]
     pub database: Option<Arc<turso::Database>>,
     /// Session artifacts root shared by every subagent
     /// (`APP_DATA/sessions/<SESSION_ID>` in the product). When set, each spawned
@@ -214,7 +218,9 @@ mod tests {
             stream_options: crate::agent::harness::AgentHarnessStreamOptions::default(),
             thinking_level: Default::default(),
             prompt_encoding: None,
+            #[cfg(feature = "backend-turso")]
             agent_graph: None,
+            #[cfg(feature = "backend-turso")]
             database: None,
             outputs_root: Some(std::path::PathBuf::from("/data/sessions/s1")),
         };

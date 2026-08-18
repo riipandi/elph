@@ -1,15 +1,18 @@
 //! In-memory registry of active subagents.
 
 use std::collections::HashMap;
+#[cfg(feature = "backend-turso")]
 use std::sync::Arc;
 
 use tokio::sync::Mutex;
 
+#[cfg(feature = "backend-turso")]
 use super::harness::SubagentHarness;
 use super::types::{SubagentInfo, SubagentStatus};
 
 pub struct SubagentRecord {
     pub info: SubagentInfo,
+    #[cfg(feature = "backend-turso")]
     pub harness: Arc<SubagentHarness>,
 }
 
@@ -151,6 +154,7 @@ impl Clone for SubagentRecord {
     fn clone(&self) -> Self {
         Self {
             info: self.info.clone(),
+            #[cfg(feature = "backend-turso")]
             harness: self.harness.clone(),
         }
     }

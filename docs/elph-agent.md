@@ -37,9 +37,9 @@ Default prefix is `ELPH`. Logging uses [`AgentBuilder::env_prefix`] / [`AgentBui
 
 ## Features
 
-`default = []`. Enable `mcp`, `builtin-tools`, `extensions`, `prompt-templates`, `tracing`, or `full`.
+`default = []`. Enable `mcp`, `builtin-tools`, `extensions`, `prompt-templates`, `tracing`, `backend-turso`, or `full`.
 
-Turso session backends are always compiled in this version (not feature-gated yet).
+`backend-turso` enables Turso/SQLite session storage (`TursoSessionStorage`, `TursoSessionRepo`), the `datastore` helpers, and Turso-backed stores (turns, todos, goals, workers, session summaries, subagent graph). Without it, use `InMemorySessionStorage`, `JsonlSessionStorage`, or `SessionDirStorage`.
 
 ## Errors
 

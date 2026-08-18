@@ -127,7 +127,9 @@ fn make_harness(
         active_tool_names: options.active_tool_names,
         steering_mode: options.steering_mode,
         follow_up_mode: options.follow_up_mode,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -182,7 +184,9 @@ async fn harness_exposes_queue_modes() {
         active_tool_names: vec![],
         steering_mode: QueueMode::All,
         follow_up_mode: QueueMode::All,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -313,7 +317,9 @@ async fn harness_before_agent_start_appends_messages() {
         active_tool_names: vec![],
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -369,7 +375,9 @@ async fn harness_tool_result_hook_patches_output() {
         active_tool_names: vec!["calculate".into()],
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -562,7 +570,9 @@ async fn harness_settles_context_hook_failures() {
         active_tool_names: vec![],
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -826,7 +836,9 @@ async fn harness_save_point_refreshes_config_at_tool_execution() {
             active_tool_names: vec!["calculate".into()],
             steering_mode: QueueMode::OneAtATime,
             follow_up_mode: QueueMode::OneAtATime,
+            #[cfg(feature = "backend-turso")]
             goal_runtime: None,
+            #[cfg(feature = "backend-turso")]
             turn_store: None,
             subagent_bootstrap: None,
             compaction_settings: CompactionSettings::default(),
@@ -1048,7 +1060,9 @@ async fn harness_validates_constructor_tool_names() {
         active_tool_names: vec!["missing".into()],
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -1075,7 +1089,9 @@ async fn harness_validates_constructor_tool_names() {
         active_tool_names: vec!["calculate".into()],
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -1102,7 +1118,9 @@ async fn harness_validates_constructor_tool_names() {
         active_tool_names: vec!["calculate".into(), "calculate".into()],
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -1139,7 +1157,9 @@ async fn harness_tools_update_events_and_validation() {
         active_tool_names: vec!["inspect".into()],
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -1243,7 +1263,9 @@ async fn harness_resources_update_events_clone_resources() {
         active_tool_names: vec![],
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -1379,7 +1401,9 @@ async fn harness_session_before_compact_overrides_custom_instructions() {
         active_tool_names: vec![],
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -1453,7 +1477,9 @@ async fn harness_session_before_tree_runs_during_navigate_tree() {
         active_tool_names: vec![],
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -1655,7 +1681,9 @@ async fn harness_restore_rehydrates_next_turn_queue() {
             active_tool_names: vec![],
             steering_mode: QueueMode::OneAtATime,
             follow_up_mode: QueueMode::OneAtATime,
+            #[cfg(feature = "backend-turso")]
             goal_runtime: None,
+            #[cfg(feature = "backend-turso")]
             turn_store: None,
             subagent_bootstrap: None,
             compaction_settings: CompactionSettings::default(),
@@ -1880,7 +1908,9 @@ async fn harness_lazy_activates_mcp_tools_via_list_available_tools() {
         active_tool_names: active,
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -2010,7 +2040,9 @@ async fn harness_executes_inactive_mcp_tools_from_execution_registry() {
         active_tool_names: vec!["list_available_tools".into()],
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),

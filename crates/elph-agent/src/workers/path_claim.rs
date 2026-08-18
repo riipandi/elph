@@ -5,11 +5,13 @@ use std::sync::Arc;
 
 use anyhow::Result;
 
+#[cfg(feature = "backend-turso")]
 use super::file_lease::FileLeaseStore;
 
 /// Host-injected context so FS mutate tools can claim paths before writing.
 #[derive(Clone)]
 pub struct PathClaimContext {
+    #[cfg(feature = "backend-turso")]
     store: FileLeaseStore,
     project_key: String,
     worker_id: String,
@@ -18,6 +20,7 @@ pub struct PathClaimContext {
 }
 
 impl PathClaimContext {
+    #[cfg(feature = "backend-turso")]
     pub fn new(
         store: FileLeaseStore,
         project_key: impl Into<String>,
@@ -34,6 +37,7 @@ impl PathClaimContext {
         }
     }
 
+    #[cfg(feature = "backend-turso")]
     pub fn store(&self) -> &FileLeaseStore {
         &self.store
     }
@@ -59,19 +63,26 @@ impl PathClaimContext {
     /// Stores a content fingerprint of the on-disk file (when present) so a later
     /// edit can detect external changes.
     pub async fn claim(&self, path: &str, purpose: &str) -> Result<()> {
-        let path_norm = normalize_claim_path(path, &self.project_key);
-        let content_hash = file_content_fingerprint(path);
-        self.store
-            .try_claim(
-                &self.project_key,
-                &path_norm,
-                &self.worker_id,
-                &self.session_id,
-                Some(purpose),
-                content_hash.as_deref(),
-                self.stale_secs,
-            )
-            .await?;
+        #[cfg(feature = "backend-turso")]
+        {
+            let path_norm = normalize_claim_path(path, &self.project_key);
+            let content_hash = file_content_fingerprint(path);
+            self.store
+                .try_claim(
+                    &self.project_key,
+                    &path_norm,
+                    &self.worker_id,
+                    &self.session_id,
+                    Some(purpose),
+                    content_hash.as_deref(),
+                    self.stale_secs,
+                )
+                .await?;
+        }
+        #[cfg(not(feature = "backend-turso"))]
+        {
+            let _ = (path, purpose);
+        }
         Ok(())
     }
 
@@ -80,36 +91,51 @@ impl PathClaimContext {
     /// Use this to compare against an already-read content buffer **without re-reading
     /// the file**, closing the TOCTOU window that `ensure_content_unchanged` had.
     pub async fn get_stored_content_hash(&self, path: &str) -> Option<String> {
-        let path_norm = normalize_claim_path(path, &self.project_key);
-        let leases = self.store.list_project(&self.project_key).await.ok()?;
-        let lease = leases.into_iter().find(|l| l.path_norm == path_norm)?;
-        if lease.worker_id != self.worker_id {
-            return None;
+        #[cfg(feature = "backend-turso")]
+        {
+            let path_norm = normalize_claim_path(path, &self.project_key);
+            let leases = self.store.list_project(&self.project_key).await.ok()?;
+            let lease = leases.into_iter().find(|l| l.path_norm == path_norm)?;
+            if lease.worker_id != self.worker_id {
+                return None;
+            }
+            lease.content_hash
         }
-        lease.content_hash
+        #[cfg(not(feature = "backend-turso"))]
+        {
+            let _ = path;
+            None
+        }
     }
 
     /// Fail if another process changed the file since this worker claimed it.
     pub async fn ensure_content_unchanged(&self, path: &str) -> Result<()> {
-        let path_norm = normalize_claim_path(path, &self.project_key);
-        let leases = self.store.list_project(&self.project_key).await?;
-        let Some(lease) = leases.into_iter().find(|l| l.path_norm == path_norm) else {
-            return Ok(());
-        };
-        if lease.worker_id != self.worker_id {
-            return Ok(());
+        #[cfg(feature = "backend-turso")]
+        {
+            let path_norm = normalize_claim_path(path, &self.project_key);
+            let leases = self.store.list_project(&self.project_key).await?;
+            let Some(lease) = leases.into_iter().find(|l| l.path_norm == path_norm) else {
+                return Ok(());
+            };
+            if lease.worker_id != self.worker_id {
+                return Ok(());
+            }
+            let Some(expected) = lease.content_hash.as_deref() else {
+                return Ok(());
+            };
+            let Some(current) = file_content_fingerprint(path) else {
+                return Ok(());
+            };
+            if current != expected {
+                anyhow::bail!(
+                    "path `{path_norm}` changed on disk since claim (hash mismatch). \
+                     Re-read the file and retry — refusing to overwrite concurrent edits."
+                );
+            }
         }
-        let Some(expected) = lease.content_hash.as_deref() else {
-            return Ok(());
-        };
-        let Some(current) = file_content_fingerprint(path) else {
-            return Ok(());
-        };
-        if current != expected {
-            anyhow::bail!(
-                "path `{path_norm}` changed on disk since claim (hash mismatch). \
-                 Re-read the file and retry — refusing to overwrite concurrent edits."
-            );
+        #[cfg(not(feature = "backend-turso"))]
+        {
+            let _ = path;
         }
         Ok(())
     }

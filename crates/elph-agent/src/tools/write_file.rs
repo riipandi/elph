@@ -79,8 +79,13 @@ async fn execute_write(
     // Refresh the content hash in the claim after successful write so that a
     // subsequent edit_file on the same path won't hit a spurious hash mismatch.
     if let Some(claim) = claims.as_ref() {
+        #[cfg(not(feature = "backend-turso"))]
+        let _ = claim;
+        #[cfg(feature = "backend-turso")]
         let new_hash = content_hash(content.as_bytes());
+        #[cfg(feature = "backend-turso")]
         let path_norm = crate::workers::normalize_claim_path(&absolute, claim.project_key());
+        #[cfg(feature = "backend-turso")]
         let _ = claim
             .store()
             .try_claim(

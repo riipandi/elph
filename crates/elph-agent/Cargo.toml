@@ -73,7 +73,7 @@ tokio = { workspace = true, features = [
 tokio-util = { workspace = true, features = ["rt"] }
 toml.workspace = true
 toon-format.workspace = true
-turso.workspace = true
+turso = { workspace = true, optional = true }
 url.workspace = true
 urlencoding.workspace = true
 walkdir = { workspace = true, optional = true }
@@ -85,7 +85,8 @@ rustix = { workspace = true }
 
 [features]
 default = []
-full = ["mcp", "prompt-templates", "extensions", "builtin-tools"]
+full = ["mcp", "prompt-templates", "extensions", "builtin-tools", "backend-turso"]
+backend-turso = ["dep:turso"]
 builtin-tools = ["tools-edit", "tools-search", "tools-web", "tools-collaboration"]
 extensions = ["dep:wasmtime", "dep:walkdir"]
 mcp = ["dep:rmcp"]
@@ -287,7 +288,17 @@ required-features = ["builtin-tools"]
 [[test]]
 name = "subagent"
 path = "tests/subagent.rs"
-required-features = ["builtin-tools"]
+required-features = ["builtin-tools", "backend-turso"]
+
+[[test]]
+name = "turso_session"
+path = "tests/turso_session.rs"
+required-features = ["backend-turso"]
+
+[[test]]
+name = "goals"
+path = "tests/goals.rs"
+required-features = ["backend-turso"]
 
 [[test]]
 name = "tools_fff"

@@ -12,5 +12,6 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Defaults: `AgentBuilder` `app_name = "elph-agent"`, `env_prefix = "ELPH"`.
 - Test-only MCP key helpers and `get_or_throw` / `get_or_undefined` are `#[doc(hidden)]`.
 - Crate root no longer flattens harness, MCP, or session SQL. Use `elph_agent::harness`, `elph_agent::mcp`, `elph_agent::session`.
+- Turso/SQLite session backend and stores are feature `backend-turso` (included in `full`). In-memory / JSONL / session-dir backends stay available without it.
 - `run_agent_loop` / `prompt` / `reset` return `AgentError`. Tool execute paths return `ToolError`.
 - Consumer contract: [`docs/elph-agent.md`](../../docs/elph-agent.md).

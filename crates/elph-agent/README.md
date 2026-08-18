@@ -18,7 +18,7 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 MSRV is **Rust 1.89**. Set [`HostIdentity`](src/types/mod.rs) on `AgentOptions` for a non-Elph env prefix. See [the consumer contract](../../docs/elph-agent.md).
 
-Cargo features: `mcp`, `prompt-templates`, `builtin-tools`, `extensions` (none on by default). Bundle with `full`.
+Cargo features: `mcp`, `prompt-templates`, `builtin-tools`, `extensions`, `backend-turso` (none on by default). Bundle with `full`.
 Default system prompt: `elph_agent::DEFAULT_SYSTEM_PROMPT`.
 
 ## Quick Start

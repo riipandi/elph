@@ -279,8 +279,10 @@ where
     pub active_tool_names: Vec<String>,
     pub steering_mode: QueueMode,
     pub follow_up_mode: QueueMode,
+    #[cfg(feature = "backend-turso")]
     pub goal_runtime: Option<std::sync::Arc<crate::goals::GoalRuntime>>,
     /// Optional relational turn accounting (`session_turns` + session rollups).
+    #[cfg(feature = "backend-turso")]
     pub turn_store: Option<std::sync::Arc<crate::turns::TurnStore>>,
     pub subagent_bootstrap: Option<crate::agent::subagent::SubagentBootstrap>,
     pub compaction_settings: CompactionSettings,

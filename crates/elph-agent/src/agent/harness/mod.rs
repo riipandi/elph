@@ -123,10 +123,12 @@ use tokio_util::sync::CancellationToken;
 
 use crate::agent::harness::hooks::HookRegistry as HookRegistryT;
 use crate::agent::harness::types::clone_stream_options;
+#[cfg(feature = "backend-turso")]
 use crate::goals::GoalRuntime;
 use crate::messages::default_convert_to_llm_fn;
 use crate::prompt::encoding::PromptEncodingConfig;
 use crate::runtime::local_env::LocalExecutionEnv;
+#[cfg(feature = "backend-turso")]
 use crate::turns::TurnStore;
 
 use crate::agent::subagent::generate_agent_name;
@@ -208,7 +210,9 @@ where
     compaction_settings: CompactionSettings,
     /// TOON prompt-encoding config; `None` falls back to `ELPH_PROMPT_ENCODING*` env vars.
     prompt_encoding: std::sync::Mutex<Option<PromptEncodingConfig>>,
+    #[cfg(feature = "backend-turso")]
     goal_runtime: Option<Arc<GoalRuntime>>,
+    #[cfg(feature = "backend-turso")]
     turn_store: Option<Arc<TurnStore>>,
     subagent_bootstrap: Option<crate::agent::subagent::SubagentBootstrap>,
     /// Whether the harness runs in headless mode (`elph run`).
@@ -358,7 +362,9 @@ where
                 agent_control: Mutex::new(agent_control),
                 compaction_settings: options.compaction_settings,
                 prompt_encoding: std::sync::Mutex::new(None),
+                #[cfg(feature = "backend-turso")]
                 goal_runtime: options.goal_runtime,
+                #[cfg(feature = "backend-turso")]
                 turn_store: options.turn_store,
                 subagent_bootstrap: options.subagent_bootstrap,
                 headless: options.headless,

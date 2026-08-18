@@ -2,11 +2,7 @@ use anyhow::Result;
 use sha2::{Digest, Sha256};
 use turso::Connection;
 
-pub struct Migration {
-    pub version: i64,
-    pub name: &'static str,
-    pub up: &'static str,
-}
+pub use crate::session::migrations::Migration;
 
 /// Apply an ordered migration set via the shared `app_migrations` ledger.
 ///

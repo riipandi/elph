@@ -14,7 +14,7 @@
 //! Identity is not process-global.
 //!
 //! MSRV is Rust **1.89** (edition 2024). Cargo features: `mcp`, `builtin-tools`,
-//! `extensions`, `prompt-templates`, `tracing`; bundle with `full`.
+//! `extensions`, `prompt-templates`, `tracing`, `backend-turso`; bundle with `full`.
 //!
 //! Consumer notes: <https://github.com/riipandi/elph/blob/main/docs/elph-agent.md>
 //!
@@ -25,6 +25,7 @@
 pub mod agent;
 pub mod builder;
 pub mod compaction;
+#[cfg(feature = "backend-turso")]
 pub mod datastore;
 pub mod fs;
 pub mod goals;
@@ -57,10 +58,12 @@ pub use crate::exec::{ExecError, ExecErrorCode, ShellConfig, exec_shell_command,
 pub use agent::default_model;
 pub use agent::harness;
 pub use agent::subagent::AgentControl;
+#[cfg(feature = "backend-turso")]
 pub use agent::subagent::AgentGraphStore;
 pub use agent::subagent::AgentRegistry;
 pub use agent::subagent::SubagentBootstrap;
 pub use agent::subagent::SubagentEventForwarder;
+#[cfg(feature = "backend-turso")]
 pub use agent::subagent::SubagentHarness;
 pub use agent::subagent::SubagentInfo;
 pub use agent::subagent::SubagentLimits;
@@ -120,14 +123,16 @@ pub use compaction::prepare_branch_entries;
 pub use compaction::prepare_compaction;
 pub use compaction::serialize_conversation;
 pub use compaction::should_compact;
+#[cfg(feature = "backend-turso")]
 pub use datastore::DatabaseSpec;
-pub use datastore::Migration;
+#[cfg(feature = "backend-turso")]
 pub use datastore::{ensure_database, ensure_databases, ensure_databases_once};
 pub use elph_ai::{OnPayloadCallback, OnResponseCallback};
 pub use fs::{ensure_dirs, write_file_if_missing, write_json_file, write_private_file};
 pub use goals::{BUDGET_LIMIT_PROMPT_PREFIX, CONTINUATION_PROMPT_PREFIX};
-pub use goals::{Goal, GoalRuntime, GoalStatus, GoalStore};
-pub use goals::{GoalStatusHook, create_goal_tools, create_goal_tools_with_hook};
+pub use goals::{Goal, GoalStatus};
+#[cfg(feature = "backend-turso")]
+pub use goals::{GoalRuntime, GoalStatusHook, GoalStore, create_goal_tools, create_goal_tools_with_hook};
 pub use logger::{LogRotation, LoggingOptions, LoggingOptionsBuilder, LoggingSettings};
 pub use messages::CustomMessageContent;
 pub use messages::create_branch_summary_message;
@@ -192,6 +197,7 @@ pub use session::InMemorySessionCreateOptions;
 pub use session::InMemorySessionOptions;
 pub use session::InMemorySessionRepo;
 pub use session::InMemorySessionStorage;
+pub use session::Migration;
 pub use session::Session;
 pub use session::SessionContext;
 pub use session::SessionContextBuildOptions;
@@ -207,11 +213,17 @@ pub use session::SessionMetadata;
 pub use session::SessionModelRef;
 pub use session::SessionStorage;
 pub use session::SessionTreeEntry;
+#[cfg(feature = "backend-turso")]
 pub use session::TursoSessionCreateOptions;
+#[cfg(feature = "backend-turso")]
 pub use session::TursoSessionListOptions;
+#[cfg(feature = "backend-turso")]
 pub use session::TursoSessionMetadata;
+#[cfg(feature = "backend-turso")]
 pub use session::TursoSessionRepo;
+#[cfg(feature = "backend-turso")]
 pub use session::TursoSessionRepoCreateOptions;
+#[cfg(feature = "backend-turso")]
 pub use session::TursoSessionStorage;
 pub use session::build_context_entries;
 pub use session::build_session_context;
@@ -231,11 +243,14 @@ pub use session::reduce_durable_state;
 pub use session::repair_unanswered_tool_calls;
 pub use session::to_session;
 pub use session::{DurableHarnessState, OperationKind, OperationOutcome, QueueKind, RecoveryReport};
+#[cfg(feature = "backend-turso")]
 pub use session::{
     RetentionPolicy, SessionGcReport, list_session_gc_rows, run_full_session_gc, run_session_gc, set_session_pinned,
 };
 pub use session_summary::SessionSummary;
+#[cfg(feature = "backend-turso")]
 pub use session_summary::SessionSummaryStore;
+#[cfg(feature = "backend-turso")]
 pub use session_summary::create_session_summary_tool;
 pub use skills::LoadSkillsResult;
 pub use skills::LoadSourcedSkillsResult;
@@ -251,10 +266,11 @@ pub use skills::load_sourced_skills;
 pub use skills::load_sourced_skills_with_options;
 pub use skills::skill_args_validation_notice;
 pub use skills::skill_requires_arguments;
+#[cfg(feature = "backend-turso")]
 pub use todos::{
-    TodoHook, TodoItem, TodoStatus, TodoStore, TodoUpdate, WorkTracker, auto_close_done_todos, create_todo_tools,
-    create_todo_tools_with_hook,
+    TodoHook, TodoStore, TodoUpdate, auto_close_done_todos, create_todo_tools, create_todo_tools_with_hook,
 };
+pub use todos::{TodoItem, TodoStatus, WorkTracker};
 #[cfg(any(feature = "tools-edit", feature = "tools-search"))]
 pub use tools::create_all_tools;
 #[cfg(any(feature = "tools-edit", feature = "tools-search", feature = "tools-web"))]
@@ -301,10 +317,16 @@ pub use tools::{close_shell_use_sessions, create_shell_use_tool, shell_use_open_
 #[cfg(feature = "tools-web")]
 pub use tools::{create_web_extract_tool, create_web_fetch_tool, create_web_search_tool, create_web_tools};
 pub use tools::{echo_tool, simple_tool};
-pub use turns::{TurnRecord, TurnStatus, TurnStore, TurnUsage};
+#[cfg(feature = "backend-turso")]
+pub use turns::TurnStore;
+pub use turns::{TurnRecord, TurnStatus, TurnUsage};
 pub use types::*;
+#[cfg(feature = "backend-turso")]
 pub use workers::{
-    FileLeaseStore, LeaseConflict, LeaseError, LiveWorker, MailboxStore, MessageKind, MessageStatus, PathClaimContext,
-    SessionLease, SessionLeaseStore, SharedPathClaim, WorkerMessage, WorkerRecord, WorkerRegistry, WorkerStatus,
-    WorkerToolContext, create_intercom_tools, create_worker_tools, normalize_claim_path,
+    FileLeaseStore, LeaseConflict, LeaseError, MailboxStore, SessionLease, SessionLeaseStore, WorkerRegistry,
+    WorkerToolContext, create_intercom_tools, create_worker_tools,
+};
+pub use workers::{
+    LiveWorker, MessageKind, MessageStatus, PathClaimContext, SharedPathClaim, WorkerMessage, WorkerRecord,
+    WorkerStatus, normalize_claim_path,
 };

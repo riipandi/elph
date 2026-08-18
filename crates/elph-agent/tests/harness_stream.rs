@@ -105,7 +105,9 @@ async fn harness_snapshots_stream_options_before_provider_request() {
         active_tool_names: vec![],
         steering_mode: elph_agent::QueueMode::OneAtATime,
         follow_up_mode: elph_agent::QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -184,7 +186,9 @@ async fn harness_save_point_refreshes_stream_options_without_mutating_active_req
             active_tool_names: vec!["calculate".into()],
             steering_mode: elph_agent::QueueMode::OneAtATime,
             follow_up_mode: elph_agent::QueueMode::OneAtATime,
+            #[cfg(feature = "backend-turso")]
             goal_runtime: None,
+            #[cfg(feature = "backend-turso")]
             turn_store: None,
             subagent_bootstrap: None,
             compaction_settings: CompactionSettings::default(),
@@ -255,7 +259,9 @@ async fn harness_chains_provider_request_patches_with_deletion() {
         active_tool_names: vec![],
         steering_mode: elph_agent::QueueMode::OneAtATime,
         follow_up_mode: elph_agent::QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -373,7 +379,9 @@ async fn harness_chains_provider_payload_hooks() {
         active_tool_names: vec![],
         steering_mode: elph_agent::QueueMode::OneAtATime,
         follow_up_mode: elph_agent::QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -466,7 +474,9 @@ async fn harness_on_chains_provider_payload_hooks() {
         active_tool_names: vec![],
         steering_mode: elph_agent::QueueMode::OneAtATime,
         follow_up_mode: elph_agent::QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -549,7 +559,9 @@ async fn harness_on_rejects_unknown_hook_type() {
         active_tool_names: vec![],
         steering_mode: elph_agent::QueueMode::OneAtATime,
         follow_up_mode: elph_agent::QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -594,7 +606,9 @@ async fn harness_after_provider_response_captures_status_and_headers() {
         active_tool_names: vec![],
         steering_mode: elph_agent::QueueMode::OneAtATime,
         follow_up_mode: elph_agent::QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),
@@ -649,7 +663,9 @@ async fn harness_subscribe_receives_after_provider_response_own_event() {
         active_tool_names: vec![],
         steering_mode: elph_agent::QueueMode::OneAtATime,
         follow_up_mode: elph_agent::QueueMode::OneAtATime,
+        #[cfg(feature = "backend-turso")]
         goal_runtime: None,
+        #[cfg(feature = "backend-turso")]
         turn_store: None,
         subagent_bootstrap: None,
         compaction_settings: CompactionSettings::default(),

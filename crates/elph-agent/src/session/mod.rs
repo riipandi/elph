@@ -9,9 +9,11 @@ pub mod migrations;
 pub mod recovery;
 pub mod repo;
 pub mod repo_utils;
+#[cfg(feature = "backend-turso")]
 pub mod retention;
 pub mod storage_utils;
 pub mod tree;
+#[cfg(feature = "backend-turso")]
 pub mod turso_repo;
 pub mod types;
 
@@ -20,7 +22,9 @@ pub use backends::InMemorySessionStorage;
 pub use backends::JsonlSessionStorage;
 pub use backends::SessionDirCreateOptions;
 pub use backends::SessionDirStorage;
+#[cfg(feature = "backend-turso")]
 pub use backends::TursoSessionCreateOptions;
+#[cfg(feature = "backend-turso")]
 pub use backends::TursoSessionStorage;
 pub use backends::load_session_metadata;
 pub use backends::session_dir::{EVENTS_FILE, SUMMARY_FILE};
@@ -34,6 +38,7 @@ pub use durability::{DurableHarnessState, OperationKind, OperationOutcome, Queue
 pub use id::create_worker_id;
 pub use id::create_worker_msg_id;
 pub use migrations::CANONICAL_SESSION_SCHEMA_SQL;
+pub use migrations::Migration;
 pub use migrations::SESSION_SUMMARY_SCHEMA_SQL;
 pub use migrations::SESSION_TREE_MIGRATIONS;
 pub use migrations::WORKERS_SCHEMA_SQL;
@@ -45,12 +50,16 @@ pub use repo::SessionDirRepo;
 pub use repo::SessionDirRepoCreateOptions;
 pub use repo_utils::{ForkEntriesOptions, ForkPosition};
 pub use repo_utils::{create_session_id, create_timestamp, get_entries_to_fork, to_session};
+#[cfg(feature = "backend-turso")]
 pub use retention::{
     RetentionPolicy, SessionGcReport, list_session_gc_rows, run_full_session_gc, run_session_gc, set_session_pinned,
 };
 pub use tree::{BranchSummaryOptions, Session};
+#[cfg(feature = "backend-turso")]
 pub use turso_repo::TursoSessionListOptions;
+#[cfg(feature = "backend-turso")]
 pub use turso_repo::TursoSessionRepo;
+#[cfg(feature = "backend-turso")]
 pub use turso_repo::TursoSessionRepoCreateOptions;
 pub use types::CustomMessageEntryBlock;
 pub use types::CustomMessageEntryContent;
@@ -63,5 +72,6 @@ pub use types::SessionModelRef;
 pub use types::SessionStatistics;
 pub use types::SessionStorage;
 pub use types::SessionTreeEntry;
+#[cfg(feature = "backend-turso")]
 pub use types::TursoSessionMetadata;
 pub use types::{CheckpointTail, CursorPosition};
