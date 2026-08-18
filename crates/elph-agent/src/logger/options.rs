@@ -85,7 +85,7 @@ pub struct LoggingOptionsBuilder {
 impl Default for LoggingOptionsBuilder {
     fn default() -> Self {
         Self {
-            app_name: "elph",
+            app_name: "elph-agent",
             logs_dir: None,
             level: None,
             rotation: None,

@@ -1,6 +1,26 @@
-//! App-agnostic agent runtime for Elph applications.
+//! App-agnostic agent runtime: loop, tools, sessions, MCP, and harness.
+//!
+//! # Public contract
+//!
+//! Prefer crate-root types [`Agent`], [`AgentOptions`], [`AgentHarness`],
+//! [`HostIdentity`], and the feature-gated tool constructors. Adapter internals
+//! and TypeScript-port helpers (`get_or_throw`, `get_or_undefined`) are not a
+//! stability promise.
+//!
+//! Set [`HostIdentity`] on [`AgentOptions`] (env prefix for
+//! `{PREFIX}_PROMPT_ENCODING*`). Pass the same prefix to MCP
+//! [`load_or_create_master_key_with_prefix`] and logging [`AgentBuilder::env_prefix`].
+//! Identity is not process-global.
+//!
+//! MSRV is Rust **1.89** (edition 2024). Cargo features: `mcp`, `builtin-tools`,
+//! `extensions`, `prompt-templates`, `tracing`; bundle with `full`.
+//!
+//! Consumer notes: <https://github.com/riipandi/elph/blob/main/docs/elph-agent.md>
 //!
 //! Rust port of [@earendil-works/pi-agent](https://github.com/earendil-works/pi/tree/main/packages/agent).
+
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
 pub mod agent;
 pub mod builder;
 pub mod compaction;
@@ -125,7 +145,9 @@ pub use agent::harness::finalize_shell_capture;
 pub use agent::harness::format_size;
 pub use agent::harness::format_skills_for_context;
 pub use agent::harness::format_skills_for_system_prompt;
+#[doc(hidden)]
 pub use agent::harness::get_or_throw;
+#[doc(hidden)]
 pub use agent::harness::get_or_undefined;
 pub use agent::harness::is_known_harness_hook_type;
 pub use agent::harness::ok;
@@ -470,6 +492,7 @@ pub use tools::mcp::call_tool_for_server;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::clear_credentials;
 #[cfg(feature = "mcp")]
+#[doc(hidden)]
 pub use tools::mcp::clear_process_master_key_for_tests;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::connect;
@@ -510,6 +533,8 @@ pub use tools::mcp::list_tools_for_server;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::load_or_create_master_key;
 #[cfg(feature = "mcp")]
+pub use tools::mcp::load_or_create_master_key_with_prefix;
+#[cfg(feature = "mcp")]
 pub use tools::mcp::lock_auth_store;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::looks_like_envelope;
@@ -548,6 +573,7 @@ pub use tools::mcp::run_oauth_flow;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::run_oauth_flow_with_scopes;
 #[cfg(feature = "mcp")]
+#[doc(hidden)]
 pub use tools::mcp::set_process_master_key_for_tests;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::shutdown_client;

@@ -1,9 +1,36 @@
 //! Core agent types — elph-agent module.
-//!
-//! Global enums live here; domain-specific types have been distributed:
-//! - loop config types → `crate::runtime::loop_config`
-//! - message types → `crate::messages::types`
-//! - tool types → `crate::tools::types`
+
+/// Host product name and env-var prefix for this runtime (not process-global).
+///
+/// `env_prefix` `MYAPP` → `MYAPP_PROMPT_ENCODING`, `MYAPP_AUTH_KEY`, `MYAPP_DATA_DIR`.
+/// Default is `app_name = "elph-agent"`, `env_prefix = "ELPH"`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HostIdentity {
+    pub app_name: String,
+    pub env_prefix: String,
+}
+
+impl Default for HostIdentity {
+    fn default() -> Self {
+        Self {
+            app_name: "elph-agent".to_string(),
+            env_prefix: "ELPH".to_string(),
+        }
+    }
+}
+
+impl HostIdentity {
+    pub fn new(app_name: impl Into<String>, env_prefix: impl Into<String>) -> Self {
+        Self {
+            app_name: app_name.into(),
+            env_prefix: env_prefix.into(),
+        }
+    }
+
+    pub fn env_key(&self, suffix: &str) -> String {
+        format!("{}_{suffix}", self.env_prefix)
+    }
+}
 
 pub mod enums;
 

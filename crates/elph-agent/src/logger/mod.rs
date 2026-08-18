@@ -103,15 +103,21 @@ pub fn redirect_stderr_to_file() {}
 /// Best-effort logs directory when logging has not been initialized.
 #[cfg(unix)]
 fn default_logs_dir() -> PathBuf {
-    if let Some(data) = std::env::var_os("ELPH_DATA_DIR") {
+    default_logs_dir_for("elph-agent", "ELPH")
+}
+
+#[cfg(unix)]
+fn default_logs_dir_for(app_name: &str, env_prefix: &str) -> PathBuf {
+    let data_key = format!("{env_prefix}_DATA_DIR");
+    if let Some(data) = std::env::var_os(&data_key) {
         return PathBuf::from(data).join("logs");
     }
     if let Some(xdg) = std::env::var_os("XDG_DATA_HOME") {
-        return PathBuf::from(xdg).join("elph").join("logs");
+        return PathBuf::from(xdg).join(app_name).join("logs");
     }
     std::env::var_os("HOME")
-        .map(|home| PathBuf::from(home).join(".local/share/elph/logs"))
-        .unwrap_or_else(|| PathBuf::from(".local/share/elph/logs"))
+        .map(|home| PathBuf::from(home).join(".local/share").join(app_name).join("logs"))
+        .unwrap_or_else(|| PathBuf::from(format!(".local/share/{app_name}/logs")))
 }
 
 fn level_filter(level: &str) -> Box<dyn Filter> {

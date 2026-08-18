@@ -69,12 +69,17 @@ pub fn default_auth_lock_path() -> PathBuf {
 /// guards creation so concurrent processes cannot race to create different
 /// master keys.
 pub fn load_or_create_master_key() -> Result<Aes256Key> {
+    load_or_create_master_key_with_prefix("ELPH")
+}
+
+/// Same as [`load_or_create_master_key`], reading `{prefix}_AUTH_KEY`.
+pub fn load_or_create_master_key_with_prefix(prefix: &str) -> Result<Aes256Key> {
     if let Some(key) = process_override().lock().unwrap_or_else(|e| e.into_inner()).clone() {
         return Ok(key);
     }
 
     // Optional CI escape hatch: full 32-byte key as URL-safe base64 (no pad).
-    if let Ok(b64) = std::env::var("ELPH_AUTH_KEY") {
+    if let Ok(b64) = std::env::var(format!("{prefix}_AUTH_KEY")) {
         let trimmed = b64.trim();
         if !trimmed.is_empty() {
             return key_from_b64(trimmed);
@@ -92,7 +97,7 @@ pub fn load_or_create_master_key() -> Result<Aes256Key> {
                 "{e}. This happens when the machine identifier changes (hardware \
                  change, VM clone) or auth.lock is corrupt. Recovery: delete \
                  auth.lock and auth.json, then re-connect providers/MCP. Set \
-                 ELPH_AUTH_KEY to preserve the same key across machines."
+                 {prefix}_AUTH_KEY to preserve the same key across machines."
             );
         });
     }

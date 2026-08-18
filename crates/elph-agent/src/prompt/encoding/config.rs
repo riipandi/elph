@@ -115,22 +115,27 @@ impl PromptEncodingConfig {
         }
     }
 
-    /// Resolve from environment variables. Unknown values fall back safely.
+    /// Resolve from `ELPH_PROMPT_ENCODING*` (default prefix).
     pub fn from_env() -> Self {
+        Self::from_env_prefixed("ELPH")
+    }
+
+    /// Resolve from `{prefix}_PROMPT_ENCODING*`.
+    pub fn from_env_prefixed(prefix: &str) -> Self {
         let mut config = Self {
-            mode: parse_mode_from_env(),
+            mode: parse_mode_from_env_prefixed(prefix),
             ..Self::default()
         };
-        if let Some(min_bytes) = parse_usize_env("ELPH_PROMPT_ENCODING_MIN_BYTES") {
+        if let Some(min_bytes) = parse_usize_env(&format!("{prefix}_PROMPT_ENCODING_MIN_BYTES")) {
             config.min_bytes = min_bytes;
         }
-        if let Some(delimiter) = std::env::var("ELPH_PROMPT_ENCODING_DELIMITER")
+        if let Some(delimiter) = std::env::var(format!("{prefix}_PROMPT_ENCODING_DELIMITER"))
             .ok()
             .and_then(|v| PromptEncodingDelimiter::from_env_str(&v))
         {
             config.delimiter = delimiter;
         }
-        if let Some(tabular) = std::env::var("ELPH_PROMPT_ENCODING_TABULAR_DELIMITER")
+        if let Some(tabular) = std::env::var(format!("{prefix}_PROMPT_ENCODING_TABULAR_DELIMITER"))
             .ok()
             .and_then(|v| PromptEncodingDelimiter::from_env_str(&v))
         {
@@ -140,8 +145,8 @@ impl PromptEncodingConfig {
     }
 }
 
-fn parse_mode_from_env() -> PromptEncodingMode {
-    match std::env::var("ELPH_PROMPT_ENCODING")
+fn parse_mode_from_env_prefixed(prefix: &str) -> PromptEncodingMode {
+    match std::env::var(format!("{prefix}_PROMPT_ENCODING"))
         .ok()
         .map(|v| v.to_ascii_lowercase())
         .as_deref()

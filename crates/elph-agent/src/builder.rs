@@ -34,8 +34,8 @@ impl AgentBuilder {
     pub fn new(app_version: &'static str) -> Self {
         Self {
             app_version,
-            env_prefix: "",
-            app_name: "elph",
+            env_prefix: "ELPH",
+            app_name: "elph-agent",
             quiet_env: None,
             logs_dir: None,
             console_enabled: true,

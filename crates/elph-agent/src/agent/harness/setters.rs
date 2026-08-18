@@ -251,7 +251,7 @@ where
     }
 
     /// Set the TOON prompt-encoding configuration for model-visible tool results.
-    /// `None` falls back to `PromptEncodingConfig::from_env()` (`ELPH_PROMPT_ENCODING*` vars).
+    /// `None` falls back to `PromptEncodingConfig::from_env()` (`{PREFIX}_PROMPT_ENCODING*`, default `ELPH`).
     pub fn set_prompt_encoding(&self, config: Option<PromptEncodingConfig>) {
         *self.shared.prompt_encoding.lock().unwrap() = config;
     }

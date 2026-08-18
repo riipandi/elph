@@ -7,9 +7,15 @@ keywords = ["agent", "runtime", "ai", "elph"]
 categories = ["development-tools", "asynchronous"]
 homepage.workspace = true
 repository.workspace = true
-rust-version.workspace = true
-edition.workspace = true
+documentation = "https://docs.rs/elph-agent"
+rust-version = "1.89"
+edition = "2024"
 publish = true
+include = ["Cargo.toml", "src/**/*", "README.md", "CHANGELOG.md"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [lib]
 name = "elph_agent"
