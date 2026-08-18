@@ -166,6 +166,8 @@ struct PendingPlanConfirmation {
     plan_text: String,
     /// Optional path to the saved plan file on disk (`.elph/plans/plan-*.md`).
     plan_file: Option<String>,
+    /// Line comments / freeform notes from the TUI review surface.
+    review_notes: Option<String>,
 }
 
 struct HarnessShared<S>
@@ -196,6 +198,7 @@ where
     hooks: HookRegistryT,
     convert_to_llm: ConvertToLlmFn,
     collaboration_mode: Mutex<CollaborationMode>,
+    plan_tracker: Mutex<crate::collaboration::PlanModeTracker>,
     baseline_active_tool_names: Mutex<Vec<String>>,
     pending_plan: Mutex<Option<PendingPlanConfirmation>>,
     /// Slash prompt card metadata for the next user message write: `(kind, title)`.
@@ -346,6 +349,9 @@ where
                 tools: Mutex::new(tools_map),
                 active_tool_names: Mutex::new(active_tool_names),
                 collaboration_mode: Mutex::new(collaboration_mode),
+                plan_tracker: Mutex::new(crate::collaboration::PlanModeTracker::from_collaboration_mode(
+                    collaboration_mode,
+                )),
                 baseline_active_tool_names: Mutex::new(baseline_active_tool_names),
                 pending_plan: Mutex::new(None),
                 pending_prompt_meta: Mutex::new(None),

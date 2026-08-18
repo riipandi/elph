@@ -20,11 +20,45 @@ where
     S::Metadata: HasSessionId + Send + Sync,
 {
     pub async fn enter_plan_mode(&self) -> HarnessOpResult<()> {
+        self.shared.plan_tracker.lock().await.force_active();
         self.set_collaboration_mode(CollaborationMode::Plan).await
     }
 
     pub async fn exit_plan_mode(&self) -> HarnessOpResult<()> {
+        self.shared.plan_tracker.lock().await.deactivate();
         self.set_collaboration_mode(CollaborationMode::Default).await
+    }
+
+    /// Arm Plan on the next user prompt (TUI Shift+Tab). Does not filter tools yet.
+    pub async fn arm_plan_mode(&self) {
+        self.shared.plan_tracker.lock().await.enter_pending();
+    }
+
+    /// If Plan is pending, activate it and apply tool filtering. Returns whether this is a reentry.
+    pub async fn commit_pending_plan_mode(&self) -> HarnessOpResult<bool> {
+        let reentry = {
+            let mut tracker = self.shared.plan_tracker.lock().await;
+            if !tracker.is_pending() {
+                return Ok(false);
+            }
+            let reentry = tracker.is_reentry();
+            tracker.activate();
+            reentry
+        };
+        self.set_collaboration_mode(CollaborationMode::Plan).await?;
+        Ok(reentry)
+    }
+
+    pub async fn plan_mode_is_pending(&self) -> bool {
+        self.shared.plan_tracker.lock().await.is_pending()
+    }
+
+    pub async fn plan_mode_is_reentry(&self) -> bool {
+        self.shared.plan_tracker.lock().await.is_reentry()
+    }
+
+    pub async fn plan_mode_activated_as_reentry(&self) -> bool {
+        self.shared.plan_tracker.lock().await.activated_as_reentry()
     }
 
     pub async fn set_collaboration_mode(&self, mode: CollaborationMode) -> HarnessOpResult<()> {
@@ -65,15 +99,31 @@ where
                 *self.shared.pending_plan.lock().await = None;
             }
             PlanConfirmationChoice::Implement => {
+                self.shared.plan_tracker.lock().await.deactivate();
                 self.set_collaboration_mode(CollaborationMode::Default).await?;
-                self.prompt(implement_prompt(&pending.plan_text, pending.plan_file.as_deref()), None)
-                    .await?;
+                self.prompt(
+                    implement_prompt(
+                        &pending.plan_text,
+                        pending.plan_file.as_deref(),
+                        pending.review_notes.as_deref(),
+                    ),
+                    None,
+                )
+                .await?;
             }
             PlanConfirmationChoice::ImplementFresh => {
+                self.shared.plan_tracker.lock().await.deactivate();
                 self.set_collaboration_mode(CollaborationMode::Default).await?;
                 self.fork_fresh_plan_branch(&pending.plan_text).await?;
-                self.prompt(implement_prompt(&pending.plan_text, pending.plan_file.as_deref()), None)
-                    .await?;
+                self.prompt(
+                    implement_prompt(
+                        &pending.plan_text,
+                        pending.plan_file.as_deref(),
+                        pending.review_notes.as_deref(),
+                    ),
+                    None,
+                )
+                .await?;
             }
         }
         Ok(())
@@ -84,6 +134,13 @@ where
     pub async fn set_plan_file_path(&self, path: String) -> HarnessOpResult<()> {
         if let Some(pending) = self.shared.pending_plan.lock().await.as_mut() {
             pending.plan_file = Some(path);
+        }
+        Ok(())
+    }
+
+    pub async fn set_plan_review_notes(&self, notes: Option<String>) -> HarnessOpResult<()> {
+        if let Some(pending) = self.shared.pending_plan.lock().await.as_mut() {
+            pending.review_notes = notes.filter(|s| !s.trim().is_empty());
         }
         Ok(())
     }
@@ -139,6 +196,7 @@ where
             plan_id: plan_id.clone(),
             plan_text: plan_text.clone(),
             plan_file: None,
+            review_notes: None,
         });
 
         self.shared

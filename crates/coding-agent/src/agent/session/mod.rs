@@ -597,7 +597,7 @@ impl CodingAgentSession {
         } else {
             None
         };
-        let text = build_coding_system_prompt(
+        let mut text = build_coding_system_prompt(
             cwd,
             &resources,
             &tool_names,
@@ -611,6 +611,9 @@ impl CodingAgentSession {
                 worker_peers,
             },
         )?;
+        if mode == AgentMode::Plan && self.harness.plan_mode_activated_as_reentry().await {
+            text.push_str(elph_agent::plan_mode_reentry_prompt());
+        }
         *self.system_prompt_cache.write() = Some(text.clone());
         Ok(text)
     }
@@ -622,6 +625,29 @@ impl CodingAgentSession {
         // Wait for any in-flight turn before reconciling tools (avoids mid-turn mode races).
         let _turn_guard = self.turn_gate.lock().await;
         self.apply_agent_mode(mode).await
+    }
+
+    /// Arm Plan for the next user prompt (TUI Shift+Tab). Badge only — tools stay as-is.
+    pub async fn arm_plan_mode(&self) -> Result<()> {
+        let _guard = self.mode_gate.lock().await;
+        *self.mode_state.lock().await = AgentMode::Plan;
+        self.harness.arm_plan_mode().await;
+        Ok(())
+    }
+
+    /// Activate a pending Plan toggle before the first prompt. Returns whether this is a reentry.
+    pub async fn commit_plan_mode_if_pending(&self) -> Result<bool> {
+        if !self.harness.plan_mode_is_pending().await {
+            return Ok(false);
+        }
+        let reentry = self
+            .harness
+            .commit_pending_plan_mode()
+            .await
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
+        self.policy.lock().await.set_mode(AgentMode::Plan);
+        self.apply_agent_mode(AgentMode::Plan).await?;
+        Ok(reentry)
     }
 
     pub async fn set_thinking_level(&self, level: crate::types::ThinkingLevel) -> Result<()> {
@@ -668,6 +694,11 @@ impl CodingAgentSession {
         }
         // Lazy MCP: discover any still-pending servers and hot-attach tools before the model runs.
         self.ensure_mcp_tools_ready().await;
+        if *self.mode_state.lock().await == AgentMode::Plan
+            && let Err(err) = self.commit_plan_mode_if_pending().await
+        {
+            log::warn!("commit pending plan mode: {err:#}");
+        }
         // Pre-prompt guard: when history already exceeds the configured threshold, compact
         // before sending so the request never runs into the hard context limit.
         self.maybe_auto_compact(Some(&text)).await;
@@ -1286,12 +1317,25 @@ impl CodingAgentSession {
         choice: PlanConfirmationChoice,
         plan_file: Option<String>,
     ) -> Result<()> {
+        self.resolve_plan_with_file_and_notes(choice, plan_file, None).await
+    }
+
+    pub async fn resolve_plan_with_file_and_notes(
+        &self,
+        choice: PlanConfirmationChoice,
+        plan_file: Option<String>,
+        review_notes: Option<String>,
+    ) -> Result<()> {
         if let Some(ref path) = plan_file {
             self.harness
                 .set_plan_file_path(path.clone())
                 .await
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
         }
+        self.harness
+            .set_plan_review_notes(review_notes)
+            .await
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
         self.resolve_plan(choice).await
     }
 

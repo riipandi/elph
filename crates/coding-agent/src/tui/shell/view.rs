@@ -1792,6 +1792,22 @@ pub(crate) fn build_shell_view(
                                 suppress_enter_newline.set(true);
                                 return;
                             }
+                            SlashOutcome::OpenViewPlanDialog { text } => {
+                                open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                                    pending: &mut pending_system_prompt,
+                                    shell_focus: &mut shell_focus,
+                                    title: "Plan".to_string(),
+                                    text,
+                                    width_pct: DEFAULT_SCROLL_TEXT_WIDTH_PCT,
+                                    body_height: None,
+                                    show_copy: true,
+                                });
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
                             SlashOutcome::OpenSessionInfoDialog { text } => {
                                 open_scroll_text_dialog(OpenScrollTextDialogArgs {
                                     pending: &mut pending_system_prompt,

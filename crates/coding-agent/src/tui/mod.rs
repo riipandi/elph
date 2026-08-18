@@ -21,6 +21,7 @@ mod model_selector;
 mod model_selector_bar;
 mod model_selector_shell;
 mod notifier;
+pub(crate) mod plan_review;
 mod prompt;
 mod prompt_history;
 pub(crate) mod provider_connect_dialog;

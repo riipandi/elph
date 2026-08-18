@@ -789,11 +789,10 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 activity_label.set("Plan proposed".to_string());
                 approval_selected.set(PLAN_CONFIRM_DEFAULT_INDEX);
                 shell_focus.set(ShellFocus::StatusDialog);
-                pending_plan_confirmation.set(Some(PendingPlanConfirmation {
-                    plan_text: req.plan_text.clone(),
-                    plan_file,
-                    session: agent_session_for_loop.clone(),
-                }));
+                let mut pending = PendingPlanConfirmation::from_plan_text(req.plan_text.clone());
+                pending.plan_file = plan_file;
+                pending.session = agent_session_for_loop.clone();
+                pending_plan_confirmation.set(Some(pending));
                 // Push a status row for the transcript.
                 {
                     let mut msgs = messages_arc_inner.write().unwrap();

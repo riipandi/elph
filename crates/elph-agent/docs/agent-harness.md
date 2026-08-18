@@ -204,7 +204,9 @@ When the assistant emits `<proposed_plan>...</proposed_plan>` at turn end, subsc
 - `AgentEvent::PlanProposed { plan_id, plan_text }`
 - `AgentEvent::PlanConfirmationRequired { plan_id, plan_text }`
 
-`resolve_plan_confirmation` clears the pending plan. `Implement` / `ImplementFresh` exit Plan mode and queue an implementation prompt derived from the plan text.
+`resolve_plan_confirmation` clears the pending plan. `Implement` / `ImplementFresh` exit Plan mode and queue an implementation prompt derived from the plan text (optional review notes from `set_plan_review_notes`).
+
+A process-local `PlanModeTracker` (`Inactive` / `Pending` / `Active`) sits next to `CollaborationMode`. TUI Shift+Tab to Plan calls `arm_plan_mode()` (Pending, tools unchanged). The first user prompt or `enter_plan_mode()` activates Plan and applies the read-only tool filter. Resume seeds Active from a restored `CollaborationMode::Plan`.
 
 Multi-agent tools are registered in the harness tool map and included in the default active-tool set. When `active_tool_names` is explicit, multi-agent tools remain registered but are not activated unless named. They are unavailable in Plan mode.
 

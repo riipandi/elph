@@ -79,6 +79,7 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("help", "List commands"),
         builtin_with_args("aside", "Ask a side question without interrupting"),
         builtin("tools", "Show active tools"),
+        builtin("view-plan", "Preview the saved plan"),
         builtin("system-prompt", "Show compiled system prompt"),
         builtin("exit", "Quit Elph"),
         builtin_with_args("goal", "Manage session goals"),
@@ -196,6 +197,8 @@ pub enum SlashDispatch {
         args: String,
     },
     SystemPrompt,
+    /// Open the latest saved plan preview.
+    ViewPlan,
     /// Show current session metadata (title, id, model, context, …).
     SessionInfo,
     /// Open rename dialog; `args` is optional prefill when non-empty.
@@ -634,6 +637,7 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
         "aside" => Some(SlashDispatch::Aside { question: args }),
         "tools" => Some(SlashDispatch::Tools { args }),
         "system-prompt" | "systemprompt" | "prompt" => Some(SlashDispatch::SystemPrompt),
+        "view-plan" | "show-plan" | "plan-view" => Some(SlashDispatch::ViewPlan),
         "session" => Some(SlashDispatch::SessionInfo),
         "rename" | "name" => Some(SlashDispatch::Rename { args }),
         "confetti" | "conffety" | "confetty" => Some(SlashDispatch::Confetti { args }),

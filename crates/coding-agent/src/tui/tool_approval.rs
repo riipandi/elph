@@ -275,127 +275,12 @@ pub fn open_url(url: &str) -> Result<(), String> {
         })
 }
 
-// ── Plan confirmation dialog ──────────────────────────────────────────
+// ── Plan confirmation (see [`crate::tui::plan_review`]) ───────────────
 
-use crate::agent::PlanConfirmationRequest;
-
-/// Pending plan-confirmation request from Plan mode.
-///
-/// The harness emitted `PlanConfirmationRequired` while in Plan mode with a
-/// `<proposed_plan>` block. The UI must show a dialog so the user can choose
-/// between stay-in-plan, implement, or implement-fresh.
-pub struct PendingPlanConfirmation {
-    pub plan_text: String,
-    /// Path to the saved plan file on disk (`.elph/plans/plan-*.md`), set before
-    /// the confirmation dialog is shown so the user can read the file.
-    pub plan_file: Option<String>,
-    pub session: Option<std::sync::Arc<crate::agent::CodingAgentSession>>,
-}
-
-impl From<PlanConfirmationRequest> for PendingPlanConfirmation {
-    fn from(req: PlanConfirmationRequest) -> Self {
-        Self {
-            plan_text: req.plan_text,
-            plan_file: None,
-            session: None,
-        }
-    }
-}
-
-/// Plan lifecycle: decisions the user can make after reviewing a proposed plan.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PlanChoice {
-    /// Switch to Build mode and implement the plan.
-    Implement,
-    /// Clear context, switch to Build, then implement.
-    ImplementFresh,
-    /// Stay in Plan mode for refinement.
-    StayInPlan,
-    /// Request changes: clear pending plan and let the agent propose a revised version.
-    RevisePlan,
-}
-
-/// Default selected index when the plan-confirmation dialog opens (Implement).
-pub const PLAN_CONFIRM_DEFAULT_INDEX: usize = 0;
-
-/// Select-list rows for the plan-confirmation dialog.
-pub fn plan_confirmation_select_options() -> Vec<elph_tui::types::SelectOption> {
-    [
-        ("Implement in this session", "Switch to Build mode and apply the plan"),
-        ("Implement in new session", "Clear conversation, then implement"),
-        ("Stay in Plan", "Refine the plan further"),
-        ("Revise", "Request changes to the plan"),
-    ]
-    .into_iter()
-    .map(|(name, detail)| elph_tui::types::SelectOption::new(name, detail))
-    .collect()
-}
-
-/// Footer hint for the plan-confirmation dialog.
-pub fn plan_confirmation_footer_hint() -> String {
-    "↑↓ move · Enter/1 this session · 2 new session · 3 stay · 4 revise · Esc cancel".to_string()
-}
-
-/// Map shortcut keys to plan-confirmation list indices.
-///
-/// | Index | Choice                 | Keys    |
-/// |-------|------------------------|---------|
-/// | 0     | Implement this session | `1` `i` |
-/// | 1     | Implement new session  | `2` `f` |
-/// | 2     | Stay in Plan           | `3` `s` |
-pub fn pick_plan_confirmation_index_from_key(modifiers: KeyModifiers, code: KeyCode) -> Option<usize> {
-    if !modifiers.is_empty() {
-        return None;
-    }
-    match code {
-        iocraft::prelude::KeyCode::Char('1')
-        | iocraft::prelude::KeyCode::Char('i')
-        | iocraft::prelude::KeyCode::Char('I') => Some(0),
-        iocraft::prelude::KeyCode::Char('2')
-        | iocraft::prelude::KeyCode::Char('f')
-        | iocraft::prelude::KeyCode::Char('F') => Some(1),
-        iocraft::prelude::KeyCode::Char('3')
-        | iocraft::prelude::KeyCode::Char('s')
-        | iocraft::prelude::KeyCode::Char('S') => Some(2),
-        iocraft::prelude::KeyCode::Char('4')
-        | iocraft::prelude::KeyCode::Char('r')
-        | iocraft::prelude::KeyCode::Char('R') => Some(3),
-        _ => None,
-    }
-}
-
-/// Map a zero-based list index to a PlanChoice.
-pub fn plan_choice_at_index(index: usize) -> Option<PlanChoice> {
-    match index {
-        0 => Some(PlanChoice::Implement),
-        1 => Some(PlanChoice::ImplementFresh),
-        2 => Some(PlanChoice::StayInPlan),
-        3 => Some(PlanChoice::RevisePlan),
-        _ => None,
-    }
-}
-
-/// Map PlanChoice to harness PlanConfirmationChoice.
-pub fn to_harness_choice(choice: PlanChoice) -> Option<elph_agent::PlanConfirmationChoice> {
-    match choice {
-        PlanChoice::Implement => Some(elph_agent::PlanConfirmationChoice::Implement),
-        PlanChoice::ImplementFresh => Some(elph_agent::PlanConfirmationChoice::ImplementFresh),
-        PlanChoice::StayInPlan => Some(elph_agent::PlanConfirmationChoice::StayInPlan),
-        PlanChoice::RevisePlan => None,
-    }
-}
-
-/// Transcript key for the plan-confirmation status row.
-pub fn plan_confirmation_transcript_key() -> String {
-    "plan-confirmation:pending".to_string()
-}
-
-/// Strip `<proposed_plan>` and `</proposed_plan>` tags from display text.
-pub fn strip_plan_tags(text: &str) -> String {
-    const OPEN: &str = "<proposed_plan>";
-    const CLOSE: &str = "</proposed_plan>";
-    text.replace(OPEN, "").replace(CLOSE, "")
-}
+pub use crate::tui::plan_review::{
+    PLAN_CONFIRM_DEFAULT_INDEX, PendingPlanConfirmation, PlanChoice, plan_confirmation_transcript_key, strip_plan_tags,
+    to_harness_choice,
+};
 
 // ── Tests ──────────────────────────────────────────────────────────────
 
@@ -524,66 +409,50 @@ mod tests {
 
     #[test]
     fn plan_confirmation_select_options_order() {
+        use crate::tui::plan_review::plan_confirmation_select_options;
         let options = plan_confirmation_select_options();
         assert_eq!(options.len(), 4);
         assert_eq!(options[0].name, "Implement in this session");
         assert_eq!(options[1].name, "Implement in new session");
-        assert_eq!(options[2].name, "Stay in Plan");
-        assert_eq!(options[3].name, "Revise");
+        assert_eq!(options[2].name, "Request changes");
+        assert_eq!(options[3].name, "Quit plan");
     }
 
     #[test]
     fn plan_confirmation_keys_match_table() {
+        use crate::tui::plan_review::pick_plan_confirmation_index_from_key;
         assert_eq!(
             pick_plan_confirmation_index_from_key(KeyModifiers::NONE, KeyCode::Char('1')),
             Some(0)
-        );
-        assert_eq!(
-            pick_plan_confirmation_index_from_key(KeyModifiers::NONE, KeyCode::Char('i')),
-            Some(0)
-        );
-        assert_eq!(
-            pick_plan_confirmation_index_from_key(KeyModifiers::NONE, KeyCode::Char('2')),
-            Some(1)
-        );
-        assert_eq!(
-            pick_plan_confirmation_index_from_key(KeyModifiers::NONE, KeyCode::Char('f')),
-            Some(1)
-        );
-        assert_eq!(
-            pick_plan_confirmation_index_from_key(KeyModifiers::NONE, KeyCode::Char('3')),
-            Some(2)
         );
         assert_eq!(
             pick_plan_confirmation_index_from_key(KeyModifiers::NONE, KeyCode::Char('s')),
             Some(2)
         );
         assert_eq!(
-            pick_plan_confirmation_index_from_key(KeyModifiers::NONE, KeyCode::Char('4')),
-            Some(3)
-        );
-        assert_eq!(
-            pick_plan_confirmation_index_from_key(KeyModifiers::NONE, KeyCode::Char('r')),
+            pick_plan_confirmation_index_from_key(KeyModifiers::NONE, KeyCode::Char('q')),
             Some(3)
         );
     }
 
     #[test]
-    fn plan_choice_maps_all_four_options() {
+    fn plan_choice_maps_review_options() {
+        use crate::tui::plan_review::plan_choice_at_index;
         assert_eq!(plan_choice_at_index(0), Some(PlanChoice::Implement));
         assert_eq!(plan_choice_at_index(1), Some(PlanChoice::ImplementFresh));
-        assert_eq!(plan_choice_at_index(2), Some(PlanChoice::StayInPlan));
-        assert_eq!(plan_choice_at_index(3), Some(PlanChoice::RevisePlan));
+        assert_eq!(plan_choice_at_index(2), Some(PlanChoice::RevisePlan));
+        assert_eq!(plan_choice_at_index(3), Some(PlanChoice::QuitPlan));
         assert_eq!(plan_choice_at_index(4), None);
     }
 
     #[test]
     fn plan_confirmation_footer_hint_includes_all_keys() {
+        use crate::tui::plan_review::plan_confirmation_footer_hint;
         let hint = plan_confirmation_footer_hint();
-        assert!(hint.contains("1 this session"));
-        assert!(hint.contains("2 new session"));
-        assert!(hint.contains("3 stay"));
-        assert!(hint.contains("4 revise"));
+        assert!(hint.contains("a implement"));
+        assert!(hint.contains("s revise"));
+        assert!(hint.contains("y copy"));
+        assert!(hint.contains("q quit"));
     }
 
     #[test]
@@ -600,6 +469,9 @@ mod tests {
     #[test]
     fn default_plan_index_is_implement() {
         assert_eq!(PLAN_CONFIRM_DEFAULT_INDEX, 0);
-        assert_eq!(plan_choice_at_index(PLAN_CONFIRM_DEFAULT_INDEX), Some(PlanChoice::Implement));
+        assert_eq!(
+            crate::tui::plan_review::plan_choice_at_index(PLAN_CONFIRM_DEFAULT_INDEX),
+            Some(PlanChoice::Implement)
+        );
     }
 }

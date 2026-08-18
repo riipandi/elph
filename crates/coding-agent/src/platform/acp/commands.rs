@@ -147,6 +147,14 @@ pub async fn resolve_slash(state: &Arc<Mutex<AcpAgentState>>, key: &str, input: 
             let (session, _, _) = lookup_session(state, key)?;
             system_prompt_slash_message(Some(&session)).map_err(|e| anyhow::anyhow!("{e}"))?
         }
+        Some(SlashDispatch::ViewPlan) => {
+            let (session, _, _) = lookup_session(state, key)?;
+            let paths = Paths::resolve().map_err(|e| anyhow::anyhow!("{e}"))?;
+            match crate::agent::plan_files::latest_plan_path(&paths, Some(session.session_id())) {
+                Some(path) => std::fs::read_to_string(path).unwrap_or_else(|e| format!("Could not read plan: {e}")),
+                None => "No plan written yet.".into(),
+            }
+        }
         Some(SlashDispatch::SessionInfo) => {
             let (session, _, _) = lookup_session(state, key)?;
             crate::agent::session_info_slash_message(Some(&session), None).map_err(|e| anyhow::anyhow!("{e}"))?

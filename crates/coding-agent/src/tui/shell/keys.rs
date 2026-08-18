@@ -1789,137 +1789,377 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             return;
         }
 
-        // ── Plan Confirmation ──────────────────────────────────────
-        let plan_choice = {
-            if pending_plan_confirmation.read().is_some() {
-                if modifiers.is_empty() && code == KeyCode::Esc {
-                    Some(PlanChoice::StayInPlan)
-                } else if let Some(idx) = pick_plan_confirmation_index_from_key(modifiers, code) {
-                    plan_choice_at_index(idx)
-                } else if modifiers.is_empty() && code == KeyCode::Enter {
-                    plan_choice_at_index(approval_selected.get())
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        };
-        if let Some(choice) = plan_choice {
-            if let Some(pending) = pending_plan_confirmation.write().take() {
-                let key = plan_confirmation_transcript_key();
+        // ── Plan review ────────────────────────────────────────────
+        if pending_plan_confirmation.read().is_some() {
+            use crate::tui::plan_review::{
+                PlanComment, PlanReviewAction, PlanReviewFocus, format_plan_feedback, format_revision_prompt,
+                pick_plan_review_action,
+            };
 
-                // Revise: clear pending plan and let the user type revision feedback.
-                if choice == PlanChoice::RevisePlan {
-                    // Clear the harness's pending plan so the agent can propose a new one.
-                    if let Some(session) = pending.session.as_ref() {
-                        let session = session.clone();
-                        tokio::spawn(async move {
-                            if let Err(err) = session.clear_pending_plan().await {
-                                log::error!("clear pending plan failed: {err}");
-                            }
-                        });
+            let focus = pending_plan_confirmation.read().as_ref().map(|p| p.focus);
+            if focus == Some(PlanReviewFocus::Commenting) {
+                if kind == KeyEventKind::Release {
+                    return;
+                }
+                if modifiers.is_empty() && (code == KeyCode::Esc || code == KeyCode::Tab) {
+                    if let Some(pending) = pending_plan_confirmation.write().as_mut() {
+                        pending.focus = PlanReviewFocus::Preview;
+                        pending.comment_draft.clear();
+                        pending.commenting_range = None;
+                        pending.editing_comment_id = None;
                     }
-                    // Update transcript row to show cancelled.
-                    {
-                        let mut msgs = messages.write();
-                        if let Some(row) = msgs.iter_mut().find(|m| m.startup_key.as_deref() == Some(key.as_str())) {
-                            row.content = "Plan confirmation".to_string();
-                            row.status_detail = Some("Revising plan…".to_string());
-                            row.style = TranscriptStyle::StatusFailed;
+                    return;
+                }
+                if modifiers.is_empty() && code == KeyCode::Enter {
+                    if let Some(pending) = pending_plan_confirmation.write().as_mut() {
+                        let text = pending.comment_draft.trim().to_string();
+                        if !text.is_empty() {
+                            let range = pending
+                                .commenting_range
+                                .clone()
+                                .unwrap_or(pending.selected_line..pending.selected_line + 1);
+                            if let Some(id) = pending.editing_comment_id.take() {
+                                if let Some(comment) = pending.comments.iter_mut().find(|c| c.id == id) {
+                                    comment.text = text;
+                                    comment.line_range = range;
+                                }
+                            } else {
+                                let id = pending.next_comment_id;
+                                pending.next_comment_id += 1;
+                                pending.comments.push(PlanComment {
+                                    id,
+                                    line_range: range,
+                                    text,
+                                });
+                            }
+                        }
+                        pending.comment_draft.clear();
+                        pending.commenting_range = None;
+                        pending.focus = PlanReviewFocus::Preview;
+                    }
+                    return;
+                }
+                if modifiers.is_empty() && code == KeyCode::Backspace {
+                    if let Some(pending) = pending_plan_confirmation.write().as_mut() {
+                        pending.comment_draft.pop();
+                    }
+                    return;
+                }
+                if modifiers.is_empty()
+                    && let KeyCode::Char(ch) = code
+                {
+                    if let Some(pending) = pending_plan_confirmation.write().as_mut() {
+                        pending.comment_draft.push(ch);
+                    }
+                    return;
+                }
+                return;
+            }
+
+            if focus == Some(PlanReviewFocus::Prompt) {
+                if kind == KeyEventKind::Release {
+                    return;
+                }
+                if modifiers.is_empty() && (code == KeyCode::Esc || code == KeyCode::Tab) {
+                    if let Some(pending) = pending_plan_confirmation.write().as_mut() {
+                        pending.focus = PlanReviewFocus::Preview;
+                    }
+                    shell_focus.set(ShellFocus::StatusDialog);
+                    return;
+                }
+                if modifiers.is_empty() && code == KeyCode::Enter {
+                    let (feedback, session) = {
+                        let pending = pending_plan_confirmation.read();
+                        let Some(p) = pending.as_ref() else {
+                            return;
+                        };
+                        let notes = live_draft.read().clone();
+                        (
+                            format_revision_prompt(&p.comments, &p.plan_text, Some(notes.as_str())),
+                            p.session.clone(),
+                        )
+                    };
+                    if feedback.trim().is_empty() {
+                        let expire_tx = ephemeral_expire.read().tx.clone();
+                        show_ephemeral_banner(
+                            &mut ephemeral_banner,
+                            &mut ephemeral_banner_generation,
+                            &expire_tx,
+                            EphemeralBanner {
+                                key: "plan-revise-empty",
+                                text: "Type revision notes, or press a to approve.".to_string(),
+                                kind: EphemeralBannerKind::Notice,
+                                expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
+                            },
+                        );
+                        return;
+                    }
+                    if let Some(pending) = pending_plan_confirmation.write().take() {
+                        let key = plan_confirmation_transcript_key();
+                        {
+                            let mut msgs = messages.write();
+                            if let Some(row) = msgs.iter_mut().find(|m| m.startup_key.as_deref() == Some(key.as_str()))
+                            {
+                                row.content = "Plan confirmation".to_string();
+                                row.status_detail = Some("Revision requested".to_string());
+                                row.style = TranscriptStyle::StatusFailed;
+                            }
+                        }
+                        messages_revision.set(messages_revision.get().wrapping_add(1));
+                        if let Some(session) = session.or(pending.session) {
+                            tokio::spawn(async move {
+                                if let Err(err) = session.clear_pending_plan().await {
+                                    log::error!("clear pending plan failed: {err}");
+                                }
+                                if let Err(err) = session.submit_prompt(feedback, false).await {
+                                    log::error!("plan revision submit failed: {err}");
+                                }
+                            });
                         }
                     }
-                    messages_revision.set(messages_revision.get().wrapping_add(1));
+                    draft.set(String::new());
+                    live_draft.set(String::new());
+                    force_editor_clear.set(true);
                     activity_label.set("Revised plan requested".to_string());
                     shell_focus.set(ShellFocus::Prompt);
                     return;
                 }
-
-                let (style, detail) = match choice {
-                    PlanChoice::Implement => (
-                        TranscriptStyle::StatusSuccess,
-                        "Switched to Build — implementing plan…".to_string(),
-                    ),
-                    PlanChoice::ImplementFresh => (
-                        TranscriptStyle::StatusSuccess,
-                        "Switched to Build — implementing plan (fresh context)…".to_string(),
-                    ),
-                    PlanChoice::StayInPlan => (TranscriptStyle::StatusFailed, "Stayed in Plan mode".to_string()),
-                    PlanChoice::RevisePlan => unreachable!(), // handled above
-                };
-                // Update transcript status row.
-                {
-                    let mut msgs = messages.write();
-                    if let Some(row) = msgs.iter_mut().find(|m| m.startup_key.as_deref() == Some(key.as_str())) {
-                        row.content = "Plan confirmation".to_string();
-                        row.status_detail = Some(detail);
-                        row.style = style;
-                    }
-                }
-                messages_revision.set(messages_revision.get().wrapping_add(1));
-                // Sync TUI mode state BEFORE spawning the async resolve — the session's
-                // internal mode change (Build) doesn't emit an event back to the TUI.
-                // The plan confirmation dialog IS the user's approval; no second dialog needed.
-                if matches!(choice, PlanChoice::Implement | PlanChoice::ImplementFresh) {
-                    agent_mode.set(AgentMode::Build);
-                    // Eagerly invalidate cache and set mode_state so
-                    // /system-prompt and the next turn see the new mode
-                    // before the background resolve task completes.
-                    if let Some(session) = pending.session.as_ref() {
-                        session.invalidate_system_prompt_cache();
-                        session.try_set_mode_sync(AgentMode::Build);
-                    }
-                    // Show ephemeral banner about the mode switch.
-                    let expire_tx = ephemeral_expire.read().tx.clone();
-                    show_ephemeral_banner(
-                        &mut ephemeral_banner,
-                        &mut ephemeral_banner_generation,
-                        &expire_tx,
-                        EphemeralBanner {
-                            key: "plan-implement",
-                            text: "Switched to Build — implementing the approved plan.".to_string(),
-                            kind: EphemeralBannerKind::Notice,
-                            expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
-                        },
-                    );
-                }
-
-                // Auto-update plan frontmatter: Status → in_progress when user picks Implement.
-                // Track the active plan path so RunCompleted can transition to completed.
-                if matches!(choice, PlanChoice::Implement | PlanChoice::ImplementFresh)
-                    && let Some(ref plan_path) = pending.plan_file
-                {
-                    let now = chrono::Local::now().format("%Y-%m-%d %H:%M").to_string();
-                    if let Err(err) =
-                        crate::agent::plan_files::update_plan_frontmatter(plan_path, "in_progress", &now, None)
-                    {
-                        log::error!("Failed to update plan frontmatter: {err}");
-                    }
-                    active_plan_file.write().clone_from(&pending.plan_file);
-                }
-
-                // Resolve via session (triggers mode change + implement prompt).
-                if let Some(session) = pending.session.as_ref() {
-                    let session = session.clone();
-                    let plan_file = pending.plan_file.clone();
-                    let harness_choice = to_harness_choice(choice);
-                    tokio::spawn(async move {
-                        if let Some(choice) = harness_choice
-                            && let Err(err) = session.resolve_plan_with_file(choice, plan_file).await
-                        {
-                            log::error!("plan confirmation failed: {err}");
+                // Let the prompt editor handle typing.
+            } else if let Some(action) = pick_plan_review_action(modifiers, code, PlanReviewFocus::Preview) {
+                match action {
+                    PlanReviewAction::SelectPrev => {
+                        if let Some(p) = pending_plan_confirmation.write().as_mut() {
+                            p.move_selection(-1);
                         }
-                    });
+                        return;
+                    }
+                    PlanReviewAction::SelectNext => {
+                        if let Some(p) = pending_plan_confirmation.write().as_mut() {
+                            p.move_selection(1);
+                        }
+                        return;
+                    }
+                    PlanReviewAction::FocusPrompt => {
+                        if let Some(p) = pending_plan_confirmation.write().as_mut() {
+                            p.focus = PlanReviewFocus::Prompt;
+                        }
+                        shell_focus.set(ShellFocus::Prompt);
+                        return;
+                    }
+                    PlanReviewAction::Copy => {
+                        let text = pending_plan_confirmation
+                            .read()
+                            .as_ref()
+                            .map(|p| p.plan_text.clone())
+                            .unwrap_or_default();
+                        let expire_tx = ephemeral_expire.read().tx.clone();
+                        let notice = match elph_tui::copy_with_status(&text, "plan") {
+                            Ok(status) => elph_tui::ClipboardNotice::Copied {
+                                label: status.label,
+                                char_count: status.char_count,
+                            },
+                            Err(err) => elph_tui::ClipboardNotice::failed(err.to_string()),
+                        };
+                        show_ephemeral_banner(
+                            &mut ephemeral_banner,
+                            &mut ephemeral_banner_generation,
+                            &expire_tx,
+                            crate::tui::transcript::clipboard_notice_banner(&notice),
+                        );
+                        return;
+                    }
+                    PlanReviewAction::Comment => {
+                        if let Some(p) = pending_plan_confirmation.write().as_mut() {
+                            if let Some(existing) = p.comment_on_selected_line().cloned() {
+                                p.editing_comment_id = Some(existing.id);
+                                p.commenting_range = Some(existing.line_range.clone());
+                                p.comment_draft = existing.text;
+                            } else {
+                                p.editing_comment_id = None;
+                                p.commenting_range = Some(p.selected_line..p.selected_line + 1);
+                                p.comment_draft.clear();
+                            }
+                            p.focus = PlanReviewFocus::Commenting;
+                        }
+                        return;
+                    }
+                    PlanReviewAction::DeleteComment => {
+                        if let Some(p) = pending_plan_confirmation.write().as_mut() {
+                            let line = p.selected_line;
+                            p.comments.retain(|c| !c.line_range.contains(&line));
+                        }
+                        return;
+                    }
+                    PlanReviewAction::RequestChanges => {
+                        let has_feedback = pending_plan_confirmation
+                            .read()
+                            .as_ref()
+                            .is_some_and(|p| !p.comments.is_empty());
+                        if !has_feedback {
+                            if let Some(p) = pending_plan_confirmation.write().as_mut() {
+                                p.focus = PlanReviewFocus::Prompt;
+                            }
+                            shell_focus.set(ShellFocus::Prompt);
+                            return;
+                        }
+                        let (feedback, session) = {
+                            let pending = pending_plan_confirmation.read();
+                            let Some(p) = pending.as_ref() else {
+                                return;
+                            };
+                            (format_revision_prompt(&p.comments, &p.plan_text, None), p.session.clone())
+                        };
+                        if let Some(pending) = pending_plan_confirmation.write().take() {
+                            let key = plan_confirmation_transcript_key();
+                            {
+                                let mut msgs = messages.write();
+                                if let Some(row) =
+                                    msgs.iter_mut().find(|m| m.startup_key.as_deref() == Some(key.as_str()))
+                                {
+                                    row.content = "Plan confirmation".to_string();
+                                    row.status_detail = Some("Revision requested".to_string());
+                                    row.style = TranscriptStyle::StatusFailed;
+                                }
+                            }
+                            messages_revision.set(messages_revision.get().wrapping_add(1));
+                            if let Some(session) = session.or(pending.session) {
+                                tokio::spawn(async move {
+                                    if let Err(err) = session.clear_pending_plan().await {
+                                        log::error!("clear pending plan failed: {err}");
+                                    }
+                                    if let Err(err) = session.submit_prompt(feedback, false).await {
+                                        log::error!("plan revision submit failed: {err}");
+                                    }
+                                });
+                            }
+                        }
+                        activity_label.set("Revised plan requested".to_string());
+                        shell_focus.set(ShellFocus::Prompt);
+                        return;
+                    }
+                    other => {
+                        let choice = match other {
+                            PlanReviewAction::Implement => Some(PlanChoice::Implement),
+                            PlanReviewAction::ImplementFresh => Some(PlanChoice::ImplementFresh),
+                            PlanReviewAction::Stay => Some(PlanChoice::StayInPlan),
+                            PlanReviewAction::Quit => Some(PlanChoice::QuitPlan),
+                            _ => None,
+                        };
+                        if let Some(choice) = choice
+                            && let Some(pending) = pending_plan_confirmation.write().take()
+                        {
+                            let key = plan_confirmation_transcript_key();
+                            let review_notes = {
+                                let formatted = format_plan_feedback(&pending.comments, &pending.plan_text, None);
+                                if formatted.trim().is_empty() {
+                                    None
+                                } else {
+                                    Some(formatted)
+                                }
+                            };
+                            let (style, detail) = match choice {
+                                PlanChoice::Implement => (
+                                    TranscriptStyle::StatusSuccess,
+                                    "Switched to Build — implementing plan…".to_string(),
+                                ),
+                                PlanChoice::ImplementFresh => (
+                                    TranscriptStyle::StatusSuccess,
+                                    "Switched to Build — implementing plan (fresh context)…".to_string(),
+                                ),
+                                PlanChoice::StayInPlan => {
+                                    (TranscriptStyle::StatusFailed, "Stayed in Plan mode".to_string())
+                                }
+                                PlanChoice::QuitPlan => (TranscriptStyle::StatusFailed, "Left Plan mode".to_string()),
+                                PlanChoice::RevisePlan => unreachable!(),
+                            };
+                            {
+                                let mut msgs = messages.write();
+                                if let Some(row) =
+                                    msgs.iter_mut().find(|m| m.startup_key.as_deref() == Some(key.as_str()))
+                                {
+                                    row.content = "Plan confirmation".to_string();
+                                    row.status_detail = Some(detail);
+                                    row.style = style;
+                                }
+                            }
+                            messages_revision.set(messages_revision.get().wrapping_add(1));
+                            if matches!(
+                                choice,
+                                PlanChoice::Implement | PlanChoice::ImplementFresh | PlanChoice::QuitPlan
+                            ) {
+                                agent_mode.set(AgentMode::Build);
+                                if let Some(session) = pending.session.as_ref() {
+                                    session.invalidate_system_prompt_cache();
+                                    session.try_set_mode_sync(AgentMode::Build);
+                                }
+                            }
+                            if matches!(choice, PlanChoice::Implement | PlanChoice::ImplementFresh) {
+                                let expire_tx = ephemeral_expire.read().tx.clone();
+                                show_ephemeral_banner(
+                                    &mut ephemeral_banner,
+                                    &mut ephemeral_banner_generation,
+                                    &expire_tx,
+                                    EphemeralBanner {
+                                        key: "plan-implement",
+                                        text: "Switched to Build — implementing the approved plan.".to_string(),
+                                        kind: EphemeralBannerKind::Notice,
+                                        expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
+                                    },
+                                );
+                                if let Some(ref plan_path) = pending.plan_file {
+                                    let now = chrono::Local::now().format("%Y-%m-%d %H:%M").to_string();
+                                    if let Err(err) = crate::agent::plan_files::update_plan_frontmatter(
+                                        plan_path,
+                                        "in_progress",
+                                        &now,
+                                        None,
+                                    ) {
+                                        log::error!("Failed to update plan frontmatter: {err}");
+                                    }
+                                    active_plan_file.write().clone_from(&pending.plan_file);
+                                }
+                            }
+                            if let Some(session) = pending.session.as_ref() {
+                                let session = session.clone();
+                                let plan_file = pending.plan_file.clone();
+                                let harness_choice = to_harness_choice(choice);
+                                tokio::spawn(async move {
+                                    match choice {
+                                        PlanChoice::QuitPlan => {
+                                            if let Err(err) = session.clear_pending_plan().await {
+                                                log::error!("clear pending plan failed: {err}");
+                                            }
+                                            if let Err(err) = session.set_agent_mode(AgentMode::Build).await {
+                                                log::error!("quit plan mode failed: {err}");
+                                            }
+                                        }
+                                        _ => {
+                                            if let Some(hc) = harness_choice
+                                                && let Err(err) = session
+                                                    .resolve_plan_with_file_and_notes(hc, plan_file, review_notes)
+                                                    .await
+                                            {
+                                                log::error!("plan confirmation failed: {err}");
+                                            }
+                                        }
+                                    }
+                                });
+                            }
+                            activity_label.set(match choice {
+                                PlanChoice::Implement => "Switched to Build — implementing plan…".to_string(),
+                                PlanChoice::ImplementFresh => {
+                                    "Switched to Build — implementing plan (fresh)…".to_string()
+                                }
+                                PlanChoice::StayInPlan => "Stayed in Plan mode".to_string(),
+                                PlanChoice::QuitPlan => "Left Plan mode".to_string(),
+                                PlanChoice::RevisePlan => unreachable!(),
+                            });
+                        }
+                        shell_focus.set(ShellFocus::Prompt);
+                        return;
+                    }
                 }
-                activity_label.set(match choice {
-                    PlanChoice::Implement => "Switched to Build — implementing plan…".to_string(),
-                    PlanChoice::ImplementFresh => "Switched to Build — implementing plan (fresh)…".to_string(),
-                    PlanChoice::StayInPlan => "Stayed in Plan mode".to_string(),
-                    PlanChoice::RevisePlan => unreachable!(),
-                });
             }
-            shell_focus.set(ShellFocus::Prompt);
-            return;
         }
 
         // ── Memory flush confirmation ──────────────────────────────
@@ -3314,6 +3554,18 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         });
                         force_editor_clear.set(true);
                     }
+                    SlashOutcome::OpenViewPlanDialog { text } => {
+                        open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                            pending: &mut pending_system_prompt,
+                            shell_focus: &mut shell_focus,
+                            title: "Plan".to_string(),
+                            text: text.clone(),
+                            width_pct: DEFAULT_SCROLL_TEXT_WIDTH_PCT,
+                            body_height: None,
+                            show_copy: true,
+                        });
+                        force_editor_clear.set(true);
+                    }
                     SlashOutcome::OpenSessionInfoDialog { text } => {
                         open_scroll_text_dialog(OpenScrollTextDialogArgs {
                             pending: &mut pending_system_prompt,
@@ -3941,7 +4193,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     agent_mode_busy_banner(),
                 );
             } else {
-                let next = agent_mode.get().next();
+                let prev = agent_mode.get();
+                let next = prev.next();
                 agent_mode.set(next);
                 let expire_tx = ephemeral_expire.read().tx.clone();
                 show_ephemeral_banner(
@@ -3951,15 +4204,17 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     agent_mode_banner(next),
                 );
                 if let Some(session) = agent_session.as_ref() {
-                    // Eagerly invalidate cache and set mode_state so
-                    // /system-prompt and the next harness turn see the
-                    // new mode before the background task completes.
                     session.invalidate_system_prompt_cache();
                     session.try_set_mode_sync(next);
                     let session = Arc::clone(session);
                     let mode = next;
                     tokio::spawn(async move {
-                        if let Err(err) = session.set_agent_mode(mode).await {
+                        let result = if mode == AgentMode::Plan && prev != AgentMode::Plan {
+                            session.arm_plan_mode().await
+                        } else {
+                            session.set_agent_mode(mode).await
+                        };
+                        if let Err(err) = result {
                             log::warn!("failed to set agent mode: {err}");
                         }
                     });

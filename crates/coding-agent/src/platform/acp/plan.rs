@@ -39,6 +39,8 @@ pub async fn confirm_plan(
         PermissionOption::new("implement", "Implement plan", PermissionOptionKind::AllowOnce),
         PermissionOption::new("fresh", "Implement in a fresh context", PermissionOptionKind::AllowOnce),
         PermissionOption::new("stay", "Stay in plan mode", PermissionOptionKind::RejectOnce),
+        PermissionOption::new("revise", "Request changes", PermissionOptionKind::RejectOnce),
+        PermissionOption::new("quit", "Leave plan mode", PermissionOptionKind::RejectOnce),
     ];
     let request = RequestPermissionRequest::new(session_id.clone(), "Approve this plan?", options)
         .description(req.plan_text.clone());
@@ -48,6 +50,13 @@ pub async fn confirm_plan(
     {
         Some("implement") => elph_agent::PlanConfirmationChoice::Implement,
         Some("fresh") => elph_agent::PlanConfirmationChoice::ImplementFresh,
+        Some("quit") => {
+            session.clear_pending_plan().await?;
+            return session.set_agent_mode(crate::types::AgentMode::Build).await;
+        }
+        Some("revise") => {
+            return session.clear_pending_plan().await;
+        }
         _ => elph_agent::PlanConfirmationChoice::StayInPlan,
     };
     session.resolve_plan(choice).await

@@ -95,6 +95,9 @@ pub enum SlashOutcome {
     OpenSystemPromptDialog {
         text: String,
     },
+    OpenViewPlanDialog {
+        text: String,
+    },
     /// Active tools viewer (ScrollTextDialog, like `/system-prompt`).
     OpenToolsDialog {
         text: String,
@@ -398,6 +401,20 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             Ok(text) => SlashOutcome::OpenSystemPromptDialog { text },
             Err(message) => SlashOutcome::Status(message),
         },
+        SlashDispatch::ViewPlan => {
+            let Some(paths) = ctx.paths else {
+                return SlashOutcome::Status("No project directory for /view-plan".into());
+            };
+            let sid = ctx.agent_session.as_ref().map(|s| s.session_id().to_string());
+            match crate::agent::plan_files::latest_plan_path(paths, sid.as_deref()) {
+                Some(path) => match std::fs::read_to_string(&path) {
+                    Ok(text) if !text.trim().is_empty() => SlashOutcome::OpenViewPlanDialog { text },
+                    Ok(_) => SlashOutcome::Status("No plan written yet.".into()),
+                    Err(err) => SlashOutcome::Status(format!("Could not read plan: {err}")),
+                },
+                None => SlashOutcome::Status("No plan written yet.".into()),
+            }
+        }
         SlashDispatch::SessionInfo => match session_info_slash_message(ctx.agent_session.as_ref(), ctx.skills) {
             Ok(text) => SlashOutcome::OpenSessionInfoDialog { text },
             Err(message) => SlashOutcome::Status(message),
@@ -690,6 +707,7 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
             | SlashOutcome::OpenModelSelector { .. }
             | SlashOutcome::OpenScopedModels
             | SlashOutcome::OpenSystemPromptDialog { .. }
+            | SlashOutcome::OpenViewPlanDialog { .. }
             | SlashOutcome::OpenToolsDialog { .. }
             | SlashOutcome::OpenSessionInfoDialog { .. }
             | SlashOutcome::OpenRenameDialog { .. }

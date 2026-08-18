@@ -48,6 +48,32 @@ pub fn save_plan_to_disk(plan_text: &str, paths: &Paths, session_id: Option<&str
     Ok(canonical.to_string_lossy().to_string())
 }
 
+/// Newest `plan-*.md` for `session_id` (or newest overall when `session_id` is `None`).
+pub fn latest_plan_path(paths: &Paths, session_id: Option<&str>) -> Option<std::path::PathBuf> {
+    let dir = paths.plans_dir();
+    let entries = fs::read_dir(&dir).ok()?;
+    let mut newest: Option<(std::time::SystemTime, std::path::PathBuf)> = None;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let name = path.file_name()?.to_str()?;
+        if !name.starts_with("plan-") || !name.ends_with(".md") {
+            continue;
+        }
+        if let Some(sid) = session_id.filter(|s| !s.trim().is_empty()) {
+            let contents = fs::read_to_string(&path).ok()?;
+            if !contents.contains(&format!("Session: {sid}")) {
+                continue;
+            }
+        }
+        let modified = entry.metadata().ok()?.modified().ok()?;
+        match &newest {
+            Some((t, _)) if *t >= modified => {}
+            _ => newest = Some((modified, path)),
+        }
+    }
+    newest.map(|(_, p)| p)
+}
+
 /// Update `Status`, `Updated`, and optionally `Session` fields in a saved plan file's YAML frontmatter.
 ///
 /// Parses the frontmatter (delimited by `---` lines), replaces the target fields,
@@ -381,6 +407,19 @@ mod tests {
     fn update_plan_frontmatter_errors_on_missing_file() {
         let result = update_plan_frontmatter("/nonexistent/plan.md", "done", "now", None);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn latest_plan_path_picks_newest_for_session() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let project = tmp.path().join("repo");
+        let paths = Paths::from_dirs(tmp.path().join("config"), tmp.path().join("data"), project);
+        save_plan_to_disk("# Older\nA", &paths, Some("sess-a")).expect("save a");
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let newer = save_plan_to_disk("# Newer\nB", &paths, Some("sess-a")).expect("save b");
+        let found = latest_plan_path(&paths, Some("sess-a")).expect("found");
+        assert_eq!(found, std::path::PathBuf::from(newer));
+        assert!(latest_plan_path(&paths, Some("missing")).is_none());
     }
 
     #[test]

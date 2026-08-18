@@ -2,6 +2,7 @@
 
 mod plan;
 mod policy;
+mod tracker;
 
 use std::str::FromStr;
 
@@ -52,3 +53,4 @@ pub use policy::is_plan_mode_tool;
 pub use policy::is_read_only_mcp_tool;
 pub use policy::plan_mode_block_reason;
 pub use policy::plan_mode_blocks_tool;
+pub use tracker::{PlanModeState, PlanModeTracker};

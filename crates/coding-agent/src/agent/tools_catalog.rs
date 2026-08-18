@@ -8,7 +8,7 @@
 use anyhow::Result;
 use elph_agent::create_list_available_tools;
 use elph_agent::create_list_skills_tool;
-use elph_agent::{AgentHarness, CollaborationMode, McpToolRegistry, TursoSessionStorage, is_mcp_tool};
+use elph_agent::{AgentHarness, McpToolRegistry, TursoSessionStorage, is_mcp_tool};
 
 use crate::types::AgentMode;
 
@@ -120,10 +120,7 @@ pub async fn reconcile_harness_tools(
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
         }
         AgentMode::Build | AgentMode::Brave | AgentMode::Ask => {
-            harness
-                .set_collaboration_mode(CollaborationMode::Default)
-                .await
-                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            harness.exit_plan_mode().await.map_err(|e| anyhow::anyhow!("{e}"))?;
             harness
                 .set_active_tools(active.clone())
                 .await

@@ -1116,6 +1116,8 @@ async fn apply_v1_event(
                     PermissionOption::new("implement", "Implement plan", PermissionOptionKind::AllowOnce),
                     PermissionOption::new("fresh", "Implement in a fresh context", PermissionOptionKind::AllowOnce),
                     PermissionOption::new("stay", "Stay in plan mode", PermissionOptionKind::RejectOnce),
+                    PermissionOption::new("revise", "Request changes", PermissionOptionKind::RejectOnce),
+                    PermissionOption::new("quit", "Leave plan mode", PermissionOptionKind::RejectOnce),
                 ];
                 let mut fields = agent_client_protocol::schema::v1::ToolCallUpdateFields::new();
                 fields.title = Some("Approve plan".into());
@@ -1125,12 +1127,30 @@ async fn apply_v1_event(
                     ToolCallUpdate::new("plan_confirm", fields),
                     options,
                 );
-                let choice = match send_v1_permission(connection, request, cancel.clone()).await.as_deref() {
-                    Some("implement") => elph_agent::PlanConfirmationChoice::Implement,
-                    Some("fresh") => elph_agent::PlanConfirmationChoice::ImplementFresh,
-                    _ => elph_agent::PlanConfirmationChoice::StayInPlan,
-                };
-                let _ = session.resolve_plan(choice).await;
+                match send_v1_permission(connection, request, cancel.clone()).await.as_deref() {
+                    Some("implement") => {
+                        let _ = session
+                            .resolve_plan(elph_agent::PlanConfirmationChoice::Implement)
+                            .await;
+                    }
+                    Some("fresh") => {
+                        let _ = session
+                            .resolve_plan(elph_agent::PlanConfirmationChoice::ImplementFresh)
+                            .await;
+                    }
+                    Some("revise") => {
+                        let _ = session.clear_pending_plan().await;
+                    }
+                    Some("quit") => {
+                        let _ = session.clear_pending_plan().await;
+                        let _ = session.set_agent_mode(crate::types::AgentMode::Build).await;
+                    }
+                    _ => {
+                        let _ = session
+                            .resolve_plan(elph_agent::PlanConfirmationChoice::StayInPlan)
+                            .await;
+                    }
+                }
             }
         }
         _ => {}
