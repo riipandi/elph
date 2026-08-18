@@ -281,12 +281,12 @@ where
                             (now_ms() - turn_started_ms).max(0),
                             None,
                             None,
-                            Some(&error.to_string()),
+                            Some(&error.message),
                         )
                         .await;
                 }
                 return self
-                    .emit_run_failure(&model, &error.to_string(), abort_token.is_cancelled(), &emit)
+                    .emit_run_failure(&model, &error.message, abort_token.is_cancelled(), &emit)
                     .await;
             }
         };

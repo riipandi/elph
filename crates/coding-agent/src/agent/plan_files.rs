@@ -55,23 +55,29 @@ pub fn latest_plan_path(paths: &Paths, session_id: Option<&str>) -> Option<std::
     let mut newest: Option<(std::time::SystemTime, std::path::PathBuf)> = None;
     for entry in entries.flatten() {
         let path = entry.path();
-        let name = path.file_name()?.to_str()?;
+        let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+            continue;
+        };
         if !name.starts_with("plan-") || !name.ends_with(".md") {
             continue;
         }
         if let Some(sid) = session_id.filter(|s| !s.trim().is_empty()) {
-            let contents = fs::read_to_string(&path).ok()?;
+            let Ok(contents) = fs::read_to_string(&path) else {
+                continue;
+            };
             if !contents.contains(&format!("Session: {sid}")) {
                 continue;
             }
         }
-        let modified = entry.metadata().ok()?.modified().ok()?;
+        let Ok(modified) = entry.metadata().and_then(|m| m.modified()) else {
+            continue;
+        };
         match &newest {
             Some((t, _)) if *t >= modified => {}
             _ => newest = Some((modified, path)),
         }
     }
-    newest.map(|(_, p)| p)
+    newest.map(|(_, p)| p.canonicalize().ok().unwrap_or(p))
 }
 
 /// Update `Status`, `Updated`, and optionally `Session` fields in a saved plan file's YAML frontmatter.
