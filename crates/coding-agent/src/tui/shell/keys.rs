@@ -1789,73 +1789,13 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             return;
         }
 
-        // ── Plan review ────────────────────────────────────────────
+        // ── Plan confirmation ──────────────────────────────────────
         if pending_plan_confirmation.read().is_some() {
             use crate::tui::plan_review::{
-                PlanComment, PlanReviewAction, PlanReviewFocus, format_plan_feedback, format_revision_prompt,
-                pick_plan_review_action,
+                PlanReviewAction, PlanReviewFocus, pick_plan_review_action,
             };
 
             let focus = pending_plan_confirmation.read().as_ref().map(|p| p.focus);
-            if focus == Some(PlanReviewFocus::Commenting) {
-                if kind == KeyEventKind::Release {
-                    return;
-                }
-                if modifiers.is_empty() && (code == KeyCode::Esc || code == KeyCode::Tab) {
-                    if let Some(pending) = pending_plan_confirmation.write().as_mut() {
-                        pending.focus = PlanReviewFocus::Preview;
-                        pending.comment_draft.clear();
-                        pending.commenting_range = None;
-                        pending.editing_comment_id = None;
-                    }
-                    return;
-                }
-                if modifiers.is_empty() && code == KeyCode::Enter {
-                    if let Some(pending) = pending_plan_confirmation.write().as_mut() {
-                        let text = pending.comment_draft.trim().to_string();
-                        if !text.is_empty() {
-                            let range = pending
-                                .commenting_range
-                                .clone()
-                                .unwrap_or(pending.selected_line..pending.selected_line + 1);
-                            if let Some(id) = pending.editing_comment_id.take() {
-                                if let Some(comment) = pending.comments.iter_mut().find(|c| c.id == id) {
-                                    comment.text = text;
-                                    comment.line_range = range;
-                                }
-                            } else {
-                                let id = pending.next_comment_id;
-                                pending.next_comment_id += 1;
-                                pending.comments.push(PlanComment {
-                                    id,
-                                    line_range: range,
-                                    text,
-                                });
-                            }
-                        }
-                        pending.comment_draft.clear();
-                        pending.commenting_range = None;
-                        pending.focus = PlanReviewFocus::Preview;
-                    }
-                    return;
-                }
-                if modifiers.is_empty() && code == KeyCode::Backspace {
-                    if let Some(pending) = pending_plan_confirmation.write().as_mut() {
-                        pending.comment_draft.pop();
-                    }
-                    return;
-                }
-                if modifiers.is_empty()
-                    && let KeyCode::Char(ch) = code
-                {
-                    if let Some(pending) = pending_plan_confirmation.write().as_mut() {
-                        pending.comment_draft.push(ch);
-                    }
-                    return;
-                }
-                return;
-            }
-
             if focus == Some(PlanReviewFocus::Prompt) {
                 if kind == KeyEventKind::Release {
                     return;
@@ -1867,78 +1807,10 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     shell_focus.set(ShellFocus::StatusDialog);
                     return;
                 }
-                if modifiers.is_empty() && code == KeyCode::Enter {
-                    let (feedback, session) = {
-                        let pending = pending_plan_confirmation.read();
-                        let Some(p) = pending.as_ref() else {
-                            return;
-                        };
-                        let notes = live_draft.read().clone();
-                        (
-                            format_revision_prompt(&p.comments, &p.plan_text, Some(notes.as_str())),
-                            p.session.clone(),
-                        )
-                    };
-                    if feedback.trim().is_empty() {
-                        let expire_tx = ephemeral_expire.read().tx.clone();
-                        show_ephemeral_banner(
-                            &mut ephemeral_banner,
-                            &mut ephemeral_banner_generation,
-                            &expire_tx,
-                            EphemeralBanner {
-                                key: "plan-revise-empty",
-                                text: "Type revision notes, or press a to approve.".to_string(),
-                                kind: EphemeralBannerKind::Notice,
-                                expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
-                            },
-                        );
-                        return;
-                    }
-                    if let Some(pending) = pending_plan_confirmation.write().take() {
-                        let key = plan_confirmation_transcript_key();
-                        {
-                            let mut msgs = messages.write();
-                            if let Some(row) = msgs.iter_mut().find(|m| m.startup_key.as_deref() == Some(key.as_str()))
-                            {
-                                row.content = "Plan confirmation".to_string();
-                                row.status_detail = Some("Revision requested".to_string());
-                                row.style = TranscriptStyle::StatusFailed;
-                            }
-                        }
-                        messages_revision.set(messages_revision.get().wrapping_add(1));
-                        if let Some(session) = session.or(pending.session) {
-                            tokio::spawn(async move {
-                                if let Err(err) = session.clear_pending_plan().await {
-                                    log::error!("clear pending plan failed: {err}");
-                                }
-                                if let Err(err) = session.submit_prompt(feedback, false).await {
-                                    log::error!("plan revision submit failed: {err}");
-                                }
-                            });
-                        }
-                    }
-                    draft.set(String::new());
-                    live_draft.set(String::new());
-                    force_editor_clear.set(true);
-                    activity_label.set("Revised plan requested".to_string());
-                    shell_focus.set(ShellFocus::Prompt);
-                    return;
-                }
+                // Enter is handled by the prompt `on_submit` (single path, no double-turn).
                 // Let the prompt editor handle typing.
             } else if let Some(action) = pick_plan_review_action(modifiers, code, PlanReviewFocus::Preview) {
                 match action {
-                    PlanReviewAction::SelectPrev => {
-                        if let Some(p) = pending_plan_confirmation.write().as_mut() {
-                            p.move_selection(-1);
-                        }
-                        return;
-                    }
-                    PlanReviewAction::SelectNext => {
-                        if let Some(p) = pending_plan_confirmation.write().as_mut() {
-                            p.move_selection(1);
-                        }
-                        return;
-                    }
                     PlanReviewAction::FocusPrompt => {
                         if let Some(p) = pending_plan_confirmation.write().as_mut() {
                             p.focus = PlanReviewFocus::Prompt;
@@ -1968,72 +1840,10 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         );
                         return;
                     }
-                    PlanReviewAction::Comment => {
-                        if let Some(p) = pending_plan_confirmation.write().as_mut() {
-                            if let Some(existing) = p.comment_on_selected_line().cloned() {
-                                p.editing_comment_id = Some(existing.id);
-                                p.commenting_range = Some(existing.line_range.clone());
-                                p.comment_draft = existing.text;
-                            } else {
-                                p.editing_comment_id = None;
-                                p.commenting_range = Some(p.selected_line..p.selected_line + 1);
-                                p.comment_draft.clear();
-                            }
-                            p.focus = PlanReviewFocus::Commenting;
-                        }
-                        return;
-                    }
-                    PlanReviewAction::DeleteComment => {
-                        if let Some(p) = pending_plan_confirmation.write().as_mut() {
-                            let line = p.selected_line;
-                            p.comments.retain(|c| !c.line_range.contains(&line));
-                        }
-                        return;
-                    }
                     PlanReviewAction::RequestChanges => {
-                        let has_feedback = pending_plan_confirmation
-                            .read()
-                            .as_ref()
-                            .is_some_and(|p| !p.comments.is_empty());
-                        if !has_feedback {
-                            if let Some(p) = pending_plan_confirmation.write().as_mut() {
-                                p.focus = PlanReviewFocus::Prompt;
-                            }
-                            shell_focus.set(ShellFocus::Prompt);
-                            return;
+                        if let Some(p) = pending_plan_confirmation.write().as_mut() {
+                            p.focus = PlanReviewFocus::Prompt;
                         }
-                        let (feedback, session) = {
-                            let pending = pending_plan_confirmation.read();
-                            let Some(p) = pending.as_ref() else {
-                                return;
-                            };
-                            (format_revision_prompt(&p.comments, &p.plan_text, None), p.session.clone())
-                        };
-                        if let Some(pending) = pending_plan_confirmation.write().take() {
-                            let key = plan_confirmation_transcript_key();
-                            {
-                                let mut msgs = messages.write();
-                                if let Some(row) =
-                                    msgs.iter_mut().find(|m| m.startup_key.as_deref() == Some(key.as_str()))
-                                {
-                                    row.content = "Plan confirmation".to_string();
-                                    row.status_detail = Some("Revision requested".to_string());
-                                    row.style = TranscriptStyle::StatusFailed;
-                                }
-                            }
-                            messages_revision.set(messages_revision.get().wrapping_add(1));
-                            if let Some(session) = session.or(pending.session) {
-                                tokio::spawn(async move {
-                                    if let Err(err) = session.clear_pending_plan().await {
-                                        log::error!("clear pending plan failed: {err}");
-                                    }
-                                    if let Err(err) = session.submit_prompt(feedback, false).await {
-                                        log::error!("plan revision submit failed: {err}");
-                                    }
-                                });
-                            }
-                        }
-                        activity_label.set("Revised plan requested".to_string());
                         shell_focus.set(ShellFocus::Prompt);
                         return;
                     }
@@ -2049,14 +1859,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             && let Some(pending) = pending_plan_confirmation.write().take()
                         {
                             let key = plan_confirmation_transcript_key();
-                            let review_notes = {
-                                let formatted = format_plan_feedback(&pending.comments, &pending.plan_text, None);
-                                if formatted.trim().is_empty() {
-                                    None
-                                } else {
-                                    Some(formatted)
-                                }
-                            };
+                            let review_notes = None;
                             let (style, detail) = match choice {
                                 PlanChoice::Implement => (
                                     TranscriptStyle::StatusSuccess,

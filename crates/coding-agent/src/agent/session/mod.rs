@@ -65,6 +65,8 @@ pub struct CodingAgentSessionParams {
     pub ste_enabled: bool,
     /// Multi-worker host lifecycle (lease heartbeat + registry); None if start failed.
     pub worker_runtime: Option<super::worker_runtime::WorkerRuntime>,
+    /// Shared with the Dynamic system prompt so reentry appendix reaches the model.
+    pub plan_reentry: Arc<AtomicBool>,
 }
 
 pub struct CodingAgentSession {
@@ -113,6 +115,7 @@ pub struct CodingAgentSession {
     /// chat overlay is the only surface. Shared `Arc` so the harness subscriber
     /// (wiring) sees the same state.
     pub(crate) intercom_turn_active: Arc<AtomicBool>,
+    plan_reentry: Arc<AtomicBool>,
 }
 
 impl CodingAgentSession {
@@ -134,6 +137,7 @@ impl CodingAgentSession {
             codegraph_enabled,
             ste_enabled,
             worker_runtime,
+            plan_reentry,
         } = params;
         let mut policy = AgentModePolicy::new(agent_mode);
         let mcp_slot = Arc::new(RwLock::new(mcp_registry));
@@ -169,6 +173,7 @@ impl CodingAgentSession {
             })),
             worker_runtime,
             intercom_turn_active: Arc::new(AtomicBool::new(false)),
+            plan_reentry,
         };
         session.wire_harness(ui_tx).await?;
         session.apply_agent_mode(agent_mode).await?;
@@ -611,7 +616,7 @@ impl CodingAgentSession {
                 worker_peers,
             },
         )?;
-        if mode == AgentMode::Plan && self.harness.plan_mode_activated_as_reentry().await {
+        if mode == AgentMode::Plan && self.plan_reentry.load(Ordering::Relaxed) {
             text.push_str(elph_agent::plan_mode_reentry_prompt());
         }
         *self.system_prompt_cache.write() = Some(text.clone());
@@ -646,6 +651,7 @@ impl CodingAgentSession {
             .await
             .map_err(|e| anyhow::anyhow!("{e}"))?;
         self.policy.lock().await.set_mode(AgentMode::Plan);
+        self.plan_reentry.store(reentry, Ordering::Relaxed);
         self.apply_agent_mode(AgentMode::Plan).await?;
         Ok(reentry)
     }
@@ -1349,6 +1355,12 @@ impl CodingAgentSession {
     }
 
     async fn apply_agent_mode(&self, mode: AgentMode) -> Result<()> {
+        if mode != AgentMode::Plan {
+            self.plan_reentry.store(false, Ordering::Relaxed);
+        } else {
+            let reentry = self.harness.plan_mode_activated_as_reentry().await;
+            self.plan_reentry.store(reentry, Ordering::Relaxed);
+        }
         reconcile_harness_tools(&self.harness, mode, self.mcp_registry().as_deref()).await?;
         // Best-effort cache refresh so `/system-prompt` stays available without nesting
         // block_on on the UI thread during a busy stream.

@@ -167,84 +167,38 @@ fn render_tool_approval_dialog(
     .into()
 }
 
-fn plan_review_max_preview_rows(screen_height: u16) -> u16 {
-    let reserved = 1u16
-        .saturating_add(4)
-        .saturating_add((screen_height / 4).clamp(4, 12).saturating_add(1))
-        .saturating_add(5);
-    screen_height.saturating_sub(reserved).max(4)
-}
-
 fn render_plan_confirmation_dialog(
     props: &mut StatusZoneProps,
     plan_text: &str,
     plan_file: Option<&str>,
     focus: crate::tui::plan_review::PlanReviewFocus,
-    selected_line: usize,
-    comments: &[crate::tui::plan_review::PlanComment],
-    comment_draft: &str,
 ) -> AnyElement<'static> {
-    use crate::tui::plan_review::{plan_review_footer_hint, visible_line_window};
+    use crate::tui::plan_review::{plan_review_footer_hint, shorten_plan_path};
 
     let theme = UiTheme::default();
     let body_width = inline_body_width(props.screen_width);
-    let file_label = plan_file
-        .and_then(|p| std::path::Path::new(p).file_name())
-        .and_then(|n| n.to_str())
-        .unwrap_or("plan");
-    let title = format!("Review plan · {file_label}");
-    let lines: Vec<&str> = plan_text.lines().collect();
-    let total = lines.len().max(1);
-    let viewport = plan_review_max_preview_rows(props.screen_height) as usize;
-    let (start, end) = visible_line_window(selected_line, total, viewport);
-    let num_width = total.to_string().len().max(2);
-    let comment_width = body_width.saturating_sub(num_width as u16 + 4).max(8) as usize;
-
-    let mut preview_lines = Vec::new();
-    for lineno in start..=end {
-        let raw = lines.get(lineno - 1).copied().unwrap_or("");
-        let selected = lineno == selected_line;
-        let has_comment = comments.iter().any(|c| c.line_range.contains(&lineno));
-        let marker = if selected { "▸" } else { " " };
-        let tag = if has_comment { " [c]" } else { "" };
-        let body = elph_tui::utils::truncate_with_ellipsis(raw, comment_width.saturating_sub(tag.len()));
-        preview_lines.push(format!("{marker}{lineno:>num_width$}  {body}{tag}"));
-        if selected {
-            for comment in comments.iter().filter(|c| c.line_range.contains(&lineno)) {
-                let note = elph_tui::utils::truncate_with_ellipsis(&comment.text, comment_width.saturating_sub(2));
-                preview_lines.push(format!(" {}  ↳ {note}", " ".repeat(num_width)));
-            }
-        }
-    }
-    if matches!(focus, crate::tui::plan_review::PlanReviewFocus::Commenting) {
-        preview_lines.push(String::new());
-        preview_lines.push(format!(
-            "Comment on line {selected_line}: {}",
-            if comment_draft.is_empty() { "…" } else { comment_draft }
-        ));
-    }
-
-    let preview = preview_lines.join("\n");
-    let footer = plan_review_footer_hint(focus, comments.len());
+    let subject = crate::agent::plan_files::extract_plan_subject(plan_text);
+    let path = plan_file
+        .map(shorten_plan_path)
+        .unwrap_or_else(|| ".elph/plans/ (not saved)".to_string());
+    let body = format!("{subject}\n{path}\nFull plan is in the transcript · /view-plan to reopen");
 
     element! {
         InlineDialogShell(
             screen_width: props.screen_width,
-            title: title,
+            title: "Review plan".to_string(),
             has_focus: props.approval_has_focus,
-            footer_hint: Some(footer),
+            footer_hint: Some(plan_review_footer_hint(focus)),
         ) {
             View(
                 width: body_width,
                 flex_direction: FlexDirection::Column,
-                min_height: 0,
-                overflow: Overflow::Hidden,
-                flex_shrink: 1f32,
+                flex_shrink: 0f32,
             ) {
                 Text(
-                    content: preview,
+                    content: body,
                     color: theme.text_secondary,
-                    wrap: TextWrap::NoWrap,
+                    wrap: TextWrap::Wrap,
                 )
             }
         }
@@ -353,14 +307,11 @@ pub enum StatusDialogKind {
         target_mode: String,
         reason: String,
     },
-    /// Plan review overlay (source lines + comments).
+    /// Compact plan confirmation (subject + saved path; body lives in the transcript).
     PlanConfirmation {
         plan_text: String,
         plan_file: Option<String>,
         focus: crate::tui::plan_review::PlanReviewFocus,
-        selected_line: usize,
-        comments: Vec<crate::tui::plan_review::PlanComment>,
-        comment_draft: String,
     },
     /// Confirm wiping the entire memory store (`/memory flush`).
     MemoryFlush {
@@ -547,18 +498,7 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
             plan_text,
             plan_file,
             focus,
-            selected_line,
-            comments,
-            comment_draft,
-        }) => Some(render_plan_confirmation_dialog(
-            props,
-            &plan_text,
-            plan_file.as_deref(),
-            focus,
-            selected_line,
-            &comments,
-            &comment_draft,
-        )),
+        }) => Some(render_plan_confirmation_dialog(props, &plan_text, plan_file.as_deref(), focus)),
         Some(StatusDialogKind::MemoryFlush {
             memory_count,
             task_count,
@@ -786,9 +726,6 @@ pub fn build_plan_confirmation_dialog_kind(
         plan_text: pending.plan_text.clone(),
         plan_file: pending.plan_file.clone(),
         focus: pending.focus,
-        selected_line: pending.selected_line,
-        comments: pending.comments.clone(),
-        comment_draft: pending.comment_draft.clone(),
     })
 }
 

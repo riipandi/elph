@@ -14,19 +14,18 @@ surface.
 ## Reviewing a proposed plan
 
 When the agent wraps a plan in `<proposed_plan>…</proposed_plan>`, Elph saves it under
-`<project>/.elph/plans/plan-*.md` and opens a review surface:
+`<project>/.elph/plans/plan-*.md`. The full plan stays in the transcript. The
+confirmation card shows only the subject and saved path.
 
 | Shortcut | Action |
 | -------- | ------ |
-| `↑` `↓` / `j` `k` | Move the selected source line |
-| `a` / `1` | Implement in this session (includes pending comments) |
+| `a` / Enter / `1` | Implement in this session |
 | `f` / `2` | Implement in a new session |
-| `s` | Request changes (focus the prompt, or send comments immediately) |
-| `c` / Enter | Comment on the selected line |
+| `s` | Request changes (focus the prompt; Enter sends notes) |
 | `y` | Copy the plan to the clipboard |
 | `q` | Leave Plan mode without implementing |
-| Tab | Preview ↔ revision prompt |
-| Esc | Commenting/prompt → preview; preview Esc stays in Plan and closes review |
+| Tab | Confirmation ↔ revision prompt |
+| Esc | Stay in Plan and close the card |
 
 `/view-plan` (aliases `/show-plan`, `/plan-view`) reopens the latest saved plan.
 

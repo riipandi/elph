@@ -10,6 +10,7 @@ use elph_agent::{
 };
 use std::path::Path;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::sync::Mutex;
 
 use super::mcp_bootstrap::{discover_mcp_registry, start_mcp_notifications};
@@ -307,6 +308,8 @@ pub async fn create_coding_session_with_events(
     let cwd = options.cwd.to_path_buf();
     let agents_md = agents_md_for_cwd(options.cwd);
     let mode_for_prompt = Arc::clone(&mode_state);
+    let plan_reentry = Arc::new(AtomicBool::new(false));
+    let plan_reentry_for_prompt = Arc::clone(&plan_reentry);
 
     // Build memory context from top-weighted memories for the system prompt.
     // Lock errors are handled internally (logged + empty context returned).
@@ -363,6 +366,7 @@ pub async fn create_coding_session_with_events(
             let cwd = cwd.clone();
             let agents_md = agents_md.clone();
             let mode_state = Arc::clone(&mode_for_prompt);
+            let plan_reentry = Arc::clone(&plan_reentry_for_prompt);
             let memory_section = injected_memory.clone();
             let mut prompt_options = prompt_options.clone();
             let peers_registry = peers_registry.clone();
@@ -395,6 +399,9 @@ pub async fn create_coding_session_with_events(
                     log::warn!("coding system prompt render failed: {error}");
                     elph_agent::DEFAULT_SYSTEM_PROMPT.to_string()
                 });
+                if prompt_options.mode == AgentMode::Plan && plan_reentry.load(Ordering::Relaxed) {
+                    prompt.push_str(elph_agent::plan_mode_reentry_prompt());
+                }
 
                 // Append memory context section at the end of the system prompt.
                 if let Some(ref mem) = memory_section {
@@ -560,6 +567,7 @@ pub async fn create_coding_session_with_events(
         codegraph_enabled: options.settings.codegraph.enabled,
         ste_enabled: options.settings.simplified_technical_english,
         worker_runtime,
+        plan_reentry,
     })
     .await?;
 
