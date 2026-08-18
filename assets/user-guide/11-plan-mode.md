@@ -19,11 +19,13 @@ confirmation card shows only the subject and saved path.
 
 | Shortcut | Action |
 | -------- | ------ |
-| `a` / Enter / `1` | Implement in this session |
-| `f` / `2` | Implement in a new session |
+| `↑` `↓` | Move the highlighted action |
+| Enter | Confirm the highlighted action |
+| `a` | Implement in this session |
+| `f` | Implement in a new session |
 | `s` | Request changes (focus the prompt; Enter sends notes) |
-| `y` | Copy the plan to the clipboard |
 | `q` | Leave Plan mode without implementing |
+| `y` | Copy the plan to the clipboard |
 | Tab | Confirmation ↔ revision prompt |
 | Esc | Stay in Plan and close the card |
 

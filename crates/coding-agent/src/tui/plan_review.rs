@@ -35,7 +35,6 @@ impl PendingPlanConfirmation {
             focus: PlanReviewFocus::Preview,
         }
     }
-
 }
 
 /// Prefer a project-relative `.elph/plans/…` path when the file lives there.
@@ -87,13 +86,10 @@ pub fn pick_plan_review_action(
         return None;
     }
     match code {
-        KeyCode::Char('a')
-        | KeyCode::Char('A')
-        | KeyCode::Char('1')
-        | KeyCode::Char('i')
-        | KeyCode::Char('I')
-        | KeyCode::Enter => Some(PlanReviewAction::Implement),
-        KeyCode::Char('f') | KeyCode::Char('F') | KeyCode::Char('2') => Some(PlanReviewAction::ImplementFresh),
+        KeyCode::Char('a') | KeyCode::Char('A') | KeyCode::Char('i') | KeyCode::Char('I') => {
+            Some(PlanReviewAction::Implement)
+        }
+        KeyCode::Char('f') | KeyCode::Char('F') => Some(PlanReviewAction::ImplementFresh),
         KeyCode::Char('s') | KeyCode::Char('S') => Some(PlanReviewAction::RequestChanges),
         KeyCode::Char('y') | KeyCode::Char('Y') => Some(PlanReviewAction::Copy),
         KeyCode::Char('q') | KeyCode::Char('Q') => Some(PlanReviewAction::Quit),
@@ -103,10 +99,25 @@ pub fn pick_plan_review_action(
     }
 }
 
+/// Preview keys, including Enter confirming the highlighted list row.
+pub fn plan_preview_action(modifiers: KeyModifiers, code: KeyCode, selected_index: usize) -> Option<PlanReviewAction> {
+    if modifiers.is_empty() && code == KeyCode::Enter {
+        return match plan_choice_at_index(selected_index)? {
+            PlanChoice::Implement => Some(PlanReviewAction::Implement),
+            PlanChoice::ImplementFresh => Some(PlanReviewAction::ImplementFresh),
+            PlanChoice::RevisePlan => Some(PlanReviewAction::RequestChanges),
+            PlanChoice::StayInPlan => Some(PlanReviewAction::Stay),
+            PlanChoice::QuitPlan => Some(PlanReviewAction::Quit),
+        };
+    }
+    pick_plan_review_action(modifiers, code, PlanReviewFocus::Preview)
+}
+
 pub fn plan_review_footer_hint(focus: PlanReviewFocus) -> String {
     match focus {
         PlanReviewFocus::Preview => {
-            "a/Enter implement · f fresh · s revise · y copy · q quit · Tab notes · Esc stay".to_string()
+            "↑↓ move · Enter confirm · a implement · f fresh · s revise · q quit · y copy · Esc stay"
+                .to_string()
         }
         PlanReviewFocus::Prompt => "Type revision notes · Enter send · Esc/Tab back".to_string(),
     }
@@ -117,7 +128,6 @@ pub fn plan_confirmation_footer_hint() -> String {
     plan_review_footer_hint(PlanReviewFocus::Preview)
 }
 
-#[cfg(test)]
 pub fn plan_confirmation_select_options() -> Vec<elph_tui::types::SelectOption> {
     [
         ("Implement in this session", "Switch to Build mode and apply the plan"),
@@ -141,7 +151,6 @@ pub fn pick_plan_confirmation_index_from_key(modifiers: KeyModifiers, code: KeyC
     }
 }
 
-#[cfg(test)]
 pub fn plan_choice_at_index(index: usize) -> Option<PlanChoice> {
     match index {
         0 => Some(PlanChoice::Implement),
@@ -194,8 +203,12 @@ mod tests {
     #[test]
     fn preview_keys() {
         assert_eq!(
-            pick_plan_review_action(KeyModifiers::NONE, KeyCode::Enter, PlanReviewFocus::Preview),
+            plan_preview_action(KeyModifiers::NONE, KeyCode::Enter, 0),
             Some(PlanReviewAction::Implement)
+        );
+        assert_eq!(
+            plan_preview_action(KeyModifiers::NONE, KeyCode::Enter, 2),
+            Some(PlanReviewAction::RequestChanges)
         );
         assert_eq!(
             pick_plan_review_action(KeyModifiers::NONE, KeyCode::Char('s'), PlanReviewFocus::Preview),

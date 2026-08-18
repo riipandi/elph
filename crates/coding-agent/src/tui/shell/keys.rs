@@ -1791,9 +1791,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
 
         // ── Plan confirmation ──────────────────────────────────────
         if pending_plan_confirmation.read().is_some() {
-            use crate::tui::plan_review::{
-                PlanReviewAction, PlanReviewFocus, pick_plan_review_action,
-            };
+            use crate::tui::plan_review::{PlanReviewAction, PlanReviewFocus, plan_preview_action};
 
             let focus = pending_plan_confirmation.read().as_ref().map(|p| p.focus);
             if focus == Some(PlanReviewFocus::Prompt) {
@@ -1809,7 +1807,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 }
                 // Enter is handled by the prompt `on_submit` (single path, no double-turn).
                 // Let the prompt editor handle typing.
-            } else if let Some(action) = pick_plan_review_action(modifiers, code, PlanReviewFocus::Preview) {
+            } else if let Some(action) = plan_preview_action(modifiers, code, approval_selected.get()) {
                 match action {
                     PlanReviewAction::FocusPrompt => {
                         if let Some(p) = pending_plan_confirmation.write().as_mut() {

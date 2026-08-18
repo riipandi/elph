@@ -177,11 +177,12 @@ fn render_plan_confirmation_dialog(
 
     let theme = UiTheme::default();
     let body_width = inline_body_width(props.screen_width);
+    let options = crate::tui::plan_review::plan_confirmation_select_options();
     let subject = crate::agent::plan_files::extract_plan_subject(plan_text);
     let path = plan_file
         .map(shorten_plan_path)
         .unwrap_or_else(|| ".elph/plans/ (not saved)".to_string());
-    let body = format!("{subject}\n{path}\nFull plan is in the transcript · /view-plan to reopen");
+    let summary = format!("{subject}\n{path}");
 
     element! {
         InlineDialogShell(
@@ -195,11 +196,33 @@ fn render_plan_confirmation_dialog(
                 flex_direction: FlexDirection::Column,
                 flex_shrink: 0f32,
             ) {
-                Text(
-                    content: body,
-                    color: theme.text_secondary,
-                    wrap: TextWrap::Wrap,
-                )
+                View(
+                    width: body_width,
+                    flex_shrink: 0f32,
+                    overflow: Overflow::Hidden,
+                ) {
+                    Text(
+                        content: summary,
+                        color: theme.text_secondary,
+                        wrap: TextWrap::Wrap,
+                    )
+                }
+                View(
+                    width: body_width,
+                    padding_top: 1,
+                    flex_shrink: 0f32,
+                ) {
+                    SelectList(
+                        width: body_width,
+                        height: 5u16,
+                        options: options,
+                        selected_index: props.approval_selected,
+                        has_focus: props.approval_has_focus && matches!(focus, crate::tui::plan_review::PlanReviewFocus::Preview),
+                        show_description: false,
+                        compact: true,
+                        theme: Some(theme),
+                    )
+                }
             }
         }
     }

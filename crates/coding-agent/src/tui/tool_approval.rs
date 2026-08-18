@@ -422,8 +422,12 @@ mod tests {
     fn plan_confirmation_keys_match_table() {
         use crate::tui::plan_review::pick_plan_confirmation_index_from_key;
         assert_eq!(
-            pick_plan_confirmation_index_from_key(KeyModifiers::NONE, KeyCode::Char('1')),
+            pick_plan_confirmation_index_from_key(KeyModifiers::NONE, KeyCode::Char('a')),
             Some(0)
+        );
+        assert_eq!(
+            pick_plan_confirmation_index_from_key(KeyModifiers::NONE, KeyCode::Char('1')),
+            None
         );
         assert_eq!(
             pick_plan_confirmation_index_from_key(KeyModifiers::NONE, KeyCode::Char('s')),
