@@ -51,6 +51,9 @@ pub fn highlight_code_block(language: Option<&str>, code: &str, theme: &Markdown
                 })
                 .collect();
         }
+        if !fence_info.is_empty() {
+            log::debug!("syntax highlight fallback to plain lang={fence_info}");
+        }
     }
 
     #[cfg(not(feature = "highlight"))]

@@ -128,6 +128,13 @@ impl CodingAgentSession {
         if report.summary.is_empty() {
             report.push_summary("Reload unavailable.");
         }
+        log::info!(
+            "workspace reload skills={} templates={} providers={} disk_adapters={}",
+            report.skill_count,
+            report.template_count,
+            report.provider_catalog_files,
+            report.disk_providers_registered
+        );
         report
     }
 

@@ -259,6 +259,7 @@ impl MemoryStore {
             Ok(baseline)
         })
         .await
+        .inspect_err(|err| log::error!("memory store init failed path={}: {err:#}", self.db_path))
         .map(|maybe_raw: Option<String>| {
             if let Some(raw) = maybe_raw
                 && let Ok(b) = serde_json::from_str::<TaskBaseline>(&raw)
@@ -268,6 +269,12 @@ impl MemoryStore {
         })?;
 
         *self.initialized.lock().unwrap() = true;
+        log::debug!(
+            "memory store ready path={} session={} dims={}",
+            self.db_path,
+            self.session_id,
+            self.dimensions
+        );
         Ok(())
     }
 }

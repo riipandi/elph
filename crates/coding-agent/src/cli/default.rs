@@ -31,6 +31,11 @@ pub fn handle(continue_session: bool, resume: Option<String>) -> ExitCode {
         }
     };
 
+    log::info!(
+        "tui launch cwd={} resume={}",
+        project_dir.display(),
+        resume_id.as_deref().unwrap_or("new")
+    );
     let code = platform::run(resume_id);
 
     use std::sync::atomic::Ordering;

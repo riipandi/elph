@@ -121,6 +121,7 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
         result = create_coding_session_with_events(create_opts) => result,
         _ = wait_for_ctrl_c() => {
             status.finish();
+            log::warn!("headless run interrupted during session create");
             return Err(RunInterrupted.into());
         }
     };
@@ -129,6 +130,7 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
         Ok(pair) => pair,
         Err(err) => {
             status.finish();
+            log::error!("headless session create failed: {err:#}");
             return Err(err);
         }
     };
@@ -150,6 +152,10 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
 
     let session_id = session.session_id().to_string();
     let model_label = format!("{}/{}", session.model_provider(), session.model_id());
+    log::info!(
+        "headless session ready id={session_id} model={model_label} mode={:?}",
+        options.mode
+    );
     let format = options.output_format;
     let max_turns = options.max_turns;
     let tool_starts = Arc::new(AtomicU32::new(0));
@@ -419,6 +425,7 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
         emit_turn_footer(format, &turn_meta);
     }
 
+    log::info!("headless run ok session={session_id} model={model_label}");
     Ok(RunModeResult {
         session_id,
         session_name,

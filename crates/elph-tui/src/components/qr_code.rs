@@ -17,6 +17,7 @@ pub struct QrCodeViewProps {
 
 pub fn render_qr(payload: &str, dark: &str, light: &str) -> String {
     let Ok(code) = QrCode::new(payload.as_bytes()) else {
+        log::warn!("qr encode failed payload_bytes={}", payload.len());
         return "invalid payload".to_string();
     };
     let modules = code.to_colors();

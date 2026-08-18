@@ -66,6 +66,7 @@ pub fn handle(args: &McpArgs) -> ExitCode {
     let paths = match ensure_home_blocking(env!("CARGO_PKG_VERSION")) {
         Ok(paths) => paths,
         Err(error) => {
+            log::error!("MCP home bootstrap failed: {error:#}");
             eprintln!("{error}");
             return EXIT_ERROR;
         }

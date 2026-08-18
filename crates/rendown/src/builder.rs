@@ -55,7 +55,9 @@ impl Rendown {
     }
 
     pub fn write(&self, doc: &MarkdownDocument, out: &mut impl Write) -> io::Result<()> {
-        write_document_ansi(doc, self.width, &self.theme, self.resolved_color_level(), out)
+        write_document_ansi(doc, self.width, &self.theme, self.resolved_color_level(), out).inspect_err(|err| {
+            log::warn!("rendown write failed: {err}");
+        })
     }
 
     pub fn render(&self, source: &str, out: &mut impl Write) -> io::Result<()> {

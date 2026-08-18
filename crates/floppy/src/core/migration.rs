@@ -52,6 +52,7 @@ pub async fn apply_set(conn: &Connection, migrations: &[FloppyMigration]) -> Res
             (migration.version, migration.name),
         )
         .await?;
+        log::info!("floppy migration applied version={} name={}", migration.version, migration.name);
     }
     Ok(())
 }

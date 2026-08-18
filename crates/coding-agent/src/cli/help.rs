@@ -13,10 +13,12 @@ pub fn print_subcommand_help<T: CommandFactory>() -> ExitCode {
 
 /// User-facing stub message (stdout, no log formatting).
 pub fn unimplemented(message: &str) {
+    log::warn!("cli unimplemented: {message}");
     println!("{message}");
 }
 
-/// User-facing error (stderr, no log formatting).
+/// User-facing error (stderr). Also written to the process JSONL log.
 pub fn cli_error(message: impl std::fmt::Display) {
+    log::error!("{message}");
     eprintln!("error: {message}");
 }

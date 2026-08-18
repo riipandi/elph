@@ -226,12 +226,15 @@ impl Models {
                     .providers
                     .get(id)
                     .ok_or_else(|| ModelsError::new(ModelsErrorCode::Provider, format!("Unknown provider: {id}")))?;
-                p.refresh_models().await
+                p.refresh_models().await.inspect_err(|e| {
+                    log::warn!("provider refresh failed provider={id}: {e}");
+                })
             }
             None => {
                 let mut errors = vec![];
                 for p in self.providers.values() {
                     if let Err(e) = p.refresh_models().await {
+                        log::warn!("provider refresh failed provider={}: {e}", p.id);
                         errors.push(e);
                     }
                 }
@@ -424,7 +427,44 @@ where
         log::debug!("provider stream start provider={} model={}", model.provider, model.id);
         match setup().await {
             Ok(mut inner) => {
+                let mut saw_first_token = false;
                 while let Some(event) = inner.next_event().await {
+                    if !saw_first_token
+                        && matches!(
+                            event,
+                            crate::types::AssistantMessageEvent::TextStart { .. }
+                                | crate::types::AssistantMessageEvent::ThinkingStart { .. }
+                                | crate::types::AssistantMessageEvent::ToolcallStart { .. }
+                        )
+                    {
+                        saw_first_token = true;
+                        crate::trace::add_event("first_token");
+                        log::debug!("provider stream first token provider={} model={}", model.provider, model.id);
+                    }
+                    match &event {
+                        crate::types::AssistantMessageEvent::Done { reason, message } => {
+                            let usage = &message.usage;
+                            log::info!(
+                                "provider usage provider={} model={} in={} out={} cache_read={} cache_write={} total={} reason={reason:?}",
+                                model.provider,
+                                model.id,
+                                usage.input,
+                                usage.output,
+                                usage.cache_read,
+                                usage.cache_write,
+                                usage.total_tokens,
+                            );
+                        }
+                        crate::types::AssistantMessageEvent::Error { reason, error } => {
+                            log::warn!(
+                                "provider stream error provider={} model={} reason={reason:?} msg={}",
+                                model.provider,
+                                model.id,
+                                error.error_message.as_deref().unwrap_or("unknown")
+                            );
+                        }
+                        _ => {}
+                    }
                     let terminal = matches!(
                         &event,
                         crate::types::AssistantMessageEvent::Done { .. }

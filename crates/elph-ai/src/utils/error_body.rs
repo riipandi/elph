@@ -1,6 +1,8 @@
 use serde_json::Value;
 
 pub const MAX_PROVIDER_ERROR_BODY_CHARS: usize = 4000;
+/// Max chars for a 4xx snippet written to logs (not the caller-facing body).
+pub const MAX_HTTP_ERROR_LOG_CHARS: usize = 160;
 
 #[derive(Debug, Clone)]
 pub struct NormalizedProviderError {
@@ -131,6 +133,67 @@ pub fn format_provider_error(norm: &NormalizedProviderError, prefix: Option<&str
         )
     } else {
         format!("{}: {}", norm.status.unwrap_or(0), norm.body.as_deref().unwrap_or(""))
+    }
+}
+
+/// Compact 4xx log snippet: JSON `error` / `message` / `code` / `type` only.
+/// Never logs the raw body (prompts and request echoes stay out of the file).
+pub fn http_error_log_snippet(body: &str) -> String {
+    let trimmed = body.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+    if let Ok(value) = serde_json::from_str::<Value>(trimmed) {
+        return json_error_snippet(&value)
+            .map(|s| truncate_error_text(&s, MAX_HTTP_ERROR_LOG_CHARS))
+            .unwrap_or_default();
+    }
+    String::from("(non-json error body)")
+}
+
+fn json_error_snippet(value: &Value) -> Option<String> {
+    let obj = match value {
+        Value::Object(map) => map,
+        _ => return None,
+    };
+    let inner = match obj.get("error") {
+        Some(Value::String(s)) if !s.is_empty() => {
+            return Some(s.clone());
+        }
+        Some(Value::Object(err)) => err,
+        _ => obj,
+    };
+    let message = inner
+        .get("message")
+        .and_then(Value::as_str)
+        .or_else(|| obj.get("message").and_then(Value::as_str))
+        .unwrap_or("")
+        .trim();
+    let code = inner.get("code").or_else(|| obj.get("code")).map(value_as_short);
+    let kind = inner
+        .get("type")
+        .or_else(|| inner.get("status"))
+        .or_else(|| obj.get("type"))
+        .map(value_as_short);
+    let mut parts = Vec::new();
+    if let Some(code) = code.filter(|s| !s.is_empty()) {
+        parts.push(code);
+    }
+    if let Some(kind) = kind.filter(|s| !s.is_empty()) {
+        parts.push(kind);
+    }
+    if !message.is_empty() {
+        parts.push(message.to_string());
+    }
+    if parts.is_empty() { None } else { Some(parts.join(" ")) }
+}
+
+fn value_as_short(value: &Value) -> String {
+    match value {
+        Value::String(s) => s.clone(),
+        Value::Number(n) => n.to_string(),
+        Value::Bool(b) => b.to_string(),
+        _ => String::new(),
     }
 }
 

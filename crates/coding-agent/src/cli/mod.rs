@@ -156,6 +156,30 @@ pub enum Commands {
     Worktree(WorktreeArgs),
 }
 
+fn command_label(cli: &Cli) -> &'static str {
+    match &cli.command {
+        None if cli.resume.is_some() => "tui-resume",
+        None if cli.continue_session => "tui-continue",
+        None => "tui",
+        Some(Commands::Acp(_)) => "acp",
+        Some(Commands::Completions(_)) => "completions",
+        Some(Commands::Doctor(_)) => "doctor",
+        Some(Commands::Export(_)) => "export",
+        Some(Commands::Import(_)) => "import",
+        Some(Commands::Mcp(_)) => "mcp",
+        Some(Commands::Memory(_)) => "memory",
+        Some(Commands::Models(_)) => "models",
+        Some(Commands::Extensions(_)) => "extensions",
+        Some(Commands::Provider(_)) => "provider",
+        Some(Commands::Run(_)) => "run",
+        Some(Commands::Server(_)) => "server",
+        Some(Commands::Session(_)) => "session",
+        Some(Commands::Stats(_)) => "stats",
+        Some(Commands::Update(_)) => "update",
+        Some(Commands::Worktree(_)) => "worktree",
+    }
+}
+
 fn init_home() -> Result<crate::platform::Paths, ExitCode> {
     crate::platform::ensure_home_blocking(env!("CARGO_PKG_VERSION")).map_err(|err| {
         help::cli_error(format!("failed to initialize elph home: {err}"));
@@ -218,7 +242,7 @@ pub fn run(cli: &Cli) -> ExitCode {
             elph_agent::logger::init(init.logging)
         }
         Err(_) => {
-            // Best-effort crash path if full path resolution failed.
+            log::warn!("path resolve failed; using fallback logs directory");
             if let Some(logs) = fallback_logs_dir() {
                 elph_agent::logger::install_panic_hook(logs);
             }
@@ -226,6 +250,8 @@ pub fn run(cli: &Cli) -> ExitCode {
             elph_agent::logger::init(init.logging)
         }
     };
+
+    log::debug!("cli start version={} command={}", env!("CARGO_PKG_VERSION"), command_label(cli));
 
     // Boot phases (home scaffold + datastore init) render progress on stderr;
     // keep Ctrl+C interactive there, then restore default signal behavior

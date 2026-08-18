@@ -119,11 +119,14 @@ impl AgentControl {
         }
     }
 
+    #[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.agent.subagent_spawn"))]
     pub async fn spawn_agent(&self, task_name: impl Into<String>, message: Option<String>) -> Result<String, String> {
         if self.depth >= self.limits.max_depth {
+            log::warn!("subagent spawn rejected: max_depth={}", self.limits.max_depth);
             return Err(format!("Subagent depth limit ({}) reached", self.limits.max_depth));
         }
         if self.registry.count_active().await >= self.limits.max_concurrent {
+            log::warn!("subagent spawn rejected: max_concurrent={}", self.limits.max_concurrent);
             return Err(format!("Concurrent subagent limit ({}) reached", self.limits.max_concurrent));
         }
 
@@ -185,10 +188,12 @@ impl AgentControl {
         {
             Ok(Ok(h)) => h,
             Ok(Err(error)) => {
+                log::warn!("subagent harness spawn failed path={agent_path}: {error}");
                 self.registry.release_path(&agent_path).await;
                 return Err(format!("Failed to spawn subagent harness: {error}"));
             }
             Err(_) => {
+                log::warn!("subagent harness spawn timed out path={agent_path}");
                 self.registry.release_path(&agent_path).await;
                 return Err("Subagent spawn timed out after 30 seconds".to_string());
             }
@@ -229,6 +234,8 @@ impl AgentControl {
             }
         }
 
+        log::info!("subagent spawned id={id} path={agent_path} depth={child_depth}");
+        crate::trace::add_property("subagent.id", id.clone());
         Ok(id)
     }
 

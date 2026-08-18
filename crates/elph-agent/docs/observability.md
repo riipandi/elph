@@ -131,12 +131,44 @@ Spans use stable `elph.*` names. Instrumentation is gated behind `#[cfg_attr(fea
 
 | Span name                  | Location                     | Notes                                 |
 | -------------------------- | ---------------------------- | ------------------------------------- |
-| `elph.agent.turn`          | `AgentHarness::prompt`       | Root of a user prompt turn            |
-| `elph.agent.execute_turn`  | `execute_turn`               | Turn body after queue drain           |
-| `elph.agent.loop`          | `run_agent_loop`             | Full agent loop for one turn          |
-| `elph.agent.loop_continue` | loop continuation            | Follow-up iterations in the same turn |
-| `elph.agent.tool_batch`    | tool batch dispatch          | Parallel tool call batch              |
-| `elph.agent.tool`          | `execute_prepared_tool_call` | Single tool execution                 |
+| `elph.agent.turn`            | `AgentHarness::prompt`            | Root of a user prompt turn              |
+| `elph.agent.skill`           | `AgentHarness::skill`             | `skill.name`                            |
+| `elph.agent.prompt_template` | `AgentHarness::prompt_from_template` | `template.name`                      |
+| `elph.agent.execute_turn`    | `execute_turn`                    | Turn body after queue drain             |
+| `elph.agent.loop`            | `run_agent_loop`                  | Full agent loop for one turn            |
+| `elph.agent.loop_continue`   | loop continuation                 | Follow-up iterations in the same turn   |
+| `elph.agent.tool_batch`      | tool batch dispatch               | Parallel tool call batch                |
+| `elph.agent.tool`            | `execute_prepared_tool_call`      | `tool.name`                             |
+| `elph.agent.compaction`      | `compact`                         | `model.id`, `model.provider`            |
+| `elph.agent.subagent_spawn`  | `AgentControl::spawn_agent`       | `subagent.id`                           |
+
+### Markdown (`rendown`)
+
+Library crate: no logger init, no fastrace spans. Emits `log` for mermaid render failure, syntax-highlight fallback, and ANSI write/stream I/O errors. Source markdown is never logged.
+
+Filter: `ELPH_LOG_LEVEL=rendown=debug`.
+
+### Memory (`floppy`)
+
+Library crate: no logger init, no fastrace spans. Emits `log` for store open/init/close, migrations, embedder load, decay/consolidate/purge/flush, and embed fallbacks. Memory **content** and search queries are never logged.
+
+Filter: `ELPH_LOG_LEVEL=floppy=debug`.
+
+### Host / CLI (`elph` binary, `coding-agent`)
+
+The binary initializes logging, then emits `log` records for process lifecycle. Filter with `ELPH_LOG_LEVEL=elph=debug`.
+
+- CLI dispatch (`cli start command=…`), TUI launch, headless `elph run`
+- Settings load/save
+- Session pin/delete
+- `/reload` workspace summary
+- All `cli_error` paths (`error:` on stderr + JSONL)
+
+Prompt text is never logged.
+
+### Terminal UI (`elph-tui`)
+
+`elph-tui` is a widget library: it does **not** initialize the logger and has no fastrace spans. It emits `log` records for I/O and config edges only (clipboard, theme, QR encode, CLI progress interrupt, paste size). Render/keystroke paths stay silent.
 
 ### MCP (`elph-agent`)
 
@@ -147,9 +179,15 @@ Spans use stable `elph.*` names. Instrumentation is gated behind `#[cfg_attr(fea
 
 ### Provider streaming (`elph-ai`)
 
-| Span name        | Location                                        | Properties                                |
-| ---------------- | ----------------------------------------------- | ----------------------------------------- |
-| `elph.ai.stream` | `Models::lazy_stream` via `trace::spawn_stream` | `model.id`, `model.provider`, `model.api` |
+| Span name                | Location                                              | Properties / events                                      |
+| ------------------------ | ----------------------------------------------------- | -------------------------------------------------------- |
+| `elph.ai.stream`         | `Models::lazy_stream` via `trace::spawn_stream`       | `model.id`, `model.provider`, `model.api`; event `first_token` |
+| `elph.ai.http`           | `send_with_resilience` / `send_with_resilience_retry` | `provider.id`; event `retry`                             |
+| `elph.ai.auth`           | `resolve_provider_auth`                               | `provider.id`                                            |
+| `elph.ai.oauth.login`    | `oauth_provider_login`                                | `provider.id`                                            |
+| `elph.ai.oauth.refresh`  | `refresh_oauth_token`                                 | `provider.id`                                            |
+| `elph.ai.images`         | `ImagesModels::generate_images`                       | `model.id`, `model.provider`                             |
+| `elph.ai.websocket`      | `connect_websocket_with_proxy`                        | `ws.host`, `ws.port`                                     |
 
 Example trace tree for one prompt turn:
 
@@ -158,6 +196,8 @@ elph.agent.turn
 └─ elph.agent.execute_turn
    └─ elph.agent.loop
       ├─ elph.ai.stream          (model.id, model.provider, model.api)
+      │  ├─ elph.ai.auth
+      │  └─ elph.ai.http         (retry events)
       ├─ elph.agent.tool_batch
       │  └─ elph.agent.tool
       └─ elph.agent.loop_continue
@@ -206,6 +246,16 @@ Unsafe by default (not captured):
 - provider request/response bodies
 - API keys and auth headers
 
+### Provider HTTP logs (`elph-ai`)
+
+| Event | Level | Fields |
+| ----- | ----- | ------ |
+| Successful provider HTTP | `debug` | status, `provider=` — no body |
+| Stream complete | `info` | `provider=`, `model=`, token usage (`in`/`out`/`cache_read`/`cache_write`/`total`), stop `reason` |
+| HTTP 4xx/5xx | `warn` | status, `provider=`, short snippet from JSON `error`/`message`/`code`/`type` (≤160 chars) |
+
+Non-JSON error bodies log as `(non-json error body)` so HTML or echoed prompts never land in the file. The `anyhow` error returned to callers still includes the truncated (4000-char) body.
+
 Opt-in content capture and redaction hooks remain future work.
 
 ## Tests
@@ -229,9 +279,9 @@ The original runtime-agnostic `ElphObservability` trait design (custom event bus
 
 | Area                 | Planned span / capability                                                 |
 | -------------------- | ------------------------------------------------------------------------- |
-| Harness entry points | `elph.agent.skill`, `elph.agent.prompt_template`, `elph.agent.compaction` |
+| Harness entry points | remaining hook/plan-mode spans |
 | Session I/O          | `elph.session.append_entry`, `elph.session.read`, `elph.session.write`    |
-| Provider detail      | `elph.ai.provider.request`, retry/first-token/usage events                |
+| Provider detail      | usage token fields on fastrace stream spans (JSONL usage log is implemented) |
 | User context         | `run_with_elph_context` — arbitrary key/value on every event              |
 | Adapters             | OTel span export, Sentry bridge, custom `Reporter` implementations        |
 | Redaction            | Opt-in payload capture with explicit scrubbing hooks                      |

@@ -39,10 +39,18 @@ impl ExtensionRegistry {
 
         for (root, manifest) in manifests {
             if !manifest.enabled || !settings.is_enabled(&manifest.name) {
+                log::debug!("extension skipped name={}", manifest.name);
                 continue;
             }
-            let loaded =
-                LoadedExtension::load(&root, manifest).with_context(|| format!("load extension {}", root.display()))?;
+            let loaded = match LoadedExtension::load(&root, manifest)
+                .with_context(|| format!("load extension {}", root.display()))
+            {
+                Ok(loaded) => loaded,
+                Err(error) => {
+                    log::warn!("extension load failed root={}: {error:#}", root.display());
+                    return Err(error);
+                }
+            };
             let mut ext_commands = loaded
                 .list_commands()
                 .with_context(|| format!("list commands for extension {}", loaded.manifest.name))?;
@@ -51,6 +59,7 @@ impl ExtensionRegistry {
         }
 
         commands.sort_by(|a, b| a.name.cmp(&b.name));
+        log::info!("extensions loaded count={} commands={}", extensions.len(), commands.len());
         *self.inner.write() = RegistryState { extensions, commands };
         Ok(())
     }

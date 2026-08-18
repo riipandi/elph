@@ -96,6 +96,11 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
     let paths = Paths::resolve()?;
     Settings::ensure(&paths)?;
     let settings = Settings::load(&paths)?;
+    log::info!(
+        "tui start project={} resume={}",
+        paths.project_dir().display(),
+        options.resume_id.as_deref().unwrap_or("new")
+    );
 
     let extension_host = ExtensionHost::new();
     if let Err(err) = ExtensionHost::ensure_dirs(&paths) {

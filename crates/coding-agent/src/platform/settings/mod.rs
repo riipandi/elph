@@ -915,8 +915,11 @@ impl Settings {
         let project = read_settings_value(&paths.project_settings_path())?;
         let mut merged = home_value;
         deep_merge(&mut merged, &project);
-        let mut settings: Self = serde_json::from_value(merged).context("parse merged settings")?;
+        let mut settings: Self = serde_json::from_value(merged)
+            .context("parse merged settings")
+            .inspect_err(|err| log::error!("settings load failed: {err:#}"))?;
         settings.project_layer_loaded = paths.project_settings_path().is_file();
+        log::debug!("settings loaded project_layer={}", settings.project_layer_loaded);
         Ok(settings)
     }
 
@@ -937,7 +940,11 @@ impl Settings {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).with_context(|| format!("create {}", parent.display()))?;
         }
-        write_json_file(&path, settings).with_context(|| format!("write {}", path.display()))
+        write_json_file(&path, settings)
+            .with_context(|| format!("write {}", path.display()))
+            .inspect_err(|err| log::error!("settings save failed: {err:#}"))?;
+        log::debug!("settings saved scope={} path={}", scope.label(), path.display());
+        Ok(())
     }
 }
 

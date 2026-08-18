@@ -29,6 +29,7 @@ pub async fn search_engine(
 
     // Check resilience before calling the engine
     elph_ai::resilience::check_provider_resilience(&provider_id)?;
+    log::debug!("web search start engine={provider_id}");
 
     let result = match engine {
         Engine::DuckDuckGo => duckduckgo::search(client, query).await,
@@ -42,8 +43,12 @@ pub async fn search_engine(
     };
 
     match &result {
-        Ok(_) => elph_ai::resilience::record_provider_success(&provider_id),
+        Ok(hits) => {
+            log::debug!("web search ok engine={provider_id} hits={}", hits.len());
+            elph_ai::resilience::record_provider_success(&provider_id);
+        }
         Err(e) => {
+            log::warn!("web search failed engine={provider_id}: {e:#}");
             let msg = e.to_string();
             // Record failure for server errors and rate limits
             if msg.contains("429")

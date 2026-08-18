@@ -1,6 +1,9 @@
 use elph_ai::utils::error_body::ThrownValue;
-use elph_ai::utils::error_body::{MAX_PROVIDER_ERROR_BODY_CHARS, NormalizedProviderError, ProviderSdkError};
-use elph_ai::utils::error_body::{format_provider_error, normalize_provider_error, truncate_error_text};
+use elph_ai::utils::error_body::{MAX_HTTP_ERROR_LOG_CHARS, MAX_PROVIDER_ERROR_BODY_CHARS};
+use elph_ai::utils::error_body::{NormalizedProviderError, ProviderSdkError};
+use elph_ai::utils::error_body::{
+    format_provider_error, http_error_log_snippet, normalize_provider_error, truncate_error_text,
+};
 use serde_json::json;
 
 fn sdk_error(error: ProviderSdkError) -> anyhow::Error {
@@ -238,4 +241,30 @@ fn format_provider_error_preserves_message_when_it_carries_body() {
 fn format_provider_error_returns_bare_message_for_non_error_value() {
     let norm = normalize_provider_error(&anyhow::Error::new(ThrownValue(json!({ "reason": "boom" }))));
     assert_eq!(format_provider_error(&norm, None), r#"{"reason":"boom"}"#);
+}
+
+#[test]
+fn http_error_log_snippet_uses_openai_error_message() {
+    let body = r#"{"error":{"message":"invalid_api_key","type":"invalid_request_error","code":"invalid_api_key"}}"#;
+    let snippet = http_error_log_snippet(body);
+    assert!(snippet.contains("invalid_api_key"));
+    assert!(snippet.contains("invalid_request_error"));
+    assert!(!snippet.contains('{'));
+}
+
+#[test]
+fn http_error_log_snippet_hides_non_json_body() {
+    assert_eq!(
+        http_error_log_snippet("You are a helpful assistant\nuser: secret"),
+        "(non-json error body)"
+    );
+}
+
+#[test]
+fn http_error_log_snippet_truncates_long_json_message() {
+    let long = "x".repeat(MAX_HTTP_ERROR_LOG_CHARS + 40);
+    let body = format!(r#"{{"error":"{long}"}}"#);
+    let snippet = http_error_log_snippet(&body);
+    assert!(snippet.len() < body.len());
+    assert!(snippet.contains("truncated"));
 }

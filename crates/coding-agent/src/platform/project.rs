@@ -12,6 +12,7 @@ const GITIGNORE: &str = "\
 pub fn ensure(paths: &Paths) -> Result<()> {
     std::fs::create_dir_all(paths.project_elph_dir())?;
     write_file_if_missing(&paths.project_gitignore_path(), GITIGNORE.as_bytes())?;
+    log::debug!("project dir ready {}", paths.project_elph_dir().display());
     Ok(())
 }
 

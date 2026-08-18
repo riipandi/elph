@@ -65,6 +65,7 @@ pub struct AuthResolutionOverrides {
     pub env: Option<ProviderEnv>,
 }
 
+#[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.ai.auth"))]
 pub async fn resolve_provider_auth(
     provider: &ProviderAuthHolder,
     model: AuthModel,
@@ -72,6 +73,7 @@ pub async fn resolve_provider_auth(
     auth_context: Arc<dyn AuthContext>,
     overrides: Option<AuthResolutionOverrides>,
 ) -> Result<Option<AuthResult>, ModelsError> {
+    crate::trace::add_property("provider.id", provider.id.clone());
     let ctx = if let Some(env) = overrides.as_ref().and_then(|o| o.env.clone()) {
         Arc::new(OverlayAuthContext {
             base: auth_context.clone(),
@@ -84,6 +86,7 @@ pub async fn resolve_provider_auth(
     if let Some(key) = overrides.as_ref().and_then(|o| o.api_key.clone())
         && let Some(api_key) = &provider.auth.api_key
     {
+        log::debug!("auth resolve provider={} source=override", provider.id);
         return resolve_api_key(
             ctx,
             api_key,
@@ -99,12 +102,15 @@ pub async fn resolve_provider_auth(
         return match stored {
             Credential::OAuth(cred) => {
                 if let Some(oauth) = &provider.auth.oauth {
+                    log::debug!("auth resolve provider={} source=oauth", provider.id);
                     resolve_stored_oauth(credentials, &provider.id, oauth, cred).await
                 } else {
+                    log::debug!("auth unresolved provider={} source=oauth_no_handler", provider.id);
                     Ok(None)
                 }
             }
             Credential::ApiKey(cred) => {
+                log::debug!("auth resolve provider={} source=stored_api_key", provider.id);
                 if let Some(api_key) = &provider.auth.api_key {
                     let merged = if let Some(env) = overrides.as_ref().and_then(|o| o.env.clone()) {
                         let mut c = cred.clone();
@@ -122,9 +128,16 @@ pub async fn resolve_provider_auth(
     }
 
     if let Some(api_key) = &provider.auth.api_key {
-        return resolve_api_key(ctx, api_key, model, None, overrides.and_then(|o| o.env)).await;
+        let result = resolve_api_key(ctx, api_key, model, None, overrides.and_then(|o| o.env)).await;
+        match &result {
+            Ok(Some(_)) => log::debug!("auth resolved provider={} source=api_key", provider.id),
+            Ok(None) => log::debug!("auth unresolved provider={} source=api_key", provider.id),
+            Err(e) => log::warn!("auth resolve failed provider={}: {e}", provider.id),
+        }
+        return result;
     }
 
+    log::debug!("auth unresolved provider={} source=none", provider.id);
     Ok(None)
 }
 
@@ -184,6 +197,7 @@ async fn resolve_stored_oauth(
                     );
                     return Ok(None);
                 }
+                log::warn!("OAuth refresh failed for {provider_id}: {detail}");
                 return Err(ModelsError::with_cause(
                     ModelsErrorCode::OAuth,
                     format!("OAuth refresh failed for {provider_id}"),

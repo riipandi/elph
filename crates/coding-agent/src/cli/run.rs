@@ -140,6 +140,12 @@ pub fn handle(args: &RunArgs) -> ExitCode {
         }
     };
 
+    log::info!(
+        "headless run start mode={mode:?} format={output_format:?} continue={} session_id={}",
+        args.r#continue,
+        args.session_id.as_deref().unwrap_or("-")
+    );
+
     let effort = match args.effort.as_deref() {
         Some(raw) => match parse_effort(raw) {
             Ok(e) => Some(e),

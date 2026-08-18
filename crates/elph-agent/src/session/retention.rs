@@ -263,11 +263,26 @@ pub async fn run_session_gc(database: &Database, policy: &RetentionPolicy, dry_r
 
     if dry_run {
         report.deleted_ids = to_delete;
+        log::debug!(
+            "session gc dry_run candidates={} examined={}",
+            report.deleted_ids.len(),
+            report.examined
+        );
         return Ok(report);
     }
 
     delete_sessions(database, &to_delete).await?;
     report.deleted_ids = to_delete;
+    if !report.deleted_ids.is_empty() {
+        log::info!(
+            "session gc deleted={} examined={} dry_run={}",
+            report.deleted_ids.len(),
+            report.examined,
+            dry_run
+        );
+    } else {
+        log::debug!("session gc deleted=0 examined={}", report.examined);
+    }
     Ok(report)
 }
 

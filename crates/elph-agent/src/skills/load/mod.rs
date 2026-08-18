@@ -119,6 +119,11 @@ pub async fn load_skills_with_options(
         all_diagnostics.extend(result.diagnostics);
     }
 
+    if !all_diagnostics.is_empty() {
+        log::warn!("skills loaded count={} diagnostics={}", all_skills.len(), all_diagnostics.len());
+    } else {
+        log::debug!("skills loaded count={}", all_skills.len());
+    }
     LoadSkillsResult {
         skills: all_skills,
         diagnostics: all_diagnostics,

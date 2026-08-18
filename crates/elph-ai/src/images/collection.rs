@@ -101,13 +101,18 @@ impl ImagesModels {
         .await
     }
 
+    #[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.ai.images"))]
     pub async fn generate_images(
         &self,
         model: &ImagesModel,
         context: &ImagesContext,
         options: Option<ImagesOptions>,
     ) -> AssistantImages {
+        crate::trace::add_property("model.id", model.id.clone());
+        crate::trace::add_property("model.provider", model.provider.clone());
+        log::debug!("images generate start provider={} model={}", model.provider, model.id);
         let Some(provider) = self.providers.get(&model.provider) else {
+            log::warn!("images generate failed: unknown provider={}", model.provider);
             return AssistantImages {
                 api: model.api.clone(),
                 provider: model.provider.clone(),
@@ -139,6 +144,12 @@ impl ImagesModels {
         {
             Ok(r) => r,
             Err(e) => {
+                log::warn!(
+                    "images generate auth failed provider={} model={}: {}",
+                    model.provider,
+                    model.id,
+                    e.message
+                );
                 return AssistantImages {
                     api: model.api.clone(),
                     provider: model.provider.clone(),
@@ -183,7 +194,23 @@ impl ImagesModels {
             }
         }
 
-        provider.api.generate_images(model, context, Some(opts)).await
+        let result = provider.api.generate_images(model, context, Some(opts)).await;
+        if result.stop_reason == crate::types::StopReason::Error {
+            log::warn!(
+                "images generate failed provider={} model={} msg={}",
+                model.provider,
+                model.id,
+                result.error_message.as_deref().unwrap_or("unknown")
+            );
+        } else {
+            log::debug!(
+                "images generate done provider={} model={} reason={:?}",
+                model.provider,
+                model.id,
+                result.stop_reason
+            );
+        }
+        result
     }
 }
 

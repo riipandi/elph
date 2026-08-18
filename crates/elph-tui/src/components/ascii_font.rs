@@ -43,6 +43,7 @@ pub fn render_figlet(text: &str) -> String {
     {
         return figure.as_str().to_string();
     }
+    log::debug!("figlet unavailable; using bitmap banner");
     render_bitmap(text)
 }
 

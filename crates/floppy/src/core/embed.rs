@@ -208,7 +208,13 @@ pub fn create_embedder(options: EmbedOptions) -> anyhow::Result<EmbedFn> {
     // device parameter on `from_pretrained_hf` (the 4th slot is the data `dtype`,
     // which the Candle/Bert path ignores), so `options.device` is advisory only —
     // it still feeds `gpu_acceleration` reporting upstream. dtype defaults to F32.
-    let embedder = Embedder::from_pretrained_hf(&hf_model_id, None, None, None, pooling)?;
+    log::info!(
+        "embedder loading model={hf_model_id} dims={expected_dims} quantized_opt={}",
+        options.quantized
+    );
+    let embedder = Embedder::from_pretrained_hf(&hf_model_id, None, None, None, pooling)
+        .inspect_err(|err| log::error!("embedder load failed model={hf_model_id}: {err:#}"))?;
+    log::info!("embedder ready model={hf_model_id} dims={expected_dims}");
 
     let shared = Arc::new(embedder);
     Ok(Arc::new(move |texts: &[String]| {
@@ -267,14 +273,21 @@ fn run_with_init_timeout(
         })?;
     match rx.recv_timeout(timeout) {
         Ok(Ok(embed)) => Ok(embed),
-        Ok(Err(err)) => Err(err),
-        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => Err(anyhow::anyhow!(
-            "embedder initialization timed out after {}s — the model weights download is \
+        Ok(Err(err)) => {
+            log::error!("embedder init failed: {err:#}");
+            Err(err)
+        }
+        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+            log::error!("embedder init timed out after {}s", timeout.as_secs());
+            Err(anyhow::anyhow!(
+                "embedder initialization timed out after {}s — the model weights download is \
              slow or the network is blocked. Check your connection and retry; after the first \
              success the model is cached locally.",
-            timeout.as_secs()
-        )),
+                timeout.as_secs()
+            ))
+        }
         Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+            log::error!("embedder init thread exited unexpectedly");
             Err(anyhow::anyhow!("embedder initialization thread exited unexpectedly"))
         }
     }

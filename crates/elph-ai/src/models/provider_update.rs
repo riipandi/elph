@@ -170,6 +170,7 @@ pub fn apply_provider_update(
                 UpdatePolicy::Merge => {
                     if entry.unparsable {
                         // Never clobber content we cannot parse; leave it and note it.
+                        log::warn!("provider catalog update skipped unparsable file provider={}", entry.provider);
                         report.skipped += 1;
                     } else {
                         let body = fs::read_to_string(&path).map_err(|e| format!("read {}: {e}", path.display()))?;
@@ -184,6 +185,14 @@ pub fn apply_provider_update(
         }
     }
 
+    log::info!(
+        "provider catalog update written={} merged={} overwritten={} skipped={} up_to_date={}",
+        report.written,
+        report.merged,
+        report.overwritten,
+        report.skipped,
+        report.up_to_date
+    );
     Ok(report)
 }
 

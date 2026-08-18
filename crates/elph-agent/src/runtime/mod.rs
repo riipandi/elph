@@ -113,8 +113,17 @@ pub async fn run_agent_loop(
         .await;
     }
 
-    run_loop::run_loop(&mut current_context, &mut new_messages, &mut config, signal, &emit).await?;
-    Ok(new_messages)
+    log::debug!("agent loop start messages={}", current_context.messages.len());
+    match run_loop::run_loop(&mut current_context, &mut new_messages, &mut config, signal, &emit).await {
+        Ok(()) => {
+            log::debug!("agent loop ok new_messages={}", new_messages.len());
+            Ok(new_messages)
+        }
+        Err(error) => {
+            log::warn!("agent loop failed: {error}");
+            Err(error)
+        }
+    }
 }
 
 #[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.agent.loop_continue"))]
@@ -138,8 +147,17 @@ pub async fn run_agent_loop_continue(
     emit(AgentEvent::TurnStart).await;
 
     let mut config = config;
-    run_loop::run_loop(&mut current_context, &mut new_messages, &mut config, signal, &emit).await?;
-    Ok(new_messages)
+    log::debug!("agent loop continue start messages={}", current_context.messages.len());
+    match run_loop::run_loop(&mut current_context, &mut new_messages, &mut config, signal, &emit).await {
+        Ok(()) => {
+            log::debug!("agent loop continue ok new_messages={}", new_messages.len());
+            Ok(new_messages)
+        }
+        Err(error) => {
+            log::warn!("agent loop continue failed: {error}");
+            Err(error)
+        }
+    }
 }
 
 fn run_future<F, T>(future: F) -> Result<T>

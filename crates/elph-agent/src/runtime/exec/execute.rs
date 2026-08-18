@@ -43,6 +43,9 @@ pub(super) async fn execute_prepared_tool_call(
         }) as crate::types::ToolUpdateCallback
     };
 
+    let tool_name = prepared.tool_call.name.as_str();
+    crate::trace::add_property("tool.name", tool_name);
+    log::debug!("tool start name={tool_name}");
     let started = std::time::Instant::now();
     match (prepared.tool.execute)(
         prepared.tool_call.id.clone(),
@@ -55,6 +58,7 @@ pub(super) async fn execute_prepared_tool_call(
     {
         Ok(result) => {
             update_tx.store(false, Ordering::Relaxed);
+            log::debug!("tool ok name={tool_name} duration_ms={}", started.elapsed().as_millis());
             ExecutedToolCallOutcome {
                 result,
                 is_error: false,
@@ -63,6 +67,7 @@ pub(super) async fn execute_prepared_tool_call(
         }
         Err(error) => {
             update_tx.store(false, Ordering::Relaxed);
+            log::warn!("tool failed name={tool_name}: {error}");
             ExecutedToolCallOutcome {
                 result: AgentToolResult::error(error.to_string()),
                 is_error: true,

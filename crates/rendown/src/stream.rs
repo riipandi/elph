@@ -49,7 +49,9 @@ impl StreamRenderer {
         let had_newline = delta.contains('\n');
         self.source.push_str(delta);
         if had_newline {
-            self.repaint_new_lines(out)?;
+            self.repaint_new_lines(out).inspect_err(|err| {
+                log::warn!("rendown stream paint failed: {err}");
+            })?;
         }
         Ok(())
     }
@@ -59,7 +61,9 @@ impl StreamRenderer {
         if self.source.is_empty() && self.painted_lines == 0 {
             return Ok(());
         }
-        self.repaint_new_lines(out)?;
+        self.repaint_new_lines(out).inspect_err(|err| {
+            log::warn!("rendown stream finish failed: {err}");
+        })?;
         out.flush()?;
         Ok(())
     }

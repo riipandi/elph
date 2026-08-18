@@ -92,6 +92,7 @@ pub fn handle(args: &SessionArgs) -> ExitCode {
                 manager.delete(&meta).await
             }) {
                 Ok(()) => {
+                    log::info!("session deleted id={id}");
                     let mut out = String::new();
                     style::success(&mut out, CliStyle::auto(), format!("Deleted session {id}"));
                     print!("{out}");
@@ -119,6 +120,7 @@ fn pin_session(paths: &Paths, id: &str, pinned: bool) -> ExitCode {
             let verb = if pinned { "Pinned" } else { "Unpinned" };
             style::success(&mut out, CliStyle::auto(), format!("{verb} session {id}"));
             print!("{out}");
+            log::info!("session {} id={id}", if pinned { "pinned" } else { "unpinned" });
             EXIT_SUCCESS
         }
         Err(err) => {

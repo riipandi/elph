@@ -21,7 +21,7 @@ pub use core_imp::*;
 pub use core_stub::*;
 
 #[cfg(feature = "tracing")]
-pub use imp::{model_stream_span, spawn_stream, with_trace_headers};
+pub use imp::{add_event, add_property, inject_traceparent, model_stream_span, spawn_stream, with_trace_headers};
 
 #[cfg(not(feature = "tracing"))]
-pub use stub::{model_stream_span, spawn_stream, with_trace_headers};
+pub use stub::{add_event, add_property, inject_traceparent, model_stream_span, spawn_stream, with_trace_headers};
