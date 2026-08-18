@@ -51,7 +51,7 @@ impl ExtensionHost {
             paths.config_dir(),
             &paths.project_elph_dir(),
             &settings,
-            host_settings.include_project_resources(),
+            host_settings.include_project_extensions(paths),
         )
     }
 

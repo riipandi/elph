@@ -17,7 +17,7 @@
 | `skills/<name>/SKILL.md` | User skills                         |
 | `bundled/`               | Built-in skills and this user guide |
 
-Project overrides: `<project>/.elph/settings.json`, `mcp.json`, `skills/`, `prompts/` — loaded when the project is trusted (`/trust` or `trust.defaultProjectTrust: always`). Project wins on conflict; arrays replace.
+Project overrides: `<project>/.elph/settings.json`, `skills/`, `prompts/` always load (project wins; arrays replace). Project WASM extensions under `.elph/extensions/` need `/trust` or `trust.defaultProjectTrust: always`.
 
 `models.defaultModel` seeds **new** sessions only. Live model, thinking level, and agent mode are per-session.
 

@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://elph.space/elph-schema.json",
     "title": "Elph settings configuration",
-    "description": "User preferences for the Elph coding agent, grouped by domain. Active model, thinking level, and agent mode are per-session (not stored here). Home: CONFIG_DIR/settings.json. Optional project overrides: <workDir>/.elph/settings.json (same shape). Merge: defaults \u2190 home \u2190 project when the project is trusted (project wins per nested key; arrays replace). Runtime saves write the home layer only. Unknown keys are ignored. Top-level transport: maxRetries, defaultTimeout.",
+    "description": "User preferences for the Elph coding agent, grouped by domain. Active model, thinking level, and agent mode are per-session (not stored here). Home: CONFIG_DIR/settings.json. Optional project overrides: <workDir>/.elph/settings.json (same shape). Merge: defaults \u2190 home \u2190 project always (project wins per nested key; arrays replace). trust.defaultProjectTrust only gates project WASM extensions. Runtime saves write the home layer only. Unknown keys are ignored. Top-level transport: maxRetries, defaultTimeout.",
     "type": "object",
     "additionalProperties": false,
     "properties": {
@@ -673,7 +673,7 @@
                     "type": "string",
                     "enum": ["ask", "always", "never"],
                     "default": "ask",
-                    "description": "When trust.json has no decision: always loads project settings/resources; ask and never skip them (no prompt UI in this version — ask behaves like never)."
+                    "description": "When trust.json has no decision for this folder: always loads project WASM extensions; ask and never skip those extensions (no prompt UI in this version — ask behaves like never). Does not affect project settings.json, skills, or prompts."
                 }
             }
         },

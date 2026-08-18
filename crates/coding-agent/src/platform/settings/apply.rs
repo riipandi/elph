@@ -22,9 +22,14 @@ impl Settings {
         }
     }
 
-    /// Whether project-local skills/prompts/extensions dirs should be scanned.
+    /// Project skill/prompt directories are always scanned (same as settings merge).
     pub fn include_project_resources(&self) -> bool {
-        self.project_layer_loaded
+        true
+    }
+
+    /// Project WASM extensions require `/trust` or `trust.defaultProjectTrust: always`.
+    pub fn include_project_extensions(&self, paths: &crate::platform::Paths) -> bool {
+        Settings::project_extensions_allowed(paths, self)
     }
 
     /// Filter discovered skills by `resources.disabledSkills` and `resources.skills` `!` / `-` patterns.

@@ -6,10 +6,10 @@
 //! |----------|-----------------------------------|-------------------------------------------|
 //! | Defaults | (in code)                         | Serde field defaults for missing keys     |
 //! | Home     | `CONFIG_DIR/settings.json`        | Global prefs; default write target        |
-//! | Project  | `<project>/.elph/settings.json`   | Per-repo overrides when the project is trusted |
+//! | Project  | `<project>/.elph/settings.json`   | Per-repo overrides (always merged) |
 //!
-//! Runtime load merges **home ← project** (project wins per nested object key; arrays replace).
-//! Project layer is skipped when untrusted and `trust.defaultProjectTrust` is `ask` or `never`.
+//! Runtime load always merges **home ← project** (project wins per nested object key; arrays replace).
+//! `trust.defaultProjectTrust` / `trust.json` only gate **project WASM extensions**, not settings or skills/prompts.
 //! Runtime saves write **home only** so project overlays are not baked into the global file.
 //!
 //! # Shape (domain groups)
@@ -975,32 +975,29 @@ impl Settings {
         serde_json::from_value(value).with_context(|| format!("parse {}", path.display()))
     }
 
-    /// Whether the project settings/resources layer should be applied.
+    /// Whether project-local **WASM extensions** may load.
     ///
-    /// `trust.defaultProjectTrust` is read from the **home** file only.
+    /// Settings JSON, skills, and prompts are not gated. `trust.*` is read from home only.
     /// `ask` without a saved `trust.json` decision is treated as `never` (no prompt this pass).
-    pub fn project_layer_allowed(paths: &Paths, home: &Self) -> bool {
+    pub fn project_extensions_allowed(paths: &Paths, home: &Self) -> bool {
         if crate::platform::scaffold::TrustStore::is_trusted(paths, paths.project_dir()).unwrap_or(false) {
             return true;
         }
         matches!(home.trust.default_project_trust, DefaultProjectTrust::Always)
     }
 
-    /// Load merged settings: serde defaults ← home ← project when trusted.
+    /// Load merged settings: serde defaults ← home ← project (project always wins).
     /// `trust.*` always comes from the home layer.
     pub fn load(paths: &Paths) -> Result<Self> {
         Self::ensure(paths)?;
         let home_value = read_settings_value(&paths.settings_path())?;
         let home: Self = serde_json::from_value(home_value.clone()).context("parse home settings")?;
-        if !Self::project_layer_allowed(paths, &home) {
-            return Ok(home);
-        }
         let project = read_settings_value(&paths.project_settings_path())?;
         let mut merged = home_value;
         deep_merge(&mut merged, &project);
         let mut settings: Self = serde_json::from_value(merged).context("parse merged settings")?;
         settings.trust = home.trust;
-        settings.project_layer_loaded = true;
+        settings.project_layer_loaded = paths.project_settings_path().is_file();
         Ok(settings)
     }
 
@@ -1347,7 +1344,6 @@ mod tests {
 
         Settings::ensure(&paths).expect("ensure home");
         let mut home = Settings::load_home(&paths).expect("load home");
-        home.trust.default_project_trust = DefaultProjectTrust::Always;
         home.ui.show_thinking = true;
         home.ui.sticky_scroll = true;
         home.models.default_model = Some("openai/gpt-5.6-luna".into());
@@ -1379,7 +1375,6 @@ mod tests {
         Settings::ensure(&paths).expect("ensure");
 
         let mut home = Settings::load_home(&paths).expect("home");
-        home.trust.default_project_trust = DefaultProjectTrust::Always;
         home.models.default_model = Some("openai/gpt-5.6-luna".into());
         Settings::save(&paths, &home).expect("save home");
 
@@ -1470,7 +1465,6 @@ mod tests {
         Settings::ensure(&paths).expect("ensure");
 
         let mut home = Settings::load_home(&paths).expect("home");
-        home.trust.default_project_trust = DefaultProjectTrust::Always;
         home.ui.show_thinking = true;
         Settings::save(&paths, &home).expect("save");
 
@@ -1484,18 +1478,25 @@ mod tests {
     }
 
     #[test]
-    fn untrusted_project_settings_are_ignored() {
+    fn untrusted_project_settings_still_merge() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let paths = test_paths(&tmp);
         Settings::ensure(&paths).expect("ensure");
         let mut home = Settings::load_home(&paths).expect("home");
         home.trust.default_project_trust = DefaultProjectTrust::Ask;
         home.ui.show_thinking = true;
+        home.preferred_chat_language = "english".into();
         Settings::save(&paths, &home).expect("save");
         std::fs::create_dir_all(paths.project_elph_dir()).expect("project dir");
-        std::fs::write(paths.project_settings_path(), r#"{"ui":{"showThinking":false}}"#).expect("project");
+        std::fs::write(
+            paths.project_settings_path(),
+            r#"{"preferredChatLanguage":"Indonesian","ui":{"showThinking":false}}"#,
+        )
+        .expect("project");
         let loaded = Settings::load(&paths).expect("load");
-        assert!(loaded.ui.show_thinking);
+        assert!(!loaded.ui.show_thinking);
+        assert_eq!(loaded.preferred_chat_language, "Indonesian");
+        assert!(!Settings::project_extensions_allowed(&paths, &loaded));
     }
 
     #[test]

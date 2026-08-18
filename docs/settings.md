@@ -8,9 +8,9 @@ User preferences live in JSON. The host (`elph` / `coding-agent`) maps them into
 | --- | --- | --- |
 | Defaults | (in code) | Serde field defaults |
 | Home | `CONFIG_DIR/settings.json` (`~/.config/elph/` unless `ELPH_HOME`) | Global prefs; default write target |
-| Project | `<cwd>/.elph/settings.json` | Per-repo overlay **when the project is trusted** |
+| Project | `<cwd>/.elph/settings.json` | Per-repo overlay (always merged) |
 
-Merge: defaults ← home ← project. Nested objects deep-merge. **Arrays replace** (a project `models.enabled` does not concatenate with home).
+Merge: defaults ← home ← **project always**. Nested objects deep-merge. **Arrays replace** (a project `models.enabled` does not concatenate with home).
 
 `trust.defaultProjectTrust` is **home-only**. A project file cannot change it.
 
@@ -22,12 +22,12 @@ Schema for editors: `schemas/elph-schema.json`.
 
 `trust.json` (`CONFIG_DIR/trust.json`) stores saved `/trust` decisions (folder + ancestors).
 
-`trust.defaultProjectTrust`:
+Trust does **not** block `.elph/settings.json`, project skills, or prompts. Those always load.
 
-- `always` — load project settings, skills, prompts, and extensions even without a saved decision.
-- `ask` or `never` — skip the project layer unless `/trust` (or an ancestor) already recorded yes. There is no interactive trust prompt in this version; `ask` behaves like `never` until a TUI prompt exists.
+`trust.defaultProjectTrust` only gates **project WASM extensions** (`.elph/extensions/`):
 
-When the project layer is skipped, project `.elph/settings.json`, `.elph/skills`, `.elph/prompts`, `.elph/extensions`, and `.agents/skills` / `.agents/prompts` are not loaded.
+- `always` — load them without a saved decision.
+- `ask` or `never` — skip project extensions unless `/trust` already recorded yes. There is no interactive trust prompt in this version; `ask` behaves like `never` until a TUI prompt exists.
 
 ## Groups
 

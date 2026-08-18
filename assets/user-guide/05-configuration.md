@@ -24,7 +24,7 @@ Project overrides: `<project>/.elph/settings.json`, `mcp.json`, `skills/`, `prom
 
 ## Settings merge
 
-Home settings are merged with project overrides **when the project is trusted** (`/trust` or `trust.defaultProjectTrust: always`). Project wins on conflict; arrays replace. `trust.*` is home-only.
+Home settings are always merged with project `.elph/settings.json` (project wins; arrays replace). `trust.*` is home-only and only gates project WASM extensions (`/trust` or `trust.defaultProjectTrust: always`).
 
 `models.defaultModel` and `models.defaultThinkingLevel` seed **new** sessions only;
 live model, thinking level, and agent mode are per-session (not shared settings).

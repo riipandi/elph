@@ -52,7 +52,7 @@ Pi intent (`enabledModels`, resource path arrays, `defaultTools`, `defaultProjec
 - `models.enabled` glob catalog filter; `models.thinkingBudgets` → harness stream options.
 - `resources.skills` / `prompts` / `extensions`, `disabledSkills` / `disabledExtensions`, `enableSkillCommands`.
 - `tools.default` builtin allowlist (meta tools stay).
-- `trust.defaultProjectTrust` + skip project settings/resources when untrusted (`ask` ≡ `never` until a prompt UI exists).
+- `trust.defaultProjectTrust` gates **project WASM extensions** only (`ask` ≡ `never` until a prompt UI exists). Project `settings.json` / skills / prompts always merge.
 - `shell.path` / `commandPrefix`, `network.httpProxy`, `ui.quietStartup`, `compaction.reserveTokens`.
 - Dropped `migrate_settings_value` and `extensions.json` sidecar.
 
