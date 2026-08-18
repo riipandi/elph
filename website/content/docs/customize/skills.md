@@ -27,7 +27,7 @@ Step-by-step instructions for the agent…
 
 After bootstrap, `CONFIG_DIR/bundled/skills/create-skill/` is available. Invoke `/create-skill` (or ask Elph to create a skill) to scaffold a new package.
 
-Project skill dirs always load. Extra paths and name filters:
+Project skill dirs always load. Extra paths that resolve to the same folder as a built-in location are ignored (no false conflict). Extra paths and name filters:
 
 ```json
 {

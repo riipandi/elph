@@ -12,6 +12,9 @@ loads for a specific workflow.
 | `CONFIG_DIR/skills/`         | User (Elph-specific)            |
 | `<project>/.agents/skills/`  | Project                         |
 | `<project>/.elph/skills/`    | Project (highest)               |
+| `resources.skills` extras    | Extra dirs/files (after the above) |
+
+The same folder listed twice (absolute project path vs `.agents/skills` in settings) is one source. The conflict notice only appears when two **different** directories define the same skill name.
 
 ## SKILL.md format
 

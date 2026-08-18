@@ -18,6 +18,7 @@ pub mod prompt;
 pub(crate) mod provider;
 mod provider_catalog;
 mod resource_loader;
+mod resource_paths;
 mod run_mode;
 mod runtime;
 mod session;

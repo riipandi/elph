@@ -15,6 +15,8 @@ use serde::Deserialize;
 
 use crate::platform::Paths;
 
+use super::resource_paths::{dedupe_resource_pathbufs, resource_dir_identity};
+
 /// A discovered agent definition from markdown frontmatter.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WorkspaceAgent {
@@ -56,7 +58,7 @@ struct AgentFrontmatter {
 pub fn agent_dir_entries(paths: &Paths) -> Vec<(PathBuf, String)> {
     let project = paths.project_dir();
     let project_display = project.display();
-    vec![
+    let entries = vec![
         (paths.bundled_dir().join("agents"), "~/.config/elph/bundled/agents".into()),
         (paths.agents_dir(), "~/.config/elph/agents".into()),
         (
@@ -64,25 +66,30 @@ pub fn agent_dir_entries(paths: &Paths) -> Vec<(PathBuf, String)> {
             format!("{project_display}/.agents/agents"),
         ),
         (project.join(".elph").join("agents"), format!("{project_display}/.elph/agents")),
-    ]
+    ];
+    dedupe_resource_pathbufs(entries, &[project])
 }
 
 /// Load agents from configured directories with last-wins conflict resolution.
 pub fn load_workspace_agents(paths: &Paths) -> WorkspaceAgents {
-    let mut source_by_name: HashMap<String, String> = HashMap::new();
+    let mut source_by_name: HashMap<String, (String, String)> = HashMap::new();
     let mut by_name: HashMap<String, WorkspaceAgent> = HashMap::new();
     let mut conflicts = Vec::new();
+    let bases = [paths.project_dir().as_path()];
 
     for (dir, label) in agent_dir_entries(paths) {
+        let identity = resource_dir_identity(&dir, &bases).to_string_lossy().into_owned();
         for agent in load_agents_from_dir(&dir, &label) {
-            if let Some(previous) = source_by_name.get(&agent.name) {
+            if let Some((previous_id, previous_label)) = source_by_name.get(&agent.name)
+                && previous_id != &identity
+            {
                 conflicts.push(AgentConflict {
                     name: agent.name.clone(),
-                    overridden_label: previous.clone(),
+                    overridden_label: previous_label.clone(),
                     winner_label: label.clone(),
                 });
             }
-            source_by_name.insert(agent.name.clone(), label.clone());
+            source_by_name.insert(agent.name.clone(), (identity.clone(), label.clone()));
             by_name.insert(agent.name.clone(), agent);
         }
     }

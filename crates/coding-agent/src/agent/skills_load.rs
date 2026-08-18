@@ -9,6 +9,8 @@ use elph_tui::utils::truncate_with_ellipsis;
 
 use crate::platform::{Paths, Settings};
 
+use super::resource_paths::{dedupe_resource_dirs, resource_dir_identity};
+
 /// Max display width for slash palette / `/help` descriptions (skills, templates, builtins).
 pub const MAX_PALETTE_DESCRIPTION_CHARS: usize = 72;
 
@@ -28,7 +30,12 @@ pub struct WorkspaceSkills {
 }
 
 /// Skill directory search order (lowest priority first, last-wins).
-fn skill_dir_entries(paths: &Paths, include_project: bool, extra: &[String]) -> Vec<(String, String)> {
+fn skill_dir_entries(
+    paths: &Paths,
+    cwd: &std::path::Path,
+    include_project: bool,
+    extra: &[String],
+) -> Vec<(String, String)> {
     let home = std::env::var_os("HOME")
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| paths.config_dir().clone());
@@ -61,27 +68,31 @@ fn skill_dir_entries(paths: &Paths, include_project: bool, extra: &[String]) -> 
     for path in extra {
         entries.push((path.clone(), path.clone()));
     }
-    entries
+    dedupe_resource_dirs(entries, &[cwd, project])
 }
 
 /// Load skills from user and project skill folders with last-wins conflict resolution.
 pub async fn load_workspace_skills(env: &LocalExecutionEnv, paths: &Paths, settings: &Settings) -> WorkspaceSkills {
-    let mut source_by_name: HashMap<String, String> = HashMap::new();
+    let mut source_by_name: HashMap<String, (String, String)> = HashMap::new();
     let mut skills_by_name: HashMap<String, Skill> = HashMap::new();
     let mut conflicts = Vec::new();
 
     let extra = settings.extra_skill_paths();
-    for (path, label) in skill_dir_entries(paths, settings.include_project_resources(), &extra) {
+    let bases = [paths.project_dir().as_path()];
+    for (path, label) in skill_dir_entries(paths, paths.project_dir(), settings.include_project_resources(), &extra) {
+        let identity = resource_dir_identity(&path, &bases).to_string_lossy().into_owned();
         let result = load_skills(env, &[path.as_str()]).await;
         for skill in result.skills {
-            if let Some(previous_label) = source_by_name.get(&skill.name) {
+            if let Some((previous_id, previous_label)) = source_by_name.get(&skill.name)
+                && previous_id != &identity
+            {
                 conflicts.push(SkillConflict {
                     name: skill.name.clone(),
                     overridden_label: previous_label.clone(),
                     winner_label: label.clone(),
                 });
             }
-            source_by_name.insert(skill.name.clone(), label.clone());
+            source_by_name.insert(skill.name.clone(), (identity.clone(), label.clone()));
             skills_by_name.insert(skill.name.clone(), skill);
         }
     }
@@ -186,6 +197,30 @@ mod tests {
         let out = truncate_palette_description(desc, Some(MAX_PALETTE_DESCRIPTION_CHARS));
         assert!(elph_tui::utils::display_width(&out) <= MAX_PALETTE_DESCRIPTION_CHARS);
         assert!(out.ends_with('…'));
+    }
+
+    #[tokio::test]
+    async fn extra_relative_project_dir_is_not_a_conflict() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let paths = crate::platform::Paths::from_dirs(
+            tmp.path().join("config"),
+            tmp.path().join("data"),
+            tmp.path().join("project"),
+        );
+        let skill_dir = paths.project_dir().join(".agents").join("skills").join("demo");
+        std::fs::create_dir_all(&skill_dir).unwrap();
+        std::fs::write(skill_dir.join("SKILL.md"), "---\nname: demo\ndescription: once\n---\nBody\n").unwrap();
+
+        let env = LocalExecutionEnv::new(paths.project_dir());
+        let mut settings = Settings::defaults();
+        settings.resources.skills = vec![".agents/skills".into()];
+        let loaded = load_workspace_skills(&env, &paths, &settings).await;
+        assert!(loaded.skills.iter().any(|s| s.name == "demo"));
+        assert!(
+            loaded.conflicts.is_empty(),
+            "relative extra must not conflict with the project dir: {:?}",
+            loaded.conflicts
+        );
     }
 
     #[test]
