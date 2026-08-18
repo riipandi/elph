@@ -1373,9 +1373,9 @@ mod tests {
 
         let loaded = Settings::load(&paths).expect("load");
         let config = loaded.prompt_encoding.expect("promptEncoding present");
-        assert_eq!(config.mode, elph_agent::PromptEncodingMode::Auto);
+        assert_eq!(config.mode, elph_agent::prompt::PromptEncodingMode::Auto);
         assert_eq!(config.min_bytes, 4096);
-        assert_eq!(config.delimiter, elph_agent::PromptEncodingDelimiter::Pipe);
+        assert_eq!(config.delimiter, elph_agent::prompt::PromptEncodingDelimiter::Pipe);
         // Field defaults fill the rest.
         assert_eq!(config.min_savings_ratio, 1.0);
         assert!(config.targets.tool_result_text);

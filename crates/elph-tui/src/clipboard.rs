@@ -14,8 +14,6 @@ pub fn clipboard_available() -> bool {
 pub fn clipboard_backend() -> &'static str {
     if cfg!(target_os = "macos") {
         "native (clipboard_rs / pbcopy)"
-    } else if cfg!(target_os = "windows") {
-        "native (clipboard_rs)"
     } else {
         "native (clipboard_rs)"
     }

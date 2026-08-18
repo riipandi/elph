@@ -31,9 +31,11 @@ pub fn metadata_migrations() -> &'static [Migration] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use elph_agent::{
-        GoalStore, SessionLeaseStore, TodoStore, TursoSessionRepo, TursoSessionRepoCreateOptions, ensure_database,
-    };
+    use elph_agent::datastore::ensure_database;
+    use elph_agent::goals::GoalStore;
+    use elph_agent::session::{TursoSessionRepo, TursoSessionRepoCreateOptions};
+    use elph_agent::todos::TodoStore;
+    use elph_agent::workers::SessionLeaseStore;
 
     #[test]
     fn platform_migrations_include_workers() {

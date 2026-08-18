@@ -972,7 +972,8 @@ mod tests {
     /// the live applier shows for finished tools.
     #[test]
     fn reconstructed_edit_file_tool_card_starts_collapsed() {
-        use elph_agent::{AgentMessage, SessionTreeEntry};
+        use elph_agent::AgentMessage;
+        use elph_agent::session::SessionTreeEntry;
         use elph_ai::{AssistantContentBlock, ContentBlock, Message, StopReason, ToolCall, UserContent};
 
         let call_id = "call-edit-1";
@@ -1048,7 +1049,8 @@ mod tests {
     /// rendering in shell/tick.rs.
     #[test]
     fn resumed_retry_continue_prompt_renders_as_meta_label() {
-        use elph_agent::{AgentMessage, SessionTreeEntry};
+        use elph_agent::AgentMessage;
+        use elph_agent::session::SessionTreeEntry;
         use elph_ai::{Message, UserContent};
 
         let entries = vec![
@@ -1090,7 +1092,8 @@ mod tests {
     /// live `UserPromptCommitted` rendering in shell/tick.rs.
     #[test]
     fn resumed_worker_inbound_prompt_renders_as_meta_label() {
-        use elph_agent::{AgentMessage, SessionTreeEntry};
+        use elph_agent::AgentMessage;
+        use elph_agent::session::SessionTreeEntry;
         use elph_ai::{Message, UserContent};
 
         let prompt = format!(

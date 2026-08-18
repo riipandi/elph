@@ -853,7 +853,7 @@ pub fn parse_effort(raw: &str) -> Result<ThinkingLevel> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use elph_agent::{PromptTemplate, Skill};
+    use elph_agent::harness::{PromptTemplate, Skill};
 
     #[test]
     fn output_format_aliases() {
