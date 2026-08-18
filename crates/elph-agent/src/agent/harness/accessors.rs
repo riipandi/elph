@@ -26,6 +26,10 @@ where
         self.shared.env.clone()
     }
 
+    pub fn is_headless(&self) -> bool {
+        self.shared.headless
+    }
+
     pub fn models(&self) -> Arc<elph_ai::Models> {
         self.shared.models.clone()
     }

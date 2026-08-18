@@ -40,6 +40,8 @@ fn plan_mode_does_not_hard_block_workspace_writes() {
     assert!(!plan_mode_blocks_tool(CollaborationMode::Default, "write_file", None));
     assert!(!plan_mode_blocks_tool(CollaborationMode::Plan, "shell_exec", None));
     assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "spawn_agent", None));
+    assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "mcp_fs__write_file", None));
+    assert!(!plan_mode_blocks_tool(CollaborationMode::Plan, "mcp_wiki__read_wiki", None));
 }
 
 #[tokio::test(flavor = "multi_thread")]

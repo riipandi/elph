@@ -51,6 +51,7 @@ pub use policy::is_mcp_tool;
 pub use policy::is_mutating_tool;
 pub use policy::is_plan_exposed_tool;
 pub use policy::is_plan_mode_tool;
+pub use policy::is_plan_workspace_mutating_tool;
 pub use policy::is_read_only_mcp_tool;
 pub use policy::plan_mode_block_reason;
 pub use policy::plan_mode_blocks_tool;

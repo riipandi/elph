@@ -110,23 +110,15 @@ pub fn is_read_only_mcp_tool(name: &str) -> bool {
         || lower.ends_with("_read")
 }
 
-/// Plan-mode tools for writing to `.elph/plans/*`.
-///
-/// Deprecated — system now handles plan file creation via `save_plan_to_disk`.
-/// Kept as empty matcher so callers still compile; returns false for all tools
-/// so they fall through to `is_mutating_tool` / `is_plan_mode_tool` filtering.
-fn is_plan_file_tool(name: &str) -> bool {
-    let _ = name;
-    false
-}
-
 pub fn is_plan_mode_tool(name: &str, policy: Option<&ToolExposurePolicy>) -> bool {
-    is_exploration_tool(name, policy) || is_goal_tool(name) || is_plan_file_tool(name) || is_read_only_mcp_tool(name)
+    is_exploration_tool(name, policy) || is_goal_tool(name) || is_read_only_mcp_tool(name)
 }
 
-/// Workspace mutating tools allowed in Plan (per-call approval). Excludes multi-agent tools.
+/// Builtin workspace mutating tools allowed in Plan (per-call approval).
+///
+/// Excludes multi-agent tools and all MCP names. Mutating MCP stays hard-blocked.
 pub fn is_plan_workspace_mutating_tool(name: &str, policy: Option<&ToolExposurePolicy>) -> bool {
-    is_mutating_tool(name, policy) && !is_collaboration_tool(name, policy)
+    !is_mcp_tool(name) && is_mutating_tool(name, policy) && !is_collaboration_tool(name, policy)
 }
 
 /// Tools the model may invoke while Plan is active (read-only plus approved workspace mutations).
@@ -270,6 +262,9 @@ mod tests {
     #[test]
     fn plan_mode_excludes_mutating_mcp_by_default() {
         assert!(!is_plan_mode_tool("mcp_fs__write_file", None));
+        assert!(!is_plan_workspace_mutating_tool("mcp_fs__write_file", None));
+        assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "mcp_fs__write_file", None));
         assert!(is_plan_mode_tool("mcp_wiki__read_wiki", None));
+        assert!(!plan_mode_blocks_tool(CollaborationMode::Plan, "mcp_wiki__read_wiki", None));
     }
 }

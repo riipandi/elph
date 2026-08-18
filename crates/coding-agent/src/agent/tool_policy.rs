@@ -7,7 +7,7 @@ use tokio::sync::Mutex;
 
 use elph_agent::{
     CollaborationMode, McpToolRegistry, ToolExposurePolicy, filter_active_tools, is_exploration_tool, is_mcp_tool,
-    is_mutating_tool, is_read_only_mcp_tool,
+    is_mutating_tool, is_plan_workspace_mutating_tool, is_read_only_mcp_tool,
 };
 
 use crate::types::AgentMode;
@@ -77,6 +77,8 @@ pub struct AgentModePolicy {
     session_allow_all: Mutex<bool>,
     /// Optional MCP registry for fine-grained MCP tool approval.
     mcp_registry: Option<Arc<McpToolRegistry>>,
+    /// False for `elph run` — no TUI/ACP to answer approval prompts.
+    interactive: bool,
 }
 
 impl AgentModePolicy {
@@ -87,7 +89,12 @@ impl AgentModePolicy {
             session_allowed: Mutex::new(HashSet::new()),
             session_allow_all: Mutex::new(false),
             mcp_registry: None,
+            interactive: true,
         }
+    }
+
+    pub fn set_interactive(&mut self, interactive: bool) {
+        self.interactive = interactive;
     }
 
     pub fn with_mcp_registry(mut self, registry: Arc<McpToolRegistry>) -> Self {
@@ -160,7 +167,7 @@ impl AgentModePolicy {
             return false;
         }
         if self.mode == AgentMode::Plan {
-            return is_mutating_tool(tool_name, Some(coding_tool_exposure_policy()));
+            return is_plan_workspace_mutating_tool(tool_name, Some(coding_tool_exposure_policy()));
         }
         if is_mcp_tool(tool_name) {
             if let Some(reg) = &self.mcp_registry {
@@ -178,6 +185,12 @@ impl AgentModePolicy {
         args_summary: String,
         ui_tx: &tokio::sync::mpsc::UnboundedSender<AgentUiEvent>,
     ) -> Result<bool, String> {
+        if !self.interactive {
+            return Err(format!(
+                "Tool \"{tool_name}\" needs interactive approval. Headless Plan cannot grant \
+                 mutating workspace tools; investigate with read-only tools or run Plan in the TUI."
+            ));
+        }
         let once_only = self.mode == AgentMode::Plan;
         if !once_only {
             if *self.session_allow_all.lock().await {
@@ -423,6 +436,8 @@ mod tests {
         assert!(policy.needs_approval("shell_exec"));
         assert!(!policy.needs_approval("read_file"));
         assert!(!policy.needs_approval("grep"));
+        assert!(!policy.needs_approval("mcp_wiki__read_wiki"));
+        assert!(!policy.needs_approval("mcp_fs__write_file"));
     }
 
     #[tokio::test]
@@ -532,5 +547,19 @@ mod tests {
         assert!(req2.once_only);
         let _ = req2.response_tx.send(ToolApprovalChoice::Approve);
         assert_eq!(approve2.await.expect("join"), Ok(true));
+    }
+
+    #[tokio::test]
+    async fn headless_plan_denies_mutating_tools_without_prompt() {
+        let mut policy = AgentModePolicy::new(AgentMode::Plan);
+        policy.set_interactive(false);
+        let policy = Arc::new(policy);
+        let (ui_tx, mut ui_rx) = tokio::sync::mpsc::unbounded_channel();
+        let err = policy
+            .request_approval("c1".into(), "write_file".into(), "{}".into(), &ui_tx)
+            .await
+            .expect_err("headless must not wait for approval");
+        assert!(err.contains("interactive approval"), "{err}");
+        assert!(ui_rx.try_recv().is_err(), "must not emit ToolApprovalRequired");
     }
 }

@@ -140,6 +140,7 @@ impl CodingAgentSession {
             plan_reentry,
         } = params;
         let mut policy = AgentModePolicy::new(agent_mode);
+        policy.set_interactive(!harness.is_headless());
         let mcp_slot = Arc::new(RwLock::new(mcp_registry));
         if let Some(reg) = mcp_slot.read().clone() {
             policy = policy.with_mcp_registry(reg);

@@ -12,8 +12,10 @@ after trust.
 
 Built-in tools (edit, shell, web, …) and MCP tools follow host approval / mode settings.
 In Plan mode, exploration tools run freely; mutating workspace tools require one-shot
-approval (no session/all-tools grant). Multi-agent tools stay hidden. Implementing a
-plan still requires the plan confirmation card.
+approval (no session/all-tools grant). Multi-agent and mutating MCP tools stay hidden
+and are blocked if invoked. Headless Plan denies mutating tools (no approval UI).
+Allow once does not start Build; many approved writes still mutate the tree.
+Switching to implementation still requires the plan confirmation card.
 
 ## Logs
 
