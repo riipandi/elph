@@ -887,4 +887,52 @@ mod tests {
             lines[1]
         );
     }
+
+    #[test]
+    fn autolinks_urls_in_paragraph_text() {
+        let doc = parse_markdown_document("See https://elph.space for docs");
+        let line = doc.lines.first().expect("paragraph line");
+        let url_span = line
+            .spans
+            .iter()
+            .find(|span| span.text.contains("https://elph.space"))
+            .expect("url span");
+        assert!(!url_span.underline);
+        assert_eq!(url_span.href.as_deref(), Some("https://elph.space"));
+        assert_eq!(url_span.color, MarkdownTheme::default().link);
+    }
+
+    #[test]
+    fn markdown_link_uses_destination_as_href() {
+        let doc = parse_markdown_document("[docs](https://elph.space/guide)");
+        let line = doc.lines.first().expect("paragraph line");
+        let link_span = line
+            .spans
+            .iter()
+            .find(|span| span.text.contains("docs"))
+            .expect("link label span");
+        assert!(!link_span.underline);
+        assert_eq!(link_span.href.as_deref(), Some("https://elph.space/guide"));
+        assert_eq!(link_span.color, MarkdownTheme::default().link);
+    }
+
+    #[test]
+    fn plain_path_gets_file_href() {
+        let doc = parse_markdown_document("open /tmp/demo/file.rs please");
+        let line = doc.lines.first().expect("paragraph line");
+        let path_span = line
+            .spans
+            .iter()
+            .find(|span| span.text.contains("file.rs"))
+            .expect("path span");
+        assert!(!path_span.underline);
+        assert!(
+            path_span
+                .href
+                .as_deref()
+                .is_some_and(|h| h.starts_with("file://") && h.contains("file.rs")),
+            "href={:?}",
+            path_span.href
+        );
+    }
 }

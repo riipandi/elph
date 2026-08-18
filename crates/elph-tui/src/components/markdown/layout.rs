@@ -1,65 +1,13 @@
 //! Row measurement for cached markdown documents.
 
 use crate::wrapped_text_row_count;
-use unicode_width::UnicodeWidthChar;
-
 use rendown::{MarkdownDocument, MarkdownLine, MarkdownLineKind};
 
 use super::blocks::CODE_VERTICAL_PADDING;
 use super::blocks::{code_content_width, segment_end, segment_gap_after};
 use super::table::markdown_table_row_count;
 
-/// Hanging-indent word wrap for a single code line.
-///
-/// Returns the `(start, end)` char ranges into `text` for each visual row. The first row uses the
-/// full `inner` width; continuation rows reserve the line's leading-whitespace run as a hanging
-/// indent, so wrapped code stays aligned under the original indentation.
-///
-/// Must stay in sync with [`super::render::wrap_code_spans`], which colors these same ranges.
-pub(crate) fn wrap_with_hanging_ranges(text: &str, inner: u16) -> Vec<(usize, usize)> {
-    let inner = inner.max(1) as usize;
-    if text.is_empty() {
-        return vec![(0, 0)];
-    }
-    let chars: Vec<char> = text.chars().collect();
-    let char_width = |c: char| UnicodeWidthChar::width(c).unwrap_or(0);
-    let indent = chars
-        .iter()
-        .take_while(|c| **c == ' ')
-        .count()
-        .min(inner.saturating_sub(1));
-    let mut ranges: Vec<(usize, usize)> = Vec::new();
-    let mut row_start = 0usize;
-    let mut row_width = 0usize;
-    let mut last_space: Option<usize> = None;
-    let mut i = 0usize;
-    while i < chars.len() {
-        let c = chars[i];
-        let w = char_width(c);
-        let is_space = c == ' ';
-        let avail = if ranges.is_empty() { inner } else { inner - indent };
-        if row_width + w > avail && row_width > 0 {
-            if let Some(sp) = last_space {
-                ranges.push((row_start, sp + 1));
-                row_start = sp + 1;
-                row_width = 0;
-                last_space = None;
-                continue;
-            }
-            ranges.push((row_start, i));
-            row_start = i;
-            row_width = 0;
-            last_space = None;
-        }
-        row_width += w;
-        if is_space {
-            last_space = Some(i);
-        }
-        i += 1;
-    }
-    ranges.push((row_start, chars.len()));
-    ranges
-}
+pub(crate) use rendown::wrap_with_hanging_ranges;
 
 /// Visual row count for one code line, honoring hanging-indent wrapping.
 pub(crate) fn code_line_row_count(text: &str, inner: u16) -> u16 {
@@ -217,7 +165,7 @@ mod tests {
 
     #[test]
     fn code_blocks_use_same_gap_as_paragraphs() {
-        use super::super::blocks::BLOCK_GAP_ROWS;
+        use rendown::BLOCK_GAP_ROWS;
 
         let para_code = markdown_document_row_count(&parse_markdown_document("Text\n\n```\ncode\n```"), 40);
         let code_para = markdown_document_row_count(&parse_markdown_document("```\ncode\n```\n\nText"), 40);

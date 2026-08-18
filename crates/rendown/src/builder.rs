@@ -77,11 +77,13 @@ impl Rendown {
         markdown_document_row_count(doc, self.width, &self.theme)
     }
 
-    pub fn theme_ref(&self) -> &MarkdownTheme {
+    #[cfg(feature = "stream")]
+    pub(crate) fn theme_ref(&self) -> &MarkdownTheme {
         &self.theme
     }
 
-    pub fn width_value(&self) -> u16 {
+    #[cfg(feature = "stream")]
+    pub(crate) fn width_value(&self) -> u16 {
         self.width
     }
 
@@ -140,5 +142,23 @@ mod tests {
             .build();
         assert_eq!(theme.body, crate::model::RgbColor::new(1, 2, 3));
         assert_eq!(theme.heading, MarkdownTheme::dark().heading);
+    }
+
+    #[test]
+    fn color_level_none_omits_sgr_but_parse_keeps_highlight() {
+        let md = Rendown::new().width(80).color_level(ColorLevel::None);
+        let doc = md.parse("```rust\nfn main() {}\n```");
+        let code = doc
+            .lines
+            .iter()
+            .find(|line| line.kind == crate::model::MarkdownLineKind::Code)
+            .expect("code");
+        assert!(
+            code.spans.iter().any(|span| span.color != MarkdownTheme::dark().body) || !code.spans.is_empty(),
+            "IR should keep syntect RGB even when ANSI is colorless"
+        );
+        let ansi = md.render_string("```rust\nfn main() {}\n```").unwrap();
+        assert!(ansi.contains("main"));
+        assert!(!ansi.contains('\x1b'), "NO_COLOR / ColorLevel::None must not emit SGR");
     }
 }

@@ -25,7 +25,7 @@ impl StreamRenderer {
     pub fn from_rendown(rendown: &Rendown) -> Self {
         Self {
             source: String::new(),
-            width: rendown.width_value().max(40),
+            width: rendown.width_value(),
             theme: *rendown.theme_ref(),
             color_level: rendown.resolved_color_level(),
             painted_lines: 0,
@@ -151,5 +151,11 @@ mod tests {
         r.finish(&mut buf).unwrap();
         let s = String::from_utf8_lossy(&buf);
         assert!(s.contains("plain text no nl"));
+    }
+
+    #[test]
+    fn stream_honors_requested_width() {
+        let stream = Rendown::new().width(20).stream();
+        assert_eq!(stream.width(), 20);
     }
 }

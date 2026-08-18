@@ -43,7 +43,7 @@ let theme = MarkdownTheme::builder()
 | --- | --- | --- |
 | *(none)* | yes | Parse + ANSI write |
 | `stream` | off | `Rendown::stream()` / `StreamRenderer` + `terminal_width()` (crossterm) |
-| `mermaid` | off | `render_mermaid_at_width` (mermaid-text). Fences always store `mermaid_source` in the IR; without this feature, ANSI prints the source as a code card |
+| `mermaid` | off | `render_mermaid_at_width` (mermaid-text). Fences always store `mermaid_source` in the IR; without this feature, ANSI prints the source as a code card. Only exact (strict-width) diagrams are cached — clipped fallbacks are not, so a bad first frame cannot stick until restart |
 
 ```rust
 #[cfg(feature = "stream")]

@@ -548,19 +548,6 @@ mod tests {
     }
 
     #[test]
-    fn mermaid_fence_produces_code_line_with_deferred_source() {
-        let src = "```mermaid\ngraph LR; A[Build] --> B[Deploy]\n```";
-        let doc = parse_markdown_document(src);
-        let mermaid_line = doc
-            .lines
-            .iter()
-            .find(|line| line.mermaid_source.is_some())
-            .expect("mermaid fence produces a deferred line");
-        assert_eq!(mermaid_line.kind, MarkdownLineKind::Code);
-        assert!(mermaid_line.code_background);
-    }
-
-    #[test]
     fn mermaid_measure_matches_rendered_rows() {
         // Critical invariant: the measured row count must match the rendered row count,
         // otherwise the scroll viewport clips the diagram. Both paths call

@@ -7,7 +7,7 @@ use super::convert::from_iocraft_color;
 use crate::components::theme::UiTheme;
 
 /// Semantic markdown palette derived from [`UiTheme`].
-pub fn theme_from_ui(theme: UiTheme) -> MarkdownTheme {
+pub(crate) fn theme_from_ui(theme: UiTheme) -> MarkdownTheme {
     MarkdownTheme {
         body: from_iocraft_color(theme.text_primary),
         heading: from_iocraft_color(theme.warning),

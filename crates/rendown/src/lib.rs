@@ -33,6 +33,8 @@ mod wrap;
 #[cfg(feature = "stream")]
 mod stream;
 
+pub use blocks::{BLOCK_GAP_ROWS, CODE_BLOCK_INSET_H, CODE_BLOCK_INSET_V, CODE_VERTICAL_PADDING};
+pub use blocks::{block_gap_after, code_content_width, segment_end, segment_gap_after};
 pub use builder::Rendown;
 pub use colors::{ColorLevel, detect_color_level, syntect_to_styled_span};
 pub use layout::markdown_document_row_count;
@@ -42,6 +44,7 @@ pub use model::{FontWeight, MarkdownDocument, MarkdownLine, MarkdownLineKind, Ma
 pub use parser_config::has_open_container_at;
 pub use syntax::syntax_highlight_raw;
 pub use theme::{MarkdownTheme, MarkdownThemeBuilder};
+pub use wrap::wrap_with_hanging_ranges;
 
 #[cfg(feature = "mermaid")]
 pub use mermaid::render_mermaid_at_width;

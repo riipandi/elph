@@ -7,7 +7,8 @@
 use anyhow::Result;
 use elph_tui::prelude::*;
 
-const SAMPLE: &str = "# Elph TUI\n\nMarkdown rendering via **pulldown-cmark**.\n\n- Item one\n- Item two\n\n```rust\nfn demo() {}\n```\n";
+const SAMPLE: &str =
+    "# Elph TUI\n\nMarkdown rendering via **rendown**.\n\n- Item one\n- Item two\n\n```rust\nfn demo() {}\n```\n";
 
 #[component]
 fn Demo(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {

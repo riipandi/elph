@@ -86,18 +86,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn buffers_partial_line_until_newline() {
-        let mut r = Rendown::new().width(80).stream();
-        let mut buf = Vec::new();
-        r.push("# Hel", &mut buf).unwrap();
-        assert!(buf.is_empty());
-        r.push("lo\n", &mut buf).unwrap();
-        assert!(!buf.is_empty());
-        let s = String::from_utf8_lossy(&buf);
-        assert!(s.contains("Hello") || s.contains("Hel"));
-    }
-
-    #[test]
     fn non_pretty_new_defaults_respect_no_tty_logic() {
         let _ = PrettyMarkdownSink::new();
     }

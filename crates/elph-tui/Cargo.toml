@@ -34,7 +34,6 @@ tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "sign
 unicode-linebreak.workspace = true
 unicode-segmentation.workspace = true
 unicode-width.workspace = true
-url.workspace = true
 
 # Wayland clipboard backend (Linux). macOS/Windows use platform-native APIs.
 [target.'cfg(target_os = "linux")'.dependencies]
