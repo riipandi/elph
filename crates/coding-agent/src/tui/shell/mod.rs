@@ -16,10 +16,10 @@ use iocraft::prelude::*;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use tokio_util::sync::CancellationToken;
 
-use crate::agent::CODEX_HANDOVER_PROMPT_PREFIX;
+use crate::agent::CODEX_TRANSFER_PROMPT_PREFIX;
 use crate::agent::CONTINUE_META_LABEL;
-use crate::agent::HANDOVER_PROMPT_PREFIX;
 use crate::agent::RETRY_CONTINUE_PROMPT;
+use crate::agent::TRANSFER_PROMPT_PREFIX;
 use crate::agent::load_resources;
 use crate::agent::slash_commands_for_palette_with;
 use crate::agent::{AgentUiEvent, CodingAgentSession, ToolApprovalChoice};

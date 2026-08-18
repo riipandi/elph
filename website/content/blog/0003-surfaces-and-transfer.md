@@ -1,10 +1,10 @@
 ---
-title: Surfaces, approvals, and handover
+title: Surfaces, approvals, and transfer
 description: Headless output formats, Plan vs Build, ACP, and importing Claude Code or Codex transcripts as inert context.
 tags: [acp, run, import]
 author: Elph
 created: 2026-08-12T10:00:00
-slug: surfaces-and-handover
+slug: surfaces-and-transfer
 ---
 
 The TUI is the daily path. Two other surfaces matter when you script or switch tools.
@@ -27,7 +27,7 @@ Plan mode designs and asks. Approved plans land in `.elph/plans/` before the ful
 
 `elph acp --stdio` speaks ACP v1. Add `--experimental` for v2. Auth methods, session load, and tool updates follow the protocol; privileged methods require credentials.
 
-## Handover
+## Transfer
 
 `elph import` reads Claude Code and Codex transcripts as **inert** context. Foreign tool calls are not executed. Use it when you are moving a conversation into Elph, not when you want another agent to keep running commands.
 

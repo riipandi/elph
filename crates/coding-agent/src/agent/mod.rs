@@ -6,7 +6,6 @@ mod ask_user;
 mod conflict_notice;
 mod events;
 pub(crate) mod goal_slash;
-mod handover;
 mod headless_status;
 pub mod mcp_bootstrap;
 pub(crate) mod mode_change;
@@ -33,6 +32,7 @@ mod todo_hooks;
 mod tool_policy;
 mod tools_catalog;
 mod tools_slash;
+mod transfer;
 mod worker_intercom;
 mod worker_runtime;
 mod workspace_reload;
@@ -51,13 +51,6 @@ pub use events::{
     UserQuestionStep,
 };
 pub use events::{ModeChangeRequest, PlanConfirmationRequest, QueuedPromptItem, QueuedPromptKind};
-pub use handover::{
-    CODEX_HANDOVER_PROMPT_PREFIX, ClaudeHandover, CodexHandover, HANDOVER_PROMPT_PREFIX, HandoverError,
-    HandoverSession, HandoverToolCall, HandoverToolResult, HandoverTurn, HandoverWarning, build_codex_handoff_prompt,
-    build_handoff_prompt, claude_config_dir, codex_config_dir, discover_claude_sessions,
-    discover_claude_sessions_with_config, discover_codex_sessions, discover_codex_sessions_with_config,
-    read_claude_session, read_codex_session, resolve_claude_session, resolve_codex_session, slugify,
-};
 pub use mcp_bootstrap::discover_mcp_registry;
 pub use model_registry::ModelSelection;
 pub use model_registry::resolve_model;
@@ -98,4 +91,11 @@ pub use tool_policy::from_agent_thinking;
 pub use tool_policy::thinking_level_from_setting;
 pub use tool_policy::to_agent_thinking;
 pub use tools_slash::{discovery_tools_message, tools_slash_message};
+pub use transfer::{
+    CODEX_TRANSFER_PROMPT_PREFIX, ClaudeTransfer, CodexTransfer, TRANSFER_PROMPT_PREFIX, TransferError,
+    TransferSession, TransferToolCall, TransferToolResult, TransferTurn, TransferWarning, build_codex_handoff_prompt,
+    build_handoff_prompt, claude_config_dir, codex_config_dir, discover_claude_sessions,
+    discover_claude_sessions_with_config, discover_codex_sessions, discover_codex_sessions_with_config,
+    read_claude_session, read_codex_session, resolve_claude_session, resolve_codex_session, slugify,
+};
 pub use workspace_reload::{WorkspaceReloadReport, WorkspaceReloadRequest};

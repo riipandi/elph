@@ -12,7 +12,7 @@ use crate::agent::{
     session_info_slash_message, session_title_for_rename, settings_slash_message, slash_unimplemented_message,
     system_prompt_slash_message, tools_slash_message, tree_slash_message, trust_slash_message, workers_slash_message,
 };
-use crate::agent::{HandoverError, HandoverSession, OverlayCommand, SlashDispatch, spawn_aside};
+use crate::agent::{OverlayCommand, SlashDispatch, TransferError, TransferSession, spawn_aside};
 use crate::extensions::ExtensionHost;
 use crate::platform::Paths;
 use crate::tui::confetti::confetti_mode_from_slash_args;
@@ -145,9 +145,9 @@ pub enum SlashOutcome {
     OpenMcpAuthDialog {
         server_name: Option<String>,
     },
-    /// A background handover task was dispatched directly. Unlike
+    /// A background `/transfer` task was dispatched directly. Unlike
     /// [`SlashOutcome::BackgroundTask`], the work's final user-visible text is
-    /// delivered via its own transcript events (slim handover meta line) rather
+    /// delivered via its own transcript events (slim transfer meta line) rather
     /// than echoing the raw slash input as a user card. The shell treats this as
     /// a no-op; the task drives busy UI through normal stream events, so a read
     /// failure never leaves the host stuck "busy".
@@ -182,16 +182,16 @@ pub struct SlashContext<'a> {
     pub cwd: Option<&'a Path>,
 }
 
-/// Handle `/handover` slash commands.
+/// Handle `/transfer` slash commands.
 ///
-/// Syntax: `/handover <tool> [ref]` where `<tool>` is `claude` or `codex`.
+/// Syntax: `/transfer <tool> [ref]` where `<tool>` is `claude` or `codex`.
 ///
 /// Both tools resolve the referenced session for the current cwd, read it as
 /// inert history, and inject a handoff prompt into the current agent session.
 /// The heavy file I/O + parse runs on a **background task** (never the TUI
 /// thread), so even a large transcript cannot block the render loop. Errors are
-/// surfaced via a status notice; nothing is echoed as a `/handover` user card.
-fn handle_handover_slash(ctx: SlashContext<'_>, args: &str) -> SlashOutcome {
+/// surfaced via a status notice; nothing is echoed as a `/transfer` user card.
+fn handle_transfer_slash(ctx: SlashContext<'_>, args: &str) -> SlashOutcome {
     let mut parts = args.splitn(2, char::is_whitespace);
     let tool = parts.next().unwrap_or("").trim().to_ascii_lowercase();
     let reference = parts.next().unwrap_or("").trim().to_string();
@@ -199,16 +199,16 @@ fn handle_handover_slash(ctx: SlashContext<'_>, args: &str) -> SlashOutcome {
     let tool_kind = match tool.as_str() {
         "" => {
             return SlashOutcome::Status(
-                "Usage: /handover <claude|codex> [latest|<session-id>|<free-text>]\n\
-                 Example: /handover claude latest"
+                "Usage: /transfer <claude|codex> [latest|<session-id>|<free-text>]\n\
+                 Example: /transfer claude latest"
                     .into(),
             );
         }
-        "claude" => HandoverTool::Claude,
-        "codex" => HandoverTool::Codex,
+        "claude" => TransferTool::Claude,
+        "codex" => TransferTool::Codex,
         other => {
             return SlashOutcome::Status(format!(
-                "Unknown handover tool `{other}` — use `/handover claude` or `/handover codex`."
+                "Unknown transfer tool `{other}` — use `/transfer claude` or `/transfer codex`."
             ));
         }
     };
@@ -217,7 +217,7 @@ fn handle_handover_slash(ctx: SlashContext<'_>, args: &str) -> SlashOutcome {
         return SlashOutcome::Status("Agent session required for this command.".into());
     };
     let Some(cwd) = ctx.cwd else {
-        return SlashOutcome::Status(format!("Working directory required for /handover {}.", tool_kind.name()));
+        return SlashOutcome::Status(format!("Working directory required for /transfer {}.", tool_kind.name()));
     };
 
     let reference_opt = if reference.is_empty() {
@@ -233,16 +233,16 @@ fn handle_handover_slash(ctx: SlashContext<'_>, args: &str) -> SlashOutcome {
         // already inside a blocking context, which is fine here (the caller is
         // never inside one).
         let outcome =
-            tokio::task::spawn_blocking(move || run_handover_resolution(tool_kind, &cwd, reference_opt.as_deref()))
+            tokio::task::spawn_blocking(move || run_transfer_resolution(tool_kind, &cwd, reference_opt.as_deref()))
                 .await;
         match outcome {
             Ok(Ok(prompt)) => {
                 if let Err(err) = session.submit_prompt(prompt, false).await {
-                    log::warn!("handover turn failed: {err}");
+                    log::warn!("transfer turn failed: {err}");
                 }
             }
-            Ok(Err(message)) => emit_handover_status(&session, message),
-            Err(join_err) => emit_handover_status(&session, format!("Handover task failed: {join_err}")),
+            Ok(Err(message)) => emit_transfer_status(&session, message),
+            Err(join_err) => emit_transfer_status(&session, format!("Transfer task failed: {join_err}")),
         }
     });
     // Quiet background dispatch: no slash card echo; busy UI is driven by the
@@ -251,74 +251,74 @@ fn handle_handover_slash(ctx: SlashContext<'_>, args: &str) -> SlashOutcome {
     SlashOutcome::BackgroundTaskQuiet
 }
 
-/// Which foreign tool a `/handover` refers to.
+/// Which foreign tool a `/transfer` refers to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum HandoverTool {
+enum TransferTool {
     Claude,
     Codex,
 }
 
-impl HandoverTool {
+impl TransferTool {
     fn name(self) -> &'static str {
         match self {
-            HandoverTool::Claude => "claude",
-            HandoverTool::Codex => "codex",
+            TransferTool::Claude => "claude",
+            TransferTool::Codex => "codex",
         }
     }
 
     fn display(self) -> &'static str {
         match self {
-            HandoverTool::Claude => "Claude Code",
-            HandoverTool::Codex => "Codex",
+            TransferTool::Claude => "Claude Code",
+            TransferTool::Codex => "Codex",
         }
     }
 
     fn config_dir(self) -> Option<PathBuf> {
         match self {
-            HandoverTool::Claude => crate::agent::claude_config_dir(),
-            HandoverTool::Codex => crate::agent::codex_config_dir(),
+            TransferTool::Claude => crate::agent::claude_config_dir(),
+            TransferTool::Codex => crate::agent::codex_config_dir(),
         }
     }
 
-    fn resolve(self, cwd: &Path, config_dir: &Path, reference: Option<&str>) -> Result<HandoverSession, HandoverError> {
+    fn resolve(self, cwd: &Path, config_dir: &Path, reference: Option<&str>) -> Result<TransferSession, TransferError> {
         match self {
-            HandoverTool::Claude => crate::agent::resolve_claude_session(cwd, Some(config_dir), reference),
-            HandoverTool::Codex => crate::agent::resolve_codex_session(cwd, Some(config_dir), reference),
+            TransferTool::Claude => crate::agent::resolve_claude_session(cwd, Some(config_dir), reference),
+            TransferTool::Codex => crate::agent::resolve_codex_session(cwd, Some(config_dir), reference),
         }
     }
 
-    fn read(self, path: &Path) -> Result<HandoverPayload, HandoverError> {
+    fn read(self, path: &Path) -> Result<TransferPayload, TransferError> {
         match self {
-            HandoverTool::Claude => crate::agent::read_claude_session(path).map(HandoverPayload::Claude),
-            HandoverTool::Codex => crate::agent::read_codex_session(path).map(HandoverPayload::Codex),
+            TransferTool::Claude => crate::agent::read_claude_session(path).map(TransferPayload::Claude),
+            TransferTool::Codex => crate::agent::read_codex_session(path).map(TransferPayload::Codex),
         }
     }
 
-    fn build_prompt(self, payload: &HandoverPayload) -> String {
+    fn build_prompt(self, payload: &TransferPayload) -> String {
         match (self, payload) {
-            (HandoverTool::Claude, HandoverPayload::Claude(h)) => crate::agent::build_handoff_prompt(h, 0),
-            (HandoverTool::Codex, HandoverPayload::Codex(h)) => crate::agent::build_codex_handoff_prompt(h, 0),
+            (TransferTool::Claude, TransferPayload::Claude(h)) => crate::agent::build_handoff_prompt(h, 0),
+            (TransferTool::Codex, TransferPayload::Codex(h)) => crate::agent::build_codex_handoff_prompt(h, 0),
             _ => unreachable!("tool/payload mismatch"),
         }
     }
 
     fn config_dir_label(self) -> &'static str {
         match self {
-            HandoverTool::Claude => "~/.claude",
-            HandoverTool::Codex => "~/.codex",
+            TransferTool::Claude => "~/.claude",
+            TransferTool::Codex => "~/.codex",
         }
     }
 }
 
-/// A resolved + read + prompt-built handover payload, ready to submit.
-enum HandoverPayload {
-    Claude(crate::agent::ClaudeHandover),
-    Codex(crate::agent::CodexHandover),
+/// A resolved + read + prompt-built transfer payload, ready to submit.
+enum TransferPayload {
+    Claude(crate::agent::ClaudeTransfer),
+    Codex(crate::agent::CodexTransfer),
 }
 
 /// Run the (blocking) resolution + read + prompt-build. Returns the handoff
 /// prompt, or a user-facing error message.
-fn run_handover_resolution(tool: HandoverTool, cwd: &Path, reference: Option<&str>) -> Result<String, String> {
+fn run_transfer_resolution(tool: TransferTool, cwd: &Path, reference: Option<&str>) -> Result<String, String> {
     let config_dir = tool.config_dir().ok_or_else(|| {
         format!(
             "Could not locate {} config directory (expected {}).",
@@ -329,7 +329,7 @@ fn run_handover_resolution(tool: HandoverTool, cwd: &Path, reference: Option<&st
 
     let session = match tool.resolve(cwd, &config_dir, reference) {
         Ok(session) => session,
-        Err(HandoverError::Ambiguous { matches, .. }) => {
+        Err(TransferError::Ambiguous { matches, .. }) => {
             return Err(ambiguous_session_message(tool.display(), matches));
         }
         Err(err) => return Err(err.to_string()),
@@ -342,9 +342,9 @@ fn run_handover_resolution(tool: HandoverTool, cwd: &Path, reference: Option<&st
 
 /// Format an ambiguous free-text reference: list candidate ids so the user can
 /// resume one by native id.
-fn ambiguous_session_message(tool: &str, matches: Vec<HandoverSession>) -> String {
+fn ambiguous_session_message(tool: &str, matches: Vec<TransferSession>) -> String {
     let mut lines = vec![format!(
-        "Multiple {tool} sessions match, resume one by id (`/handover {tool_lower} <id>`):",
+        "Multiple {tool} sessions match, resume one by id (`/transfer {tool_lower} <id>`):",
         tool_lower = tool.to_ascii_lowercase()
     )];
     for session in matches {
@@ -354,7 +354,7 @@ fn ambiguous_session_message(tool: &str, matches: Vec<HandoverSession>) -> Strin
 }
 
 /// Push a status notice onto the host transcript (background task error path).
-fn emit_handover_status(session: &crate::agent::CodingAgentSession, message: String) {
+fn emit_transfer_status(session: &crate::agent::CodingAgentSession, message: String) {
     let _ = session
         .ui_event_sender()
         .send(crate::agent::AgentUiEvent::Status(message));
@@ -370,9 +370,9 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
         return handle_memory_slash(ctx, args);
     }
 
-    // Handover commands read the foreign session store and inject a turn.
-    if let SlashDispatch::Handover { ref args } = dispatch {
-        return handle_handover_slash(ctx, args);
+    // Transfer commands read the foreign session store and inject a turn.
+    if let SlashDispatch::Transfer { ref args } = dispatch {
+        return handle_transfer_slash(ctx, args);
     }
 
     match dispatch {
@@ -478,7 +478,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
         }
         // Handled by early return above — unreachable here.
         SlashDispatch::Memory { .. } => unreachable!(),
-        SlashDispatch::Handover { .. } => unreachable!(),
+        SlashDispatch::Transfer { .. } => unreachable!(),
         SlashDispatch::Hotkeys => SlashOutcome::OpenSessionInfoDialog {
             text: HOTKEYS_TEXT.to_string(),
         },
@@ -1314,9 +1314,9 @@ mod tests {
     }
 
     #[test]
-    fn handover_codex_without_session_returns_status() {
+    fn transfer_codex_without_session_returns_status() {
         let outcome = handle_slash_submit(SlashContext {
-            input: "/handover codex",
+            input: "/transfer codex",
             extensions: None,
             prompt_templates: None,
             skills: None,
@@ -1333,9 +1333,9 @@ mod tests {
     }
 
     #[test]
-    fn handover_missing_tool_shows_usage() {
+    fn transfer_missing_tool_shows_usage() {
         let outcome = handle_slash_submit(SlashContext {
-            input: "/handover",
+            input: "/transfer",
             extensions: None,
             prompt_templates: None,
             skills: None,
@@ -1346,14 +1346,14 @@ mod tests {
         });
         assert!(matches!(
             outcome,
-            SlashOutcome::Status(ref message) if message.contains("Usage: /handover")
+            SlashOutcome::Status(ref message) if message.contains("Usage: /transfer")
         ));
     }
 
     #[test]
-    fn handover_unknown_tool_shows_usage() {
+    fn transfer_unknown_tool_shows_usage() {
         let outcome = handle_slash_submit(SlashContext {
-            input: "/handover cursor",
+            input: "/transfer cursor",
             extensions: None,
             prompt_templates: None,
             skills: None,
@@ -1364,12 +1364,12 @@ mod tests {
         });
         assert!(matches!(
             outcome,
-            SlashOutcome::Status(ref message) if message.contains("Unknown handover tool `cursor`")
+            SlashOutcome::Status(ref message) if message.contains("Unknown transfer tool `cursor`")
         ));
     }
 
     #[test]
-    fn handover_outcome_is_ui_only_for_codex() {
+    fn transfer_outcome_is_ui_only_for_codex() {
         assert!(slash_outcome_is_ui_only(&SlashOutcome::Status(
             "Agent session required for this command.".to_string()
         )));
@@ -1377,7 +1377,7 @@ mod tests {
 
     #[test]
     fn background_task_quiet_does_not_echo_and_is_ui_only() {
-        // The handover dispatch is a quiet background task: the slash input must
+        // The transfer dispatch is a quiet background task: the slash input must
         // NOT be echoed as a user card (visible feedback comes from the handoff
         // meta line / stream events), and it must never be treated as an
         // agent-turn spawn (busy is derived from the agent loop itself).

@@ -69,7 +69,7 @@ Pi intent (`enabledModels`, resource path arrays, `defaultTools`, `defaultProjec
 
 ### 2026-08-09 — Busy-state queueing: action dispatch, not raw text (Elph delta)
 
-**Scope:** `crates/coding-agent/` product crate. Follow-up to the `/handover`
+**Scope:** `crates/coding-agent/` product crate. Follow-up to the `/transfer`
 resilience pass.
 
 Previously, when the agent was busy (`agent_turn_active`), turn-spawning slash
@@ -82,13 +82,13 @@ Now:
 - `handle_slash_submit` **always dispatches** turn-spawning commands (Continue,
   compact, skill, template, goal, reload, extension) on a background task. The
   session's internal `turn_gate` serializes them behind the active turn — the
-  same mechanism `/handover` uses. The `spawn_agent_work` field is gone.
+  same mechanism `/transfer` uses. The `spawn_agent_work` field is gone.
 - The shell no longer pushes raw slash text as a follow-up. When busy, a clear
   meta notice is shown ("Command /x queued — runs after the current task.");
   when idle, the normal echo/busy flow applies. Normal text prompts are
   unaffected (they still queue/steer as user input).
 - **Quiet background commands** — `/reload`, `/goal`, `/extension` (and
-  `/handover`) return `SlashOutcome::BackgroundTaskQuiet`: the slash input is
+  `/transfer`) return `SlashOutcome::BackgroundTaskQuiet`: the slash input is
   never echoed as a user card and never enters prompt history; the task reports
   via `AgentUiEvent` (Status / notices) and busy state derives from the agent
   loop, so a failure cannot strand a stale busy UI. (`/memory` keeps the plain
@@ -96,58 +96,58 @@ Now:
 - Consequence: `.jsonl.zst` still unsupported, but the busy-path semantic gap
   (raw text vs. real action) is closed for every turn-spawning command.
 
-### 2026-08-09 — `/handover` resilience hardening (Elph delta)
+### 2026-08-09 — `/transfer` resilience hardening (Elph delta)
 
 **Scope:** `crates/coding-agent/` product crate. Follow-up to the Claude+Codex
-handover launch.
+transfer launch.
 
 - **Bounded reads** — both readers cap a transcript at 32 MiB total, 4 MiB per
   JSONL record, and 5000 conversational records; oversized records are counted
   and skipped, over-cap transcripts surface a `transcript_truncated` warning,
   and over-size files are rejected with a clear message instead of being
   buffered whole (previously `fs::read` slurped arbitrary-size files).
-- **Background dispatch** — `/handover` now runs resolve+read+prompt-build on a
+- **Background dispatch** — `/transfer` now runs resolve+read+prompt-build on a
   `spawn_blocking` background task; the TUI render thread is never blocked. New
   `SlashOutcome::BackgroundTaskQuiet` dispatches the handoff turn without
   echoing the raw slash text as a user card; busy state is derived from the
   agent loop, so a read failure cannot strand a stale "busy" chip. Error/success
   notices flow through normal `AgentUiEvent::Status` events.
 
-### 2026-08-09 — `/handover` Codex resume (Elph delta)
+### 2026-08-09 — `/transfer` Codex resume (Elph delta)
 
-**Scope:** `crates/coding-agent/` product crate. Follow-up to the `/handover`
+**Scope:** `crates/coding-agent/` product crate. Follow-up to the `/transfer`
 Claude launch (same session); adds the Codex source.
 
-- **`/handover codex [ref]`** — discovers Codex CLI/VSCode rollout transcripts
+- **`/transfer codex [ref]`** — discovers Codex CLI/VSCode rollout transcripts
   (`~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`), resolves
   `latest`/UUID/free-text, reads the transcript as **inert history**
   (`session_meta` + `response_item` + `event_msg`; skips developer-role and
   injected AGENTS.md wrappers; applies `compacted`/`thread_rolled_back`
   reduction + duplicate collapse), and injects a Codex handoff prompt
-  (`CODEX_HANDOVER_PROMPT_PREFIX`, slim `Handover from Codex…` meta line).
+  (`CODEX_TRANSFER_PROMPT_PREFIX`, slim `Transfer from Codex…` meta line).
 - Reader lives entirely on the **rollout filesystem** — `state_N.sqlite` is
   never opened, so a live Codex process (hot WAL) is never disturbed.
-- Codex reader: `crates/coding-agent/src/agent/handover/codex.rs` + tests
+- Codex reader: `crates/coding-agent/src/agent/transfer/codex.rs` + tests
   (`codex/tests.rs`, 11 tests).
 
-### 2026-08-09 — `/handover` foreign-session resume (Elph delta)
+### 2026-08-09 — `/transfer` foreign-session resume (Elph delta)
 
 **Scope:** `crates/coding-agent/` product crate. Not a pi port — mirrors Grok Build's
 `foreign_sessions/claude` resume flow (powered by the portable Claude resume
 skills) as an **Elph delta**.
 
-- **`/handover claude [ref]`** — discovers Claude Code sessions
+- **`/transfer claude [ref]`** — discovers Claude Code sessions
   (`~/.claude/projects/<slug>/*.jsonl`), resolves `latest` / UUID / free-text
   title, reads the transcript as **inert history** (leaf chain, preserved/snipped
   compaction segments, parallel siblings; strips meta/sidechain/thinking; caps
   tool I/O and message text; stubs summarized results), and injects a handoff
   prompt into the current Elph session. New module
-  `crates/coding-agent/src/agent/handover/` + design doc
-  [handover.md](../design/handover.md).
-- **`/handover codex …`** — accepted arg (palette completions),
-  prints `Codex handover not yet implemented`.
-- `SlashDispatch::Handover`, ACP guard (`handler.rs`), TUI slim
-  `Handover from Claude Code…` meta line (`tick.rs`).
+  `crates/coding-agent/src/agent/transfer/` + design doc
+  [transfer.md](../design/transfer.md).
+- **`/transfer codex …`** — accepted arg (palette completions),
+  prints `Codex transfer not yet implemented`.
+- `SlashDispatch::Transfer`, ACP guard (`handler.rs`), TUI slim
+  `Transfer from Claude Code…` meta line (`tick.rs`).
 
 ### 2026-07-29 — Rust verify & harden + dead code cleanup
 
@@ -261,8 +261,8 @@ elph built-in **names** largely mirror pi, plus `/provider`, `/help`, `/exit`. D
 - `/scoped-models` — **[Partial]** (editor + Ctrl+P cycle; no keybinding remaps / null=all semantics)
 - `/share` — **[Gap]**
 - `/goal` — **[Elph delta]** / **[Partial]** in elph (design + goal_slash)
-- `/handover` — **[Elph delta]** foreign-session resume (Claude + Codex
-  implemented; see [handover.md](../design/handover.md))
+- `/transfer` — **[Elph delta]** foreign-session resume (Claude + Codex
+  implemented; see [transfer.md](../design/transfer.md))
 - Extension commands — **[Partial]** (JS vs WASM model)
 - Prompt templates as `/name` — **[Partial]** (planned)
 

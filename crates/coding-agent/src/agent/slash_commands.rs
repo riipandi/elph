@@ -64,7 +64,7 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("tree", "Navigate session tree"),
         builtin("trust", "Save project trust decision"),
         builtin_with_args("provider", "Manage providers"),
-        builtin_with_args("handover", "Resume a foreign coding-agent session"),
+        builtin_with_args("transfer", "Resume a foreign coding-agent session"),
         builtin_with_args("mcp", "MCP servers"),
         builtin("new", "Start a new session"),
         builtin_with_args("compact", "Compact conversation history"),
@@ -261,12 +261,12 @@ pub enum SlashDispatch {
     },
     /// List MCP servers in the transcript (`/mcp list`).
     McpList,
-    /// Resume a foreign coding-agent session (`/handover claude [ref]`).
+    /// Resume a foreign coding-agent session (`/transfer claude [ref]`).
     ///
-    /// `args` is the raw slash body after `/handover ` — the first token selects
+    /// `args` is the raw slash body after `/transfer ` — the first token selects
     /// the source tool (`claude` or `codex`), the rest is a session reference
     /// (empty / `latest` / session UUID / free-text title).
-    Handover {
+    Transfer {
         args: String,
     },
     /// Live multi-worker peers (`/workers`).
@@ -424,7 +424,7 @@ const MCP_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
     },
 ];
 
-const HANDOVER_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
+const TRANSFER_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
     SlashArgCompletion {
         value: "claude",
         description: "Resume work from a Claude Code session",
@@ -471,7 +471,7 @@ pub fn slash_arg_completions(command_name: &str) -> Option<&'static [SlashArgCom
         "memory" | "mem" => Some(MEMORY_ARG_COMPLETIONS),
         "provider" => Some(PROVIDER_ARG_COMPLETIONS),
         "mcp" => Some(MCP_ARG_COMPLETIONS),
-        "handover" => Some(HANDOVER_ARG_COMPLETIONS),
+        "transfer" => Some(TRANSFER_ARG_COMPLETIONS),
         _ => None,
     }
 }
@@ -726,7 +726,7 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
                 Some(SlashDispatch::Unimplemented(format!("/mcp {args}")))
             }
         }
-        "handover" => Some(SlashDispatch::Handover { args }),
+        "transfer" => Some(SlashDispatch::Transfer { args }),
         _ => None,
     }
 }
@@ -855,34 +855,32 @@ mod tests {
     }
 
     #[test]
-    fn handover_dispatch_and_completions() {
+    fn transfer_dispatch_and_completions() {
         assert_eq!(
-            dispatch_slash_command("/handover claude", None, None, None),
-            Some(SlashDispatch::Handover { args: "claude".into() })
+            dispatch_slash_command("/transfer claude", None, None, None),
+            Some(SlashDispatch::Transfer { args: "claude".into() })
         );
         assert_eq!(
-            dispatch_slash_command("/handover claude latest", None, None, None),
-            Some(SlashDispatch::Handover {
+            dispatch_slash_command("/transfer claude latest", None, None, None),
+            Some(SlashDispatch::Transfer {
                 args: "claude latest".into()
             })
         );
         assert_eq!(
-            dispatch_slash_command("/handover codex", None, None, None),
-            Some(SlashDispatch::Handover { args: "codex".into() })
+            dispatch_slash_command("/transfer codex", None, None, None),
+            Some(SlashDispatch::Transfer { args: "codex".into() })
         );
         assert_eq!(
-            dispatch_slash_command("/handover", None, None, None),
-            Some(SlashDispatch::Handover { args: String::new() })
+            dispatch_slash_command("/transfer", None, None, None),
+            Some(SlashDispatch::Transfer { args: String::new() })
         );
-        // Arg completions exist and cover both tools.
-        let completions = slash_arg_completions("handover").expect("handover completions");
+        let completions = slash_arg_completions("transfer").expect("transfer completions");
         assert!(completions.iter().any(|c| c.value == "claude"));
         assert!(completions.iter().any(|c| c.value == "codex"));
-        // Palette lists the command with the args hint.
         let commands = slash_commands_for_palette(None, None, None);
-        let handover = commands.iter().find(|cmd| cmd.name == "handover").expect("handover");
-        assert_eq!(handover.args_hint.as_deref(), Some("[args]"));
-        assert!(!handover.hidden);
+        let transfer = commands.iter().find(|cmd| cmd.name == "transfer").expect("transfer");
+        assert_eq!(transfer.args_hint.as_deref(), Some("[args]"));
+        assert!(!transfer.hidden);
     }
 
     #[test]

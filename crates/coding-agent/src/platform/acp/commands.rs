@@ -449,7 +449,7 @@ fn tui_only_message(dispatch: &SlashDispatch) -> String {
         SlashDispatch::ProviderUpdate { .. } => "Use `elph provider update`.".into(),
         SlashDispatch::McpAuth { .. } => "Use `elph mcp auth <name>` — ACP cannot open the TUI OAuth dialog.".into(),
         SlashDispatch::WorkerChat => "/intercom is TUI-only.".into(),
-        SlashDispatch::Handover { .. } => "/handover is TUI-only.".into(),
+        SlashDispatch::Transfer { .. } => "/transfer is TUI-only.".into(),
         SlashDispatch::Unimplemented(cmd) => format!("Slash command '{cmd}' is not available via ACP."),
         other => format!("Command {other:?} is not available via ACP."),
     }

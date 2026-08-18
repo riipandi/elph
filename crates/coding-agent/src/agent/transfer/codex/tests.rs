@@ -1,4 +1,4 @@
-//! Unit tests for the Codex session handover reader.
+//! Unit tests for the Codex session transfer reader.
 
 use std::fs;
 use std::path::Path;
@@ -86,8 +86,8 @@ fn write_rollout(config_dir: &Path, _cwd: &str, records: &[Value]) -> std::path:
     path
 }
 
-fn read_texts(handover: &CodexHandover) -> Vec<String> {
-    handover.turns.iter().map(|turn| turn.text.clone()).collect()
+fn read_texts(transfer: &CodexTransfer) -> Vec<String> {
+    transfer.turns.iter().map(|turn| turn.text.clone()).collect()
 }
 
 // ── discovery ──────────────────────────────────────────────────────────────
@@ -278,7 +278,7 @@ fn oversized_transcript_file_is_rejected_not_slurped() {
     file.set_len(limit).expect("sparse extend");
     drop(file);
     match read_codex_session(&p) {
-        Err(HandoverError::ReadFailed(msg)) => assert!(msg.contains("too large"), "msg: {msg}"),
+        Err(TransferError::ReadFailed(msg)) => assert!(msg.contains("too large"), "msg: {msg}"),
         other => panic!("expected too-large rejection, got {other:?}"),
     }
 }
@@ -386,17 +386,17 @@ fn resolve_ambiguous_or_missing_fails_cleanly() {
 
     let missing = resolve_codex_session(Path::new(cwd), Some(&config), Some("99999999-9999-9999-9999-999999999999"))
         .expect_err("missing uuid");
-    assert!(matches!(missing, HandoverError::NoSession(_)));
+    assert!(matches!(missing, TransferError::NoSession(_)));
     let no_match =
         resolve_codex_session(Path::new(cwd), Some(&config), Some("nothing-matches-this")).expect_err("no text match");
-    assert!(matches!(no_match, HandoverError::NoSession(_)));
+    assert!(matches!(no_match, TransferError::NoSession(_)));
 }
 
 // ── prompt building ────────────────────────────────────────────────────────
 
 #[test]
 fn codex_prompt_bounds_turns_and_includes_safety() {
-    let handover = CodexHandover {
+    let transfer = CodexTransfer {
         tool: "codex".into(),
         source: "cli".into(),
         session_id: UUID.into(),
@@ -407,7 +407,7 @@ fn codex_prompt_bounds_turns_and_includes_safety() {
         created_at: Some("2026-07-29T09:06:50.000Z".into()),
         updated_at: Some("2026-07-29T09:10:00.000Z".into()),
         turns: (0..60)
-            .map(|i| HandoverTurn {
+            .map(|i| TransferTurn {
                 role: if i % 2 == 0 { "user".into() } else { "assistant".into() },
                 text: format!("message {i}"),
                 tool_calls: Vec::new(),
@@ -419,8 +419,8 @@ fn codex_prompt_bounds_turns_and_includes_safety() {
         last_user_request: Some("message 58".into()),
         last_assistant_action: Some("message 59".into()),
     };
-    let prompt = build_codex_handoff_prompt(&handover, 0);
-    assert!(prompt.starts_with(CODEX_HANDOVER_PROMPT_PREFIX));
+    let prompt = build_codex_handoff_prompt(&transfer, 0);
+    assert!(prompt.starts_with(CODEX_TRANSFER_PROMPT_PREFIX));
     assert!(prompt.contains("## Safety boundary"));
     assert!(prompt.contains("last 40 of 60 turns"));
     assert!(prompt.contains("message 59"));

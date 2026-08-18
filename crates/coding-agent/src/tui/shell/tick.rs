@@ -853,11 +853,11 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     transcript_changed = true;
                     continue;
                 }
-                // Handover prompt injected by `/handover claude` — render as a slim
+                // Transfer prompt injected by `/transfer claude` — render as a slim
                 // sticky meta label instead of flooding the transcript with a giant
                 // inert-JSON user card.
-                if text.starts_with(HANDOVER_PROMPT_PREFIX) {
-                    let mut notice = TranscriptMessage::text("Handover from Claude Code…", TranscriptStyle::Meta);
+                if text.starts_with(TRANSFER_PROMPT_PREFIX) {
+                    let mut notice = TranscriptMessage::text("Transfer from Claude Code…", TranscriptStyle::Meta);
                     notice.sticky_meta = true;
                     {
                         let mut msgs = messages_arc_inner.write().unwrap();
@@ -866,9 +866,9 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     transcript_changed = true;
                     continue;
                 }
-                // Handover prompt injected by `/handover codex`.
-                if text.starts_with(CODEX_HANDOVER_PROMPT_PREFIX) {
-                    let mut notice = TranscriptMessage::text("Handover from Codex…", TranscriptStyle::Meta);
+                // Transfer prompt injected by `/transfer codex`.
+                if text.starts_with(CODEX_TRANSFER_PROMPT_PREFIX) {
+                    let mut notice = TranscriptMessage::text("Transfer from Codex…", TranscriptStyle::Meta);
                     notice.sticky_meta = true;
                     {
                         let mut msgs = messages_arc_inner.write().unwrap();

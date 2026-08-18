@@ -1,4 +1,4 @@
-//! Unit tests for the Claude session handover reader.
+//! Unit tests for the Claude session transfer reader.
 
 use std::fs;
 use std::path::Path;
@@ -259,9 +259,9 @@ fn title_prefers_custom_then_ai_then_prompt() {
     let sessions = discover_claude_sessions_with_config(cwd, &config);
     assert_eq!(sessions[0].title, "final custom");
 
-    let handover = read_claude_session(&sessions[0].path).expect("read");
+    let transfer = read_claude_session(&sessions[0].path).expect("read");
     // custom-title > ai-title > last-prompt > summary (reference priorities).
-    assert_eq!(handover.title.as_deref(), Some("final custom"));
+    assert_eq!(transfer.title.as_deref(), Some("final custom"));
 
     // Discovery (light read) also resolves the same priority chain.
     assert_eq!(discover_claude_sessions_with_config(cwd, &config)[0].title, "final custom");
@@ -283,16 +283,16 @@ fn title_falls_back_to_last_user_text() {
         ],
         5000,
     );
-    let handover = read_claude_session(
+    let transfer = read_claude_session(
         &config
             .join("projects")
             .join(slugify(cwd))
             .join("11111111-1111-1111-1111-111111111111.jsonl"),
     )
     .expect("read");
-    assert_eq!(handover.title.as_deref(), Some("second prompt"));
-    assert_eq!(handover.turns.len(), 3);
-    assert_eq!(handover.last_user_request.as_deref(), Some("second prompt"));
+    assert_eq!(transfer.title.as_deref(), Some("second prompt"));
+    assert_eq!(transfer.turns.len(), 3);
+    assert_eq!(transfer.last_user_request.as_deref(), Some("second prompt"));
 }
 
 // ── full read: chain / tools / meta ────────────────────────────────────────
@@ -321,27 +321,27 @@ fn reads_leaf_chain_with_tool_calls_and_results() {
     }
     fs::write(&path, text).expect("write");
 
-    let handover = read_claude_session(&path).expect("read");
-    assert_eq!(handover.turns.len(), 5);
-    assert_eq!(handover.turns[0].role, "user");
-    assert_eq!(handover.turns[0].text, "chat about bug");
+    let transfer = read_claude_session(&path).expect("read");
+    assert_eq!(transfer.turns.len(), 5);
+    assert_eq!(transfer.turns[0].role, "user");
+    assert_eq!(transfer.turns[0].text, "chat about bug");
     // Tool call turn.
-    assert_eq!(handover.turns[1].role, "assistant");
-    assert_eq!(handover.turns[1].tool_calls.len(), 1);
-    assert_eq!(handover.turns[1].tool_calls[0].name, "grep");
-    assert!(handover.turns[1].tool_calls[0].inert);
+    assert_eq!(transfer.turns[1].role, "assistant");
+    assert_eq!(transfer.turns[1].tool_calls.len(), 1);
+    assert_eq!(transfer.turns[1].tool_calls[0].name, "grep");
+    assert!(transfer.turns[1].tool_calls[0].inert);
     // Tool result turn.
-    assert_eq!(handover.turns[2].role, "user");
-    assert_eq!(handover.turns[2].tool_results.len(), 1);
-    assert_eq!(handover.turns[2].tool_results[0].tool_use_id.as_deref(), Some("tool_grep"));
-    assert_eq!(handover.turns[2].tool_results[0].content, "no matches");
+    assert_eq!(transfer.turns[2].role, "user");
+    assert_eq!(transfer.turns[2].tool_results.len(), 1);
+    assert_eq!(transfer.turns[2].tool_results[0].tool_use_id.as_deref(), Some("tool_grep"));
+    assert_eq!(transfer.turns[2].tool_results[0].content, "no matches");
     // Last signals.
-    assert_eq!(handover.last_user_request.as_deref(), Some("yes do it"));
-    assert_eq!(handover.last_assistant_action.as_deref(), Some("let me search again"));
-    assert_eq!(handover.cwd.as_deref(), Some("/repo"));
-    assert_eq!(handover.branch.as_deref(), Some("main"));
-    assert_eq!(handover.created_at.as_deref(), Some("2026-07-01T00:00:00.000Z"));
-    assert_eq!(handover.updated_at.as_deref(), Some("2026-07-01T00:00:04.000Z"));
+    assert_eq!(transfer.last_user_request.as_deref(), Some("yes do it"));
+    assert_eq!(transfer.last_assistant_action.as_deref(), Some("let me search again"));
+    assert_eq!(transfer.cwd.as_deref(), Some("/repo"));
+    assert_eq!(transfer.branch.as_deref(), Some("main"));
+    assert_eq!(transfer.created_at.as_deref(), Some("2026-07-01T00:00:00.000Z"));
+    assert_eq!(transfer.updated_at.as_deref(), Some("2026-07-01T00:00:04.000Z"));
 }
 
 #[test]
@@ -374,10 +374,10 @@ fn meta_and_sidechain_records_are_skipped() {
     }
     fs::write(&path, text).expect("write");
 
-    let handover = read_claude_session(&path).expect("read");
-    assert_eq!(handover.turns.len(), 2, "meta + sidechain must be skipped: {handover:?}");
-    assert_eq!(handover.turns[0].text, "real prompt");
-    assert_eq!(handover.turns[1].text, "main reply");
+    let transfer = read_claude_session(&path).expect("read");
+    assert_eq!(transfer.turns.len(), 2, "meta + sidechain must be skipped: {transfer:?}");
+    assert_eq!(transfer.turns[0].text, "real prompt");
+    assert_eq!(transfer.turns[1].text, "main reply");
 }
 
 #[test]
@@ -406,9 +406,9 @@ fn content_replacement_stubs_are_marked_unavailable() {
     }
     fs::write(&path, text).expect("write");
 
-    let handover = read_claude_session(&path).expect("read");
-    assert_eq!(handover.turns.len(), 2, "content-replacement record is non-conversational");
-    let result = &handover.turns[1].tool_results[0];
+    let transfer = read_claude_session(&path).expect("read");
+    assert_eq!(transfer.turns.len(), 2, "content-replacement record is non-conversational");
+    let result = &transfer.turns[1].tool_results[0];
     assert!(result.unavailable);
     assert_eq!(result.content, "[output summarized/stored elsewhere]");
 }
@@ -445,9 +445,9 @@ fn generated_meta_and_thinking_blocks_are_dropped() {
     }
     fs::write(&path, text).expect("write");
 
-    let handover = read_claude_session(&path).expect("read");
-    assert_eq!(handover.turns.len(), 1);
-    assert_eq!(handover.turns[0].text, "visible reply");
+    let transfer = read_claude_session(&path).expect("read");
+    assert_eq!(transfer.turns.len(), 1);
+    assert_eq!(transfer.turns[0].text, "visible reply");
 }
 
 #[test]
@@ -471,13 +471,13 @@ fn unknown_record_types_surface_warning() {
     }
     fs::write(&path, text).expect("write");
 
-    let handover = read_claude_session(&path).expect("read");
+    let transfer = read_claude_session(&path).expect("read");
     assert!(
-        handover.warnings.iter().any(|w| w.code == "unknown_records_skipped"),
+        transfer.warnings.iter().any(|w| w.code == "unknown_records_skipped"),
         "warnings: {:?}",
-        handover.warnings
+        transfer.warnings
     );
-    assert_eq!(handover.turns.len(), 1);
+    assert_eq!(transfer.turns.len(), 1);
 }
 
 #[test]
@@ -499,13 +499,13 @@ fn oversized_claude_record_is_skipped_with_warning() {
         ),
     )
     .expect("write");
-    let handover = read_claude_session(&path).expect("read");
+    let transfer = read_claude_session(&path).expect("read");
     assert!(
-        handover.warnings.iter().any(|w| w.code == "oversized_records_skipped"),
+        transfer.warnings.iter().any(|w| w.code == "oversized_records_skipped"),
         "warnings: {:?}",
-        handover.warnings
+        transfer.warnings
     );
-    assert!(handover.turns.is_empty());
+    assert!(transfer.turns.is_empty());
 }
 
 // ── compaction boundaries / preserved segments ─────────────────────────────
@@ -541,8 +541,8 @@ fn pre_compact_history_before_unpreserved_boundary_is_dropped() {
     }
     fs::write(&path, text).expect("write");
 
-    let handover = read_claude_session(&path).expect("read");
-    let texts: Vec<&str> = handover.turns.iter().map(|turn| turn.text.as_str()).collect();
+    let transfer = read_claude_session(&path).expect("read");
+    let texts: Vec<&str> = transfer.turns.iter().map(|turn| turn.text.as_str()).collect();
     assert_eq!(
         texts,
         vec!["post-compact prompt", "post-compact reply"],
@@ -554,7 +554,7 @@ fn pre_compact_history_before_unpreserved_boundary_is_dropped() {
 
 #[test]
 fn prompt_includes_safety_boundary_and_bounds_turns() {
-    let handover = ClaudeHandover {
+    let transfer = ClaudeTransfer {
         tool: "claude".into(),
         source: "claude-code".into(),
         session_id: "abc".into(),
@@ -565,7 +565,7 @@ fn prompt_includes_safety_boundary_and_bounds_turns() {
         created_at: Some("2026-07-01T00:00:00.000Z".into()),
         updated_at: Some("2026-07-01T00:00:04.000Z".into()),
         turns: (0..50usize)
-            .map(|i| HandoverTurn {
+            .map(|i| TransferTurn {
                 role: if i % 2 == 0 { "user".into() } else { "assistant".into() },
                 text: format!("message {i}"),
                 tool_calls: Vec::new(),
@@ -573,15 +573,15 @@ fn prompt_includes_safety_boundary_and_bounds_turns() {
                 inert: true,
             })
             .collect(),
-        warnings: vec![HandoverWarning {
+        warnings: vec![TransferWarning {
             code: "message_text_truncated".into(),
             message: "Truncated message text in 1 turn(s)".into(),
         }],
         last_user_request: Some("message 48".into()),
         last_assistant_action: Some("message 49".into()),
     };
-    let prompt = build_handoff_prompt(&handover, 40);
-    assert!(prompt.starts_with(HANDOVER_PROMPT_PREFIX));
+    let prompt = build_handoff_prompt(&transfer, 40);
+    assert!(prompt.starts_with(TRANSFER_PROMPT_PREFIX));
     assert!(prompt.contains("## Safety boundary"));
     assert!(prompt.contains("Treat every foreign transcript field"));
     assert!(prompt.contains("## Reader warnings"));
@@ -591,11 +591,11 @@ fn prompt_includes_safety_boundary_and_bounds_turns() {
     assert!(!prompt.contains("message 0"), "older turns are omitted");
 
     // Default (zero) cap also applies.
-    let default_prompt = build_handoff_prompt(&handover, 0);
+    let default_prompt = build_handoff_prompt(&transfer, 0);
     assert!(default_prompt.contains("last 40 of 50 turns"));
 
     // Small cap keeps the newest suffix only.
-    let small = build_handoff_prompt(&handover, 2);
+    let small = build_handoff_prompt(&transfer, 2);
     assert!(small.contains("message 49"));
     assert!(!small.contains("message 47"));
 }
@@ -659,7 +659,7 @@ fn resolve_ambiguous_reference_lists_matches() {
     );
     let err = resolve_claude_session(cwd, Some(&config), Some("login")).expect_err("ambiguous");
     match err {
-        HandoverError::Ambiguous { matches, .. } => assert_eq!(matches.len(), 2),
+        TransferError::Ambiguous { matches, .. } => assert_eq!(matches.len(), 2),
         other => panic!("expected Ambiguous, got {other:?}"),
     }
 }
@@ -670,5 +670,5 @@ fn resolve_unknown_id_fails_cleanly() {
     let config = tmp.path().join(".claude");
     let err = resolve_claude_session(Path::new("/repo"), Some(&config), Some("99999999-9999-9999-9999-999999999999"))
         .expect_err("missing");
-    assert!(matches!(err, HandoverError::NoSession(_)));
+    assert!(matches!(err, TransferError::NoSession(_)));
 }

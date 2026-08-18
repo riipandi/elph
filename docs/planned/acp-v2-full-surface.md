@@ -161,7 +161,7 @@ Advertise every command the ACP session can actually run:
 - Builtins that produce text or session actions: `help`, `tools`, `session`, `rename`, `compact`, `continue`, `reload`, `goal`, `settings`, `changelog`, `hotkeys`, `workers`, `tree`, `export`, `import`, `trust`, `fork`, `clone`, `aside`, `mcp` (list/logout), `provider` (list), plus **skills / prompt templates / extensions** (they already load via `create_coding_session_with_events`).
 - `input: { type: "text", hint }` when the command takes args (v2 discriminator is required).
 
-Do **not** advertise TUI-only commands: confetti, overlays, `/intercom`, `/feedback`, `/provider connect|disconnect|update`, `/mcp auth`, `/handover`, `/new`, `/resume` (clients have `session/new` / `session/resume`).
+Do **not** advertise TUI-only commands: confetti, overlays, `/intercom`, `/feedback`, `/provider connect|disconnect|update`, `/mcp auth`, `/transfer`, `/new`, `/resume` (clients have `session/new` / `session/resume`).
 
 Running: command text arrives as a normal `session/prompt` (`/name args`). Dispatch like today, but:
 

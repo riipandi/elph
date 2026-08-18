@@ -2040,7 +2040,7 @@ pub(crate) fn build_shell_view(
                             }
                             SlashOutcome::BackgroundTaskQuiet => {
                                 // Like BackgroundTask, but no slash input is echoed as a user
-                                // card — the handover task delivers its own transcript events
+                                // card — the transfer task delivers its own transcript events
                                 // (slim meta line / stream) and derives busy state from the
                                 // agent loop, so a read failure never strands a stale busy UI.
                             }
