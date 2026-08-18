@@ -14,5 +14,5 @@ pub use assets::{BundledAssets, BundledAssetsReport};
 pub use bundled::BundledManifest;
 pub use changelog::{ChangelogEntry, ChangelogFile, ChangelogScaffold};
 pub use providers::{ProvidersUnpack, ProvidersUnpackReport};
-pub use trust::TrustStore;
+pub use trust::{DefaultProjectTrust, TrustStore};
 pub use version::VersionFile;

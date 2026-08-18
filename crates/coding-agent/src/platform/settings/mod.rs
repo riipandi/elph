@@ -137,12 +137,9 @@ pub struct Settings {
     /// Absent / `null` falls back to `ELPH_PROMPT_ENCODING*` environment variables.
     #[serde(default)]
     pub prompt_encoding: Option<elph_agent::PromptEncodingConfig>,
-    /// Local floppy memory (hooks / retrieval; embed model lives under `models.embed`).
+    /// Local floppy memory (hooks / retrieval; embed model is `models.embedModel`).
     #[serde(default)]
     pub memory: MemorySettings,
-    /// MCP client preferences (tool result cache retention).
-    #[serde(default)]
-    pub mcp: McpSettings,
     /// Desktop notification preferences.
     #[serde(default)]
     pub notifications: NotificationSettings,
@@ -159,18 +156,21 @@ pub struct Settings {
     #[serde(default)]
     pub resources: ResourcesSettings,
     /// Built-in tool allowlist (`null` = all builtins).
-    #[serde(default)]
-    pub tools: ToolsSettings,
-    /// Project-trust fallback. Global layer only (project file cannot override).
-    #[serde(default)]
-    pub trust: TrustSettings,
-    /// Shell invocation overrides for `shell_exec`.
-    #[serde(default)]
-    pub shell: ShellSettings,
-    /// HTTP proxy for Elph-managed clients.
-    #[serde(default)]
-    pub network: NetworkSettings,
-    /// Set at load time: project settings/resources layer was applied.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_tools: Option<Vec<String>>,
+    /// Custom shell binary (leading `~` expanded).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shell_path: Option<String>,
+    /// Prefix prepended to every `shell_exec` command.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shell_command_prefix: Option<String>,
+    /// HTTP proxy URL applied as `HTTP_PROXY` / `HTTPS_PROXY` when those env vars are unset.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub http_proxy: Option<String>,
+    /// Hide bootstrap spinner / startup chatter. `ELPH_QUIET` still wins when set.
+    #[serde(default = "default_false")]
+    pub quiet_startup: bool,
+    /// Set at load time: a project settings file was merged.
     #[serde(skip)]
     pub project_layer_loaded: bool,
 }
@@ -281,83 +281,13 @@ impl Default for ResourcesSettings {
     }
 }
 
-/// Built-in tool allowlist. `None` = all builtins; `Some([])` = none (meta tools stay).
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct ToolsSettings {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub default: Option<Vec<String>>,
-}
-
-/// Fallback when `trust.json` has no decision for this folder (global setting only).
-#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum DefaultProjectTrust {
-    #[default]
-    Ask,
-    Always,
-    Never,
-}
-
-impl DefaultProjectTrust {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Ask => "ask",
-            Self::Always => "always",
-            Self::Never => "never",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct TrustSettings {
-    #[serde(default)]
-    pub default_project_trust: DefaultProjectTrust,
-}
-
-impl Default for TrustSettings {
-    fn default() -> Self {
-        Self {
-            default_project_trust: DefaultProjectTrust::Ask,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct ShellSettings {
-    /// Custom shell binary (leading `~` expanded by the host).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub path: Option<String>,
-    /// Prefix prepended to every `shell_exec` command.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub command_prefix: Option<String>,
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct NetworkSettings {
-    /// HTTP proxy URL applied as `HTTP_PROXY` / `HTTPS_PROXY` when those env vars are unset.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub http_proxy: Option<String>,
-}
-
 /// Session storage preferences (retention / GC). Per-session pin is DB state, not settings.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct SessionSettings {
-    #[serde(default)]
-    pub retention: SessionRetentionSettings,
-}
-
-/// Automatic session GC, payload caps, and size budgets.
 ///
 /// Numeric fields use `0` to mean “unlimited / disabled for that dimension”
 /// (except booleans).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct SessionRetentionSettings {
+pub struct SessionSettings {
     /// Master switch for automatic session GC + size enforcement.
     #[serde(default = "default_true")]
     pub enabled: bool,
@@ -390,7 +320,7 @@ pub struct SessionRetentionSettings {
     pub max_terminal_files_per_session: u32,
 }
 
-impl Default for SessionRetentionSettings {
+impl Default for SessionSettings {
     fn default() -> Self {
         Self {
             enabled: true,
@@ -465,8 +395,9 @@ pub struct UiSettings {
     /// `Thinking` and AI chat response/assistant items always keep line breaks above and below.
     #[serde(default = "default_log_density", deserialize_with = "deserialize_log_density_string")]
     pub density: String,
-    #[serde(default)]
-    pub file_picker: FilePickerSettings,
+    /// When true, `@` file search includes dotfiles and dot-directories.
+    #[serde(default = "default_false")]
+    pub show_hidden_files: bool,
     /// When true, allow mode changes (keyboard shortcut and agent request)
     /// while the agent is busy streaming or running tools.
     #[serde(default = "default_true")]
@@ -475,9 +406,6 @@ pub struct UiSettings {
     /// provider/model) under the last assistant reply after each completed turn.
     #[serde(default = "default_true")]
     pub turn_stats: bool,
-    /// Hide bootstrap spinner / startup chatter. `ELPH_QUIET` still wins when set.
-    #[serde(default = "default_false")]
-    pub quiet_startup: bool,
 }
 
 impl Default for UiSettings {
@@ -491,10 +419,9 @@ impl Default for UiSettings {
             footer_token_display: default_footer_token_display(),
             colored_status_footer: true,
             density: default_log_density(),
-            file_picker: FilePickerSettings::default(),
+            show_hidden_files: false,
             allow_mode_change_while_busy: true,
             turn_stats: true,
-            quiet_startup: false,
         }
     }
 }
@@ -543,14 +470,6 @@ where
     }
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct FilePickerSettings {
-    /// When true, `@` file search includes dotfiles and dot-directories.
-    #[serde(default = "default_false")]
-    pub show_hidden_files: bool,
-}
-
 /// Model-catalog preferences and seeds for **new** sessions.
 ///
 /// Live provider/model, thinking level, and agent mode are per-session — not stored here.
@@ -588,8 +507,12 @@ pub struct ModelsSettings {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub thinking_budgets: Option<elph_ai::ThinkingBudgets>,
     /// Local ONNX / Hugging Face embedding model for floppy memory.
-    #[serde(default)]
-    pub embed: EmbedSettings,
+    #[serde(default = "default_embed_model", deserialize_with = "deserialize_embed_model")]
+    pub embed_model: EmbedModel,
+    #[serde(default = "default_embed_quantized")]
+    pub embed_quantized: bool,
+    #[serde(default = "default_gpu_acceleration")]
+    pub embed_gpu_acceleration: GpuAcceleration,
 }
 
 impl Default for ModelsSettings {
@@ -604,7 +527,9 @@ impl Default for ModelsSettings {
             scoped_models: Vec::new(),
             enabled: Vec::new(),
             thinking_budgets: None,
-            embed: EmbedSettings::default(),
+            embed_model: default_embed_model(),
+            embed_quantized: default_embed_quantized(),
+            embed_gpu_acceleration: default_gpu_acceleration(),
         }
     }
 }
@@ -727,6 +652,14 @@ where
 }
 
 impl ModelsSettings {
+    pub fn embed(&self) -> EmbedSettings {
+        EmbedSettings {
+            model: self.embed_model.clone(),
+            quantized: self.embed_quantized,
+            gpu_acceleration: self.embed_gpu_acceleration,
+        }
+    }
+
     /// Split `defaultModel` into `(provider, model_id)` when well-formed.
     pub fn default_provider_and_model(&self) -> Option<(String, String)> {
         let raw = self.default_model.as_deref()?.trim();
@@ -782,35 +715,6 @@ impl Default for MemorySettings {
             min_query_length: default_memory_min_query_length(),
         }
     }
-}
-
-/// MCP client preferences (tool result cache retention).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct McpSettings {
-    /// Tool result cache TTL in seconds (default 60). `0` disables caching.
-    #[serde(default = "default_mcp_cache_ttl_secs")]
-    pub cache_ttl_secs: u64,
-    /// Max cache entries before eviction (default 2048).
-    #[serde(default = "default_mcp_cache_max_entries")]
-    pub cache_max_entries: usize,
-}
-
-impl Default for McpSettings {
-    fn default() -> Self {
-        Self {
-            cache_ttl_secs: default_mcp_cache_ttl_secs(),
-            cache_max_entries: default_mcp_cache_max_entries(),
-        }
-    }
-}
-
-fn default_mcp_cache_ttl_secs() -> u64 {
-    60
-}
-
-fn default_mcp_cache_max_entries() -> usize {
-    2048
 }
 
 /// Desktop notification preferences.
@@ -930,16 +834,16 @@ impl Settings {
             models: ModelsSettings::default(),
             prompt_encoding: None,
             memory: MemorySettings::default(),
-            mcp: McpSettings::default(),
             notifications: NotificationSettings::default(),
             compaction: CompactionConfig::default(),
             session: SessionSettings::default(),
             workers: WorkersSettings::default(),
             resources: ResourcesSettings::default(),
-            tools: ToolsSettings::default(),
-            trust: TrustSettings::default(),
-            shell: ShellSettings::default(),
-            network: NetworkSettings::default(),
+            default_tools: None,
+            shell_path: None,
+            shell_command_prefix: None,
+            http_proxy: None,
+            quiet_startup: false,
             project_layer_loaded: false,
         }
     }
@@ -975,28 +879,14 @@ impl Settings {
         serde_json::from_value(value).with_context(|| format!("parse {}", path.display()))
     }
 
-    /// Whether project-local **WASM extensions** may load.
-    ///
-    /// Settings JSON, skills, and prompts are not gated. `trust.*` is read from home only.
-    /// `ask` without a saved `trust.json` decision is treated as `never` (no prompt this pass).
-    pub fn project_extensions_allowed(paths: &Paths, home: &Self) -> bool {
-        if crate::platform::scaffold::TrustStore::is_trusted(paths, paths.project_dir()).unwrap_or(false) {
-            return true;
-        }
-        matches!(home.trust.default_project_trust, DefaultProjectTrust::Always)
-    }
-
     /// Load merged settings: serde defaults ← home ← project (project always wins).
-    /// `trust.*` always comes from the home layer.
     pub fn load(paths: &Paths) -> Result<Self> {
         Self::ensure(paths)?;
         let home_value = read_settings_value(&paths.settings_path())?;
-        let home: Self = serde_json::from_value(home_value.clone()).context("parse home settings")?;
         let project = read_settings_value(&paths.project_settings_path())?;
         let mut merged = home_value;
         deep_merge(&mut merged, &project);
         let mut settings: Self = serde_json::from_value(merged).context("parse merged settings")?;
-        settings.trust = home.trust;
         settings.project_layer_loaded = paths.project_settings_path().is_file();
         Ok(settings)
     }
@@ -1177,9 +1067,9 @@ mod tests {
         let json = serde_json::to_string_pretty(&settings).expect("serialize");
         let decoded: Settings = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(settings, decoded);
-        assert_eq!(decoded.models.embed.model, EmbedModel::AllMiniLML6V2);
-        assert!(decoded.models.embed.quantized);
-        assert_eq!(decoded.models.embed.gpu_acceleration, GpuAcceleration::Auto);
+        assert_eq!(decoded.models.embed_model, EmbedModel::AllMiniLML6V2);
+        assert!(decoded.models.embed_quantized);
+        assert_eq!(decoded.models.embed_gpu_acceleration, GpuAcceleration::Auto);
         assert!(decoded.models.default_model.is_none());
         assert_eq!(decoded.models.session_title_model, "inherit");
         assert_eq!(decoded.models.compaction_model, "inherit");
@@ -1244,7 +1134,7 @@ mod tests {
         let value: Value = serde_json::from_str(&raw).expect("parse");
         // Storage/retention group is present; no live model state under session.
         assert!(value.get("session").is_some());
-        assert!(value["session"].get("retention").is_some());
+        assert!(value["session"].get("maxSessionsPerCwd").is_some());
         assert!(value["session"].get("agentMode").is_none());
         assert!(value["models"].get("defaultModel").is_none());
         assert_eq!(value["models"]["scopedModels"], serde_json::json!([]));
@@ -1257,8 +1147,7 @@ mod tests {
         assert!(obj.contains_key("ui"));
         assert!(obj.contains_key("preferredChatLanguage"));
         assert!(obj.contains_key("session"));
-        assert!(obj["session"].get("retention").is_some());
-        assert_eq!(obj["session"]["retention"]["maxSessionsPerCwd"], 40);
+        assert_eq!(obj["session"]["maxSessionsPerCwd"], 40);
         assert!(obj.contains_key("models"));
         assert!(!obj.contains_key("provider"));
         assert!(obj.contains_key("maxRetries"));
@@ -1291,7 +1180,7 @@ mod tests {
     #[test]
     fn file_picker_settings_default_hidden_off() {
         let settings = Settings::defaults();
-        assert!(!settings.ui.file_picker.show_hidden_files);
+        assert!(!settings.ui.show_hidden_files);
     }
 
     #[test]
@@ -1300,7 +1189,7 @@ mod tests {
         let paths = test_paths(&tmp);
         Settings::ensure(&paths).expect("ensure");
         let loaded = Settings::load(&paths).expect("load");
-        assert_eq!(loaded.models.embed.model, EmbedModel::AllMiniLML6V2);
+        assert_eq!(loaded.models.embed_model, EmbedModel::AllMiniLML6V2);
         // New knobs default when section/fields are missing.
         assert!(loaded.memory.enabled);
         assert!(loaded.memory.auto_recall);
@@ -1309,7 +1198,7 @@ mod tests {
         assert_eq!(loaded.memory.top_k, 8);
         assert_eq!(loaded.memory.context_budget_chars, 4000);
         assert_eq!(loaded.memory.min_query_length, 8);
-        assert_eq!(loaded.models.embed.gpu_acceleration, GpuAcceleration::Auto);
+        assert_eq!(loaded.models.embed_gpu_acceleration, GpuAcceleration::Auto);
     }
 
     #[test]
@@ -1483,20 +1372,23 @@ mod tests {
         let paths = test_paths(&tmp);
         Settings::ensure(&paths).expect("ensure");
         let mut home = Settings::load_home(&paths).expect("home");
-        home.trust.default_project_trust = DefaultProjectTrust::Ask;
         home.ui.show_thinking = true;
         home.preferred_chat_language = "english".into();
         Settings::save(&paths, &home).expect("save");
         std::fs::create_dir_all(paths.project_elph_dir()).expect("project dir");
         std::fs::write(
             paths.project_settings_path(),
-            r#"{"preferredChatLanguage":"Indonesian","ui":{"showThinking":false}}"#,
+            r#"{"preferredChatLanguage":"Indonesian","ui":{"showThinking":false},"notifications":{"onStartupReady":false}}"#,
         )
         .expect("project");
         let loaded = Settings::load(&paths).expect("load");
         assert!(!loaded.ui.show_thinking);
         assert_eq!(loaded.preferred_chat_language, "Indonesian");
-        assert!(!Settings::project_extensions_allowed(&paths, &loaded));
+        assert!(!loaded.notifications.on_startup_ready);
+        assert!(
+            !crate::platform::scaffold::TrustStore::project_extensions_allowed(&paths, paths.project_dir())
+                .expect("trust")
+        );
     }
 
     #[test]

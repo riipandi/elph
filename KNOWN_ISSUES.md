@@ -180,4 +180,4 @@ Options:
 
 ### Current Limitation
 
-GPU device selection is handled at **compile time** via cargo features, not at runtime. The `models.embed.gpuAcceleration` setting controls whether GPU is attempted (on/off/auto) but cannot switch between CPU/GPU dynamically without rebuilding. To use GPU, you must rebuild with the appropriate feature flag.
+GPU device selection is handled at **compile time** via cargo features, not at runtime. The `models.embedGpuAcceleration` setting controls whether GPU is attempted (on/off/auto) but cannot switch between CPU/GPU dynamically without rebuilding. To use GPU, you must rebuild with the appropriate feature flag.

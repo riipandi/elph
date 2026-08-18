@@ -647,7 +647,7 @@ pub fn write_help(out: &mut String, sty: MemoryStyle) {
     let _ = writeln!(
         out,
         "{}",
-        sty.paint(S_MUTED, "Embed model: settings.models.embed (model, quantized)")
+        sty.paint(S_MUTED, "Embed model: settings.models.embedModel / embedQuantized")
     );
     let _ = writeln!(out);
     let _ = writeln!(out, "{}", sty.paint(S_TITLE, "Examples"));

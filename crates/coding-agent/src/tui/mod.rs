@@ -182,7 +182,7 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
         cwd: cwd,
         execution_env: execution_env,
         paths: paths,
-        file_picker_show_hidden: settings.ui.file_picker.show_hidden_files,
+        file_picker_show_hidden: settings.ui.show_hidden_files,
         allow_mode_change_while_busy: settings.ui.allow_mode_change_while_busy,
         turn_stats_enabled: settings.ui.turn_stats,
         initial_git_footer: git_footer,

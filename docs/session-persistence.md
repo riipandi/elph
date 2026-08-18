@@ -172,7 +172,7 @@ No need for a separate `transcript` table: reconstructing TUI cards from the mes
 
 ## Retention (`settings.json`)
 
-All knobs are under **`session.retention`** and **`compaction.physicalPrune`**. Layers: home `CONFIG_DIR/settings.json` ← project `.elph/settings.json` (project wins).
+All knobs are under **`session`** and **`compaction.physicalPrune`**. Layers: home `CONFIG_DIR/settings.json` ← project `.elph/settings.json` (project wins).
 
 ```json
 {
@@ -220,7 +220,7 @@ elph session unpin <SESSION_ID>
 elph session prune [--dry-run]
 ```
 
-GC runs automatically when `session.retention.gcOnOpen` is true (on coding session open). CLI `session prune` uses the same policy.
+GC runs automatically when `session.gcOnOpen` is true (on coding session open). CLI `session prune` uses the same policy.
 
 After compaction, when `compaction.physicalPrune` is true, entries not on the active post-compaction branch are deleted from `session_entries` (turn rollups in `session_turns` are kept).
 

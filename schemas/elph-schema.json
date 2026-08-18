@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://elph.space/elph-schema.json",
     "title": "Elph settings configuration",
-    "description": "User preferences for the Elph coding agent, grouped by domain. Active model, thinking level, and agent mode are per-session (not stored here). Home: CONFIG_DIR/settings.json. Optional project overrides: <workDir>/.elph/settings.json (same shape). Merge: defaults \u2190 home \u2190 project always (project wins per nested key; arrays replace). trust.defaultProjectTrust only gates project WASM extensions. Runtime saves write the home layer only. Unknown keys are ignored. Top-level transport: maxRetries, defaultTimeout.",
+    "description": "User preferences for the Elph coding agent. Active model, thinking level, and agent mode are per-session (not stored here). Home: CONFIG_DIR/settings.json. Project: <workDir>/.elph/settings.json. Merge: defaults \u2190 home \u2190 project always (project wins per nested key; arrays replace). MCP cache is in mcp.json; project-extension trust is in trust.json. Runtime saves write the home layer only. Unknown keys are ignored.",
     "type": "object",
     "additionalProperties": false,
     "properties": {
@@ -43,9 +43,6 @@
         "memory": {
             "$ref": "#/definitions/memory"
         },
-        "mcp": {
-            "$ref": "#/definitions/mcp"
-        },
         "notifications": {
             "$ref": "#/definitions/notifications"
         },
@@ -61,17 +58,26 @@
         "resources": {
             "$ref": "#/definitions/resources"
         },
-        "tools": {
-            "$ref": "#/definitions/tools"
+        "defaultTools": {
+            "oneOf": [{ "type": "null" }, { "type": "array", "items": { "type": "string" } }],
+            "description": "Built-in tool allowlist. null/omitted = all builtins. [] = none (list_available_tools and list_skills stay). MCP and WASM tools are not filtered."
         },
-        "trust": {
-            "$ref": "#/definitions/trust"
+        "shellPath": {
+            "oneOf": [{ "type": "string" }, { "type": "null" }],
+            "description": "Custom shell binary. Leading ~ is expanded."
         },
-        "shell": {
-            "$ref": "#/definitions/shell"
+        "shellCommandPrefix": {
+            "oneOf": [{ "type": "string" }, { "type": "null" }],
+            "description": "Prefix prepended to every shell_exec command."
         },
-        "network": {
-            "$ref": "#/definitions/network"
+        "httpProxy": {
+            "oneOf": [{ "type": "string" }, { "type": "null" }],
+            "description": "HTTP proxy URL applied as HTTP_PROXY and HTTPS_PROXY when those env vars are unset."
+        },
+        "quietStartup": {
+            "type": "boolean",
+            "default": false,
+            "description": "Hide bootstrap spinner / startup chatter. ELPH_QUIET still wins when set."
         }
     },
     "definitions": {
@@ -122,8 +128,10 @@
                     "enum": ["compact", "loose"],
                     "description": "Transcript log density: compact (default) packs collapsed tool call items into a grouped log (no blank line between them). Expanded (accessed) tool call items, Thinking, and AI chat response/assistant items always keep line breaks above and below. Loose keeps a blank line between every process-log row."
                 },
-                "filePicker": {
-                    "$ref": "#/definitions/filePicker"
+                "showHiddenFiles": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "When true, @ file search includes dotfiles and dot-directories."
                 },
                 "allowModeChangeWhileBusy": {
                     "type": "boolean",
@@ -134,11 +142,6 @@
                     "type": "boolean",
                     "default": true,
                     "description": "When true (default), show a dimmed per-turn stats card under the last assistant reply after each completed turn: duration, tokens in/out, cached tokens (when reported), and provider/model."
-                },
-                "quietStartup": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Hide bootstrap spinner / startup chatter. ELPH_QUIET still wins when set."
                 }
             }
         },
@@ -249,18 +252,6 @@
                 }
             ]
         },
-        "filePicker": {
-            "type": "object",
-            "additionalProperties": false,
-            "description": "@-mention file picker preferences.",
-            "properties": {
-                "showHiddenFiles": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "When true, @ file search includes dotfiles and dot-directories."
-                }
-            }
-        },
         "models": {
             "type": "object",
             "additionalProperties": false,
@@ -323,40 +314,21 @@
                     },
                     "description": "Custom thinking token budgets per level."
                 },
-                "embed": {
-                    "$ref": "#/definitions/embed",
-                    "description": "Local ONNX / Hugging Face embedding model for floppy memory."
-                }
-            }
-        },
-        "embed": {
-            "type": "object",
-            "additionalProperties": false,
-            "description": "Local embedding model for vector search (memory).",
-            "properties": {
-                "model": {
+                "embedModel": {
                     "type": "string",
                     "default": "allMiniLML6V2",
-                    "enum": [
-                        "allMiniLML6V2",
-                        "jinaEmbeddingsV2BaseEn",
-                        "jinaEmbeddingsV2SmallEn",
-                        "nomicEmbedTextV15",
-                        "qwen3Embedding06B",
-                        "gemmaEmbedding300M"
-                    ],
-                    "description": "Embedding model: allMiniLML6V2 (fast, 384d), jinaEmbeddingsV2BaseEn (768d, better), jinaEmbeddingsV2SmallEn (512d, faster), nomicEmbedTextV15 (768d, 8192 context), qwen3Embedding06B (modern), gemmaEmbedding300M (Google)."
+                    "description": "Local embedding model id (catalog name or Hugging Face repo)."
                 },
-                "quantized": {
+                "embedQuantized": {
                     "type": "boolean",
                     "default": true,
                     "description": "Prefer quantized ONNX weights when a *Q variant exists."
                 },
-                "gpuAcceleration": {
+                "embedGpuAcceleration": {
                     "type": "string",
                     "enum": ["on", "off", "auto"],
                     "default": "auto",
-                    "description": "GPU acceleration mode: on (always use GPU), off (CPU-only), auto (detect and use GPU if available, default). GPU selection is compile-time via cargo features (metal or cuda), not runtime."
+                    "description": "GPU acceleration: on, off, or auto. Device selection is compile-time (metal/cuda features)."
                 }
             }
         },
@@ -424,7 +396,7 @@
         "memory": {
             "type": "object",
             "additionalProperties": false,
-            "description": "Floppy project memory hooks and retrieval. Embedding model is under models.embed.",
+            "description": "Floppy project memory hooks and retrieval. Embedding model is models.embedModel.",
             "properties": {
                 "enabled": {
                     "type": "boolean",
@@ -463,25 +435,6 @@
                     "minimum": 0,
                     "default": 8,
                     "description": "Minimum user prompt length to trigger auto-recall. Task-like short prompts still recall."
-                }
-            }
-        },
-        "mcp": {
-            "type": "object",
-            "additionalProperties": false,
-            "description": "MCP client preferences — tool result cache retention.",
-            "properties": {
-                "cacheTtlSecs": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "default": 60,
-                    "description": "Tool result cache TTL in seconds. 0 disables caching. Per-server cacheTtlMs in mcp.json overrides this."
-                },
-                "cacheMaxEntries": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "default": 2048,
-                    "description": "Maximum cache entries before eviction."
                 }
             }
         },
@@ -575,13 +528,6 @@
             "additionalProperties": false,
             "description": "Session storage and retention (not live model/mode state).",
             "properties": {
-                "retention": { "$ref": "#/definitions/sessionRetention" }
-            }
-        },
-        "sessionRetention": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
                 "enabled": { "type": "boolean", "default": true },
                 "gcOnOpen": { "type": "boolean", "default": true },
                 "maxSessionsPerCwd": { "type": "integer", "minimum": 0, "default": 40 },
@@ -648,56 +594,6 @@
                     "type": "boolean",
                     "default": true,
                     "description": "Register discovered skills as /name slash commands."
-                }
-            }
-        },
-        "tools": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-                "default": {
-                    "oneOf": [
-                        { "type": "null" },
-                        { "type": "array", "items": { "type": "string" } }
-                    ],
-                    "description": "Built-in tool allowlist. null/omitted = all builtins. [] = none (list_available_tools and list_skills stay). MCP and WASM tools are not filtered."
-                }
-            }
-        },
-        "trust": {
-            "type": "object",
-            "additionalProperties": false,
-            "description": "Global-only project trust fallback. Project settings cannot override this group.",
-            "properties": {
-                "defaultProjectTrust": {
-                    "type": "string",
-                    "enum": ["ask", "always", "never"],
-                    "default": "ask",
-                    "description": "When trust.json has no decision for this folder: always loads project WASM extensions; ask and never skip those extensions (no prompt UI in this version — ask behaves like never). Does not affect project settings.json, skills, or prompts."
-                }
-            }
-        },
-        "shell": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-                "path": {
-                    "oneOf": [{ "type": "string" }, { "type": "null" }],
-                    "description": "Custom shell binary. Leading ~ is expanded."
-                },
-                "commandPrefix": {
-                    "oneOf": [{ "type": "string" }, { "type": "null" }],
-                    "description": "Prefix prepended to every shell_exec command."
-                }
-            }
-        },
-        "network": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-                "httpProxy": {
-                    "oneOf": [{ "type": "string" }, { "type": "null" }],
-                    "description": "HTTP proxy URL applied as HTTP_PROXY and HTTPS_PROXY when those env vars are unset. Global setting."
                 }
             }
         }

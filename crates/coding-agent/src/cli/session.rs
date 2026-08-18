@@ -43,7 +43,7 @@ pub enum SessionCommands {
         /// Session ID to unpin
         id: String,
     },
-    /// Run session retention GC using settings (`session.retention`)
+    /// Run session retention GC using settings (`session`)
     Prune {
         /// Report candidates only; do not delete
         #[arg(long)]
@@ -131,9 +131,9 @@ fn pin_session(paths: &Paths, id: &str, pinned: bool) -> ExitCode {
 fn prune_sessions(paths: &Paths, dry_run: bool) -> ExitCode {
     match elph_agent::block_on(async {
         let settings = crate::platform::Settings::load(paths)?;
-        let r = &settings.session.retention;
+        let r = &settings.session;
         if !r.enabled && !dry_run {
-            anyhow::bail!("session.retention.enabled is false (enable in settings.json or use --dry-run)");
+            anyhow::bail!("session.enabled is false (enable in settings.json or use --dry-run)");
         }
         let db = std::sync::Arc::new(crate::platform::datastore::ensure_database(paths).await?);
         let policy = elph_agent::RetentionPolicy {

@@ -27,9 +27,9 @@ impl Settings {
         true
     }
 
-    /// Project WASM extensions require `/trust` or `trust.defaultProjectTrust: always`.
+    /// Project WASM extensions require `/trust` or `trust.json` `defaultProjectTrust: always`.
     pub fn include_project_extensions(&self, paths: &crate::platform::Paths) -> bool {
-        Settings::project_extensions_allowed(paths, self)
+        crate::platform::scaffold::TrustStore::project_extensions_allowed(paths, paths.project_dir()).unwrap_or(false)
     }
 
     /// Filter discovered skills by `resources.disabledSkills` and `resources.skills` `!` / `-` patterns.
@@ -58,13 +58,7 @@ impl Settings {
 
     /// Apply HTTP proxy env from settings when the process has no proxy vars yet.
     pub fn apply_http_proxy_env(&self) {
-        let Some(url) = self
-            .network
-            .http_proxy
-            .as_deref()
-            .map(str::trim)
-            .filter(|s| !s.is_empty())
-        else {
+        let Some(url) = self.http_proxy.as_deref().map(str::trim).filter(|s| !s.is_empty()) else {
             return;
         };
         if std::env::var_os("HTTP_PROXY").is_none() && std::env::var_os("http_proxy").is_none() {
@@ -77,7 +71,7 @@ impl Settings {
 
     /// Honor `ui.quietStartup` when `ELPH_QUIET` is unset.
     pub fn apply_quiet_startup_env(&self) {
-        if !self.ui.quiet_startup {
+        if !self.quiet_startup {
             return;
         }
         if std::env::var_os("ELPH_QUIET").is_none() {

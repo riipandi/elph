@@ -45,6 +45,10 @@ Use these inline in prose (not table cells):
 - **[Elph delta]** — intentional extension missing upstream
 - **[N/A]** — platform-specific; do not port 1:1
 
+### 2026-08-18 — Product settings flatten + file split (coding-agent)
+
+Settings/MCP/trust layout is an **[Elph delta]** (see [pi-coding-agent.md](./pi-coding-agent.md) timeline). Project `settings.json` always overrides home. MCP cache lives in `mcp.json`; `defaultProjectTrust` lives in `trust.json`.
+
 ## Suggested sync workflow
 
 ### Pi → elph crates

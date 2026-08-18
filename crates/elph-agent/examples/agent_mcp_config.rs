@@ -90,7 +90,11 @@ fn main() {
     println!("  require_approval: {:?}", policy.require_approval);
 
     // ── 5. Assemble config ──
-    let config = McpConfig { servers, policy };
+    let config = McpConfig {
+        servers,
+        policy,
+        ..Default::default()
+    };
 
     println!("\n  total servers:   {}", config.server_count());
     println!("  enabled:         {}", config.enabled_count());

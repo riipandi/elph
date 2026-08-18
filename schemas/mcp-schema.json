@@ -20,6 +20,18 @@
         "policy": {
             "$ref": "#/definitions/policy",
             "description": "Global tool policy. Merged with each server's policy (server rules take precedence)."
+        },
+        "cacheTtlSecs": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 60,
+            "description": "Default tool-result cache TTL in seconds. 0 disables caching. Per-server cacheTtlMs overrides this."
+        },
+        "cacheMaxEntries": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 2048,
+            "description": "Maximum cache entries before eviction."
         }
     },
     "definitions": {

@@ -31,9 +31,10 @@ pub fn open_store_with_session(
         .with_context(|| format!("create {}", paths.project_elph_dir().display()))?;
 
     let settings = Settings::load(paths).context("load settings")?;
-    let model_id = settings.models.embed.model.to_model_id();
+    let embed = settings.models.embed();
+    let model_id = embed.model.to_model_id();
 
-    let dims = resolve_embedding_model(&model_id, settings.models.embed.quantized)
+    let dims = resolve_embedding_model(&model_id, embed.quantized)
         .map(|m| embedding_dims(&m))
         .unwrap_or(DEFAULT_EMBEDDING_DIMS);
 
@@ -59,7 +60,7 @@ pub fn open_store_with_session(
             .with_context(|| format!("create {}", paths.models_dir().display()))?;
 
         // Configure GPU based on user preference and hardware availability
-        let gpu_config = match settings.models.embed.gpu_acceleration {
+        let gpu_config = match embed.gpu_acceleration {
             GpuAcceleration::On => GpuConfig::with_preference(true),
             GpuAcceleration::Off => GpuConfig::with_preference(false),
             GpuAcceleration::Auto => GpuConfig::detect(),
@@ -68,7 +69,7 @@ pub fn open_store_with_session(
 
         let options = EmbedOptions {
             model: Some(model_id),
-            quantized: settings.models.embed.quantized,
+            quantized: embed.quantized,
             cache_dir: Some(paths.models_dir()),
             device,
         };

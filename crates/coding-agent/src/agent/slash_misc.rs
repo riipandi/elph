@@ -70,7 +70,9 @@ pub fn settings_slash_message(paths: &Paths) -> String {
          Project: {} {}\n\
          \n\
          Edit JSON with your editor, then `/reload` in the TUI (or restart).\n\
-         Key groups: ui, models, resources, tools, trust, shell, network, memory, workers, session.retention, notifications.\n\
+         Key groups: ui, models, resources, memory, workers, session, notifications.\n\
+         Also top-level: defaultTools, shellPath, httpProxy, quietStartup.\n\
+         MCP cache lives in mcp.json; project trust in trust.json.\n\
          \n\
          Workers example:\n\
            \"workers\": {{ \"enabled\": true, \"name\": null, \"tuiShowPeers\": true }}\n\

@@ -3673,7 +3673,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         if let Ok(paths) = Paths::resolve()
             && let Ok(mut settings) = Settings::load_home(&paths)
         {
-            settings.ui.file_picker.show_hidden_files = next;
+            settings.ui.show_hidden_files = next;
             let _ = Settings::save(&paths, &settings);
         }
         // Transcript ephemeral notice (subtle grey `transient:*` styling; auto-clears after TTL).

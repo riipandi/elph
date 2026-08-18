@@ -43,6 +43,17 @@ Elph deliberately **diverges** in product design (memory, ACP, WASM extensions, 
 
 ## Timeline
 
+### 2026-08-18 — Settings flatten; MCP/trust leave settings.json
+
+**Scope:** product settings + `mcp.json` + `trust.json`. **[Elph delta]** vs pi’s single flat `settings.json`.
+
+- **Hierarchy fix** — project `.elph/settings.json` always merges (defaults ← home ← project). Earlier `ask`/`never` trust gate dropped project prefs (e.g. `notifications.onStartupReady: false`); that was wrong for Elph. Trust only gates **project WASM extensions**.
+- **Less nesting** — dropped `ui.filePicker`, `models.embed`, `session.retention`, `tools`, `shell`, `network` wrappers. Keys are `ui.showHiddenFiles`, `models.embedModel` / `embedQuantized` / `embedGpuAcceleration`, `session.*`, top-level `defaultTools`, `shellPath`, `shellCommandPrefix`, `httpProxy`, `quietStartup`.
+- **MCP cache** moved to `mcp.json` (`cacheTtlSecs`, `cacheMaxEntries`); per-server `cacheTtlMs` unchanged. Matches archive layout: servers live in `mcp.json`, not `settings.json`.
+- **`defaultProjectTrust`** moved to `trust.json` beside `directories`. **[Partial]** vs pi (`defaultProjectTrust` stays in pi settings.json).
+- `notifications.*` group kept so project flags like `onStartupReady` stay one-level and still apply after merge.
+- No legacy rewrite of old nested keys (`models.embed`, `session.retention`, `settings.mcp`).
+
 ### 2026-08-18 — Settings file surface: filters, trust, host knobs
 
 **Scope:** `crates/coding-agent/src/platform/settings/`, resource loader, session create. Not a TUI `/settings` overlay.

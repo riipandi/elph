@@ -1,6 +1,6 @@
 //! Cross-session retention / GC for the shared project store.
 //!
-//! Host maps `settings.json` `session.retention` into [`RetentionPolicy`] and
+//! Host maps `settings.json` `session` into [`RetentionPolicy`] and
 //! calls [`run_session_gc`]. Never deletes pinned sessions or the optional
 //! protected "latest per cwd" / currently open session id.
 

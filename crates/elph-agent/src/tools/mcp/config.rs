@@ -66,6 +66,12 @@ pub struct McpConfig {
     /// Global tool policy (merged with per-server `policy`).
     #[serde(default, skip_serializing_if = "McpPolicyConfig::is_empty")]
     pub policy: McpPolicyConfig,
+    /// Default tool-result cache TTL in seconds. `0` disables caching. Per-server `cacheTtlMs` wins.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cache_ttl_secs: Option<u64>,
+    /// Max cache entries before eviction.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cache_max_entries: Option<usize>,
 }
 
 impl McpConfig {
@@ -78,7 +84,20 @@ impl McpConfig {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.servers.is_empty() && self.policy.is_empty()
+        self.servers.is_empty()
+            && self.policy.is_empty()
+            && self.cache_ttl_secs.is_none()
+            && self.cache_max_entries.is_none()
+    }
+
+    /// Effective cache TTL in seconds (`60` when unset). `0` disables caching.
+    pub fn cache_ttl_secs_or_default(&self) -> u64 {
+        self.cache_ttl_secs.unwrap_or(60)
+    }
+
+    /// Effective cache capacity (`2048` when unset).
+    pub fn cache_max_entries_or_default(&self) -> usize {
+        self.cache_max_entries.unwrap_or(2048)
     }
 
     pub fn server_count(&self) -> usize {
@@ -108,6 +127,12 @@ impl McpConfig {
         }
         for (name, server) in &overlay.servers {
             out.servers.insert(name.clone(), server.clone());
+        }
+        if overlay.cache_ttl_secs.is_some() {
+            out.cache_ttl_secs = overlay.cache_ttl_secs;
+        }
+        if overlay.cache_max_entries.is_some() {
+            out.cache_max_entries = overlay.cache_max_entries;
         }
         out
     }

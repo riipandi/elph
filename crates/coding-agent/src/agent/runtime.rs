@@ -60,8 +60,8 @@ pub async fn create_coding_session_with_events(
     let database = Arc::new(crate::platform::datastore::ensure_database(options.paths).await?);
 
     // Best-effort session retention GC (settings-driven). Never mid-turn; skip if disabled.
-    if options.settings.session.retention.enabled && options.settings.session.retention.gc_on_open {
-        let r = &options.settings.session.retention;
+    if options.settings.session.enabled && options.settings.session.gc_on_open {
+        let r = &options.settings.session;
         let policy = elph_agent::RetentionPolicy {
             enabled: true,
             max_sessions_per_cwd: r.max_sessions_per_cwd,
@@ -94,8 +94,7 @@ pub async fn create_coding_session_with_events(
     let mut env = LocalExecutionEnv::new(options.cwd);
     if let Some(path) = options
         .settings
-        .shell
-        .path
+        .shell_path
         .as_deref()
         .map(str::trim)
         .filter(|s| !s.is_empty())
@@ -111,8 +110,7 @@ pub async fn create_coding_session_with_events(
     }
     if let Some(prefix) = options
         .settings
-        .shell
-        .command_prefix
+        .shell_command_prefix
         .as_deref()
         .map(str::trim)
         .filter(|s| !s.is_empty())
@@ -153,11 +151,12 @@ pub async fn create_coding_session_with_events(
         (Arc::new(elph_agent::McpToolRegistry::empty()), Vec::new())
     } else {
         let mcp_cache_path = session_manager.mcp_cache_path(&session_id);
-        let mcp_cache = elph_agent::McpCacheStore::open(&mcp_cache_path, options.settings.mcp.cache_max_entries).ok();
+        let mcp_cfg = crate::platform::mcp::load_config(options.paths).unwrap_or_default();
+        let mcp_cache = elph_agent::McpCacheStore::open(&mcp_cache_path, mcp_cfg.cache_max_entries_or_default()).ok();
         discover_mcp_registry(
             options.paths,
             mcp_cache.map(Arc::new),
-            options.settings.mcp.cache_ttl_secs.saturating_mul(1000),
+            mcp_cfg.cache_ttl_secs_or_default().saturating_mul(1000),
         )
         .await
     };
@@ -459,7 +458,7 @@ pub async fn create_coding_session_with_events(
             .map(|t| t.name().to_string())
             .filter(|name| !is_mcp_tool(name))
             .collect();
-        crate::platform::settings::apply::filter_default_tools(&names, options.settings.tools.default.as_deref())
+        crate::platform::settings::apply::filter_default_tools(&names, options.settings.default_tools.as_deref())
     };
     // Prefer restore for semi-durable recovery (queues, ops, tool-result repair, config rehydrate).
     let harness = AgentHarness::restore(
@@ -596,7 +595,7 @@ pub async fn create_coding_session_with_events(
         ste_enabled: options.settings.simplified_technical_english,
         worker_runtime,
         plan_reentry,
-        default_tools: options.settings.tools.default.clone(),
+        default_tools: options.settings.default_tools.clone(),
     })
     .await?;
 

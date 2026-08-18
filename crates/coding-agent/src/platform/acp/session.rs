@@ -261,7 +261,7 @@ pub(super) async fn open_or_create(
     };
     // GC on open can lock the store for a long time and the client will kill stdio
     // (`incoming_transport_closed` on `session/new`). Run retention from the TUI / cron instead.
-    settings.session.retention.gc_on_open = false;
+    settings.session.gc_on_open = false;
 
     if let Some(id) = resume_id {
         let manager = crate::agent::SessionManager::new(&paths, cwd)?;

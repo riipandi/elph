@@ -24,12 +24,12 @@ Project overrides: `<project>/.elph/settings.json`, `mcp.json`, `skills/`, `prom
 
 ## Settings merge
 
-Home settings are always merged with project `.elph/settings.json` (project wins; arrays replace). `trust.*` is home-only and only gates project WASM extensions (`/trust` or `trust.defaultProjectTrust: always`).
+Home settings are always merged with project `.elph/settings.json` (project wins; arrays replace). MCP cache is in `mcp.json`. Project WASM extensions are gated by `trust.json` (`/trust` or `defaultProjectTrust: always`).
 
 `models.defaultModel` and `models.defaultThinkingLevel` seed **new** sessions only;
 live model, thinking level, and agent mode are per-session (not shared settings).
 
-Filter the catalog with `models.enabled` (globs). Filter skills with `resources.disabledSkills` and extra paths in `resources.skills`. Builtin tools: `tools.default`. See repo `docs/settings.md`.
+Filter the catalog with `models.enabled` (globs). Filter skills with `resources.disabledSkills`. Builtin tools: `defaultTools`. See repo `docs/settings.md`.
 
 ### Transcript log density
 
