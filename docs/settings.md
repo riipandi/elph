@@ -77,6 +77,12 @@ Crash reports: `APP_DATA/logs/crash-YYMMDDhh.jsonl` (UTC hour). Console JSONL is
 
 See [elph-agent observability](../crates/elph-agent/docs/observability.md).
 
+## Doctor
+
+`elph doctor` reports terminal / multiplexer / SSH / color / clipboard (same class of facts as `grok doctor`), then config health: writable dirs, settings and MCP parse, `auth.json` (provider ids only), skill/template/agent load, `store.db` presence, and git HEAD. Findings include a one-line remediation. It does not create a session, write the clipboard, or print secrets.
+
+`elph doctor --json` (`schemaVersion` 1) is the snapshot to attach to a bug report. Also attach `APP_DATA/logs/elph.jsonl` and any `crash-*.jsonl`. Never attach `auth.json`. Connectivity probes stay on `elph mcp doctor`. There is no `doctor fix` — Elph does not rewrite shell or tmux config.
+
 ## Not in settings.json
 
 - **MCP cache** — `mcp.json` keys `cacheTtlSecs` (default 60) and `cacheMaxEntries` (default 2048). Per-server `cacheTtlMs` still wins.

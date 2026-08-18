@@ -34,8 +34,9 @@ Catalog filter: `models.enabled` (globs). Skill filter: `resources.disabledSkill
 | `ELPH_LOG_ROTATION`            | `hourly` / `daily` / `size`                  |
 | `ELPH_TRACE`                   | Distributed tracing on/off                   |
 
-Inspect what Elph discovered:
+Inspect what Elph discovered (paths, settings, auth provider ids, MCP counts, skills, store, logs). Attach `--json` to bug reports — never `auth.json`.
 
 ```sh
 elph doctor
+elph doctor --json
 ```

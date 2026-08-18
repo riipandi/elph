@@ -52,3 +52,10 @@ Filter the catalog with `models.enabled` (globs). Filter skills with `resources.
 | `ELPH_TRACE`                   | Distributed tracing on/off                   |
 
 Logs live under `APP_DATA/logs/`: `elph.jsonl`, `elph-traces.jsonl`, `crash-YYMMDDhh.jsonl`, `mcp.log`. Optional `settings.json` `logging` group (restart required); env wins. See repo `docs/settings.md`.
+
+Inspect what Elph discovered for this directory (terminal, clipboard, color, config, auth provider ids, MCP counts, skills, store, logs):
+
+```sh
+elph doctor
+elph doctor --json   # attach this to a bug report (no secrets)
+```

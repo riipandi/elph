@@ -125,7 +125,7 @@ pub enum Commands {
     Acp(AcpArgs),
     /// Generate shell completion scripts (bash, zsh, fish, powershell, etc)
     Completions(CompletionsArgs),
-    /// Show the configuration Elph discovers for this directory
+    /// Diagnose terminal, clipboard, config, and print a secret-free bug-report snapshot
     Doctor(DoctorArgs),
     /// Export a session transcript or archive
     Export(ExportArgs),

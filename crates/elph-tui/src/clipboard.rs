@@ -5,6 +5,22 @@
 use anyhow::{Result, bail};
 use clipboard_rs::{Clipboard, ClipboardContext};
 
+/// Probe whether the system clipboard can be opened (no read/write).
+pub fn clipboard_available() -> bool {
+    ClipboardContext::new().is_ok()
+}
+
+/// Short backend label for doctor / diagnostics (no secrets).
+pub fn clipboard_backend() -> &'static str {
+    if cfg!(target_os = "macos") {
+        "native (clipboard_rs / pbcopy)"
+    } else if cfg!(target_os = "windows") {
+        "native (clipboard_rs)"
+    } else {
+        "native (clipboard_rs)"
+    }
+}
+
 /// Copy plain text to the system clipboard.
 ///
 /// Empty strings are accepted (clears to empty clipboard content where supported).

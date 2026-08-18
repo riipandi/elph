@@ -303,7 +303,7 @@ Typical flags: `--model`, `--provider`, `--thinking`, `--continue`/`-c`, `--resu
 - `export` / `import` — **[Partial]** JSONL full-tree export + import-to-new-session (Pi intent); HTML export / gist share still gap
 - `mcp` — **[Partial]** stubs (pi MCP packaging differs)
 - `plugin` / extensions — **[Partial]** vs pi extensions + package manager
-- `doctor`, `stats`, `update` — **stubs**
+- `doctor` — **implemented** (health + secret-free JSON snapshot); `stats` / `update` — **stubs**
 - `acp`, `memory` — present, **[Elph delta]**
 - `server` — **stub**, **[Elph delta]**
 - `worktree` — **stubs**; packaging differs from pi
