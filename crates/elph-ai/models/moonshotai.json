@@ -1,4 +1,5 @@
 {
+    "$schema": "https://elph.space/provider-schema.json",
     "kimi-k2-0711-preview": {
         "api": "openai-completions",
         "baseUrl": "https://api.moonshot.ai/v1",

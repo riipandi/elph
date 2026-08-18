@@ -155,6 +155,17 @@ mod tests {
     use super::*;
 
     #[test]
+    fn accepts_schema_url() {
+        let raw = r#"{
+            "$schema": "https://elph.space/mcp-schema.json",
+            "mcpServers": {}
+        }"#;
+        let cfg = parse_and_validate_mcp_config(raw).expect("valid");
+        assert!(cfg.is_empty());
+        assert_eq!(cfg.schema, "https://elph.space/mcp-schema.json");
+    }
+
+    #[test]
     fn accepts_valid_stdio_config() {
         let raw = r#"{
             "mcpServers": {

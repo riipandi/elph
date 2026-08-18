@@ -1,4 +1,5 @@
 {
+    "$schema": "https://elph.space/provider-schema.json",
     "abacusai/dracarys-llama-3.1-70b-instruct": {
         "api": "openai-completions",
         "baseUrl": "https://integrate.api.nvidia.com/v1",

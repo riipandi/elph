@@ -27,6 +27,11 @@ pub fn parse_provider_catalog_json(json: &str) -> Result<Vec<Model>, String> {
 
     let map_value = if let Some(models) = value.get("models") {
         models.clone()
+    } else if let serde_json::Value::Object(mut map) = value {
+        for key in ["$schema", "name", "baseUrl", "api", "headers", "auth", "models"] {
+            map.remove(key);
+        }
+        serde_json::Value::Object(map)
     } else {
         value
     };
@@ -160,6 +165,28 @@ fn parse_compat(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parse_map_catalog_ignores_schema_key() {
+        let json = r#"{
+          "$schema": "https://elph.space/provider-schema.json",
+          "m1": {
+            "id": "m1",
+            "name": "M1",
+            "api": "openai-completions",
+            "provider": "custom",
+            "baseUrl": "https://example.com",
+            "reasoning": false,
+            "input": ["text"],
+            "cost": {"input":1,"output":1,"cacheRead":0,"cacheWrite":0},
+            "contextWindow": 8000,
+            "maxTokens": 1024
+          }
+        }"#;
+        let models = parse_provider_catalog_json(json).expect("parse");
+        assert_eq!(models.len(), 1);
+        assert_eq!(models[0].id, "m1");
+    }
 
     #[test]
     fn parse_map_catalog() {

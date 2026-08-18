@@ -1,4 +1,5 @@
 {
+    "$schema": "https://elph.space/provider-schema.json",
     "glm-4.5": {
         "api": "openai-completions",
         "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",

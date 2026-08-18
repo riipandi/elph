@@ -1,4 +1,5 @@
 {
+    "$schema": "https://elph.space/provider-schema.json",
     "gpt-5.3-codex-spark": {
         "api": "openai-codex-responses",
         "baseUrl": "https://chatgpt.com/backend-api",

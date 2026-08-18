@@ -16,6 +16,7 @@
 //!
 //! ```json
 //! {
+//!   "$schema": "https://elph.space/elph-schema.json",
 //!   "preferredChatLanguage": "english",
 //!   "maxRetries": 2,
 //!   "defaultTimeout": "120s",
@@ -113,6 +114,9 @@ impl SettingsScope {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
+    /// JSON Schema URL for editor autocompletion. Ignored at runtime.
+    #[serde(rename = "$schema", default = "default_elph_schema")]
+    pub schema: String,
     /// Preferred language for AI chat responses in the transcript.
     ///
     /// Code, comments, and documentation remain in English regardless of this setting.
@@ -830,6 +834,7 @@ impl Settings {
     /// are never written here.
     pub fn defaults() -> Self {
         Self {
+            schema: default_elph_schema(),
             preferred_chat_language: default_preferred_chat_language(),
             max_retries: default_provider_max_retries(),
             default_timeout: default_provider_timeout(),
@@ -1010,6 +1015,10 @@ fn default_inherit_model() -> String {
     "inherit".to_string()
 }
 
+fn default_elph_schema() -> String {
+    "https://elph.space/elph-schema.json".to_string()
+}
+
 fn default_preferred_chat_language() -> String {
     "english".to_string()
 }
@@ -1180,6 +1189,7 @@ mod tests {
     fn nested_shape_serializes_domain_groups() {
         let json = serde_json::to_value(Settings::defaults()).expect("ser");
         let obj = json.as_object().expect("object");
+        assert_eq!(obj["$schema"], "https://elph.space/elph-schema.json");
         assert!(obj.contains_key("ui"));
         assert!(obj.contains_key("preferredChatLanguage"));
         assert!(obj.contains_key("session"));
@@ -1260,6 +1270,7 @@ mod tests {
         assert_eq!(before, after);
         assert!(before.contains("\"ui\""));
         assert!(before.contains("\"models\""));
+        assert!(before.contains("\"$schema\": \"https://elph.space/elph-schema.json\""));
     }
 
     #[test]

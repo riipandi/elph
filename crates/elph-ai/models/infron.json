@@ -1,4 +1,5 @@
 {
+    "$schema": "https://elph.space/provider-schema.json",
     "aion-labs/aion-2.0": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",

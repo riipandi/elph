@@ -49,7 +49,8 @@ pub fn generate_image(options: ImageOptions) -> Result<()> {
         let json = providers.get(provider_id).unwrap();
         let count = json.as_object().map(|m| m.len()).unwrap_or(0);
         let out_path = options.images_dir.join(format!("{provider_id}.json"));
-        let pretty = serde_json::to_string_pretty(json).context("serialize image catalog json")?;
+        let json = super::common::with_provider_schema(json.clone());
+        let pretty = serde_json::to_string_pretty(&json).context("serialize image catalog json")?;
         fs::write(&out_path, format!("{pretty}\n")).with_context(|| format!("write {}", out_path.display()))?;
         super::term::provider_ok(provider_id, count, &format!("{provider_id}.json"));
     }

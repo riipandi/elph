@@ -1023,7 +1023,7 @@ Subcommands:
 | `test-image` | local fixture                  | `tests/data/red-circle.png`                     |
 | `all`        | chat + image + test-image      | everything                                      |
 
-User override schema: [`schemas/provider-schema.json`](../../schemas/provider-schema.json) — files matching it are merged over the embedded catalogs by `install_provider_catalog_dir`.
+User override schema: [`schemas/provider-schema.json`](../../schemas/provider-schema.json) (`https://elph.space/provider-schema.json`). Generated and unpacked catalogs stamp `$schema`; disk files are merged over the embedded catalogs by `install_provider_catalog_dir`.
 
 ### Adding a New Provider
 

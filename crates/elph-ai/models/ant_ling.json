@@ -1,4 +1,5 @@
 {
+    "$schema": "https://elph.space/provider-schema.json",
     "Ling-2.6-1T": {
         "api": "openai-completions",
         "baseUrl": "https://api.ant-ling.com/v1",

@@ -1,4 +1,5 @@
 {
+    "$schema": "https://elph.space/provider-schema.json",
     "DeepSeek-V4-Flash-0731-Fast": {
         "api": "openai-completions",
         "baseUrl": "https://pass.wafer.ai/v1",

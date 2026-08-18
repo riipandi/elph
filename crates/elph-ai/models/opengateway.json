@@ -1,4 +1,5 @@
 {
+    "$schema": "https://elph.space/provider-schema.json",
     "auto": {
         "api": "openai-completions",
         "baseUrl": "https://opengateway.gitlawb.com/v1",

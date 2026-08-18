@@ -4,7 +4,7 @@ Elph connects to [Model Context Protocol](https://modelcontextprotocol.io/) serv
 
 ## Config
 
-Schema: [`schemas/mcp-schema.json`](../schemas/mcp-schema.json).
+Schema: [`schemas/mcp-schema.json`](../schemas/mcp-schema.json). Bootstrap writes `"$schema": "https://elph.space/mcp-schema.json"` on a new home `mcp.json`.
 
 | Layer       | Path                       | Role                                       |
 | ----------- | -------------------------- | ------------------------------------------ |

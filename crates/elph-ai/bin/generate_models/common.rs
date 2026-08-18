@@ -5,7 +5,25 @@ use std::time::Duration;
 
 use anyhow::bail;
 use anyhow::{Context, Result};
-use serde_json::Value;
+use serde_json::{Map, Value};
+
+/// JSON Schema URL stamped onto generated `models/*.json` catalogs.
+pub const PROVIDER_SCHEMA_URL: &str = "https://elph.space/provider-schema.json";
+
+/// Insert `$schema` as the first key of a catalog object (idempotent).
+pub fn with_provider_schema(json: Value) -> Value {
+    let Value::Object(map) = json else {
+        return json;
+    };
+    let mut out = Map::new();
+    out.insert("$schema".into(), Value::String(PROVIDER_SCHEMA_URL.into()));
+    for (key, value) in map {
+        if key != "$schema" {
+            out.insert(key, value);
+        }
+    }
+    Value::Object(out)
+}
 
 /// Optional local pi clone for **image** catalog scripts only (not chat origin).
 ///

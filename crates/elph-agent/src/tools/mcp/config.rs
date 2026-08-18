@@ -57,9 +57,12 @@ fn default_true() -> bool {
 /// Typical locations:
 /// - **Home / global:** `~/.elph/mcp.json` (host config dir)
 /// - **Project override:** `<project>/.elph/mcp.json` (merged on top of home)
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct McpConfig {
+    /// JSON Schema URL for editor autocompletion. Ignored at runtime.
+    #[serde(rename = "$schema", default = "default_mcp_schema")]
+    pub schema: String,
     /// Named server definitions (key is `mcpServers` in JSON).
     #[serde(rename = "mcpServers", default)]
     pub servers: BTreeMap<String, McpServerConfig>,
@@ -72,6 +75,22 @@ pub struct McpConfig {
     /// Max cache entries before eviction.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cache_max_entries: Option<usize>,
+}
+
+fn default_mcp_schema() -> String {
+    "https://elph.space/mcp-schema.json".to_string()
+}
+
+impl Default for McpConfig {
+    fn default() -> Self {
+        Self {
+            schema: default_mcp_schema(),
+            servers: BTreeMap::new(),
+            policy: McpPolicyConfig::default(),
+            cache_ttl_secs: None,
+            cache_max_entries: None,
+        }
+    }
 }
 
 impl McpConfig {
@@ -133,6 +152,9 @@ impl McpConfig {
         }
         if overlay.cache_max_entries.is_some() {
             out.cache_max_entries = overlay.cache_max_entries;
+        }
+        if !overlay.schema.is_empty() {
+            out.schema = overlay.schema.clone();
         }
         out
     }

@@ -87,6 +87,7 @@ fn ensure_home_dirs(paths: &Paths) -> Result<()> {
 
 fn ensure_files(paths: &Paths, app_version: &str) -> Result<()> {
     super::settings::Settings::ensure(paths)?;
+    super::mcp::ensure(paths)?;
     TrustStore::ensure(paths)?;
     VersionFile::ensure(paths, app_version)?;
     ChangelogScaffold::ensure(paths)?;

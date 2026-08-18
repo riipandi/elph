@@ -45,6 +45,15 @@ pub fn config_path(paths: &Paths, scope: McpConfigScope) -> PathBuf {
     }
 }
 
+/// Create home `mcp.json` with `$schema` and an empty server map when missing.
+pub fn ensure(paths: &Paths) -> Result<()> {
+    let path = config_path(paths, McpConfigScope::Home);
+    if path.exists() {
+        return Ok(());
+    }
+    save_layer(paths, McpConfigScope::Home, &McpConfig::default())
+}
+
 /// Load one layer (missing file → empty config).
 pub fn load_layer(paths: &Paths, scope: McpConfigScope) -> Result<McpConfig> {
     load_file(&config_path(paths, scope))
@@ -230,6 +239,19 @@ mod tests {
         let project = tmp.path().join("repo");
         std::fs::create_dir_all(project.join(".elph")).unwrap();
         Paths::from_dirs(config, data, project)
+    }
+
+    #[test]
+    fn ensure_writes_schema_when_missing() {
+        let tmp = tempdir().unwrap();
+        let paths = test_paths(&tmp);
+        ensure(&paths).unwrap();
+        let raw = std::fs::read_to_string(paths.mcp_config_path()).unwrap();
+        assert!(raw.contains("\"$schema\": \"https://elph.space/mcp-schema.json\""));
+        let loaded = load_layer(&paths, McpConfigScope::Home).unwrap();
+        assert!(loaded.is_empty());
+        ensure(&paths).unwrap();
+        assert_eq!(std::fs::read_to_string(paths.mcp_config_path()).unwrap(), raw);
     }
 
     #[test]

@@ -1,4 +1,5 @@
 {
+    "$schema": "https://elph.space/provider-schema.json",
     "ai21/jamba-large-1.7": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",

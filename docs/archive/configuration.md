@@ -341,7 +341,7 @@ Optional native OS notifications (macOS Notification Center, Linux D-Bus, Window
 
 One file per provider; id = filename without extension.
 
-Schema: [schemas/provider-schema.json](../schemas/provider-schema.json) — full model shape aligned with `crates/elph-ai/models/*.json` (including required `thinkingLevelMap` with keys `off|minimal|low|medium|high|xhigh|max`).
+Schema: [schemas/provider-schema.json](../schemas/provider-schema.json) — map of `modelId →` model (or wrapper `{ "models": … }`). Generated files include `"$schema": "https://elph.space/provider-schema.json"`. Chat entries require `thinkingLevelMap` keys `off|minimal|low|medium|high|xhigh|max`.
 
 Supported APIs (see schema enum): `openai-completions`, `openai-responses`, `openai-codex-responses`, `azure-openai-responses`, `anthropic-messages`, `google-generative-ai`, `google-vertex`, `bedrock-converse-stream`, `mistral-conversations`.
 

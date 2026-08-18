@@ -1,4 +1,5 @@
 {
+    "$schema": "https://elph.space/provider-schema.json",
     "auto": {
         "api": "openai-responses",
         "baseUrl": "https://api.individual.githubcopilot.com",

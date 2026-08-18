@@ -13,12 +13,13 @@ User preferences live in JSON. The host (`elph`) maps them into `elph-agent` / `
 
 Merge for settings and MCP: defaults ← home ← **project always** (nested objects deep-merge; arrays replace). Runtime `Settings::save` writes **home** only.
 
-Schema: `schemas/elph-schema.json`, `schemas/mcp-schema.json`.
+Schema: `schemas/elph-schema.json`, `schemas/mcp-schema.json`. Generated files stamp `$schema` (`https://elph.space/elph-schema.json`, `https://elph.space/mcp-schema.json`, `https://elph.space/provider-schema.json`).
 
 ## Shape (one nesting level)
 
 ```json
 {
+  "$schema": "https://elph.space/elph-schema.json",
   "preferredChatLanguage": "english",
   "simplifiedTechnicalEnglish": true,
   "maxRetries": 2,
