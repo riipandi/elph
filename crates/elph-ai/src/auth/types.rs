@@ -173,14 +173,23 @@ pub struct ApiKeyAuth {
 }
 
 pub type OAuthLoginFn = Arc<
-    dyn Fn(Arc<dyn AuthLoginCallbacks>) -> Pin<Box<dyn Future<Output = anyhow::Result<OAuthCredential>> + Send>>
+    dyn Fn(
+            Arc<dyn AuthLoginCallbacks>,
+            crate::types::ClientIdentity,
+        ) -> Pin<Box<dyn Future<Output = Result<OAuthCredential, super::ModelsError>> + Send>>
         + Send
         + Sync,
 >;
-pub type OAuthRefreshFn =
-    Arc<dyn Fn(OAuthCredential) -> Pin<Box<dyn Future<Output = anyhow::Result<OAuthCredential>> + Send>> + Send + Sync>;
-pub type OAuthToAuthFn =
-    Arc<dyn Fn(OAuthCredential) -> Pin<Box<dyn Future<Output = anyhow::Result<ModelAuth>> + Send>> + Send + Sync>;
+pub type OAuthRefreshFn = Arc<
+    dyn Fn(OAuthCredential) -> Pin<Box<dyn Future<Output = Result<OAuthCredential, super::ModelsError>> + Send>>
+        + Send
+        + Sync,
+>;
+pub type OAuthToAuthFn = Arc<
+    dyn Fn(OAuthCredential) -> Pin<Box<dyn Future<Output = Result<ModelAuth, super::ModelsError>> + Send>>
+        + Send
+        + Sync,
+>;
 
 #[derive(Clone)]
 pub struct OAuthAuth {

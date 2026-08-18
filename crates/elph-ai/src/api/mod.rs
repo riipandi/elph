@@ -1,34 +1,60 @@
-//! Provider API implementations. Stable names are re-exported below; other
-//! submodule paths are for adapters and in-tree tests.
+//! Provider API implementations. Stable names are re-exported below.
 
+#[doc(hidden)]
 pub mod anthropic_messages;
+#[doc(hidden)]
 pub mod azure_base_url;
+#[doc(hidden)]
 pub mod azure_openai_responses;
 #[cfg(feature = "bedrock")]
+#[doc(hidden)]
 pub mod bedrock_converse_stream;
 #[cfg(feature = "bedrock")]
+#[doc(hidden)]
 pub mod bedrock_shared;
+#[doc(hidden)]
 pub mod cloudflare;
+#[doc(hidden)]
 pub mod codex_transport;
+#[doc(hidden)]
 pub mod common;
+#[doc(hidden)]
 pub mod faux;
+#[doc(hidden)]
 pub mod github_copilot_headers;
+#[doc(hidden)]
 pub mod google_generative_ai;
+#[doc(hidden)]
 pub mod google_shared;
+#[doc(hidden)]
 pub mod google_vertex;
+#[doc(hidden)]
 pub mod http_proxy;
+#[doc(hidden)]
 pub mod mistral_conversations;
+#[doc(hidden)]
 pub mod openai_codex_responses;
+#[doc(hidden)]
 pub mod openai_compat;
+#[doc(hidden)]
 pub mod openai_completions;
+#[doc(hidden)]
 pub mod openai_prompt_cache;
+#[doc(hidden)]
 pub mod openai_responses;
+#[doc(hidden)]
 pub mod openai_responses_shared;
+#[doc(hidden)]
 pub mod openrouter_images;
+#[doc(hidden)]
 pub mod pi_messages;
+#[doc(hidden)]
 pub mod simple_options;
+#[doc(hidden)]
 pub mod sse;
+#[doc(hidden)]
 pub mod transform_messages;
+#[doc(hidden)]
 pub mod websocket_connect;
 
 pub use anthropic_messages::{AnthropicMessagesApi, AnthropicOptions};

@@ -33,13 +33,20 @@ pub fn xai_oauth_loader() -> OAuthLoader {
 fn xai_oauth_impl() -> OAuthAuth {
     OAuthAuth {
         name: "xAI (Grok/X subscription)".to_string(),
-        login: Arc::new(|callbacks: Arc<dyn AuthLoginCallbacks>| {
+        login: Arc::new(|callbacks, identity| {
             Box::pin(async move {
-                let creds = login_xai(&callbacks).await?;
-                Ok(creds)
+                login_xai(&callbacks, &identity)
+                    .await
+                    .map_err(super::map_oauth("xAI login failed"))
             })
         }),
-        refresh: Arc::new(|credential| Box::pin(async move { refresh_xai_token(&credential.refresh).await })),
+        refresh: Arc::new(|credential| {
+            Box::pin(async move {
+                refresh_xai_token(&credential.refresh)
+                    .await
+                    .map_err(super::map_oauth("xAI token refresh failed"))
+            })
+        }),
         to_auth: Arc::new(|credential| {
             Box::pin(async move {
                 Ok(crate::auth::types::ModelAuth {
@@ -189,8 +196,8 @@ async fn post_form(url: &str, fields: Vec<(&str, &str)>) -> Result<(bool, Value)
 }
 
 /// Request device code from xAI OAuth server.
-async fn request_device_code() -> Result<DeviceCodeResponse> {
-    let product = crate::types::client_identity().product;
+async fn request_device_code(identity: &crate::types::ClientIdentity) -> Result<DeviceCodeResponse> {
+    let product = identity.product.clone();
     let fields = vec![
         ("client_id", XAI_CLIENT_ID),
         ("scope", XAI_SCOPE),
@@ -293,8 +300,11 @@ async fn poll_for_tokens(device: DeviceCodeResponse) -> Result<OAuthCredential> 
 }
 
 /// Login to xAI using device code flow.
-async fn login_xai(callbacks: &Arc<dyn AuthLoginCallbacks>) -> Result<OAuthCredential> {
-    let device = request_device_code().await?;
+async fn login_xai(
+    callbacks: &Arc<dyn AuthLoginCallbacks>,
+    identity: &crate::types::ClientIdentity,
+) -> Result<OAuthCredential> {
+    let device = request_device_code(identity).await?;
 
     callbacks.notify(AuthEvent::DeviceCode {
         user_code: device.user_code.clone(),

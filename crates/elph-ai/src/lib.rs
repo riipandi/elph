@@ -18,10 +18,9 @@
 //! the process env prefix (`MYAPP` → `MYAPP_CACHE_RETENTION`, `MYAPP_GITHUB_HOST`,
 //! `MYAPP_RATE_LIMIT_*`).
 //!
-//! Prefer [`CreateModelsOptions::identity`] when calling [`create_models`] /
-//! [`builtin_models`]. That also installs the process-wide identity used by
-//! OAuth login and [`resilience`]. Call [`set_client_identity`] first if you
-//! run OAuth before building a collection.
+//! Set [`CreateModelsOptions::identity`] on [`create_models`] / [`builtin_models`].
+//! Pass the same identity to [`auth::oauth_provider_login`] and
+//! [`resilience::ResilienceManager::with_env_prefix`]. It is not process-global.
 //!
 //! # Features
 //!
@@ -104,8 +103,7 @@ pub use types::{
     ImagesApi, ImagesContext, ImagesModel, ImagesOptions, ImagesProviderId, Message, Model, ModelCost, ModelCostRates,
     ModelCostTier, ModelThinkingLevel, OnPayloadCallback, OnResponseCallback, ProviderEnv, ProviderHeaders, ProviderId,
     ProviderResponse, SimpleStreamOptions, StopReason, StreamOptions, TextContent, ThinkingBudgets, ThinkingContent,
-    ThinkingLevel, ThinkingLevelMap, Tool, ToolCall, Transport, Usage, UsageCost, UserContent, client_identity,
-    set_client_identity,
+    ThinkingLevel, ThinkingLevelMap, Tool, ToolCall, Transport, Usage, UsageCost, UserContent,
 };
 pub use utils::deferred_tools::split_deferred_tools;
 pub use utils::diagnostics::{append_assistant_message_diagnostic, create_assistant_message_diagnostic};

@@ -71,8 +71,9 @@ pub struct ProviderResponse {
 /// Host product identity used for provider headers and prefixed environment keys.
 ///
 /// Defaults keep the Elph product names (`product = "elph"`, `env_prefix = "ELPH"`).
-/// Set this on [`crate::CreateModelsOptions`] (preferred) or via [`set_client_identity`]
-/// before OAuth login / resilience if you have not built a [`crate::Models`] collection yet.
+/// Set this on [`crate::CreateModelsOptions`] for a collection, and pass the same
+/// value to [`crate::auth::oauth_provider_login`] / [`crate::resilience::ResilienceManager::with_env_prefix`].
+/// Identity is **not** process-global: two collections can use different prefixes.
 ///
 /// `env_prefix` is the first segment of process env keys, without a trailing underscore:
 /// `MYAPP` → `MYAPP_CACHE_RETENTION`, `MYAPP_GITHUB_HOST`, `MYAPP_RATE_LIMIT_*`.
@@ -108,24 +109,6 @@ impl ClientIdentity {
     }
 }
 
-fn process_identity() -> &'static parking_lot::RwLock<ClientIdentity> {
-    static CELL: std::sync::OnceLock<parking_lot::RwLock<ClientIdentity>> = std::sync::OnceLock::new();
-    CELL.get_or_init(|| parking_lot::RwLock::new(ClientIdentity::default()))
-}
-
-/// Install the process-wide identity used by OAuth login and resilience env keys.
-///
-/// [`crate::create_models`] / [`crate::builtin_models`] call this when
-/// [`crate::CreateModelsOptions::identity`] is set (or with the default identity).
-pub fn set_client_identity(identity: ClientIdentity) {
-    *process_identity().write() = identity;
-}
-
-/// Current process-wide identity (default `elph` / `ELPH` until overwritten).
-pub fn client_identity() -> ClientIdentity {
-    process_identity().read().clone()
-}
-
 #[derive(Clone, Default)]
 pub struct StreamOptions {
     pub temperature: Option<f64>,
@@ -155,9 +138,9 @@ pub struct StreamOptions {
 }
 
 impl StreamOptions {
-    /// Identity on this request, else the process-wide [`client_identity`].
+    /// Identity on this request, else [`ClientIdentity::default`] (`elph` / `ELPH`).
     pub fn identity_or_default(&self) -> ClientIdentity {
-        self.identity.clone().unwrap_or_else(client_identity)
+        self.identity.clone().unwrap_or_default()
     }
 }
 

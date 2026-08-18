@@ -28,15 +28,19 @@ pub fn anthropic_oauth_loader() -> OAuthLoader {
 fn anthropic_oauth_impl() -> OAuthAuth {
     OAuthAuth {
         name: "Anthropic (Claude Pro/Max)".to_string(),
-        login: Arc::new(|callbacks: Arc<dyn AuthLoginCallbacks>| {
+        login: Arc::new(|callbacks, _identity| {
             Box::pin(async move {
-                let creds = login_anthropic(&callbacks).await?;
+                let creds = login_anthropic(&callbacks)
+                    .await
+                    .map_err(super::map_oauth("Anthropic login failed"))?;
                 Ok(oauth_credential(creds))
             })
         }),
         refresh: Arc::new(|credential| {
             Box::pin(async move {
-                let creds = refresh_anthropic_token(&credential.refresh).await?;
+                let creds = refresh_anthropic_token(&credential.refresh)
+                    .await
+                    .map_err(super::map_oauth("Anthropic token refresh failed"))?;
                 Ok(oauth_credential(creds))
             })
         }),

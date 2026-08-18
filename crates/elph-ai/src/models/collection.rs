@@ -150,7 +150,7 @@ pub struct CreateModelsOptions {
     pub credentials: Option<Arc<dyn CredentialStore>>,
     /// How env vars and files are read for auth. Default: process environment.
     pub auth_context: Option<Arc<dyn AuthContext>>,
-    /// Product name and env-var prefix. Installed as the process-wide identity.
+    /// Product name and env-var prefix for this collection only.
     pub identity: Option<ClientIdentity>,
 }
 
@@ -167,6 +167,11 @@ pub struct MutableModels {
 }
 
 impl Models {
+    /// Host identity for this collection (stream headers and env-prefix on requests).
+    pub fn identity(&self) -> &ClientIdentity {
+        &self.identity
+    }
+
     /// Shared credential store used by [`Self::get_auth`] / streaming auth resolution.
     ///
     /// Host apps should update this after `/provider connect` so the live session
@@ -513,13 +518,9 @@ where
 
 /// Build an empty [`Models`] collection.
 ///
-/// Installs [`CreateModelsOptions::identity`] (or the default `elph` / `ELPH`) as the
-/// process-wide identity for OAuth login and resilience env keys.
+/// [`CreateModelsOptions::identity`] is stored on the collection only (not process-global).
 pub fn create_models(options: Option<CreateModelsOptions>) -> MutableModels {
     let identity = options.as_ref().and_then(|o| o.identity.clone()).unwrap_or_default();
-    if options.as_ref().and_then(|o| o.identity.as_ref()).is_some() {
-        crate::types::set_client_identity(identity.clone());
-    }
     MutableModels {
         inner: Models {
             providers: HashMap::new(),
@@ -537,6 +538,11 @@ pub fn create_models(options: Option<CreateModelsOptions>) -> MutableModels {
 }
 
 impl MutableModels {
+    /// Host identity stored on this collection.
+    pub fn identity(&self) -> &ClientIdentity {
+        self.inner.identity()
+    }
+
     /// Consume the mutable wrapper and share the underlying [`Models`] via [`Arc`].
     pub fn into_arc(self) -> std::sync::Arc<Models> {
         std::sync::Arc::new(self.inner)

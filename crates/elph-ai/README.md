@@ -91,7 +91,7 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 Optional features: `bedrock` (Amazon Bedrock SDK), `oauth-callback` (local browser OAuth server), `tracing`. Catalog regen is `generate-models` (not pulled by library users).
 
-Third-party hosts should set [`ClientIdentity`](src/types/mod.rs) on `CreateModelsOptions` (product name + env prefix). That prefix applies to cache retention, GitHub Copilot host, and resilience env keys. Default remains `elph` / `ELPH`. See [the consumer contract](../../docs/elph-ai.md) and <https://docs.rs/elph-ai>.
+MSRV is **Rust 1.88** (edition 2024). Third-party hosts set [`ClientIdentity`](src/types/mod.rs) on `CreateModelsOptions` and pass the same identity into OAuth login / `ResilienceManager::with_env_prefix`. Default remains `elph` / `ELPH`. See [the consumer contract](../../docs/elph-ai.md) and <https://docs.rs/elph-ai>.
 
 Or from the workspace:
 

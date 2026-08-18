@@ -9,7 +9,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 - Crate root is an explicit prelude (types, `Models`, faux, images, validation, estimate). OAuth helpers live under `elph_ai::auth`. `anyhow::Result` is no longer re-exported.
 - `ModelsError.source` is `Option<Box<dyn Error + Send + Sync>>` (no public `anyhow` cause).
-- `CreateModelsOptions.identity` / `set_client_identity` drive Codex originator, xAI referrer, `{PREFIX}_CACHE_RETENTION`, `{PREFIX}_GITHUB_HOST`, and resilience `{PREFIX}_RATE_LIMIT_*` / `{PREFIX}_CIRCUIT_BREAKER_*` / `{PREFIX}_MAX_RETRIES`.
+- `CreateModelsOptions.identity` is per-collection. Pass the same value to `oauth_provider_login` and `ResilienceManager::with_env_prefix`.
+- Crate MSRV is 1.88 (edition 2024). `api::*` adapter modules are `#[doc(hidden)]`.
+- OAuth login/refresh closures return `ModelsError` (no public `anyhow` on that path).
 - Public OAuth helpers (`oauth_provider_login`, `refresh_oauth_token`, `get_oauth_api_key`, `oauth_provider_to_auth`) return `Result<_, ModelsError>`.
 - Package metadata: `documentation = "https://docs.rs/elph-ai"`; docs.rs `all-features`.
 - Cargo features: `bedrock`, `oauth-callback`, `generate-models`, `tracing`. Default is HTTP chat only.

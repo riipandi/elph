@@ -30,10 +30,11 @@ pub fn openrouter_oauth_loader() -> OAuthLoader {
 fn openrouter_oauth_impl() -> OAuthAuth {
     OAuthAuth {
         name: "OpenRouter".to_string(),
-        login: Arc::new(|callbacks: Arc<dyn AuthLoginCallbacks>| {
+        login: Arc::new(|callbacks, _identity| {
             Box::pin(async move {
-                let creds = login_openrouter(&callbacks).await?;
-                Ok(creds)
+                login_openrouter(&callbacks)
+                    .await
+                    .map_err(super::map_oauth("OpenRouter login failed"))
             })
         }),
         // OpenRouter API keys do not expire — refresh is a no-op.

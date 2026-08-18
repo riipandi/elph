@@ -81,7 +81,6 @@ async fn test_cleanup_stale_keeps_recent() {
 
 #[tokio::test]
 async fn test_config_from_env_defaults() {
-    elph_ai::set_client_identity(elph_ai::ClientIdentity::default());
     // Clear any existing env vars
     unsafe { std::env::remove_var("ELPH_RATE_LIMIT_TEST_RPS") };
     unsafe { std::env::remove_var("ELPH_CIRCUIT_BREAKER_TEST_THRESHOLD") };
@@ -94,7 +93,6 @@ async fn test_config_from_env_defaults() {
 
 #[tokio::test]
 async fn test_config_from_env_overrides() {
-    elph_ai::set_client_identity(elph_ai::ClientIdentity::default());
     unsafe { std::env::set_var("ELPH_RATE_LIMIT_MYPROVIDER_RPS", "20") };
     unsafe { std::env::set_var("ELPH_CIRCUIT_BREAKER_MYPROVIDER_THRESHOLD", "10") };
 

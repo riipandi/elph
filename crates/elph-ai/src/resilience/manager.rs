@@ -53,20 +53,28 @@ struct ProviderState {
 pub struct ResilienceManager {
     providers: RwLock<HashMap<String, Arc<ProviderState>>>,
     default_config: ResilienceConfig,
+    env_prefix: String,
 }
 
 impl ResilienceManager {
-    /// Create a new manager with a default config.
+    /// Create a new manager with a default config (`ELPH` env prefix).
     pub fn new(default_config: ResilienceConfig) -> Self {
         Self {
             providers: RwLock::new(HashMap::new()),
             default_config,
+            env_prefix: "ELPH".to_string(),
         }
     }
 
     /// Create a manager with sensible defaults for common providers.
     pub fn with_defaults() -> Self {
         Self::new(ResilienceConfig::default())
+    }
+
+    /// Env prefix for `{prefix}_RATE_LIMIT_*` (does not mutate process-global identity).
+    pub fn with_env_prefix(mut self, prefix: impl Into<String>) -> Self {
+        self.env_prefix = prefix.into();
+        self
     }
 
     /// Get or initialize the state for a provider.
@@ -86,7 +94,7 @@ impl ResilienceManager {
             return Arc::clone(state);
         }
 
-        let config = ResilienceConfig::from_env(provider_id)
+        let config = ResilienceConfig::from_env_prefixed(provider_id, &self.env_prefix)
             .with_rps(self.default_config.requests_per_second)
             .with_burst(self.default_config.burst_size)
             .with_failure_threshold(self.default_config.failure_threshold)
@@ -106,7 +114,7 @@ impl ResilienceManager {
 
     /// Get the config for a provider (useful for retry backoff parameters).
     pub fn config_for(&self, provider_id: &str) -> ResilienceConfig {
-        ResilienceConfig::from_env(provider_id)
+        ResilienceConfig::from_env_prefixed(provider_id, &self.env_prefix)
             .with_rps(self.default_config.requests_per_second)
             .with_burst(self.default_config.burst_size)
             .with_failure_threshold(self.default_config.failure_threshold)

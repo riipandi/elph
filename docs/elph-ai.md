@@ -2,7 +2,7 @@
 
 `elph-ai` is the standalone LLM client crate. Hosts (including Elph) depend on the surface below. Adapter internals and `#[doc(hidden)]` items are not stable.
 
-Version: `0.0.28`. MSRV: workspace `rust-version` (currently 1.97). Generation errors stay **in-band** (`AssistantMessageEvent::Error`, `StopReason::Error` / `Aborted`). They are not `Result`.
+Version: `0.0.28`. MSRV: **1.88** (edition 2024). Generation errors stay **in-band** (`AssistantMessageEvent::Error`, `StopReason::Error` / `Aborted`). They are not `Result`.
 
 Docs: <https://docs.rs/elph-ai>
 
@@ -35,7 +35,7 @@ Out-of-band APIs return `Result<T, ModelsError>`:
 
 ## Host identity
 
-Set [`ClientIdentity`](../crates/elph-ai/src/types/mod.rs) on `CreateModelsOptions` (installs the process-wide identity when `identity` is `Some`). Or call `set_client_identity` before OAuth if you have not built a collection yet.
+Set [`ClientIdentity`](../crates/elph-ai/src/types/mod.rs) on `CreateModelsOptions` (stored on that collection). Pass the same identity to `oauth_provider_login(..., identity)` and `ResilienceManager::with_env_prefix`. Two collections can use different prefixes; nothing is process-global.
 
 | Field | Effect |
 | --- | --- |

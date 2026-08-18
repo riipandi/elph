@@ -8,8 +8,9 @@ categories = ["api-bindings", "development-tools"]
 homepage.workspace = true
 repository.workspace = true
 documentation = "https://docs.rs/elph-ai"
-rust-version.workspace = true
-edition.workspace = true
+# Edition 2024 + let-chains need 1.88. Workspace Elph may be newer; consumers need 1.88+.
+rust-version = "1.88"
+edition = "2024"
 publish = true
 include = ["Cargo.toml", "src/**/*", "models/**/*.json", "README.md", "CHANGELOG.md"]
 

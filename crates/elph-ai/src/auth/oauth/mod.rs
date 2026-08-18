@@ -1,5 +1,12 @@
 //! OAuth flows for Anthropic, GitHub Copilot, OpenAI Codex, xAI, Kimi, OpenRouter, and Radius.
 
+use crate::auth::ModelsError;
+
+pub(crate) fn map_oauth(context: &str) -> impl FnOnce(anyhow::Error) -> ModelsError {
+    let context = context.to_string();
+    move |error| ModelsError::oauth_source(context, error)
+}
+
 mod anthropic;
 mod callback;
 mod device_code;

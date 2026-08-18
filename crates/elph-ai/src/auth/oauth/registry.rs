@@ -228,11 +228,8 @@ pub async fn refresh_oauth_token(
             Ok(next)
         }
         Err(error) => {
-            log::warn!("oauth refresh failed provider={provider_id}: {error:#}");
-            Err(crate::auth::ModelsError::oauth_source(
-                format!("OAuth refresh failed for {provider_id}"),
-                error,
-            ))
+            log::warn!("oauth refresh failed provider={provider_id}: {error}");
+            Err(error)
         }
     }
 }
@@ -264,22 +261,20 @@ pub async fn get_oauth_api_key(
 pub async fn oauth_provider_login(
     provider_id: &str,
     callbacks: Arc<dyn AuthLoginCallbacks>,
+    identity: &crate::types::ClientIdentity,
 ) -> Result<OAuthCredential, crate::auth::ModelsError> {
     crate::trace::add_property("provider.id", provider_id);
     let provider = get_oauth_provider(provider_id)
         .ok_or_else(|| crate::auth::ModelsError::oauth(format!("Unknown OAuth provider: {provider_id}")))?;
     log::info!("oauth login start provider={provider_id}");
-    match (provider.auth.login)(callbacks).await {
+    match (provider.auth.login)(callbacks, identity.clone()).await {
         Ok(cred) => {
             log::info!("oauth login ok provider={provider_id}");
             Ok(cred)
         }
         Err(error) => {
-            log::warn!("oauth login failed provider={provider_id}: {error:#}");
-            Err(crate::auth::ModelsError::oauth_source(
-                format!("OAuth login failed for {provider_id}"),
-                error,
-            ))
+            log::warn!("oauth login failed provider={provider_id}: {error}");
+            Err(error)
         }
     }
 }
@@ -290,9 +285,7 @@ pub async fn oauth_provider_to_auth(
 ) -> Result<ModelAuth, crate::auth::ModelsError> {
     let provider = get_oauth_provider(provider_id)
         .ok_or_else(|| crate::auth::ModelsError::oauth(format!("Unknown OAuth provider: {provider_id}")))?;
-    (provider.auth.to_auth)(credential).await.map_err(|error| {
-        crate::auth::ModelsError::oauth_source(format!("OAuth auth derivation failed for {provider_id}"), error)
-    })
+    (provider.auth.to_auth)(credential).await
 }
 
 pub fn oauth_provider_modify_models(provider_id: &str, models: Vec<Model>, credential: &OAuthCredential) -> Vec<Model> {
