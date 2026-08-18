@@ -408,8 +408,8 @@ async fn format_tools_info(session: &CodingAgentSession) -> String {
     }
     let total = tools.len();
 
-    // Separate MCP tools (prefixed `mcp__`) from built-in tools.
-    let mcp_count = tools.iter().filter(|t| t.name().starts_with("mcp__")).count();
+    // Separate MCP tools (`mcp_{server}__{tool}`) from built-in tools.
+    let mcp_count = tools.iter().filter(|t| t.name().starts_with("mcp_")).count();
     let builtin_count = total.saturating_sub(mcp_count);
 
     let detail = if mcp_count > 0 && builtin_count > 0 {

@@ -95,7 +95,6 @@ pub async fn attach_client_servers(
     for (name, server) in client_servers {
         config.servers.insert(name, server);
     }
-    let _ = config;
     let registry = load_registry(paths, config).await;
     session.attach_mcp_registry(registry).await?;
     Ok(count)

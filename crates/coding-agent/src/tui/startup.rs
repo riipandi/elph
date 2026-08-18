@@ -742,7 +742,8 @@ pub async fn bootstrap_mcp_for_session(
         on_update(McpBootstrapUpdate::TranscriptLine(line));
     }
     // Attach whatever tools we have (even if discovery partially failed).
-    session.attach_mcp_registry(registry).await?;
+    session.attach_mcp_registry(Arc::clone(&registry)).await?;
+    crate::agent::mcp_bootstrap::start_mcp_notifications(session, registry, Vec::new());
     Ok(())
 }
 

@@ -147,18 +147,34 @@ pub async fn create_coding_session_with_events(
         Some(&auth_store),
     )
     .await?;
+    let mcp_cache_path = session_manager.mcp_cache_path(&session_id);
+    let mcp_cfg = crate::platform::mcp::load_config(options.paths).unwrap_or_default();
+    let mcp_cache = elph_agent::McpCacheStore::open(&mcp_cache_path, mcp_cfg.cache_max_entries_or_default())
+        .ok()
+        .map(Arc::new);
+    let default_cache_ttl_ms = mcp_cfg.cache_ttl_secs_or_default().saturating_mul(1000);
     let (mcp_registry, mcp_config_warnings) = if options.defer_mcp_load {
-        (Arc::new(elph_agent::McpToolRegistry::empty()), Vec::new())
+        let (mcp_config, warnings) = crate::platform::mcp::load_config_best_effort(options.paths);
+        for warning in &warnings {
+            log::warn!("{warning}");
+        }
+        let load_options = elph_agent::McpLoadOptions {
+            auth_store_path: Some(options.paths.auth_store_path()),
+            cache_store: mcp_cache.clone(),
+            default_cache_ttl_ms,
+            skip_startup_discovery: true,
+            ..elph_agent::McpLoadOptions::default()
+        };
+        let registry = match elph_agent::McpToolRegistry::load_with_options(mcp_config, load_options).await {
+            Ok(registry) => Arc::new(registry),
+            Err(error) => {
+                log::warn!("MCP deferred registry load failed: {error}");
+                Arc::new(elph_agent::McpToolRegistry::empty())
+            }
+        };
+        (registry, warnings)
     } else {
-        let mcp_cache_path = session_manager.mcp_cache_path(&session_id);
-        let mcp_cfg = crate::platform::mcp::load_config(options.paths).unwrap_or_default();
-        let mcp_cache = elph_agent::McpCacheStore::open(&mcp_cache_path, mcp_cfg.cache_max_entries_or_default()).ok();
-        discover_mcp_registry(
-            options.paths,
-            mcp_cache.map(Arc::new),
-            mcp_cfg.cache_ttl_secs_or_default().saturating_mul(1000),
-        )
-        .await
+        discover_mcp_registry(options.paths, mcp_cache, default_cache_ttl_ms).await
     };
 
     let resources = match options.preloaded_resources {

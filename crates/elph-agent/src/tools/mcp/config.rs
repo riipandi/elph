@@ -596,6 +596,9 @@ pub struct McpLoadOptions {
     pub progress_tx: Option<mpsc::UnboundedSender<McpServerLoadProgress>>,
     /// Tool discovery strategy (default `lazy`).
     pub load_strategy: McpLoadStrategy,
+    /// When true, skip contacting servers during [`McpToolRegistry::load_with_options`].
+    /// Per-server `eager` is also deferred (TUI / ACP attach the catalog later).
+    pub skip_startup_discovery: bool,
     /// Optional persistent tool call result cache.
     pub cache_store: Option<std::sync::Arc<super::cache::McpCacheStore>>,
     /// Default tool result cache TTL (ms) when a server does not override it.
@@ -615,6 +618,7 @@ impl Default for McpLoadOptions {
             response_cache: McpResponseCacheConfig::default(),
             progress_tx: None,
             load_strategy: McpLoadStrategy::default(),
+            skip_startup_discovery: false,
             cache_store: None,
             default_cache_ttl_ms: super::cache::DEFAULT_CACHE_TTL_MS,
         }
