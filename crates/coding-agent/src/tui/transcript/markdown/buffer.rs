@@ -60,7 +60,8 @@ impl Default for AssistantMarkdownBuffer {
 /// the streaming-tail parse runs once per frame instead of twice.
 #[derive(Clone, Default)]
 struct BuiltDocCache {
-    key: Option<u64>, // tail_hash
+    /// `(tail_hash, stream_complete)` — flipping complete must not reuse a capped stream paint.
+    key: Option<(u64, bool)>,
     doc: Option<MarkdownDocument>,
 }
 
@@ -91,12 +92,13 @@ impl AssistantMarkdownBuffer {
         };
         // INVARIANT: no panicking code runs while holding this lock.
         let mut cache = self.built_doc_cache.lock().unwrap();
-        if cache.key == Some(tail_hash) {
+        let cache_key = (tail_hash, self.stream_complete);
+        if cache.key == Some(cache_key) {
             // INVARIANT: key match guarantees doc is Some — we set both atomically.
             return cache.doc.clone().expect("cached doc must be present");
         }
         let doc = super::render::build_assistant_markdown_document(self, raw, tail_foreground);
-        cache.key = Some(tail_hash);
+        cache.key = Some(cache_key);
         cache.doc = Some(doc.clone());
         doc
     }
@@ -179,6 +181,9 @@ impl AssistantMarkdownBuffer {
 
     pub fn mark_stream_complete(&mut self) {
         self.stream_complete = true;
+        if let Ok(mut cache) = self.built_doc_cache.lock() {
+            *cache = BuiltDocCache::default();
+        }
     }
 
     /// Drop cached parsed documents to free memory while keeping streaming state.
@@ -317,5 +322,35 @@ mod tests {
         buf2.refresh_stable(raw2, 80);
         let doc3 = buf2.built_document(raw2, iocraft::prelude::Color::Reset);
         assert_ne!(doc1.lines.len(), doc3.lines.len());
+    }
+
+    #[test]
+    fn completing_stream_does_not_reuse_capped_tail_paint() {
+        let mut buf = AssistantMarkdownBuffer::new();
+        let prefix = "Intro paragraph.\n\n";
+        let rest = "x".repeat(5_000);
+        let raw = format!("{prefix}{rest}");
+        let streaming = buf.built_document(&raw, iocraft::prelude::Color::Reset);
+        let stream_text: String = streaming
+            .lines
+            .iter()
+            .flat_map(|l| l.spans.iter().map(|s| s.text.as_str()))
+            .collect();
+        assert!(
+            !stream_text.contains("Intro paragraph"),
+            "live tail cap should drop the head of a long unsplit stream"
+        );
+        buf.mark_stream_complete();
+        let _ = buf.refresh_stable(&raw, 40);
+        let done = buf.built_document(&raw, iocraft::prelude::Color::Reset);
+        let done_text: String = done
+            .lines
+            .iter()
+            .flat_map(|l| l.spans.iter().map(|s| s.text.as_str()))
+            .collect();
+        assert!(
+            done_text.contains("Intro paragraph"),
+            "after complete, the capped stream paint must not be reused"
+        );
     }
 }

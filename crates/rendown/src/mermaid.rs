@@ -2,15 +2,10 @@
 
 use std::sync::Arc;
 
-/// Skip mermaid-text for implausibly narrow measure passes (layout flicker).
 #[cfg(feature = "mermaid")]
-const MIN_RENDER_WIDTH: u16 = 12;
-/// Do not pin first-paint / inset-settling widths in the cache.
+const MIN_CACHE_WIDTH: u16 = 16;
 #[cfg(feature = "mermaid")]
-const MIN_CACHE_WIDTH: u16 = 24;
-/// Refuse to parse huge fences (mermaid-text graphs are the memory hog).
-#[cfg(feature = "mermaid")]
-const MAX_SOURCE_BYTES: usize = 8 * 1024;
+const MAX_SOURCE_BYTES: usize = 32 * 1024;
 
 /// Shared diagram (or source fallback) for a fence at `inner` columns.
 ///
@@ -40,7 +35,7 @@ mod render {
     use std::hash::{Hash, Hasher};
     use std::sync::{Arc, Mutex};
 
-    use super::{MAX_SOURCE_BYTES, MIN_CACHE_WIDTH, MIN_RENDER_WIDTH, truncate_diagram_lines};
+    use super::{MAX_SOURCE_BYTES, MIN_CACHE_WIDTH, clip_diagram};
 
     #[derive(Clone, Copy, PartialEq, Eq, Hash)]
     struct MermaidCacheKey {
@@ -110,12 +105,6 @@ mod render {
         hasher.finish()
     }
 
-    #[derive(Clone, Copy, PartialEq, Eq)]
-    enum Quality {
-        Exact,
-        Clipped,
-    }
-
     /// Render a mermaid diagram to Unicode/ASCII box-drawing text.
     ///
     /// At most two mermaid-text calls (strict Unicode, then strict ASCII). Each call already
@@ -138,12 +127,7 @@ mod render {
         if source.len() > MAX_SOURCE_BYTES {
             return Err(mermaid_text::Error::ParseError("mermaid source exceeds render budget".into()));
         }
-        if max_width < MIN_RENDER_WIDTH {
-            return Err(mermaid_text::Error::TooWide {
-                requested: max_width as usize,
-                actual: MIN_RENDER_WIDTH as usize,
-            });
-        }
+        let max_width = max_width.max(1);
 
         let cache_key = MermaidCacheKey {
             source_hash: source_hash(source),
@@ -157,7 +141,7 @@ mod render {
             return Ok(cached);
         }
 
-        let (output, _quality) = render_mermaid_uncached(source, max_width as usize)?;
+        let output = render_mermaid_uncached(source, max_width as usize)?;
         let shared = Arc::<str>::from(output);
         if max_width >= MIN_CACHE_WIDTH
             && let Ok(mut cache) = mermaid_cache().lock()
@@ -167,42 +151,20 @@ mod render {
         Ok(shared)
     }
 
-    fn render_mermaid_uncached(source: &str, max_width: usize) -> Result<(String, Quality), mermaid_text::Error> {
-        let strict_unicode = mermaid_text::RenderOptions {
-            max_width: Some(max_width),
-            max_width_strict: true,
-            ascii: false,
-            color: false,
-            ..Default::default()
-        };
-        match mermaid_text::render_with_options(source, &strict_unicode) {
-            Ok(output) => return Ok((output, Quality::Exact)),
-            Err(mermaid_text::Error::TooWide { .. }) => {}
-            Err(err) => return Err(err),
-        }
-
-        let strict_ascii = mermaid_text::RenderOptions {
-            max_width: Some(max_width),
-            max_width_strict: true,
-            ascii: true,
-            color: false,
-            ..Default::default()
-        };
-        match mermaid_text::render_with_options(source, &strict_ascii) {
-            Ok(output) => return Ok((output, Quality::Exact)),
-            Err(mermaid_text::Error::TooWide { .. }) => {}
-            Err(err) => return Err(err),
-        }
-
-        let soft = mermaid_text::RenderOptions {
+    fn render_mermaid_uncached(source: &str, max_width: usize) -> Result<String, mermaid_text::Error> {
+        // One layout pass: mermaid-text's documented compact preset. `gaps_override`
+        // skips default (6,2) + three more compact retries (the memory spike).
+        // (1,0) overlaps nodes; (2,1) stays readable.
+        let opts = mermaid_text::RenderOptions {
             max_width: Some(max_width),
             max_width_strict: false,
             ascii: false,
             color: false,
+            gaps_override: Some((2, 1)),
             ..Default::default()
         };
-        let output = mermaid_text::render_with_options(source, &soft)?;
-        Ok((truncate_diagram_lines(&output, max_width), Quality::Clipped))
+        let output = mermaid_text::render_with_options(source, &opts)?;
+        Ok(clip_diagram(&output, max_width))
     }
 
     #[cfg(test)]
@@ -221,23 +183,35 @@ mod render {
 #[cfg(feature = "mermaid")]
 pub use render::render_mermaid_at_width;
 
+/// Clip each line to `max_width` display columns (prefix only — no ellipsis).
+/// Used so paint measure cannot expand past the mermaid card.
 #[cfg(feature = "mermaid")]
-fn truncate_diagram_lines(output: &str, max_width: usize) -> String {
-    use unicode_width::UnicodeWidthStr;
-
-    use crate::wrap::truncate_with_ellipsis;
-
+fn clip_diagram(output: &str, max_width: usize) -> String {
     output
         .lines()
-        .map(|line| {
-            if line.width() > max_width {
-                truncate_with_ellipsis(line, max_width)
-            } else {
-                line.to_string()
-            }
-        })
+        .map(|line| clip_to_width(line, max_width))
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+#[cfg(feature = "mermaid")]
+fn clip_to_width(text: &str, max_width: usize) -> String {
+    use unicode_width::UnicodeWidthChar;
+
+    if max_width == 0 {
+        return String::new();
+    }
+    let mut out = String::new();
+    let mut used = 0usize;
+    for ch in text.chars() {
+        let w = UnicodeWidthChar::width(ch).unwrap_or(0);
+        if used + w > max_width {
+            break;
+        }
+        out.push(ch);
+        used += w;
+    }
+    out
 }
 
 #[cfg(all(test, feature = "mermaid"))]
@@ -257,14 +231,11 @@ mod tests {
     fn mermaid_render_never_reverts_on_overflow() {
         render::cache_clear();
         let src = "graph LR; A[Build] --> B[Test] --> C[Deploy] --> D[Verify] --> E[Release]";
-        let output = render_mermaid_at_width(src, 20).expect("valid diagram must render");
+        let output = render_mermaid_at_width(src, 40).expect("valid diagram must render");
+        assert!(!output.trim_start().starts_with("graph "));
         for line in output.lines() {
-            assert!(
-                unicode_width::UnicodeWidthStr::width(line) <= 20,
-                "line exceeds width: {line:?}"
-            );
+            assert!(unicode_width::UnicodeWidthStr::width(line) <= 40, "line exceeds card: {line:?}");
         }
-        assert!(output.contains('─') || output.contains('-') || output.contains("Build"));
     }
 
     #[test]
@@ -277,15 +248,13 @@ mod tests {
     }
 
     #[test]
-    fn mermaid_render_truncates_overflowing_lines() {
+    fn mermaid_render_stays_inside_card_when_narrow() {
         render::cache_clear();
         let src = "graph LR; A[Build] --> B[Test] --> C[Deploy] --> D[Verify] --> E[Release]";
-        let output = render_mermaid_at_width(src, 16).expect("renders");
+        let output = render_mermaid_at_width(src, 24).expect("renders");
+        assert!(!output.trim_start().starts_with("graph "));
         for line in output.lines() {
-            assert!(
-                unicode_width::UnicodeWidthStr::width(line) <= 16,
-                "overflowing line not truncated: {line:?}"
-            );
+            assert!(unicode_width::UnicodeWidthStr::width(line) <= 24);
         }
     }
 
@@ -306,20 +275,30 @@ mod tests {
         assert!(render::cache_len() >= 1);
 
         let before = render::cache_len();
-        let _narrow = render_mermaid_at_width(src, 16);
-        assert_eq!(
-            render::cache_len(),
-            before,
-            "clipped / sub-cache-width renders must not grow the cache"
-        );
+        let _again = render_mermaid_at_width(src, 80).expect("cached");
+        assert_eq!(render::cache_len(), before, "same key must not add a cache entry");
+        let _narrow = render_mermaid_at_width(src, 16).expect("narrow");
+        assert!(render::cache_len() >= before);
     }
 
     #[test]
-    fn mermaid_refuses_tiny_width_without_caching() {
+    fn mermaid_renders_on_narrow_terminal() {
         render::cache_clear();
         let src = "graph LR; A[Build] --> B[Deploy]";
-        let result = render_mermaid_at_width(src, 8);
-        assert!(result.is_err());
-        assert_eq!(render::cache_len(), 0);
+        let output = render_mermaid_at_width(src, 20).expect("narrow terminal still diagrams");
+        assert!(
+            output.contains("Build") || output.contains('─') || output.contains('-'),
+            "narrow output should stay a diagram, got {output:?}"
+        );
+        assert!(!output.trim_start().starts_with("graph "));
+    }
+
+    #[test]
+    fn mermaid_display_shared_is_not_raw_source_for_valid_graph() {
+        render::cache_clear();
+        let src = "graph TD\n    A[Start] --> B[End]";
+        let shown = mermaid_display_shared(src, 48);
+        assert_ne!(&*shown, src, "valid mermaid must not fall back to fence source");
+        assert!(shown.contains("Start") || shown.contains('─') || shown.contains('-'));
     }
 }

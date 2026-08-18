@@ -47,7 +47,7 @@ let theme = MarkdownTheme::builder()
 | *(none)* | yes | Parse + ANSI write (plain fenced code, no syntect) |
 | `highlight` | off | syntect / two-face fence highlighting |
 | `stream` | off | `Rendown::stream()` / `StreamRenderer` + `terminal_width()` |
-| `mermaid` | off | Diagram render. Fences always store `mermaid_source`. Measure and paint should call `mermaid_display_shared` so they share one `Arc<str>` |
+| `mermaid` | off | One compact mermaid-text pass (`gaps` 2×1). Lines are clipped to the card width; measure/paint share `mermaid_display_shared` |
 
 Layout helpers live under `rendown::layout` (insets, `ansi_row_count`, hanging wrap).
 Link helpers live under `rendown::link`. Syntect helpers live under `rendown::syntax`.

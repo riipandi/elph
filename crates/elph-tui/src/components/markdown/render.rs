@@ -193,7 +193,7 @@ fn render_mermaid_card(
         .lines()
         .map(|line| {
             element! {
-                View(width: inner_width, flex_shrink: 0f32) {
+                View(width: inner_width, flex_shrink: 0f32, overflow: Overflow::Hidden) {
                     MixedText(
                         contents: vec![MixedTextContent::new(line).color(to_iocraft_color(theme.body))],
                         wrap: TextWrap::NoWrap,
@@ -215,6 +215,7 @@ fn render_mermaid_card(
             flex_direction: FlexDirection::Column,
             gap: 0,
             flex_shrink: 0f32,
+            overflow: Overflow::Hidden,
         ) {
             #(row_elements)
         }

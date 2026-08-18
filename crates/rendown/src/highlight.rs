@@ -11,7 +11,7 @@ use crate::theme::MarkdownTheme;
 pub fn highlight_code_block(language: Option<&str>, code: &str, theme: &MarkdownTheme) -> Vec<MarkdownLine> {
     let use_card = code_block_uses_card_background(code);
 
-    if language.is_some_and(|lang| lang.trim() == "mermaid") {
+    if language.is_some_and(is_mermaid_language) {
         return vec![MarkdownLine {
             kind: MarkdownLineKind::Code,
             spans: vec![StyledSpan::plain("", theme.body)],
@@ -56,6 +56,11 @@ pub fn highlight_code_block(language: Option<&str>, code: &str, theme: &Markdown
     #[cfg(not(feature = "highlight"))]
     let _ = language;
     fallback_plain_code_block(code, theme, use_card)
+}
+
+fn is_mermaid_language(lang: &str) -> bool {
+    let lang = lang.trim();
+    lang.eq_ignore_ascii_case("mermaid") || lang.to_ascii_lowercase().starts_with("mermaid")
 }
 
 fn fallback_plain_code_block(code: &str, theme: &MarkdownTheme, use_card: bool) -> Vec<MarkdownLine> {
@@ -115,6 +120,8 @@ mod tests {
         let src = "graph LR; A --> B";
         let lines = highlight_code_block(Some("mermaid "), src, &MarkdownTheme::default());
         assert_eq!(lines[0].mermaid_source.as_deref(), Some(src));
+        let mixed = highlight_code_block(Some("Mermaid"), src, &MarkdownTheme::default());
+        assert_eq!(mixed[0].mermaid_source.as_deref(), Some(src));
     }
 
     #[cfg(feature = "highlight")]

@@ -8,4 +8,5 @@
 - Theme builder: `MarkdownTheme::builder()`.
 - Highlight IR always stores truecolor; `color_level` applies only at ANSI write.
 - Optional `highlight` feature (syntect). Layout helpers under `rendown::layout` (`ansi_row_count`).
-- Mermaid: `mermaid_display_shared` for shared measure/paint; LRU caches exact and clipped fits.
+- Mermaid: one mermaid-text compaction pass (no forced Native/1×0, no row/line clip).
+- Transcript: completing a stream invalidates the capped tail paint cache.
