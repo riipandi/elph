@@ -6,6 +6,7 @@ use std::io::Write;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::time::Duration;
 
 use super::events::AgentUiEvent;
 use super::headless_status::HeadlessStatus;
@@ -69,6 +70,27 @@ pub struct RunModeResult {
     pub assistant_text: String,
 }
 
+/// Ctrl+C / SIGINT cancelled a headless run. CLI maps this to exit 130.
+#[derive(Debug, Clone, Copy)]
+pub struct RunInterrupted;
+
+impl std::fmt::Display for RunInterrupted {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Interrupted.")
+    }
+}
+
+impl std::error::Error for RunInterrupted {}
+
+/// One SIGINT. After `tokio::signal::ctrl_c` is first polled, the default
+/// terminate disposition is replaced — every later Ctrl+C must be awaited.
+async fn wait_for_ctrl_c() {
+    if let Err(err) = tokio::signal::ctrl_c().await {
+        log::warn!("ctrl_c listener: {err}");
+        std::future::pending::<()>().await;
+    }
+}
+
 pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeResult> {
     // Wait line only for non-plain formats (pretty/json/streams). Plain = raw model
     // text only — no spinner / status chrome.
@@ -80,7 +102,7 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
         s
     };
 
-    let session_result = create_coding_session_with_events(CreateSessionOptions {
+    let create_opts = CreateSessionOptions {
         paths: options.paths,
         settings: options.settings,
         cwd: options.cwd,
@@ -94,8 +116,14 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
         preloaded_resources: None,
         defer_mcp_load: false,
         headless: true,
-    })
-    .await;
+    };
+    let session_result = tokio::select! {
+        result = create_coding_session_with_events(create_opts) => result,
+        _ = wait_for_ctrl_c() => {
+            status.finish();
+            return Err(RunInterrupted.into());
+        }
+    };
 
     let (session, mut ui_rx) = match session_result {
         Ok(pair) => pair,
@@ -148,6 +176,7 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
             status.set(format!("Prompt `/{name}` · {model_label}…"));
         }
     }
+    let turn_kind_footer = turn_kind_label(&turn_kind);
 
     // Event task: live status + streaming plain / pretty markdown.
     let status_handle = status.handle();
@@ -242,8 +271,42 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
         }
     });
 
-    let prompt_result = execute_headless_input(&session, &turn_kind, options.prompt).await;
-    let _ = tokio::time::timeout(std::time::Duration::from_secs(5), stream_task).await;
+    // Keep the turn future alive while aborting: dropping `prompt()` skips
+    // `finish_run`, and `abort()` → `wait_for_idle` would hang forever.
+    let prompt_owned = options.prompt.to_string();
+    let session_for_turn = Arc::clone(&session);
+    let mut prompt_task =
+        tokio::spawn(async move { execute_headless_input(&session_for_turn, &turn_kind, &prompt_owned).await });
+
+    let prompt_result = tokio::select! {
+        join = &mut prompt_task => match join {
+            Ok(result) => result,
+            Err(err) => Err(anyhow::anyhow!("headless turn task: {err}")),
+        },
+        _ = wait_for_ctrl_c() => {
+            status.set("Interrupted — aborting…");
+            tokio::select! {
+                result = session.abort() => {
+                    if let Err(err) = result {
+                        log::warn!("headless abort: {err:#}");
+                    }
+                }
+                _ = wait_for_ctrl_c() => {
+                    status.finish();
+                    eprintln!("Interrupted.");
+                    std::process::exit(130);
+                }
+                () = tokio::time::sleep(Duration::from_secs(3)) => {
+                    status.finish();
+                    eprintln!("Interrupted.");
+                    std::process::exit(130);
+                }
+            }
+            let _ = tokio::time::timeout(Duration::from_secs(2), prompt_task).await;
+            Err(RunInterrupted.into())
+        }
+    };
+    let _ = tokio::time::timeout(Duration::from_secs(5), stream_task).await;
 
     // Ensure wait line is gone (no-op if already finished on first token).
     status.finish();
@@ -263,10 +326,11 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
         tokens_used,
         context_limit: context_limit.max(1),
         cwd: options.cwd.display().to_string(),
-        turn_kind: turn_kind_label(&turn_kind),
+        turn_kind: turn_kind_footer,
     };
 
     if let Err(err) = prompt_result {
+        let interrupted = err.downcast_ref::<RunInterrupted>().is_some();
         if format == OutputFormat::Json {
             let body = json!({
                 "ok": false,
@@ -275,6 +339,8 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
                 "result": assistant_text,
             });
             println!("{}", serde_json::to_string_pretty(&body)?);
+        } else if interrupted {
+            eprintln!("Interrupted.");
         } else {
             eprintln!("error: {err:#}");
         }
@@ -807,6 +873,13 @@ mod tests {
         assert_eq!(parse_effort("high").unwrap(), ThinkingLevel::High);
         assert_eq!(parse_effort("off").unwrap(), ThinkingLevel::Off);
         assert!(parse_effort("turbo").is_err());
+    }
+
+    #[test]
+    fn run_interrupted_downcast() {
+        let err: anyhow::Error = RunInterrupted.into();
+        assert!(err.downcast_ref::<RunInterrupted>().is_some());
+        assert_eq!(err.to_string(), "Interrupted.");
     }
 
     #[test]

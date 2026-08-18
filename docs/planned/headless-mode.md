@@ -22,34 +22,34 @@ elph run "/my-template arg1 arg2"
 
 Headless uses the same resource load as the TUI (project + home skills / prompts).
 
-| Input | Action |
-| --- | --- |
-| Plain text | Normal agent prompt |
-| `/skill:name [args]` | Invoke skill (legacy prefix; preferred explicit form) |
-| `/skill-name [args]` | Invoke skill by raw name (if no built-in/template conflict) |
-| `/template-name [args]` | Expand prompt template and run |
+| Input                   | Action                                                      |
+| ----------------------- | ----------------------------------------------------------- |
+| Plain text              | Normal agent prompt                                         |
+| `/skill:name [args]`    | Invoke skill (legacy prefix; preferred explicit form)       |
+| `/skill-name [args]`    | Invoke skill by raw name (if no built-in/template conflict) |
+| `/template-name [args]` | Expand prompt template and run                              |
 
 Other slash commands (`/compact`, `/help`, …) are **not** supported in headless and return a clear error.
 
 ## Flags
 
-| Flag | Description |
-| --- | --- |
-| `PROMPT…` | Positional prompt (joined with spaces) |
-| `--prompt-file <path>` | Load prompt from UTF-8 file |
-| `-m, --model <provider/model_id>` | Override model |
-| `--mode <build\|plan\|ask\|brave>` | Agent tool policy (**default: `brave`**) |
-| `-b, --brave` | Alias for `--mode=brave` |
-| `--system-prompt <text\|@path>` | Full system prompt override |
-| `--no-session` | Delete session after the run (not resumable) |
-| `--cwd <path>` | Working directory / project root |
-| `--max-turns <N>` | Abort after N tool starts |
-| `--output-format` / `--output` | `plain` (default, raw tokens), **`pretty`** (streaming CommonMark via rendown), `json`, `stream-json`, `stream-message-json` |
-| `--effort` / `--reasoning-effort` | `off\|low\|medium\|high\|xhigh\|max` |
-| `--session-id <id>` | Open or create that session id |
-| `-r, --resume <id>` | Resume existing session (error if missing) |
-| `-c, --continue` | Resume latest project session |
-| `-n, --name <name>` | Session display name |
+| Flag                               | Description                                                                                                                  |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `PROMPT…`                          | Positional prompt (joined with spaces)                                                                                       |
+| `--prompt-file <path>`             | Load prompt from UTF-8 file                                                                                                  |
+| `-m, --model <provider/model_id>`  | Override model                                                                                                               |
+| `--mode <build\|plan\|ask\|brave>` | Agent tool policy (**default: `brave`**)                                                                                     |
+| `-b, --brave`                      | Alias for `--mode=brave`                                                                                                     |
+| `--system-prompt <text\|@path>`    | Full system prompt override                                                                                                  |
+| `--no-session`                     | Delete session after the run (not resumable)                                                                                 |
+| `--cwd <path>`                     | Working directory / project root                                                                                             |
+| `--max-turns <N>`                  | Abort after N tool starts                                                                                                    |
+| `--output-format` / `--output`     | `plain` (default, raw tokens), **`pretty`** (streaming CommonMark via rendown), `json`, `stream-json`, `stream-message-json` |
+| `--effort` / `--reasoning-effort`  | `off\|low\|medium\|high\|xhigh\|max`                                                                                         |
+| `--session-id <id>`                | Open or create that session id                                                                                               |
+| `-r, --resume <id>`                | Resume existing session (error if missing)                                                                                   |
+| `-c, --continue`                   | Resume latest project session                                                                                                |
+| `-n, --name <name>`                | Session display name                                                                                                         |
 
 Aliases for output format: `text`→`plain`, `streaming-json`→`stream-json`, `streaming-messages-json`→`stream-message-json`.
 
@@ -76,11 +76,11 @@ Unless `--no-session`, stderr prints a **dimmed** turn block with blank lines ab
 
 `elph run` uses a **lightweight ANSI wait line** (braille + message + elapsed), **not** iocraft/`CliSpinner`. Full iocraft needs a render loop and is a poor fit for headless CLI (mouse capture / fullscreen not required, but layout-on-every-tick was freezing the first frame). The wait line is a plain `\r` overwrite on stderr.
 
-| Phase | Example |
-| --- | --- |
+| Phase     | Example                                  |
+| --------- | ---------------------------------------- |
 | Bootstrap | `Loading providers, tools, and session…` |
-| Ready | `Running · openai/… · mode brave…` |
-| Tools | `Tool \`read_file\` · …` |
+| Ready     | `Running · openai/… · mode brave…`       |
+| Tools     | `Tool \`read_file\` · …`                 |
 
 ### Plain streaming (stdout)
 
@@ -103,7 +103,7 @@ elph run --output-format=pretty "/skill:code-review"
 
 The `elph` binary is already `#[tokio::main]` (multi-thread). Headless uses `elph_agent::block_on` → `block_in_place` on that runtime so event tasks and the wait-line OS thread stay concurrent. Nesting a second `Runtime::block_on` panics (`Cannot start a runtime from within a runtime`).
 
-Ctrl+C during the wait line → clean interrupt (exit 130). Non-TTY: one static status print, no animation.
+Ctrl+C aborts the in-flight turn (cancels the harness + tools) and exits **130**. A second Ctrl+C, or an abort that does not finish within a few seconds, force-exits 130 so a stuck tool cannot pin the process. Applies to **plain** as well as pretty/json (plain has no wait-line tick thread). Non-TTY: one static status print, no animation.
 
 ## Defaults
 

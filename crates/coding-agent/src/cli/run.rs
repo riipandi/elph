@@ -4,11 +4,12 @@ use std::path::PathBuf;
 use clap::Args;
 
 use crate::agent::{
-    OutputFormat, RunModeOptions, parse_agent_mode, parse_effort, resolve_system_prompt_arg, run_non_interactive,
+    OutputFormat, RunInterrupted, RunModeOptions, parse_agent_mode, parse_effort, resolve_system_prompt_arg,
+    run_non_interactive,
 };
 use crate::cli::help;
 use crate::cli::session_launch::SessionLaunchMode;
-use crate::platform::{EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths, Settings};
+use crate::platform::{EXIT_ERROR, EXIT_INTERRUPTED, EXIT_SUCCESS, ExitCode, Paths, Settings};
 use crate::types::AgentMode;
 
 #[derive(Args, Default)]
@@ -239,6 +240,7 @@ pub fn handle(args: &RunArgs) -> ExitCode {
 
     match result {
         Ok(_) => EXIT_SUCCESS,
+        Err(err) if err.downcast_ref::<RunInterrupted>().is_some() => EXIT_INTERRUPTED,
         Err(err) => {
             help::cli_error(format!("run failed: {err}"));
             EXIT_ERROR

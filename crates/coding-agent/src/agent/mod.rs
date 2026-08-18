@@ -68,6 +68,7 @@ pub use provider::{is_known_provider, provider_api_key_env, provider_config, res
 pub use provider_catalog::install_providers_dir;
 pub use resource_loader::LoadResourcesResult;
 pub use resource_loader::{format_resource_conflict_notice, format_resource_load_warnings, load_resources};
+pub use run_mode::RunInterrupted;
 pub use run_mode::RunModeOptions;
 pub use run_mode::{OutputFormat, parse_agent_mode, parse_effort, resolve_system_prompt_arg, run_non_interactive};
 pub use runtime::CreateSessionOptions;
