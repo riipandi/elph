@@ -137,8 +137,11 @@ impl SlashDispatcher {
                     if let Some(host) = extension_host.as_ref()
                         && let Some(paths) = paths.as_ref()
                     {
-                        match host.reload(paths, true) {
-                            Ok(_) => report.push_summary("Extensions reloaded."),
+                        match crate::platform::Settings::load(paths) {
+                            Ok(settings) => match host.reload(paths, &settings) {
+                                Ok(_) => report.push_summary("Extensions reloaded."),
+                                Err(err) => report.push_summary(format!("Extension reload failed: {err}")),
+                            },
                             Err(err) => report.push_summary(format!("Extension reload failed: {err}")),
                         }
                     }

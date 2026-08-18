@@ -150,6 +150,7 @@ impl CodingAgentSession {
             .set_stream_options(elph_agent::AgentHarnessStreamOptions {
                 timeout_ms: settings.provider_timeout_ms(),
                 max_retries: Some(settings.max_retries),
+                thinking_budgets: settings.models.thinking_budgets.clone(),
                 ..elph_agent::AgentHarnessStreamOptions::default()
             })
             .await;

@@ -145,6 +145,8 @@ pub struct ModelCatalogOptions {
     pub show_configured_only: bool,
     /// Always include these provider ids even if unconfigured (e.g. the active session provider).
     pub include_provider_ids: Vec<String>,
+    /// Glob filter from `models.enabled` (`provider/model_id`).
+    pub enabled_patterns: Vec<String>,
 }
 
 impl ModelCatalogOptions {
@@ -153,6 +155,7 @@ impl ModelCatalogOptions {
         Self {
             show_configured_only: false,
             include_provider_ids: Vec::new(),
+            enabled_patterns: Vec::new(),
         }
     }
 }
@@ -216,7 +219,19 @@ impl ModelCatalogSnapshot {
             {
                 continue;
             }
-            let models = get_builtin_models(provider_id);
+            let models: Vec<_> = get_builtin_models(provider_id)
+                .into_iter()
+                .filter(|model| {
+                    crate::platform::settings::patterns::model_matches(
+                        &options.enabled_patterns,
+                        provider_id,
+                        &model.id,
+                    )
+                })
+                .collect();
+            if models.is_empty() {
+                continue;
+            }
             let count = models.len();
             total_models = total_models.saturating_add(count);
             let rows: Vec<ModelRow> = models
@@ -1328,6 +1343,7 @@ mod tests {
             // include none; configured_provider_ids() may find real auth — force empty via
             // building with show_configured_only and then asserting filter path exists.
             include_provider_ids: Vec::new(),
+            enabled_patterns: Vec::new(),
         };
         let filtered = ModelCatalogSnapshot::build_with_options(&[], &empty_allow);
         let full = ModelCatalogSnapshot::build(&[]);
@@ -1373,6 +1389,7 @@ mod tests {
         let opts = ModelCatalogOptions {
             show_configured_only: true,
             include_provider_ids: vec![sample_id.clone()],
+            enabled_patterns: Vec::new(),
         };
         let catalog = ModelCatalogSnapshot::build_with_options(&[], &opts);
         assert!(

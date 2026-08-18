@@ -55,6 +55,7 @@ pub struct AgentHarnessStreamOptions {
     pub headers: Option<std::collections::HashMap<String, String>>,
     pub metadata: Option<Value>,
     pub cache_retention: Option<String>,
+    pub thinking_budgets: Option<elph_ai::ThinkingBudgets>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -82,6 +83,7 @@ pub fn clone_stream_options(stream_options: &AgentHarnessStreamOptions) -> Agent
         headers: stream_options.headers.clone(),
         metadata: stream_options.metadata.clone(),
         cache_retention: stream_options.cache_retention.clone(),
+        thinking_budgets: stream_options.thinking_budgets.clone(),
     }
 }
 

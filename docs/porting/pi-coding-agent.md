@@ -43,6 +43,19 @@ Elph deliberately **diverges** in product design (memory, ACP, WASM extensions, 
 
 ## Timeline
 
+### 2026-08-18 — Settings file surface: filters, trust, host knobs
+
+**Scope:** `crates/coding-agent/src/platform/settings/`, resource loader, session create. Not a TUI `/settings` overlay.
+
+Pi intent (`enabledModels`, resource path arrays, `defaultTools`, `defaultProjectTrust`, thinking budgets, shell, proxy) mapped onto Elph nested groups. No npm `packages`. No legacy settings migration.
+
+- `models.enabled` glob catalog filter; `models.thinkingBudgets` → harness stream options.
+- `resources.skills` / `prompts` / `extensions`, `disabledSkills` / `disabledExtensions`, `enableSkillCommands`.
+- `tools.default` builtin allowlist (meta tools stay).
+- `trust.defaultProjectTrust` + skip project settings/resources when untrusted (`ask` ≡ `never` until a prompt UI exists).
+- `shell.path` / `commandPrefix`, `network.httpProxy`, `ui.quietStartup`, `compaction.reserveTokens`.
+- Dropped `migrate_settings_value` and `extensions.json` sidecar.
+
 ### 2026-08-09 — Busy-state queueing: action dispatch, not raw text (Elph delta)
 
 **Scope:** `crates/coding-agent/` product crate. Follow-up to the `/handover`

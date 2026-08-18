@@ -65,7 +65,9 @@ pub fn handle(args: &ExtensionsArgs) -> ExitCode {
         help::cli_error(format!("ensure extension dirs: {error}"));
         return EXIT_ERROR;
     }
-    if let Err(error) = host.reload(&paths, false) {
+    let host_settings =
+        crate::platform::Settings::load(&paths).unwrap_or_else(|_| crate::platform::Settings::defaults());
+    if let Err(error) = host.reload(&paths, &host_settings) {
         help::cli_error(format!("load extensions: {error}"));
         return EXIT_ERROR;
     }

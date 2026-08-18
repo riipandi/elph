@@ -74,7 +74,7 @@ impl Drop for ShellUseTeardownGuard {
     }
 }
 
-use crate::agent::{load_resources, resolve_provider_and_model, slash_commands_for_palette};
+use crate::agent::{load_resources, resolve_provider_and_model, slash_commands_for_palette_with};
 use crate::extensions::ExtensionHost;
 use crate::platform::{Paths, Settings};
 use crate::tui::transcript::LogDensity;
@@ -100,18 +100,24 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
     let extension_host = ExtensionHost::new();
     if let Err(err) = ExtensionHost::ensure_dirs(&paths) {
         log::warn!("extension dirs unavailable: {err}");
-    } else if let Err(err) = extension_host.reload(&paths, true) {
+    } else if let Err(err) = extension_host.reload(&paths, &settings) {
         log::warn!("extension reload failed: {err}");
     }
 
     let cwd = paths.project_dir().clone();
     let execution_env = Arc::new(LocalExecutionEnv::new(&cwd));
     let env = execution_env.clone();
-    let bootstrap_resources = load_resources(&paths, &cwd, &env).await;
+    settings.apply_http_proxy_env();
+    settings.apply_quiet_startup_env();
+    let bootstrap_resources = load_resources(&paths, &cwd, &env, &settings).await;
     let prompt_templates = bootstrap_resources.resources.prompt_templates.clone();
     let skills = bootstrap_resources.resources.skills.clone();
-    let slash_commands =
-        slash_commands_for_palette(Some(&extension_host.registry().read()), Some(&prompt_templates), Some(&skills));
+    let slash_commands = slash_commands_for_palette_with(
+        Some(&extension_host.registry().read()),
+        Some(&prompt_templates),
+        Some(&skills),
+        settings.resources.enable_skill_commands,
+    );
 
     let session_id = options.resume_id.clone().unwrap_or_else(|| "starting…".to_string());
     let (boot_provider, boot_model_id) =

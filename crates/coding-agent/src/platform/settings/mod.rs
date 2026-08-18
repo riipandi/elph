@@ -6,9 +6,10 @@
 //! |----------|-----------------------------------|-------------------------------------------|
 //! | Defaults | (in code)                         | Serde field defaults for missing keys     |
 //! | Home     | `CONFIG_DIR/settings.json`        | Global prefs; default write target        |
-//! | Project  | `<project>/.elph/settings.json`   | Per-repo overrides (optional)             |
+//! | Project  | `<project>/.elph/settings.json`   | Per-repo overrides when the project is trusted |
 //!
-//! Runtime load merges **home ← project** (project wins per field / nested object key).
+//! Runtime load merges **home ← project** (project wins per nested object key; arrays replace).
+//! Project layer is skipped when untrusted and `trust.defaultProjectTrust` is `ask` or `never`.
 //! Runtime saves write **home only** so project overlays are not baked into the global file.
 //!
 //! # Shape (domain groups)
@@ -70,9 +71,13 @@
 //! Host-only: `elph-ai` and `elph-agent` never read these paths; the binary maps fields
 //! into agnostic harness options at session creation.
 //!
-//! Flat legacy keys and the old `session` group are migrated on load and rewritten in the
-//! nested shape on the next save.
+//! Current nested shape only — no legacy key rewrite on load.
 
+pub mod apply;
+mod merge;
+pub mod patterns;
+
+use merge::deep_merge;
 use std::path::{Path, PathBuf};
 
 use crate::utils::path::AppPaths;
@@ -150,6 +155,24 @@ pub struct Settings {
     /// Multi-process worker coordination (leases, registry, mailbox, TUI peers).
     #[serde(default)]
     pub workers: WorkersSettings,
+    /// Extra resource paths and enable/disable filters.
+    #[serde(default)]
+    pub resources: ResourcesSettings,
+    /// Built-in tool allowlist (`null` = all builtins).
+    #[serde(default)]
+    pub tools: ToolsSettings,
+    /// Project-trust fallback. Global layer only (project file cannot override).
+    #[serde(default)]
+    pub trust: TrustSettings,
+    /// Shell invocation overrides for `shell_exec`.
+    #[serde(default)]
+    pub shell: ShellSettings,
+    /// HTTP proxy for Elph-managed clients.
+    #[serde(default)]
+    pub network: NetworkSettings,
+    /// Set at load time: project settings/resources layer was applied.
+    #[serde(skip)]
+    pub project_layer_loaded: bool,
 }
 
 /// Multi-worker coordination preferences (same machine / shared project store).
@@ -219,6 +242,105 @@ fn default_workers_ask_timeout_ms() -> u64 {
 }
 fn default_workers_max_hops() -> u32 {
     5
+}
+
+/// Extra skill/prompt/extension paths and name filters.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ResourcesSettings {
+    /// Extra skill files/directories (globs, `!` exclude, `+`/`-` exact).
+    #[serde(default)]
+    pub skills: Vec<String>,
+    /// Extra prompt template paths.
+    #[serde(default)]
+    pub prompts: Vec<String>,
+    /// Extra extension directory paths.
+    #[serde(default)]
+    pub extensions: Vec<String>,
+    /// Skill names (globs) to drop after discovery.
+    #[serde(default)]
+    pub disabled_skills: Vec<String>,
+    /// Extension names to skip (same role as former `extensions.json` `disabled`).
+    #[serde(default)]
+    pub disabled_extensions: Vec<String>,
+    /// Register discovered skills as `/name` slash commands.
+    #[serde(default = "default_true")]
+    pub enable_skill_commands: bool,
+}
+
+impl Default for ResourcesSettings {
+    fn default() -> Self {
+        Self {
+            skills: Vec::new(),
+            prompts: Vec::new(),
+            extensions: Vec::new(),
+            disabled_skills: Vec::new(),
+            disabled_extensions: Vec::new(),
+            enable_skill_commands: true,
+        }
+    }
+}
+
+/// Built-in tool allowlist. `None` = all builtins; `Some([])` = none (meta tools stay).
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolsSettings {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default: Option<Vec<String>>,
+}
+
+/// Fallback when `trust.json` has no decision for this folder (global setting only).
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum DefaultProjectTrust {
+    #[default]
+    Ask,
+    Always,
+    Never,
+}
+
+impl DefaultProjectTrust {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Ask => "ask",
+            Self::Always => "always",
+            Self::Never => "never",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TrustSettings {
+    #[serde(default)]
+    pub default_project_trust: DefaultProjectTrust,
+}
+
+impl Default for TrustSettings {
+    fn default() -> Self {
+        Self {
+            default_project_trust: DefaultProjectTrust::Ask,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ShellSettings {
+    /// Custom shell binary (leading `~` expanded by the host).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    /// Prefix prepended to every `shell_exec` command.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub command_prefix: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkSettings {
+    /// HTTP proxy URL applied as `HTTP_PROXY` / `HTTPS_PROXY` when those env vars are unset.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub http_proxy: Option<String>,
 }
 
 /// Session storage preferences (retention / GC). Per-session pin is DB state, not settings.
@@ -353,6 +475,9 @@ pub struct UiSettings {
     /// provider/model) under the last assistant reply after each completed turn.
     #[serde(default = "default_true")]
     pub turn_stats: bool,
+    /// Hide bootstrap spinner / startup chatter. `ELPH_QUIET` still wins when set.
+    #[serde(default = "default_false")]
+    pub quiet_startup: bool,
 }
 
 impl Default for UiSettings {
@@ -369,6 +494,7 @@ impl Default for UiSettings {
             file_picker: FilePickerSettings::default(),
             allow_mode_change_while_busy: true,
             turn_stats: true,
+            quiet_startup: false,
         }
     }
 }
@@ -455,6 +581,12 @@ pub struct ModelsSettings {
     /// Edit via `/scoped-models`.
     #[serde(default)]
     pub scoped_models: Vec<String>,
+    /// Glob filter for the model catalog (`provider/model_id` or bare id). Empty = no filter.
+    #[serde(default)]
+    pub enabled: Vec<String>,
+    /// Custom thinking token budgets per level (Anthropic / Google / compat).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub thinking_budgets: Option<elph_ai::ThinkingBudgets>,
     /// Local ONNX / Hugging Face embedding model for floppy memory.
     #[serde(default)]
     pub embed: EmbedSettings,
@@ -470,6 +602,8 @@ impl Default for ModelsSettings {
             default_thinking_level: default_thinking_level(),
             show_configured_only: false,
             scoped_models: Vec::new(),
+            enabled: Vec::new(),
+            thinking_budgets: None,
             embed: EmbedSettings::default(),
         }
     }
@@ -749,6 +883,9 @@ pub struct CompactionConfig {
     /// When true (default), physically DELETE pre-boundary `session_entries` after compact.
     #[serde(default = "default_true")]
     pub physical_prune: bool,
+    /// Tokens reserved for the model response during compaction.
+    #[serde(default = "default_compaction_reserve_tokens")]
+    pub reserve_tokens: u64,
 }
 
 impl Default for CompactionConfig {
@@ -757,6 +894,7 @@ impl Default for CompactionConfig {
             threshold_pct: default_compaction_threshold_pct(),
             keep_recent_tokens: default_compaction_keep_recent(),
             physical_prune: true,
+            reserve_tokens: default_compaction_reserve_tokens(),
         }
     }
 }
@@ -768,7 +906,7 @@ impl CompactionConfig {
     pub fn to_agent_settings(&self) -> elph_agent::CompactionSettings {
         elph_agent::CompactionSettings {
             enabled: true,
-            reserve_tokens: elph_agent::HARNESS_DEFAULT_COMPACTION_SETTINGS.reserve_tokens,
+            reserve_tokens: self.reserve_tokens,
             threshold_pct: Some(self.threshold_pct.clamp(1, 100)),
             keep_recent_tokens: self.keep_recent_tokens,
             physical_prune: self.physical_prune,
@@ -797,6 +935,12 @@ impl Settings {
             compaction: CompactionConfig::default(),
             session: SessionSettings::default(),
             workers: WorkersSettings::default(),
+            resources: ResourcesSettings::default(),
+            tools: ToolsSettings::default(),
+            trust: TrustSettings::default(),
+            shell: ShellSettings::default(),
+            network: NetworkSettings::default(),
+            project_layer_loaded: false,
         }
     }
 
@@ -827,21 +971,37 @@ impl Settings {
     /// Load one layer (missing file → empty object, then serde defaults).
     pub fn load_layer(paths: &Paths, scope: SettingsScope) -> Result<Self> {
         let path = Self::path_for(paths, scope);
-        let mut value = read_settings_value(&path)?;
-        migrate_settings_value(&mut value);
+        let value = read_settings_value(&path)?;
         serde_json::from_value(value).with_context(|| format!("parse {}", path.display()))
     }
 
-    /// Load merged settings: serde defaults ← home ← project (project wins per field).
+    /// Whether the project settings/resources layer should be applied.
+    ///
+    /// `trust.defaultProjectTrust` is read from the **home** file only.
+    /// `ask` without a saved `trust.json` decision is treated as `never` (no prompt this pass).
+    pub fn project_layer_allowed(paths: &Paths, home: &Self) -> bool {
+        if crate::platform::scaffold::TrustStore::is_trusted(paths, paths.project_dir()).unwrap_or(false) {
+            return true;
+        }
+        matches!(home.trust.default_project_trust, DefaultProjectTrust::Always)
+    }
+
+    /// Load merged settings: serde defaults ← home ← project when trusted.
+    /// `trust.*` always comes from the home layer.
     pub fn load(paths: &Paths) -> Result<Self> {
         Self::ensure(paths)?;
-        let mut home = read_settings_value(&paths.settings_path())?;
-        migrate_settings_value(&mut home);
-        let mut project = read_settings_value(&paths.project_settings_path())?;
-        migrate_settings_value(&mut project);
-        let mut merged = home;
+        let home_value = read_settings_value(&paths.settings_path())?;
+        let home: Self = serde_json::from_value(home_value.clone()).context("parse home settings")?;
+        if !Self::project_layer_allowed(paths, &home) {
+            return Ok(home);
+        }
+        let project = read_settings_value(&paths.project_settings_path())?;
+        let mut merged = home_value;
         deep_merge(&mut merged, &project);
-        serde_json::from_value(merged).context("parse merged settings")
+        let mut settings: Self = serde_json::from_value(merged).context("parse merged settings")?;
+        settings.trust = home.trust;
+        settings.project_layer_loaded = true;
+        Ok(settings)
     }
 
     /// Load home layer only (for mutations that must not bake project overrides).
@@ -862,217 +1022,6 @@ impl Settings {
             std::fs::create_dir_all(parent).with_context(|| format!("create {}", parent.display()))?;
         }
         write_json_file(&path, settings).with_context(|| format!("write {}", path.display()))
-    }
-}
-
-/// Lift flat legacy keys into domain groups so older `settings.json` files still load.
-fn migrate_settings_value(value: &mut Value) {
-    let Some(root) = value.as_object_mut() else {
-        return;
-    };
-
-    lift_into_object(
-        root,
-        "ui",
-        &[
-            "showThinking",
-            "autoExpandThinking",
-            "stickyScroll",
-            "footerTokenDisplay",
-            "coloredStatusFooter",
-            "narrowLogLines",
-            "density",
-            "filePicker",
-        ],
-    );
-
-    // Legacy `narrowLogLines` (boolean) → `ui.density` (`compact` / `loose`).
-    // `narrowLogLines: true` was the compact grouped log; `false` was the roomy spacing.
-    if let Some(ui) = root.get_mut("ui").and_then(Value::as_object_mut)
-        && let Some(narrow) = ui.remove("narrowLogLines")
-        && !ui.contains_key("density")
-    {
-        let density = match narrow {
-            Value::Bool(false) => Value::String("loose".to_string()),
-            _ => Value::String(default_log_density()),
-        };
-        ui.insert("density".to_string(), density);
-    }
-
-    // Top-level preferredChatLanguage (already top-level in new shape; no-op if present).
-    // Top-level scopedModelItems → models.scopedModels
-    if let Some(scoped) = root.remove("scopedModelItems") {
-        let models = root
-            .entry("models".to_string())
-            .or_insert_with(|| Value::Object(Map::new()));
-        if let Some(obj) = models.as_object_mut() {
-            obj.entry("scopedModels".to_string()).or_insert(scoped);
-        }
-    }
-
-    // Migrate legacy `session` live-state keys → models / top-level.
-    // Preserve modern `session.retention` (and any future storage keys under `session`).
-    if let Some(session_val) = root.remove("session")
-        && let Some(session) = session_val.as_object()
-    {
-        // preferredChatLanguage → top-level
-        if let Some(lang) = session.get("preferredChatLanguage").cloned()
-            && !root.contains_key("preferredChatLanguage")
-        {
-            root.insert("preferredChatLanguage".to_string(), lang);
-        }
-
-        let models = root
-            .entry("models".to_string())
-            .or_insert_with(|| Value::Object(Map::new()));
-        if let Some(obj) = models.as_object_mut() {
-            // providerId + modelId → defaultModel
-            if !obj.contains_key("defaultModel") {
-                let provider = session
-                    .get("providerId")
-                    .and_then(|v| v.as_str())
-                    .map(str::trim)
-                    .filter(|s| !s.is_empty());
-                let model = session
-                    .get("modelId")
-                    .and_then(|v| v.as_str())
-                    .map(str::trim)
-                    .filter(|s| !s.is_empty());
-                if let (Some(p), Some(m)) = (provider, model) {
-                    obj.insert("defaultModel".to_string(), Value::String(format!("{p}/{m}")));
-                }
-            }
-            if let Some(level) = session.get("thinkingLevel").cloned() {
-                obj.entry("defaultThinkingLevel".to_string()).or_insert(level);
-            }
-            if let Some(title) = session.get("titleModel").cloned() {
-                obj.entry("sessionTitleModel".to_string()).or_insert(title);
-            }
-            // agentMode intentionally dropped — live mode is per-session; default is build.
-        }
-
-        // Re-insert storage-only fields under `session`.
-        let mut kept = Map::new();
-        if let Some(retention) = session.get("retention").cloned() {
-            kept.insert("retention".to_string(), retention);
-        }
-        if !kept.is_empty() {
-            root.insert("session".to_string(), Value::Object(kept));
-        }
-    }
-
-    // models.scoped / scopedModelItems → models.scopedModels
-    if let Some(Value::Object(models)) = root.get_mut("models") {
-        if let Some(scoped) = models.remove("scopedModelItems") {
-            models.entry("scopedModels".to_string()).or_insert(scoped);
-        }
-        if let Some(scoped) = models.remove("scoped") {
-            models.entry("scopedModels".to_string()).or_insert(scoped);
-        }
-        // Flat models.embedModel / embedQuantized → models.embed.{model,quantized}
-        let flat_model = models.remove("embedModel");
-        let flat_q = models.remove("embedQuantized");
-        if flat_model.is_some() || flat_q.is_some() {
-            let embed = models
-                .entry("embed".to_string())
-                .or_insert_with(|| Value::Object(Map::new()));
-            if let Some(obj) = embed.as_object_mut() {
-                if let Some(m) = flat_model {
-                    obj.entry("model".to_string()).or_insert(m);
-                }
-                if let Some(q) = flat_q {
-                    obj.entry("quantized".to_string()).or_insert(q);
-                }
-            }
-        }
-    }
-
-    // memory.embedModel / embedQuantized → models.embed (shared local embedder)
-    let (mem_model, mem_q) = if let Some(Value::Object(memory)) = root.get_mut("memory") {
-        (memory.remove("embedModel"), memory.remove("embedQuantized"))
-    } else {
-        (None, None)
-    };
-    if mem_model.is_some() || mem_q.is_some() {
-        let models = root
-            .entry("models".to_string())
-            .or_insert_with(|| Value::Object(Map::new()));
-        if let Some(models_obj) = models.as_object_mut() {
-            let embed = models_obj
-                .entry("embed".to_string())
-                .or_insert_with(|| Value::Object(Map::new()));
-            if let Some(obj) = embed.as_object_mut() {
-                // Only fill missing keys so an explicit models.embed wins over legacy memory.
-                if let Some(m) = mem_model {
-                    obj.entry("model".to_string()).or_insert(m);
-                }
-                if let Some(q) = mem_q {
-                    obj.entry("quantized".to_string()).or_insert(q);
-                }
-            }
-        }
-    }
-
-    // Legacy nested `provider` group → top-level maxRetries / defaultTimeout.
-    if let Some(provider_val) = root.remove("provider")
-        && let Some(provider) = provider_val.as_object()
-    {
-        if let Some(retries) = provider.get("maxRetries").cloned()
-            && !root.contains_key("maxRetries")
-        {
-            root.insert("maxRetries".to_string(), retries);
-        }
-        if let Some(timeout) = provider.get("defaultTimeout").cloned()
-            && !root.contains_key("defaultTimeout")
-        {
-            root.insert("defaultTimeout".to_string(), timeout);
-        }
-    }
-
-    // Drop ambiguous `compaction.enabled` (auto-compact is always on; only threshold knobs remain).
-    if let Some(Value::Object(compaction)) = root.get_mut("compaction") {
-        compaction.remove("enabled");
-    }
-}
-
-fn lift_into_object(root: &mut Map<String, Value>, group: &str, keys: &[&str]) {
-    let mut lifted = Map::new();
-    for key in keys {
-        if let Some(v) = root.remove(*key) {
-            lifted.insert((*key).to_string(), v);
-        }
-    }
-    if lifted.is_empty() {
-        return;
-    }
-    match root.get_mut(group) {
-        Some(Value::Object(existing)) => {
-            for (k, v) in lifted {
-                existing.entry(k).or_insert(v);
-            }
-        }
-        _ => {
-            root.insert(group.to_string(), Value::Object(lifted));
-        }
-    }
-}
-
-/// Deep-merge `overlay` into `base` (objects recurse; other JSON types replace).
-fn deep_merge(base: &mut Value, overlay: &Value) {
-    match (base, overlay) {
-        (Value::Object(base_map), Value::Object(overlay_map)) => {
-            for (key, overlay_value) in overlay_map {
-                match base_map.get_mut(key) {
-                    Some(base_value) => deep_merge(base_value, overlay_value),
-                    None => {
-                        base_map.insert(key.clone(), overlay_value.clone());
-                    }
-                }
-            }
-        }
-        (base, overlay) => {
-            *base = overlay.clone();
-        }
     }
 }
 
@@ -1213,6 +1162,10 @@ fn default_compaction_keep_recent() -> u64 {
     20_000
 }
 
+fn default_compaction_reserve_tokens() -> u64 {
+    16_384
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1323,31 +1276,9 @@ mod tests {
     }
 
     #[test]
-    fn migrate_legacy_narrow_log_lines_to_density() {
-        // `true` → compact (default), `false` → loose. New `density` wins when both present.
-        let mut value: Value = serde_json::from_str(r#"{ "ui": { "narrowLogLines": false } }"#).expect("parse");
-        migrate_settings_value(&mut value);
-        let decoded: Settings = serde_json::from_value(value).expect("decode");
-        assert_eq!(decoded.ui.density, "loose");
-
-        let mut value: Value = serde_json::from_str(r#"{ "ui": { "narrowLogLines": true } }"#).expect("parse");
-        migrate_settings_value(&mut value);
-        let decoded: Settings = serde_json::from_value(value).expect("decode");
-        assert_eq!(decoded.ui.density, "compact");
-
-        // Explicit density is never overwritten by the legacy key.
-        let mut value: Value =
-            serde_json::from_str(r#"{ "ui": { "narrowLogLines": false, "density": "compact" } }"#).expect("parse");
-        migrate_settings_value(&mut value);
-        let decoded: Settings = serde_json::from_value(value).expect("decode");
-        assert_eq!(decoded.ui.density, "compact");
-    }
-
-    #[test]
     fn density_setting_normalizes_unknown_values() {
         let decode = |ui: &str| -> String {
-            let mut value: Value = serde_json::from_str(&format!(r#"{{ "ui": {ui} }}"#)).expect("parse");
-            migrate_settings_value(&mut value);
+            let value: Value = serde_json::from_str(&format!(r#"{{ "ui": {ui} }}"#)).expect("parse");
             let decoded: Settings = serde_json::from_value(value).expect("decode");
             decoded.ui.density
         };
@@ -1358,38 +1289,6 @@ mod tests {
         assert_eq!(decode(r#"{ "density": true }"#), "compact");
         assert_eq!(decode(r#"{ "density": false }"#), "loose");
         assert_eq!(decode(r#"{ }"#), "compact");
-    }
-
-    #[test]
-    fn migrate_flat_legacy_keys() {
-        let json = r#"{
-            "showThinking": false,
-            "stickyScroll": false,
-            "footerTokenDisplay": "count",
-            "coloredStatusFooter": false,
-            "autoExpandThinking": true,
-            "scopedModelItems": ["openai/gpt-5.6-luna"],
-            "filePicker": { "showHiddenFiles": true },
-            "session": { "agentMode": "plan", "thinkingLevel": "low", "preferredChatLanguage": "indonesian" },
-            "provider": { "maxRetries": 4, "defaultTimeout": "90s" }
-        }"#;
-        let mut value: Value = serde_json::from_str(json).expect("parse");
-        migrate_settings_value(&mut value);
-        assert!(value.get("provider").is_none());
-        assert_eq!(value["maxRetries"], 4);
-        assert_eq!(value["defaultTimeout"], "90s");
-        let decoded: Settings = serde_json::from_value(value).expect("decode");
-        assert!(!decoded.ui.show_thinking);
-        assert!(!decoded.ui.sticky_scroll);
-        assert_eq!(decoded.ui.footer_token_display, "count");
-        assert!(!decoded.ui.colored_status_footer);
-        assert!(decoded.ui.auto_expand_thinking);
-        assert!(decoded.ui.file_picker.show_hidden_files);
-        assert_eq!(decoded.models.scoped_models, vec!["openai/gpt-5.6-luna".to_string()]);
-        assert_eq!(decoded.models.default_thinking_level, "low");
-        assert_eq!(decoded.preferred_chat_language, "indonesian");
-        assert_eq!(decoded.max_retries, 4);
-        assert_eq!(decoded.default_timeout, "90s");
     }
 
     #[test]
@@ -1426,22 +1325,6 @@ mod tests {
     }
 
     #[test]
-    fn migrate_legacy_memory_embed_to_models_embed() {
-        let mut value = serde_json::json!({
-            "memory": {
-                "embedModel": "BGESmallENV15",
-                "embedQuantized": false,
-                "enabled": true
-            }
-        });
-        migrate_settings_value(&mut value);
-        let settings: Settings = serde_json::from_value(value).expect("parse");
-        assert_eq!(settings.models.embed.model, EmbedModel::Custom("BGESmallENV15".to_string()));
-        assert!(!settings.models.embed.quantized);
-        assert!(settings.memory.enabled);
-    }
-
-    #[test]
     fn ensure_writes_only_when_missing() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let paths = test_paths(&tmp);
@@ -1464,6 +1347,7 @@ mod tests {
 
         Settings::ensure(&paths).expect("ensure home");
         let mut home = Settings::load_home(&paths).expect("load home");
+        home.trust.default_project_trust = DefaultProjectTrust::Always;
         home.ui.show_thinking = true;
         home.ui.sticky_scroll = true;
         home.models.default_model = Some("openai/gpt-5.6-luna".into());
@@ -1495,6 +1379,7 @@ mod tests {
         Settings::ensure(&paths).expect("ensure");
 
         let mut home = Settings::load_home(&paths).expect("home");
+        home.trust.default_project_trust = DefaultProjectTrust::Always;
         home.models.default_model = Some("openai/gpt-5.6-luna".into());
         Settings::save(&paths, &home).expect("save home");
 
@@ -1585,6 +1470,7 @@ mod tests {
         Settings::ensure(&paths).expect("ensure");
 
         let mut home = Settings::load_home(&paths).expect("home");
+        home.trust.default_project_trust = DefaultProjectTrust::Always;
         home.ui.show_thinking = true;
         Settings::save(&paths, &home).expect("save");
 
@@ -1598,18 +1484,18 @@ mod tests {
     }
 
     #[test]
-    fn deep_merge_replaces_arrays_and_scalars() {
-        let mut base = serde_json::json!({
-            "models": { "scopedModels": ["a/b"] },
-            "ui": { "showThinking": true }
-        });
-        let overlay = serde_json::json!({
-            "models": { "scopedModels": ["x/y", "z/w"] },
-            "ui": { "showThinking": false }
-        });
-        deep_merge(&mut base, &overlay);
-        assert_eq!(base["ui"]["showThinking"], false);
-        assert_eq!(base["models"]["scopedModels"], serde_json::json!(["x/y", "z/w"]));
+    fn untrusted_project_settings_are_ignored() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let paths = test_paths(&tmp);
+        Settings::ensure(&paths).expect("ensure");
+        let mut home = Settings::load_home(&paths).expect("home");
+        home.trust.default_project_trust = DefaultProjectTrust::Ask;
+        home.ui.show_thinking = true;
+        Settings::save(&paths, &home).expect("save");
+        std::fs::create_dir_all(paths.project_elph_dir()).expect("project dir");
+        std::fs::write(paths.project_settings_path(), r#"{"ui":{"showThinking":false}}"#).expect("project");
+        let loaded = Settings::load(&paths).expect("load");
+        assert!(loaded.ui.show_thinking);
     }
 
     #[test]
@@ -1620,40 +1506,6 @@ mod tests {
         assert_eq!(parse_duration_ms("500"), Some(500));
         assert_eq!(parse_duration_ms(""), None);
         assert_eq!(parse_duration_ms("nope"), None);
-    }
-
-    #[test]
-    fn load_migrates_legacy_file_on_disk() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let paths = test_paths(&tmp);
-        std::fs::create_dir_all(paths.config_dir()).expect("config");
-        std::fs::write(
-            paths.settings_path(),
-            r#"{"showThinking":false,"scopedModelItems":["openai/gpt-5.6-luna"],"session":{"agentMode":"ask","providerId":"openai","modelId":"gpt-5.6-luna","thinkingLevel":"medium","titleModel":"inherit","preferredChatLanguage":"english"}}"#,
-        )
-        .expect("seed");
-
-        let loaded = Settings::load_home(&paths).expect("load");
-        assert!(!loaded.ui.show_thinking);
-        assert_eq!(loaded.models.scoped_models, vec!["openai/gpt-5.6-luna".to_string()]);
-        assert_eq!(loaded.models.default_model.as_deref(), Some("openai/gpt-5.6-luna"));
-        assert_eq!(loaded.models.default_thinking_level, "medium");
-        assert_eq!(loaded.preferred_chat_language, "english");
-
-        Settings::save(&paths, &loaded).expect("save");
-        let raw = std::fs::read_to_string(paths.settings_path()).expect("read");
-        assert!(raw.contains("\"ui\""));
-        assert!(raw.contains("\"models\""));
-        assert!(!raw.contains("scopedModelItems"));
-        // Top-level showThinking gone; legacy live session keys not re-emitted.
-        let value: Value = serde_json::from_str(&raw).expect("parse");
-        assert!(value.get("showThinking").is_none());
-        assert!(value.get("session").is_some());
-        assert!(value["session"].get("retention").is_some());
-        assert!(value["session"].get("agentMode").is_none());
-        assert_eq!(value["ui"]["showThinking"], false);
-        assert_eq!(value["models"]["scopedModels"][0], "openai/gpt-5.6-luna");
-        assert_eq!(value["models"]["defaultModel"], "openai/gpt-5.6-luna");
     }
 
     #[test]

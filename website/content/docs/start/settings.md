@@ -17,9 +17,11 @@
 | `skills/<name>/SKILL.md` | User skills                         |
 | `bundled/`               | Built-in skills and this user guide |
 
-Project overrides: `<project>/.elph/settings.json`, `mcp.json`, `skills/`, `prompts/`. Project wins on conflict.
+Project overrides: `<project>/.elph/settings.json`, `mcp.json`, `skills/`, `prompts/` — loaded when the project is trusted (`/trust` or `trust.defaultProjectTrust: always`). Project wins on conflict; arrays replace.
 
 `models.defaultModel` seeds **new** sessions only. Live model, thinking level, and agent mode are per-session.
+
+Catalog filter: `models.enabled` (globs). Skill filter: `resources.disabledSkills` / extra `resources.skills` paths. Builtin tools: `tools.default`. Full key list: repo `docs/settings.md` and `schemas/elph-schema.json`.
 
 ## Environment
 

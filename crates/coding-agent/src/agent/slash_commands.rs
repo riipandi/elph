@@ -94,6 +94,15 @@ pub fn slash_commands_for_palette(
     prompt_templates: Option<&[PromptTemplate]>,
     skills: Option<&[Skill]>,
 ) -> Vec<SlashCommand> {
+    slash_commands_for_palette_with(extensions, prompt_templates, skills, true)
+}
+
+pub fn slash_commands_for_palette_with(
+    extensions: Option<&ExtensionRegistry>,
+    prompt_templates: Option<&[PromptTemplate]>,
+    skills: Option<&[Skill]>,
+    enable_skill_commands: bool,
+) -> Vec<SlashCommand> {
     // Include hidden builtins (e.g. `/confetti`) so Tab can still complete them when the
     // typed query matches. Empty-query palette + `/help` filter them out via `hidden`.
     let mut commands: Vec<SlashCommand> = builtin_slash_commands()
@@ -136,7 +145,7 @@ pub fn slash_commands_for_palette(
             }
         }
     }
-    if let Some(skills) = skills {
+    if enable_skill_commands && let Some(skills) = skills {
         for skill in skills {
             let name = skill_slash_name(&skill.name);
             if !builtin_names.contains(&name) {
@@ -728,6 +737,16 @@ pub fn dispatch_slash_command(
     prompt_templates: Option<&[PromptTemplate]>,
     skills: Option<&[Skill]>,
 ) -> Option<SlashDispatch> {
+    dispatch_slash_command_with(input, extensions, prompt_templates, skills, true)
+}
+
+pub fn dispatch_slash_command_with(
+    input: &str,
+    extensions: Option<&ExtensionRegistry>,
+    prompt_templates: Option<&[PromptTemplate]>,
+    skills: Option<&[Skill]>,
+    enable_skill_commands: bool,
+) -> Option<SlashDispatch> {
     let trimmed = input.trim();
     if !trimmed.starts_with('/') {
         return None;
@@ -763,8 +782,9 @@ pub fn dispatch_slash_command(
         return Some(SlashDispatch::PromptTemplate { name, args });
     }
 
-    // Match skill by raw name (no prefix needed).
-    if let Some(skills) = skills
+    // Match skill by raw name (no prefix needed) when skill slash commands are enabled.
+    if enable_skill_commands
+        && let Some(skills) = skills
         && skills.iter().any(|skill| skill.name == name)
     {
         return Some(SlashDispatch::Skill { name, args });

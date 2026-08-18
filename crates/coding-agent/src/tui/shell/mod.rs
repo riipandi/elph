@@ -21,7 +21,7 @@ use crate::agent::CONTINUE_META_LABEL;
 use crate::agent::HANDOVER_PROMPT_PREFIX;
 use crate::agent::RETRY_CONTINUE_PROMPT;
 use crate::agent::load_resources;
-use crate::agent::slash_commands_for_palette;
+use crate::agent::slash_commands_for_palette_with;
 use crate::agent::{AgentUiEvent, CodingAgentSession, ToolApprovalChoice};
 use crate::extensions::ExtensionHost;
 use crate::platform::exit_message::{ExitSnapshot, record_if_active, session_had_user_activity};

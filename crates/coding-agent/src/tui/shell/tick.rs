@@ -222,7 +222,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             let settings = Settings::load(&paths_for_load).ok();
             if let Some(settings) = settings {
                 let env = Arc::new(LocalExecutionEnv::new(&cwd_for_load));
-                let loaded = load_resources(&paths_for_load, &cwd_for_load, &env).await;
+                let loaded = load_resources(&paths_for_load, &cwd_for_load, &env, &settings).await;
 
                 let new_templates = loaded.resources.prompt_templates.clone();
                 let new_skills = loaded.resources.skills.clone();
@@ -231,10 +231,11 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 {
                     let ext_registry = extension_host_for_loop.registry();
                     let reg = ext_registry.read();
-                    slash_commands.set(slash_commands_for_palette(
+                    slash_commands.set(slash_commands_for_palette_with(
                         Some(&reg),
                         Some(&prompt_templates.read()),
                         Some(&skills.read()),
+                        settings.resources.enable_skill_commands,
                     ));
                 }
 
@@ -289,10 +290,14 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 let loaded_skills = resources.skills.clone();
                 prompt_templates.set(templates.clone());
                 skills.set(loaded_skills.clone());
-                slash_commands.set(slash_commands_for_palette(
+                let enable_skill_commands = Settings::load(&paths.read())
+                    .map(|s| s.resources.enable_skill_commands)
+                    .unwrap_or(true);
+                slash_commands.set(slash_commands_for_palette_with(
                     Some(&extension_host_for_palette.registry().read()),
                     Some(&templates),
                     Some(&loaded_skills),
+                    enable_skill_commands,
                 ));
             }
             palette_refresh_pending.set(false);

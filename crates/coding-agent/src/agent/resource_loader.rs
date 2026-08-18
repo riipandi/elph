@@ -13,7 +13,7 @@ use elph_agent::{AgentHarnessResources, LocalExecutionEnv, PromptTemplate};
 use super::agents_load::{AgentConflict, WorkspaceAgents, load_workspace_agents};
 use super::conflict_notice::{self, CrossKindConflict, TemplateConflict};
 use super::skills_load::{SkillConflict, WorkspaceSkills, load_workspace_skills};
-use crate::platform::Paths;
+use crate::platform::{Paths, Settings};
 
 #[derive(Debug, Clone, Default)]
 pub struct LoadResourcesResult {
@@ -44,36 +44,51 @@ impl LoadResourcesResult {
 }
 
 /// `(absolute path, display label)` for prompt template search (lowest priority first).
-pub fn prompt_template_dir_entries(paths: &Paths, cwd: &Path) -> Vec<(String, String)> {
+pub fn prompt_template_dir_entries(
+    paths: &Paths,
+    cwd: &Path,
+    include_project: bool,
+    extra: &[String],
+) -> Vec<(String, String)> {
     let mut entries = vec![(
         paths.prompts_dir().to_string_lossy().to_string(),
         "~/.config/elph/prompts".to_string(),
     )];
-    let project_prompts = paths.project_elph_dir().join("prompts");
     let project_display = paths.project_dir().display();
-    if project_prompts.is_dir() {
-        entries.push((
-            project_prompts.to_string_lossy().to_string(),
-            format!("{project_display}/.elph/prompts"),
-        ));
+    if include_project {
+        let project_prompts = paths.project_elph_dir().join("prompts");
+        if project_prompts.is_dir() {
+            entries.push((
+                project_prompts.to_string_lossy().to_string(),
+                format!("{project_display}/.elph/prompts"),
+            ));
+        }
+        let agents_prompts = cwd.join(".agents").join("prompts");
+        if agents_prompts.is_dir() {
+            entries.push((
+                agents_prompts.to_string_lossy().to_string(),
+                format!("{project_display}/.agents/prompts"),
+            ));
+        }
     }
-    let agents_prompts = cwd.join(".agents").join("prompts");
-    if agents_prompts.is_dir() {
-        entries.push((
-            agents_prompts.to_string_lossy().to_string(),
-            format!("{project_display}/.agents/prompts"),
-        ));
+    for path in extra {
+        entries.push((path.clone(), path.clone()));
     }
     entries
 }
 
-pub async fn load_resources(paths: &Paths, cwd: &Path, env: &LocalExecutionEnv) -> LoadResourcesResult {
+pub async fn load_resources(
+    paths: &Paths,
+    cwd: &Path,
+    env: &LocalExecutionEnv,
+    settings: &Settings,
+) -> LoadResourcesResult {
     let mut warnings = Vec::new();
 
     let WorkspaceSkills {
         skills,
         conflicts: skill_conflicts,
-    } = load_workspace_skills(env, paths).await;
+    } = load_workspace_skills(env, paths, settings).await;
 
     let WorkspaceAgents {
         agents: _agents,
@@ -81,7 +96,7 @@ pub async fn load_resources(paths: &Paths, cwd: &Path, env: &LocalExecutionEnv) 
     } = load_workspace_agents(paths);
 
     let (prompt_templates, template_conflicts, template_warnings) =
-        load_prompt_templates_resolved(env, paths, cwd).await;
+        load_prompt_templates_resolved(env, paths, cwd, settings).await;
     warnings.extend(template_warnings);
 
     let cross_kind_conflicts = Vec::new(); // intentional: dispatch order (templates before skills) handles priority
@@ -106,13 +121,16 @@ async fn load_prompt_templates_resolved(
     env: &LocalExecutionEnv,
     paths: &Paths,
     cwd: &Path,
+    settings: &Settings,
 ) -> (Vec<PromptTemplate>, Vec<TemplateConflict>, Vec<String>) {
     let mut source_by_name: HashMap<String, String> = HashMap::new();
     let mut by_name: HashMap<String, PromptTemplate> = HashMap::new();
     let mut conflicts = Vec::new();
     let mut warnings = Vec::new();
 
-    for (path, label) in prompt_template_dir_entries(paths, cwd) {
+    for (path, label) in
+        prompt_template_dir_entries(paths, cwd, settings.include_project_resources(), &settings.extra_prompt_paths())
+    {
         let loaded = load_prompt_templates(env, &[path.as_str()]).await;
         for diagnostic in loaded.diagnostics {
             warnings.push(format!("prompt template ({}): {}", diagnostic.path, diagnostic.message));
@@ -220,7 +238,9 @@ mod tests {
         std::fs::write(project.join("ship.md"), "---\ndescription: project\n---\nProject body\n").unwrap();
 
         let env = LocalExecutionEnv::new(paths.project_dir());
-        let loaded = load_resources(&paths, paths.project_dir(), &env).await;
+        let mut settings = Settings::defaults();
+        settings.project_layer_loaded = true;
+        let loaded = load_resources(&paths, paths.project_dir(), &env, &settings).await;
         assert_eq!(loaded.template_count(), 1);
         assert_eq!(loaded.resources.prompt_templates[0].description, "project");
         assert_eq!(loaded.template_conflicts.len(), 1);

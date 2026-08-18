@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://elph.space/elph-schema.json",
     "title": "Elph settings configuration",
-    "description": "User preferences for the Elph coding agent, grouped by domain (ui, models, memory, notifications, compaction). Active model, thinking level, and agent mode are per-session (not stored here). Home: ~/.elph/settings.json. Optional project overrides: <workDir>/.elph/settings.json (same shape). Merge: defaults \u2190 home \u2190 project (project wins per nested key). Runtime saves write the home layer only. Legacy session group, flat keys, and memory.embedModel/embedQuantized are migrated on load; unknown keys are ignored. Top-level transport: maxRetries, defaultTimeout. Legacy nested provider group is migrated on load.",
+    "description": "User preferences for the Elph coding agent, grouped by domain. Active model, thinking level, and agent mode are per-session (not stored here). Home: CONFIG_DIR/settings.json. Optional project overrides: <workDir>/.elph/settings.json (same shape). Merge: defaults \u2190 home \u2190 project when the project is trusted (project wins per nested key; arrays replace). Runtime saves write the home layer only. Unknown keys are ignored. Top-level transport: maxRetries, defaultTimeout.",
     "type": "object",
     "additionalProperties": false,
     "properties": {
@@ -51,6 +51,27 @@
         },
         "compaction": {
             "$ref": "#/definitions/compaction"
+        },
+        "session": {
+            "$ref": "#/definitions/session"
+        },
+        "workers": {
+            "$ref": "#/definitions/workers"
+        },
+        "resources": {
+            "$ref": "#/definitions/resources"
+        },
+        "tools": {
+            "$ref": "#/definitions/tools"
+        },
+        "trust": {
+            "$ref": "#/definitions/trust"
+        },
+        "shell": {
+            "$ref": "#/definitions/shell"
+        },
+        "network": {
+            "$ref": "#/definitions/network"
         }
     },
     "definitions": {
@@ -113,6 +134,11 @@
                     "type": "boolean",
                     "default": true,
                     "description": "When true (default), show a dimmed per-turn stats card under the last assistant reply after each completed turn: duration, tokens in/out, cached tokens (when reported), and provider/model."
+                },
+                "quietStartup": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Hide bootstrap spinner / startup chatter. ELPH_QUIET still wins when set."
                 }
             }
         },
@@ -279,6 +305,23 @@
                         "description": "provider/model_id entry (e.g. openai/gpt-5.6-luna)."
                     },
                     "description": "Models for Ctrl+P cycling and the Scoped tab. Edit via /scoped-models."
+                },
+                "enabled": {
+                    "type": "array",
+                    "default": [],
+                    "items": { "type": "string", "minLength": 1 },
+                    "description": "Glob filter for the model catalog (provider/model_id or bare id). Supports * wildcards, !exclude, +exact, -exact. Empty = no filter."
+                },
+                "thinkingBudgets": {
+                    "type": ["object", "null"],
+                    "additionalProperties": false,
+                    "properties": {
+                        "minimal": { "type": "integer", "minimum": 0 },
+                        "low": { "type": "integer", "minimum": 0 },
+                        "medium": { "type": "integer", "minimum": 0 },
+                        "high": { "type": "integer", "minimum": 0 }
+                    },
+                    "description": "Custom thinking token budgets per level."
                 },
                 "embed": {
                     "$ref": "#/definitions/embed",
@@ -513,6 +556,148 @@
                     "minimum": 0,
                     "default": 20000,
                     "description": "Number of recent tokens to retain after compaction."
+                },
+                "physicalPrune": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Physically DELETE pre-boundary session_entries after compact."
+                },
+                "reserveTokens": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 16384,
+                    "description": "Tokens reserved for the model response during compaction."
+                }
+            }
+        },
+        "session": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Session storage and retention (not live model/mode state).",
+            "properties": {
+                "retention": { "$ref": "#/definitions/sessionRetention" }
+            }
+        },
+        "sessionRetention": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "enabled": { "type": "boolean", "default": true },
+                "gcOnOpen": { "type": "boolean", "default": true },
+                "maxSessionsPerCwd": { "type": "integer", "minimum": 0, "default": 40 },
+                "maxSessionAgeDays": { "type": "integer", "minimum": 0, "default": 30 },
+                "maxEntriesPerSession": { "type": "integer", "minimum": 0, "default": 8000 },
+                "maxStoreDbBytes": { "type": "integer", "minimum": 0, "default": 536870912 },
+                "protectLatestPerCwd": { "type": "boolean", "default": true },
+                "maxEntryPayloadBytes": { "type": "integer", "minimum": 0, "default": 262144 },
+                "journalKeepTurns": { "type": "integer", "minimum": 0, "default": 20 },
+                "maxTerminalFilesPerSession": { "type": "integer", "minimum": 0, "default": 50 }
+            }
+        },
+        "workers": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "enabled": { "type": "boolean", "default": true },
+                "name": { "type": ["string", "null"] },
+                "purpose": { "type": "string", "default": "" },
+                "heartbeatSecs": { "type": "integer", "minimum": 1, "default": 10 },
+                "leaseStaleSecs": { "type": "integer", "minimum": 1, "default": 30 },
+                "inboxPollMs": { "type": "integer", "minimum": 1, "default": 750 },
+                "askTimeoutMs": { "type": "integer", "minimum": 1, "default": 600000 },
+                "maxHops": { "type": "integer", "minimum": 1, "default": 5 },
+                "tuiShowPeers": { "type": "boolean", "default": true },
+                "fileLeases": { "type": "boolean", "default": true }
+            }
+        },
+        "resources": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Extra paths and filters for skills, prompts, and WASM extensions.",
+            "properties": {
+                "skills": {
+                    "type": "array",
+                    "default": [],
+                    "items": { "type": "string" },
+                    "description": "Extra skill files/directories. Supports globs, !exclude, +exact, -exact."
+                },
+                "prompts": {
+                    "type": "array",
+                    "default": [],
+                    "items": { "type": "string" }
+                },
+                "extensions": {
+                    "type": "array",
+                    "default": [],
+                    "items": { "type": "string" },
+                    "description": "Extra extension directories."
+                },
+                "disabledSkills": {
+                    "type": "array",
+                    "default": [],
+                    "items": { "type": "string" },
+                    "description": "Skill names (globs) to drop after discovery."
+                },
+                "disabledExtensions": {
+                    "type": "array",
+                    "default": [],
+                    "items": { "type": "string" },
+                    "description": "Extension names to skip."
+                },
+                "enableSkillCommands": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Register discovered skills as /name slash commands."
+                }
+            }
+        },
+        "tools": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "default": {
+                    "oneOf": [
+                        { "type": "null" },
+                        { "type": "array", "items": { "type": "string" } }
+                    ],
+                    "description": "Built-in tool allowlist. null/omitted = all builtins. [] = none (list_available_tools and list_skills stay). MCP and WASM tools are not filtered."
+                }
+            }
+        },
+        "trust": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Global-only project trust fallback. Project settings cannot override this group.",
+            "properties": {
+                "defaultProjectTrust": {
+                    "type": "string",
+                    "enum": ["ask", "always", "never"],
+                    "default": "ask",
+                    "description": "When trust.json has no decision: always loads project settings/resources; ask and never skip them (no prompt UI in this version — ask behaves like never)."
+                }
+            }
+        },
+        "shell": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "path": {
+                    "oneOf": [{ "type": "string" }, { "type": "null" }],
+                    "description": "Custom shell binary. Leading ~ is expanded."
+                },
+                "commandPrefix": {
+                    "oneOf": [{ "type": "string" }, { "type": "null" }],
+                    "description": "Prefix prepended to every shell_exec command."
+                }
+            }
+        },
+        "network": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "httpProxy": {
+                    "oneOf": [{ "type": "string" }, { "type": "null" }],
+                    "description": "HTTP proxy URL applied as HTTP_PROXY and HTTPS_PROXY when those env vars are unset. Global setting."
                 }
             }
         }

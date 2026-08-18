@@ -23,6 +23,7 @@ pub struct LocalExecutionEnv {
     cwd: PathBuf,
     shell_path: Option<PathBuf>,
     shell_env: Option<HashMap<String, String>>,
+    command_prefix: Option<String>,
 }
 
 impl LocalExecutionEnv {
@@ -31,6 +32,7 @@ impl LocalExecutionEnv {
             cwd: cwd.into(),
             shell_path: None,
             shell_env: None,
+            command_prefix: None,
         }
     }
 
@@ -41,6 +43,11 @@ impl LocalExecutionEnv {
 
     pub fn with_shell_env(mut self, shell_env: HashMap<String, String>) -> Self {
         self.shell_env = Some(shell_env);
+        self
+    }
+
+    pub fn with_command_prefix(mut self, prefix: impl Into<String>) -> Self {
+        self.command_prefix = Some(prefix.into());
         self
     }
 

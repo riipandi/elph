@@ -51,6 +51,7 @@ pub fn open_model_selector(args: OpenModelSelectorArgs<'_>) {
     let catalog_options = ModelCatalogOptions {
         show_configured_only: settings.models.show_configured_only,
         include_provider_ids: args.provider_id.map(|id| vec![id.to_string()]).unwrap_or_default(),
+        enabled_patterns: settings.models.enabled.clone(),
     };
     let selector = PendingModelSelector::open_with_selection_options(
         args.initial_filter,

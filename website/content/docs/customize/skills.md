@@ -26,3 +26,17 @@ Step-by-step instructions for the agent…
 ```
 
 After bootstrap, `CONFIG_DIR/bundled/skills/create-skill/` is available. Invoke `/create-skill` (or ask Elph to create a skill) to scaffold a new package.
+
+Project skill dirs load only when the workspace is trusted. Extra paths and name filters:
+
+```json
+{
+  "resources": {
+    "skills": ["~/extra/skills", "!legacy-*"],
+    "disabledSkills": ["create-skill"],
+    "enableSkillCommands": true
+  }
+}
+```
+
+`enableSkillCommands: false` keeps skills in the model catalog (`list_skills`) but does not register `/name` commands.

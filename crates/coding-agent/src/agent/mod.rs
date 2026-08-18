@@ -82,8 +82,8 @@ pub use skills_load::{MAX_PALETTE_DESCRIPTION_CHARS, format_skill_conflict_notic
 pub use skills_load::{parse_skill_slash, skill_slash_name};
 pub use slash_commands::{OverlayCommand, SlashDispatch};
 pub use slash_commands::{
-    SlashArgCompletion, slash_arg_completions, slash_commands_for_palette, slash_palette_submit_on_enter,
-    slash_unimplemented_message,
+    SlashArgCompletion, slash_arg_completions, slash_commands_for_palette, slash_commands_for_palette_with,
+    slash_palette_submit_on_enter, slash_unimplemented_message,
 };
 pub use slash_commands::{confetti_mode_from_args, dispatch_slash_command, format_help_message};
 pub use slash_misc::{

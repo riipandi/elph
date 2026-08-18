@@ -7,7 +7,7 @@ use elph_agent::load_skills;
 use elph_agent::{LocalExecutionEnv, Skill};
 use elph_tui::utils::truncate_with_ellipsis;
 
-use crate::platform::Paths;
+use crate::platform::{Paths, Settings};
 
 /// Max display width for slash palette / `/help` descriptions (skills, templates, builtins).
 pub const MAX_PALETTE_DESCRIPTION_CHARS: usize = 72;
@@ -28,14 +28,13 @@ pub struct WorkspaceSkills {
 }
 
 /// Skill directory search order (lowest priority first, last-wins).
-fn skill_dir_entries(paths: &Paths) -> Vec<(String, String)> {
+fn skill_dir_entries(paths: &Paths, include_project: bool, extra: &[String]) -> Vec<(String, String)> {
     let home = std::env::var_os("HOME")
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| paths.config_dir().clone());
     let project = paths.project_dir();
     let project_display = project.display();
-    vec![
-        // Built-ins unpacked from the binary (CONFIG_DIR/bundled/skills).
+    let mut entries = vec![
         (
             paths.bundled_dir().join("skills").to_string_lossy().to_string(),
             "~/.config/elph/bundled/skills".to_string(),
@@ -48,24 +47,31 @@ fn skill_dir_entries(paths: &Paths) -> Vec<(String, String)> {
             paths.skills_dir().to_string_lossy().to_string(),
             "~/.config/elph/skills".to_string(),
         ),
-        (
+    ];
+    if include_project {
+        entries.push((
             project.join(".agents/skills").to_string_lossy().to_string(),
             format!("{project_display}/.agents/skills"),
-        ),
-        (
+        ));
+        entries.push((
             paths.project_elph_dir().join("skills").to_string_lossy().to_string(),
             format!("{project_display}/.elph/skills"),
-        ),
-    ]
+        ));
+    }
+    for path in extra {
+        entries.push((path.clone(), path.clone()));
+    }
+    entries
 }
 
 /// Load skills from user and project skill folders with last-wins conflict resolution.
-pub async fn load_workspace_skills(env: &LocalExecutionEnv, paths: &Paths) -> WorkspaceSkills {
+pub async fn load_workspace_skills(env: &LocalExecutionEnv, paths: &Paths, settings: &Settings) -> WorkspaceSkills {
     let mut source_by_name: HashMap<String, String> = HashMap::new();
     let mut skills_by_name: HashMap<String, Skill> = HashMap::new();
     let mut conflicts = Vec::new();
 
-    for (path, label) in skill_dir_entries(paths) {
+    let extra = settings.extra_skill_paths();
+    for (path, label) in skill_dir_entries(paths, settings.include_project_resources(), &extra) {
         let result = load_skills(env, &[path.as_str()]).await;
         for skill in result.skills {
             if let Some(previous_label) = source_by_name.get(&skill.name) {
@@ -81,6 +87,7 @@ pub async fn load_workspace_skills(env: &LocalExecutionEnv, paths: &Paths) -> Wo
     }
 
     let mut skills: Vec<Skill> = skills_by_name.into_values().collect();
+    skills = settings.filter_skills(skills);
     skills.sort_by(|left, right| left.name.cmp(&right.name));
     conflicts.sort_by(|left, right| left.name.cmp(&right.name));
 

@@ -57,7 +57,7 @@ pub enum Transport {
     Auto,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ThinkingBudgets {
     pub minimal: Option<u32>,
     pub low: Option<u32>,

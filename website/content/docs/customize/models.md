@@ -37,3 +37,13 @@ Elph embeds provider catalogs and merges disk overlays from `CONFIG_DIR/provider
 elph models
 elph provider
 ```
+
+Limit the picker / catalog with `models.enabled` in `settings.json` (globs on `provider/model_id` or bare id). `models.scopedModels` remains the explicit Ctrl+P list and is not stripped by the glob.
+
+```json
+{
+  "models": {
+    "enabled": ["openai/*", "anthropic/claude-*", "!*-preview"]
+  }
+}
+```

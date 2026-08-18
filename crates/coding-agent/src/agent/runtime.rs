@@ -91,7 +91,35 @@ pub async fn create_coding_session_with_events(
         }
     }
 
-    let env = Arc::new(LocalExecutionEnv::new(options.cwd));
+    let mut env = LocalExecutionEnv::new(options.cwd);
+    if let Some(path) = options
+        .settings
+        .shell
+        .path
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        let expanded = if let Some(rest) = path.strip_prefix("~/") {
+            std::env::var_os("HOME")
+                .map(|h| std::path::PathBuf::from(h).join(rest))
+                .unwrap_or_else(|| std::path::PathBuf::from(path))
+        } else {
+            std::path::PathBuf::from(path)
+        };
+        env = env.with_shell_path(expanded);
+    }
+    if let Some(prefix) = options
+        .settings
+        .shell
+        .command_prefix
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        env = env.with_command_prefix(prefix);
+    }
+    let env = Arc::new(env);
     let workers_cfg = &options.settings.workers;
     // One worker_id for lease + registry + file claims for this process.
     let worker_id = WorkerRuntime::new_worker_id();
@@ -136,7 +164,11 @@ pub async fn create_coding_session_with_events(
 
     let resources = match options.preloaded_resources {
         Some(loaded) => loaded.resources,
-        None => load_resources(options.paths, options.cwd, env.as_ref()).await.resources,
+        None => {
+            load_resources(options.paths, options.cwd, env.as_ref(), options.settings)
+                .await
+                .resources
+        }
     };
 
     // Multi-worker: start before built-in tools so path claims + worker_* tools wire in.
@@ -281,6 +313,7 @@ pub async fn create_coding_session_with_events(
     let stream_options = AgentHarnessStreamOptions {
         timeout_ms: options.settings.provider_timeout_ms(),
         max_retries: Some(options.settings.max_retries),
+        thinking_budgets: options.settings.models.thinking_budgets.clone(),
         ..AgentHarnessStreamOptions::default()
     };
     let subagent_bootstrap = SubagentBootstrap {
@@ -420,11 +453,14 @@ pub async fn create_coding_session_with_events(
     // from the initial active set so empty/`None` restore does not activate every
     // connected MCP server's schemas. Session-tree `ActiveToolsChange` (lazy activation
     // or resume mid-session) still restores previously activated MCP names.
-    let active_tool_names: Vec<String> = tools
-        .iter()
-        .map(|t| t.name().to_string())
-        .filter(|name| !is_mcp_tool(name))
-        .collect();
+    let active_tool_names: Vec<String> = {
+        let names: Vec<String> = tools
+            .iter()
+            .map(|t| t.name().to_string())
+            .filter(|name| !is_mcp_tool(name))
+            .collect();
+        crate::platform::settings::apply::filter_default_tools(&names, options.settings.tools.default.as_deref())
+    };
     // Prefer restore for semi-durable recovery (queues, ops, tool-result repair, config rehydrate).
     let harness = AgentHarness::restore(
         AgentHarnessOptions {
@@ -560,6 +596,7 @@ pub async fn create_coding_session_with_events(
         ste_enabled: options.settings.simplified_technical_english,
         worker_runtime,
         plan_reentry,
+        default_tools: options.settings.tools.default.clone(),
     })
     .await?;
 

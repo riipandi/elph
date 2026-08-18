@@ -28,7 +28,7 @@ use super::session_manager::SessionManager;
 use super::tool_policy::AgentModePolicy;
 use super::tool_policy::{from_agent_thinking, to_agent_thinking};
 use super::tools_catalog::reconcile_harness_tools;
-use crate::platform::Paths;
+use crate::platform::{Paths, Settings};
 use elph_agent::parse_command_args;
 use std::path::Path;
 
@@ -64,6 +64,8 @@ pub struct CodingAgentSessionParams {
     pub worker_runtime: Option<super::worker_runtime::WorkerRuntime>,
     /// Shared with the Dynamic system prompt so reentry appendix reaches the model.
     pub plan_reentry: Arc<AtomicBool>,
+    /// `tools.default` allowlist (`None` = all builtins).
+    pub default_tools: Option<Vec<String>>,
 }
 
 pub struct CodingAgentSession {
@@ -129,8 +131,9 @@ impl CodingAgentSession {
             ste_enabled,
             worker_runtime,
             plan_reentry,
+            default_tools,
         } = params;
-        let mut policy = AgentModePolicy::new(agent_mode);
+        let mut policy = AgentModePolicy::new(agent_mode).with_default_tools(default_tools);
         policy.set_interactive(!harness.is_headless());
         let mcp_slot = Arc::new(RwLock::new(mcp_registry));
         if let Some(reg) = mcp_slot.read().clone() {
@@ -1031,7 +1034,8 @@ impl CodingAgentSession {
 
     pub async fn reload_resources(&self, paths: &Paths, cwd: &Path) -> Result<LoadResourcesResult> {
         let env = self.harness.env();
-        let loaded = load_resources(paths, cwd, env.as_ref()).await;
+        let settings = Settings::load(paths).unwrap_or_else(|_| Settings::defaults());
+        let loaded = load_resources(paths, cwd, env.as_ref(), &settings).await;
         self.harness
             .set_resources(loaded.resources.clone())
             .await
@@ -1305,7 +1309,8 @@ impl CodingAgentSession {
             let reentry = self.harness.plan_mode_activated_as_reentry().await;
             self.plan_reentry.store(reentry, Ordering::Relaxed);
         }
-        reconcile_harness_tools(&self.harness, mode, self.mcp_registry().as_deref()).await?;
+        let allow = self.policy.lock().await.default_tools.clone();
+        reconcile_harness_tools(&self.harness, mode, self.mcp_registry().as_deref(), allow.as_deref()).await?;
         // Best-effort cache refresh so `/system-prompt` stays available without nesting
         // block_on on the UI thread during a busy stream.
         if let Err(err) = self.refresh_system_prompt_cache().await {

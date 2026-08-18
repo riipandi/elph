@@ -180,7 +180,11 @@ pub fn handle(args: &RunArgs) -> ExitCode {
         }
     };
     let settings = match Settings::load(&paths) {
-        Ok(s) => s,
+        Ok(s) => {
+            s.apply_http_proxy_env();
+            s.apply_quiet_startup_env();
+            s
+        }
         Err(err) => {
             help::cli_error(format!("load settings: {err}"));
             return EXIT_ERROR;

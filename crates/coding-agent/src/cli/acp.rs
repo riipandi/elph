@@ -34,7 +34,10 @@ pub fn handle(args: &AcpArgs) -> ExitCode {
     };
 
     let settings = match Settings::load(&paths) {
-        Ok(settings) => settings,
+        Ok(settings) => {
+            settings.apply_http_proxy_env();
+            settings
+        }
         Err(error) => {
             eprintln!("{error}");
             return EXIT_ERROR;

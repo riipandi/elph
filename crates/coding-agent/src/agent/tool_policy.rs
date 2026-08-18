@@ -73,6 +73,7 @@ pub struct AgentModePolicy {
     mcp_registry: Option<Arc<McpToolRegistry>>,
     /// False for `elph run` — no TUI/ACP to answer approval prompts.
     interactive: bool,
+    pub default_tools: Option<Vec<String>>,
 }
 
 impl AgentModePolicy {
@@ -84,7 +85,13 @@ impl AgentModePolicy {
             session_allow_all: Mutex::new(false),
             mcp_registry: None,
             interactive: true,
+            default_tools: None,
         }
+    }
+
+    pub fn with_default_tools(mut self, tools: Option<Vec<String>>) -> Self {
+        self.default_tools = tools;
+        self
     }
 
     pub fn set_interactive(&mut self, interactive: bool) {

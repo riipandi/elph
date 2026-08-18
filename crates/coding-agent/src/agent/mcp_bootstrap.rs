@@ -97,7 +97,7 @@ fn spawn_mcp_event_loop(session: &CodingAgentSession, mcp_registry: Arc<McpToolR
                     return;
                 }
                 let mode = *mode_state.lock().await;
-                if let Err(error) = reconcile_harness_tools(&harness, mode, Some(registry.as_ref())).await {
+                if let Err(error) = reconcile_harness_tools(&harness, mode, Some(registry.as_ref()), None).await {
                     log::warn!("failed to reconcile tools after MCP hot-reload: {error}");
                 } else {
                     log::info!("MCP tools hot-reloaded into agent harness");

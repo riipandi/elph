@@ -24,9 +24,12 @@ Project overrides: `<project>/.elph/settings.json`, `mcp.json`, `skills/`, `prom
 
 ## Settings merge
 
-Home settings are merged with project overrides (project wins on conflict).
+Home settings are merged with project overrides **when the project is trusted** (`/trust` or `trust.defaultProjectTrust: always`). Project wins on conflict; arrays replace. `trust.*` is home-only.
+
 `models.defaultModel` and `models.defaultThinkingLevel` seed **new** sessions only;
 live model, thinking level, and agent mode are per-session (not shared settings).
+
+Filter the catalog with `models.enabled` (globs). Filter skills with `resources.disabledSkills` and extra paths in `resources.skills`. Builtin tools: `tools.default`. See repo `docs/settings.md`.
 
 ### Transcript log density
 
