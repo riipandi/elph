@@ -160,7 +160,7 @@ fn copilot_urls(domain: &str) -> (String, String, String) {
 }
 
 pub async fn login_github_copilot(callbacks: &Arc<dyn AuthLoginCallbacks>) -> anyhow::Result<CopilotOAuthTokens> {
-    let host_key = crate::types::ClientIdentity::default().env_key("GITHUB_HOST");
+    let host_key = crate::types::client_identity().env_key("GITHUB_HOST");
     let enterprise_domain = if let Ok(host) = std::env::var(&host_key) {
         let host = host.trim().to_string();
         if host.is_empty() {

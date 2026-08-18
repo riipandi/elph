@@ -1,17 +1,70 @@
-//! Unified LLM API: provider collections, auth resolution, streaming, and catalogs.
+//! Unified LLM client: provider collections, auth, streaming, and embedded catalogs.
 //!
-//! Public surface is the crate root plus the modules listed below. Adapter internals
-//! (`api` submodules that are not re-exported, `utils`) are not part of the contract.
+//! # Public contract
+//!
+//! Stable names live at the crate root and in:
+//! [`types`], [`models`], [`providers`], [`auth`], [`api`] (re-exported API types),
+//! [`images`], [`resilience`], [`estimate`].
+//!
+//! [`utils`] and [`trace`] are `#[doc(hidden)]` — not part of the contract.
+//!
+//! Chat streams finish in-band: [`AssistantMessageEvent::Error`] and
+//! [`StopReason::Error`] / [`StopReason::Aborted`]. They are **not** `Result`.
+//! Catalog, auth, and OAuth login/refresh return [`Result`]`<T, `[`ModelsError`]`>`.
+//!
+//! # Host identity
+//!
+//! [`ClientIdentity`] sets the product tag (Codex `originator`, xAI `referrer`) and
+//! the process env prefix (`MYAPP` → `MYAPP_CACHE_RETENTION`, `MYAPP_GITHUB_HOST`,
+//! `MYAPP_RATE_LIMIT_*`).
+//!
+//! Prefer [`CreateModelsOptions::identity`] when calling [`create_models`] /
+//! [`builtin_models`]. That also installs the process-wide identity used by
+//! OAuth login and [`resilience`]. Call [`set_client_identity`] first if you
+//! run OAuth before building a collection.
+//!
+//! # Features
+//!
+//! - *(none)* — HTTP chat APIs, catalogs, faux, image HTTP
+//! - `bedrock` — Amazon Bedrock SDK
+//! - `oauth-callback` — local browser OAuth server
+//! - `generate-models` — catalog generator binary
+//! - `tracing` — fastrace
+//!
+//! # Example
+//!
+//! ```no_run
+//! use elph_ai::{ClientIdentity, CreateModelsOptions, builtin_models};
+//!
+//! let models = builtin_models(Some(CreateModelsOptions {
+//!     identity: Some(ClientIdentity::new("myapp", "MYAPP")),
+//!     ..Default::default()
+//! }));
+//! # let _ = models;
+//! ```
+//!
+//! Consumer notes: <https://github.com/riipandi/elph/blob/main/docs/elph-ai.md>
 //!
 //! Ported from [@earendil-works/pi-ai](https://github.com/earendil-works/pi/tree/main/packages/ai).
 
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
+/// Provider wire adapters. Stable names are re-exported from this module;
+/// other submodule paths are for adapters and in-tree tests.
 pub mod api;
+/// Credential stores, auth resolution, and OAuth login/refresh.
 pub mod auth;
+/// Image generation collections (OpenRouter images API).
 pub mod images;
+/// Model collections, catalogs, and provider factories.
 pub mod models;
+/// Built-in provider constructors and [`providers::builtin_models`].
 pub mod providers;
+/// Rate limits, circuit breaker, and retry.
 pub mod resilience;
+/// Session-scoped resource cleanup hooks (host integration).
 pub mod session_resources;
+/// Messages, models, stream options, and [`ClientIdentity`].
 pub mod types;
 
 /// Tracing hooks used by Elph hosts. Not part of the library contract.
@@ -51,7 +104,8 @@ pub use types::{
     ImagesApi, ImagesContext, ImagesModel, ImagesOptions, ImagesProviderId, Message, Model, ModelCost, ModelCostRates,
     ModelCostTier, ModelThinkingLevel, OnPayloadCallback, OnResponseCallback, ProviderEnv, ProviderHeaders, ProviderId,
     ProviderResponse, SimpleStreamOptions, StopReason, StreamOptions, TextContent, ThinkingBudgets, ThinkingContent,
-    ThinkingLevel, ThinkingLevelMap, Tool, ToolCall, Transport, Usage, UsageCost, UserContent,
+    ThinkingLevel, ThinkingLevelMap, Tool, ToolCall, Transport, Usage, UsageCost, UserContent, client_identity,
+    set_client_identity,
 };
 pub use utils::deferred_tools::split_deferred_tools;
 pub use utils::diagnostics::{append_assistant_message_diagnostic, create_assistant_message_diagnostic};

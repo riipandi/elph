@@ -4,21 +4,23 @@
 
 Version: `0.0.28`. MSRV: workspace `rust-version` (currently 1.97). Generation errors stay **in-band** (`AssistantMessageEvent::Error`, `StopReason::Error` / `Aborted`). They are not `Result`.
 
+Docs: <https://docs.rs/elph-ai>
+
 ## Public modules
 
 | Path | Stable for |
 | --- | --- |
 | crate root | Prelude types, `Models` / `builtin_models`, faux, images, `validate_tool_call`, `estimate`, `ClientIdentity` |
-| `elph_ai::types` | Messages, models, stream options |
+| `elph_ai::types` | Messages, models, stream options, identity |
 | `elph_ai::models` | Collection, catalog install/update |
 | `elph_ai::providers` | Built-in factories and `builtin_models` |
-| `elph_ai::auth` | Credential stores, `ModelsError`, OAuth login/registry |
+| `elph_ai::auth` | Credential stores, `ModelsError`, OAuth login/refresh |
 | `elph_ai::api` | Re-exported API impl types (`AnthropicMessagesApi`, `builtin_apis`, `wrap_on_payload`) |
 | `elph_ai::images` | Image generation |
 | `elph_ai::resilience` | Rate limits / circuit breaker |
 | `elph_ai::estimate` | Token estimate (`count_tokens_text`) |
 
-`elph_ai::utils` is `#[doc(hidden)]` and is not part of the contract.
+`elph_ai::utils` and `elph_ai::trace` are `#[doc(hidden)]` and are not part of the contract.
 
 ## Errors
 
@@ -26,17 +28,19 @@ Out-of-band APIs return `Result<T, ModelsError>`:
 
 - `Models::refresh`, `Models::get_auth`
 - `resolve_provider_auth`
-- catalog parse / provider update failures
-- OAuth login/refresh (via `anyhow` at the OAuth boundary, wrapped into `ModelsError` on resolve)
+- catalog parse / provider update
+- `oauth_provider_login`, `refresh_oauth_token`, `get_oauth_api_key`, `oauth_provider_to_auth`
 
-`ModelsError` has `code`, `message`, and optional `source: Box<dyn Error + Send + Sync>` — not `anyhow::Error`.
+`ModelsError` has `code`, `message`, and optional `source: Box<dyn Error + Send + Sync>` — not `anyhow::Error` in the public type.
 
 ## Host identity
 
-Set [`ClientIdentity`](../crates/elph-ai/src/types/mod.rs) on `CreateModelsOptions`:
+Set [`ClientIdentity`](../crates/elph-ai/src/types/mod.rs) on `CreateModelsOptions` (installs the process-wide identity when `identity` is `Some`). Or call `set_client_identity` before OAuth if you have not built a collection yet.
 
-- `product` — Codex `originator`, xAI `referrer`
-- `env_prefix` — `{PREFIX}_CACHE_RETENTION`, `{PREFIX}_GITHUB_HOST`, `{PREFIX}_RATE_LIMIT_*`, `{PREFIX}_MAX_RETRIES`
+| Field | Effect |
+| --- | --- |
+| `product` | Codex `originator`, xAI `referrer` |
+| `env_prefix` | `{PREFIX}_CACHE_RETENTION`, `{PREFIX}_GITHUB_HOST`, `{PREFIX}_RATE_LIMIT_*`, `{PREFIX}_CIRCUIT_BREAKER_*`, `{PREFIX}_MAX_RETRIES` |
 
 Default is `product = "elph"`, `env_prefix = "ELPH"`. Elph sets this explicitly when building `Models`.
 
@@ -56,7 +60,7 @@ The Elph binary enables `tracing`, `bedrock`, and `oauth-callback`.
 
 ## What is not public
 
-- Codex WebSocket debug helpers at crate root
+- Codex WebSocket debug helpers at crate root (use `elph_ai::api::codex_transport`)
 - The OAuth function forest at crate root (use `elph_ai::auth`)
 - `pub use anyhow::Result`
 - Per-provider compile features (`openai`, `anthropic`, …)

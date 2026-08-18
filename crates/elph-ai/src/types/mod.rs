@@ -71,7 +71,11 @@ pub struct ProviderResponse {
 /// Host product identity used for provider headers and prefixed environment keys.
 ///
 /// Defaults keep the Elph product names (`product = "elph"`, `env_prefix = "ELPH"`).
-/// Third-party hosts should set this on [`crate::CreateModelsOptions`].
+/// Set this on [`crate::CreateModelsOptions`] (preferred) or via [`set_client_identity`]
+/// before OAuth login / resilience if you have not built a [`crate::Models`] collection yet.
+///
+/// `env_prefix` is the first segment of process env keys, without a trailing underscore:
+/// `MYAPP` → `MYAPP_CACHE_RETENTION`, `MYAPP_GITHUB_HOST`, `MYAPP_RATE_LIMIT_*`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientIdentity {
     /// Sent as Codex `originator`, xAI `referrer`, and similar client tags.
@@ -90,6 +94,7 @@ impl Default for ClientIdentity {
 }
 
 impl ClientIdentity {
+    /// Build an identity. `env_prefix` should be `SCREAMING_SNAKE` without a trailing `_`.
     pub fn new(product: impl Into<String>, env_prefix: impl Into<String>) -> Self {
         Self {
             product: product.into(),
@@ -97,9 +102,28 @@ impl ClientIdentity {
         }
     }
 
+    /// `{env_prefix}_{suffix}`, e.g. `ELPH` + `CACHE_RETENTION`.
     pub fn env_key(&self, suffix: &str) -> String {
         format!("{}_{suffix}", self.env_prefix)
     }
+}
+
+fn process_identity() -> &'static parking_lot::RwLock<ClientIdentity> {
+    static CELL: std::sync::OnceLock<parking_lot::RwLock<ClientIdentity>> = std::sync::OnceLock::new();
+    CELL.get_or_init(|| parking_lot::RwLock::new(ClientIdentity::default()))
+}
+
+/// Install the process-wide identity used by OAuth login and resilience env keys.
+///
+/// [`crate::create_models`] / [`crate::builtin_models`] call this when
+/// [`crate::CreateModelsOptions::identity`] is set (or with the default identity).
+pub fn set_client_identity(identity: ClientIdentity) {
+    *process_identity().write() = identity;
+}
+
+/// Current process-wide identity (default `elph` / `ELPH` until overwritten).
+pub fn client_identity() -> ClientIdentity {
+    process_identity().read().clone()
 }
 
 #[derive(Clone, Default)]
@@ -131,8 +155,9 @@ pub struct StreamOptions {
 }
 
 impl StreamOptions {
+    /// Identity on this request, else the process-wide [`client_identity`].
     pub fn identity_or_default(&self) -> ClientIdentity {
-        self.identity.clone().unwrap_or_default()
+        self.identity.clone().unwrap_or_else(client_identity)
     }
 }
 

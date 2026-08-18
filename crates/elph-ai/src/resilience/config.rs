@@ -97,11 +97,10 @@ impl ResilienceConfig {
         self
     }
 
-    /// Load configuration from environment variables for a provider.
-    ///
-    /// Uses the default [`crate::ClientIdentity`] env prefix (`ELPH`).
+    /// Load configuration from `{prefix}_RATE_LIMIT_*` using the process identity prefix
+    /// ([`crate::client_identity`], default `ELPH`).
     pub fn from_env(provider_id: impl Into<String>) -> Self {
-        Self::from_env_prefixed(provider_id, &crate::types::ClientIdentity::default().env_prefix)
+        Self::from_env_prefixed(provider_id, &crate::types::client_identity().env_prefix)
     }
 
     /// Load configuration using `{prefix}_RATE_LIMIT_*` / `{prefix}_CIRCUIT_BREAKER_*`.

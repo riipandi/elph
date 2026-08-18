@@ -5,19 +5,27 @@ use super::types::{ApiKeyCredential, AuthContext, AuthModel, AuthResult, BoxFutu
 use super::types::{OAuthCredential, ProviderAuth};
 use crate::types::ProviderEnv;
 
+/// Class of a [`ModelsError`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModelsErrorCode {
+    /// Dynamic model list / catalog refresh failed.
     ModelSource,
+    /// A catalog or model record failed validation.
     ModelValidation,
+    /// Unknown provider or missing API adapter.
     Provider,
+    /// Reserved for stream setup (generation errors stay in-band).
     Stream,
+    /// API key / credential store resolution failed.
     Auth,
+    /// OAuth login, refresh, or token derivation failed.
     OAuth,
 }
 
-/// Error from model resolution, catalog refresh, or auth — not from token streams.
+/// Out-of-band error: catalog, auth, OAuth login/refresh, or provider lookup.
 ///
-/// Generation failures stay in-band (`AssistantMessageEvent::Error` / `StopReason::Error`).
+/// Chat/image **generation** failures stay in-band
+/// (`AssistantMessageEvent::Error` / `StopReason::Error` / `Aborted`).
 pub struct ModelsError {
     pub code: ModelsErrorCode,
     pub message: String,
@@ -69,6 +77,19 @@ impl ModelsError {
             message: message.into(),
             source: Some(source.into()),
         }
+    }
+
+    /// OAuth login, refresh, or token derivation failure.
+    pub fn oauth(message: impl Into<String>) -> Self {
+        Self::new(ModelsErrorCode::OAuth, message)
+    }
+
+    /// Wrap an underlying OAuth error.
+    pub fn oauth_source(
+        message: impl Into<String>,
+        source: impl Into<Box<dyn std::error::Error + Send + Sync + 'static>>,
+    ) -> Self {
+        Self::with_source(ModelsErrorCode::OAuth, message, source)
     }
 }
 

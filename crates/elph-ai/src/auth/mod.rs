@@ -1,3 +1,8 @@
+//! Auth resolution, credential stores, and OAuth.
+//!
+//! Public login/refresh helpers (`oauth_provider_login`, `refresh_oauth_token`,
+//! `get_oauth_api_key`) return [`ModelsError`].
+
 pub mod context;
 pub mod credential_store;
 pub mod helpers;

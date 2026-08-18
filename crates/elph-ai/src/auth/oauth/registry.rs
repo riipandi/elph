@@ -214,10 +214,13 @@ pub fn get_oauth_providers() -> Vec<OAuthProviderInterface> {
 }
 
 #[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.ai.oauth.refresh"))]
-pub async fn refresh_oauth_token(provider_id: &str, credential: OAuthCredential) -> anyhow::Result<OAuthCredential> {
+pub async fn refresh_oauth_token(
+    provider_id: &str,
+    credential: OAuthCredential,
+) -> Result<OAuthCredential, crate::auth::ModelsError> {
     crate::trace::add_property("provider.id", provider_id);
-    let provider =
-        get_oauth_provider(provider_id).ok_or_else(|| anyhow::anyhow!("Unknown OAuth provider: {provider_id}"))?;
+    let provider = get_oauth_provider(provider_id)
+        .ok_or_else(|| crate::auth::ModelsError::oauth(format!("Unknown OAuth provider: {provider_id}")))?;
     log::debug!("oauth refresh start provider={provider_id}");
     match (provider.auth.refresh)(credential).await {
         Ok(next) => {
@@ -226,7 +229,10 @@ pub async fn refresh_oauth_token(provider_id: &str, credential: OAuthCredential)
         }
         Err(error) => {
             log::warn!("oauth refresh failed provider={provider_id}: {error:#}");
-            Err(error)
+            Err(crate::auth::ModelsError::oauth_source(
+                format!("OAuth refresh failed for {provider_id}"),
+                error,
+            ))
         }
     }
 }
@@ -239,12 +245,12 @@ pub struct OAuthApiKeyResult {
 pub async fn get_oauth_api_key(
     provider_id: &str,
     mut credential: OAuthCredential,
-) -> anyhow::Result<OAuthApiKeyResult> {
-    let provider =
-        get_oauth_provider(provider_id).ok_or_else(|| anyhow::anyhow!("Unknown OAuth provider: {provider_id}"))?;
+) -> Result<OAuthApiKeyResult, crate::auth::ModelsError> {
+    let provider = get_oauth_provider(provider_id)
+        .ok_or_else(|| crate::auth::ModelsError::oauth(format!("Unknown OAuth provider: {provider_id}")))?;
 
     if chrono::Utc::now().timestamp_millis() >= credential.expires {
-        credential = (provider.auth.refresh)(credential).await?;
+        credential = refresh_oauth_token(provider_id, credential).await?;
     }
 
     let api_key = (provider.get_api_key)(&credential);
@@ -258,10 +264,10 @@ pub async fn get_oauth_api_key(
 pub async fn oauth_provider_login(
     provider_id: &str,
     callbacks: Arc<dyn AuthLoginCallbacks>,
-) -> anyhow::Result<OAuthCredential> {
+) -> Result<OAuthCredential, crate::auth::ModelsError> {
     crate::trace::add_property("provider.id", provider_id);
-    let provider =
-        get_oauth_provider(provider_id).ok_or_else(|| anyhow::anyhow!("Unknown OAuth provider: {provider_id}"))?;
+    let provider = get_oauth_provider(provider_id)
+        .ok_or_else(|| crate::auth::ModelsError::oauth(format!("Unknown OAuth provider: {provider_id}")))?;
     log::info!("oauth login start provider={provider_id}");
     match (provider.auth.login)(callbacks).await {
         Ok(cred) => {
@@ -270,15 +276,23 @@ pub async fn oauth_provider_login(
         }
         Err(error) => {
             log::warn!("oauth login failed provider={provider_id}: {error:#}");
-            Err(error)
+            Err(crate::auth::ModelsError::oauth_source(
+                format!("OAuth login failed for {provider_id}"),
+                error,
+            ))
         }
     }
 }
 
-pub async fn oauth_provider_to_auth(provider_id: &str, credential: OAuthCredential) -> anyhow::Result<ModelAuth> {
-    let provider =
-        get_oauth_provider(provider_id).ok_or_else(|| anyhow::anyhow!("Unknown OAuth provider: {provider_id}"))?;
-    (provider.auth.to_auth)(credential).await
+pub async fn oauth_provider_to_auth(
+    provider_id: &str,
+    credential: OAuthCredential,
+) -> Result<ModelAuth, crate::auth::ModelsError> {
+    let provider = get_oauth_provider(provider_id)
+        .ok_or_else(|| crate::auth::ModelsError::oauth(format!("Unknown OAuth provider: {provider_id}")))?;
+    (provider.auth.to_auth)(credential).await.map_err(|error| {
+        crate::auth::ModelsError::oauth_source(format!("OAuth auth derivation failed for {provider_id}"), error)
+    })
 }
 
 pub fn oauth_provider_modify_models(provider_id: &str, models: Vec<Model>, credential: &OAuthCredential) -> Vec<Model> {

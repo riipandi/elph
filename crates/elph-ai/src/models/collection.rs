@@ -143,14 +143,18 @@ pub fn create_provider(input: CreateProviderOptions) -> Provider {
     }
 }
 
+/// Options for [`create_models`] / [`crate::builtin_models`].
 #[derive(Default)]
 pub struct CreateModelsOptions {
+    /// Persistent or in-memory credential store. Default: empty in-memory store.
     pub credentials: Option<Arc<dyn CredentialStore>>,
+    /// How env vars and files are read for auth. Default: process environment.
     pub auth_context: Option<Arc<dyn AuthContext>>,
-    /// Product name and env-var prefix for this collection.
+    /// Product name and env-var prefix. Installed as the process-wide identity.
     pub identity: Option<ClientIdentity>,
 }
 
+/// Shared provider collection: sync reads, async auth/refresh, streaming dispatch.
 pub struct Models {
     providers: HashMap<String, Provider>,
     credentials: Arc<dyn CredentialStore>,
@@ -507,7 +511,15 @@ where
     stream
 }
 
+/// Build an empty [`Models`] collection.
+///
+/// Installs [`CreateModelsOptions::identity`] (or the default `elph` / `ELPH`) as the
+/// process-wide identity for OAuth login and resilience env keys.
 pub fn create_models(options: Option<CreateModelsOptions>) -> MutableModels {
+    let identity = options.as_ref().and_then(|o| o.identity.clone()).unwrap_or_default();
+    if options.as_ref().and_then(|o| o.identity.as_ref()).is_some() {
+        crate::types::set_client_identity(identity.clone());
+    }
     MutableModels {
         inner: Models {
             providers: HashMap::new(),
@@ -519,7 +531,7 @@ pub fn create_models(options: Option<CreateModelsOptions>) -> MutableModels {
                 .as_ref()
                 .and_then(|o| o.auth_context.clone())
                 .unwrap_or_else(|| Arc::new(crate::auth::DefaultAuthContext::new())),
-            identity: options.as_ref().and_then(|o| o.identity.clone()).unwrap_or_default(),
+            identity,
         },
     }
 }

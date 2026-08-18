@@ -7,6 +7,7 @@ keywords = ["ai", "llm", "provider", "api", "elph"]
 categories = ["api-bindings", "development-tools"]
 homepage.workspace = true
 repository.workspace = true
+documentation = "https://docs.rs/elph-ai"
 rust-version.workspace = true
 edition.workspace = true
 publish = true
