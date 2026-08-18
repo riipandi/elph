@@ -178,8 +178,8 @@ pub fn select_key_to_index(current: usize, len: usize, code: KeyCode, modifiers:
 pub fn select_key_delta(code: KeyCode, fast: bool, step: usize) -> Option<isize> {
     let delta = if fast { step as isize } else { 1 };
     match code {
-        KeyCode::Up | KeyCode::Char('k') => Some(-delta),
-        KeyCode::Down | KeyCode::Char('j') => Some(delta),
+        KeyCode::Up => Some(-delta),
+        KeyCode::Down => Some(delta),
         _ => None,
     }
 }

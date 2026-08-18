@@ -54,11 +54,11 @@ pub fn multi_choice_key_action(
     }
     let fast = modifiers.contains(KeyModifiers::SHIFT);
     match code {
-        KeyCode::Up | KeyCode::Char('k') => {
+        KeyCode::Up => {
             let delta = if fast { step } else { 1 };
             Some(MultiChoiceAction::MoveCursor(cursor.saturating_sub(delta)))
         }
-        KeyCode::Down | KeyCode::Char('j') => {
+        KeyCode::Down => {
             let delta = if fast { step } else { 1 };
             Some(MultiChoiceAction::MoveCursor((cursor + delta).min(len - 1)))
         }

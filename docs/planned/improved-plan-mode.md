@@ -94,7 +94,7 @@ When `PlanConfirmationRequired` fires, replace the compact select-list with an *
 | `q`               | Quit plan                   | Dismiss review, **exit Plan → Build**, do **not** implement                           |
 | Esc               | Commenting/Prompt → Preview | Preview Esc = stay in Plan, close review (today’s Esc)                                |
 | Tab               | Preview ↔ Prompt            | Matches Grok; documented in footer                                                    |
-| `↑` `↓` / `j` `k` | Move selected source line   | Viewport follows selection                                                            |
+| `↑` `↓`           | Move selected source line   | Viewport follows selection                                                            |
 | `d` / Backspace   | Delete comment under cursor | Preview only                                                                          |
 
 **Key remaps vs today:** `s` is no longer “Stay in Plan” (Stay becomes Esc / just leaving the review open). `r`/`4` drop as revise aliases in favor of `s`.

@@ -826,21 +826,21 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 shell_focus.set(ShellFocus::Prompt);
                 return;
             }
-            if modifiers.is_empty() && matches!(code, KeyCode::Up | KeyCode::Char('k')) {
+            if modifiers.is_empty() && matches!(code, KeyCode::Up) {
                 let idx = queue_manager_selected.get();
                 queue_manager_selected.set(idx.saturating_sub(1));
                 return;
             }
-            if modifiers.is_empty() && matches!(code, KeyCode::Down | KeyCode::Char('j')) {
+            if modifiers.is_empty() && matches!(code, KeyCode::Down) {
                 let idx = queue_manager_selected.get();
                 queue_manager_selected.set((idx + 1).min(len.saturating_sub(1)));
                 return;
             }
-            if modifiers.is_empty() && matches!(code, KeyCode::Left | KeyCode::Char('h')) {
+            if modifiers.is_empty() && matches!(code, KeyCode::Left) {
                 queue_manager_action.set(queue_manager_action.get().prev());
                 return;
             }
-            if modifiers.is_empty() && matches!(code, KeyCode::Right | KeyCode::Char('l') | KeyCode::Tab) {
+            if modifiers.is_empty() && matches!(code, KeyCode::Right | KeyCode::Tab) {
                 queue_manager_action.set(queue_manager_action.get().next());
                 return;
             }
@@ -945,12 +945,12 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
 
             if modifiers.is_empty() {
                 match code {
-                    KeyCode::Up | KeyCode::Char('k') => {
+                    KeyCode::Up => {
                         scroll_view_up(&mut system_prompt_scroll.write(), 1);
                         system_prompt_scroll_tick.set(system_prompt_scroll_tick.get().wrapping_add(1));
                         return;
                     }
-                    KeyCode::Down | KeyCode::Char('j') => {
+                    KeyCode::Down => {
                         scroll_view_down(&mut system_prompt_scroll.write(), 1);
                         system_prompt_scroll_tick.set(system_prompt_scroll_tick.get().wrapping_add(1));
                         return;

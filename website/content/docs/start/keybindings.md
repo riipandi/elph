@@ -7,7 +7,7 @@ Common TUI bindings (exact keys may vary by terminal; see in-app footer / help):
 | **Enter**                          | Send prompt                               |
 | **Shift+Enter** / multi-line paste | Multiline input (terminal-dependent)      |
 | **Ctrl+C**                         | Abort active turn                         |
-| **Ctrl+D** / `/exit`               | Quit                                      |
+| **Ctrl+D** / `/exit` / `:q`        | Quit (`:q!` force-quits mid-turn)         |
 | **Ctrl+L**                         | Clear / focus helpers (context-dependent) |
 | **Shift+Tab**                      | Cycle thinking level                      |
 | **Ctrl+V** / **Cmd+V**             | Paste image (vision models)               |

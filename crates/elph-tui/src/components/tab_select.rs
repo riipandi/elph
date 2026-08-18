@@ -21,8 +21,8 @@ pub fn tab_select_key_to_index(current: usize, len: usize, code: KeyCode) -> usi
         return 0;
     }
     match code {
-        KeyCode::Left | KeyCode::Char('h') => current.saturating_sub(1),
-        KeyCode::Right | KeyCode::Char('l') | KeyCode::Tab => (current + 1).min(len - 1),
+        KeyCode::Left => current.saturating_sub(1),
+        KeyCode::Right | KeyCode::Tab => (current + 1).min(len - 1),
         KeyCode::BackTab => current.saturating_sub(1),
         _ => current,
     }

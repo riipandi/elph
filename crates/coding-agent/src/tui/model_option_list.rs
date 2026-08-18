@@ -222,8 +222,8 @@ pub fn ModelOptionList(props: &mut ModelOptionListProps, mut hooks: Hooks) -> im
         }
         let prev = selected.get();
         let next = match code {
-            KeyCode::Up | KeyCode::Char('k') => prev.saturating_sub(1),
-            KeyCode::Down | KeyCode::Char('j') => (prev + 1).min(option_count.saturating_sub(1)),
+            KeyCode::Up => prev.saturating_sub(1),
+            KeyCode::Down => (prev + 1).min(option_count.saturating_sub(1)),
             _ => prev,
         };
         if next != prev {

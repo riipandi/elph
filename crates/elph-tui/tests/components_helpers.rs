@@ -212,9 +212,10 @@ fn select_option_line_with_and_without_description() {
 }
 
 #[test]
-fn select_key_delta_handles_arrows_and_vim() {
+fn select_key_delta_handles_arrows() {
     assert_eq!(select_key_delta(KeyCode::Down, false, 3), Some(1));
-    assert_eq!(select_key_delta(KeyCode::Char('k'), true, 2), Some(-2));
+    assert_eq!(select_key_delta(KeyCode::Up, true, 2), Some(-2));
+    assert_eq!(select_key_delta(KeyCode::Char('k'), true, 2), None);
     assert_eq!(select_key_delta(KeyCode::Enter, false, 1), None);
 }
 
@@ -223,17 +224,18 @@ fn tab_select_key_to_index_wraps() {
     assert_eq!(tab_select_key_to_index(1, 3, KeyCode::Right), 2);
     assert_eq!(tab_select_key_to_index(2, 3, KeyCode::Tab), 2);
     assert_eq!(tab_select_key_to_index(0, 3, KeyCode::Left), 0);
-    assert_eq!(tab_select_key_to_index(1, 3, KeyCode::Char('h')), 0);
-    assert_eq!(tab_select_key_to_index(1, 3, KeyCode::Char('l')), 2);
+    assert_eq!(tab_select_key_to_index(1, 3, KeyCode::Char('h')), 1);
+    assert_eq!(tab_select_key_to_index(1, 3, KeyCode::Char('l')), 1);
     assert_eq!(tab_select_key_to_index(2, 3, KeyCode::BackTab), 1);
     assert_eq!(tab_select_key_to_index(1, 3, KeyCode::Enter), 1);
     assert_eq!(tab_select_key_to_index(0, 0, KeyCode::Tab), 0);
 }
 
 #[test]
-fn slider_key_delta_handles_arrows_and_vim() {
+fn slider_key_delta_handles_arrows() {
     assert_eq!(slider_key_delta(KeyCode::Right, 2.5), Some(2.5));
-    assert_eq!(slider_key_delta(KeyCode::Char('h'), 1.0), Some(-1.0));
+    assert_eq!(slider_key_delta(KeyCode::Left, 1.0), Some(-1.0));
+    assert_eq!(slider_key_delta(KeyCode::Char('h'), 1.0), None);
     assert_eq!(slider_key_delta(KeyCode::Enter, 1.0), None);
 }
 

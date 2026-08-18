@@ -147,8 +147,8 @@ pub fn UserQuestionOptionList(
         let len = option_count;
         let prev = selected.get();
         let next = match code {
-            KeyCode::Up | KeyCode::Char('k') => prev.saturating_sub(1),
-            KeyCode::Down | KeyCode::Char('j') => (prev + 1).min(len - 1),
+            KeyCode::Up => prev.saturating_sub(1),
+            KeyCode::Down => (prev + 1).min(len - 1),
             _ => prev,
         };
         if next != prev {

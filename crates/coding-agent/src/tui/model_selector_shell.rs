@@ -104,8 +104,8 @@ pub fn model_selector_provider_delta(modifiers: KeyModifiers, code: KeyCode) -> 
         return None;
     }
     match code {
-        KeyCode::Left | KeyCode::Char('h') => Some(-1),
-        KeyCode::Right | KeyCode::Char('l') => Some(1),
+        KeyCode::Left => Some(-1),
+        KeyCode::Right => Some(1),
         _ => None,
     }
 }
@@ -132,8 +132,8 @@ pub fn model_selector_list_nav_delta(modifiers: KeyModifiers, code: KeyCode) -> 
         return None;
     }
     match code {
-        KeyCode::Up | KeyCode::Char('k') => Some(-1),
-        KeyCode::Down | KeyCode::Char('j') => Some(1),
+        KeyCode::Up => Some(-1),
+        KeyCode::Down => Some(1),
         _ => None,
     }
 }
@@ -150,9 +150,7 @@ pub enum ModelSelectorFilterSeed {
 /// Letters or `/` only — refocus filter and optionally seed the first keystroke.
 ///
 /// Digits, space, `+`, `-`, and other punctuation never seed the filter from list focus.
-/// Reserved on the list (not filter seeds):
-/// - `h` / `j` / `k` / `l` — vim-style navigation
-/// - `+` / `-` — add / remove from scoped models
+/// Reserved on the list (not filter seeds): `+` / `-` add / remove from scoped models.
 pub fn model_selector_filter_seed(modifiers: KeyModifiers, code: KeyCode) -> Option<ModelSelectorFilterSeed> {
     // Allow Shift (caps); reject Ctrl/Alt/Meta. Never seed on +/−/=/_.
     if modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::META) {
@@ -160,9 +158,7 @@ pub fn model_selector_filter_seed(modifiers: KeyModifiers, code: KeyCode) -> Opt
     }
     match code {
         KeyCode::Char('/') => Some(ModelSelectorFilterSeed::FocusOnly),
-        KeyCode::Char(c) if c.is_ascii_alphabetic() && !matches!(c, 'h' | 'j' | 'k' | 'l' | 'H' | 'J' | 'K' | 'L') => {
-            Some(ModelSelectorFilterSeed::Append(c))
-        }
+        KeyCode::Char(c) if c.is_ascii_alphabetic() => Some(ModelSelectorFilterSeed::Append(c)),
         // Digits, space, +/−, punctuation: never seed filter from list focus.
         _ => None,
     }
@@ -342,10 +338,19 @@ mod tests {
     }
 
     #[test]
-    fn filter_seed_reserves_vim_nav_letters() {
-        assert_eq!(model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char('j')), None);
-        assert_eq!(model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char('l')), None);
-        assert_eq!(model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char('H')), None);
+    fn filter_seed_accepts_any_ascii_letter() {
+        assert_eq!(
+            model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char('j')),
+            Some(ModelSelectorFilterSeed::Append('j'))
+        );
+        assert_eq!(
+            model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char('l')),
+            Some(ModelSelectorFilterSeed::Append('l'))
+        );
+        assert_eq!(
+            model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char('H')),
+            Some(ModelSelectorFilterSeed::Append('H'))
+        );
     }
 
     #[test]

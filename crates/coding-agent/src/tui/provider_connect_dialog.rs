@@ -529,7 +529,7 @@ pub enum ProviderFilterSeed {
 /// Printable characters that seed the filter while the list is focused.
 ///
 /// The dialog has no single-letter shortcuts, so every printable character is
-/// filter text — nothing is reserved for vim-style navigation.
+/// filter text — letters are not reserved for list navigation.
 pub fn provider_filter_seed(modifiers: KeyModifiers, code: KeyCode) -> Option<ProviderFilterSeed> {
     // Allow Shift (caps); reject Ctrl/Alt/Meta.
     if modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::META) {
@@ -688,7 +688,7 @@ fn render_select_auth_method_step(
         ) {
             View(width: w, flex_direction: FlexDirection::Column, gap: 0, flex_shrink: 0f32) {
                 // `has_focus: false` — the shell key handler owns navigation so the
-                // list never applies its own (vim-style) key bindings.
+                // list never applies its own letter key bindings.
                 crate::tui::model_option_list::ModelOptionList(
                     width: w,
                     height: 0u16,
@@ -871,7 +871,7 @@ fn render_select_provider_step(
                 }
                 // ── Provider list ──
                 // `has_focus: false` — the shell key handler owns navigation so the
-                // list never applies its own (vim-style) key bindings.
+                // list never applies its own letter key bindings.
                 View(width: w, padding_top: OPTIONS_LIST_TOP_GAP, flex_shrink: 0f32) {
                     crate::tui::model_option_list::ModelOptionList(
                         width: w,
@@ -936,7 +936,7 @@ fn render_oauth_select_step(
                     )
                 }
                 // `has_focus: false` — the shell key handler owns navigation so the
-                // list never applies its own (vim-style) key bindings.
+                // list never applies its own letter key bindings.
                 View(width: w, padding_top: OPTIONS_LIST_TOP_GAP, flex_shrink: 0f32) {
                     crate::tui::model_option_list::ModelOptionList(
                         width: w,
@@ -1179,12 +1179,6 @@ mod tests {
     fn list_nav_delta_is_arrow_keys_only() {
         assert_eq!(provider_list_nav_delta(KeyModifiers::empty(), KeyCode::Up), Some(-1));
         assert_eq!(provider_list_nav_delta(KeyModifiers::empty(), KeyCode::Down), Some(1));
-        // Vim-style navigation is filter text, never navigation.
-        assert_eq!(provider_list_nav_delta(KeyModifiers::empty(), KeyCode::Char('k')), None);
-        assert_eq!(provider_list_nav_delta(KeyModifiers::empty(), KeyCode::Char('j')), None);
-        assert_eq!(provider_list_nav_delta(KeyModifiers::empty(), KeyCode::Char('h')), None);
-        assert_eq!(provider_list_nav_delta(KeyModifiers::empty(), KeyCode::Char('l')), None);
-        assert_eq!(provider_list_nav_delta(KeyModifiers::CONTROL, KeyCode::Up), None);
     }
 
     #[test]

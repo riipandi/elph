@@ -22,6 +22,7 @@ Keyboard shortcuts
   Shift+↑/↓          Scroll transcript
   PageUp / PageDown  Scroll transcript (faster)
   Ctrl+C / Ctrl+D    Interrupt / quit (context-dependent)
+  :q / :q!           Quit (force-quit mid-turn)
   /help              List slash commands
   /aside <question>  Side question (does not interrupt the main turn)
   /hotkeys           This list
