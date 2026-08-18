@@ -19,7 +19,11 @@ use tokio_util::sync::CancellationToken;
 use self::event_stream::AgentEventStream;
 use crate::types::{AgentContext, AgentEvent, AgentLoopConfig, AgentMessage};
 
+pub use event_stream::AgentEventSink;
 pub use exec::fail_tool_calls_from_truncated_message;
+pub use local_env::LocalExecutionEnv;
+pub use proxy::stream_proxy;
+pub use proxy::{ProxyAssistantMessageEvent, ProxyStreamOptions};
 
 pub type AgentEventCallback = Arc<dyn Fn(AgentEvent) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>;
 

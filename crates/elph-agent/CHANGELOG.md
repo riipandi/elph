@@ -11,7 +11,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - [`HostIdentity`] (`app_name` + `env_prefix`) on [`AgentOptions`]. Prefix applies to `{PREFIX}_PROMPT_ENCODING*`. MCP `{PREFIX}_AUTH_KEY` via `load_or_create_master_key_with_prefix`. Logging `{PREFIX}_DATA_DIR` / `{PREFIX}_LOG_*`.
 - Defaults: `AgentBuilder` `app_name = "elph-agent"`, `env_prefix = "ELPH"`.
 - Test-only MCP key helpers and `get_or_throw` / `get_or_undefined` are `#[doc(hidden)]`.
-- Crate root no longer flattens harness, MCP, or session SQL. Use `elph_agent::harness`, `elph_agent::mcp`, `elph_agent::session`.
+- Crate root is a prelude (`Agent`, `AgentOptions`, `HostIdentity`, tool constructors). Host APIs live on modules (`harness`, `session`, `compaction`, `collaboration`, `runtime`, `mcp`).
+- Compaction cut-point helpers are `pub(crate)`; cover them with unit tests, not crate-root API.
 - Turso/SQLite session backend and stores are feature `backend-turso` (included in `full`). In-memory / JSONL / session-dir backends stay available without it.
 - `run_agent_loop` / `prompt` / `reset` return `AgentError`. Tool execute paths return `ToolError`.
 - Consumer contract: [`docs/elph-agent.md`](../../docs/elph-agent.md).

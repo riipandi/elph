@@ -98,7 +98,7 @@ pub fn handle(args: &ImportArgs) -> ExitCode {
         }
     };
 
-    let result = elph_agent::try_block_on(async { manager.import_from_jsonl(&path).await });
+    let result = elph_agent::runtime::try_block_on(async { manager.import_from_jsonl(&path).await });
     match result {
         Ok(Ok((id, n))) => {
             if args.json {

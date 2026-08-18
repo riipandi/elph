@@ -1,4 +1,4 @@
-use elph_agent::Migration;
+use elph_agent::session::Migration;
 use elph_agent::session::{CANONICAL_SESSION_SCHEMA_SQL, SESSION_SUMMARY_SCHEMA_SQL, WORKERS_SCHEMA_SQL};
 
 /// Platform schema migrations, applied into the shared `.elph/store.db` ledger.
@@ -74,10 +74,10 @@ mod tests {
         let _ = todos
             .replace(
                 "sess_platform",
-                vec![elph_agent::TodoUpdate {
+                vec![elph_agent::todos::TodoUpdate {
                     id: Some("todo_aaaaaaaaaaaaaaaa".into()),
                     content: Some("item".into()),
-                    status: Some(elph_agent::TodoStatus::Pending),
+                    status: Some(elph_agent::todos::TodoStatus::Pending),
                     reason: None,
                 }],
             )

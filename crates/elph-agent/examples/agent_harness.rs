@@ -10,7 +10,6 @@
 
 use std::sync::Arc;
 
-use elph_agent::LocalExecutionEnv;
 use elph_agent::agent::harness::types::{Result as HResult, ShellExecOptions, Skill};
 use elph_agent::agent::harness::utils::TruncationOptions;
 use elph_agent::agent::harness::utils::execute_shell_with_capture;
@@ -20,6 +19,7 @@ use elph_agent::agent::harness::utils::truncate_line;
 use elph_agent::agent::harness::utils::truncate_tail;
 use elph_agent::harness::format_skills_for_system_prompt;
 use elph_agent::harness::{FileSystem, Shell};
+use elph_agent::runtime::LocalExecutionEnv;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

@@ -3,13 +3,14 @@
 mod common;
 
 use common::{message_entry, user_agent_message};
-use elph_agent::SessionStorage;
-use elph_agent::TursoSessionListOptions;
-use elph_agent::TursoSessionRepo;
-use elph_agent::TursoSessionRepoCreateOptions;
-use elph_agent::TursoSessionStorage;
+use elph_agent::datastore::ensure_database;
 use elph_agent::goals::{GoalStatus, GoalStore};
-use elph_agent::{Migration, ensure_database};
+use elph_agent::session::Migration;
+use elph_agent::session::SessionStorage;
+use elph_agent::session::TursoSessionListOptions;
+use elph_agent::session::TursoSessionRepo;
+use elph_agent::session::TursoSessionRepoCreateOptions;
+use elph_agent::session::TursoSessionStorage;
 
 /// Full session schema v2 (includes goals, turns, todos).
 const PLATFORM_LIKE: &[Migration] = &elph_agent::session::SESSION_TREE_MIGRATIONS;
@@ -136,9 +137,9 @@ async fn turso_repo_fork_copies_entries() {
                 id: Some("forked".into()),
                 ..Default::default()
             },
-            elph_agent::ForkEntriesOptions {
+            elph_agent::session::ForkEntriesOptions {
                 entry_id: Some("e1".into()),
-                position: Some(elph_agent::ForkPosition::At),
+                position: Some(elph_agent::session::ForkPosition::At),
                 ..Default::default()
             },
         )

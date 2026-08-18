@@ -1,4 +1,4 @@
-use elph_agent::write_file_if_missing;
+use elph_agent::fs::write_file_if_missing;
 
 use super::paths::Paths;
 use anyhow::Result;

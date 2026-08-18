@@ -1,7 +1,9 @@
 //! Message conversion tests.
 
-use elph_agent::{AgentMessage, CustomAgentMessage};
-use elph_agent::{default_convert_to_llm, llm_message_to_agent, shell_exec_execution_to_text};
+use elph_agent::AgentMessage;
+use elph_agent::CustomAgentMessage;
+use elph_agent::llm_message_to_agent;
+use elph_agent::messages::{default_convert_to_llm, shell_exec_execution_to_text};
 use elph_ai::{Message, UserContent};
 
 fn shell_exec_execution(fields: ShellExecExecutionFields) -> CustomAgentMessage {

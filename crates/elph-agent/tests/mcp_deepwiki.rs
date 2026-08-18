@@ -171,7 +171,7 @@ async fn deepwiki_list_available_tools_prefix_advertises_activation() {
     assert!(!mcp_tools.is_empty(), "expected DeepWiki agent tools");
 
     let list = elph_agent::create_list_available_tools(&mcp_tools);
-    let env = std::sync::Arc::new(elph_agent::LocalExecutionEnv::new("/tmp"));
+    let env = std::sync::Arc::new(elph_agent::runtime::LocalExecutionEnv::new("/tmp"));
     let ctx = elph_agent::ToolContext::new(env);
     let result = (list.execute)(String::new(), json!({ "name_prefix": "mcp_deepwiki__" }), None, None, ctx)
         .await

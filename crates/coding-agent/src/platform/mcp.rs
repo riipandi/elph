@@ -13,9 +13,9 @@ use std::path::{Path, PathBuf};
 
 use crate::utils::path::AppPaths;
 use anyhow::{Context, Result};
+use elph_agent::fs::write_json_file;
 use elph_agent::mcp::{McpConfig, McpServerConfig};
 use elph_agent::mcp::{parse_and_validate_mcp_config, parse_and_validate_server_config_json};
-use elph_agent::write_json_file;
 
 use super::paths::Paths;
 

@@ -5,7 +5,7 @@ use agent_client_protocol::schema::v2::{
     PlanUpdateContent, RequestPermissionRequest, SessionId, SessionUpdate,
 };
 use agent_client_protocol::{Client, ConnectionTo};
-use elph_agent::{TodoItem, TodoStatus};
+use elph_agent::todos::{TodoItem, TodoStatus};
 
 use crate::agent::PlanConfirmationRequest;
 use crate::platform::acp::updates::send_update;
@@ -48,8 +48,8 @@ pub async fn confirm_plan(
         .await
         .as_deref()
     {
-        Some("implement") => elph_agent::PlanConfirmationChoice::Implement,
-        Some("fresh") => elph_agent::PlanConfirmationChoice::ImplementFresh,
+        Some("implement") => elph_agent::collaboration::PlanConfirmationChoice::Implement,
+        Some("fresh") => elph_agent::collaboration::PlanConfirmationChoice::ImplementFresh,
         Some("quit") => {
             session.clear_pending_plan().await?;
             return session.set_agent_mode(crate::types::AgentMode::Build).await;
@@ -57,7 +57,7 @@ pub async fn confirm_plan(
         Some("revise") => {
             return session.clear_pending_plan().await;
         }
-        _ => elph_agent::PlanConfirmationChoice::StayInPlan,
+        _ => elph_agent::collaboration::PlanConfirmationChoice::StayInPlan,
     };
     session.resolve_plan(choice).await
 }

@@ -4,12 +4,12 @@ use serde::Serialize;
 
 /// Combined context for elph coding prompt templates.
 ///
-/// Flattens the generic `elph_agent::SystemPromptTemplateContext` fields so
+/// Flattens the generic `elph_agent::prompt::SystemPromptTemplateContext` fields so
 /// MiniJinja templates can access both base and product-specific variables.
 #[derive(Debug, Clone, Serialize)]
 pub struct ElphCodingPromptContext<'a> {
     #[serde(flatten)]
-    pub base: &'a elph_agent::SystemPromptTemplateContext,
+    pub base: &'a elph_agent::prompt::SystemPromptTemplateContext,
     /// Simplified Technical English (ASD-STE100) response rules are enabled.
     pub ste_code: bool,
     /// Multi-worker display name (memorable-id), when registered.
@@ -19,7 +19,7 @@ pub struct ElphCodingPromptContext<'a> {
 }
 
 impl<'a> ElphCodingPromptContext<'a> {
-    pub fn new(base: &'a elph_agent::SystemPromptTemplateContext) -> Self {
+    pub fn new(base: &'a elph_agent::prompt::SystemPromptTemplateContext) -> Self {
         Self {
             base,
             ste_code: true,

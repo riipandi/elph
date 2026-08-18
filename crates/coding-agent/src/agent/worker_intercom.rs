@@ -6,7 +6,10 @@
 
 use std::sync::Arc;
 
-use elph_agent::{AgentToolResult, LocalExecutionEnv, ToolContext, ToolResultContent};
+use elph_agent::AgentToolResult;
+use elph_agent::ToolContext;
+use elph_agent::ToolResultContent;
+use elph_agent::runtime::LocalExecutionEnv;
 use elph_ai::{
     AssistantContentBlock, ContentBlock, Context, Message, SimpleStreamOptions, StopReason, StreamOptions, UserContent,
 };
@@ -21,7 +24,7 @@ pub async fn answer_worker_inbound(
     session: &CodingAgentSession,
     from_worker: &str,
     text: &str,
-    msg: &elph_agent::WorkerMessage,
+    msg: &elph_agent::workers::WorkerMessage,
 ) -> Result<(), String> {
     let Some(rt) = session.worker_runtime.as_ref() else {
         return Err("worker runtime is not available".into());

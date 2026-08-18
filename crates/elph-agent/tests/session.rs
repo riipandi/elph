@@ -1,15 +1,15 @@
 use std::fs;
 
 use elph_agent::AgentMessage;
-use elph_agent::BranchSummaryOptions;
-use elph_agent::InMemorySessionStorage;
-use elph_agent::Session;
-use elph_agent::SessionDirCreateOptions;
-use elph_agent::SessionDirStorage;
-use elph_agent::SessionStorage;
-use elph_agent::SessionTreeEntry;
+use elph_agent::session::BranchSummaryOptions;
+use elph_agent::session::InMemorySessionStorage;
+use elph_agent::session::Session;
+use elph_agent::session::SessionDirCreateOptions;
+use elph_agent::session::SessionDirStorage;
+use elph_agent::session::SessionStorage;
+use elph_agent::session::SessionTreeEntry;
 #[cfg(feature = "backend-turso")]
-use elph_agent::TursoSessionStorage;
+use elph_agent::session::TursoSessionStorage;
 use elph_agent::session::{EVENTS_FILE, SUMMARY_FILE};
 use elph_ai::{Message, UserContent};
 use elph_ai::{faux_assistant_message, faux_text};
@@ -348,7 +348,7 @@ async fn turso_reopen_with_phantom_leaf_pointer_stays_openable_and_repairable() 
 #[cfg(feature = "backend-turso")]
 #[tokio::test]
 async fn turso_resume_after_crash_then_continue_appends_chain() {
-    use elph_agent::reconcile_session;
+    use elph_agent::session::reconcile_session;
 
     let tmp = tempfile::tempdir().expect("tempdir");
     let db = tmp.path().join("crash.db");

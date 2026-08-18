@@ -23,8 +23,9 @@ use common::resolve_model;
 use common::run_agent_prompt;
 use common::sample_catalog;
 use common::{DEFAULT_ROWS, TOOL_CALL_PROMPT, TOOL_CALL_SYSTEM};
+use elph_agent::AgentEvent;
+use elph_agent::AgentToolResult;
 use elph_agent::simple_tool;
-use elph_agent::{AgentEvent, AgentToolResult};
 use elph_ai::Tool;
 use serde_json::json;
 

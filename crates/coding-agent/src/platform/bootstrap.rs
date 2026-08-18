@@ -3,7 +3,8 @@ use crate::platform::scaffold::{
 };
 use crate::utils::path::AppPaths;
 use anyhow::Result;
-use elph_agent::{ensure_dirs, try_block_on};
+use elph_agent::fs::ensure_dirs;
+use elph_agent::runtime::try_block_on;
 use elph_tui::CliSpinner;
 
 use super::paths::Paths;

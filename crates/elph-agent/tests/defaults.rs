@@ -1,4 +1,5 @@
-use elph_agent::{DEFAULT_SYSTEM_PROMPT, resolve_system_prompt_text};
+use elph_agent::DEFAULT_SYSTEM_PROMPT;
+use elph_agent::resolve_system_prompt_text;
 
 #[test]
 fn default_prompt_is_generic_assistant() {

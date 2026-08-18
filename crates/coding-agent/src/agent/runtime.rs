@@ -2,13 +2,17 @@
 
 use crate::utils::path::AppPaths;
 use anyhow::Result;
-use elph_agent::create_goal_tools_with_hook;
+use elph_agent::BuiltinToolsBuilder;
+use elph_agent::QueueMode;
+use elph_agent::agent::subagent::{AgentGraphStore, SubagentBootstrap};
+use elph_agent::collaboration::is_mcp_tool;
+use elph_agent::goals::create_goal_tools_with_hook;
+use elph_agent::goals::{GoalRuntime, GoalStore};
 use elph_agent::harness::{AgentHarness, AgentHarnessOptions, AgentHarnessStreamOptions, RestoreOptions, SystemPrompt};
-use elph_agent::{
-    AgentGraphStore, BuiltinToolsBuilder, GoalRuntime, GoalStore, LocalExecutionEnv, QueueMode, SessionSummaryStore,
-    SubagentBootstrap, TodoHook, TodoStore, TurnStore, WorkTracker, create_session_summary_tool,
-    create_todo_tools_with_hook, is_mcp_tool,
-};
+use elph_agent::runtime::LocalExecutionEnv;
+use elph_agent::session_summary::{SessionSummaryStore, create_session_summary_tool};
+use elph_agent::todos::{TodoHook, TodoStore, WorkTracker, create_todo_tools_with_hook};
+use elph_agent::turns::TurnStore;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -63,7 +67,7 @@ pub async fn create_coding_session_with_events(
     // Best-effort session retention GC (settings-driven). Never mid-turn; skip if disabled.
     if options.settings.session.enabled && options.settings.session.gc_on_open {
         let r = &options.settings.session;
-        let policy = elph_agent::RetentionPolicy {
+        let policy = elph_agent::session::RetentionPolicy {
             enabled: true,
             max_sessions_per_cwd: r.max_sessions_per_cwd,
             max_session_age_days: r.max_session_age_days,
@@ -71,7 +75,7 @@ pub async fn create_coding_session_with_events(
             protect_latest_per_cwd: r.protect_latest_per_cwd,
             protect_session_id: options.resume_id.map(|s| s.to_string()),
         };
-        match elph_agent::run_full_session_gc(
+        match elph_agent::session::run_full_session_gc(
             Arc::clone(&database),
             options.paths.memory_db_path(),
             Some(options.paths.data_dir().join("sessions")),
@@ -232,7 +236,7 @@ pub async fn create_coding_session_with_events(
         if !rt.file_leases_enabled() {
             return None;
         }
-        Some(std::sync::Arc::new(elph_agent::PathClaimContext::new(
+        Some(std::sync::Arc::new(elph_agent::workers::PathClaimContext::new(
             rt.file_leases(),
             rt.project_key.clone(),
             rt.worker_id.clone(),
@@ -274,7 +278,7 @@ pub async fn create_coding_session_with_events(
     let goal_runtime = Arc::new(GoalRuntime::new(goal_store.clone(), session_id.clone()));
     // Goals bridge: terminal goal status → work memory for future recall.
     let memory_for_goals = Arc::clone(&memory_runtime);
-    let goal_hook: Option<elph_agent::GoalStatusHook> = Some(Arc::new(move |goal| {
+    let goal_hook: Option<elph_agent::goals::GoalStatusHook> = Some(Arc::new(move |goal| {
         let runtime = Arc::clone(&memory_for_goals);
         Box::pin(async move {
             let status = goal.status.as_str();
@@ -442,7 +446,7 @@ pub async fn create_coding_session_with_events(
                     elph_agent::DEFAULT_SYSTEM_PROMPT.to_string()
                 });
                 if prompt_options.mode == AgentMode::Plan && plan_reentry.load(Ordering::Relaxed) {
-                    prompt.push_str(elph_agent::plan_mode_reentry_prompt());
+                    prompt.push_str(elph_agent::prompt::plan_mode_reentry_prompt());
                 }
 
                 // Append memory context section at the end of the system prompt.
@@ -634,9 +638,9 @@ struct ContinuityStores {
 }
 
 impl ContinuityStores {
-    async fn build_section<S>(&self, session: elph_agent::Session<S>) -> Option<String>
+    async fn build_section<S>(&self, session: elph_agent::session::Session<S>) -> Option<String>
     where
-        S: elph_agent::SessionStorage + Clone + Send + Sync + 'static,
+        S: elph_agent::session::SessionStorage + Clone + Send + Sync + 'static,
     {
         // New sessions must never receive prior session state. Only resume/continue do.
         if self.is_new_session {

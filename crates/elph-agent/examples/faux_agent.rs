@@ -5,7 +5,10 @@
 
 use std::sync::Arc;
 
-use elph_agent::{Agent, AgentEvent, AgentOptions, PartialAgentState};
+use elph_agent::Agent;
+use elph_agent::AgentEvent;
+use elph_agent::AgentOptions;
+use elph_agent::PartialAgentState;
 use elph_ai::FauxResponseStep;
 use elph_ai::{faux_assistant_message, faux_provider, faux_text};
 

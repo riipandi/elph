@@ -8,7 +8,10 @@
 //! This module builds a compact `<session_state>` block for the system prompt
 //! and helpers to rehydrate the TUI todo panel on bootstrap.
 
-use elph_agent::{AgentMessage, Goal, GoalStatus, SessionTreeEntry, TodoItem, TodoStatus};
+use elph_agent::AgentMessage;
+use elph_agent::goals::{Goal, GoalStatus};
+use elph_agent::session::SessionTreeEntry;
+use elph_agent::todos::{TodoItem, TodoStatus};
 use elph_ai::{AssistantContentBlock, AssistantMessage, ContentBlock, Message, TextContent, UserContent};
 
 /// Max characters for a single anchored quote in the brief.
@@ -236,7 +239,7 @@ fn truncate_chars(s: &str, max: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use elph_agent::TodoStatus;
+    use elph_agent::todos::TodoStatus;
 
     #[test]
     fn empty_snapshot_renders_empty() {

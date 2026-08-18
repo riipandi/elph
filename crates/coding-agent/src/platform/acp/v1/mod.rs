@@ -1068,8 +1068,8 @@ async fn apply_v1_event(
                         item.content.clone(),
                         PlanEntryPriority::Medium,
                         match item.status {
-                            elph_agent::TodoStatus::Completed => PlanEntryStatus::Completed,
-                            elph_agent::TodoStatus::InProgress => PlanEntryStatus::InProgress,
+                            elph_agent::todos::TodoStatus::Completed => PlanEntryStatus::Completed,
+                            elph_agent::todos::TodoStatus::InProgress => PlanEntryStatus::InProgress,
                             _ => PlanEntryStatus::Pending,
                         },
                     )
@@ -1130,12 +1130,12 @@ async fn apply_v1_event(
                 match send_v1_permission(connection, request, cancel.clone()).await.as_deref() {
                     Some("implement") => {
                         let _ = session
-                            .resolve_plan(elph_agent::PlanConfirmationChoice::Implement)
+                            .resolve_plan(elph_agent::collaboration::PlanConfirmationChoice::Implement)
                             .await;
                     }
                     Some("fresh") => {
                         let _ = session
-                            .resolve_plan(elph_agent::PlanConfirmationChoice::ImplementFresh)
+                            .resolve_plan(elph_agent::collaboration::PlanConfirmationChoice::ImplementFresh)
                             .await;
                     }
                     Some("revise") => {
@@ -1147,7 +1147,7 @@ async fn apply_v1_event(
                     }
                     _ => {
                         let _ = session
-                            .resolve_plan(elph_agent::PlanConfirmationChoice::StayInPlan)
+                            .resolve_plan(elph_agent::collaboration::PlanConfirmationChoice::StayInPlan)
                             .await;
                     }
                 }

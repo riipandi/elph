@@ -11,12 +11,8 @@ use elph_ai::api::faux::{FauxModelDefinition, RegisterFauxProviderOptions};
 
 use elph_agent::AgentThinkingLevel;
 use elph_agent::AgentTool;
-use elph_agent::CompactionSettings;
-use elph_agent::CustomMessageContent;
-use elph_agent::InMemorySessionStorage;
-use elph_agent::LocalExecutionEnv;
 use elph_agent::QueueMode;
-use elph_agent::Session;
+use elph_agent::compaction::CompactionSettings;
 use elph_agent::harness::AgentHarness;
 use elph_agent::harness::AgentHarnessErrorCode;
 use elph_agent::harness::AgentHarnessEvent;
@@ -29,8 +25,14 @@ use elph_agent::harness::SessionBeforeTreeResult;
 use elph_agent::harness::Skill;
 use elph_agent::harness::SystemPrompt;
 use elph_agent::harness::ToolResultPatch;
+use elph_agent::llm_message_to_agent;
+use elph_agent::messages::CustomMessageContent;
+use elph_agent::messages::create_custom_message;
+use elph_agent::runtime::LocalExecutionEnv;
+use elph_agent::session::InMemorySessionStorage;
+use elph_agent::session::Session;
 use elph_agent::session::types::SessionTreeEntry;
-use elph_agent::{create_custom_message, llm_message_to_agent, simple_tool};
+use elph_agent::simple_tool;
 use elph_ai::{ContentBlock, FauxResponseStep, Message, Models, StopReason, Tool, UserContent};
 use elph_ai::{builtin_models, faux_assistant_message, faux_provider, faux_text, faux_tool_call};
 use serde_json::json;
@@ -1626,7 +1628,7 @@ async fn harness_queue_remove_and_promote_follow_up_to_steer() {
 #[tokio::test(flavor = "multi_thread")]
 async fn harness_restore_rehydrates_next_turn_queue() {
     use elph_agent::harness::RestoreOptions;
-    use elph_agent::{load_durable_state, reduce_durable_state};
+    use elph_agent::session::{load_durable_state, reduce_durable_state};
 
     let (_temp, env) = test_env();
     let faux = faux_provider(Default::default());

@@ -8,22 +8,16 @@ rustflags = ["-C", "target-cpu=native", "-Z", "threads=8"]
 # @ref: https://github.com/wild-linker/wild
 ################################################################################
 
-[target.aarch64-apple-darwin]
-linker = "clang"
-rustflags = ["-C", "link-arg=--ld-path=/usr/bin/ld"]
+[target.'cfg(target_os = "macos")']
+rustflags = ["-Clink-arg=--ld-path=/usr/bin/ld"]
 
-[target.x86_64-unknown-linux-gnu]
-linker = "clang"
+[target.'cfg(target_os = "linux")']
 rustflags = ["-Clink-arg=--ld-path=wild"]
 
-[target.x86_64-unknown-linux-musl]
-rustflags = ["-C", "link-args=-fuse-ld=lld"]
-
-[target.aarch64-unknown-linux-musl]
-rustflags = ["-C", "link-args=-fuse-ld=lld"]
-
-[target.aarch64-unknown-linux-gnu]
-rustflags = ["-C", "link-args=-fuse-ld=lld"]
-
-[target.x86_64-pc-windows-msvc]
-rustflags = ["-C", "target-feature=+crt-static"]
+# Link the C runtime statically on Windows. The alternative is shipping
+# (or installing) the Visual C++ redistributable. Windows on Arm makes
+# the failure routine rather than rare — an arm64 machine almost never
+# has the arm64 redistributable already, so a dynamically linked build
+# dies at startup on `VCRUNTIME140.dll`.
+[target.'cfg(target_os = "windows")']
+rustflags = ["-Ctarget-feature=+crt-static"]

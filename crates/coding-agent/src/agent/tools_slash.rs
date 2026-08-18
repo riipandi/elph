@@ -5,7 +5,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Result;
-use elph_agent::{AgentTool, BuiltinToolsBuilder, LocalExecutionEnv};
+use elph_agent::AgentTool;
+use elph_agent::BuiltinToolsBuilder;
+use elph_agent::runtime::LocalExecutionEnv;
 
 use crate::types::AgentMode;
 
@@ -285,7 +287,7 @@ const TOOLS_SNAPSHOT_TIMEOUT: std::time::Duration = std::time::Duration::from_mi
 pub fn tools_slash_message(session: Option<&Arc<CodingAgentSession>>) -> Result<String, String> {
     if let Some(session) = session {
         let session = Arc::clone(session);
-        match elph_agent::try_block_on_detached(
+        match elph_agent::runtime::try_block_on_detached(
             async move { active_tools_message(&session).await },
             TOOLS_SNAPSHOT_TIMEOUT,
         ) {

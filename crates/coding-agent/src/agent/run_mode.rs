@@ -730,7 +730,7 @@ async fn collect_last_assistant_text(session: &super::session::CodingAgentSessio
     let entries = session.harness().session_entries().await;
     let mut text = String::new();
     for entry in entries.into_iter().rev() {
-        if let elph_agent::SessionTreeEntry::Message { message, .. } = entry
+        if let elph_agent::session::SessionTreeEntry::Message { message, .. } = entry
             && message.role() == "assistant"
             && let Some(elph_ai::Message::Assistant(assistant)) = message.as_llm()
         {

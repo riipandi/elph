@@ -160,11 +160,11 @@ pub fn plan_choice_at_index(index: usize) -> Option<PlanChoice> {
     }
 }
 
-pub fn to_harness_choice(choice: PlanChoice) -> Option<elph_agent::PlanConfirmationChoice> {
+pub fn to_harness_choice(choice: PlanChoice) -> Option<elph_agent::collaboration::PlanConfirmationChoice> {
     match choice {
-        PlanChoice::Implement => Some(elph_agent::PlanConfirmationChoice::Implement),
-        PlanChoice::ImplementFresh => Some(elph_agent::PlanConfirmationChoice::ImplementFresh),
-        PlanChoice::StayInPlan => Some(elph_agent::PlanConfirmationChoice::StayInPlan),
+        PlanChoice::Implement => Some(elph_agent::collaboration::PlanConfirmationChoice::Implement),
+        PlanChoice::ImplementFresh => Some(elph_agent::collaboration::PlanConfirmationChoice::ImplementFresh),
+        PlanChoice::StayInPlan => Some(elph_agent::collaboration::PlanConfirmationChoice::StayInPlan),
         PlanChoice::RevisePlan | PlanChoice::QuitPlan => None,
     }
 }

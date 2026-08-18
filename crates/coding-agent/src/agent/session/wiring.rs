@@ -2,9 +2,9 @@
 
 use anyhow::Result;
 use elph_agent::AgentEvent;
+use elph_agent::agent::subagent::{SubagentEventForwarder, SubagentInfo};
 use elph_agent::harness::{AgentHarnessEvent, AgentHarnessOwnEvent, FileSystem};
 use elph_agent::harness::{ToolCallEvent, ToolCallHookResult};
-use elph_agent::{SubagentEventForwarder, SubagentInfo};
 use elph_ai::AssistantMessageEvent;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -174,7 +174,7 @@ impl CodingAgentSession {
                         };
                         entry.0.push_str(delta);
                         if let Some(dir) = &persist_event_dir {
-                            elph_agent::subagent_persist_event(dir, "text_delta", delta);
+                            elph_agent::agent::subagent::subagent_persist_event(dir, "text_delta", delta);
                         }
                         entry.1 += 1;
                         if entry.1 >= BATCH_INTERVAL {

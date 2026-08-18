@@ -1,6 +1,6 @@
 use anyhow::Result;
 use elph_agent::datastore::{connect, open_local_with};
-use elph_agent::try_block_on;
+use elph_agent::runtime::try_block_on;
 use elph_tui::CliSpinner;
 use turso::Database;
 

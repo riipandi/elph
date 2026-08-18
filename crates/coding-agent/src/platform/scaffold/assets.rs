@@ -10,7 +10,7 @@ use std::path::Path;
 
 use crate::utils::path::AppPaths;
 use anyhow::{Context, Result};
-use elph_agent::write_json_file;
+use elph_agent::fs::write_json_file;
 
 use super::bundled::BundledManifest;
 

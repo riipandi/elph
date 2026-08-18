@@ -16,8 +16,12 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use parking_lot::Mutex;
 
+use elph_agent::Agent;
+use elph_agent::AgentEvent;
+use elph_agent::AgentOptions;
+use elph_agent::PartialAgentState;
 use elph_agent::create_edit_tools;
-use elph_agent::{Agent, AgentEvent, AgentOptions, LocalExecutionEnv, PartialAgentState};
+use elph_agent::runtime::LocalExecutionEnv;
 use elph_ai::{Message, StopReason};
 use elph_ai::{builtin_models, get_builtin_model};
 

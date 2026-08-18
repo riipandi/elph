@@ -5,11 +5,11 @@ use std::sync::{Arc, OnceLock};
 
 use tokio::sync::Mutex;
 
-use elph_agent::mcp::McpToolRegistry;
-use elph_agent::{
+use elph_agent::collaboration::{
     CollaborationMode, ToolExposurePolicy, filter_active_tools, is_exploration_tool, is_mcp_tool, is_mutating_tool,
     is_plan_workspace_mutating_tool, is_read_only_mcp_tool,
 };
+use elph_agent::mcp::McpToolRegistry;
 
 use crate::types::AgentMode;
 

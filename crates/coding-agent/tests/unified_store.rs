@@ -8,7 +8,7 @@
 //! ```
 
 use elph::platform::migrations::metadata_migrations;
-use elph_agent::ensure_database;
+use elph_agent::datastore::ensure_database;
 use elph_agent::session::SESSION_TREE_MIGRATIONS;
 use floppy::memory::migrations as memory_migrations;
 use turso::Builder;

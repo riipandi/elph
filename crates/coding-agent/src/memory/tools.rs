@@ -3,7 +3,8 @@
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use elph_agent::{AgentTool, AgentToolResult};
+use elph_agent::AgentTool;
+use elph_agent::AgentToolResult;
 use elph_ai::Tool;
 use serde_json::{Value, json};
 

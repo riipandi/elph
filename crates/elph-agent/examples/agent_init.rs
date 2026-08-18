@@ -13,9 +13,9 @@ use std::sync::Arc;
 use elph_agent::AgentBuilder;
 use elph_agent::AgentInit;
 use elph_agent::BuiltinToolsBuilder;
-use elph_agent::LocalExecutionEnv;
-use elph_agent::LogRotation;
-use elph_agent::LoggingOptions;
+use elph_agent::logger::LogRotation;
+use elph_agent::logger::LoggingOptions;
+use elph_agent::runtime::LocalExecutionEnv;
 
 fn main() {
     // ── 1. AgentBuilder: compose init settings ──

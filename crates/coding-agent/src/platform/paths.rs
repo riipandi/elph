@@ -66,12 +66,12 @@ impl Paths {
 
     /// `CONFIG_DIR/extensions/`
     pub fn global_extensions_dir(&self) -> PathBuf {
-        elph_agent::global_extensions_dir(self.config_dir())
+        elph_agent::plugins::global_extensions_dir(self.config_dir())
     }
 
     /// `<project>/.elph/extensions/`
     pub fn project_extensions_dir(&self) -> PathBuf {
-        elph_agent::project_extensions_dir(&self.project_elph_dir())
+        elph_agent::plugins::project_extensions_dir(&self.project_elph_dir())
     }
 
     /// Project MCP override: `<project>/.elph/mcp.json` (merged over home `mcp.json`).

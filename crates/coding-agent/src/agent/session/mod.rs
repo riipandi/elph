@@ -5,9 +5,11 @@ mod wiring;
 
 use crate::types::AgentMode;
 use anyhow::Result;
+use elph_agent::collaboration::PlanConfirmationChoice;
+use elph_agent::goals::GoalRuntime;
 use elph_agent::harness::{AgentHarness, AgentHarnessErrorCode, FileSystem};
 use elph_agent::mcp::McpToolRegistry;
-use elph_agent::{GoalRuntime, PlanConfirmationChoice, TursoSessionStorage};
+use elph_agent::session::TursoSessionStorage;
 use elph_ai::{AssistantMessage, StopReason};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU32, Ordering};
@@ -30,7 +32,7 @@ use super::tool_policy::AgentModePolicy;
 use super::tool_policy::{from_agent_thinking, to_agent_thinking};
 use super::tools_catalog::reconcile_harness_tools;
 use crate::platform::{Paths, Settings};
-use elph_agent::parse_command_args;
+use elph_agent::prompt::parse_command_args;
 use std::path::Path;
 
 /// System prompt for background session title generation (`crates/coding-agent/prompts/`).
@@ -234,10 +236,10 @@ impl CodingAgentSession {
     /// message. Must have a live worker runtime.
     pub async fn tui_send_worker_message(
         &self,
-        peer: &elph_agent::LiveWorker,
+        peer: &elph_agent::workers::LiveWorker,
         text: &str,
         parent_msg_id: Option<&str>,
-    ) -> Result<elph_agent::WorkerMessage> {
+    ) -> Result<elph_agent::workers::WorkerMessage> {
         let Some(rt) = self.worker_runtime.as_ref() else {
             anyhow::bail!("worker runtime not started");
         };
@@ -283,7 +285,7 @@ impl CodingAgentSession {
     }
 
     /// All messages involving this session, oldest first (TUI worker inbox).
-    pub async fn tui_worker_inbox(&self, limit: u64) -> Result<Vec<elph_agent::WorkerMessage>> {
+    pub async fn tui_worker_inbox(&self, limit: u64) -> Result<Vec<elph_agent::workers::WorkerMessage>> {
         let Some(rt) = self.worker_runtime.as_ref() else {
             return Ok(Vec::new());
         };
@@ -295,7 +297,7 @@ impl CodingAgentSession {
         &self,
         peer_worker_id: &str,
         limit: u64,
-    ) -> Result<Vec<elph_agent::WorkerMessage>> {
+    ) -> Result<Vec<elph_agent::workers::WorkerMessage>> {
         let Some(rt) = self.worker_runtime.as_ref() else {
             return Ok(Vec::new());
         };
@@ -305,7 +307,7 @@ impl CodingAgentSession {
     }
 
     /// Live peer workers for the worker chat picker (excludes self).
-    pub async fn tui_worker_peers(&self) -> Result<Vec<elph_agent::LiveWorker>> {
+    pub async fn tui_worker_peers(&self) -> Result<Vec<elph_agent::workers::LiveWorker>> {
         let Some(rt) = self.worker_runtime.as_ref() else {
             return Ok(Vec::new());
         };
@@ -362,7 +364,7 @@ impl CodingAgentSession {
     /// replies can land immediately.
     ///
     /// Threaded replies (`parent_msg_id` set) stay inbox-only (anti ping-pong).
-    async fn deliver_worker_inbound(self: &Arc<Self>, msg: elph_agent::WorkerMessage) -> Result<()> {
+    async fn deliver_worker_inbound(self: &Arc<Self>, msg: elph_agent::workers::WorkerMessage) -> Result<()> {
         // Resolve display name for the sender (registry may be gone → fall back to id).
         let from_worker = if let Some(rt) = self.worker_runtime.as_ref() {
             rt.registry()
@@ -422,7 +424,7 @@ impl CodingAgentSession {
         Ok(())
     }
 
-    async fn reply_worker_answer_failed(&self, msg: &elph_agent::WorkerMessage, error: &str) {
+    async fn reply_worker_answer_failed(&self, msg: &elph_agent::workers::WorkerMessage, error: &str) {
         log::warn!("worker answer failed for {}: {error}", msg.id);
         let Some(rt) = self.worker_runtime.as_ref() else {
             return;
@@ -612,7 +614,7 @@ impl CodingAgentSession {
             },
         )?;
         if mode == AgentMode::Plan && self.plan_reentry.load(Ordering::Relaxed) {
-            text.push_str(elph_agent::plan_mode_reentry_prompt());
+            text.push_str(elph_agent::prompt::plan_mode_reentry_prompt());
         }
         *self.system_prompt_cache.write() = Some(text.clone());
         Ok(text)
@@ -1204,7 +1206,7 @@ impl CodingAgentSession {
             .map_err(|e| anyhow::anyhow!("{e}"))
     }
 
-    pub async fn branch_entries(&self) -> Result<Vec<elph_agent::SessionTreeEntry>> {
+    pub async fn branch_entries(&self) -> Result<Vec<elph_agent::session::SessionTreeEntry>> {
         self.harness
             .session_branch_entries()
             .await
@@ -1212,7 +1214,7 @@ impl CodingAgentSession {
     }
 
     /// All session tree entries (full DAG), not just the active branch path.
-    pub async fn session_tree_entries(&self) -> Result<Vec<elph_agent::SessionTreeEntry>> {
+    pub async fn session_tree_entries(&self) -> Result<Vec<elph_agent::session::SessionTreeEntry>> {
         Ok(self.harness.session_entries().await)
     }
 
@@ -1380,7 +1382,7 @@ impl CodingAgentSession {
         // Read the latest persisted turn record (harness writes usage right before idle)
         // so the shell can render turn-complete stats (tokens in/out/cached, model).
         // Missing store/turn degrades gracefully to `None` fields.
-        let usage = Some(elph_agent::TurnUsage {
+        let usage = Some(elph_agent::turns::TurnUsage {
             input_tokens: latest.usage.input_tokens,
             output_tokens: latest.usage.output_tokens,
             cache_read_tokens: latest.usage.cache_read_tokens,
@@ -1450,8 +1452,8 @@ async fn generate_and_store_session_title(
         .session_branch_entries()
         .await
         .map_err(|e| anyhow::anyhow!("{e}"))?;
-    let context = elph_agent::build_session_context(&branch);
-    let conversation = elph_agent::extract_conversation_for_naming(&context.messages);
+    let context = elph_agent::session::build_session_context(&branch);
+    let conversation = elph_agent::prompt::extract_conversation_for_naming(&context.messages);
     if conversation.trim().is_empty() {
         return Ok(None);
     }
@@ -1460,7 +1462,7 @@ async fn generate_and_store_session_title(
     let user_prompt = SESSION_TITLE_USER.replace("{{conversation}}", &conversation);
     // Naming model call first; fall back to the first user message when it fails
     // or returns a generic placeholder, so sessions always end up named.
-    let title = elph_agent::generate_session_name_with_prompts(
+    let title = elph_agent::prompt::generate_session_name_with_prompts(
         &context.messages,
         models.as_ref(),
         &model,
@@ -1482,11 +1484,11 @@ async fn generate_and_store_session_title(
 }
 
 /// Deterministic fallback title when the naming model call fails: the first
-/// user message, sanitized and truncated to [`elph_agent::sanitize_session_name`].
+/// user message, sanitized and truncated to [`elph_agent::prompt::sanitize_session_name`].
 fn fallback_session_title(conversation: &str) -> Option<String> {
     let first = conversation.split("\n\n").next()?.trim();
     let text = first.strip_prefix("User:").map(str::trim).unwrap_or(first);
-    let title = elph_agent::sanitize_session_name(text);
+    let title = elph_agent::prompt::sanitize_session_name(text);
     if title.is_empty() { None } else { Some(title) }
 }
 

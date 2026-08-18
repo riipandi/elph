@@ -2,10 +2,11 @@
 
 use crate::utils::path::AppPaths;
 use anyhow::{Context, Result};
-use elph_agent::{
-    Session, SessionLeaseStore, TursoSessionListOptions, TursoSessionMetadata, TursoSessionRepo,
-    TursoSessionRepoCreateOptions, TursoSessionStorage, derive_session_context_state, reconcile_session,
+use elph_agent::session::{
+    Session, TursoSessionListOptions, TursoSessionMetadata, TursoSessionRepo, TursoSessionRepoCreateOptions,
+    TursoSessionStorage, derive_session_context_state, reconcile_session,
 };
+use elph_agent::workers::SessionLeaseStore;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -77,10 +78,10 @@ impl SessionManager {
             .await
         {
             Ok(_) => Ok(()),
-            Err(elph_agent::LeaseError::Conflict(c)) => {
+            Err(elph_agent::workers::LeaseError::Conflict(c)) => {
                 anyhow::bail!("{}", c.message);
             }
-            Err(elph_agent::LeaseError::Other(e)) => Err(e),
+            Err(elph_agent::workers::LeaseError::Other(e)) => Err(e),
         }
     }
 
@@ -340,12 +341,12 @@ impl SessionManager {
     pub async fn fork_session(
         &self,
         source_id: &str,
-        fork_options: elph_agent::ForkEntriesOptions,
-    ) -> Result<elph_agent::Session<elph_agent::TursoSessionStorage>> {
+        fork_options: elph_agent::session::ForkEntriesOptions,
+    ) -> Result<elph_agent::session::Session<elph_agent::session::TursoSessionStorage>> {
         self.repo
             .fork(
                 source_id,
-                elph_agent::TursoSessionRepoCreateOptions {
+                elph_agent::session::TursoSessionRepoCreateOptions {
                     cwd: self.cwd.clone(),
                     parent_session_id: Some(source_id.to_string()),
                     ..Default::default()
@@ -380,7 +381,7 @@ impl SessionManager {
         self.ensure_artifact_dirs(&id)?;
         let n = entries.len();
         for entry in entries {
-            elph_agent::SessionStorage::append_entry(session.storage_mut(), entry)
+            elph_agent::session::SessionStorage::append_entry(session.storage_mut(), entry)
                 .await
                 .with_context(|| format!("append imported entry into session {id}"))?;
         }
@@ -393,7 +394,7 @@ impl SessionManager {
 }
 
 /// Parse newline-delimited [`SessionTreeEntry`] JSON (Elph `/export` format).
-pub fn load_session_tree_jsonl(path: &Path) -> Result<Vec<elph_agent::SessionTreeEntry>> {
+pub fn load_session_tree_jsonl(path: &Path) -> Result<Vec<elph_agent::session::SessionTreeEntry>> {
     let raw = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
     let mut entries = Vec::new();
     for (line_no, line) in raw.lines().enumerate() {
@@ -401,7 +402,7 @@ pub fn load_session_tree_jsonl(path: &Path) -> Result<Vec<elph_agent::SessionTre
         if line.is_empty() {
             continue;
         }
-        let entry: elph_agent::SessionTreeEntry = serde_json::from_str(line)
+        let entry: elph_agent::session::SessionTreeEntry = serde_json::from_str(line)
             .with_context(|| format!("parse JSONL line {} in {}", line_no + 1, path.display()))?;
         entries.push(entry);
     }

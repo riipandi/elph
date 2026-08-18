@@ -608,13 +608,13 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         .read()
                         .as_ref()
                         .and_then(|s| s.active.clone())
-                        .map(|(id, name)| elph_agent::LiveWorker {
+                        .map(|(id, name)| elph_agent::workers::LiveWorker {
                             worker_id: id,
                             session_id: String::new(),
                             name: name.clone(),
                             purpose: String::new(),
                             model: None,
-                            status: elph_agent::WorkerStatus::Online,
+                            status: elph_agent::workers::WorkerStatus::Online,
                             context_pct: None,
                             is_self: false,
                         });
@@ -1224,7 +1224,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         let summarize = with_summary;
                         let entry_id = value.clone();
                         let sid = session.session_id().to_string();
-                        let nav = elph_agent::try_block_on(async {
+                        let nav = elph_agent::runtime::try_block_on(async {
                             session.navigate_tree_to_with_options(&entry_id, summarize).await
                         });
                         match nav {
@@ -2003,7 +2003,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     });
                 } else {
                     // No session UI channel — run inline and open result dialog.
-                    match elph_agent::try_block_on(crate::memory::execute_flush(&paths)) {
+                    match elph_agent::runtime::try_block_on(crate::memory::execute_flush(&paths)) {
                         Ok(Ok(text)) => {
                             let body_height = (text.lines().count() as u16).saturating_add(3).clamp(8, 40);
                             open_scroll_text_dialog(OpenScrollTextDialogArgs {

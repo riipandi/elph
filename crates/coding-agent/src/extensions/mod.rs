@@ -4,8 +4,8 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::Result;
-use elph_agent::global_extensions_dir;
-use elph_agent::{ExtensionCommand, ExtensionRegistry, ExtensionSlashResult, ExtensionsSettings};
+use elph_agent::plugins::global_extensions_dir;
+use elph_agent::plugins::{ExtensionCommand, ExtensionRegistry, ExtensionSlashResult, ExtensionsSettings};
 use parking_lot::RwLock;
 
 use crate::platform::{AppPaths, Paths};

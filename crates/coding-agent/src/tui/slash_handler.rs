@@ -3,8 +3,8 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use elph_agent::ExtensionRegistry;
 use elph_agent::harness::{PromptTemplate, Skill};
+use elph_agent::plugins::ExtensionRegistry;
 
 use crate::agent::RETRY_CONTINUE_PROMPT;
 use crate::agent::{
@@ -35,7 +35,7 @@ fn handle_memory_slash(ctx: SlashContext<'_>, args: &str) -> SlashOutcome {
 
     // Destructive wipe — confirm in the status-zone dialog first.
     if let Ok(crate::memory::ops::MemoryOp::Flush) = crate::memory::ops::MemoryOp::parse_slash(args) {
-        let (memory_count, task_count) = match elph_agent::try_block_on(crate::memory::flush_preview(paths)) {
+        let (memory_count, task_count) = match elph_agent::runtime::try_block_on(crate::memory::flush_preview(paths)) {
             Ok(counts) => counts,
             Err(err) => return SlashOutcome::Status(format!("Memory error: {err:#}")),
         };
@@ -62,7 +62,7 @@ fn handle_memory_slash(ctx: SlashContext<'_>, args: &str) -> SlashOutcome {
     }
 
     // Fallback: run inline so output is never silently dropped.
-    match elph_agent::try_block_on(crate::memory::slash_run(&paths, &args)) {
+    match elph_agent::runtime::try_block_on(crate::memory::slash_run(&paths, &args)) {
         Ok(Ok(text)) => SlashOutcome::OpenMemoryResultDialog { text },
         Ok(Err(err)) => SlashOutcome::Status(format!("Memory error: {err}")),
         Err(err) => SlashOutcome::Status(format!("Memory error: {err:#}")),
@@ -168,7 +168,7 @@ pub enum SlashOutcome {
     /// Open the worker chat overlay (`/intercom`). `peers` seeds the picker; the
     /// shell loads inbox history from the live session on the same open path as Alt+M.
     OpenWorkerChat {
-        peers: Vec<elph_agent::LiveWorker>,
+        peers: Vec<elph_agent::workers::LiveWorker>,
     },
 }
 
@@ -506,7 +506,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             };
             let session = Arc::clone(session);
             let cwd = cwd.to_path_buf();
-            match elph_agent::try_block_on(import_session_from_jsonl(&session, &cwd, &args)) {
+            match elph_agent::runtime::try_block_on(import_session_from_jsonl(&session, &cwd, &args)) {
                 Ok(Ok((_msg, new_id))) => SlashOutcome::ResumeSession { session_id: new_id },
                 Ok(Err(message)) => SlashOutcome::Status(message),
                 Err(e) => SlashOutcome::Status(format!("/import failed: {e}")),
@@ -529,7 +529,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
                 return SlashOutcome::Status("Agent session required for /workers.".into());
             };
             let session = Arc::clone(session);
-            match elph_agent::try_block_on(workers_slash_message(Some(&session))) {
+            match elph_agent::runtime::try_block_on(workers_slash_message(Some(&session))) {
                 Ok(Ok(text)) => SlashOutcome::OpenSessionInfoDialog { text },
                 Ok(Err(message)) => SlashOutcome::Status(message),
                 Err(e) => SlashOutcome::Status(format!("/workers failed: {e}")),
@@ -548,7 +548,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
                 let branch_only = trimmed == "--branch" || trimmed == "branch";
                 return open_tree_item_selector(Some(&session), branch_only);
             }
-            match elph_agent::try_block_on(tree_slash_message(&session, &args)) {
+            match elph_agent::runtime::try_block_on(tree_slash_message(&session, &args)) {
                 Ok(Ok(_text)) => {
                     // Reload transcript so the TUI matches the new leaf (Pi chat re-render).
                     SlashOutcome::ResumeSession {
@@ -580,7 +580,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             };
             let session = Arc::clone(session);
             let cwd = cwd.to_path_buf();
-            match elph_agent::try_block_on(export_session_message(&session, &cwd, &args)) {
+            match elph_agent::runtime::try_block_on(export_session_message(&session, &cwd, &args)) {
                 Ok(Ok(text)) => SlashOutcome::Status(text),
                 Ok(Err(message)) => SlashOutcome::Status(message),
                 Err(e) => SlashOutcome::Status(format!("/export failed: {e}")),
@@ -591,7 +591,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
                 return SlashOutcome::Status("Agent session required for /fork.".into());
             };
             let session = Arc::clone(session);
-            match elph_agent::try_block_on(fork_session_message(&session)) {
+            match elph_agent::runtime::try_block_on(fork_session_message(&session)) {
                 Ok(Ok(text)) => SlashOutcome::Status(text),
                 Ok(Err(message)) => SlashOutcome::Status(message),
                 Err(e) => SlashOutcome::Status(format!("/fork failed: {e}")),
@@ -602,7 +602,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
                 return SlashOutcome::Status("Agent session required for /clone.".into());
             };
             let session = Arc::clone(session);
-            match elph_agent::try_block_on(clone_session_message(&session)) {
+            match elph_agent::runtime::try_block_on(clone_session_message(&session)) {
                 Ok(Ok(text)) => SlashOutcome::Status(text),
                 Ok(Err(message)) => SlashOutcome::Status(message),
                 Err(e) => SlashOutcome::Status(format!("/clone failed: {e}")),
@@ -675,7 +675,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
         SlashDispatch::Skill { ref name, ref args } => {
             if let Some(skills) = ctx.skills
                 && let Some(skill) = skills.iter().find(|skill| skill.name == *name)
-                && let Some(notice) = elph_agent::skill_args_validation_notice(skill, args)
+                && let Some(notice) = elph_agent::skills::skill_args_validation_notice(skill, args)
             {
                 return SlashOutcome::Status(notice);
             }
@@ -732,7 +732,7 @@ fn open_resume_item_selector(session: Option<&Arc<crate::agent::CodingAgentSessi
         return SlashOutcome::Status("Agent session required for /resume.".into());
     };
     let current = session.session_id().to_string();
-    match elph_agent::try_block_on(async {
+    match elph_agent::runtime::try_block_on(async {
         let sm = session.session_manager();
         crate::agent::list_session_select_items(sm)
             .await
@@ -758,7 +758,7 @@ fn open_worker_chat_slash(session: Option<&Arc<crate::agent::CodingAgentSession>
         return SlashOutcome::Status("Agent session required for /intercom.".into());
     };
     let session = Arc::clone(session);
-    match elph_agent::try_block_on(session.tui_worker_peers()) {
+    match elph_agent::runtime::try_block_on(session.tui_worker_peers()) {
         Ok(Ok(peers)) => SlashOutcome::OpenWorkerChat { peers },
         Ok(Err(e)) => SlashOutcome::Status(format!("/intercom failed: {e:#}")),
         Err(e) => SlashOutcome::Status(format!("/intercom failed: {e:#}")),
@@ -770,7 +770,7 @@ fn open_tree_item_selector(session: Option<&Arc<crate::agent::CodingAgentSession
         return SlashOutcome::Status("Agent session required for /tree.".into());
     };
     let session = Arc::clone(session);
-    match elph_agent::try_block_on(async {
+    match elph_agent::runtime::try_block_on(async {
         let leaf = session.leaf_id().await.ok().flatten();
         let entries = if branch_only {
             session

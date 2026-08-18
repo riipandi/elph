@@ -396,7 +396,7 @@ async fn load_chat_history(session: &CodingAgentSession, _paths: &crate::platfor
 
 /// Reconstruct transcript cards from the LLM session tree (fallback path).
 fn reconstruct_transcript_from_llm_entries(
-    entries: &[elph_agent::SessionTreeEntry],
+    entries: &[elph_agent::session::SessionTreeEntry],
     cwd: &str,
 ) -> Vec<TranscriptMessage> {
     use elph_ai::{AssistantContentBlock, ContentBlock, Message, UserContent};
@@ -405,7 +405,7 @@ fn reconstruct_transcript_from_llm_entries(
     // --- first pass: index tool results by tool_call_id ---
     let mut tool_results: HashMap<String, ToolResultInfo> = HashMap::new();
     for entry in entries {
-        let elph_agent::SessionTreeEntry::Message { message, .. } = entry else {
+        let elph_agent::session::SessionTreeEntry::Message { message, .. } = entry else {
             continue;
         };
         let Some(llm) = message.as_llm() else {
@@ -445,7 +445,7 @@ fn reconstruct_transcript_from_llm_entries(
     let mut last_event_ms: Option<i64> = None;
 
     for entry in entries {
-        let elph_agent::SessionTreeEntry::Message {
+        let elph_agent::session::SessionTreeEntry::Message {
             message,
             timestamp,
             prompt_title,

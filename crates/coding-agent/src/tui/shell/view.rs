@@ -975,11 +975,11 @@ pub(crate) fn build_shell_view(
                     .map(|item| {
                         let finished = matches!(
                             item.status,
-                            elph_agent::TodoStatus::Completed | elph_agent::TodoStatus::Cancelled
+                            elph_agent::todos::TodoStatus::Completed | elph_agent::todos::TodoStatus::Cancelled
                         );
                         elph_tui::TodoPanelRow {
                             label: item.content.clone(),
-                            running: item.status == elph_agent::TodoStatus::InProgress,
+                            running: item.status == elph_agent::todos::TodoStatus::InProgress,
                             finished,
                         }
                     })

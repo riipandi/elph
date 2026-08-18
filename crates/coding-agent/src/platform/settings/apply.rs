@@ -2,8 +2,8 @@
 
 use std::path::{Path, PathBuf};
 
-use elph_agent::ExtensionsSettings;
 use elph_agent::harness::Skill;
+use elph_agent::plugins::ExtensionsSettings;
 
 use super::Settings;
 use super::patterns::model_matches;

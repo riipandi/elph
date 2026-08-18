@@ -7,9 +7,9 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use crate::utils::path::AppPaths;
-use elph_agent::LocalExecutionEnv;
 use elph_agent::harness::{AgentHarnessResources, PromptTemplate};
-use elph_agent::load_prompt_templates;
+use elph_agent::prompt::load_prompt_templates;
+use elph_agent::runtime::LocalExecutionEnv;
 
 use super::agents_load::{AgentConflict, WorkspaceAgents, load_workspace_agents};
 use super::conflict_notice::{self, CrossKindConflict, TemplateConflict};

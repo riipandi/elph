@@ -12,7 +12,10 @@ use std::io::Write;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use elph_agent::{Agent, AgentEvent, AgentOptions, PartialAgentState};
+use elph_agent::Agent;
+use elph_agent::AgentEvent;
+use elph_agent::AgentOptions;
+use elph_agent::PartialAgentState;
 use elph_ai::{AssistantContentBlock, Message, StopReason};
 use elph_ai::{builtin_models, get_builtin_model};
 

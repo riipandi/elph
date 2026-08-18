@@ -84,7 +84,7 @@ use std::path::{Path, PathBuf};
 
 use crate::utils::path::AppPaths;
 use anyhow::{Context, Result};
-use elph_agent::write_json_file;
+use elph_agent::fs::write_json_file;
 use elph_tui::{ThemeConfig, ThemeMode, ThemePalettes};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{Map, Value};
@@ -141,7 +141,7 @@ pub struct Settings {
     /// Optional TOON prompt-encoding override for model-visible tool results.
     /// Absent / `null` falls back to `ELPH_PROMPT_ENCODING*` environment variables.
     #[serde(default)]
-    pub prompt_encoding: Option<elph_agent::PromptEncodingConfig>,
+    pub prompt_encoding: Option<elph_agent::prompt::PromptEncodingConfig>,
     /// Local floppy memory (hooks / retrieval; embed model is `models.embedModel`).
     #[serde(default)]
     pub memory: MemorySettings,
@@ -177,7 +177,7 @@ pub struct Settings {
     pub quiet_startup: bool,
     /// Process logger (file JSONL + fastrace). Applied at process start; restart required.
     #[serde(default)]
-    pub logging: elph_agent::LoggingSettings,
+    pub logging: elph_agent::logger::LoggingSettings,
     /// Set at load time: a project settings file was merged.
     #[serde(skip)]
     pub project_layer_loaded: bool,
@@ -815,8 +815,8 @@ impl CompactionConfig {
     /// Convert to elph-agent's `CompactionSettings`.
     ///
     /// Auto-compaction is always enabled at the host; only threshold/keep-recent are user-tunable.
-    pub fn to_agent_settings(&self) -> elph_agent::CompactionSettings {
-        elph_agent::CompactionSettings {
+    pub fn to_agent_settings(&self) -> elph_agent::compaction::CompactionSettings {
+        elph_agent::compaction::CompactionSettings {
             enabled: true,
             reserve_tokens: self.reserve_tokens,
             threshold_pct: Some(self.threshold_pct.clamp(1, 100)),
@@ -853,7 +853,7 @@ impl Settings {
             shell_command_prefix: None,
             http_proxy: None,
             quiet_startup: false,
-            logging: elph_agent::LoggingSettings::default(),
+            logging: elph_agent::logger::LoggingSettings::default(),
             project_layer_loaded: false,
         }
     }
@@ -874,7 +874,7 @@ impl Settings {
     /// Best-effort `logging` overlay from existing home + project files.
     ///
     /// Does not scaffold missing files (safe to call before logger init).
-    pub fn peek_logging(paths: &Paths) -> elph_agent::LoggingSettings {
+    pub fn peek_logging(paths: &Paths) -> elph_agent::logger::LoggingSettings {
         fn logging_value(path: &Path) -> Value {
             std::fs::read_to_string(path)
                 .ok()

@@ -1,18 +1,18 @@
 //! Coding-agent system prompt assembly.
 //!
 //! Layering (generic runtime → product domain):
-//! 1. [`elph_agent::render_base_template`] — persona, session env, [`format_skills_for_context`] (`<available_skills>`)
+//! 1. [`elph_agent::prompt::render_base_template`] — persona, session env, [`format_skills_for_context`] (`<available_skills>`)
 //! 2. [`super::template::coding_agent_engine`] — Grok-style `coding_base.txt` (MiniJinja) with tool names
 //! 3. `mode_section` — per-mode appendix (`<mode_context>`)
-//! 4. [`elph_agent::format_project_context`] — Pi-style `<project_context>` for AGENTS.md
+//! 4. [`elph_agent::prompt::format_project_context`] — Pi-style `<project_context>` for AGENTS.md
 
 use std::path::Path;
 
 use crate::types::AgentMode;
 use elph_agent::harness::AgentHarnessResources;
 use elph_agent::harness::format_skills_for_context;
-use elph_agent::now_date_with_offset;
-use elph_agent::{PromptAssemblyMode, SystemPromptBuilder, SystemPromptTemplateContext};
+use elph_agent::messages::now_date_with_offset;
+use elph_agent::prompt::{PromptAssemblyMode, SystemPromptBuilder, SystemPromptTemplateContext};
 
 use super::context::ElphCodingPromptContext;
 use super::modes::mode_footer_slug;

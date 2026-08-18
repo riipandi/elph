@@ -3,7 +3,7 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use elph_agent::ForkEntriesOptions;
+use elph_agent::session::ForkEntriesOptions;
 
 use super::CodingAgentSession;
 use super::overlays::{list_session_select_items, list_tree_select_items};
@@ -265,7 +265,7 @@ async fn tree_branch_only_message(session: &CodingAgentSession) -> Result<String
 }
 
 fn render_session_tree_lines(
-    entries: &[elph_agent::SessionTreeEntry],
+    entries: &[elph_agent::session::SessionTreeEntry],
     leaf_id: Option<&str>,
     max_rows: usize,
 ) -> Vec<String> {
@@ -276,7 +276,7 @@ fn render_session_tree_lines(
     }
     let mut out = Vec::new();
     fn walk(
-        entries: &[elph_agent::SessionTreeEntry],
+        entries: &[elph_agent::session::SessionTreeEntry],
         children: &HashMap<Option<String>, Vec<usize>>,
         parent: Option<&str>,
         prefix: &str,
@@ -319,8 +319,8 @@ fn render_session_tree_lines(
     out
 }
 
-fn tree_entry_label(entry: &elph_agent::SessionTreeEntry) -> String {
-    use elph_agent::SessionTreeEntry;
+fn tree_entry_label(entry: &elph_agent::session::SessionTreeEntry) -> String {
+    use elph_agent::session::SessionTreeEntry;
     match entry {
         SessionTreeEntry::Message { message, .. } => {
             let role = message.role();

@@ -2,8 +2,8 @@
 
 use crate::agent::{MAX_PALETTE_DESCRIPTION_CHARS, parse_skill_slash, skill_slash_name, truncate_palette_description};
 use crate::types::{SlashCommand, SlashCommandKind};
-use elph_agent::ExtensionRegistry;
 use elph_agent::harness::{PromptTemplate, Skill};
+use elph_agent::plugins::ExtensionRegistry;
 
 #[derive(Debug, Clone)]
 pub struct BuiltinSlashCommand {

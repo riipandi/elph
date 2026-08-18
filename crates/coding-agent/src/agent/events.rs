@@ -1,6 +1,7 @@
 //! Agent → TUI event bridge.
 
-use elph_agent::{TodoItem, TurnUsage};
+use elph_agent::todos::TodoItem;
+use elph_agent::turns::TurnUsage;
 
 /// Recovery prompt submitted instead of re-sending the original text when a transient
 /// stream/provider error interrupts a turn. The model resumes from the last persisted

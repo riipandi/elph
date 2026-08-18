@@ -55,7 +55,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use iocraft::prelude::*;
 
-use elph_agent::LocalExecutionEnv;
+use elph_agent::runtime::LocalExecutionEnv;
 
 use elph_ai::get_builtin_model;
 use elph_tui::install_theme_config;

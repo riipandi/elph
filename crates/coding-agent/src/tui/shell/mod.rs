@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant};
 
-use elph_agent::LocalExecutionEnv;
 use elph_agent::harness::{PromptTemplate, Skill};
+use elph_agent::runtime::LocalExecutionEnv;
 use elph_tui::components::{scroll_view_down, scroll_view_up};
 use elph_tui::rgb;
 use elph_tui::{
@@ -30,7 +30,7 @@ use crate::platform::{Paths, Settings};
 use crate::types::{AgentMode, SlashCommand, ThinkingLevel};
 use crate::types::{is_force_quit_command, is_quit_command};
 use crate::utils::path::AppPaths;
-use elph_agent::{BUDGET_LIMIT_PROMPT_PREFIX, CONTINUATION_PROMPT_PREFIX};
+use elph_agent::goals::{BUDGET_LIMIT_PROMPT_PREFIX, CONTINUATION_PROMPT_PREFIX};
 
 use crate::agent::rename_session_title;
 use crate::agent::session_info_slash_message;

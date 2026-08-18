@@ -5,7 +5,7 @@
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use elph_agent::default_convert_to_llm;
+use elph_agent::messages::default_convert_to_llm;
 use elph_agent::types::AgentMessage;
 use elph_ai::{AssistantContentBlock, Context, Message, SimpleStreamOptions, StopReason, StreamOptions, UserContent};
 
@@ -134,7 +134,7 @@ pub(crate) async fn snapshot_side_messages(session: &CodingAgentSession) -> Resu
         .session_branch_entries()
         .await
         .map_err(|e| format!("session branch: {e}"))?;
-    let session_ctx = elph_agent::build_session_context(&branch);
+    let session_ctx = elph_agent::session::build_session_context(&branch);
     let agent_messages: Vec<AgentMessage> = session_ctx.messages;
     let mut llm_messages = default_convert_to_llm(agent_messages);
     pop_trailing_unpaired_tool_run(&mut llm_messages);

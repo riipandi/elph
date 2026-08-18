@@ -114,7 +114,7 @@ fn spawn_mcp_event_loop(session: &CodingAgentSession, mcp_registry: Arc<McpToolR
 }
 
 async fn apply_mcp_tools_to_harness(
-    harness: &elph_agent::harness::AgentHarness<elph_agent::TursoSessionStorage>,
+    harness: &elph_agent::harness::AgentHarness<elph_agent::session::TursoSessionStorage>,
     registry: &Arc<McpToolRegistry>,
 ) -> Result<()> {
     let mcp_tools = registry.create_agent_tools().await;

@@ -3,17 +3,17 @@ mod common;
 
 use std::sync::Arc;
 
-use elph_agent::AgentControl;
-use elph_agent::AgentGraphStore;
-use elph_agent::LocalExecutionEnv;
-use elph_agent::SubagentBootstrap;
-use elph_agent::SubagentLimits;
-use elph_agent::SubagentSpawnConfig;
-use elph_agent::SubagentStatus;
+use elph_agent::agent::subagent::AgentControl;
+use elph_agent::agent::subagent::AgentGraphStore;
+use elph_agent::agent::subagent::SubagentBootstrap;
+use elph_agent::agent::subagent::SubagentLimits;
+use elph_agent::agent::subagent::SubagentSpawnConfig;
+use elph_agent::agent::subagent::SubagentStatus;
 use elph_agent::create_search_tools;
-use elph_agent::ensure_database;
+use elph_agent::datastore::ensure_database;
 use elph_agent::harness::AgentHarnessResources;
 use elph_agent::harness::AgentHarnessStreamOptions;
+use elph_agent::runtime::LocalExecutionEnv;
 use elph_agent::session::SESSION_TREE_MIGRATIONS;
 use elph_ai::{FauxResponseStep, StopReason, faux_assistant_message, faux_text, faux_thinking};
 
@@ -59,8 +59,8 @@ async fn spawn_and_list_subagents_with_turso_sessions() {
         outputs_root: Some(temp.path().join("outputs")),
     };
 
-    let registry = Arc::new(elph_agent::AgentRegistry::new());
-    let parent_path = elph_agent::generate_agent_name();
+    let registry = Arc::new(elph_agent::agent::subagent::AgentRegistry::new());
+    let parent_path = elph_agent::agent::subagent::generate_agent_name();
     let model_a = faux.provider.get_models()[0].clone();
     let control = AgentControl::new(
         SubagentSpawnConfig {
@@ -126,7 +126,7 @@ async fn spawn_and_list_subagents_with_turso_sessions() {
 
     // Child session is durable in the shared Turso DB (not SessionDir).
     let child_session_id = agents[0].session_id.clone();
-    let opened = elph_agent::TursoSessionRepo::new(&graph_db)
+    let opened = elph_agent::session::TursoSessionRepo::new(&graph_db)
         .open(&child_session_id)
         .await
         .expect("open child session from store.db");
@@ -166,8 +166,8 @@ async fn subagent_inherits_current_model_after_switch() {
         outputs_root: Some(temp.path().join("outputs")),
     };
 
-    let registry = Arc::new(elph_agent::AgentRegistry::new());
-    let parent_path = elph_agent::generate_agent_name();
+    let registry = Arc::new(elph_agent::agent::subagent::AgentRegistry::new());
+    let parent_path = elph_agent::agent::subagent::generate_agent_name();
     let model_a = faux.provider.get_models()[0].clone();
     let mut model_b = model_a.clone();
     model_b.id = "switched-model".to_string();
@@ -251,8 +251,8 @@ async fn wait_immediately_after_followup_never_races_turn_start() {
         outputs_root: Some(temp.path().join("outputs")),
     };
 
-    let registry = Arc::new(elph_agent::AgentRegistry::new());
-    let parent_path = elph_agent::generate_agent_name();
+    let registry = Arc::new(elph_agent::agent::subagent::AgentRegistry::new());
+    let parent_path = elph_agent::agent::subagent::generate_agent_name();
     let control = AgentControl::new(
         SubagentSpawnConfig {
             env,
@@ -328,8 +328,8 @@ async fn subagent_persists_thinking_only_response_to_output_md() {
         outputs_root: Some(temp.path().join("outputs")),
     };
 
-    let registry = Arc::new(elph_agent::AgentRegistry::new());
-    let parent_path = elph_agent::generate_agent_name();
+    let registry = Arc::new(elph_agent::agent::subagent::AgentRegistry::new());
+    let parent_path = elph_agent::agent::subagent::generate_agent_name();
     let control = AgentControl::new(
         SubagentSpawnConfig {
             env,

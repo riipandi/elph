@@ -23,7 +23,7 @@ pub fn handle(continue_session: bool, resume: Option<String>) -> ExitCode {
     };
 
     let project_dir = paths.project_dir().clone();
-    let resume_id = match elph_agent::block_on(mode.resolve_resume_id(&paths, &project_dir)) {
+    let resume_id = match elph_agent::runtime::block_on(mode.resolve_resume_id(&paths, &project_dir)) {
         Ok(id) => id,
         Err(err) => {
             super::help::cli_error(err);

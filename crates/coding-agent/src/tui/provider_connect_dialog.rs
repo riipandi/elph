@@ -1148,7 +1148,7 @@ mod tests {
             "opencode",
             format!("{}{}", elph_agent::mcp::ENV_REF_PREFIX, "OPENCODE_API_KEY_DOES_NOT_EXIST_XYZ"),
         );
-        elph_agent::try_block_on(async {
+        elph_agent::runtime::try_block_on(async {
             // Uses process master key override for this test process.
             file.save_to_path(&auth_path).await.unwrap();
         })

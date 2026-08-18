@@ -22,9 +22,10 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::Duration;
 
 use anyhow::{Context, Result};
+use elph_agent::session::create_worker_id;
 use elph_agent::types::AgentTool;
-use elph_agent::{
-    FileLeaseStore, MailboxStore, SessionLeaseStore, WorkerRegistry, WorkerStatus, WorkerToolContext, create_worker_id,
+use elph_agent::workers::{
+    FileLeaseStore, MailboxStore, SessionLeaseStore, WorkerRegistry, WorkerStatus, WorkerToolContext,
     create_worker_tools,
 };
 use parking_lot::Mutex;
@@ -279,7 +280,7 @@ impl WorkerRuntime {
             ask_timeout_ms: self.ask_timeout_ms,
             max_hops: self.max_hops,
         });
-        elph_agent::create_intercom_tools(ctx)
+        elph_agent::workers::create_intercom_tools(ctx)
     }
 
     /// Attach a host-provided inbox poller handle (called after session Arc is ready).

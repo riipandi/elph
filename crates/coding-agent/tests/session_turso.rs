@@ -2,7 +2,7 @@
 
 use elph::agent::SessionManager;
 use elph::platform::{self, AppPaths, Paths};
-use elph_agent::SessionStorage;
+use elph_agent::session::SessionStorage;
 use elph_agent::session::types::SessionTreeEntry;
 use elph_ai::{Message, UserContent};
 

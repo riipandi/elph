@@ -190,5 +190,5 @@ pub(crate) struct ShellCtx {
     pub(crate) user_shell_abort: Ref<Option<CancellationToken>>,
     pub(crate) user_shell_channel: Ref<UserShellChannel>,
     /// Current session todo list (for structured work tracking).
-    pub(crate) todos: State<Vec<elph_agent::TodoItem>>,
+    pub(crate) todos: State<Vec<elph_agent::todos::TodoItem>>,
 }

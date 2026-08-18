@@ -4,7 +4,7 @@ use agent_client_protocol::schema::v2::{
     AgentMessage, ContentBlock, SessionId, SessionUpdate, TextContent, UserMessage,
 };
 use agent_client_protocol::{Client, ConnectionTo};
-use elph_agent::SessionTreeEntry;
+use elph_agent::session::SessionTreeEntry;
 
 use crate::agent::CodingAgentSession;
 use crate::platform::acp::updates::send_update;

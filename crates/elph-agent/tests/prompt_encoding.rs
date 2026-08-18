@@ -1,6 +1,7 @@
-use elph_agent::{AgentToolResult, ToolResultContent};
-use elph_agent::{PromptEncodingConfig, PromptEncodingDelimiter, PromptEncodingMode};
-use elph_agent::{apply_to_tool_result, decode_toon_fence, encode_value};
+use elph_agent::AgentToolResult;
+use elph_agent::ToolResultContent;
+use elph_agent::prompt::{PromptEncodingConfig, PromptEncodingDelimiter, PromptEncodingMode};
+use elph_agent::prompt::{apply_to_tool_result, decode_toon_fence, encode_value};
 use elph_ai::TextContent;
 use serde_json::json;
 
@@ -65,6 +66,6 @@ fn env_delimiter_override_uses_pipe() {
         ..PromptEncodingConfig::default()
     };
     let encoded = encode_value(&value, &config).expect("encoded");
-    let body = elph_agent::parse_toon_fence(&encoded).expect("body");
+    let body = elph_agent::prompt::parse_toon_fence(&encoded).expect("body");
     assert!(body.contains('|'));
 }

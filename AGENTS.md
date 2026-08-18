@@ -94,15 +94,22 @@ Follow these rules strictly.
 
 ### Unit Tests
 
-- Located **in the same file** as the implementation.
+- Located **in the same file** as the implementation (or `src/<module>/tests.rs` included from that module).
 - Use `#[cfg(test)]` modules.
-- Test internal logic directly.
+- Test internal logic directly, including `pub(crate)` helpers.
 
 ### Integration Tests
 
-- Located in the root-level `tests/` directory.
-- Each file is a separate test crate.
-- Test only public APIs (no private/internal access).
+- Located in the crate’s `tests/` directory (a separate crate).
+- Test only the **public contract** a third-party host would use: crate-root prelude and documented modules (`harness`, `session`, `mcp`, `compaction`, …).
+- Do **not** `pub` (or flatten at crate root) an item so `tests/` can see it. If the test cannot compile, it is a unit test — move it next to the implementation.
+
+### Library crate surface (`elph-ai`, `elph-agent`)
+
+- Crate root is a **prelude**: types a host needs for a first program (`Agent`, `Models`, constructors, identity, typed errors).
+- Domain APIs stay on **`pub mod`** (`elph_agent::compaction::should_compact`, not `elph_agent::should_compact`).
+- Host crates in this repo (`coding-agent`) import those modules; they do not justify flattening helpers at the crate root.
+- Do not add a `test-utils` / `integration-test` Cargo feature to leak internals. `#[doc(hidden)]` is only for existing test fixtures that must stay `pub` (e.g. process-wide MCP key helpers).
 
 ### General Rules
 

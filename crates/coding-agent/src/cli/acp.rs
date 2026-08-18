@@ -55,7 +55,7 @@ pub fn handle(args: &AcpArgs) -> ExitCode {
     }
 
     log::info!("ACP server starting mode={mode:?}");
-    match elph_agent::try_block_on(crate::platform::acp::run_agent_stdio(paths, settings, mode)) {
+    match elph_agent::runtime::try_block_on(crate::platform::acp::run_agent_stdio(paths, settings, mode)) {
         Ok(Ok(())) => EXIT_SUCCESS,
         Ok(Err(error)) => {
             log::error!("ACP server error: {error:#}");

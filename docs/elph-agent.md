@@ -8,12 +8,12 @@ Version: `0.0.28`. MSRV: **1.89** (edition 2024). Docs: <https://docs.rs/elph-ag
 
 | Surface | Role |
 | --- | --- |
-| `Agent`, `AgentOptions`, `AgentEvent`, `AgentError` | Low-level loop |
-| `elph_agent::harness` (`AgentHarness`, hooks, FS, skills) | Session-backed orchestration |
-| `HostIdentity` | App name + env prefix (not process-global) |
+| `Agent`, `AgentOptions`, `AgentEvent`, `AgentError`, `HostIdentity` | Crate-root prelude |
 | `simple_tool`, feature-gated `create_*_tool`, `ToolError` | Tools |
-| `elph_agent::session` (SQL schemas, backends) | Persistence |
+| `elph_agent::harness` | Session-backed orchestration |
+| `elph_agent::session` | Persistence (SQL schemas, backends) |
 | `elph_agent::mcp` (`mcp` feature) | MCP client |
+| `elph_agent::compaction`, `collaboration`, `runtime`, … | Host APIs — import from the module, not the crate root |
 
 TypeScript-port helpers (`get_or_throw`, `get_or_undefined`) and `*_for_tests` are `#[doc(hidden)]`.
 
@@ -45,10 +45,11 @@ Default prefix is `ELPH`. Logging uses [`AgentBuilder::env_prefix`] / [`AgentBui
 
 `prompt` / `continue_run` / `reset` / `run_agent_loop` return [`AgentError`]. Tool execute functions return [`ToolError`] (`simple_tool` still accepts `anyhow` closures and maps them). Harness and session keep `AgentHarnessError` and `SessionError`. Stream token failures stay in-band on `elph_ai::StopReason`.
 
-Harness, MCP, and session SQL are **not** flattened at the crate root. Import from the module:
+Harness, MCP, session, compaction, and collaboration are **not** flattened at the crate root. Import from the module:
 
 ```rust
 use elph_agent::harness::{AgentHarness, AgentHarnessOptions, FileSystem, Skill};
 use elph_agent::mcp::{McpConfig, McpToolRegistry, load_or_create_master_key_with_prefix};
 use elph_agent::session::CANONICAL_SESSION_SCHEMA_SQL;
+use elph_agent::compaction::{estimate_context_tokens, should_compact};
 ```

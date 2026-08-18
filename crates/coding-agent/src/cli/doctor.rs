@@ -13,7 +13,7 @@ use super::version::{self, BuildIdentity};
 use crate::platform::scaffold::TrustStore;
 use crate::platform::{self, EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths, Settings};
 use crate::utils::path::AppPaths;
-use elph_agent::LocalExecutionEnv;
+use elph_agent::runtime::LocalExecutionEnv;
 
 const SAFE_ENV: &[&str] = &[
     "ELPH_HOME",
@@ -683,7 +683,7 @@ fn resources_section(paths: &Paths, checks: &mut Vec<Check>) -> ResourcesSection
         TrustStore::project_extensions_allowed(paths, paths.project_dir()).unwrap_or(false);
     let settings = Settings::load(paths).unwrap_or_else(|_| Settings::defaults());
     let env = LocalExecutionEnv::new(paths.project_dir());
-    match elph_agent::try_block_on(crate::agent::load_resources(paths, paths.project_dir(), &env, &settings)) {
+    match elph_agent::runtime::try_block_on(crate::agent::load_resources(paths, paths.project_dir(), &env, &settings)) {
         Ok(loaded) => {
             let agents = crate::agent::load_workspace_agents(paths);
             let skill_conflicts = loaded.skill_conflicts.len();

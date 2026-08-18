@@ -1,6 +1,6 @@
 use crate::utils::path::AppPaths;
 use anyhow::{Context, Result};
-use elph_agent::write_json_file;
+use elph_agent::fs::write_json_file;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};

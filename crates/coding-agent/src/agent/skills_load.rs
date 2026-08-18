@@ -3,9 +3,9 @@
 use std::collections::HashMap;
 
 use crate::utils::path::AppPaths;
-use elph_agent::LocalExecutionEnv;
 use elph_agent::harness::Skill;
-use elph_agent::load_skills;
+use elph_agent::runtime::LocalExecutionEnv;
+use elph_agent::skills::load_skills;
 use elph_tui::utils::truncate_with_ellipsis;
 
 use crate::platform::{Paths, Settings};
