@@ -40,7 +40,7 @@ Elph’s wire shape follows the same product conventions as [pi-acp](https://git
 - Tool approval uses `session/request_permission` (allow once / session / all / reject).
 - Agent `request_mode_change` uses `session/request_permission`, applies the mode, then replies `true`/`false` to the tool (same contract as the TUI).
 - `ask_user_question` uses v2 `elicitation/create` forms when the client advertises form elicitation; otherwise each step uses `session/request_permission`.
-- Client `mcpServers` on `session/new`, `session/load`, and `session/resume` are overlaid on `mcp.json` (home ← project ← client; same name wins) and bound into the session tool registry.
+- Client `mcpServers` on `session/new`, `session/load`, and `session/resume` are overlaid on `mcp.json` (home ← project ← client; same name wins) and stored on the session registry **without contacting servers**. Discovery runs next in `ensure_mcp_tools_ready` (12s cap), then MCP tools are registered (still **inactive** until `list_available_tools`).
 - Tool calls are created as `pending` (including when waiting on `session/request_permission`), then `in_progress` when execution starts.
 - `session/cancel` aborts the harness turn **and** marks in-flight tool calls cancelled (v2 status `cancelled`; v1 has no cancelled status, so `failed` with output `cancelled`).
 - v2 emits **at most one** idle `state_update` per foreground stretch so cancel cannot double-idle the client.
@@ -48,7 +48,7 @@ Elph’s wire shape follows the same product conventions as [pi-acp](https://git
 - A harness `RunCompleted` mid-turn (auto-retry after a stream cut, compact-then-resume) does **not** end the ACP prompt. The client stays in `running` until `submit_prompt` finishes. A failed `session/update` (tool chunk, terminal) is logged and ignored so the turn does not die mid tool-call.
 - One turn owns the UI stream (`stream_gate`). A second `session/prompt` while a turn is running still **submits immediately** (steer) and does not steal `ui_rx`. `/aside` answers via a side completion and does not lock the event channel.
 - `session/cancel`, `session/close`, and logout notify in-flight `request_permission` / elicitation so the harness is not left waiting. Stale UI drain keeps `*Required` events (never drops a pending tool approval).
-- `session/list`, `session/close`, `session/delete`, `set_config`/`set_mode`, and logout run on a spawned task (same as `session/new`). MCP attach and slash catalog run **before** the `session/new` / `session/resume` / `session/load` response.
+- `session/list`, `session/close`, `session/delete`, `set_config`/`set_mode`, and logout run on a spawned task (same as `session/new`). The session response is sent first; then slash catalog, MCP config overlay (no I/O), timed discovery, catalog refresh.
 - ACP sessions are created `headless: true` (no TUI worker-inbox noise on the event channel).
 - Agent/tool/terminal `session/update` text is capped (~16k characters) so a large dump cannot drop the client.
 - Agent replies are streamed only as `agent_message_chunk`. A later full `agent_message` upsert is not sent (that scrambled clients that append instead of replace). Complete one-shot lines (slash, errors) use a single `agent_message`.

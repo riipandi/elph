@@ -712,9 +712,7 @@ mod tests {
             load_strategy: McpLoadStrategy::Eager,
             ..McpLoadOptions::default()
         };
-        let registry = McpToolRegistry::load_with_options(config, options)
-            .await
-            .expect("load");
+        let registry = McpToolRegistry::load_with_options(config, options).await.expect("load");
         assert_eq!(registry.pending_server_count(), 1);
         assert!(!registry.is_tools_discovered());
         assert_eq!(registry.tool_count(), 0);

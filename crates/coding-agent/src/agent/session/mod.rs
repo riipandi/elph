@@ -482,6 +482,15 @@ impl CodingAgentSession {
         self.mcp_registry.read().clone()
     }
 
+    /// Store the MCP registry without contacting servers or rewriting harness tools.
+    ///
+    /// Use this for ACP overlay / deferred load. Discovery + tool bind happen in
+    /// [`Self::ensure_mcp_tools_ready`] or [`Self::attach_mcp_registry`].
+    pub async fn set_mcp_registry(&self, registry: Arc<McpToolRegistry>) {
+        *self.mcp_registry.write() = Some(Arc::clone(&registry));
+        self.policy.lock().await.set_mcp_registry(registry);
+    }
+
     /// Late-bind MCP tools discovered after the TUI is visible.
     pub async fn attach_mcp_registry(&self, registry: Arc<McpToolRegistry>) -> Result<()> {
         let mcp_tools = registry.create_agent_tools().await;
@@ -497,8 +506,7 @@ impl CodingAgentSession {
             .set_tools(kept, None)
             .await
             .map_err(|e| anyhow::anyhow!("{e}"))?;
-        *self.mcp_registry.write() = Some(Arc::clone(&registry));
-        self.policy.lock().await.set_mcp_registry(registry);
+        self.set_mcp_registry(registry).await;
         let mode = *self.mode_state.lock().await;
         self.apply_agent_mode(mode).await
     }
