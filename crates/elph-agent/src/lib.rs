@@ -580,5 +580,5 @@ pub use types::*;
 pub use workers::{
     FileLeaseStore, LeaseConflict, LeaseError, LiveWorker, MailboxStore, MessageKind, MessageStatus, PathClaimContext,
     SessionLease, SessionLeaseStore, SharedPathClaim, WorkerMessage, WorkerRecord, WorkerRegistry, WorkerStatus,
-    WorkerToolContext, create_worker_tools, normalize_claim_path,
+    WorkerToolContext, create_intercom_tools, create_worker_tools, normalize_claim_path,
 };

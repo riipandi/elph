@@ -32,6 +32,7 @@ mod todo_hooks;
 mod tool_policy;
 mod tools_catalog;
 mod tools_slash;
+mod worker_intercom;
 mod worker_runtime;
 mod workspace_reload;
 

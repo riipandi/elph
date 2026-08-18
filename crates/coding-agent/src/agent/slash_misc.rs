@@ -113,7 +113,7 @@ pub async fn workers_slash_message(session: Option<&Arc<CodingAgentSession>>) ->
         "Tools: worker_list · worker_send · worker_reply · worker_ask · worker_get · worker_await · worker_pending"
             .into(),
     );
-    lines.push("Chat: Alt+M or /intercom — threaded 1:1 messaging (never interrupts your turn).".into());
+    lines.push("Chat: Alt+M or /intercom — threaded 1:1 messaging (answers in parallel with your turn).".into());
     lines.push("Tip: peers share .elph/store.db; file claims protect parallel edits.".into());
     Ok(lines.join("\n"))
 }

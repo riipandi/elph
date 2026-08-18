@@ -84,6 +84,8 @@ pub struct CodingAgentSession {
     mcp_registry: Arc<RwLock<Option<Arc<McpToolRegistry>>>>,
     /// Serializes harness turns so only one prompt/template/compact runs at a time.
     turn_gate: Arc<Mutex<()>>,
+    /// Serializes inbound intercom answers among themselves (never vs user turn).
+    intercom_gate: Arc<Mutex<()>>,
     /// Watermark of the last `session_turns` record surfaced via `RunCompleted`; starts at
     /// -1 so turn index 0 counts as new. System operations that spin the UI without a real
     /// agent turn (`/compact`, ...) don't advance it, so their `RunCompleted` carries no stats.
@@ -108,8 +110,7 @@ pub struct CodingAgentSession {
     title_generation_attempts: Arc<AtomicU32>,
     /// Multi-worker coordination (session lease heartbeat + presence registry).
     pub(crate) worker_runtime: Option<super::worker_runtime::WorkerRuntime>,
-    /// True while an intercom (inbound worker-message) answer turn is running —
-    /// either directly via `run_prompt_turn` or drained from the follow-up queue.
+    /// True while an intercom (inbound worker-message) answer loop is running.
     /// Wiring and session emit paths read this to keep peer-to-peer dialogue out
     /// of the user's transcript (deltas, tool calls, stats, errors); the worker
     /// chat overlay is the only surface. Shared `Arc` so the harness subscriber
@@ -159,6 +160,7 @@ impl CodingAgentSession {
             goal_runtime,
             mcp_registry: mcp_slot,
             turn_gate: Arc::new(Mutex::new(())),
+            intercom_gate: Arc::new(Mutex::new(())),
             last_reported_turn_index: Arc::new(Mutex::new(AtomicI64::new(-1))),
             mode_gate: Arc::new(Mutex::new(())),
             system_prompt_cache: RwLock::new(None),
@@ -362,20 +364,13 @@ impl CodingAgentSession {
     /// Deliver one inbound worker message — **never interrupts the user's task**.
     ///
     /// The message lands in the worker chat inbox (TUI) and, **only when it is a
-    /// new message (no `parent_msg_id`)**, becomes a real agent turn (full
-    /// context, tools, reply via `worker_reply`). Threaded replies — the
-    /// `worker_reply` / TUI chat answers a peer sends back — are delivered to the
-    /// inbox only: they resolve the asker's pending ask through the mailbox
-    /// (`get_response_for`), and never spawn a reply turn. Without this guard two
-    /// idle workers replying to each other would ping-pong forever (each reply is
-    /// itself a kind-`prompt` message that would trigger another answer turn).
+    /// new message (no `parent_msg_id`)**, starts a **parallel** answer loop
+    /// (snapshot + worker tools). That loop does not take `turn_gate` and does
+    /// not call the harness, so the user's turn keeps running and mailbox
+    /// replies can land immediately.
     ///
-    /// While the main agent is busy a new-message answer turn is **enqueued as a
-    /// follow-up** so it still runs right after the user's task — the peer's
-    /// `worker_ask` does not silently time out. Never takes `turn_gate` directly
-    /// and never calls the steer queue, so a peer message can never steal or
-    /// interrupt the current agent turn.
-    async fn deliver_worker_inbound(&self, msg: elph_agent::WorkerMessage) -> Result<()> {
+    /// Threaded replies (`parent_msg_id` set) stay inbox-only (anti ping-pong).
+    async fn deliver_worker_inbound(self: &Arc<Self>, msg: elph_agent::WorkerMessage) -> Result<()> {
         // Resolve display name for the sender (registry may be gone → fall back to id).
         let from_worker = if let Some(rt) = self.worker_runtime.as_ref() {
             rt.registry()
@@ -403,41 +398,21 @@ impl CodingAgentSession {
             return Ok(());
         }
 
-        // New message → answer with a real turn (full context + tools).
-        // `run_prompt_turn` takes the turn gate and waits for the user's current
-        // task to finish (never injected as a steer, never interrupting), and it
-        // sets the intercom flag so this whole turn stays out of the transcript.
-        let prompt = self.worker_inbound_prompt(&from_worker, &text, &msg.id);
-        if let Err(err) = self.run_prompt_turn(prompt, None).await {
-            log::warn!("worker answer turn failed: {err:#}");
-            self.reply_worker_answer_failed(&msg, &err.to_string()).await;
-        }
+        // New message → parallel intercom loop (no turn_gate / no harness.prompt).
+        let session = Arc::clone(self);
+        tokio::spawn(async move {
+            let _intercom = session.intercom_gate.lock().await;
+            session.intercom_turn_active.store(true, Ordering::Relaxed);
+            let result = super::worker_intercom::answer_worker_inbound(&session, &from_worker, &text, &msg).await;
+            session.intercom_turn_active.store(false, Ordering::Relaxed);
+            if let Err(err) = result {
+                log::warn!("worker answer loop failed: {err}");
+                session.reply_worker_answer_failed(&msg, &err).await;
+            }
+        });
         Ok(())
     }
 
-    /// Build the turn prompt for answering an inbound worker message.
-    ///
-    /// The `WORKER_INBOUND_PROMPT_PREFIX` marker lets the TUI render this as a slim
-    /// meta line instead of a user prompt card (see `worker_inbound_meta_label`).
-    /// `msg_id` is pinned so `worker_reply` targets the exact ask — no ambiguity,
-    /// no "N pending inbound messages" error when several asks are open.
-    fn worker_inbound_prompt(&self, from_worker: &str, text: &str, msg_id: &str) -> String {
-        format!(
-            "{WORKER_INBOUND_PROMPT_PREFIX} (`{from_worker}`)\n\
-             in this shared project. Answer it as part of your normal turn — you may use\n\
-             tools. Reply with the `worker_reply` tool so the peer receives your answer.\n\
-             Pass `in_reply_to` = {msg_id} (the message you are answering).\n\
-             If the message needs no answer, send a short acknowledgement.</intercom>\n\n\
-             {text}"
-        )
-    }
-
-    /// Queue a normal agent turn that answers an inbound worker message.
-    ///
-    /// Runs `run_prompt_turn` (which takes `turn_gate`, so it serializes behind
-    /// the user's current turn if racing) with a short intercom wrapper
-    /// that tells the agent this is a peer message and to reply with
-    /// `worker_reply`.
     async fn reply_worker_answer_failed(&self, msg: &elph_agent::WorkerMessage, error: &str) {
         log::warn!("worker answer failed for {}: {error}", msg.id);
         // The peer's ask should not hang until timeout: surface the failure as an

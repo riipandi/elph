@@ -151,6 +151,32 @@ pub fn build_coding_system_prompt(
         .map_err(Into::into)
 }
 
+/// Slim system prompt for the parallel inbound-worker answer loop.
+///
+/// Not `coding_base`: that template assumes write/shell/todo tools and a user
+/// coding turn. Intercom only has `worker_reply` / `worker_list` / `worker_pending`.
+pub fn build_intercom_system_prompt(worker_name: Option<&str>, worker_peers: Option<&str>) -> anyhow::Result<String> {
+    #[derive(serde::Serialize)]
+    struct IntercomPromptContext<'a> {
+        worker_name: &'a str,
+        worker_peers: &'a str,
+    }
+    let name = worker_name.unwrap_or("").trim();
+    let peers = worker_peers.unwrap_or("").trim();
+    let body = coding_agent_engine().render(
+        "intercom_base",
+        &IntercomPromptContext {
+            worker_name: name,
+            worker_peers: peers,
+        },
+    )?;
+    SystemPromptBuilder::new()
+        .mode(PromptAssemblyMode::Full)
+        .domain_body(body)
+        .render()
+        .map_err(Into::into)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -705,5 +731,32 @@ mod tests {
 
         assert!(with_subagents.contains("<subagents>"));
         assert!(with_subagents.contains("exclusive write scope"));
+    }
+
+    #[test]
+    fn intercom_prompt_is_not_coding_base() {
+        let prompt = build_intercom_system_prompt(Some("calm-fox"), Some("brave-owl")).expect("prompt");
+        assert!(prompt.contains("calm-fox"));
+        assert!(prompt.contains("brave-owl"));
+        assert!(prompt.contains("worker_reply"));
+        assert!(prompt.contains("separate answer loop"));
+        assert!(!prompt.contains("## Working loop"));
+        assert!(!prompt.contains("edit_file"));
+        assert!(!prompt.contains("todo_write"));
+        assert!(!prompt.contains("You are a fast and decisive coding agent"));
+    }
+
+    #[test]
+    fn coding_prompt_points_inbound_at_intercom_loop() {
+        let prompt = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["read_file".to_string()],
+            None,
+            &CodingPromptOptions::new(AgentMode::Build).with_worker_name("calm-fox"),
+        )
+        .expect("prompt");
+        assert!(prompt.contains("separate intercom loop"));
+        assert!(!prompt.contains("Reply to inbound worker messages as normal text"));
     }
 }

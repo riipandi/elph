@@ -58,4 +58,7 @@ pub fn coding_agent_engine() -> PromptTemplateEngine {
         .register_embedded("coding_base", include_str!("../../../prompts/coding_base.txt"))
         .expect("coding_base template is valid");
     engine
+        .register_embedded("intercom_base", include_str!("../../../prompts/intercom_base.txt"))
+        .expect("intercom_base template is valid");
+    engine
 }

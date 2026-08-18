@@ -6,9 +6,9 @@
 //! owns delivery: claiming marks the mailbox message `delivered` **before** the
 //! peer's ask can be answered, so a delivery failure can never replay/loop and
 //! the peer's ask times out instead of wedging either agent. Inbound messages
-//! never steal the current turn — while the harness is busy the answer is
-//! enqueued as a follow-up (never a steer), and once idle the poller starts a
-//! real agent turn that answers with `worker_reply`.
+//! never steal the current turn. New inbound asks are answered on a parallel
+//! snapshot loop (worker tools only) so the peer's `worker_ask` does not wait
+//! for the user's task to finish.
 //!
 //! **Loop guard:** only *new* messages (no `parent_msg_id`) trigger an answer
 //! turn. Threaded replies (`worker_reply` / TUI chat answers) land in the inbox
@@ -263,6 +263,21 @@ impl WorkerRuntime {
             max_hops: self.max_hops,
         });
         create_worker_tools(ctx)
+    }
+
+    /// Inbox-answer tools only (no `worker_ask` / `worker_await` — those would block).
+    pub fn create_intercom_tools(&self) -> Vec<AgentTool> {
+        let ctx = Arc::new(WorkerToolContext {
+            registry: Arc::clone(&self.registry),
+            mailbox: Arc::clone(&self.mailbox),
+            worker_id: self.worker_id.clone(),
+            session_id: self.session_id.clone(),
+            project_key: self.project_key.clone(),
+            stale_secs: self.stale_secs,
+            ask_timeout_ms: self.ask_timeout_ms,
+            max_hops: self.max_hops,
+        });
+        elph_agent::create_intercom_tools(ctx)
     }
 
     /// Attach a host-provided inbox poller handle (called after session Arc is ready).

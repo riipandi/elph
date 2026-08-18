@@ -98,17 +98,21 @@ threaded chat with its own mechanism:
 - Sending from the TUI never routes through the agent turn — the message goes
   straight to the peer's mailbox, so it never interrupts your current task.
 
-### Inbound messages are answered by a real agent turn
+### Inbound messages are answered in parallel
 
 Inbound mail is polled (`inboxPollMs`), then delivered:
 
 - The message lands in the worker chat inbox and the TUI shows an unread badge.
-- **Only new messages** (no `parent_msg_id`) trigger an answer turn. The poller
-  starts a **real agent turn** (full context + tools) with an intercom wrapper
-  saying this is a peer message; the agent replies with `worker_reply`.
-- The answer turn **waits on the turn gate** — while the user's task is running
-  it runs right after it finishes (never as a steer/interjection), so the peer's
-  `worker_ask` does not hang until timeout.
+- **Only new messages** (no `parent_msg_id`) trigger an answer. The poller
+  **spawns** a snapshot completion (worker tools only: `worker_reply`,
+  `worker_list`, `worker_pending`) with an intercom wrapper; it does not wait
+  for the user's harness turn.
+- The answer runs on a **parallel intercom loop** (conversation snapshot +
+  worker tools only). It uses **`intercom_base`** — not `coding_base` — so the
+  model is not instructed to edit, shell, or plan a user task. It does **not**
+  wait on the turn gate or call `harness.prompt`, so a busy worker can
+  `worker_reply` while the user's task continues. The peer's `worker_ask`
+  unblocks as soon as the mailbox response is written.
 - If the answer turn fails, the ask is closed with an explicit error reply
   (`kind = response`) so the peer's `worker_get` / `worker_await` unblocks.
 - **Threaded replies** (`worker_reply` / TUI chat answers — `parent_msg_id` set)
@@ -117,11 +121,9 @@ Inbound mail is polled (`inboxPollMs`), then delivered:
   workers from replying to each other forever.
 
 Inbound messages **never steer or interrupt** the user's current agent turn —
-the answer turn waits on the turn gate and never calls the harness steer queue.
-The whole intercom turn is **suppressed from the user transcript**: no deltas,
-tool calls, stats card, error lines or prompt card — the worker chat overlay
-(inbox) is the only surface for that dialogue. (A tool approval during an
-intercom turn still surfaces normally so nothing silently hangs.)
+the answer loop never takes `turn_gate` and never calls the harness steer queue.
+The intercom loop is **not appended to the user transcript** (same as `/aside`):
+the worker chat overlay is the only surface for that dialogue.
 
 Compared to classic intercom: delivery is **poll-based durable SoT** (survives
 restart); latency ≈ `inboxPollMs` / reaper interval, not sub-ms IPC.
@@ -144,5 +146,5 @@ Session GC never deletes sessions that currently hold a row in `session_leases`.
 - No automatic merge of concurrent edits
 - No cross-worktree file leases (by design)
 - No sub-second IPC wake channel — delivery/presence is poll-based (see the
-  notify design above); a busy worker answers an inbound ask **after** its
-  current task (the answer turn waits on the turn gate), not mid-turn.
+  notify design above). A busy worker answers inbound asks **in parallel**
+  with its current user task (snapshot + worker tools; no write/shell tools).

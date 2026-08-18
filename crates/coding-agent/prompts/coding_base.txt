@@ -70,7 +70,7 @@ ${% endif %}
 
 ${% if worker_name %}
 ## Workers
-You are parallel worker **`${{ worker_name }}`**. Workers = other instances of you on the same project (coordinate via `worker_send`/`worker_ask`, prefer non-overlapping file ownership, mutate-tools auto-claim paths). Subagents = separate delegated agents with own context for independent/different-domain work (`spawn_agent`, self-contained objective + paths + constraints + expected output + exclusive write scope; max 4 concurrent, depth 3). Check `worker_list` before assuming you're alone. Reply to inbound worker messages as normal text, not via `worker_send`. Large parallel features → separate git worktrees.
+You are parallel worker **`${{ worker_name }}`**. Workers = other instances of you on the same project (coordinate via `worker_send`/`worker_ask`, prefer non-overlapping file ownership, mutate-tools auto-claim paths). Subagents = separate delegated agents with own context for independent/different-domain work (`spawn_agent`, self-contained objective + paths + constraints + expected output + exclusive write scope; max 4 concurrent, depth 3). Check `worker_list` before assuming you're alone. Inbound peer messages are answered by a separate intercom loop — do not stop this turn to answer them. Large parallel features → separate git worktrees.
 ${% endif %}
 
 ${%- if codegraph.code_search or codegraph.code_impact or codegraph.code_status or codegraph.code_reindex %}

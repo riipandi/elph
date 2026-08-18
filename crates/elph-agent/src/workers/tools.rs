@@ -40,6 +40,15 @@ pub fn create_worker_tools(ctx: Arc<WorkerToolContext>) -> Vec<AgentTool> {
     ]
 }
 
+/// Tools safe to run on a parallel inbound-answer loop (no blocking wait, no new ask).
+pub fn create_intercom_tools(ctx: Arc<WorkerToolContext>) -> Vec<AgentTool> {
+    vec![
+        worker_list_tool(ctx.clone()),
+        worker_reply_tool(ctx.clone()),
+        worker_pending_tool(ctx),
+    ]
+}
+
 fn worker_list_tool(ctx: Arc<WorkerToolContext>) -> AgentTool {
     simple_tool(
         elph_ai::Tool {
@@ -81,7 +90,7 @@ fn worker_send_tool(ctx: Arc<WorkerToolContext>) -> AgentTool {
             name: "worker_send".into(),
             constrained_sampling: None,
             description: "Send a fire-and-forget message to another worker by name or session id. \
-                 The peer sees it in their worker inbox; it never interrupts their current task. \
+                 The peer answers in a parallel intercom loop (their user turn keeps running). \
                  Unthreaded — prefer worker_reply to continue an existing conversation."
                 .into(),
             parameters: json!({
@@ -154,8 +163,8 @@ fn worker_reply_tool(ctx: Arc<WorkerToolContext>) -> AgentTool {
             name: "worker_reply".into(),
             constrained_sampling: None,
             description: "Reply to an inbound worker message, continuing that thread. \
-                 The reply is delivered to the sender's worker inbox; it never \
-                 interrupts their task and you do not block for an answer. \
+                 The reply is delivered to the sender's worker inbox; you do not \
+                 wait for an answer. The peer can read it while their own task runs. \
                  When `in_reply_to` is omitted it replies to the single unresolved \
                  inbound ask you are currently answering; pass `in_reply_to` only \
                  when multiple pending asks exist (list them with worker_pending). \
@@ -352,7 +361,10 @@ fn worker_ask_tool(ctx: Arc<WorkerToolContext>) -> AgentTool {
         elph_ai::Tool {
             name: "worker_ask".into(),
             constrained_sampling: None,
-            description: "Send a message to a peer and wait for their reply (blocks until timeout).".into(),
+            description: "Send a message to a peer and wait for their reply (blocks this tool \
+                 until timeout). The peer answers even while they are busy on a user task — \
+                 they do not wait for that task to finish."
+                .into(),
             parameters: json!({
                 "type": "object",
                 "properties": {

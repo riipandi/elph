@@ -7,4 +7,4 @@ mod modes;
 mod template;
 
 pub use agents_md::agents_md_for_cwd;
-pub use builder::{CodingPromptOptions, build_coding_system_prompt};
+pub use builder::{CodingPromptOptions, build_coding_system_prompt, build_intercom_system_prompt};
