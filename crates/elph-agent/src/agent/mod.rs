@@ -268,9 +268,11 @@ impl Agent {
         }
     }
 
-    pub async fn reset(&self) -> Result<(), anyhow::Error> {
+    pub async fn reset(&self) -> Result<(), crate::types::AgentError> {
         if self.active_run.lock().await.is_some() {
-            anyhow::bail!("Agent is already processing. Wait for completion before resetting.");
+            return Err(crate::types::AgentError::busy(
+                "Agent is already processing. Wait for completion before resetting.",
+            ));
         }
         self.state.lock().await.reset();
         self.clear_all_queues();

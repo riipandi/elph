@@ -3,6 +3,7 @@
 use elph_ai::StopReason;
 use tokio_util::sync::CancellationToken;
 
+use crate::types::AgentError;
 use crate::types::{AgentContext, AgentEvent, AgentLoopConfig, AgentMessage};
 use crate::types::{assistant_message_to_agent, extract_tool_calls, tool_result_to_agent};
 
@@ -17,7 +18,7 @@ pub(super) async fn run_loop(
     config: &mut AgentLoopConfig,
     signal: Option<CancellationToken>,
     emit: &AgentEventCallback,
-) -> Result<(), String> {
+) -> Result<(), AgentError> {
     let mut first_turn = true;
     let mut pending_messages = if let Some(get_steering) = &config.get_steering_messages {
         get_steering().await
@@ -54,7 +55,7 @@ pub(super) async fn run_loop(
                 Ok(message) => message,
                 Err(error) => {
                     log::warn!("agent loop stream failed: {error}");
-                    return Err(error);
+                    return Err(AgentError::loop_failed(error));
                 }
             };
             new_messages.push(assistant_message_to_agent(message.clone()));

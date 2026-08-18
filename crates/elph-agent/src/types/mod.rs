@@ -36,6 +36,60 @@ pub mod enums;
 
 pub use enums::{AgentThinkingLevel, QueueMode, ToolExecutionMode};
 
+/// Out-of-band agent-loop failure (`prompt` / `continue_run` / `reset`).
+/// Stream token errors stay in-band on [`elph_ai::StopReason`].
+#[derive(Debug)]
+pub struct AgentError {
+    pub code: AgentErrorCode,
+    pub message: String,
+    pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
+}
+
+/// Class of an [`AgentError`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AgentErrorCode {
+    /// Another run is already in flight.
+    Busy,
+    /// Transcript / queue state cannot continue.
+    InvalidState,
+    /// The inner loop or stream setup failed.
+    Loop,
+}
+
+impl AgentError {
+    pub fn new(code: AgentErrorCode, message: impl Into<String>) -> Self {
+        Self {
+            code,
+            message: message.into(),
+            source: None,
+        }
+    }
+
+    pub fn busy(message: impl Into<String>) -> Self {
+        Self::new(AgentErrorCode::Busy, message)
+    }
+
+    pub fn invalid_state(message: impl Into<String>) -> Self {
+        Self::new(AgentErrorCode::InvalidState, message)
+    }
+
+    pub fn loop_failed(message: impl Into<String>) -> Self {
+        Self::new(AgentErrorCode::Loop, message)
+    }
+}
+
+impl std::fmt::Display for AgentError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}: {}", self.code, self.message)
+    }
+}
+
+impl std::error::Error for AgentError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.source.as_deref().map(|e| e as _)
+    }
+}
+
 // Re-export from domain modules for a unified public API surface.
 pub use crate::messages::types::assistant_message_to_agent;
 pub use crate::messages::types::extract_tool_calls;
@@ -66,6 +120,7 @@ pub use crate::tools::types::AgentTool;
 pub use crate::tools::types::AgentToolCall;
 pub use crate::tools::types::AgentToolResult;
 pub use crate::tools::types::ToolContext;
+pub use crate::tools::types::ToolError;
 pub use crate::tools::types::ToolExecuteFn;
 pub use crate::tools::types::ToolResultContent;
 pub use crate::tools::types::ToolUpdateCallback;

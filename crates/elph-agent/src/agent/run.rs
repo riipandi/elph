@@ -16,7 +16,11 @@ use super::state::default_model;
 use super::{ActiveRun, Agent};
 
 impl Agent {
-    pub async fn prompt_text(&self, text: impl Into<String>, images: Option<Vec<ImageContent>>) -> anyhow::Result<()> {
+    pub async fn prompt_text(
+        &self,
+        text: impl Into<String>,
+        images: Option<Vec<ImageContent>>,
+    ) -> Result<(), crate::types::AgentError> {
         let mut content: Vec<elph_ai::ContentBlock> = vec![elph_ai::ContentBlock::Text { text: text.into() }];
         if let Some(images) = images {
             for image in images {
@@ -33,23 +37,25 @@ impl Agent {
         .await
     }
 
-    pub async fn prompt_messages(&self, messages: Vec<AgentMessage>) -> anyhow::Result<()> {
+    pub async fn prompt_messages(&self, messages: Vec<AgentMessage>) -> Result<(), crate::types::AgentError> {
         if self.active_run.lock().await.is_some() {
-            anyhow::bail!(
-                "Agent is already processing a prompt. Use steer() or followUp() to queue messages, or wait for completion."
-            );
+            return Err(crate::types::AgentError::busy(
+                "Agent is already processing a prompt. Use steer() or followUp() to queue messages, or wait for completion.",
+            ));
         }
         self.run_prompt_messages(messages, false).await
     }
 
-    pub async fn continue_run(&self) -> anyhow::Result<()> {
+    pub async fn continue_run(&self) -> Result<(), crate::types::AgentError> {
         if self.active_run.lock().await.is_some() {
-            anyhow::bail!("Agent is already processing. Wait for completion before continuing.");
+            return Err(crate::types::AgentError::busy(
+                "Agent is already processing. Wait for completion before continuing.",
+            ));
         }
 
         let last = self.state.lock().await.messages().last().cloned();
         let Some(last) = last else {
-            anyhow::bail!("No messages to continue from");
+            return Err(crate::types::AgentError::invalid_state("No messages to continue from"));
         };
 
         if last.role() == "assistant" {
@@ -61,7 +67,9 @@ impl Agent {
             if !follow_up.is_empty() {
                 return self.run_prompt_messages(follow_up, false).await;
             }
-            anyhow::bail!("Cannot continue from message role: assistant");
+            return Err(crate::types::AgentError::invalid_state(
+                "Cannot continue from message role: assistant",
+            ));
         }
 
         self.run_continuation().await
@@ -71,7 +79,7 @@ impl Agent {
         &self,
         messages: Vec<AgentMessage>,
         skip_initial_steering: bool,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), crate::types::AgentError> {
         self.skip_initial_steering
             .store(skip_initial_steering, std::sync::atomic::Ordering::SeqCst);
         let context = self.create_context_snapshot().await;
@@ -79,14 +87,12 @@ impl Agent {
         let token = self.begin_run().await?;
         let emit = self.create_emit_callback(token.clone());
 
-        run_agent_loop(messages, context, config, emit, Some(token))
-            .await
-            .map_err(|error| anyhow::anyhow!(error))?;
+        run_agent_loop(messages, context, config, emit, Some(token)).await?;
         self.finish_run().await;
         Ok(())
     }
 
-    async fn run_continuation(&self) -> anyhow::Result<()> {
+    async fn run_continuation(&self) -> Result<(), crate::types::AgentError> {
         self.skip_initial_steering
             .store(false, std::sync::atomic::Ordering::SeqCst);
         let context = self.create_context_snapshot().await;
@@ -94,9 +100,7 @@ impl Agent {
         let token = self.begin_run().await?;
         let emit = self.create_emit_callback(token.clone());
 
-        run_agent_loop_continue(context, config, emit, Some(token))
-            .await
-            .map_err(|error| anyhow::anyhow!(error))?;
+        run_agent_loop_continue(context, config, emit, Some(token)).await?;
         self.finish_run().await;
         Ok(())
     }
@@ -192,9 +196,9 @@ impl Agent {
         })
     }
 
-    async fn begin_run(&self) -> anyhow::Result<CancellationToken> {
+    async fn begin_run(&self) -> Result<CancellationToken, crate::types::AgentError> {
         if self.active_run.lock().await.is_some() {
-            anyhow::bail!("Agent is already processing.");
+            return Err(crate::types::AgentError::busy("Agent is already processing."));
         }
         let (idle_tx, idle_rx) = oneshot::channel();
         let abort_token = CancellationToken::new();

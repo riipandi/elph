@@ -9,26 +9,26 @@ use std::time::Duration;
 
 use elph_ai::api::faux::{FauxModelDefinition, RegisterFauxProviderOptions};
 
-use elph_agent::AgentHarness;
-use elph_agent::AgentHarnessErrorCode;
-use elph_agent::AgentHarnessEvent;
-use elph_agent::AgentHarnessOptions;
-use elph_agent::AgentHarnessOwnEvent;
-use elph_agent::AgentHarnessResources;
 use elph_agent::AgentThinkingLevel;
 use elph_agent::AgentTool;
-use elph_agent::BranchSummarySummary;
 use elph_agent::CompactionSettings;
 use elph_agent::CustomMessageContent;
 use elph_agent::InMemorySessionStorage;
 use elph_agent::LocalExecutionEnv;
-use elph_agent::NavigateTreeOptions;
 use elph_agent::QueueMode;
 use elph_agent::Session;
-use elph_agent::SessionBeforeTreeResult;
-use elph_agent::Skill;
-use elph_agent::SystemPrompt;
-use elph_agent::ToolResultPatch;
+use elph_agent::harness::AgentHarness;
+use elph_agent::harness::AgentHarnessErrorCode;
+use elph_agent::harness::AgentHarnessEvent;
+use elph_agent::harness::AgentHarnessOptions;
+use elph_agent::harness::AgentHarnessOwnEvent;
+use elph_agent::harness::AgentHarnessResources;
+use elph_agent::harness::BranchSummarySummary;
+use elph_agent::harness::NavigateTreeOptions;
+use elph_agent::harness::SessionBeforeTreeResult;
+use elph_agent::harness::Skill;
+use elph_agent::harness::SystemPrompt;
+use elph_agent::harness::ToolResultPatch;
 use elph_agent::session::types::SessionTreeEntry;
 use elph_agent::{create_custom_message, llm_message_to_agent, simple_tool};
 use elph_ai::{ContentBlock, FauxResponseStep, Message, Models, StopReason, Tool, UserContent};
@@ -326,7 +326,7 @@ async fn harness_before_agent_start_appends_messages() {
 
     harness
         .on_before_agent_start(|_| async {
-            Some(elph_agent::BeforeAgentStartResult {
+            Some(elph_agent::harness::BeforeAgentStartResult {
                 messages: Some(vec![llm_message_to_agent(Message::User {
                     content: UserContent::Text("hook".into()),
                     timestamp: 1,
@@ -575,8 +575,8 @@ async fn harness_settles_context_hook_failures() {
 
     harness
         .on_context(|_| async {
-            Err(elph_agent::AgentHarnessError::new(
-                elph_agent::AgentHarnessErrorCode::Hook,
+            Err(elph_agent::harness::AgentHarnessError::new(
+                elph_agent::harness::AgentHarnessErrorCode::Hook,
                 "context exploded",
             ))
         })
@@ -1287,7 +1287,7 @@ async fn harness_resources_update_events_clone_resources() {
             allowed_tools: None,
             argument_hint: None,
         }],
-        prompt_templates: vec![elph_agent::PromptTemplate {
+        prompt_templates: vec![elph_agent::harness::PromptTemplate {
             name: "review".into(),
             description: "Review".into(),
             content: "Review $1".into(),
@@ -1395,7 +1395,7 @@ async fn harness_session_before_compact_overrides_custom_instructions() {
             let custom_instructions = event.custom_instructions.clone();
             async move {
                 assert_eq!(custom_instructions.as_deref(), Some("original"));
-                Some(elph_agent::SessionBeforeCompactResult {
+                Some(elph_agent::harness::SessionBeforeCompactResult {
                     custom_instructions: Some("hook override".into()),
                     ..Default::default()
                 })
@@ -1599,7 +1599,8 @@ async fn harness_queue_remove_and_promote_follow_up_to_steer() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn harness_restore_rehydrates_next_turn_queue() {
-    use elph_agent::{RestoreOptions, load_durable_state, reduce_durable_state};
+    use elph_agent::harness::RestoreOptions;
+    use elph_agent::{load_durable_state, reduce_durable_state};
 
     let (_temp, env) = test_env();
     let faux = faux_provider(Default::default());
@@ -1761,7 +1762,11 @@ async fn concurrent_aborts_do_not_deadlock() {
 
     // All harnesses back to Idle.
     for (i, h) in harnesses.iter().enumerate() {
-        assert_eq!(h.phase().await, elph_agent::AgentHarnessPhase::Idle, "harness #{i} not idle");
+        assert_eq!(
+            h.phase().await,
+            elph_agent::harness::AgentHarnessPhase::Idle,
+            "harness #{i} not idle"
+        );
     }
 }
 

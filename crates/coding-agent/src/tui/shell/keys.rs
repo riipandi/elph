@@ -2932,7 +2932,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                                 log::info!("Saved env ref for provider: {pid}");
                                 crate::agent::model_registry::credential_from_auth_value(&format!(
                                     "{}{env_var}",
-                                    elph_agent::ENV_REF_PREFIX
+                                    elph_agent::mcp::ENV_REF_PREFIX
                                 ))
                             })
                         } else {

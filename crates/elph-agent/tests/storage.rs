@@ -5,7 +5,6 @@ use std::fs;
 use std::sync::Arc;
 
 use common::{assistant_agent_message, label_entry, message_entry, user_agent_message};
-use elph_agent::FileSystem;
 use elph_agent::InMemorySessionOptions;
 use elph_agent::InMemorySessionStorage;
 use elph_agent::LocalExecutionEnv;
@@ -15,8 +14,9 @@ use elph_agent::SessionErrorCode;
 use elph_agent::SessionMetadata;
 use elph_agent::SessionStorage;
 use elph_agent::SessionTreeEntry;
+use elph_agent::harness::FileSystem;
 use elph_agent::load_session_metadata;
-use elph_agent::{EVENTS_FILE, SUMMARY_FILE};
+use elph_agent::session::{EVENTS_FILE, SUMMARY_FILE};
 use serde_json::json;
 use tempfile::TempDir;
 

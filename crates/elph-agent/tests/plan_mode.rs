@@ -3,10 +3,6 @@ mod common;
 
 use std::sync::Arc;
 
-use elph_agent::AgentHarness;
-use elph_agent::AgentHarnessEvent;
-use elph_agent::AgentHarnessOptions;
-use elph_agent::AgentHarnessResources;
 use elph_agent::AgentThinkingLevel;
 use elph_agent::BuiltinToolsBuilder;
 use elph_agent::CollaborationMode;
@@ -16,7 +12,11 @@ use elph_agent::LocalExecutionEnv;
 use elph_agent::PlanConfirmationChoice;
 use elph_agent::QueueMode;
 use elph_agent::Session;
-use elph_agent::SystemPrompt;
+use elph_agent::harness::AgentHarness;
+use elph_agent::harness::AgentHarnessEvent;
+use elph_agent::harness::AgentHarnessOptions;
+use elph_agent::harness::AgentHarnessResources;
+use elph_agent::harness::SystemPrompt;
 use elph_agent::{create_search_tools, extract_proposed_plan, plan_mode_blocks_tool};
 use elph_ai::FauxResponseStep;
 use elph_ai::{faux_assistant_message, faux_text};

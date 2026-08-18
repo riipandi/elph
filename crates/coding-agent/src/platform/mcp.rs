@@ -13,8 +13,9 @@ use std::path::{Path, PathBuf};
 
 use crate::utils::path::AppPaths;
 use anyhow::{Context, Result};
-use elph_agent::{McpConfig, McpServerConfig};
-use elph_agent::{parse_and_validate_mcp_config, parse_and_validate_server_config_json, write_json_file};
+use elph_agent::mcp::{McpConfig, McpServerConfig};
+use elph_agent::mcp::{parse_and_validate_mcp_config, parse_and_validate_server_config_json};
+use elph_agent::write_json_file;
 
 use super::paths::Paths;
 
@@ -61,7 +62,7 @@ pub fn load_layer(paths: &Paths, scope: McpConfigScope) -> Result<McpConfig> {
 
 /// Save one layer (validates first). Creates parent dirs for project scope.
 pub fn save_layer(paths: &Paths, scope: McpConfigScope, config: &McpConfig) -> Result<()> {
-    elph_agent::validate_mcp_config(config).map_err(|e| anyhow::anyhow!("{e}"))?;
+    elph_agent::mcp::validate_mcp_config(config).map_err(|e| anyhow::anyhow!("{e}"))?;
     let path = config_path(paths, scope);
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).with_context(|| format!("create {}", parent.display()))?;
@@ -125,7 +126,7 @@ async fn load_layer_async(paths: &Paths, scope: McpConfigScope) -> Result<McpCon
     let content = tokio::fs::read_to_string(&path)
         .await
         .with_context(|| format!("read {}", path.display()))?;
-    elph_agent::parse_and_validate_mcp_config_async(content)
+    elph_agent::mcp::parse_and_validate_mcp_config_async(content)
         .await
         .with_context(|| format!("validate {}", path.display()))
 }

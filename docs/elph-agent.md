@@ -8,12 +8,12 @@ Version: `0.0.28`. MSRV: **1.89** (edition 2024). Docs: <https://docs.rs/elph-ag
 
 | Surface | Role |
 | --- | --- |
-| `Agent`, `AgentOptions`, `AgentEvent` | Low-level loop |
-| `AgentHarness`, `AgentHarnessOptions` | Session-backed orchestration |
+| `Agent`, `AgentOptions`, `AgentEvent`, `AgentError` | Low-level loop |
+| `elph_agent::harness` (`AgentHarness`, hooks, FS, skills) | Session-backed orchestration |
 | `HostIdentity` | App name + env prefix (not process-global) |
-| `simple_tool`, feature-gated `create_*_tool` | Tools |
-| `InMemorySessionStorage` / `JsonlSessionStorage` / Turso backends | Persistence |
-| `mcp` feature | MCP client |
+| `simple_tool`, feature-gated `create_*_tool`, `ToolError` | Tools |
+| `elph_agent::session` (SQL schemas, backends) | Persistence |
+| `elph_agent::mcp` (`mcp` feature) | MCP client |
 
 TypeScript-port helpers (`get_or_throw`, `get_or_undefined`) and `*_for_tests` are `#[doc(hidden)]`.
 
@@ -43,4 +43,12 @@ Turso session backends are always compiled in this version (not feature-gated ye
 
 ## Errors
 
-Harness and session types have typed errors (`AgentHarnessError`, `SessionError`). The loop still uses `anyhow` in several tool/host paths.
+`prompt` / `continue_run` / `reset` / `run_agent_loop` return [`AgentError`]. Tool execute functions return [`ToolError`] (`simple_tool` still accepts `anyhow` closures and maps them). Harness and session keep `AgentHarnessError` and `SessionError`. Stream token failures stay in-band on `elph_ai::StopReason`.
+
+Harness, MCP, and session SQL are **not** flattened at the crate root. Import from the module:
+
+```rust
+use elph_agent::harness::{AgentHarness, AgentHarnessOptions, FileSystem, Skill};
+use elph_agent::mcp::{McpConfig, McpToolRegistry, load_or_create_master_key_with_prefix};
+use elph_agent::session::CANONICAL_SESSION_SCHEMA_SQL;
+```

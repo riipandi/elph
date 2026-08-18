@@ -7,8 +7,8 @@ use crate::platform::mcp as mcp_runtime;
 use crate::platform::mcp::{McpConfigScope, McpServerSource};
 use crate::platform::{EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths, Settings};
 use crate::utils::path::AppPaths;
-use elph_agent::{McpLifecycleMode, McpOAuthFlowOptions, McpServerConfig};
-use elph_agent::{clear_credentials, has_stored_credentials, run_oauth_flow};
+use elph_agent::mcp::{McpLifecycleMode, McpOAuthFlowOptions, McpServerConfig};
+use elph_agent::mcp::{clear_credentials, has_stored_credentials, run_oauth_flow};
 
 #[derive(Parser, Default)]
 #[command(

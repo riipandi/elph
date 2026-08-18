@@ -10,7 +10,7 @@
 
 use std::path::Path;
 
-use elph_agent::{AgentHarnessResources, Skill};
+use elph_agent::harness::{AgentHarnessResources, Skill};
 
 use elph::agent::prompt::{CodingPromptOptions, build_coding_system_prompt};
 use elph::types::AgentMode;

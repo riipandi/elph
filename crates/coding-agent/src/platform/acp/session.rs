@@ -77,7 +77,7 @@ async fn emit_full_config(
 async fn attach_session_mcp(
     state: &Arc<Mutex<AcpAgentState>>,
     session_id: &SessionId,
-    client_mcp: Vec<(String, elph_agent::McpServerConfig)>,
+    client_mcp: Vec<(String, elph_agent::mcp::McpServerConfig)>,
 ) {
     let paths = state.lock().paths.clone();
     if let Ok((session, _, _)) = lookup_session(state, session_id.0.as_ref())

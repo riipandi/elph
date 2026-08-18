@@ -270,12 +270,12 @@ where
                             (now_ms() - turn_started_ms).max(0),
                             None,
                             None,
-                            Some(&error),
+                            Some(&error.to_string()),
                         )
                         .await;
                 }
                 return self
-                    .emit_run_failure(&model, &error, abort_token.is_cancelled(), &emit)
+                    .emit_run_failure(&model, &error.to_string(), abort_token.is_cancelled(), &emit)
                     .await;
             }
         };

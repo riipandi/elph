@@ -5,16 +5,16 @@ use std::sync::Arc;
 
 use elph_agent::AgentControl;
 use elph_agent::AgentGraphStore;
-use elph_agent::AgentHarnessResources;
-use elph_agent::AgentHarnessStreamOptions;
 use elph_agent::LocalExecutionEnv;
-use elph_agent::SESSION_TREE_MIGRATIONS;
 use elph_agent::SubagentBootstrap;
 use elph_agent::SubagentLimits;
 use elph_agent::SubagentSpawnConfig;
 use elph_agent::SubagentStatus;
 use elph_agent::create_search_tools;
 use elph_agent::ensure_database;
+use elph_agent::harness::AgentHarnessResources;
+use elph_agent::harness::AgentHarnessStreamOptions;
+use elph_agent::session::SESSION_TREE_MIGRATIONS;
 use elph_ai::{FauxResponseStep, StopReason, faux_assistant_message, faux_text, faux_thinking};
 
 /// Parent session row required by FK on `agent_spawn_edges` / child sessions.

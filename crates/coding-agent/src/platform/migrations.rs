@@ -1,5 +1,5 @@
 use elph_agent::Migration;
-use elph_agent::{CANONICAL_SESSION_SCHEMA_SQL, SESSION_SUMMARY_SCHEMA_SQL, WORKERS_SCHEMA_SQL};
+use elph_agent::session::{CANONICAL_SESSION_SCHEMA_SQL, SESSION_SUMMARY_SCHEMA_SQL, WORKERS_SCHEMA_SQL};
 
 /// Platform schema migrations, applied into the shared `.elph/store.db` ledger.
 ///

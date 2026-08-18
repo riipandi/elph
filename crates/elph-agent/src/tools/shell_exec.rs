@@ -252,9 +252,13 @@ fn shell_exec_execute_fn() -> ToolExecuteFn {
               signal,
               on_update,
               context|
-              -> Pin<Box<dyn Future<Output = anyhow::Result<AgentToolResult>> + Send>> {
+              -> Pin<Box<dyn Future<Output = Result<AgentToolResult, crate::tools::types::ToolError>> + Send>> {
             let env = context.env.clone();
-            Box::pin(async move { execute_shell_exec(env, id, args, signal, on_update, context).await })
+            Box::pin(async move {
+                execute_shell_exec(env, id, args, signal, on_update, context)
+                    .await
+                    .map_err(crate::tools::types::ToolError::from)
+            })
         },
     )
 }

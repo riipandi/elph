@@ -8,7 +8,9 @@
 use anyhow::Result;
 use elph_agent::create_list_available_tools;
 use elph_agent::create_list_skills_tool;
-use elph_agent::{AgentHarness, McpToolRegistry, TursoSessionStorage, is_mcp_tool};
+use elph_agent::harness::AgentHarness;
+use elph_agent::mcp::McpToolRegistry;
+use elph_agent::{TursoSessionStorage, is_mcp_tool};
 
 use crate::types::AgentMode;
 

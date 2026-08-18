@@ -194,7 +194,7 @@ fn get_provider_config_status(provider_id: &str) -> ProviderConfigStatus {
 /// Like [`get_provider_config_status`] but uses an explicit auth store path (tests / hosts).
 pub fn get_provider_config_status_at(auth_store_path: &Path, provider_id: &str) -> ProviderConfigStatus {
     // Try loading the encrypted auth store first
-    let file = match elph_agent::AuthStoreFile::load_from_path_sync(auth_store_path) {
+    let file = match elph_agent::mcp::AuthStoreFile::load_from_path_sync(auth_store_path) {
         Ok(f) => f,
         Err(_) => {
             // Fallback: try to read as plain JSON
@@ -206,7 +206,7 @@ pub fn get_provider_config_status_at(auth_store_path: &Path, provider_id: &str) 
                     .and_then(|v| v.as_object())
                 && let Some(credential) = providers.get(provider_id).and_then(|v| v.as_str())
             {
-                if let Some(var_name) = credential.strip_prefix(elph_agent::ENV_REF_PREFIX) {
+                if let Some(var_name) = credential.strip_prefix(elph_agent::mcp::ENV_REF_PREFIX) {
                     return ProviderConfigStatus::EnvVarConfigured(var_name.to_string());
                 }
                 // OAuth JSON blobs are long; short values are API keys.
@@ -220,7 +220,7 @@ pub fn get_provider_config_status_at(auth_store_path: &Path, provider_id: &str) 
     };
 
     if let Some(entry) = file.get_provider_credential(provider_id) {
-        if let Some(var_name) = entry.strip_prefix(elph_agent::ENV_REF_PREFIX) {
+        if let Some(var_name) = entry.strip_prefix(elph_agent::mcp::ENV_REF_PREFIX) {
             return ProviderConfigStatus::EnvVarConfigured(var_name.to_string());
         }
         // OAuth JSON blobs are long; short values are API keys.
@@ -1141,12 +1141,12 @@ mod tests {
     fn env_ref_in_auth_counts_as_configured_even_without_env() {
         let dir = tempfile::tempdir().expect("tempdir");
         let auth_path = dir.path().join("auth.json");
-        let key = elph_agent::Aes256Key::generate();
-        elph_agent::set_process_master_key_for_tests(key);
-        let mut file = elph_agent::AuthStoreFile::default();
+        let key = elph_agent::mcp::Aes256Key::generate();
+        elph_agent::mcp::set_process_master_key_for_tests(key);
+        let mut file = elph_agent::mcp::AuthStoreFile::default();
         file.set_provider_credential(
             "opencode",
-            format!("{}{}", elph_agent::ENV_REF_PREFIX, "OPENCODE_API_KEY_DOES_NOT_EXIST_XYZ"),
+            format!("{}{}", elph_agent::mcp::ENV_REF_PREFIX, "OPENCODE_API_KEY_DOES_NOT_EXIST_XYZ"),
         );
         elph_agent::try_block_on(async {
             // Uses process master key override for this test process.
@@ -1158,7 +1158,7 @@ mod tests {
             std::env::remove_var("OPENCODE_API_KEY_DOES_NOT_EXIST_XYZ");
         }
         let status = get_provider_config_status_at(&auth_path, "opencode");
-        elph_agent::clear_process_master_key_for_tests();
+        elph_agent::mcp::clear_process_master_key_for_tests();
         assert_eq!(
             status,
             ProviderConfigStatus::EnvVarConfigured("OPENCODE_API_KEY_DOES_NOT_EXIST_XYZ".into())

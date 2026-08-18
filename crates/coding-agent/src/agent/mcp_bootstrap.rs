@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use crate::utils::path::AppPaths;
 use anyhow::Result;
-use elph_agent::{McpCacheStore, McpLoadOptions, McpServerLoadProgress, McpToolRegistry};
+use elph_agent::mcp::{McpCacheStore, McpLoadOptions, McpServerLoadProgress, McpToolRegistry};
 use tokio::sync::mpsc;
 
 use super::events::AgentUiEvent;
@@ -114,7 +114,7 @@ fn spawn_mcp_event_loop(session: &CodingAgentSession, mcp_registry: Arc<McpToolR
 }
 
 async fn apply_mcp_tools_to_harness(
-    harness: &elph_agent::AgentHarness<elph_agent::TursoSessionStorage>,
+    harness: &elph_agent::harness::AgentHarness<elph_agent::TursoSessionStorage>,
     registry: &Arc<McpToolRegistry>,
 ) -> Result<()> {
     let mcp_tools = registry.create_agent_tools().await;

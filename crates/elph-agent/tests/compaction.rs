@@ -5,7 +5,6 @@ use std::sync::Arc;
 use parking_lot::Mutex;
 
 use common::new_faux_with_options;
-use elph_agent::CompactionErrorCode;
 use elph_agent::build_session_context;
 use elph_agent::compaction::DEFAULT_COMPACTION_SETTINGS;
 use elph_agent::compaction::calculate_context_tokens;
@@ -24,6 +23,7 @@ use elph_agent::compaction::prepare_compaction;
 use elph_agent::compaction::serialize_conversation;
 use elph_agent::compaction::should_compact;
 use elph_agent::compaction::{CompactionPreparation, CompactionSettings};
+use elph_agent::harness::CompactionErrorCode;
 use elph_agent::session::SessionTreeEntry;
 use elph_agent::types::{AgentMessage, CustomAgentMessage};
 use elph_ai::AssistantContentBlock;

@@ -3,7 +3,8 @@
 use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
-use elph_agent::{FileSystem, McpLoadReport, McpServerLoadProgress};
+use elph_agent::harness::FileSystem;
+use elph_agent::mcp::{McpLoadReport, McpServerLoadProgress};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 use chrono::{DateTime, Utc};

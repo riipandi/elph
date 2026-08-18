@@ -601,7 +601,7 @@ fn auth_section(paths: &Paths, checks: &mut Vec<Check>) -> AuthSection {
         };
     }
     let providers = crate::tui::provider_credential_store::list_providers_with_credentials(&path);
-    let parsed = elph_agent::AuthStoreFile::load_from_path_sync(&path).is_ok() || !providers.is_empty();
+    let parsed = elph_agent::mcp::AuthStoreFile::load_from_path_sync(&path).is_ok() || !providers.is_empty();
     if parsed {
         checks.push(Check {
             id: "auth.file".into(),

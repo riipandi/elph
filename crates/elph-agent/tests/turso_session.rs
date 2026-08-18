@@ -12,7 +12,7 @@ use elph_agent::goals::{GoalStatus, GoalStore};
 use elph_agent::{Migration, ensure_database};
 
 /// Full session schema v2 (includes goals, turns, todos).
-const PLATFORM_LIKE: &[Migration] = &elph_agent::SESSION_TREE_MIGRATIONS;
+const PLATFORM_LIKE: &[Migration] = &elph_agent::session::SESSION_TREE_MIGRATIONS;
 
 #[tokio::test]
 async fn turso_storage_create_append_open_roundtrip() {

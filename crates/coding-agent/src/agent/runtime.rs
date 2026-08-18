@@ -3,10 +3,11 @@
 use crate::utils::path::AppPaths;
 use anyhow::Result;
 use elph_agent::create_goal_tools_with_hook;
+use elph_agent::harness::{AgentHarness, AgentHarnessOptions, AgentHarnessStreamOptions, RestoreOptions, SystemPrompt};
 use elph_agent::{
-    AgentGraphStore, AgentHarness, AgentHarnessOptions, AgentHarnessStreamOptions, BuiltinToolsBuilder, GoalRuntime,
-    GoalStore, LocalExecutionEnv, QueueMode, RestoreOptions, SessionSummaryStore, SubagentBootstrap, SystemPrompt,
-    TodoHook, TodoStore, TurnStore, WorkTracker, create_session_summary_tool, create_todo_tools_with_hook, is_mcp_tool,
+    AgentGraphStore, BuiltinToolsBuilder, GoalRuntime, GoalStore, LocalExecutionEnv, QueueMode, SessionSummaryStore,
+    SubagentBootstrap, TodoHook, TodoStore, TurnStore, WorkTracker, create_session_summary_tool,
+    create_todo_tools_with_hook, is_mcp_tool,
 };
 use std::path::Path;
 use std::sync::Arc;
@@ -149,7 +150,7 @@ pub async fn create_coding_session_with_events(
     .await?;
     let mcp_cache_path = session_manager.mcp_cache_path(&session_id);
     let mcp_cfg = crate::platform::mcp::load_config(options.paths).unwrap_or_default();
-    let mcp_cache = elph_agent::McpCacheStore::open(&mcp_cache_path, mcp_cfg.cache_max_entries_or_default())
+    let mcp_cache = elph_agent::mcp::McpCacheStore::open(&mcp_cache_path, mcp_cfg.cache_max_entries_or_default())
         .ok()
         .map(Arc::new);
     let default_cache_ttl_ms = mcp_cfg.cache_ttl_secs_or_default().saturating_mul(1000);
@@ -158,18 +159,18 @@ pub async fn create_coding_session_with_events(
         for warning in &warnings {
             log::warn!("{warning}");
         }
-        let load_options = elph_agent::McpLoadOptions {
+        let load_options = elph_agent::mcp::McpLoadOptions {
             auth_store_path: Some(options.paths.auth_store_path()),
             cache_store: mcp_cache.clone(),
             default_cache_ttl_ms,
             skip_startup_discovery: true,
-            ..elph_agent::McpLoadOptions::default()
+            ..elph_agent::mcp::McpLoadOptions::default()
         };
-        let registry = match elph_agent::McpToolRegistry::load_with_options(mcp_config, load_options).await {
+        let registry = match elph_agent::mcp::McpToolRegistry::load_with_options(mcp_config, load_options).await {
             Ok(registry) => Arc::new(registry),
             Err(error) => {
                 log::warn!("MCP deferred registry load failed: {error}");
-                Arc::new(elph_agent::McpToolRegistry::empty())
+                Arc::new(elph_agent::mcp::McpToolRegistry::empty())
             }
         };
         (registry, warnings)
@@ -520,7 +521,7 @@ pub async fn create_coding_session_with_events(
     // `todo_write` can enforce that `completed` items actually did real work.
     let work_tracker_for_hook = work_tracker.clone();
     harness
-        .on_tool_result(move |event: &elph_agent::ToolResultEvent| {
+        .on_tool_result(move |event: &elph_agent::harness::ToolResultEvent| {
             let tracker = work_tracker_for_hook.clone();
             let tool_name = event.tool_name.clone();
             let is_error = event.is_error;
@@ -558,7 +559,7 @@ pub async fn create_coding_session_with_events(
             let session_id = session_id_for_hook.clone();
             Box::pin(async move {
                 let compact = match &event {
-                    elph_agent::AgentHarnessOwnEvent::SessionCompact(e) => &e.compaction_entry,
+                    elph_agent::harness::AgentHarnessOwnEvent::SessionCompact(e) => &e.compaction_entry,
                     _ => return None,
                 };
                 let fields = compact.as_compaction()?;

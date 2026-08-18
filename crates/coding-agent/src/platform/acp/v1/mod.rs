@@ -430,7 +430,7 @@ where
 async fn attach_v1_mcp(
     state: &Arc<Mutex<AcpAgentState>>,
     session_id: &str,
-    servers: Vec<(String, elph_agent::McpServerConfig)>,
+    servers: Vec<(String, elph_agent::mcp::McpServerConfig)>,
 ) {
     if servers.is_empty() {
         return;
@@ -477,7 +477,7 @@ async fn v1_after_open(
     state: &Arc<Mutex<AcpAgentState>>,
     connection: &ConnectionTo<Client>,
     session_id: &str,
-    servers: Vec<(String, elph_agent::McpServerConfig)>,
+    servers: Vec<(String, elph_agent::mcp::McpServerConfig)>,
 ) {
     if let Ok((session, _, _)) = lookup_session(state, session_id)
         && let Err(error) = send_v1_commands(connection, session_id, &session).await

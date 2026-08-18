@@ -5,7 +5,8 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant};
 
-use elph_agent::{LocalExecutionEnv, PromptTemplate, Skill};
+use elph_agent::LocalExecutionEnv;
+use elph_agent::harness::{PromptTemplate, Skill};
 use elph_tui::components::{scroll_view_down, scroll_view_up};
 use elph_tui::rgb;
 use elph_tui::{
@@ -834,7 +835,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
 mod tests {
     use super::*;
     use crate::agent::parse_skill_slash;
-    use elph_agent::Skill;
+    use elph_agent::harness::Skill;
 
     fn slash_turn_sets_busy(input: &str, templates: &[PromptTemplate], skills: &[Skill]) -> bool {
         let trimmed = input.trim();

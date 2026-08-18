@@ -192,7 +192,7 @@ fn auth_store_has_provider(path: &Path, provider_id: &str) -> bool {
 }
 
 fn load_auth_providers(path: &Path) -> Option<std::collections::BTreeMap<String, serde_json::Value>> {
-    if let Ok(file) = elph_agent::AuthStoreFile::load_from_path_sync(path) {
+    if let Ok(file) = elph_agent::mcp::AuthStoreFile::load_from_path_sync(path) {
         return Some(file.provider);
     }
     let content = std::fs::read_to_string(path).ok()?;

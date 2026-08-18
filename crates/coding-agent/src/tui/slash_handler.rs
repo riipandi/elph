@@ -3,7 +3,8 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use elph_agent::{ExtensionRegistry, PromptTemplate, Skill};
+use elph_agent::ExtensionRegistry;
+use elph_agent::harness::{PromptTemplate, Skill};
 
 use crate::agent::RETRY_CONTINUE_PROMPT;
 use crate::agent::{
@@ -1211,7 +1212,7 @@ mod tests {
 
     #[test]
     fn skill_slash_without_session_returns_status() {
-        let skill = elph_agent::Skill {
+        let skill = elph_agent::harness::Skill {
             name: "debug".into(),
             description: "Debug".into(),
             content: "Steps".into(),
@@ -1236,7 +1237,7 @@ mod tests {
 
     #[test]
     fn skill_slash_missing_required_args_returns_notice() {
-        let skill = elph_agent::Skill {
+        let skill = elph_agent::harness::Skill {
             name: "code-review".into(),
             description: "Review".into(),
             content: "Review".into(),

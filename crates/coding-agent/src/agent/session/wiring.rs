@@ -1,8 +1,10 @@
 //! Harness event wiring and UI event mapping.
 
 use anyhow::Result;
-use elph_agent::{AgentEvent, AgentHarnessEvent, AgentHarnessOwnEvent, FileSystem};
-use elph_agent::{SubagentEventForwarder, SubagentInfo, ToolCallEvent, ToolCallHookResult};
+use elph_agent::AgentEvent;
+use elph_agent::harness::{AgentHarnessEvent, AgentHarnessOwnEvent, FileSystem};
+use elph_agent::harness::{ToolCallEvent, ToolCallHookResult};
+use elph_agent::{SubagentEventForwarder, SubagentInfo};
 use elph_ai::AssistantMessageEvent;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -238,7 +240,7 @@ impl CodingAgentSession {
         let tool_sink = harness_for_tool_output.clone();
         tool_sink
             .on_tool_result({
-                move |event: &elph_agent::ToolResultEvent| {
+                move |event: &elph_agent::harness::ToolResultEvent| {
                     let tool_outputs_dir = tool_outputs_dir.clone();
                     let event = event.clone();
                     Box::pin(async move {
@@ -263,7 +265,7 @@ impl CodingAgentSession {
                             output_path,
                         )
                         .await;
-                        None::<elph_agent::ToolResultPatch>
+                        None::<elph_agent::harness::ToolResultPatch>
                     })
                 }
             })
@@ -394,7 +396,7 @@ fn summarize_tool_result(result: &elph_agent::AgentToolResult) -> String {
 }
 
 /// Map harness queue snapshot to numbered UI items (follow-ups first, then steer).
-fn map_queue_update(update: &elph_agent::QueueUpdateEvent) -> Vec<QueuedPromptItem> {
+fn map_queue_update(update: &elph_agent::harness::QueueUpdateEvent) -> Vec<QueuedPromptItem> {
     let mut items = Vec::with_capacity(update.follow_up.len() + update.steer.len());
     let mut seq = 1u32;
     for (kind_index, message) in update.follow_up.iter().enumerate() {

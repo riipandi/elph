@@ -5,8 +5,9 @@ mod wiring;
 
 use crate::types::AgentMode;
 use anyhow::Result;
-use elph_agent::{AgentHarness, AgentHarnessErrorCode, FileSystem};
-use elph_agent::{GoalRuntime, McpToolRegistry, PlanConfirmationChoice, TursoSessionStorage};
+use elph_agent::harness::{AgentHarness, AgentHarnessErrorCode, FileSystem};
+use elph_agent::mcp::McpToolRegistry;
+use elph_agent::{GoalRuntime, PlanConfirmationChoice, TursoSessionStorage};
 use elph_ai::{AssistantMessage, StopReason};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU32, Ordering};
@@ -696,7 +697,7 @@ impl CodingAgentSession {
         self.maybe_auto_compact(Some(&text)).await;
 
         let started = Instant::now();
-        let options = images.map(|images| elph_agent::AgentHarnessPromptOptions { images: Some(images) });
+        let options = images.map(|images| elph_agent::harness::AgentHarnessPromptOptions { images: Some(images) });
         let result = self.harness.prompt(text.clone(), options).await;
         match &result {
             Ok(message) => {
@@ -1189,7 +1190,7 @@ impl CodingAgentSession {
 
     /// Move the session leaf to `entry_id` (Pi `/tree` jump). Optional branch summary.
     pub async fn navigate_tree_to_with_options(&self, entry_id: &str, summarize: bool) -> Result<()> {
-        use elph_agent::NavigateTreeOptions;
+        use elph_agent::harness::NavigateTreeOptions;
         self.harness
             .navigate_tree(
                 entry_id,

@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
+use elph_agent::AgentToolResult;
 use elph_agent::ensure_database;
 use elph_agent::goals::create_goal_tools;
 use elph_agent::goals::{GoalStatus, GoalStore};
-use elph_agent::{AgentToolResult, SESSION_TREE_MIGRATIONS};
+use elph_agent::session::SESSION_TREE_MIGRATIONS;
 use serde_json::json;
 
 fn tool_text(result: AgentToolResult) -> String {

@@ -154,11 +154,11 @@ impl CodingAgentSession {
             .await
             .map_err(|e| anyhow::anyhow!("{e}"))?;
         self.harness()
-            .set_stream_options(elph_agent::AgentHarnessStreamOptions {
+            .set_stream_options(elph_agent::harness::AgentHarnessStreamOptions {
                 timeout_ms: settings.provider_timeout_ms(),
                 max_retries: Some(settings.max_retries),
                 thinking_budgets: settings.models.thinking_budgets.clone(),
-                ..elph_agent::AgentHarnessStreamOptions::default()
+                ..elph_agent::harness::AgentHarnessStreamOptions::default()
             })
             .await;
 

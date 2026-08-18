@@ -56,7 +56,7 @@ pub const DEFAULT_AUTH_FILE_NAME: &str = "auth.json";
 ///
 /// ```
 /// use std::path::PathBuf;
-/// use elph_agent::AuthStorePathBuilder;
+/// use elph_agent::mcp::AuthStorePathBuilder;
 ///
 /// let path = AuthStorePathBuilder::new()
 ///     .base_dir("/home/user/.elph")

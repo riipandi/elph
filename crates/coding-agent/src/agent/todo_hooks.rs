@@ -18,9 +18,9 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use anyhow::Result;
+use elph_agent::harness::{AgentHarness, AgentHarnessEvent};
 use elph_agent::{
-    AgentEvent, AgentHarness, AgentHarnessEvent, AgentMessage, TodoHook, TodoStore, TursoSessionStorage, WorkTracker,
-    auto_close_done_todos,
+    AgentEvent, AgentMessage, TodoHook, TodoStore, TursoSessionStorage, WorkTracker, auto_close_done_todos,
 };
 use elph_ai::{AssistantContentBlock, Message, StopReason};
 

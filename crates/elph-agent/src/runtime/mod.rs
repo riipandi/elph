@@ -88,7 +88,7 @@ pub async fn run_agent_loop(
     mut config: AgentLoopConfig,
     emit: AgentEventCallback,
     signal: Option<CancellationToken>,
-) -> Result<Vec<AgentMessage>, String> {
+) -> Result<Vec<AgentMessage>, crate::types::AgentError> {
     let mut new_messages = prompts.clone();
     let mut current_context = AgentContext {
         system_prompt: context.system_prompt,
@@ -132,7 +132,7 @@ pub async fn run_agent_loop_continue(
     config: AgentLoopConfig,
     emit: AgentEventCallback,
     signal: Option<CancellationToken>,
-) -> Result<Vec<AgentMessage>, String> {
+) -> Result<Vec<AgentMessage>, crate::types::AgentError> {
     if context.messages.is_empty() {
         panic!("Cannot continue: no messages in context");
     }

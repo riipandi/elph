@@ -9,8 +9,10 @@
 use std::path::Path;
 
 use crate::types::AgentMode;
-use elph_agent::{AgentHarnessResources, PromptAssemblyMode, SystemPromptBuilder, SystemPromptTemplateContext};
-use elph_agent::{format_skills_for_context, now_date_with_offset};
+use elph_agent::harness::AgentHarnessResources;
+use elph_agent::harness::format_skills_for_context;
+use elph_agent::now_date_with_offset;
+use elph_agent::{PromptAssemblyMode, SystemPromptBuilder, SystemPromptTemplateContext};
 
 use super::context::ElphCodingPromptContext;
 use super::modes::mode_footer_slug;
@@ -163,7 +165,7 @@ pub fn build_intercom_system_prompt(worker_name: Option<&str>, worker_peers: Opt
 #[cfg(test)]
 mod tests {
     use super::*;
-    use elph_agent::AgentHarnessResources;
+    use elph_agent::harness::AgentHarnessResources;
 
     #[test]
     fn coding_prompt_layers_base_domain_and_mode() {
@@ -555,7 +557,7 @@ mod tests {
     #[test]
     fn skills_format_uses_inline_attributes() {
         let mut resources = AgentHarnessResources::default();
-        resources.skills.push(elph_agent::Skill {
+        resources.skills.push(elph_agent::harness::Skill {
             name: "test-skill".to_string(),
             description: "Test skill for unit testing".to_string(),
             content: String::new(),

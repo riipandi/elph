@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use agent_client_protocol::schema::v2::McpServer;
-use elph_agent::{McpConfig, McpHttpConfig, McpLoadOptions, McpServerConfig, McpToolRegistry};
+use elph_agent::mcp::{McpConfig, McpHttpConfig, McpLoadOptions, McpServerConfig, McpToolRegistry};
 
 use crate::agent::CodingAgentSession;
 use crate::platform::Paths;

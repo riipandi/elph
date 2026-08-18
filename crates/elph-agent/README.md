@@ -67,7 +67,7 @@ async fn main() -> anyhow::Result<()> {
 With the `mcp` feature (default), load remote MCP servers and expose them as agent tools:
 
 ```rust
-use elph_agent::{McpConfig, McpServerConfig, McpToolRegistry};
+use elph_agent::mcp::{McpConfig, McpServerConfig, McpToolRegistry};
 use std::sync::Arc;
 
 let mut config = McpConfig::default();

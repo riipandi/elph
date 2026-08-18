@@ -122,6 +122,46 @@ pub type ToolUpdateCallback = Arc<dyn Fn(AgentToolResult) + Send + Sync>;
 ///
 /// Receives the tool call ID, parsed arguments, optional abort signal, optional
 /// progress callback, and the application-defined `ToolContext`.
+/// Tool execution failure reported to the loop (`is_error` tool result).
+#[derive(Debug)]
+pub struct ToolError {
+    pub message: String,
+    pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
+}
+
+impl ToolError {
+    pub fn new(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            source: None,
+        }
+    }
+}
+
+impl std::fmt::Display for ToolError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl std::error::Error for ToolError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.source.as_deref().map(|e| e as _)
+    }
+}
+
+impl From<anyhow::Error> for ToolError {
+    fn from(value: anyhow::Error) -> Self {
+        Self::new(value.to_string())
+    }
+}
+
+impl From<std::io::Error> for ToolError {
+    fn from(value: std::io::Error) -> Self {
+        Self::new(value.to_string())
+    }
+}
+
 pub type ToolExecuteFn = Arc<
     dyn Fn(
             String,
@@ -129,7 +169,7 @@ pub type ToolExecuteFn = Arc<
             Option<CancellationToken>,
             Option<ToolUpdateCallback>,
             ToolContext,
-        ) -> Pin<Box<dyn Future<Output = anyhow::Result<AgentToolResult>> + Send>>
+        ) -> Pin<Box<dyn Future<Output = Result<AgentToolResult, ToolError>> + Send>>
         + Send
         + Sync,
 >;
@@ -154,7 +194,7 @@ pub trait AgentHarnessTool: Send + Sync {
         signal: Option<CancellationToken>,
         on_update: Option<ToolUpdateCallback>,
         context: ToolContext,
-    ) -> Pin<Box<dyn Future<Output = anyhow::Result<AgentToolResult>> + Send>>;
+    ) -> Pin<Box<dyn Future<Output = Result<AgentToolResult, ToolError>> + Send>>;
 }
 
 #[derive(Clone)]
@@ -185,7 +225,7 @@ pub fn context_aware_tool(
         Option<CancellationToken>,
         Option<ToolUpdateCallback>,
         ToolContext,
-    ) -> Pin<Box<dyn Future<Output = anyhow::Result<AgentToolResult>> + Send>>
+    ) -> Pin<Box<dyn Future<Output = Result<AgentToolResult, ToolError>> + Send>>
     + Send
     + Sync
     + 'static,

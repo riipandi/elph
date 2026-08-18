@@ -174,15 +174,15 @@ fn pick_model_for_provider(models: &Models, provider: &str, model_id: &str) -> O
 /// - `{ "provider": { "id": "cred" } }` — nested (camelCase, AuthStoreFile shape)
 /// - `{ "providers": { "id": "cred" } }` — nested (snake_case fallback)
 /// - `{ "id": "cred" }` — flat key-value
-async fn try_load_plain_json_auth(path: &Path) -> Option<elph_agent::AuthStoreFile> {
+async fn try_load_plain_json_auth(path: &Path) -> Option<elph_agent::mcp::AuthStoreFile> {
     let content = tokio::fs::read_to_string(path).await.ok()?;
     // If it looks like a sealed envelope, do not attempt plain JSON parsing —
     // the sealed load failed for a real reason and the envelope has no plaintext providers.
-    if elph_agent::looks_like_envelope(content.as_bytes()) {
+    if elph_agent::mcp::looks_like_envelope(content.as_bytes()) {
         return None;
     }
     let json: serde_json::Value = serde_json::from_str(&content).ok()?;
-    let mut file = elph_agent::AuthStoreFile::default();
+    let mut file = elph_agent::mcp::AuthStoreFile::default();
     // Try nested format: "provider" (camelCase) or "providers" (snake_case)
     let providers_obj = json
         .get("provider")
@@ -221,7 +221,7 @@ async fn load_credentials_from_auth_json(auth_store_path: Option<&Path>) -> Resu
         return Ok(store);
     }
 
-    let file = match elph_agent::AuthStoreFile::load_from_path(path).await {
+    let file = match elph_agent::mcp::AuthStoreFile::load_from_path(path).await {
         Ok(f) => f,
         Err(e) => {
             log::warn!("auth store load failed ({}): {e}", path.display());
@@ -238,7 +238,7 @@ async fn load_credentials_from_auth_json(auth_store_path: Option<&Path>) -> Resu
             continue;
         };
 
-        if let Some(var_name) = raw.strip_prefix(elph_agent::ENV_REF_PREFIX) {
+        if let Some(var_name) = raw.strip_prefix(elph_agent::mcp::ENV_REF_PREFIX) {
             let mut env = ProviderEnv::new();
             env.insert(var_name.to_string(), var_name.to_string());
             let cred = Credential::ApiKey(ApiKeyCredential {
@@ -274,7 +274,7 @@ async fn load_credentials_from_auth_json(auth_store_path: Option<&Path>) -> Resu
 
 /// Parse a single provider credential string into an in-memory [`Credential`].
 pub fn credential_from_auth_value(raw: &str) -> Option<Credential> {
-    if let Some(var_name) = raw.strip_prefix(elph_agent::ENV_REF_PREFIX) {
+    if let Some(var_name) = raw.strip_prefix(elph_agent::mcp::ENV_REF_PREFIX) {
         let mut env = ProviderEnv::new();
         env.insert(var_name.to_string(), var_name.to_string());
         return Some(Credential::ApiKey(ApiKeyCredential {
@@ -302,7 +302,7 @@ pub async fn load_single_credential_from_auth_json(
     if !auth_store_path.exists() {
         return Ok(None);
     }
-    let file = match elph_agent::AuthStoreFile::load_from_path(auth_store_path).await {
+    let file = match elph_agent::mcp::AuthStoreFile::load_from_path(auth_store_path).await {
         Ok(f) => f,
         Err(e) => {
             log::warn!("auth store load failed ({}): {e}", auth_store_path.display());

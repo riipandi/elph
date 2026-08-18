@@ -16,8 +16,8 @@
 
 use std::time::Duration;
 
-use elph_agent::parse_and_validate_mcp_config;
-use elph_agent::{McpConfig, McpHttpConfig, McpLoadOptions, McpServerConfig, McpToolRegistry};
+use elph_agent::mcp::parse_and_validate_mcp_config;
+use elph_agent::mcp::{McpConfig, McpHttpConfig, McpLoadOptions, McpServerConfig, McpToolRegistry};
 use serde_json::json;
 
 const DEEPWIKI_URL: &str = "https://mcp.deepwiki.com/mcp";

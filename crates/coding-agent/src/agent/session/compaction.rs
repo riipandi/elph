@@ -2,7 +2,8 @@
 
 use anyhow::Result;
 use elph_agent::compaction::{estimate_context_tokens, estimate_tokens_with_system_prompt, should_compact};
-use elph_agent::{CompactResult, CompactionSettings, build_session_context};
+use elph_agent::harness::CompactResult;
+use elph_agent::{CompactionSettings, build_session_context};
 use elph_ai::Model;
 use elph_ai::estimate::count_tokens_text;
 

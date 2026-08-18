@@ -9,7 +9,7 @@ use elph_agent::SessionDirStorage;
 use elph_agent::SessionStorage;
 use elph_agent::SessionTreeEntry;
 use elph_agent::TursoSessionStorage;
-use elph_agent::{EVENTS_FILE, SUMMARY_FILE};
+use elph_agent::session::{EVENTS_FILE, SUMMARY_FILE};
 use elph_ai::{Message, UserContent};
 use elph_ai::{faux_assistant_message, faux_text};
 use serde_json::json;
