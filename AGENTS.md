@@ -36,7 +36,7 @@ Skip for: pure internal refactor, lint/format, test-only, typos, dep bumps w/o A
 
 **Tests**
 
-- No POSIX shell assumption. Windows: `elph-agent` shell exec -> git-bash, `$PWD` is MSYS format (`/c/Users/...`), not `C:/Users/...`. Probe via `cygpath -m "$PWD"` or make assertion platform-aware.
+- No POSIX shell assumption. Windows: `elph-agent` shell exec -> git-bash, `$PWD` is MSYS format (`/c/Users/...`). Assertions comparing shell `$PWD`/`cygpath` output to a Rust-canonicalized path are fragile (drive-letter case, separators, 8.3 names). Prefer writing a sentinel file from the command and reading it back via `std::fs`/`Path` to verify cwd + env (see `tests/env.rs` / `tests/exec_shell.rs` `executes_command_in_cwd_with_env_overrides`).
 - Prefer `std::fs`/`Path` assertions over parsing shell output.
 - Genuinely non-portable test -> `#[cfg(not(target_os = "windows"))]` (or relevant OS) + comment explaining why.
 

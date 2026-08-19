@@ -4,6 +4,7 @@
 - https://github.com/jvoltci/stream-md
 - https://github.com/siinghd/brookmd
 - https://crates.io/crates/mdstitch
+- https://github.com/kirawi/mdtext
 - https://crates.io/crates/mdstream
 - https://github.com/fed-stew/streamdown-rs
 - https://github.com/phiresky/sqlite-zstd

@@ -319,16 +319,15 @@ async fn cleanup_is_best_effort() {
 #[tokio::test]
 async fn executes_commands_in_cwd_with_env_overrides() {
     let (_temp, env) = env_in_temp();
-    let root = std::fs::canonicalize(env.cwd()).expect("canonical cwd");
 
-    #[cfg(windows)]
-    let command = "printf '%s:%s' \"$(cygpath -m \"$PWD\")\" \"$NODE_ENV_TEST\"";
-    #[cfg(not(windows))]
-    let command = "printf '%s:%s' \"$PWD\" \"$NODE_ENV_TEST\"";
-
+    // Write a sentinel using the override env var. The file landing in
+    // `env.cwd()` proves the command executed in the configured cwd —
+    // independent of how the underlying shell represents paths (git-bash
+    // reports `$PWD` as MSYS-format `/c/Users/...` on Windows), so this
+    // assertion is stable on every platform.
     let result = get_or_throw(
         env.exec(
-            command,
+            "printf '%s' \"$NODE_ENV_TEST\" > __cwd_probe__",
             Some(ShellExecOptions {
                 cwd: None,
                 env: Some([("NODE_ENV_TEST".to_string(), "ok".to_string())].into()),
@@ -342,10 +341,11 @@ async fn executes_commands_in_cwd_with_env_overrides() {
         .await,
     );
 
-    let expected_root = root.to_string_lossy().replace('\\', "/");
-    let actual = result.stdout.trim_end_matches('\n');
-    assert_eq!(actual, format!("{expected_root}:ok"));
     assert_eq!(result.exit_code, 0);
+    let probe = std::path::Path::new(env.cwd()).join("__cwd_probe__");
+    let content = std::fs::read_to_string(&probe).expect("sentinel written in cwd");
+    assert_eq!(content, "ok");
+    std::fs::remove_file(&probe).ok();
 }
 
 #[tokio::test]
