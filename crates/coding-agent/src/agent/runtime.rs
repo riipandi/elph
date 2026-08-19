@@ -371,6 +371,7 @@ pub async fn create_coding_session_with_events(
         ste_enabled: options.settings.simplified_technical_english,
         worker_name: worker_runtime.as_ref().map(|w| w.name.clone()),
         worker_peers: None,
+        memory_enabled: options.settings.memory.enabled,
     };
 
     // Peers summary is refreshed each turn via registry (near-realtime demote first).
@@ -614,6 +615,7 @@ pub async fn create_coding_session_with_events(
         preferred_chat_language: options.settings.preferred_chat_language.clone(),
         compaction_model_ref: options.settings.models.compaction_model.clone(),
         ste_enabled: options.settings.simplified_technical_english,
+        memory_enabled: options.settings.memory.enabled,
         worker_runtime,
         plan_reentry,
         default_tools: options.settings.default_tools.clone(),

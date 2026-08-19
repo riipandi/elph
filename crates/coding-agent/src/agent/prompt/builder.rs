@@ -37,6 +37,8 @@ pub struct CodingPromptOptions {
     pub worker_name: Option<String>,
     /// Live peer summary (comma-separated names), refreshed each turn when available.
     pub worker_peers: Option<String>,
+    /// Mirrors `settings.memory.enabled`: renders memory tool group and `## Memory`.
+    pub memory_enabled: bool,
 }
 
 impl CodingPromptOptions {
@@ -48,6 +50,7 @@ impl CodingPromptOptions {
             ste_enabled: true,
             worker_name: None,
             worker_peers: None,
+            memory_enabled: false,
         }
     }
 
@@ -74,6 +77,12 @@ impl CodingPromptOptions {
         self.ste_enabled = enabled;
         self
     }
+
+    /// Toggle memory prompt sections (`settings.memory.enabled`).
+    pub fn with_memory(mut self, enabled: bool) -> Self {
+        self.memory_enabled = enabled;
+        self
+    }
 }
 
 /// Build the dynamic system prompt for a coding session turn.
@@ -90,6 +99,7 @@ pub fn build_coding_system_prompt(
         ste_enabled,
         worker_name,
         worker_peers,
+        memory_enabled,
     } = options.clone();
     let date = now_date_with_offset();
     let shell_path = std::env::var("SHELL").ok();
@@ -122,6 +132,7 @@ pub fn build_coding_system_prompt(
     let elph_context = elph_context.with_ste_code(ste_enabled);
     let elph_context = elph_context.with_worker_name(worker_name.as_deref());
     let elph_context = elph_context.with_worker_peers(worker_peers.as_deref());
+    let elph_context = elph_context.with_memory_enabled(memory_enabled);
 
     let coding_base = coding_agent_engine().render("coding_base", &elph_context)?;
     // Pass an empty skills_section to the base template so the generic renderer
@@ -375,7 +386,7 @@ mod tests {
             ]
             .map(String::from),
             None,
-            &CodingPromptOptions::new(AgentMode::Build),
+            &CodingPromptOptions::new(AgentMode::Build).with_memory(true),
         )
         .expect("prompt");
 
@@ -384,6 +395,19 @@ mod tests {
         assert!(with_memory.contains("<tool name=\"memory_search\""));
         assert!(with_memory.contains("search and write **during** the turn"));
         assert!(with_memory.contains("do not wait for turn end"));
+        assert!(with_memory.contains("4. Memory:"));
+
+        let tools_without_flag = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["read_file", "memory_search", "memory_recent", "memory_report"].map(String::from),
+            None,
+            &CodingPromptOptions::new(AgentMode::Build).with_memory(false),
+        )
+        .expect("prompt");
+        assert!(!tools_without_flag.contains("<tool_group name=\"memory\">"));
+        assert!(!tools_without_flag.contains("## Memory"));
+        assert!(!tools_without_flag.contains("4. Memory:"));
 
         let without_memory = build_coding_system_prompt(
             Path::new("/tmp/project"),

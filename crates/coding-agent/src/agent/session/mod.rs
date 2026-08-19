@@ -63,6 +63,8 @@ pub struct CodingAgentSessionParams {
     pub compaction_model_ref: String,
     /// Whether `simplifiedTechnicalEnglish` is on — gates the `<response_style>` section.
     pub ste_enabled: bool,
+    /// Settings `memory.enabled` — gates memory sections in the compiled system prompt.
+    pub memory_enabled: bool,
     /// Multi-worker host lifecycle (lease heartbeat + registry); None if start failed.
     pub worker_runtime: Option<super::worker_runtime::WorkerRuntime>,
     /// Shared with the Dynamic system prompt so reentry appendix reaches the model.
@@ -105,6 +107,8 @@ pub struct CodingAgentSession {
     compaction_model_ref: String,
     /// Whether `simplifiedTechnicalEnglish` is on — gates the `<response_style>` section.
     ste_enabled: bool,
+    /// Settings `memory.enabled` — gates memory sections in the compiled system prompt.
+    memory_enabled: bool,
     /// Bounded retry counter for background auto-title generation
     /// (caps at [`SESSION_TITLE_MAX_ATTEMPTS`] per session instance).
     title_generation_attempts: Arc<AtomicU32>,
@@ -132,6 +136,7 @@ impl CodingAgentSession {
             preferred_chat_language,
             compaction_model_ref,
             ste_enabled,
+            memory_enabled,
             worker_runtime,
             plan_reentry,
             default_tools,
@@ -164,6 +169,7 @@ impl CodingAgentSession {
             preferred_chat_language,
             compaction_model_ref,
             ste_enabled,
+            memory_enabled,
             title_generation_attempts: Arc::new(AtomicU32::new(if already_named {
                 SESSION_TITLE_MAX_ATTEMPTS
             } else {
@@ -609,6 +615,7 @@ impl CodingAgentSession {
                 mode,
                 preferred_chat_language: self.preferred_chat_language.clone(),
                 ste_enabled: self.ste_enabled,
+                memory_enabled: self.memory_enabled,
                 worker_name: self.worker_name().map(str::to_string),
                 worker_peers,
             },

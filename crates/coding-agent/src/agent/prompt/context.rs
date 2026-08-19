@@ -16,6 +16,8 @@ pub struct ElphCodingPromptContext<'a> {
     pub worker_name: String,
     /// Compact live peer list for the prompt (names only), when multi-worker.
     pub worker_peers: String,
+    /// Settings `memory.enabled` — gates memory tool group and `## Memory` policy.
+    pub memory_enabled: bool,
 }
 
 impl<'a> ElphCodingPromptContext<'a> {
@@ -25,7 +27,14 @@ impl<'a> ElphCodingPromptContext<'a> {
             ste_code: true,
             worker_name: String::new(),
             worker_peers: String::new(),
+            memory_enabled: false,
         }
+    }
+
+    /// Toggle memory policy and tool-group sections (`settings.memory.enabled`).
+    pub fn with_memory_enabled(mut self, enabled: bool) -> Self {
+        self.memory_enabled = enabled;
+        self
     }
 
     pub fn with_worker_name(mut self, name: Option<&str>) -> Self {

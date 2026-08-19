@@ -63,7 +63,7 @@ Schema: `schemas/elph-schema.json`, `schemas/mcp-schema.json`, `schemas/auth-sch
 
 ## Memory (agent)
 
-When `memory.enabled` is true, the harness injects ranked recall at **turn start** (`<memory_context>`, `<recent_work>`, `<project_map>`) and journals successful edits / tool errors at **turn end**. That injection is a seed.
+When `memory.enabled` is true, the harness injects ranked recall at **turn start** (`<memory_context>`, `<recent_work>`, `<project_map>`) and journals successful edits / tool errors at **turn end**. That injection is a seed. The coding system prompt renders the memory tool group and `## Memory` policy only when this flag is on.
 
 The coding prompt also tells the model to call tools **mid-turn**:
 
