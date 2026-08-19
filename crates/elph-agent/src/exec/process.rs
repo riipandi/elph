@@ -46,8 +46,24 @@ pub(crate) async fn terminate_child_tree(child: &mut tokio::process::Child, forc
     let _ = child.start_kill();
 }
 
-/// Non-Unix fallback: kill the direct child only.
-#[cfg(not(unix))]
+/// Windows: `taskkill /T` ends the shell and its descendants (no POSIX process groups).
+#[cfg(windows)]
+pub(crate) async fn terminate_child_tree(child: &mut tokio::process::Child, _force: bool) {
+    if let Some(pid) = child.id() {
+        let mut kill = tokio::process::Command::new("taskkill");
+        kill.args(["/PID", &pid.to_string(), "/T", "/F"]);
+        kill.stdout(std::process::Stdio::null());
+        kill.stderr(std::process::Stdio::null());
+        // Avoid a flash of `taskkill.exe` console on GUI hosts.
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        kill.creation_flags(CREATE_NO_WINDOW);
+        let _ = kill.status().await;
+    }
+    let _ = child.start_kill();
+}
+
+/// Other non-Unix: kill the direct child only.
+#[cfg(not(any(unix, windows)))]
 pub(crate) async fn terminate_child_tree(child: &mut tokio::process::Child, _force: bool) {
     let _ = child.start_kill();
 }

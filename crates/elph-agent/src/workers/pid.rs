@@ -38,19 +38,22 @@ pub fn pid_alive(pid: i64) -> bool {
 mod win {
     const PROCESS_QUERY_LIMITED_INFORMATION: u32 = 0x1000;
     const STILL_ACTIVE: u32 = 259;
+    const ERROR_ACCESS_DENIED: u32 = 5;
 
     #[link(name = "kernel32")]
     unsafe extern "system" {
         fn OpenProcess(access: u32, inherit: i32, pid: u32) -> *mut core::ffi::c_void;
         fn CloseHandle(handle: *mut core::ffi::c_void) -> i32;
         fn GetExitCodeProcess(handle: *mut core::ffi::c_void, exit_code: *mut u32) -> i32;
+        fn GetLastError() -> u32;
     }
 
     pub(super) fn pid_alive(pid: u32) -> bool {
         unsafe {
             let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
             if handle.is_null() {
-                return false;
+                // Access denied ⇒ the pid exists; treat as live so we do not reclaim a lease.
+                return GetLastError() == ERROR_ACCESS_DENIED;
             }
             let mut code = 0u32;
             let ok = GetExitCodeProcess(handle, &mut code);

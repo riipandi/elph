@@ -476,21 +476,22 @@ async fn path_exists(path: &Path) -> bool {
 async fn find_bash_on_path() -> Option<PathBuf> {
     #[cfg(windows)]
     {
-        if let Some(path) = find_bash_windows().await {
-            return Some(path);
+        return find_bash_windows().await;
+    }
+    #[cfg(not(windows))]
+    {
+        let output = Command::new("which").arg("bash").output().await.ok()?;
+        if !output.status.success() {
+            return None;
         }
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let first = stdout.lines().next()?.trim();
+        if first.is_empty() {
+            return None;
+        }
+        let path = PathBuf::from(first);
+        if path_exists(&path).await { Some(path) } else { None }
     }
-    let output = Command::new("which").arg("bash").output().await.ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let first = stdout.lines().next()?.trim();
-    if first.is_empty() {
-        return None;
-    }
-    let path = PathBuf::from(first);
-    if path_exists(&path).await { Some(path) } else { None }
 }
 
 /// GitHub `windows-latest` has Git Bash; `which` is not a Windows builtin.
@@ -505,6 +506,9 @@ async fn find_bash_windows() -> Option<PathBuf> {
                 continue;
             }
             let path = PathBuf::from(first);
+            if is_windows_apps_shim(&path) {
+                continue;
+            }
             if path_exists(&path).await {
                 return Some(path);
             }
@@ -523,6 +527,15 @@ async fn find_bash_windows() -> Option<PathBuf> {
         }
     }
     None
+}
+
+#[cfg(windows)]
+fn is_windows_apps_shim(path: &Path) -> bool {
+    path.components().any(|c| {
+        c.as_os_str()
+            .to_str()
+            .is_some_and(|s| s.eq_ignore_ascii_case("WindowsApps"))
+    })
 }
 
 fn invoke_output_callback(callback: &ShellOutputCallback, chunk: &str) -> Option<ExecError> {

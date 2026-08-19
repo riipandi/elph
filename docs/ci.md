@@ -33,7 +33,7 @@ Triggers:
 
 Both use path filters on the elph workspace, lockfile, toolchain, Makefile, and `.github/`.
 
-On Linux, macOS, and Windows the job runs, in order: `cargo fmt --check`, `make check`, `make lint`, `make test`, then `make build`. Windows uses GitHub-hosted `windows-latest` (Git Bash on PATH for shell tests). With `CI=true` (or profiling flags like `make build -- --ci`), those targets use Cargo profile `ci` (`target/ci/`: `opt-level=0`, no debuginfo, no incremental — sccache is the cache). Local `make` stays on `dev`. Profiles: `--debug`, `--release`, `--dist`, `--ci` (last flag wins). `PROFILE=dist` / `--dist` is unchanged (`opt-level=3`, thin LTO, `codegen-units=1`).
+On Linux, macOS, and Windows the job runs, in order: `cargo fmt --check`, `make check`, `make lint`, `make test`, then `make build`. Windows uses GitHub-hosted `windows-latest`. Shell exec locates Git Bash (`where.exe` / `Git\\bin\\bash.exe`); abort/timeout uses `taskkill /T`. Auth store locking uses a sibling `.flock` file (NTFS mandatory locks cannot sit on `auth.json`). Home directories fall back to `USERPROFILE` when `HOME` is unset. With `CI=true` (or profiling flags like `make build -- --ci`), those targets use Cargo profile `ci` (`target/ci/`: `opt-level=0`, no debuginfo, no incremental — sccache is the cache). Local `make` stays on `dev`. Profiles: `--debug`, `--release`, `--dist`, `--ci` (last flag wins). `PROFILE=dist` / `--dist` is unchanged (`opt-level=3`, thin LTO, `codegen-units=1`).
 
 ## Release
 

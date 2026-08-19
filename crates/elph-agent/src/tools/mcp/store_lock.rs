@@ -33,8 +33,8 @@ fn async_mutex_for(path: &Path) -> Arc<AsyncMutex<()>> {
 
 /// Guard returned by [`lock_auth_store`].
 ///
-/// Holds an in-process async mutex and, when available, an exclusive flock on
-/// the store file itself (never a `.lock` sidecar).
+/// Holds an in-process async mutex and an exclusive flock (data file on Unix,
+/// sibling `.flock` on Windows). Never creates `auth.json.lock`.
 pub struct AuthStoreGuard {
     _guard: tokio::sync::OwnedMutexGuard<()>,
     /// Keep the lock file open for the duration of the guard (lock releases on drop).
@@ -43,7 +43,7 @@ pub struct AuthStoreGuard {
 
 /// Acquire exclusive access to the auth store at `path`.
 ///
-/// Does **not** create `auth.json.lock`. Optionally flocks `path` when present.
+/// Does **not** create `auth.json.lock`. Unix flocks `path`; Windows flocks `path.flock`.
 pub async fn lock_auth_store(path: &Path) -> Result<AuthStoreGuard> {
     // Best-effort cleanup of legacy sidecars from older builds.
     let legacy_lock = {
@@ -130,7 +130,49 @@ fn atomic_write_private_sync(path: &Path, bytes: &[u8]) -> Result<()> {
         let perms = std::fs::Permissions::from_mode(0o600);
         std::fs::set_permissions(&tmp, perms).with_context(|| format!("chmod {}", tmp.display()))?;
     }
-    std::fs::rename(&tmp, path).with_context(|| format!("rename {} → {}", tmp.display(), path.display()))?;
+    replace_file(&tmp, path)
+}
+
+/// Atomically replace `to` with `from`. Unix `rename` replaces; Windows needs `MoveFileExW`.
+fn replace_file(from: &Path, to: &Path) -> Result<()> {
+    #[cfg(windows)]
+    {
+        replace_file_windows(from, to)
+    }
+    #[cfg(not(windows))]
+    {
+        std::fs::rename(from, to).with_context(|| format!("rename {} → {}", from.display(), to.display()))
+    }
+}
+
+#[cfg(windows)]
+fn replace_file_windows(from: &Path, to: &Path) -> Result<()> {
+    use std::os::windows::ffi::OsStrExt;
+
+    const MOVEFILE_REPLACE_EXISTING: u32 = 0x1;
+    const MOVEFILE_WRITE_THROUGH: u32 = 0x8;
+
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn MoveFileExW(from: *const u16, to: *const u16, flags: u32) -> i32;
+    }
+
+    fn wide(path: &Path) -> Vec<u16> {
+        path.as_os_str().encode_wide().chain(std::iter::once(0)).collect()
+    }
+
+    let from_w = wide(from);
+    let to_w = wide(to);
+    let ok = unsafe {
+        MoveFileExW(
+            from_w.as_ptr(),
+            to_w.as_ptr(),
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
+        )
+    };
+    if ok == 0 {
+        anyhow::bail!("replace {} → {} failed", from.display(), to.display());
+    }
     Ok(())
 }
 

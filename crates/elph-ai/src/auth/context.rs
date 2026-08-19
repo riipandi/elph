@@ -26,7 +26,9 @@ impl AuthContext for DefaultAuthContext {
     fn file_exists<'a>(&'a self, path: &'a str) -> BoxFuture<'a, bool> {
         let path = path.to_string();
         Box::pin(async move {
-            let home = env::var_os("HOME").map(std::path::PathBuf::from);
+            let home = env::var_os("HOME")
+                .or_else(|| env::var_os("USERPROFILE"))
+                .map(std::path::PathBuf::from);
             let resolved = if let Some(rest) = path.strip_prefix("~/") {
                 home.map(|h| h.join(rest))
                     .unwrap_or_else(|| Path::new(&path).to_path_buf())

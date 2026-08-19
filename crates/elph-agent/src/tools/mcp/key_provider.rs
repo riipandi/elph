@@ -110,15 +110,15 @@ pub fn load_or_create_master_key_with_prefix(prefix: &str) -> Result<Aes256Key> 
 /// Create a new wrapped master key at `path`, guarded by an exclusive lock.
 ///
 /// If another process wins the lock and creates the file first, we fall back to
-/// reading its file instead of overwriting. Uses a `.lock` sidecar with
-/// `create_new` for atomic lock acquisition across platforms.
+/// reading its file instead of overwriting. Uses a sibling `*.creating` file
+/// (`create_new`) — not `with_extension("lock")`, which is a no-op on `auth.lock`.
 fn create_master_key_locked(path: &Path) -> Result<Aes256Key> {
     // Ensure parent dir exists before locking.
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).with_context(|| format!("create {}", parent.display()))?;
     }
 
-    let lock_sidecar = path.with_extension("lock");
+    let lock_sidecar = creating_lock_path(path);
 
     // Spin briefly to acquire the lock sidecar. The holder creates auth.lock
     // then deletes the sidecar; waiters re-check auth.lock each iteration.
@@ -166,6 +166,12 @@ fn create_master_key_locked(path: &Path) -> Result<Aes256Key> {
          crashed mid-creation. Try deleting {} and restarting.",
         lock_sidecar.display()
     );
+}
+
+fn creating_lock_path(path: &Path) -> PathBuf {
+    let mut s = path.as_os_str().to_os_string();
+    s.push(".creating");
+    PathBuf::from(s)
 }
 
 /// Re-wrap the master key with the current machine fingerprint.
@@ -400,21 +406,21 @@ fn machine_fingerprint_uncached() -> Result<Vec<u8>> {
             }
         }
         // Fallback: DMI product UUID (may need root).
-        if let Some(uuid) = read_command_stdout(&["cat", "/sys/class/dmi/id/product_uuid"], |out| {
-            let trimmed = out.trim();
-            if trimmed.is_empty() || trimmed == "Not Settable" || trimmed == "Not Present" {
-                None
-            } else {
-                Some(trimmed.to_owned())
+        if let Ok(id) = std::fs::read_to_string("/sys/class/dmi/id/product_uuid") {
+            let trimmed = id.trim();
+            if !trimmed.is_empty() && trimmed != "Not Settable" && trimmed != "Not Present" {
+                return Ok(trimmed.as_bytes().to_vec());
             }
-        })? {
-            return Ok(uuid.into_bytes());
         }
     }
 
-    // Windows: MachineGuid (stable, no admin). `wmic` is removed on recent images.
+    // Windows: MachineGuid from the registry (stable, no admin). `wmic` is gone on recent images;
+    // `reg query` stdout can be UTF-16, so prefer RegQueryValueExW.
     #[cfg(target_os = "windows")]
     {
+        if let Some(guid) = windows_machine_guid() {
+            return Ok(guid);
+        }
         if let Some(guid) = read_command_stdout(
             &[
                 "reg",
@@ -453,6 +459,77 @@ fn machine_fingerprint_uncached() -> Result<Vec<u8>> {
 ///
 /// Returns Ok(None) when the command fails or extracts nothing — callers
 /// fall back to the next identifier source.
+#[cfg(windows)]
+fn windows_machine_guid() -> Option<Vec<u8>> {
+    use std::os::windows::ffi::OsStrExt;
+    use std::os::windows::ffi::OsStringExt;
+
+    // Sign-extend LONG 0x80000002 to 64-bit HKEY (ULONG_PTR).
+    const HKEY_LOCAL_MACHINE: *mut core::ffi::c_void = 0x8000_0002u32 as i32 as isize as *mut core::ffi::c_void;
+    const KEY_READ: u32 = 0x20019;
+    const REG_SZ: u32 = 1;
+    const ERROR_SUCCESS: i32 = 0;
+
+    #[link(name = "advapi32")]
+    unsafe extern "system" {
+        fn RegOpenKeyExW(
+            hkey: *mut core::ffi::c_void,
+            sub_key: *const u16,
+            options: u32,
+            sam: u32,
+            result: *mut *mut core::ffi::c_void,
+        ) -> i32;
+        fn RegQueryValueExW(
+            hkey: *mut core::ffi::c_void,
+            value_name: *const u16,
+            reserved: *const u32,
+            ty: *mut u32,
+            data: *mut u8,
+            data_len: *mut u32,
+        ) -> i32;
+        fn RegCloseKey(hkey: *mut core::ffi::c_void) -> i32;
+    }
+
+    fn wide(s: &str) -> Vec<u16> {
+        std::ffi::OsStr::new(s)
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect()
+    }
+
+    let sub = wide(r"SOFTWARE\Microsoft\Cryptography");
+    let name = wide("MachineGuid");
+    let mut hkey = std::ptr::null_mut();
+    let status = unsafe { RegOpenKeyExW(HKEY_LOCAL_MACHINE, sub.as_ptr(), 0, KEY_READ, &mut hkey) };
+    if status != ERROR_SUCCESS || hkey.is_null() {
+        return None;
+    }
+    let mut ty = 0u32;
+    let mut len = 0u32;
+    let query =
+        unsafe { RegQueryValueExW(hkey, name.as_ptr(), std::ptr::null(), &mut ty, std::ptr::null_mut(), &mut len) };
+    if query != ERROR_SUCCESS || ty != REG_SZ || len < 4 {
+        unsafe { RegCloseKey(hkey) };
+        return None;
+    }
+    let mut buf = vec![0u8; len as usize];
+    let query = unsafe { RegQueryValueExW(hkey, name.as_ptr(), std::ptr::null(), &mut ty, buf.as_mut_ptr(), &mut len) };
+    unsafe { RegCloseKey(hkey) };
+    if query != ERROR_SUCCESS {
+        return None;
+    }
+    let u16_len = (len as usize) / 2;
+    let words: Vec<u16> = buf
+        .chunks_exact(2)
+        .take(u16_len)
+        .map(|c| u16::from_le_bytes([c[0], c[1]]))
+        .filter(|w| *w != 0)
+        .collect();
+    let s = std::ffi::OsString::from_wide(&words);
+    let guid = s.to_string_lossy().trim().to_string();
+    if guid.len() < 8 { None } else { Some(guid.into_bytes()) }
+}
+
 fn read_command_stdout(cmd: &[&str], extractor: impl FnOnce(&str) -> Option<String>) -> Result<Option<String>> {
     let output = match std::process::Command::new(cmd[0]).args(&cmd[1..]).output() {
         Ok(o) => o,
@@ -500,6 +577,14 @@ mod tests {
         let encoded = URL_SAFE_NO_PAD.encode(key.as_bytes());
         let decoded = key_from_b64(&encoded).unwrap();
         assert_eq!(decoded.as_bytes(), key.as_bytes());
+    }
+
+    #[test]
+    fn creating_lock_path_is_not_auth_lock() {
+        let path = PathBuf::from("/data/elph/auth.lock");
+        let sidecar = creating_lock_path(&path);
+        assert_ne!(sidecar, path);
+        assert!(sidecar.to_string_lossy().ends_with(".creating"));
     }
 
     #[test]

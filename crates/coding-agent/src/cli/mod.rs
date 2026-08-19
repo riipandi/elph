@@ -215,7 +215,9 @@ fn fallback_logs_dir() -> Option<std::path::PathBuf> {
     if let Some(xdg) = std::env::var_os("XDG_DATA_HOME") {
         return Some(PathBuf::from(xdg).join("elph").join("logs"));
     }
-    std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".local/share/elph/logs"))
+    std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(|home| PathBuf::from(home).join(".local/share/elph/logs"))
 }
 
 pub fn run(cli: &Cli) -> ExitCode {

@@ -96,7 +96,10 @@ fn env_path(name: &str) -> Option<PathBuf> {
 }
 
 fn user_home() -> Result<PathBuf> {
-    std::env::var_os("HOME").map(PathBuf::from).context("HOME is not set")
+    std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(PathBuf::from)
+        .context("HOME / USERPROFILE is not set")
 }
 #[cfg(test)]
 mod tests {
