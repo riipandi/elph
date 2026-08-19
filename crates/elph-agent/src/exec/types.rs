@@ -68,9 +68,15 @@ impl ShellConfig {
         self
     }
 
-    #[cfg(unix)]
     pub fn with_prefer_pty(mut self, prefer_pty: bool) -> Self {
-        self.prefer_pty = prefer_pty;
+        #[cfg(unix)]
+        {
+            self.prefer_pty = prefer_pty;
+        }
+        #[cfg(not(unix))]
+        {
+            let _ = prefer_pty;
+        }
         self
     }
 }

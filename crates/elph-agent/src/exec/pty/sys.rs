@@ -11,29 +11,7 @@ use rustix::termios::{Winsize, tcsetwinsize};
 
 use super::super::error::{ExecError, ExecErrorCode, Result};
 
-/// Terminal dimensions for a newly allocated PTY.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct PtySize {
-    pub rows: u16,
-    pub cols: u16,
-}
-
-impl PtySize {
-    pub const fn new(rows: u16, cols: u16) -> Self {
-        Self { rows, cols }
-    }
-}
-
-impl From<PtySize> for Winsize {
-    fn from(size: PtySize) -> Self {
-        Winsize {
-            ws_row: size.rows,
-            ws_col: size.cols,
-            ws_xpixel: 0,
-            ws_ypixel: 0,
-        }
-    }
-}
+use super::PtySize;
 
 /// Master end of a pseudo-terminal pair.
 pub struct PtyMaster(OwnedFd);
