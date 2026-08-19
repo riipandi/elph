@@ -76,8 +76,8 @@ pub fn pack_ranked_context(ranked: &[RankedMemory], budget: usize) -> PackedCont
     let mut map: Vec<String> = Vec::new();
     let mut injected_ids = Vec::new();
 
-    // Fixed section chrome cost (approximate, refined after assembly).
-    let chrome = 180usize;
+    // Tags + headings + the mid-turn memory footer on `<memory_context>`.
+    let chrome = 420usize;
     let mut used = chrome;
 
     for r in ordered {
@@ -111,44 +111,24 @@ pub fn pack_ranked_context(ranked: &[RankedMemory], budget: usize) -> PackedCont
         }
     }
 
-    let mut parts: Vec<String> = Vec::new();
-    let mut sections = PackedSections::default();
-
-    if !lessons.is_empty() {
-        sections.lessons = lessons.len();
-        let mut block = String::from("<memory_context>\n");
-        block.push_str("Lessons and preferences (ranked for this turn):\n");
-        block.push_str(&lessons.join("\n"));
-        block.push_str(
-            "\nThis block is turn-start seed only. Call `memory_search` / `memory_recent` mid-turn if the task pivots or this is insufficient; `memory_contradict` if wrong; `memory_report` as soon as a durable lesson appears.\n</memory_context>",
-        );
-        parts.push(block);
+    // Drop lowest-priority (last packed) lines if chrome estimate was short.
+    while assemble_blocks(&lessons, &work, &map).chars().count() > budget && lessons.len() + work.len() + map.len() > 1
+    {
+        if !map.is_empty() {
+            map.pop();
+        } else if !work.is_empty() {
+            work.pop();
+        } else {
+            lessons.pop();
+        }
+        injected_ids.pop();
     }
 
-    if !work.is_empty() {
-        sections.recent_work = work.len();
-        let mut block = String::from("<recent_work>\n");
-        block.push_str("Recent work and change footprints (do not redo completed items):\n");
-        block.push_str(&work.join("\n"));
-        block.push_str("\n</recent_work>");
-        parts.push(block);
-    }
-
-    if !map.is_empty() {
-        sections.project_map = map.len();
-        let mut block = String::from("<project_map>\n");
-        block.push_str("Known project layout (prefer over re-running broad list_dir unless stale):\n");
-        block.push_str(&map.join("\n"));
-        block.push_str("\n</project_map>");
-        parts.push(block);
-    }
-
-    let text = parts.join("\n\n");
-    // Hard clamp if chrome estimation drifted.
-    let text = if text.chars().count() > budget {
-        truncate_chars(&text, budget)
-    } else {
-        text
+    let text = assemble_blocks(&lessons, &work, &map);
+    let sections = PackedSections {
+        lessons: lessons.len(),
+        recent_work: work.len(),
+        project_map: map.len(),
     };
 
     PackedContext {
@@ -156,6 +136,34 @@ pub fn pack_ranked_context(ranked: &[RankedMemory], budget: usize) -> PackedCont
         injected_ids,
         sections,
     }
+}
+
+const MEMORY_CONTEXT_FOOTER: &str = "\nThis block is turn-start seed only. Call `memory_search` / `memory_recent` mid-turn if the task pivots or this is insufficient; `memory_contradict` if wrong; `memory_report` as soon as a durable lesson appears.\n</memory_context>";
+
+fn assemble_blocks(lessons: &[String], work: &[String], map: &[String]) -> String {
+    let mut parts: Vec<String> = Vec::new();
+    if !lessons.is_empty() {
+        let mut block = String::from("<memory_context>\n");
+        block.push_str("Lessons and preferences (ranked for this turn):\n");
+        block.push_str(&lessons.join("\n"));
+        block.push_str(MEMORY_CONTEXT_FOOTER);
+        parts.push(block);
+    }
+    if !work.is_empty() {
+        let mut block = String::from("<recent_work>\n");
+        block.push_str("Recent work and change footprints (do not redo completed items):\n");
+        block.push_str(&work.join("\n"));
+        block.push_str("\n</recent_work>");
+        parts.push(block);
+    }
+    if !map.is_empty() {
+        let mut block = String::from("<project_map>\n");
+        block.push_str("Known project layout (prefer over re-running broad list_dir unless stale):\n");
+        block.push_str(&map.join("\n"));
+        block.push_str("\n</project_map>");
+        parts.push(block);
+    }
+    parts.join("\n\n")
 }
 
 #[cfg(test)]
