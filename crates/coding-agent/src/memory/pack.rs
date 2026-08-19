@@ -120,7 +120,7 @@ pub fn pack_ranked_context(ranked: &[RankedMemory], budget: usize) -> PackedCont
         block.push_str("Lessons and preferences (ranked for this turn):\n");
         block.push_str(&lessons.join("\n"));
         block.push_str(
-            "\nUse `memory_search` / `memory_recent` for more; `memory_contradict` if wrong.\n</memory_context>",
+            "\nThis block is turn-start seed only. Call `memory_search` / `memory_recent` mid-turn if the task pivots or this is insufficient; `memory_contradict` if wrong; `memory_report` as soon as a durable lesson appears.\n</memory_context>",
         );
         parts.push(block);
     }

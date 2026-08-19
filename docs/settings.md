@@ -61,6 +61,18 @@ Schema: `schemas/elph-schema.json`, `schemas/mcp-schema.json`, `schemas/auth-sch
 
 `notifications.onStartupReady` in a **project** `.elph/settings.json` overrides home. Restart or `/reload` after edits.
 
+## Memory (agent)
+
+When `memory.enabled` is true, the harness injects ranked recall at **turn start** (`<memory_context>`, `<recent_work>`, `<project_map>`) and journals successful edits / tool errors at **turn end**. That injection is a seed.
+
+The coding prompt also tells the model to call tools **mid-turn**:
+
+- `memory_search` / `memory_recent` when the task pivots or injected blocks are empty/weak
+- `memory_report` as soon as a user preference, durable insight, or failed-then-fixed approach appears (do not wait for turn end)
+- `memory_contradict` when a recalled item is wrong
+
+Routine file edits stay auto-journaled as `work`; the model must not re-report them.
+
 ## Logging
 
 `logging` is applied at process start (restart after edits). Merge: defaults ← `settings.json` `logging` ← `ELPH_LOG_*` / `ELPH_TRACE` (env wins).

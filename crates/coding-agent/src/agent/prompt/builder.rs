@@ -361,6 +361,43 @@ mod tests {
     }
 
     #[test]
+    fn coding_prompt_documents_mid_turn_memory() {
+        let with_memory = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &[
+                "read_file",
+                "memory_search",
+                "memory_recent",
+                "memory_report",
+                "memory_contradict",
+                "memory_start_task",
+            ]
+            .map(String::from),
+            None,
+            &CodingPromptOptions::new(AgentMode::Build),
+        )
+        .expect("prompt");
+
+        assert!(with_memory.contains("## Memory"));
+        assert!(with_memory.contains("<tool_group name=\"memory\">"));
+        assert!(with_memory.contains("<tool name=\"memory_search\""));
+        assert!(with_memory.contains("search and write **during** the turn"));
+        assert!(with_memory.contains("do not wait for turn end"));
+
+        let without_memory = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["read_file".into()],
+            None,
+            &CodingPromptOptions::new(AgentMode::Build),
+        )
+        .expect("prompt");
+        assert!(!without_memory.contains("<tool_group name=\"memory\">"));
+        assert!(!without_memory.contains("## Memory"));
+    }
+
+    #[test]
     fn tool_calling_rules_have_clean_spacing() {
         let prompt = build_coding_system_prompt(
             Path::new("/tmp/project"),

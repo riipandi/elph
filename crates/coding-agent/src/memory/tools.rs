@@ -33,10 +33,11 @@ fn create_start_task_tool(runtime: Arc<MemoryRuntime>) -> AgentTool {
         Tool {
             name: "memory_start_task".into(),
             constrained_sampling: None,
-            description: "Retrieve memories for a *new* subtask description via vector search. \
-                          Automatic per-turn recall already ran for the user message — call this \
-                          only when pivoting to a substantially different subtask. Prefer \
-                          `memory_search` / `memory_recent` for historical questions."
+            description: "Start a distinct subtask and retrieve memories for that description. \
+                          Turn-start auto-recall covers the original user message. Call this \
+                          mid-turn when the work pivots to a substantially different subtask. \
+                          For extra recall without a new task, prefer `memory_search` / \
+                          `memory_recent`."
                 .into(),
             parameters: json!({
                 "type": "object",
@@ -256,9 +257,10 @@ fn create_report_tool(runtime: Arc<MemoryRuntime>) -> AgentTool {
         Tool {
             name: "memory_report".into(),
             constrained_sampling: None,
-            description: "Store a durable correction, user preference, or insight into persistent \
-                          memory. Use for lessons auto-capture would miss (architectural decisions, \
-                          style preferences). Successful file edits are auto-journaled as work \
+            description: "Store a durable correction, user preference, or insight now — do not \
+                          wait for turn end. Use when auto-capture would miss the lesson \
+                          (architectural decisions, user constraints, failed-then-fixed approaches, \
+                          how a subsystem works). Successful file edits are auto-journaled as work \
                           memories — do not re-report routine edits."
                 .into(),
             parameters: json!({
@@ -476,8 +478,9 @@ fn create_search_tool(runtime: Arc<MemoryRuntime>) -> AgentTool {
             name: "memory_search".into(),
             constrained_sampling: None,
             description: "Semantic search across persistent memories without creating a task. \
-                          Prefer this over re-scanning the filesystem for historical decisions, \
-                          past work, or known layout lessons."
+                          Call mid-turn when injected recall is insufficient, the task pivots, \
+                          or you need a past decision/layout lesson. Prefer this over re-scanning \
+                          the filesystem for historical facts."
                 .into(),
             parameters: json!({
                 "type": "object",
@@ -543,8 +546,8 @@ fn create_recent_tool(runtime: Arc<MemoryRuntime>) -> AgentTool {
         Tool {
             name: "memory_recent".into(),
             constrained_sampling: None,
-            description: "List the most recent memories (optionally by category). Use for \
-                          \"what did we just change\" without semantic search. Category \
+            description: "List the most recent memories (optionally by category). Call mid-turn \
+                          for \"what did we just change\" without semantic search. Category \
                           `work` holds auto-captured edit footprints."
                 .into(),
             parameters: json!({

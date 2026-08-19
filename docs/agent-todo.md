@@ -74,13 +74,13 @@ never trigger auto-close. Closed items emit `TodoUpdated` like a normal
 
 System prompt (`coding_base.txt` → `<operating_loop>`) biases to **See → Do → Check**, not ceremony:
 
-1. **See** — conversation + already-injected memory/tool results
-2. **Do** — smallest tool set that advances the request
+1. **See** — conversation + already-injected memory/tool results; extra `memory_search` / `memory_recent` when the task pivots or injection is thin
+2. **Do** — smallest tool set that advances the request; `memory_report` as soon as a durable preference, insight, or correction appears
 3. **Check** — validation that covers your change only
 
 **Todos are rare, not ritual:** use `todo_write` only for true multi-step work (~4+ independent steps). Most tasks need zero todos. At most one `in_progress`; prefer status merges.
 
-**Anti-overthinking:** no long pre-read tours, no speculative parallel searches, no memory/tool rituals before every edit, no recaps of tool output.
+**Anti-overthinking:** no long pre-read tours, no speculative parallel searches, no memory ritual before every routine edit (auto-journal covers those), no recaps of tool output.
 
 ## Persistence
 

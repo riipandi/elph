@@ -692,7 +692,9 @@ impl MemoryRuntime {
         log::debug!("memory.recall.start phase=bootstrap mode=turn_only_hint");
         Ok(
             "<memory_context>\nMemory auto-recall is active: relevant lessons, recent work, and \
-             project map are injected each turn. Prefer those blocks over re-scanning known areas.\n\
+             project map are injected each turn as a seed. Prefer those blocks over re-scanning \
+             known areas. Mid-turn: `memory_search` / `memory_recent` on pivots; `memory_report` \
+             as soon as a durable preference, insight, or correction appears.\n\
              </memory_context>"
                 .to_string(),
         )
