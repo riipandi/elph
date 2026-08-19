@@ -64,8 +64,13 @@ jobs:
         include:
           - name: linux
             runner: namespace-profile-linux-base-amd64
+            cacheBackend: namespace
           - name: macos
             runner: namespace-profile-macos-base-arm64
+            cacheBackend: namespace
+          - name: windows
+            runner: windows-latest
+            cacheBackend: rust-cache
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     steps:
@@ -75,35 +80,42 @@ jobs:
         uses: ./.github/setup-rust
         with:
           sharedKey: ${{ inputs.sharedKeyPrefix || 'ci' }}-${{ inputs.app || 'elph' }}-${{ matrix.name }}
-          cacheBackend: namespace
+          cacheBackend: ${{ matrix.cacheBackend }}
           saveCache: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Check format
+        shell: bash
         run: cargo fmt --all --check
 
       - name: Check compile
+        shell: bash
         run: make check
 
       - name: Lint
+        shell: bash
         run: make lint
 
       - name: Lint (elph-agent full features)
         if: (inputs.app || 'elph') == 'elph'
+        shell: bash
         run: make lint -- -p elph-agent --features full
 
       - name: Test
         if: (inputs.mode || 'full') == 'full'
+        shell: bash
         run: make test
 
       - name: Test (elph-agent full features)
         if: (inputs.mode || 'full') == 'full' && (inputs.app || 'elph') == 'elph'
+        shell: bash
         run: make test -- -p elph-agent --features full
 
       - name: Build debug
         if: (inputs.mode || 'full') == 'full'
+        shell: bash
         run: make build
         env:
-          RUSTC_WRAPPER: sccache
+          RUSTC_WRAPPER: ${{ matrix.name != 'windows' && 'sccache' || '' }}
 
       - name: Show sccache stats
         if: always()
