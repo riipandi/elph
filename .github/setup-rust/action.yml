@@ -79,6 +79,7 @@ runs:
         cache: rust
 
     - name: Configure sccache
+      if: inputs.cacheBackend == 'namespace'
       shell: bash
       run: |
         set -euo pipefail
@@ -90,5 +91,5 @@ runs:
           echo "CARGO_TERM_COLOR=always"
           echo "CARGO_INCREMENTAL=0"
           echo "SCCACHE_DIRECT=true"
-          echo "SCCACHE_MAXSIZE=20G"
+          echo "SCCACHE_MAXSIZE=50GB"
         } >> "$GITHUB_ENV"

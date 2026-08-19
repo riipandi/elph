@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # ---------------------------------------------------------------------------
-# Elph -- Install script
+# Elph -- Install script (Linux / macOS)
+#
+# Windows users must use the PowerShell installer instead:
+#   powershell -ExecutionPolicy Bypass -c "irm https://elph.space/install.ps1 | iex"
 #
 # Usage:
 #   curl -fsSL https://elph.space/install.sh | bash
@@ -25,11 +28,14 @@ INSTALL_REPO_NAME="elph"
 
 show_install_help() {
     cat <<'EOF'
-Elph -- Install script
+Elph -- Install script (Linux / macOS)
 
 Usage:
   curl -fsSL https://elph.space/install.sh | bash
   curl -fsSL https://elph.space/install.sh | bash -s -- --canary
+
+Windows users: use the PowerShell installer instead --
+  powershell -ExecutionPolicy Bypass -c "irm https://elph.space/install.ps1 | iex"
 
 Options:
   --version <tag>      Pin a specific version (default: latest v* release)
@@ -248,6 +254,13 @@ install_run() {
     install_parse_args "$@"
     install_require_tools
 
+    case "$(uname -s)" in
+    MINGW* | MSYS* | CYGWIN*)
+        install_die "Windows is not supported by install.sh. Use the PowerShell installer instead:
+  powershell -ExecutionPolicy Bypass -c \"irm https://elph.space/install.ps1 | iex\""
+        ;;
+    esac
+
     local platform arch release_arch archive_name archive_url checksum_url version_tag version_num
     platform="$(install_detect_platform)"
     arch="$(install_detect_arch)"
@@ -338,7 +351,7 @@ install_run() {
 
     echo
     install_step "Run '${INSTALL_APP} --help' to get started."
-    install_step "Visit https://elph.space/${INSTALL_APP} or https://github.com/${INSTALL_REPO_OWNER}/${INSTALL_REPO_NAME} for docs."
+    install_step "Visit https://github.com/${INSTALL_REPO_OWNER}/${INSTALL_REPO_NAME} for docs."
     echo
 }
 

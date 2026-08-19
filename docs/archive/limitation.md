@@ -4,7 +4,7 @@ Known release and platform constraints.
 
 ## Release archives (`make release`)
 
-Linux builds are glibc only; musl/Alpine is not published yet. Windows is deferred.
+Linux builds are glibc only; musl/Alpine is not published yet. Windows builds run on GitHub-hosted runners (no Namespace Windows runner yet).
 
 | Archive                  | Target                      | For                             |
 | ------------------------ | --------------------------- | ------------------------------- |
@@ -12,7 +12,7 @@ Linux builds are glibc only; musl/Alpine is not published yet. Windows is deferr
 | `*-linux-aarch64.tar.gz` | `aarch64-unknown-linux-gnu` | Pi 3/4/5 64-bit OS, ARM64 glibc |
 | `*-macos-arm64.tar.gz`   | `aarch64-apple-darwin`      | macOS on Apple Silicon          |
 | `*-macos-x86_64.tar.gz`  | `x86_64-apple-darwin`       | macOS on Intel                  |
-| `*-win-*.zip`            | `*-pc-windows-*`            | Windows (deferred)              |
+| `*-windows-x86_64.zip`   | `x86_64-pc-windows-msvc`    | Windows x86_64 (GitHub-hosted runner) |
 
 ## Not supported
 

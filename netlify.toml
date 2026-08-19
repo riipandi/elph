@@ -10,7 +10,8 @@ command = """\
   cd website && pnpm install --frozen-lockfile && \
   NODE_ENV=production pnpm run build && cd .. && \
   cp ./schemas/*.json ./website/dist/ && \
-  cp ./scripts/install.sh ./website/dist/
+  cp ./scripts/install.sh ./website/dist/ && \
+  cp ./scripts/install.ps1 ./website/dist/
   """
 
 [[redirects]]

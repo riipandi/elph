@@ -13,13 +13,21 @@ See [GitHub Releases](https://github.com/riipandi/elph/releases).
 
 ### Installation
 
-**Pre-built binaries** (Linux and macOS, x86_64 and arm64):
+**Pre-built binaries** (Linux, macOS, and Windows — x86_64 and arm64):
 
-```sh
-curl -fsSL https://elph.space/install.sh | bash
-```
+- Linux / macOS:
 
-Pin a version or install the latest pre-release:
+  ```sh
+  curl -fsSL https://elph.space/install.sh | bash
+  ```
+
+- Windows (x86_64):
+
+  ```powershell
+  powershell -ExecutionPolicy Bypass -c "irm https://elph.space/install.ps1 | iex"
+  ```
+
+Pin a version or install the latest pre-release (Linux / macOS):
 
 ```sh
 curl -fsSL https://elph.space/install.sh | bash -s -- --version 0.0.26

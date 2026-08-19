@@ -204,9 +204,9 @@ jobs:
   build-windows:
     name: windows
     needs: [version-gate, quality-gate]
-    # Deferred: Windows builds are deferred (focus on macOS + Linux). Re-enable later.
-    if: false
-    runs-on: namespace-profile-windows-base-amd64
+    if: needs.version-gate.outputs.should_continue == 'true'
+    # Namespace has no Windows runner yet; use a GitHub-hosted runner.
+    runs-on: windows-latest
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
@@ -222,7 +222,7 @@ jobs:
         uses: ./.github/setup-rust
         with:
           sharedKey: release-windows
-          cacheBackend: namespace
+          cacheBackend: rust-cache
           installNextest: "false"
 
       - name: Build release
@@ -230,17 +230,15 @@ jobs:
         run: cargo build --profile ${{ env.BUILD_PROFILE }} --bin ${{ inputs.app || 'elph' }}
         env:
           APP: ${{ inputs.app || 'elph' }}
-          RUSTC_WRAPPER: sccache
 
       - name: Package
-        shell: bash
+        shell: pwsh
         run: |
-          set -euo pipefail
-          app="${{ inputs.app || 'elph' }}"
-          label="${app}-win-x86_64"
-          mkdir -p release/archives release/binaries
-          cp "target/${{ env.BUILD_PROFILE }}/${app}.exe" "release/binaries/${label}.exe"
-          cd "target/${{ env.BUILD_PROFILE }}" && zip -q -j "${{ github.workspace }}/release/archives/${label}.zip" "${app}.exe"
+          $app = "${{ inputs.app || 'elph' }}"
+          $label = "$app-windows-x86_64"
+          New-Item -ItemType Directory -Force -Path release/archives, release/binaries | Out-Null
+          Copy-Item "target/${{ env.BUILD_PROFILE }}/$app.exe" "release/binaries/$label.exe"
+          Compress-Archive -Force -Path "target/${{ env.BUILD_PROFILE }}/$app.exe" -DestinationPath "release/archives/$label.zip"
 
       - name: Show sccache stats
         if: always()
@@ -257,7 +255,7 @@ jobs:
 
   publish:
     name: publish
-    needs: [version-gate, build-linux, build-macos]
+    needs: [version-gate, build-linux, build-macos, build-windows]
     if: needs.version-gate.outputs.should_continue == 'true'
     runs-on: ubuntu-slim
     timeout-minutes: 15
@@ -282,6 +280,12 @@ jobs:
           name: ${{ inputs.app || 'elph' }}-macos
           path: .
 
+      - name: Fetch windows
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.app || 'elph' }}-windows
+          path: .
+
       - name: Log version
         shell: bash
         run: |
@@ -295,11 +299,12 @@ jobs:
           app="${{ inputs.app || 'elph' }}"
           mkdir -p "release/archives"
           # download-artifact may extract archives flat into release/archives or
-          # nest them under the artifact name; gather every elph-*.tar.gz regardless.
+          # nest them under the artifact name; gather every elph-*.tar.gz / elph-*.zip
+          # regardless of where it lands.
           shopt -s nullglob
-          readarray -t archives < <(find . -path ./target -prune -o -path ./.git -prune -o -type f -name "${app}-*.tar.gz" -print)
+          readarray -t archives < <(find . -path ./target -prune -o -path ./.git -prune -o -type f \( -name "${app}-*.tar.gz" -o -name "${app}-*.zip" \) -print)
           if [ "${#archives[@]}" -eq 0 ]; then
-            echo "::error::No ${app}-*.tar.gz artifacts found after download" >&2
+            echo "::error::No ${app}-*.tar.gz / ${app}-*.zip artifacts found after download" >&2
             exit 1
           fi
           for f in "${archives[@]}"; do
@@ -315,9 +320,9 @@ jobs:
           app="${{ inputs.app || 'elph' }}"
           shopt -s nullglob
           cd release/archives
-          files=( "${app}"-*.tar.gz )
+          files=( "${app}"-*.tar.gz "${app}"-*.zip )
           if [ "${#files[@]}" -eq 0 ]; then
-            echo "::error::No ${app}-*.tar.gz found in release/archives" >&2
+            echo "::error::No ${app}-*.tar.gz / ${app}-*.zip found in release/archives" >&2
             exit 1
           fi
           if command -v sha256sum >/dev/null 2>&1; then

@@ -1,20 +1,14 @@
 # CI / CD
 
-GitHub Actions run on [Namespace](https://namespace.so/docs/solutions/github-actions) runners. Compiler artifacts go through [sccache](https://github.com/mozilla/sccache) against a Cloudflare R2 bucket (S3-compatible). Cargo registry and `target/` live on a Namespace cache volume (`namespacelabs/nscloud-cache-action`).
+GitHub Actions run on [Namespace](https://namespace.so/docs/solutions/github-actions) runners. Compiler artifacts go through [sccache](https://github.com/mozilla/sccache) backed by a Namespace cache (`nsc cache sccache setup`). Cargo registry and `target/` live on a Namespace cache volume (`namespacelabs/nscloud-cache-action`). Windows release builds run on GitHub-hosted `windows-latest` (Namespace has no Windows runner yet).
 
-### sccache / R2
+### sccache / Namespace
 
-Set these on the GitHub repository (Settings → Secrets and variables → Actions). They match the local `AWS_PROFILE=r2-sccache` bucket.
-
-| Kind     | Name                           | Value                                          |
-| -------- | ------------------------------ | ---------------------------------------------- |
-| Secret   | `SCCACHE_R2_ACCESS_KEY_ID`     | R2 API token access key                        |
-| Secret   | `SCCACHE_R2_SECRET_ACCESS_KEY` | R2 API token secret                            |
-| Variable | `SCCACHE_R2_BUCKET`            | Bucket name                                    |
-| Variable | `SCCACHE_R2_ENDPOINT`          | `https://<accountid>.r2.cloudflarestorage.com` |
-| Variable | `SCCACHE_R2_REGION`            | Optional; defaults to `auto`                   |
-
-CI maps those to `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `SCCACHE_BUCKET`, `SCCACHE_ENDPOINT`, and `SCCACHE_REGION`. Also set: `SCCACHE_S3_USE_SSL=true`, `SCCACHE_DIRECT=true`, `SCCACHE_MAXSIZE=20G`. If `SCCACHE_R2_BUCKET` is empty, sccache still wraps rustc but has no remote cache.
+`setup-rust` provisions sccache credentials automatically on Namespace runners via
+`nsc cache sccache setup --cache_name default` (WebDAV backend). No R2 secrets or
+repository variables are required. The composite sets `RUSTC_WRAPPER=sccache`,
+`SCCACHE_DIRECT=true`, and `SCCACHE_MAXSIZE=20G`. Windows builds use `cacheBackend: rust-cache`
+(GitHub Actions cache) and do not invoke sccache.
 
 Create these runner profiles in the [Namespace dashboard](https://cloud.namespace.so/workspace/actions/profiles) and enable a cache volume on each:
 
@@ -22,7 +16,7 @@ Create these runner profiles in the [Namespace dashboard](https://cloud.namespac
 | -------------------------------------- | ------------- | ------------ |
 | `namespace-profile-linux-base-amd64`   | Linux AMD64   | CI + release |
 | `namespace-profile-macos-base-arm64`   | macOS ARM64   | CI + release |
-| `namespace-profile-windows-base-amd64` | Windows AMD64 | Release only |
+| `windows-latest` (GitHub-hosted)       | Windows AMD64 | Release only |
 
 Connect the GitHub org to Namespace before the first run. Lightweight jobs (version gate, publish, sync) stay on GitHub `ubuntu-slim`.
 
@@ -49,8 +43,8 @@ Trigger: push a tag matching `v*.*.*` (release, e.g. `v0.1.0`) or `v*.*.*-canary
 
 The channel is derived from the tag suffix:
 
-- `v*.*.*` → **release** channel, built with the `dist` profile; published as a stable GitHub Release.
-- `v*.*.*-canary` → **canary** channel, built with the `release` profile; published as a GitHub **prerelease**.
+- `v*.*.*` → **release** channel, built with the `dist` profile; published as a GitHub **pre-release** (never marked Latest).
+- `v*.*.*-canary` → **canary** channel, built with the `release` profile; published as a GitHub **pre-release**.
 
 Sequence:
 
@@ -58,7 +52,7 @@ Sequence:
 2. Version gate (`.github/version-gate` → `scripts/ci-check-release-version.sh`) — tag version must be newer than the latest GitHub release *of the same channel* and at least the version in `crates/coding-agent/Cargo.toml`.
 3. Quality gate — fmt, check, lint only (no test, no debug build).
 4. Binaries on Linux, macOS, and Windows — each built with `cargo build --profile dist` (release) or `--profile release` (canary), via the `BUILD_PROFILE` env derived from the tag.
-5. GitHub Release (or prerelease for canary) with archives and `SHA256SUMS`.
+5. GitHub pre-release (every tag) with archives and `SHA256SUMS`.
 6. Sync `crates/coding-agent/Cargo.toml` on `main` if the tag version is ahead — **release channel only**; canary tags do not advance `main`.
 
 App name `elph` maps to `crates/coding-agent/Cargo.toml` via `scripts/ci-app-manifest.sh`.
