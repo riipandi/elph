@@ -12,6 +12,7 @@ rustflags = ["-C", "target-cpu=native"]
 rustflags = ["-Clink-arg=--ld-path=/usr/bin/ld"]
 
 [target.'cfg(target_os = "linux")']
+linker = "clang"
 rustflags = ["-Clink-arg=--ld-path=wild"]
 
 # Link the C runtime statically on Windows. The alternative is shipping
