@@ -5,6 +5,7 @@ use std::sync::atomic::AtomicBool;
 
 #[cfg(unix)]
 use libc::SIGTERM;
+#[cfg(unix)]
 use libc::{getppid, kill};
 
 pub static WAS_INTERRUPTED: AtomicBool = AtomicBool::new(false);

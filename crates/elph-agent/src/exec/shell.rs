@@ -236,6 +236,7 @@ async fn exec_pty(request: &PtyExecRequest<'_>) -> Result<ShellExecResult> {
     }
 }
 
+#[cfg(unix)]
 async fn kill_outcome(
     child: &mut tokio::process::Child,
     _captured: &mut String,

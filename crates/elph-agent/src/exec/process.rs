@@ -4,7 +4,7 @@
 //! wrapper). Commands with grandchildren (`npm test`, `cargo build`, scripts
 //! that spawn children) keep those alive — and because they still hold the
 //! stdout/stderr pipes or PTY master, every `.await` on the child/wait/read
-//! hangs until they exit. Abort and timeout therefore appeared to “freeze”.
+//! hangs until they exit. Abort and timeout therefore appeared to "freeze".
 //!
 //! These helpers kill the whole process group (graceful SIGTERM first, then
 //! SIGKILL) like a terminal Ctrl+C would, using `rustix` (already a
@@ -15,9 +15,11 @@ use std::time::Duration;
 use tokio::time;
 
 /// How long to wait after SIGTERM before escalating to SIGKILL.
+#[cfg(unix)]
 const TERM_GRACE: Duration = Duration::from_millis(1500);
 
 /// How long to wait after SIGTERM when the user explicitly asked to abort.
+#[cfg(unix)]
 const ABORT_GRACE: Duration = Duration::from_millis(100);
 
 /// Best-effort termination of the whole process group of `child`.

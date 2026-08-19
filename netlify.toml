@@ -15,8 +15,8 @@ command = """\
   """
 
 [[redirects]]
-from = "/install"
-to = "/install.sh"
+from = "/docs"
+to = "/docs/start/overview"
 status = 200
 force = true
 
