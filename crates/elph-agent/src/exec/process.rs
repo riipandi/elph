@@ -54,7 +54,6 @@ pub(crate) async fn terminate_child_tree(child: &mut tokio::process::Child, _for
 ///
 /// Returns `Some(status)` if the child was reaped within `timeout`, else `None`
 /// (the caller should still return/treat as stopped).
-#[cfg(unix)]
 pub(crate) async fn reap_bounded(
     child: &mut tokio::process::Child,
     timeout: Duration,

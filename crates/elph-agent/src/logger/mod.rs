@@ -69,31 +69,29 @@ pub fn logs_dir() -> Option<PathBuf> {
 ///
 /// Safe to call from multiple subsystems; the first call wins and subsequent
 /// calls are no-ops (fd 2 is process-global).
+#[cfg(unix)]
 pub fn redirect_stderr_to_file() {
-    #[cfg(unix)]
-    {
-        use std::fs::OpenOptions;
-        use std::os::unix::io::AsRawFd;
+    use std::fs::OpenOptions;
+    use std::os::unix::io::AsRawFd;
 
-        static REDIRECTED: OnceLock<std::fs::File> = OnceLock::new();
-        if REDIRECTED.get().is_some() {
-            return;
-        }
+    static REDIRECTED: OnceLock<std::fs::File> = OnceLock::new();
+    if REDIRECTED.get().is_some() {
+        return;
+    }
 
-        let dir = logs_dir().unwrap_or_else(default_logs_dir);
-        if std::fs::create_dir_all(&dir).is_err() {
-            return;
+    let dir = logs_dir().unwrap_or_else(default_logs_dir);
+    if std::fs::create_dir_all(&dir).is_err() {
+        return;
+    }
+    let path = dir.join("mcp.log");
+    if let Ok(file) = OpenOptions::new().create(true).append(true).open(&path) {
+        unsafe extern "C" {
+            fn dup2(oldfd: std::os::raw::c_int, newfd: std::os::raw::c_int) -> std::os::raw::c_int;
         }
-        let path = dir.join("mcp.log");
-        if let Ok(file) = OpenOptions::new().create(true).append(true).open(&path) {
-            unsafe extern "C" {
-                fn dup2(oldfd: std::os::raw::c_int, newfd: std::os::raw::c_int) -> std::os::raw::c_int;
-            }
-            unsafe {
-                dup2(file.as_raw_fd(), 2);
-            }
-            let _ = REDIRECTED.set(file);
+        unsafe {
+            dup2(file.as_raw_fd(), 2);
         }
+        let _ = REDIRECTED.set(file);
     }
 }
 

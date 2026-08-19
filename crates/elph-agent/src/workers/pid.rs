@@ -1,5 +1,6 @@
 //! Best-effort process-liveness checks for lease / worker reclaim.
 
+#[cfg(unix)]
 use std::path::Path;
 
 /// Returns true when `pid` appears to still be running on this machine.
