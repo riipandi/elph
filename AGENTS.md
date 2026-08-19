@@ -1,119 +1,79 @@
-# Agent Instructions
+# AGENTS.md
 
-## Documentation Updates
+## Docs (`docs/`)
 
-After completing a task that introduces a **significant change** — new feature, bug fix that alters behavior/contract, breaking change, new config/env var, new public API, or architectural change — update the relevant docs in `docs/` **before** considering the task done.
+Update **before** marking task done when change is significant: new/changed public API, CLI cmd, config/env var, behavior a caller notices, error-contract change, new dependency, new/changed module interaction.
 
-### What counts as "significant"
+Skip for: pure internal refactor, lint/format, test-only, typos, dep bumps w/o API impact.
 
-- New or removed public API, endpoint, CLI command, or config option.
-- Behavior change a consumer/caller would notice (not pure internal refactor).
-- Bug fix that changes documented behavior, edge-case handling, or error contract.
-- New external dependency, service, vendored patch, or integration.
-- New module/subsystem, or a change to how existing ones interact.
+- Search `docs/` by feature/module name first — don't assume no doc exists.
+- Found -> edit in place, touch only affected sections, keep tone/structure.
+- Not found + warrants one -> create new doc, match folder's naming convention.
+- Docs must reflect **current code**, not planned/old behavior — verify against the diff, not memory.
+- Fix any now-stale statements in the same doc; remove refs to removed/renamed APIs.
+- Ambiguous significance -> `ask_user_question`; if unavailable, state assumption + proceed.
+- Scope = only what changed. Match existing Markdown conventions in that folder.
 
-Not significant (skip docs update): internal refactor with no behavior change, formatting/lint fixes, test-only changes, typo fixes, dependency version bumps with no API impact.
+## Implementation
 
-### What to update
+- Simplest impl for current requirements. No speculative abstraction/config/flags for hypothetical future needs.
+- No backward compat unless explicitly requested — change/remove old APIs/schemas/behavior directly, no shims/dual paths.
 
-1. Find existing doc(s) in `docs/` covering the affected area (search by feature/module name first — do not assume a doc doesn't exist).
-2. If found: update in place — keep structure/tone consistent with the rest of the file, only touch sections affected by the change.
-3. If not found and the change warrants one: create a new doc under `docs/` following the existing naming/structure convention in that folder.
+## Cross-platform (macOS / Linux / Windows)
 
-### Rules
+**Code**
 
-- Docs update is part of the task, not a follow-up — don't mark the task complete without it when the change qualifies as significant.
-- Docs must represent the **current, actual state of the implementation** — describe what the code does now, not what it's planned to do, used to do, or should ideally do. Verify against the changed code itself before writing, don't rely on memory of the old behavior.
-- If existing doc content is now inaccurate or outdated because of this change, correct it — don't leave stale statements alongside the new ones.
-- Remove or update any docs referencing removed/renamed APIs, params, or behavior as part of the same task.
-- If ambiguous whether a change is "significant enough," ask via `ask_user_question` rather than guessing (skip this if the tool isn't available in this agent's toolset — state the assumption instead and proceed).
-- Keep doc changes scoped to what the code change actually affects — no unrelated rewrites.
-- Match existing `docs/` file format (Markdown conventions, heading levels, code block style) already used in that folder.
+- OS-specific APIs -> `#[cfg(target_os = "...")]`. Gate helper fns too, or `-D warnings` fails `dead_code` on platforms where unused.
+- Binding must exist in all builds but only conditionally mutated -> use `cfg!(target_os = "...")` **macro**, not the attribute (avoids `unused_mut`/`E0596`).
+- Paths: `Path`/`PathBuf`/`MAIN_SEPARATOR` only — never hardcode `/` or `\`.
+- Unix-only facilities (PTY, signals, `fork`, `/proc`, `which`) -> `#[cfg(unix)]` + Windows path.
+- Storage backends rejecting Windows multiprocess WAL -> `cfg!(not(target_os = "windows"))`.
 
----
+**Lint** (`make lint` = clippy `-D warnings`, all platforms)
 
-## Implementation Principles
+- No `return` in tail position of `#[cfg(windows)]` (or other cfg) blocks — use tail expression (`needless_return`).
+- Ungated OS-only helper -> `dead_code` fails on the platforms that don't call it.
 
-- Choose the simplest implementation that fully meets the current requirements. No speculative abstraction, no extra config/flags/hooks for hypothetical future needs — solve what's asked, not what might be asked later.
-- Do not preserve backward compatibility. Change/remove old APIs, signatures, schemas, docs, comment, or behavior directly when the task calls for it — no compat shims, deprecated-but-kept branches, or dual code paths, unless explicitly requested.
+**Tests**
 
----
+- No POSIX shell assumption. Windows: `elph-agent` shell exec -> git-bash, `$PWD` is MSYS format (`/c/Users/...`), not `C:/Users/...`. Probe via `cygpath -m "$PWD"` or make assertion platform-aware.
+- Prefer `std::fs`/`Path` assertions over parsing shell output.
+- Genuinely non-portable test -> `#[cfg(not(target_os = "windows"))]` (or relevant OS) + comment explaining why.
 
-## Import Conventions
+## Rust imports
 
-Follow these rules for `use` statements in Rust.
+- Don't mix types (struct/enum/type alias) and functions in one braced `use` if it wraps.
+- Separate `use` lines > one long braced import wrapping awkwardly.
+- Group by kind: types / functions / traits.
+- Trailing comma on last item of multi-item braces.
+- One line per group if it fits 120 width; otherwise split into multiple `use` statements.
+- `cargo fmt` is authoritative for final layout — write to match this before formatting.
 
-### Split types and functions
+## Build system
 
-Do not mix types (structs, enums, type aliases) and functions in one braced `use` group when the list would wrap across lines.
+Always `make`, never direct `cargo` (bypasses sccache):
 
-### General rules
+| Task          | Target                                  |
+| ------------- | --------------------------------------- |
+| Format        | `make fmt`                              |
+| Check         | `make check` (`-- -p <pkg>` for subset) |
+| Lint          | `make lint` (`-- -p <pkg>` for subset)  |
+| Test          | `make test` (`-- -p <pkg>` for subset)  |
+| Build         | `make build` / `make install`           |
+| Stats         | `make stats`                            |
+| Space reclaim | `make gc` (`DRY=1` to preview)          |
 
-- Prefer **separate `use` lines** over one long braced import that wraps awkwardly.
-- Group by **kind**: types in one `use`, functions in another, traits in another when needed.
-- End multi-item braced imports with a **trailing comma** on the last item.
-- Keep each braced group on **one line** when it fits within `max_width` (120); split into multiple `use` statements instead of wrapping mid-list.
-- `cargo fmt` is authoritative for final layout; write imports so they match the style above before formatting.
+`make` sets `RUSTC_WRAPPER=sccache`, `SCCACHE_DIRECT=true`, `SCCACHE_MAXSIZE=20G`.
+No matching target -> `RUSTC_WRAPPER=sccache SCCACHE_DIRECT=1 cargo <cmd>`.
 
----
+sccache notes: cold cache on first run is normal, remote bucket (`r2-sccache`) warms after one full build (expect 40%+ hit rate after). Incremental dirs show `Non-cacheable` — expected; `make gc`/`make clean-incremental` safe. `SCCACHE_DISABLE=1` only when debugging sccache itself.
 
-## Build System Conventions
+## Testing
 
-### Always prefer `make` over direct `cargo`
+**Unit** — same file or `src/<module>/tests.rs`, `#[cfg(test)]`, may test `pub(crate)` directly.
 
-| Task          | Target                                                          |
-| ------------- | --------------------------------------------------------------- |
-| Format        | `make fmt`                                                      |
-| Compile check | `make check` (workspace; `make check -- -p <pkg>` for a subset) |
-| Lint          | `make lint` (workspace; `make lint -- -p <pkg>` for a subset)   |
-| Test          | `make test` (workspace; `make test -- -p <pkg>` for a subset)   |
-| Build         | `make build` or `make install`                                  |
-| Stats         | `make stats` (sccache hit rate + target/ breakdown)             |
-| Space reclaim | `make gc` (incremental >7d, deps >60d) · `make gc DRY=1`        |
+**Integration** (`tests/`, separate crate) — public contract only: crate-root prelude + documented modules (`harness`, `session`, `mcp`, `compaction`, ...). Don't `pub`/flatten an item just so `tests/` compiles — that's a unit test, move it next to the impl.
 
-`make` automatically sets `RUSTC_WRAPPER=sccache`, `SCCACHE_DIRECT=true`, and `SCCACHE_MAXSIZE=20G`. Do **not** run `cargo build/test/check/clippy` directly in this project — you will bypass sccache, waste remote-cache hits, and inflate `target/` with redundant incremental artefacts.
+**`elph-ai` / `elph-agent` surface** — crate root = prelude (`Agent`, `Models`, constructors, typed errors). Domain APIs stay on `pub mod` (`elph_agent::compaction::should_compact`, not flattened). No `test-utils`/`integration-test` feature to leak internals. `#[doc(hidden)]` only for existing fixtures that must stay `pub` (e.g. process-wide MCP key helpers).
 
-If a make target does not exist for the operation you need, append `CARGO=` to call cargo directly but still set the wrapper:
-
-```sh
-# Only when no make target exists:
-RUSTC_WRAPPER=sccache SCCACHE_DIRECT=1 cargo <cmd>
-```
-
-### sccache behaviour notes
-
-- **Cache miss on first run is normal.** The remote bucket (`r2-sccache`) is warm only after a full build populates it. After `make build` completes, subsequent runs should show 40%+ hit rate.
-- **Incremental dirs are redundant.** Cargo's `--incremental` flag emits a `Non-cacheable` reason in sccache stats. This is expected — the real cache is the remote bucket. Removing stale incremental dirs via `make gc` or `make clean-incremental` is safe; sccache re-hits them on rebuild.
-- **Disable with `SCCACHE_DISABLE=1`.** Only when debugging a sccache-specific issue.
-
----
-
-## Testing Conventions
-
-Follow these rules strictly.
-
-### Unit Tests
-
-- Located **in the same file** as the implementation (or `src/<module>/tests.rs` included from that module).
-- Use `#[cfg(test)]` modules.
-- Test internal logic directly, including `pub(crate)` helpers.
-
-### Integration Tests
-
-- Located in the crate’s `tests/` directory (a separate crate).
-- Test only the **public contract** a third-party host would use: crate-root prelude and documented modules (`harness`, `session`, `mcp`, `compaction`, …).
-- Do **not** `pub` (or flatten at crate root) an item so `tests/` can see it. If the test cannot compile, it is a unit test — move it next to the implementation.
-
-### Library crate surface (`elph-ai`, `elph-agent`)
-
-- Crate root is a **prelude**: types a host needs for a first program (`Agent`, `Models`, constructors, identity, typed errors).
-- Domain APIs stay on **`pub mod`** (`elph_agent::compaction::should_compact`, not `elph_agent::should_compact`).
-- Host crates in this repo (`coding-agent`) import those modules; they do not justify flattening helpers at the crate root.
-- Do not add a `test-utils` / `integration-test` Cargo feature to leak internals. `#[doc(hidden)]` is only for existing test fixtures that must stay `pub` (e.g. process-wide MCP key helpers).
-
-### General Rules
-
-- Keep tests small and focused.
-- Cover edge cases and failure paths.
-- Avoid duplication between unit and integration tests.
-- Use clear, descriptive test names.
+**General** — small, focused, cover edge/failure paths, no dup between unit/integration, descriptive names.

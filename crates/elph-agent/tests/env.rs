@@ -321,9 +321,14 @@ async fn executes_commands_in_cwd_with_env_overrides() {
     let (_temp, env) = env_in_temp();
     let root = std::fs::canonicalize(env.cwd()).expect("canonical cwd");
 
+    #[cfg(windows)]
+    let command = "printf '%s:%s' \"$(cygpath -m \"$PWD\")\" \"$NODE_ENV_TEST\"";
+    #[cfg(not(windows))]
+    let command = "printf '%s:%s' \"$PWD\" \"$NODE_ENV_TEST\"";
+
     let result = get_or_throw(
         env.exec(
-            "printf '%s:%s' \"$PWD\" \"$NODE_ENV_TEST\"",
+            command,
             Some(ShellExecOptions {
                 cwd: None,
                 env: Some([("NODE_ENV_TEST".to_string(), "ok".to_string())].into()),
