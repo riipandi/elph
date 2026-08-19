@@ -61,15 +61,15 @@ Do not mix types (structs, enums, type aliases) and functions in one braced `use
 
 ### Always prefer `make` over direct `cargo`
 
-| Task          | Target                                                            |
-| ------------- | ----------------------------------------------------------------- |
-| Compile check | `make check` (workspace; `make check -- -p <pkg>` for a subset)   |
-| Lint          | `make lint` (workspace; `make lint -- -p <pkg>` for a subset)    |
-| Format        | `make fmt`                                                        |
-| Test          | `make test` (workspace; `make test -- -p <pkg>` for a subset)    |
-| Build         | `make build` or `make install`                                    |
-| Stats         | `make stats` (sccache hit rate + target/ breakdown)               |
-| Space reclaim | `make gc` (incremental >7d, deps >60d) · `make gc DRY=1`          |
+| Task          | Target                                                          |
+| ------------- | --------------------------------------------------------------- |
+| Format        | `make fmt`                                                      |
+| Compile check | `make check` (workspace; `make check -- -p <pkg>` for a subset) |
+| Lint          | `make lint` (workspace; `make lint -- -p <pkg>` for a subset)   |
+| Test          | `make test` (workspace; `make test -- -p <pkg>` for a subset)   |
+| Build         | `make build` or `make install`                                  |
+| Stats         | `make stats` (sccache hit rate + target/ breakdown)             |
+| Space reclaim | `make gc` (incremental >7d, deps >60d) · `make gc DRY=1`        |
 
 `make` automatically sets `RUSTC_WRAPPER=sccache`, `SCCACHE_DIRECT=true`, and `SCCACHE_MAXSIZE=20G`. Do **not** run `cargo build/test/check/clippy` directly in this project — you will bypass sccache, waste remote-cache hits, and inflate `target/` with redundant incremental artefacts.
 
