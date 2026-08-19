@@ -128,13 +128,7 @@ install_parse_args() {
 
 install_detect_platform() {
     case "$(uname -s)" in
-    Linux)
-        if [[ -f /etc/alpine-release ]]; then
-            echo "linux-musl"
-        else
-            echo "linux-glibc"
-        fi
-        ;;
+    Linux) echo "linux" ;;
     Darwin) echo "macos" ;;
     *) install_die "Unsupported OS: $(uname -s). Only Linux and macOS are supported." ;;
     esac
@@ -146,6 +140,16 @@ install_detect_arch() {
     aarch64 | arm64) echo "arm64" ;;
     *) install_die "Unsupported arch: $(uname -m). Only x86_64 and arm64 are supported." ;;
     esac
+}
+
+# Release archives label arm64 as `aarch64` on Linux and `arm64` on macOS.
+install_release_arch() {
+    local platform="$1" arch="$2"
+    if [[ "$platform" == "linux" && "$arch" == "arm64" ]]; then
+        echo "aarch64"
+    else
+        echo "$arch"
+    fi
 }
 
 install_normalize_tag() {
@@ -244,15 +248,16 @@ install_run() {
     install_parse_args "$@"
     install_require_tools
 
-    local platform arch archive_name archive_url checksum_url version_tag version_num
+    local platform arch release_arch archive_name archive_url checksum_url version_tag version_num
     platform="$(install_detect_platform)"
     arch="$(install_detect_arch)"
+    release_arch="$(install_release_arch "$platform" "$arch")"
     version_tag="$(install_resolve_version)"
     if [[ -z "${version_tag}" ]]; then
         install_die "Failed to resolve ${INSTALL_APP} version"
     fi
     version_num="${version_tag#v}"
-    archive_name="${INSTALL_APP}-${platform}-${arch}.tar.gz"
+    archive_name="${INSTALL_APP}-${platform}-${release_arch}.tar.gz"
     archive_url="https://github.com/${INSTALL_REPO_OWNER}/${INSTALL_REPO_NAME}/releases/download/${version_tag}/${archive_name}"
     checksum_url="https://github.com/${INSTALL_REPO_OWNER}/${INSTALL_REPO_NAME}/releases/download/${version_tag}/SHA256SUMS"
 
@@ -266,7 +271,7 @@ install_run() {
         if [[ -n "${INSTALL_CANARY}" ]]; then
             printf "  ${INSTALL_BOLD}Channel:${INSTALL_RESET}     pre-release\n"
         fi
-        printf "  ${INSTALL_BOLD}Platform:${INSTALL_RESET}    %s/%s\n" "${platform}" "${arch}"
+        printf "  ${INSTALL_BOLD}Platform:${INSTALL_RESET}    %s/%s\n" "${platform}" "${release_arch}"
         printf "  ${INSTALL_BOLD}Archive:${INSTALL_RESET}     %s\n" "${archive_url}"
         printf "  ${INSTALL_BOLD}Checksum:${INSTALL_RESET}    %s\n" "${checksum_url}"
         printf "  ${INSTALL_BOLD}Install to:${INSTALL_RESET}  %s\n" "${INSTALL_INSTALL_DIR}"

@@ -91,10 +91,20 @@ jobs:
       mode: check
 
   build-linux:
-    name: linux
+    name: linux (${{ matrix.arch }})
     needs: [version-gate, quality-gate]
     if: needs.version-gate.outputs.should_continue == 'true'
-    runs-on: namespace-profile-linux-base-amd64
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: namespace-profile-linux-base-amd64
+            label: x86_64
+          - arch: arm64
+            runner: namespace-profile-linux-base-arm64
+            label: aarch64
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
@@ -108,7 +118,7 @@ jobs:
       - name: Setup Rust
         uses: ./.github/setup-rust
         with:
-          sharedKey: release-linux
+          sharedKey: release-linux-${{ matrix.arch }}
           cacheBackend: namespace
           installNextest: "false"
 
@@ -123,7 +133,7 @@ jobs:
         run: |
           set -euo pipefail
           app="${{ inputs.app || 'elph' }}"
-          label="${app}-linux-x86_64"
+          label="${app}-linux-${{ matrix.label }}"
           mkdir -p release/archives release/binaries
           cp "target/${{ env.BUILD_PROFILE }}/${app}" "release/binaries/${label}"
           tar -C "target/${{ env.BUILD_PROFILE }}" -czf "release/archives/${label}.tar.gz" "${app}"
@@ -135,7 +145,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ inputs.app || 'elph' }}-linux
+          name: ${{ inputs.app || 'elph' }}-linux-${{ matrix.arch }}
           path: |
             release/archives/${{ inputs.app || 'elph' }}-*
             release/binaries/${{ inputs.app || 'elph' }}-*
@@ -264,10 +274,16 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Fetch linux
+      - name: Fetch linux (amd64)
         uses: actions/download-artifact@v8
         with:
-          name: ${{ inputs.app || 'elph' }}-linux
+          name: ${{ inputs.app || 'elph' }}-linux-amd64
+          path: .
+
+      - name: Fetch linux (arm64)
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.app || 'elph' }}-linux-arm64
           path: .
 
       - name: Fetch macos
