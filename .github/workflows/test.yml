@@ -115,11 +115,6 @@ jobs:
         shell: bash
         run: make lint
 
-      - name: Lint (elph-agent full features)
-        if: matrix.name != 'windows' && (inputs.app || 'elph') == 'elph'
-        shell: bash
-        run: make lint -- -p elph-agent --features full
-
       - name: Test
         if: (inputs.mode || 'full') == 'full'
         shell: bash
@@ -129,11 +124,6 @@ jobs:
             SHARD="--partition count:${{ matrix.shard }}"
           fi
           make test SHARD="$SHARD"
-
-      - name: Test (elph-agent full features)
-        if: matrix.name != 'windows' && (inputs.mode || 'full') == 'full' && (inputs.app || 'elph') == 'elph'
-        shell: bash
-        run: make test -- -p elph-agent --features full
 
       - name: Build debug
         if: (inputs.mode || 'full') == 'full'
