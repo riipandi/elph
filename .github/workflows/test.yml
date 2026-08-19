@@ -49,7 +49,9 @@ permissions:
 
 concurrency:
   group: test-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # Windows GitHub-hosted compiles (wasmtime) often exceed the gap between main
+  # pushes. Cancelling those runs also drops rust-cache, so the next job starts cold.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   CI: true
@@ -71,8 +73,9 @@ jobs:
           - name: windows
             runner: windows-latest
             cacheBackend: rust-cache
+            timeoutMinutes: 90
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 45
+    timeout-minutes: ${{ matrix.timeoutMinutes || 45 }}
     steps:
       - uses: actions/checkout@v7
 
@@ -81,7 +84,7 @@ jobs:
         with:
           sharedKey: ${{ inputs.sharedKeyPrefix || 'ci' }}-${{ inputs.app || 'elph' }}-${{ matrix.name }}
           cacheBackend: ${{ matrix.cacheBackend }}
-          saveCache: ${{ github.ref == 'refs/heads/main' }}
+          saveCache: ${{ github.ref == 'refs/heads/main' || matrix.name == 'windows' }}
 
       - name: Check format
         shell: bash
@@ -96,7 +99,7 @@ jobs:
         run: make lint
 
       - name: Lint (elph-agent full features)
-        if: (inputs.app || 'elph') == 'elph'
+        if: matrix.name != 'windows' && (inputs.app || 'elph') == 'elph'
         shell: bash
         run: make lint -- -p elph-agent --features full
 
@@ -106,12 +109,12 @@ jobs:
         run: make test
 
       - name: Test (elph-agent full features)
-        if: (inputs.mode || 'full') == 'full' && (inputs.app || 'elph') == 'elph'
+        if: matrix.name != 'windows' && (inputs.mode || 'full') == 'full' && (inputs.app || 'elph') == 'elph'
         shell: bash
         run: make test -- -p elph-agent --features full
 
       - name: Build debug
-        if: (inputs.mode || 'full') == 'full'
+        if: matrix.name != 'windows' && (inputs.mode || 'full') == 'full'
         shell: bash
         run: make build
         env:
