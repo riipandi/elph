@@ -19,12 +19,7 @@ on:
         description: full = fmt+check+lint+test+debug build; check = fmt+check+lint
         required: false
         type: string
-        default: full
-    secrets:
-      SCCACHE_R2_ACCESS_KEY_ID:
-        required: false
-      SCCACHE_R2_SECRET_ACCESS_KEY:
-        required: false
+    default: full
   push:
     branches: [main]
     paths:
@@ -59,11 +54,6 @@ concurrency:
 env:
   CI: true
   BINSTALL_DISABLE_TELEMETRY: true
-  AWS_ACCESS_KEY_ID: ${{ secrets.SCCACHE_R2_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.SCCACHE_R2_SECRET_ACCESS_KEY }}
-  SCCACHE_BUCKET: ${{ vars.SCCACHE_R2_BUCKET }}
-  SCCACHE_ENDPOINT: ${{ vars.SCCACHE_R2_ENDPOINT }}
-  SCCACHE_REGION: ${{ vars.SCCACHE_R2_REGION || 'auto' }}
 
 jobs:
   test:

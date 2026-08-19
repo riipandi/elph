@@ -18,12 +18,7 @@ on:
         description: Application to release (elph)
         required: false
         type: string
-        default: elph
-    secrets:
-      SCCACHE_R2_ACCESS_KEY_ID:
-        required: false
-      SCCACHE_R2_SECRET_ACCESS_KEY:
-        required: false
+    default: elph
   push:
     tags:
       - "v*.*.*"
@@ -40,11 +35,6 @@ env:
   CI: true
   BINSTALL_DISABLE_TELEMETRY: true
   RELEASE_ALLOWED_ACTORS: ${{ vars.RELEASE_ALLOWED_ACTORS }}
-  AWS_ACCESS_KEY_ID: ${{ secrets.SCCACHE_R2_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.SCCACHE_R2_SECRET_ACCESS_KEY }}
-  SCCACHE_BUCKET: ${{ vars.SCCACHE_R2_BUCKET }}
-  SCCACHE_ENDPOINT: ${{ vars.SCCACHE_R2_ENDPOINT }}
-  SCCACHE_REGION: ${{ vars.SCCACHE_R2_REGION || 'auto' }}
   # Channel + build profile are derived from the pushed tag:
   #   v*.*.*        -> release channel, `dist` profile
   #   v*.*.*-canary -> canary channel,  `release` profile
@@ -343,7 +333,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
           make_latest: false
-          prerelease: ${{ needs.version-gate.outputs.release_channel == 'canary' }}
+          prerelease: true
           generate_release_notes: true
           files: |
             release/archives/${{ inputs.app || 'elph' }}-*

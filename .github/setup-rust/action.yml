@@ -9,7 +9,7 @@ inputs:
     required: false
     default: ci
   cacheBackend:
-    description: rust-cache (GitHub Actions cache) or namespace (Cache Volume). sccache always uses Cloudflare R2 when SCCACHE_BUCKET is set.
+    description: rust-cache (GitHub Actions cache) or namespace (Cache Volume + Namespace sccache).
     required: false
     default: rust-cache
   installNextest:
@@ -82,16 +82,13 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
+        # Provision Namespace sccache credentials (WebDAV backend) and expose them
+        # to every subsequent step via $GITHUB_ENV.
+        nsc cache sccache setup --cache_name default >> "$GITHUB_ENV"
         {
           echo "RUSTC_WRAPPER=sccache"
           echo "CARGO_TERM_COLOR=always"
           echo "CARGO_INCREMENTAL=0"
           echo "SCCACHE_DIRECT=true"
           echo "SCCACHE_MAXSIZE=20G"
-          echo "SCCACHE_S3_USE_SSL=true"
         } >> "$GITHUB_ENV"
-        if [ -n "${SCCACHE_BUCKET:-}" ]; then
-          echo "SCCACHE_REGION=${SCCACHE_REGION:-auto}" >> "$GITHUB_ENV"
-        else
-          echo "SCCACHE_BUCKET is unset; sccache will run without a remote cache" >&2
-        fi
