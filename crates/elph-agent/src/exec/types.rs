@@ -6,7 +6,6 @@ use std::sync::Arc;
 
 use tokio_util::sync::CancellationToken;
 
-#[cfg(unix)]
 use super::pty::PtySize;
 
 /// Streaming chunk callback for stdout/stderr during shell execution.
@@ -68,16 +67,18 @@ impl ShellConfig {
         self
     }
 
-    pub fn with_prefer_pty(mut self, prefer_pty: bool) -> Self {
+    pub fn with_prefer_pty(self, prefer_pty: bool) -> Self {
         #[cfg(unix)]
         {
-            self.prefer_pty = prefer_pty;
+            let mut this = self;
+            this.prefer_pty = prefer_pty;
+            this
         }
         #[cfg(not(unix))]
         {
             let _ = prefer_pty;
+            self
         }
-        self
     }
 }
 
@@ -92,7 +93,6 @@ pub struct ShellExecOptions {
     pub on_stdout: Option<ShellOutputCallback>,
     pub on_stderr: Option<ShellOutputCallback>,
     /// Override PTY size for this invocation (Unix only).
-    #[cfg(unix)]
     pub pty_size: Option<PtySize>,
 }
 

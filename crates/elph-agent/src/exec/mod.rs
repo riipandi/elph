@@ -16,7 +16,6 @@
 mod error;
 mod output;
 mod process;
-#[cfg(unix)]
 pub mod pty;
 mod shell;
 mod types;
