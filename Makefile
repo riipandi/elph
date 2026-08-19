@@ -195,7 +195,7 @@ watch: ## Run elph with hot reload (requires watchexec)
 	@-$(CARGO) watch -c -- cargo run --bin $(APP_BIN) $(or $(_RESIDUAL_),$(ARGS)) 2>&1
 
 test: ## Run tests (workspace; pass -p <pkg>, --features, -- --debug|--release|--dist|--ci)
-	@$(CARGO) nextest run --no-fail-fast $(NEXTEST_CARGO_FLAGS) $(_FWD_ARGS)
+	@$(CARGO) nextest run --no-fail-fast $(NEXTEST_CARGO_FLAGS) $(_FWD_ARGS) $(SHARD)
 
 generate-models: ## Regenerate elph-ai model catalogs (pi packages/ai; ARGS=--skip-scripts)
 	@$(CARGO) run -p elph-ai --features generate-models --bin generate-models -- all $(ARGS)

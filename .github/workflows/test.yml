@@ -128,7 +128,7 @@ jobs:
           if [ -n "${{ matrix.shard }}" ]; then
             SHARD="--partition count:${{ matrix.shard }}"
           fi
-          make test -- $SHARD
+          make test SHARD="$SHARD"
 
       - name: Test (elph-agent full features)
         if: matrix.name != 'windows' && (inputs.mode || 'full') == 'full' && (inputs.app || 'elph') == 'elph'
