@@ -18,7 +18,7 @@ on:
         description: Application to release (elph)
         required: false
         type: string
-    default: elph
+        default: elph
   push:
     tags:
       - "v*.*.*"

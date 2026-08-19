@@ -19,7 +19,7 @@ on:
         description: full = fmt+check+lint+test+debug build; check = fmt+check+lint
         required: false
         type: string
-    default: full
+        default: full
   push:
     branches: [main]
     paths:
