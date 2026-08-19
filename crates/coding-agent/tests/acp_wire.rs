@@ -167,6 +167,10 @@ async fn v2_initialize_advertises_mcp_and_cancel_is_notification() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn v1_session_new_list_close() {
+    if !live_agent_enabled() {
+        eprintln!("skipping v1_session_new_list_close: set ELPH_ACP_LIVE_TESTS=1 with a real API key to run");
+        return;
+    }
     let tmp = tempfile::tempdir().expect("tempdir");
     let project = tmp.path().join("project");
     std::fs::create_dir_all(&project).expect("project dir");
@@ -223,6 +227,10 @@ async fn v1_session_new_list_close() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn v1_help_prompt_returns_stop_reason() {
+    if !live_agent_enabled() {
+        eprintln!("skipping v1_help_prompt_returns_stop_reason: set ELPH_ACP_LIVE_TESTS=1 with a real API key to run");
+        return;
+    }
     let (cwd, tmp) = project_with_auth();
     let (mut reader, mut writer) = spawn_agent_on(AcpMode::V1, tmp).await;
     login_v1(&mut reader, &mut writer).await;
@@ -250,6 +258,10 @@ async fn v1_help_prompt_returns_stop_reason() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn v2_help_prompt_ack_then_idle() {
+    if !live_agent_enabled() {
+        eprintln!("skipping v2_help_prompt_ack_then_idle: set ELPH_ACP_LIVE_TESTS=1 with a real API key to run");
+        return;
+    }
     let (cwd, tmp) = project_with_auth();
     let (mut reader, mut writer) = spawn_agent_on(AcpMode::V2, tmp).await;
     login_v2(&mut reader, &mut writer).await;
@@ -334,6 +346,15 @@ fn project_with_auth() -> (std::path::PathBuf, tempfile::TempDir) {
     std::fs::create_dir_all(&cfg).expect("cfg");
     std::fs::write(cfg.join("auth.json"), r#"{"provider":{"openai":{"apiKey":"sk-acp-e2e"}}}"#).expect("auth.json");
     (cwd, tmp)
+}
+
+/// Skip live-backend ACP integration tests unless explicitly enabled.
+///
+/// These tests create a real agent session, which performs a provider handshake
+/// that blocks on the network without a reachable LLM backend and valid credentials.
+/// They therefore hang (and time out the whole suite) outside CI with a real key.
+fn live_agent_enabled() -> bool {
+    std::env::var("ELPH_ACP_LIVE_TESTS").is_ok()
 }
 
 async fn login_v1(reader: &mut BufReader<tokio::io::DuplexStream>, writer: &mut tokio::io::DuplexStream) {
