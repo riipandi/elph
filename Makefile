@@ -40,7 +40,12 @@ ifneq ($(SCCACHE_OK),)
   ifeq ($(SCCACHE_OK),1)
     export AWS_PROFILE := r2-sccache
     export RUSTC_WRAPPER := sccache
-    export SCCACHE_DIRECT := true
+    # Direct mode is only supported by the local cache backend. The GitHub Actions
+    # cache backend (SCCACHE_GHA_ENABLED=true) routes through the sccache server,
+    # so leave direct mode off there to avoid "direct mode unsupported" errors.
+    ifneq ($(SCCACHE_GHA_ENABLED),true)
+      export SCCACHE_DIRECT := true
+    endif
     # Cap remote cache at 50 GB so it never eclipses local disk. The bucket is shared
     # across sessions — anything beyond this size is unlikely to be re-used soon.
     export SCCACHE_MAXSIZE := 20G
