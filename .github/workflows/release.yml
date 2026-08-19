@@ -1,5 +1,10 @@
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 
+# git tag --delete elph-v0.0.1
+# git push origin --delete tag elph-v0.0.1
+# git tag elph-v0.0.1 -m "version bump"
+# git push origin elph-v0.0.1
+
 name: Release
 
 on:
