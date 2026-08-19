@@ -44,7 +44,10 @@ fn jitter_delay(attempt: u32) -> u64 {
 }
 
 fn multiprocess_wal(b: Builder) -> Builder {
-    b.experimental_multiprocess_wal(true).experimental_index_method(true)
+    // Multiprocess WAL is unsupported by Turso's Windows IO backend; fall back to
+    // default file locking there (concurrency is serialized via the connection pool).
+    b.experimental_multiprocess_wal(cfg!(not(target_os = "windows")))
+        .experimental_index_method(true)
 }
 
 fn validate_local_database_path(path: &Path) -> Result<()> {

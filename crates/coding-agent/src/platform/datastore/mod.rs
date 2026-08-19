@@ -30,7 +30,10 @@ pub async fn ensure_database(paths: &Paths) -> Result<Database> {
 
     // Open the database and apply all migration bands through one connection.
     let db = open_local_with(&store_db, |b| {
-        b.experimental_multiprocess_wal(true).experimental_index_method(true)
+        // Multiprocess WAL is unsupported by Turso's Windows IO backend; fall back
+        // to default file locking there (concurrency is serialized via the pool).
+        b.experimental_multiprocess_wal(cfg!(not(target_os = "windows")))
+            .experimental_index_method(true)
     })
     .await?;
     let conn = connect(&db).await?;

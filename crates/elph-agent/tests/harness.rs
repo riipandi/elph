@@ -1720,7 +1720,13 @@ async fn harness_restore_rehydrates_next_turn_queue() {
 /// Race test: several harnesses running blocking turns, all aborted
 /// concurrently. Guards against deadlocks in abort / wait_for_idle / phase
 /// reset (each harness has its own session, so this is process-level concurrency).
-#[tokio::test(flavor = "multi_thread")]
+///
+/// `worker_threads` is pinned high on purpose: each harness runs a turn whose
+/// provider factory blocks a tokio worker (simulating a stuck request). On
+/// low-CPU runners (e.g. 2 vCPU Windows) the default worker count would let
+/// those blocking turns starve the abort tasks and the test's own timeout,
+/// hanging instead of failing fast. Eight workers keeps abort tasks schedulable.
+#[tokio::test(flavor = "multi_thread", worker_threads = 8)]
 async fn concurrent_aborts_do_not_deadlock() {
     const HARNESSES: usize = 4;
 

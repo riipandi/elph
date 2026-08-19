@@ -285,7 +285,10 @@ where
 
 /// Multiprocess-WAL builder flags used by every `elph-agent` open site.
 fn multiprocess_wal(b: turso::Builder) -> turso::Builder {
-    b.experimental_multiprocess_wal(true).experimental_index_method(true)
+    // Multiprocess WAL is unsupported by Turso's Windows IO backend; fall back to
+    // default file locking there (concurrency is serialized via the connection pool).
+    b.experimental_multiprocess_wal(cfg!(not(target_os = "windows")))
+        .experimental_index_method(true)
 }
 
 /// Open a local Turso database with multiprocess WAL enabled.

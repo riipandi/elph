@@ -19,6 +19,21 @@ Linux builds are glibc only; musl/Alpine is not published yet. Windows builds ru
 - **Pi OS 32-bit** (`armv7`) — Turso / io-uring constraint
 - **Android, iOS**, and other mobile/embedded targets
 
+## Windows (CI)
+
+Windows binaries and tests run on GitHub-hosted `windows-latest` runners (no Namespace
+Windows runner yet). Two Windows-only `make test` failures were historically present; both
+are now resolved (2026-08-20):
+
+- **Turso multiprocess WAL** — `experimental_multiprocess_wal(true)` is rejected by Turso's
+  Windows IO backend (`experimental multiprocess WAL is not supported by the active IO
+  backend`). The flag is now gated off on Windows; behavior on Unix is unchanged.
+- **Abort race-test hang** — `concurrent_aborts_do_not_deadlock` blocked all tokio workers
+  on low-CPU Windows runners, starving the abort tasks and the test timeout. The test now
+  pins `worker_threads = 8`.
+
+No known Windows limitation remains in the test suite.
+
 ## Turso-native FTS: incompatible with standard SQLite tools
 
 `store.db` uses Turso-native FTS indexes (`CREATE INDEX ... USING fts`, Tantivy-backed)

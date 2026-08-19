@@ -34,7 +34,7 @@ async fn all_bands_share_one_store_db_and_one_ledger() {
 
     // Floppy memory (1–4).
     let db = Builder::new_local(store_db.to_string_lossy().as_ref())
-        .experimental_multiprocess_wal(true)
+        .experimental_multiprocess_wal(cfg!(not(target_os = "windows")))
         .experimental_index_method(true)
         .build()
         .await

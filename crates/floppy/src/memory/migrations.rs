@@ -184,7 +184,7 @@ mod tests {
         let dir = tempfile::tempdir().expect("tempdir");
         let db_path = dir.path().join("store.db");
         let db = Builder::new_local(db_path.to_string_lossy().as_ref())
-            .experimental_multiprocess_wal(true)
+            .experimental_multiprocess_wal(cfg!(not(target_os = "windows")))
             .build()
             .await
             .expect("build");

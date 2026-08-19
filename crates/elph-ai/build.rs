@@ -20,6 +20,10 @@ fn main() {
     fs::create_dir_all(&frames_dir).expect("create catalog frame directory");
 
     println!("cargo::rerun-if-changed=build.rs");
+    // Watch the whole models directory, not just files that existed at build time:
+    // a newly added `models/<provider>.json` would otherwise be invisible to cargo's
+    // change tracking and the embedded catalog would go stale until a clean rebuild.
+    println!("cargo::rerun-if-changed=models");
 
     let mut catalogs: Vec<(String, String, usize)> = Vec::new();
     let entries = fs::read_dir(&models_dir).expect("read models directory");

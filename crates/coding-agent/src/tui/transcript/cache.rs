@@ -13,7 +13,8 @@ pub struct TranscriptCache {
 
 impl TranscriptCache {
     pub async fn open(db_path: &Path, session_id: &str) -> Result<Self> {
-        let db = open_local_with(db_path, |b| b.experimental_multiprocess_wal(true)).await?;
+        let db =
+            open_local_with(db_path, |b| b.experimental_multiprocess_wal(cfg!(not(target_os = "windows")))).await?;
         let conn = connect(&db).await?;
         let cache = Self {
             conn,
@@ -135,7 +136,7 @@ mod tests {
     use turso::Database;
 
     async fn setup(path: &Path) -> Database {
-        let db = open_local_with(path, |b| b.experimental_multiprocess_wal(true))
+        let db = open_local_with(path, |b| b.experimental_multiprocess_wal(cfg!(not(target_os = "windows"))))
             .await
             .expect("open db");
         let conn = connect(&db).await.expect("connect");

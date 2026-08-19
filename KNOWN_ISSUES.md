@@ -1,5 +1,37 @@
 # Known Issues
 
+## 2026-08-20 — Windows CI: Turso multiprocess WAL + low-CPU abort-test hang (resolved)
+
+Two Windows-only `make test` failures were fixed:
+
+1. **Turso `experimental_multiprocess_wal` unsupported on the Windows IO backend.** Every
+   local Turso database open (`floppy`, `coding-agent` datastore/transcript cache,
+   `elph-agent` datastore) used `experimental_multiprocess_wal(true)`. Turso's Windows IO
+   backend rejects this with `experimental multiprocess WAL is not supported by the active
+   IO backend`, so all turso-backed tests failed to open `store.db` on Windows.
+
+   Fixed by gating the flag off on Windows at every open site via
+   `experimental_multiprocess_wal(cfg!(not(target_os = "windows")))`. Behavior on Unix is
+   unchanged (`cfg!` evaluates to `true`). `experimental_index_method(true)` is kept — it
+   works on Windows.
+
+2. **`concurrent_aborts_do_not_deadlock` hung on low-CPU Windows runners.** The test runs 4
+   harnesses whose provider factory blocks a tokio worker (`std::thread::sleep`) to simulate
+   a stuck request. With the default `#[tokio::test(flavor = "multi_thread")]` worker count
+   (= CPU count), a 2-vCPU Windows runner let those 4 blocking turns starve the abort tasks
+   and the test's own 5s timeout, so the test hung until the 1200s job timeout.
+
+   Fixed by pinning `worker_threads = 8` on that test so abort tasks stay schedulable.
+   Test-only change; Unix behavior unchanged.
+
+### Status
+
+Resolved 2026-08-20. Affected files: `crates/floppy/src/core/db.rs`,
+`crates/floppy/src/memory/migrations.rs`, `crates/elph-agent/src/datastore/conn.rs`,
+`crates/coding-agent/src/platform/datastore/mod.rs`,
+`crates/coding-agent/src/tui/transcript/cache.rs`, `crates/coding-agent/tests/unified_store.rs`,
+`crates/elph-agent/tests/harness.rs`.
+
 ## 2026-08-18 — Intel MKL embeddings cannot link with the wild linker
 
 `.cargo/config.toml` uses [wild](https://github.com/wild-linker/wild) for `x86_64-unknown-linux-gnu` (`clang --ld-path=wild`). `floppy` embeddings go through `embed_anything` / Candle.
@@ -40,7 +72,7 @@ Re-test `floppy/mkl` when wild can link MKL static archives, or document a suppo
 
 ## 2026-08-13 — Turso multiprocess WAL integration requires hardening
 
-The project uses Turso `0.8.0-pre.4` with `experimental_multiprocess_wal(true)` for `.elph/store.db`. The builder configuration is consistent, but the surrounding integration is not yet production-ready for concurrent OS processes.
+The project uses Turso `0.8.0-pre.4` with `experimental_multiprocess_wal(true)` for `.elph/store.db` on Unix. On Windows the flag is disabled (`experimental_multiprocess_wal(cfg!(not(target_os = "windows")))`) because Turso's Windows IO backend does not support multiprocess WAL. The builder configuration is consistent, but the surrounding integration is not yet production-ready for concurrent OS processes.
 
 ### High-risk findings
 

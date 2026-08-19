@@ -29,7 +29,12 @@ pub fn get_builtin_models(provider: &str) -> Vec<crate::types::Model> {
 
 /// Provider ids from embedded catalogs ∪ disk-only providers (sorted).
 pub fn get_builtin_providers() -> Vec<String> {
-    provider_dir::all_provider_ids()
+    let ids = provider_dir::all_provider_ids();
+    // `amazon-bedrock` ships embedded models but its provider is only constructed under the
+    // `bedrock` feature, so keep the catalog list in sync with `builtin_providers()`.
+    #[cfg(not(feature = "bedrock"))]
+    ids.retain(|id| id != "amazon-bedrock");
+    ids
 }
 
 use crate::types::{Model, ModelCostRates, ThinkingLevel, Usage};
