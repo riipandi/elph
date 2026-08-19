@@ -163,6 +163,9 @@ jobs:
           cacheBackend: namespace
           installNextest: "false"
 
+      - name: Install x86_64-apple-darwin target
+        run: rustup target add x86_64-apple-darwin
+
       - name: Build release
         run: |
           cargo build --profile ${{ env.BUILD_PROFILE }} --bin ${{ inputs.app || 'elph' }} --target aarch64-apple-darwin
