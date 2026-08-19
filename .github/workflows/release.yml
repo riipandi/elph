@@ -7,7 +7,7 @@
 # git push origin v0.0.1
 #
 # git tag v0.0.1-canary -m "canary build"
-# git push origin v0.0.1
+# git push origin v0.0.1-canary
 
 name: Release
 
@@ -282,18 +282,44 @@ jobs:
           set -euo pipefail
           echo "Publishing ${{ inputs.app || 'elph' }} v${{ needs.version-gate.outputs.release_version }} (${{ needs.version-gate.outputs.release_channel }} channel, ${GITHUB_REF_NAME})"
 
-      - name: Write checksums
+      - name: Stage artifacts
         shell: bash
         run: |
           set -euo pipefail
           app="${{ inputs.app || 'elph' }}"
           mkdir -p "release/archives"
-          if command -v sha256sum >/dev/null 2>&1; then
-            (cd release/archives && sha256sum -- ${app}-* > SHA256SUMS)
-          else
-            (cd release/archives && shasum -a 256 -- ${app}-* > SHA256SUMS)
+          # download-artifact may extract archives flat into release/archives or
+          # nest them under the artifact name; gather every elph-*.tar.gz regardless.
+          shopt -s nullglob
+          readarray -t archives < <(find . -path ./target -prune -o -path ./.git -prune -o -type f -name "${app}-*.tar.gz" -print)
+          if [ "${#archives[@]}" -eq 0 ]; then
+            echo "::error::No ${app}-*.tar.gz artifacts found after download" >&2
+            exit 1
           fi
-          cat "release/archives/SHA256SUMS"
+          for f in "${archives[@]}"; do
+            cp -f "$f" "release/archives/"
+          done
+          echo "Staged archives:"
+          ls -la release/archives
+
+      - name: Write checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="${{ inputs.app || 'elph' }}"
+          shopt -s nullglob
+          cd release/archives
+          files=( "${app}"-*.tar.gz )
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "::error::No ${app}-*.tar.gz found in release/archives" >&2
+            exit 1
+          fi
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum -- "${files[@]}" > SHA256SUMS
+          else
+            shasum -a 256 -- "${files[@]}" > SHA256SUMS
+          fi
+          cat SHA256SUMS
 
       - name: Publish release
         uses: softprops/action-gh-release@v3
