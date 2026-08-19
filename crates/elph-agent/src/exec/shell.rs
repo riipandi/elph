@@ -712,6 +712,12 @@ mod tests {
         let result = run.await.expect("join");
         let elapsed = started.elapsed();
         assert!(elapsed < Duration::from_secs(5), "streaming abort took {elapsed:?}");
+        // The streaming callback is exercised on every platform, but on Windows
+        // git-bash block-buffers stdout to the pipe and discards the buffer when
+        // `taskkill /T` kills the process, so the chunk may never reach the
+        // reader before abort. Unix flushes `echo start` before the 300ms abort,
+        // so the delivery assertion is Unix-only.
+        #[cfg(unix)]
         assert!(saw_chunk.load(std::sync::atomic::Ordering::SeqCst), "stream callback ran");
         let err = result.expect_err("expected aborted error");
         assert_eq!(err.code, ExecErrorCode::Aborted, "got {err}");
