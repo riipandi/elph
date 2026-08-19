@@ -2,7 +2,6 @@
 
 APP_BIN  := elph
 CARGO    := $$(which cargo)
-CROSS    := $$(which cross)
 UNAME_S  := $(shell uname -s)
 UNAME_M  := $(shell uname -m)
 
@@ -48,8 +47,6 @@ ifneq ($(SCCACHE_OK),)
   endif
 endif
 
-# Single-platform override: make cross CROSS_TARGET=aarch64-unknown-linux-musl
-
 # ─── Args ───────────────────────────────────────────────────────────────────
 
 # Named args:  make run ARGS="-- --nocapture"  /  make test PKG=foo
@@ -60,6 +57,12 @@ ARGS       :=
 _RESIDUAL_ := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 $(foreach a,$(_RESIDUAL_),$(eval .PHONY: $a))
 $(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
+
+# Forwarded cargo args after `--`: drop Make-level profile flags (--debug/--release/
+# --dist/--ci) so they don't leak to cargo; keep -p/--features/--all-targets etc.
+_FWD_ARGS  := $(filter-out --debug --release --dist --ci,$(_RESIDUAL_)) $(ARGS)
+# Default to building the elph binary unless the caller selected a package/bin.
+_BUILD_BIN := $(if $(filter -p --bin --lib --all-targets --examples --tests --benches --bins,$(_RESIDUAL_)),,--bin $(APP_BIN))
 
 # _after <list> <needle> — returns the words following the first occurrence of
 # <needle> (pure make, used to extract `--features <name>` residual values).
@@ -75,7 +78,6 @@ endef
 # Same flags work on `make install`.
 # Env still works: RELEASE=1, CI=1, PROFILE=debug|release|dist|ci
 # Note: `make install --release` is rejected by GNU make. Use `-- --release`.
-# Do not use residual goal `release` — it collides with the cross `release` target.
 _PROFILE_FLAGS := $(filter --debug --release --dist --ci,$(MAKECMDGOALS) $(_RESIDUAL_))
 _PROFILE_FLAG  := $(lastword $(_PROFILE_FLAGS))
 
@@ -128,24 +130,21 @@ ifeq ($(BUILD_PROFILE),ci)
   NEXTEST_CARGO_FLAGS := --cargo-profile ci
 endif
 
-.PHONY: build build-elph install run watch test test-elph test-elph-tui check-elph check-elph-tui generate-models prepare
-.PHONY: lint lint-elph lint-elph-tui fmt clean check coverage help stats
-.PHONY: cross cross-pull release release-linux release-macos release-windows
+.PHONY: build install run watch test check generate-models prepare
+.PHONY: lint fmt clean coverage help stats
 .PHONY: bump bump-elph bump-libs publish publish-dry-run version
 
 # ─── Build ──────────────────────────────────────────────────────────────────
 
-check: ## Check code compiles (fast, no codegen)
-	@$(CARGO) check --workspace $(CARGO_QA_FLAGS) 2>&1
+check: ## Check code compiles (fast, no codegen); pass -p <pkg> for a subset
+	@$(CARGO) check --workspace $(CARGO_QA_FLAGS) $(_FWD_ARGS) 2>&1
 # 	@$(CARGO) bloat --release -n 50
 
-build: build-elph ## Build elph binary (debug default; -- --debug|--release|--dist|--ci)
-
-build-elph: ## Build elph binary (debug default; -- --debug|--release|--dist|--ci)
+build: ## Build elph binary (debug default; pass -- --debug|--release|--dist|--ci, --features, or -p)
 	@_rustc_display=$$(if [ -n "$$RUSTC_WRAPPER" ]; then echo "$$RUSTC_WRAPPER"; else echo "rustc"; fi); \
 	echo "Building $(APP_BIN) v$(ELPH_VERSION) ($(BUILD_HASH)) [$$_rustc_display] ($(BUILD_PROFILE))"
 	@_start=$$(python3 -c "import time; print(int(time.time()*1000))"); \
-	$(CARGO) build $(CARGO_BUILD_FLAGS) $(ELPH_METAL_FEATURE) --bin $(APP_BIN) 2>&1; \
+	$(CARGO) build $(CARGO_BUILD_FLAGS) $(ELPH_METAL_FEATURE) $(_FWD_ARGS) $(_BUILD_BIN) 2>&1; \
 	_end=$$(python3 -c "import time; print(int(time.time()*1000))"); \
 	_elapsed=$$(( _end - _start )); \
 	echo ""; \
@@ -190,64 +189,17 @@ run: ## Run elph coding agent
 watch: ## Run elph with hot reload (requires watchexec)
 	@-$(CARGO) watch -c -- cargo run --bin $(APP_BIN) $(or $(_RESIDUAL_),$(ARGS)) 2>&1
 
-test: ## Run all workspace tests
-	@$(CARGO) nextest run --no-fail-fast $(NEXTEST_CARGO_FLAGS) $(or $(_RESIDUAL_),$(ARGS))
-
-test-elph: ## Run tests for elph and its workspace deps
-	@$(CARGO) nextest run --no-fail-fast $(NEXTEST_CARGO_FLAGS) -p elph-ai -p elph $(ARGS)
-	@$(CARGO) nextest run --no-fail-fast $(NEXTEST_CARGO_FLAGS) -p elph-agent --features full $(ARGS)
-
-test-elph-tui: ## Run elph-tui tests
-	@$(CARGO) nextest run --no-fail-fast $(NEXTEST_CARGO_FLAGS) -p elph-tui $(ARGS)
-
-check-elph: ## Check elph and its workspace deps compile
-	@$(CARGO) check $(CARGO_QA_FLAGS) -p elph-ai -p elph 2>&1
-	@$(CARGO) check $(CARGO_QA_FLAGS) -p elph-agent --features full --all-targets 2>&1
-
-check-elph-tui: ## Check elph-tui compiles (lib, tests, examples)
-	@$(CARGO) check $(CARGO_QA_FLAGS) -p elph-tui --all-targets 2>&1
+test: ## Run tests (workspace; pass -p <pkg>, --features, -- --debug|--release|--dist|--ci)
+	@$(CARGO) nextest run --no-fail-fast $(NEXTEST_CARGO_FLAGS) $(_FWD_ARGS)
 
 generate-models: ## Regenerate elph-ai model catalogs (pi packages/ai; ARGS=--skip-scripts)
 	@$(CARGO) run -p elph-ai --features generate-models --bin generate-models -- all $(ARGS)
 	@pnpm dlx --silent oxfmt crates/elph-ai/models/
 
-# ─── Cross-Compilation ─────────────────────────────────────────────────────────
-# Output: release/archives/ and release/binaries/ (+ SHA256SUMS each)
-#   Linux: linux-glibc-* and linux-musl-* (not alpine-*)
-#   linux-glibc-*  Ubuntu / Raspberry Pi OS 64-bit (glibc, Pi 3/4/5)
-#   linux-musl-*   Alpine Linux (musl)
-#   macos-*        macOS (native build on Mac)
-#   win-*          Windows
-
-cross-pull: ## Pull ghcr.io/cross-rs images into local Docker cache
-	@./scripts/cross-pull-images.sh
-
-cross: ## Build one platform (CROSS_TARGET=<triple>; APP=elph; CROSS_QUIET=1 / CROSS_VERBOSE=1)
-	@test -n "$(CROSS_TARGET)" || { echo "Usage: make cross CROSS_TARGET=<triple>" >&2; exit 1; }
-	@APP="$(APP)" ./scripts/cross-build.sh $(CROSS_TARGET) $(APP)
-
-release: ## Build release (host-aware: cargo native, cross remote)
-	@./scripts/cross-release.sh
-
-release-linux: ## Build Linux release (glibc + musl, x86_64 + arm64; APP=elph)
-	@APP="$(APP)" ./scripts/cross-platform.sh linux
-
-release-macos: ## Build macOS release (x86_64 + arm64; APP=elph)
-	@APP="$(APP)" ./scripts/cross-platform.sh macos
-
-release-windows: ## Build Windows release (x86_64 + arm64; APP=elph)
-	@APP="$(APP)" ./scripts/cross-platform.sh windows
-
 # ─── Code Quality ───────────────────────────────────────────────────────────
 
-lint: lint-elph ## Run clippy linter
-
-lint-elph: ## Run clippy for elph and its workspace deps
-	@$(CARGO) clippy $(CARGO_QA_FLAGS) -p elph -p elph-ai --all-targets -- -D warnings
-	@$(CARGO) clippy $(CARGO_QA_FLAGS) -p elph-agent --features full --all-targets -- -D warnings
-
-lint-elph-tui: ## Run clippy for elph-tui
-	@$(CARGO) clippy $(CARGO_QA_FLAGS) -p elph-tui --all-targets -- -D warnings
+lint: ## Run clippy (workspace, all targets; pass -p <pkg> for a subset)
+	@$(CARGO) clippy --workspace --all-targets $(CARGO_QA_FLAGS) $(_FWD_ARGS) -- -D warnings
 
 fmt: ## Format all code
 	@$(CARGO) fmt --all -- --style-edition 2024
@@ -340,8 +292,6 @@ prepare: ## Install required toolchain
 	@command -v rapidhash >/dev/null 2>&1 || $(CARGO) install --locked -y rapidhash
 	@command -v sccache >/dev/null 2>&1 || $(CARGO) binstall --locked -y sccache
 	@command -v tokei >/dev/null 2>&1 || $(CARGO) binstall --locked -y tokei
-	@command -v cross >/dev/null 2>&1 || $(CARGO) install cross --locked
-	@while read -r t; do rustup target add "$$t" 2>/dev/null || true; done < ./scripts/cross-targets.sh
 	@if [ "$(UNAME_S)" = "Darwin" ]; then \
 	  if xcrun --find metal 2>/dev/null >/dev/null; then \
 	    echo "Metal toolchain already installed at $$(xcrun --find metal)"; \
@@ -354,7 +304,7 @@ prepare: ## Install required toolchain
 # version: compare Cargo.toml with latest GitHub releases
 #   make version
 #   make version APP=elph
-#   make version TAG=elph-v0.0.28
+#   make version TAG=v0.0.28
 
 version: ## Compare app versions with latest GitHub releases (APP=, TAG=)
 	@APP="$(APP)" TAG="$(TAG)" ./scripts/version.sh

@@ -39,21 +39,26 @@ Triggers:
 
 Both use path filters on the elph workspace, lockfile, toolchain, Makefile, and `.github/`.
 
-On Linux and macOS the job runs, in order: `cargo fmt --check`, `make check-elph`, `make lint-elph`, `make test-elph`, then `make build-elph`. With `CI=true` (or `make build -- --ci`), those targets use Cargo profile `ci` (`target/ci/`: `opt-level=0`, no debuginfo, no incremental — sccache is the cache). Local `make` stays on `dev`. Profiles: `--debug`, `--release`, `--dist`, `--ci` (last flag wins). `PROFILE=dist` / `--dist` is unchanged (`opt-level=3`, thin LTO, `codegen-units=1`).
+On Linux and macOS the job runs, in order: `cargo fmt --check`, `make check`, `make lint`, `make test`, then `make build`. With `CI=true` (or profiling flags like `make build -- --ci`), those targets use Cargo profile `ci` (`target/ci/`: `opt-level=0`, no debuginfo, no incremental — sccache is the cache). Local `make` stays on `dev`. Profiles: `--debug`, `--release`, `--dist`, `--ci` (last flag wins). `PROFILE=dist` / `--dist` is unchanged (`opt-level=3`, thin LTO, `codegen-units=1`).
 
 ## Release
 
 Workflow: `.github/workflows/release.yml` (`Release / auth`, `version`, `check`, `linux`, `macos`, `windows`, `publish`, `sync`).
 
-Trigger: push a tag matching `elph-v*.*.*` (for example `elph-v0.1.0`).
+Trigger: push a tag matching `v*.*.*` (release, e.g. `v0.1.0`) or `v*.*.*-canary` (canary, e.g. `v0.1.0-canary`).
+
+The channel is derived from the tag suffix:
+
+- `v*.*.*` → **release** channel, built with the `dist` profile; published as a stable GitHub Release.
+- `v*.*.*-canary` → **canary** channel, built with the `release` profile; published as a GitHub **prerelease**.
 
 Sequence:
 
 1. Actor allow-list (`RELEASE_ALLOWED_ACTORS` repo variable, checked by `scripts/ci-check-release-actor.sh`).
-2. Version gate (`.github/version-gate` → `scripts/ci-check-release-version.sh`) — tag version must be newer than the latest GitHub release and at least the version in `crates/coding-agent/Cargo.toml`.
+2. Version gate (`.github/version-gate` → `scripts/ci-check-release-version.sh`) — tag version must be newer than the latest GitHub release *of the same channel* and at least the version in `crates/coding-agent/Cargo.toml`.
 3. Quality gate — fmt, check, lint only (no test, no debug build).
-4. Release-profile binaries on Linux, macOS (`make release-macos`), and Windows.
-5. GitHub Release with archives and `SHA256SUMS`.
-6. Sync `crates/coding-agent/Cargo.toml` on `main` if the tag version is ahead.
+4. Binaries on Linux, macOS, and Windows — each built with `cargo build --profile dist` (release) or `--profile release` (canary), via the `BUILD_PROFILE` env derived from the tag.
+5. GitHub Release (or prerelease for canary) with archives and `SHA256SUMS`.
+6. Sync `crates/coding-agent/Cargo.toml` on `main` if the tag version is ahead — **release channel only**; canary tags do not advance `main`.
 
 App name `elph` maps to `crates/coding-agent/Cargo.toml` via `scripts/ci-app-manifest.sh`.

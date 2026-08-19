@@ -14,7 +14,7 @@ if [[ ! -f "$manifest" ]]; then
 fi
 
 cargo_version="$(grep '^version = ' "$manifest" | head -1 | sed 's/.*= *"\(.*\)"/\1/')"
-prefix="${app}-v"
+prefix="v"
 repo="${GITHUB_REPOSITORY:-riipandi/elph}"
 api_url="https://api.github.com/repos/${repo}/releases?per_page=100"
 
@@ -35,11 +35,10 @@ import json
 import re
 import sys
 
-app = sys.argv[1]
-prefix = f"{app}-v"
+prefix = "v"
 
 def ver_key(tag: str) -> tuple[int, int, int]:
-    match = re.search(r"-v(\d+)\.(\d+)\.(\d+)", tag)
+    match = re.search(r"v(\d+)\.(\d+)\.(\d+)", tag)
     if not match:
         return (0, 0, 0)
     return tuple(int(part) for part in match.groups())
@@ -53,6 +52,8 @@ for release in releases:
     if release.get("prerelease", False):
         continue
     if release.get("draft", False):
+        continue
+    if tag_name.endswith("-canary"):
         continue
     tags.append(tag_name)
 
@@ -73,7 +74,8 @@ if [[ -z "${latest_tag}" ]]; then
     exit 0
 fi
 
-latest_version="${latest_tag#${prefix}}"
+latest_version="${latest_tag#v}"
+latest_version="${latest_version%-canary}"
 echo "Latest GitHub release: ${latest_tag}"
 
 should_continue="$(python3 -c '

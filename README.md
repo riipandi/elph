@@ -8,7 +8,7 @@ Rust workspace for AI agent applications — coding agent CLI, shared runtime li
 
 ## Quick Start
 
-Releases are tagged as `elph-v*`.
+Releases are tagged as `v*` (stable) and `v*-canary` (canary pre-releases).
 See [GitHub Releases](https://github.com/riipandi/elph/releases).
 
 ### Installation

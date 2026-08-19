@@ -16,18 +16,10 @@ inputs:
     description: Install cargo-nextest for running tests
     required: false
     default: "true"
-  installCross:
-    description: Install cross and rustup targets for release builds
-    required: false
-    default: "false"
   installSccache:
     description: Install sccache (needed when cacheBackend is namespace)
     required: false
     default: "false"
-  crossPlatform:
-    description: Limit rustup targets to a release platform (linux, macos, windows)
-    required: false
-    default: ""
   saveCache:
     description: "Whether to save the cargo cache (default: true). Ignored for namespace."
     required: false
@@ -43,7 +35,7 @@ runs:
         components: clippy, rustfmt
 
     - name: Install tools
-      if: inputs.installNextest == 'true' || inputs.installCross == 'true' || inputs.installSccache == 'true' || inputs.cacheBackend == 'namespace' || runner.os == 'Linux'
+      if: inputs.installNextest == 'true' || inputs.installSccache == 'true' || inputs.cacheBackend == 'namespace' || runner.os == 'Linux'
       shell: bash
       run: |
         set -euo pipefail
@@ -69,19 +61,6 @@ runs:
           if ! command -v wild >/dev/null 2>&1; then
             cargo binstall --locked -y wild-linker
           fi
-        fi
-        if [ "${{ inputs.installCross }}" = "true" ]; then
-          if ! command -v cross >/dev/null 2>&1; then
-            cargo binstall --locked -y cross
-          fi
-          platform="${{ inputs.crossPlatform }}"
-          if [ -n "$platform" ]; then
-            ./scripts/cross-targets.sh "$platform"
-          else
-            ./scripts/cross-targets.sh
-          fi | while read -r target; do
-            rustup target add "$target" 2>/dev/null || true
-          done
         fi
 
     - name: Cache Cargo

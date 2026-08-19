@@ -31,7 +31,7 @@ floppy = { workspace = true, features = ["full", "mkl"] }
 
 ```bash
 # drop wild for one build, then:
-# RUSTFLAGS='-C link-arg=-fuse-ld=lld' make test-elph
+# RUSTFLAGS='-C link-arg=-fuse-ld=lld' make test
 ```
 
 ### Follow-up
@@ -76,8 +76,8 @@ Use one long-lived `Arc<Database>` per process and avoid opening the same sessio
 
 ## 2026-07-04
 
-- **Pi OS 32-bit (armv7)** — cross-compile fails; `turso`/`io-uring` does not support armv7. Use Pi OS **64-bit** → `*-linux-glibc-arm64.tar.gz`.
-- **macOS** — no `cross-rs` Docker image; `*-macos-*` archives are produced only when `make cross` runs on a Mac.
+- **Pi OS 32-bit (armv7)** — cross-compile fails; `turso`/`io-uring` does not support armv7. Use Pi OS **64-bit** on aarch64 hardware; arm64 Linux binaries are not published (CI builds x86_64 Linux only), so build from source there.
+- **macOS** — `*-macos-*` archives are built in CI via native `cargo build` for both x86_64 and arm64; no `cross-rs` Docker image is needed.
 
 Platform details: [docs/limitation.md](./docs/limitation.md).
 

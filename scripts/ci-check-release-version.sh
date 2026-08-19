@@ -5,22 +5,30 @@
 set -euo pipefail
 
 app="${APP:?APP is required (elph)}"
-tag="${GITHUB_REF_NAME:?GITHUB_REF_NAME is required (e.g. elph-v0.0.28)}"
+tag="${GITHUB_REF_NAME:?GITHUB_REF_NAME is required (e.g. v0.0.28 or v0.0.28-canary)}"
 manifest="$("$(dirname "$0")/ci-app-manifest.sh" "$app")"
 output="${GITHUB_OUTPUT:?GITHUB_OUTPUT is required}"
-prefix="${app}-v"
+
+# Canary tags use the `vX.Y.Z-canary` form and ship with the `release`
+# profile; stable tags use `vX.Y.Z` and ship with the `dist` profile.
+if [[ "$tag" == *-canary ]]; then
+    channel="canary"
+else
+    channel="release"
+fi
 
 if [[ ! -f "$manifest" ]]; then
     echo "Manifest not found: $manifest" >&2
     exit 1
 fi
 
-if [[ "$tag" != "${prefix}"* ]]; then
-    echo "Tag ${tag} does not match expected prefix ${prefix}" >&2
+if [[ "$tag" != v* ]]; then
+    echo "Tag ${tag} does not start with 'v' (expected e.g. v0.0.28 or v0.0.28-canary)" >&2
     exit 1
 fi
 
-tag_version="${tag#"${prefix}"}"
+tag_version="${tag#v}"
+tag_version="${tag_version%-canary}"
 cargo_version="$(grep '^version = ' "$manifest" | head -1 | sed 's/.*= *"\(.*\)"/\1/')"
 repo="${GITHUB_REPOSITORY:-riipandi/elph}"
 api_url="https://api.github.com/repos/${repo}/releases?per_page=100"
@@ -43,11 +51,10 @@ import json
 import re
 import sys
 
-app = sys.argv[1]
-prefix = f"{app}-v"
+channel = sys.argv[1]
 
 def ver_key(tag: str) -> tuple[int, int, int]:
-    match = re.search(r"-v(\d+)\.(\d+)\.(\d+)", tag)
+    match = re.search(r"v(\d+)\.(\d+)\.(\d+)", tag)
     if not match:
         return (0, 0, 0)
     return tuple(int(part) for part in match.groups())
@@ -56,11 +63,17 @@ releases = json.load(sys.stdin)
 tags: list[str] = []
 for release in releases:
     tag_name = release.get("tag_name", "")
-    if not tag_name.startswith(prefix):
-        continue
-    if release.get("prerelease", False):
+    if not tag_name.startswith("v"):
         continue
     if release.get("draft", False):
+        continue
+    # Stable channel compares against stable (non-prerelease) releases;
+    # canary compares against canary (prerelease, -canary suffix) releases.
+    is_prerelease = release.get("prerelease", False)
+    if channel == "release":
+        if is_prerelease or tag_name.endswith("-canary"):
+            continue
+    elif not is_prerelease or not tag_name.endswith("-canary"):
         continue
     tags.append(tag_name)
 
@@ -69,7 +82,7 @@ if not tags:
 
 tags.sort(key=ver_key, reverse=True)
 print(tags[0])
-' "${app}")" || latest_tag=""
+' "${channel}")" || latest_tag=""
 
 manifest_ok="$(python3 -c '
 import sys
@@ -89,12 +102,13 @@ if [[ "${manifest_ok}" != "true" ]]; then
         echo "release_version=${tag_version}"
         echo "cargo_version=${cargo_version}"
         echo "latest_release=unknown"
+        echo "channel=${channel}"
     } >>"${output}"
     exit 0
 fi
 
 if [[ -z "${latest_tag}" ]]; then
-    echo "No stable ${prefix}* releases found; continuing pipeline"
+    echo "No ${channel} releases found; continuing pipeline"
     {
         echo "should_continue=true"
         echo "release_version=${tag_version}"
@@ -104,7 +118,8 @@ if [[ -z "${latest_tag}" ]]; then
     exit 0
 fi
 
-latest_version="${latest_tag#${prefix}}"
+latest_version="${latest_tag#v}"
+latest_version="${latest_version%-canary}"
 echo "Latest GitHub release: ${latest_tag}"
 
 should_continue="$(python3 -c '
@@ -129,4 +144,5 @@ fi
     echo "release_version=${tag_version}"
     echo "cargo_version=${cargo_version}"
     echo "latest_release=${latest_version}"
+    echo "channel=${channel}"
 } >>"${output}"

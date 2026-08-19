@@ -8,8 +8,8 @@
 #   curl -fsSL https://raw.githubusercontent.com/riipandi/elph/main/scripts/install.sh | bash
 #
 # Options:
-#   --version <tag>      Pin a specific version (default: latest elph-v* release)
-#   --canary             Use the latest elph pre-release
+#   --version <tag>      Pin a specific version (default: latest v* release)
+#   --canary             Use the latest v*-canary pre-release
 #   --install-dir <dir>  Binary install directory (default: ~/.local/bin)
 #   --dry-run            Print what would happen without downloading
 #   --help               Show this help
@@ -32,8 +32,8 @@ Usage:
   curl -fsSL https://elph.space/elph/install.sh | bash -s -- --canary
 
 Options:
-  --version <tag>      Pin a specific version (default: latest elph-v* release)
-  --canary             Use the latest elph pre-release
+  --version <tag>      Pin a specific version (default: latest v* release)
+  --canary             Use the latest v*-canary pre-release
   --install-dir <dir>  Binary install directory (default: ~/.local/bin)
   --dry-run            Print what would happen without downloading
   --help               Show this help
@@ -150,7 +150,7 @@ install_detect_arch() {
 
 install_normalize_tag() {
     local version="$1"
-    local prefix="${INSTALL_APP}-v"
+    local prefix="v"
 
     if [[ -z "$version" || "$version" == "latest" ]]; then
         return 1
@@ -164,7 +164,7 @@ install_normalize_tag() {
 
 install_resolve_tag() {
     local canary="${1:-0}"
-    local prefix="${INSTALL_APP}-v"
+    local prefix="v"
     local api_url="https://api.github.com/repos/${INSTALL_REPO_OWNER}/${INSTALL_REPO_NAME}/releases?per_page=100"
     local json tag
 
@@ -177,12 +177,11 @@ import json
 import re
 import sys
 
-app = sys.argv[1]
-canary = sys.argv[2] == "1"
-prefix = f"{app}-v"
+canary = sys.argv[1] == "1"
+prefix = "v"
 
 def ver_key(tag: str) -> tuple[int, int, int]:
-    match = re.search(r"-v(\d+)\.(\d+)\.(\d+)", tag)
+    match = re.search(r"v(\d+)\.(\d+)\.(\d+)", tag)
     if not match:
         return (0, 0, 0)
     return tuple(int(part) for part in match.groups())
@@ -194,9 +193,9 @@ for release in releases:
     if not tag_name.startswith(prefix):
         continue
     if canary:
-        if not release.get("prerelease", False):
+        if not release.get("prerelease", False) or not tag_name.endswith("-canary"):
             continue
-    elif release.get("prerelease", False):
+    elif release.get("prerelease", False) or tag_name.endswith("-canary"):
         continue
     tags.append(tag_name)
 
@@ -205,7 +204,7 @@ if not tags:
 
 tags.sort(key=ver_key, reverse=True)
 print(tags[0])
-' "${INSTALL_APP}" "${canary}")" || tag=""
+' "${canary}")" || tag=""
 
     if [[ -z "${tag}" ]]; then
         install_die "No ${INSTALL_APP} releases found on GitHub (prefix: ${prefix}*)"
@@ -252,7 +251,7 @@ install_run() {
     if [[ -z "${version_tag}" ]]; then
         install_die "Failed to resolve ${INSTALL_APP} version"
     fi
-    version_num="${version_tag#${INSTALL_APP}-v}"
+    version_num="${version_tag#v}"
     archive_name="${INSTALL_APP}-${platform}-${arch}.tar.gz"
     archive_url="https://github.com/${INSTALL_REPO_OWNER}/${INSTALL_REPO_NAME}/releases/download/${version_tag}/${archive_name}"
     checksum_url="https://github.com/${INSTALL_REPO_OWNER}/${INSTALL_REPO_NAME}/releases/download/${version_tag}/SHA256SUMS"

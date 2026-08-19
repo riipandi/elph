@@ -36,11 +36,10 @@ import json
 import re
 import sys
 
-app = sys.argv[1]
-prefix = f"{app}-v"
+prefix = "v"
 
 def ver_key(tag: str) -> tuple[int, int, int]:
-    match = re.search(r"-v(\d+)\.(\d+)\.(\d+)", tag)
+    match = re.search(r"v(\d+)\.(\d+)\.(\d+)", tag)
     if not match:
         return (0, 0, 0)
     return tuple(int(part) for part in match.groups())
@@ -54,6 +53,8 @@ for release in releases:
     if release.get("prerelease", False):
         continue
     if release.get("draft", False):
+        continue
+    if tag_name.endswith("-canary"):
         continue
     tags.append(tag_name)
 
@@ -117,11 +118,12 @@ for app in "${APPS[@]}"; do
     latest_tag="$(latest_for_app "$app" 2>/dev/null || true)"
     if [[ -z "${latest_tag}" ]]; then
         latest="(none)"
-        suggested="${app}-v${cargo}"
+        suggested="v${cargo}"
         note="no stable release yet"
     else
-        latest="${latest_tag#${app}-v}"
-        suggested="${app}-v$(next_patch "$latest")"
+        latest="${latest_tag#v}"
+        latest="${latest%-canary}"
+        suggested="v$(next_patch "$latest")"
         if [[ "$(compare_gt "$cargo" "$latest")" == "true" ]]; then
             note="main ahead of latest release"
         elif [[ "$cargo" == "$latest" ]]; then
@@ -137,34 +139,28 @@ done
 
 if [[ -n "${TAG:-}" ]]; then
     echo ""
-    tag_app="${TAG%%-v*}"
-    if [[ "$tag_app" == "$TAG" || -z "$tag_app" ]]; then
-        echo "error: invalid tag format (expected <app>-v<major>.<minor>.<patch>): ${TAG}" >&2
+    if [[ "$TAG" != v* ]]; then
+        echo "error: invalid tag format (expected v<major>.<minor>.<patch> or v<major>.<minor>.<patch>-canary): ${TAG}" >&2
         exit 1
     fi
 
-    case "$tag_app" in
-    elph) ;;
-    *)
-        echo "error: unknown app in tag: ${tag_app}" >&2
-        exit 1
-        ;;
-    esac
-
-    tag_version="${TAG#${tag_app}-v}"
-    cargo="$(cargo_version "$tag_app")"
-    latest_tag="$(latest_for_app "$tag_app" 2>/dev/null || true)"
-    latest="${latest_tag#${tag_app}-v}"
+    app="${APPS[0]}"
+    tag_version="${TAG#v}"
+    tag_version="${tag_version%-canary}"
+    cargo="$(cargo_version "$app")"
+    latest_tag="$(latest_for_app "$app" 2>/dev/null || true)"
+    latest="${latest_tag#v}"
+    latest="${latest%-canary}"
     if [[ -z "${latest_tag}" ]]; then
         latest="(none)"
     fi
 
     echo "Validate tag: ${TAG}"
-    echo "  cargo.toml (${tag_app}): ${cargo}"
-    echo "  latest release:          ${latest}"
+    echo "  cargo.toml (${app}): ${cargo}"
+    echo "  latest release:       ${latest}"
 
     if [[ "$(compare_gte "$tag_version" "$cargo")" != "true" ]]; then
-        echo "error: tag version ${tag_version} is older than ${tag_app}/Cargo.toml (${cargo})" >&2
+        echo "error: tag version ${tag_version} is older than ${app}/Cargo.toml (${cargo})" >&2
         exit 1
     fi
 

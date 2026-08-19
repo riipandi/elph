@@ -63,10 +63,10 @@ Do not mix types (structs, enums, type aliases) and functions in one braced `use
 
 | Task          | Target                                                            |
 | ------------- | ----------------------------------------------------------------- |
-| Compile check | `make check` or `make check-elph` / `make check-elph-tui`         |
-| Lint          | `make lint` or `make lint-elph` / `make lint-elph-tui`            |
+| Compile check | `make check` (workspace; `make check -- -p <pkg>` for a subset)   |
+| Lint          | `make lint` (workspace; `make lint -- -p <pkg>` for a subset)    |
 | Format        | `make fmt`                                                        |
-| Test          | `make test` (workspace) · `make test-elph` · `make test-elph-tui` |
+| Test          | `make test` (workspace; `make test -- -p <pkg>` for a subset)    |
 | Build         | `make build` or `make install`                                    |
 | Stats         | `make stats` (sccache hit rate + target/ breakdown)               |
 | Space reclaim | `make gc` (incremental >7d, deps >60d) · `make gc DRY=1`          |

@@ -1,9 +1,10 @@
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 
-# git tag --delete elph-v0.0.1
-# git push origin --delete tag elph-v0.0.1
-# git tag elph-v0.0.1 -m "version bump"
-# git push origin elph-v0.0.1
+# git tag --delete v0.0.1
+# git push origin --delete tag v0.0.1
+# git tag v0.0.1 -m "version bump"
+# git push origin v0.0.1
+# git tag v0.0.1-canary -m "canary build"
 
 name: Release
 
@@ -21,7 +22,9 @@ on:
       SCCACHE_R2_SECRET_ACCESS_KEY:
         required: false
   push:
-    tags: ["elph-v*.*.*"]
+    tags:
+      - "v*.*.*"
+      - "v*.*.*-canary"
 
 concurrency:
   group: release-${{ github.ref }}
@@ -39,6 +42,11 @@ env:
   SCCACHE_BUCKET: ${{ vars.SCCACHE_R2_BUCKET }}
   SCCACHE_ENDPOINT: ${{ vars.SCCACHE_R2_ENDPOINT }}
   SCCACHE_REGION: ${{ vars.SCCACHE_R2_REGION || 'auto' }}
+  # Channel + build profile are derived from the pushed tag:
+  #   v*.*.*        -> release channel, `dist` profile
+  #   v*.*.*-canary -> canary channel,  `release` profile
+  RELEASE_CHANNEL: ${{ endsWith(github.ref_name, '-canary') && 'canary' || 'release' }}
+  BUILD_PROFILE: ${{ endsWith(github.ref_name, '-canary') && 'release' || 'dist' }}
 
 jobs:
   auth:
@@ -60,6 +68,7 @@ jobs:
       release_version: ${{ steps.gate.outputs.release_version }}
       cargo_version: ${{ steps.gate.outputs.cargo_version }}
       latest_release: ${{ steps.gate.outputs.latest_release }}
+      release_channel: ${{ steps.gate.outputs.channel }}
     steps:
       - uses: actions/checkout@v7
       - id: gate
@@ -101,7 +110,7 @@ jobs:
           installNextest: "false"
 
       - name: Build release
-        run: cargo build --release --bin ${{ inputs.app || 'elph' }}
+        run: cargo build --profile ${{ env.BUILD_PROFILE }} --bin ${{ inputs.app || 'elph' }}
         env:
           APP: ${{ inputs.app || 'elph' }}
           RUSTC_WRAPPER: sccache
@@ -113,8 +122,8 @@ jobs:
           app="${{ inputs.app || 'elph' }}"
           label="${app}-linux-x86_64"
           mkdir -p release/archives release/binaries
-          cp "target/release/${app}" "release/binaries/${label}"
-          tar -C target/release -czf "release/archives/${label}.tar.gz" "${app}"
+          cp "target/${{ env.BUILD_PROFILE }}/${app}" "release/binaries/${label}"
+          tar -C "target/${{ env.BUILD_PROFILE }}" -czf "release/archives/${label}.tar.gz" "${app}"
 
       - name: Show sccache stats
         if: always()
@@ -152,10 +161,26 @@ jobs:
           installNextest: "false"
 
       - name: Build release
-        run: make release-macos
+        run: |
+          cargo build --profile ${{ env.BUILD_PROFILE }} --bin ${{ inputs.app || 'elph' }} --target aarch64-apple-darwin
+          cargo build --profile ${{ env.BUILD_PROFILE }} --bin ${{ inputs.app || 'elph' }} --target x86_64-apple-darwin
         env:
           APP: ${{ inputs.app || 'elph' }}
           RUSTC_WRAPPER: sccache
+
+      - name: Package
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="${{ inputs.app || 'elph' }}"
+          declare -A arch_map=( [aarch64-apple-darwin]=arm64 [x86_64-apple-darwin]=x86_64 )
+          mkdir -p release/archives release/binaries
+          for target in aarch64-apple-darwin x86_64-apple-darwin; do
+            arch="${arch_map[$target]}"
+            label="${app}-macos-${arch}"
+            cp "target/${target}/${{ env.BUILD_PROFILE }}/${app}" "release/binaries/${label}"
+            tar -C "target/${target}/${{ env.BUILD_PROFILE }}" -czf "release/archives/${label}.tar.gz" "${app}"
+          done
 
       - name: Show sccache stats
         if: always()
@@ -195,8 +220,9 @@ jobs:
 
       - name: Build release
         shell: bash
-        run: cargo build --release --bin ${{ inputs.app || 'elph' }}
+        run: cargo build --profile ${{ env.BUILD_PROFILE }} --bin ${{ inputs.app || 'elph' }}
         env:
+          APP: ${{ inputs.app || 'elph' }}
           RUSTC_WRAPPER: sccache
 
       - name: Package
@@ -206,8 +232,8 @@ jobs:
           app="${{ inputs.app || 'elph' }}"
           label="${app}-win-x86_64"
           mkdir -p release/archives release/binaries
-          cp "target/release/${app}.exe" "release/binaries/${label}.exe"
-          cd target/release && zip -q -j "${{ github.workspace }}/release/archives/${label}.zip" "${app}.exe"
+          cp "target/${{ env.BUILD_PROFILE }}/${app}.exe" "release/binaries/${label}.exe"
+          cd "target/${{ env.BUILD_PROFILE }}" && zip -q -j "${{ github.workspace }}/release/archives/${label}.zip" "${app}.exe"
 
       - name: Show sccache stats
         if: always()
@@ -253,7 +279,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "Publishing ${{ inputs.app || 'elph' }} v${{ needs.version-gate.outputs.release_version }} (${GITHUB_REF_NAME})"
+          echo "Publishing ${{ inputs.app || 'elph' }} v${{ needs.version-gate.outputs.release_version }} (${{ needs.version-gate.outputs.release_channel }} channel, ${GITHUB_REF_NAME})"
 
       - name: Write checksums
         shell: bash
@@ -274,6 +300,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
           make_latest: false
+          prerelease: ${{ needs.version-gate.outputs.release_channel == 'canary' }}
           generate_release_notes: true
           files: |
             release/archives/${{ inputs.app || 'elph' }}-*
@@ -282,7 +309,9 @@ jobs:
   sync-version:
     name: sync
     needs: [version-gate, publish]
-    if: needs.version-gate.outputs.should_continue == 'true'
+    if: >-
+      needs.version-gate.outputs.should_continue == 'true' &&
+      needs.version-gate.outputs.release_channel == 'release'
     runs-on: ubuntu-slim
     timeout-minutes: 10
     concurrency:

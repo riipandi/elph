@@ -21,6 +21,9 @@ outputs:
   latest_release:
     description: Latest stable GitHub release version, or none
     value: ${{ steps.check.outputs.latest_release }}
+  channel:
+    description: Release channel derived from the tag (release or canary)
+    value: ${{ steps.check.outputs.channel }}
 
 runs:
   using: composite
