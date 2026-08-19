@@ -137,7 +137,8 @@ pub async fn execute_shell_with_capture<E: ExecutionEnv>(
                 abort_token: options.abort_token.clone(),
                 on_stdout: Some(on_chunk.clone()),
                 on_stderr: Some(on_chunk),
-                ..Default::default()
+                #[cfg(unix)]
+                pty_size: None,
             }),
         )
         .await;

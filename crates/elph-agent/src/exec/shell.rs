@@ -510,7 +510,9 @@ mod tests {
     /// No streaming callbacks → goes through `exec_piped` → `wait_child_with_output`.
     #[tokio::test]
     async fn abort_kills_process_group_piped() {
-        let config = ShellConfig::default().with_prefer_pty(false);
+        let config = ShellConfig::default();
+        #[cfg(unix)]
+        let config = config.with_prefer_pty(false);
         let token = CancellationToken::new();
 
         let run = {
@@ -617,7 +619,9 @@ mod tests {
     /// Streaming path (callbacks set) must abort quickly too.
     #[tokio::test]
     async fn abort_streaming_kills_process_group() {
-        let config = ShellConfig::default().with_prefer_pty(false);
+        let config = ShellConfig::default();
+        #[cfg(unix)]
+        let config = config.with_prefer_pty(false);
         let token = CancellationToken::new();
         let saw_chunk = Arc::new(std::sync::atomic::AtomicBool::new(false));
         let saw = saw_chunk.clone();
@@ -658,7 +662,9 @@ mod tests {
     /// Timeout must terminate the process group too (not just the direct shell).
     #[tokio::test]
     async fn timeout_kills_process_group() {
-        let config = ShellConfig::default().with_prefer_pty(false);
+        let config = ShellConfig::default();
+        #[cfg(unix)]
+        let config = config.with_prefer_pty(false);
         let started = Instant::now();
         let result = exec_shell_command(
             &config,
