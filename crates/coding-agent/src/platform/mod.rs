@@ -17,6 +17,7 @@ pub mod settings;
 pub use crate::utils::path::AppPaths;
 #[cfg(unix)]
 pub use app::SHOULD_KILL_PARENT;
+#[cfg(unix)]
 pub use app::kill_parent;
 pub use app::run;
 pub use app::{EXIT_ERROR, EXIT_INTERRUPTED, EXIT_SUCCESS, ExitCode, WAS_INTERRUPTED};
