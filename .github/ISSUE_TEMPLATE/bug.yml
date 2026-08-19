@@ -31,7 +31,7 @@ body:
     id: reproduce
     attributes:
       label: Repro
-      description: Steps or a `make test-*` case.
+      description: Steps or a `make test` case.
       placeholder: |
         1. `elph` (or `elph-debug`) in a git repo
         2. …

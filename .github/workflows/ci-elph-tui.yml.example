@@ -57,16 +57,16 @@ jobs:
         run: cargo fmt --all --check
 
       - name: Check compilation
-        run: make check-elph-tui
+        run: make check -- -p elph-tui
 
       - name: Lint
-        run: make lint-elph-tui
+        run: make lint -- -p elph-tui
 
       - name: Test
-        run: make test-elph-tui
+        run: make test -- -p elph-tui
 
       - name: Build examples
-        run: make build-elph-tui-examples
+        run: make build -- -p elph-tui --examples
 
       - name: Show sccache statistics
         if: always()

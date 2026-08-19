@@ -9,7 +9,7 @@ powered by the Elph library stack.
 Install using the [install script](../scripts/install.sh):
 
 ```sh
-curl -fsSL https://elph.space/elph/install.sh | bash
+curl -fsSL https://elph.space/install.sh | bash
 ```
 
 Or use `cargo install` (requires Rust 1.97+):

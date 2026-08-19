@@ -37,6 +37,9 @@ concurrency:
 
 jobs:
   ci:
-    uses: ./.github/workflows/_ci-app.yml
+    uses: ./.github/workflows/test.yml
     with:
       app: elph
+    secrets:
+      SCCACHE_R2_ACCESS_KEY_ID: ${{ secrets.SCCACHE_R2_ACCESS_KEY_ID }}
+      SCCACHE_R2_SECRET_ACCESS_KEY: ${{ secrets.SCCACHE_R2_SECRET_ACCESS_KEY }}

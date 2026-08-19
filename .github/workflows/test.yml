@@ -92,18 +92,26 @@ jobs:
         run: cargo fmt --all --check
 
       - name: Check compile
-        run: make check-${{ inputs.app || 'elph' }}
+        run: make check
 
       - name: Lint
-        run: make lint-${{ inputs.app || 'elph' }}
+        run: make lint
+
+      - name: Lint (elph-agent full features)
+        if: (inputs.app || 'elph') == 'elph'
+        run: make lint -- -p elph-agent --features full
 
       - name: Test
         if: (inputs.mode || 'full') == 'full'
-        run: make test-${{ inputs.app || 'elph' }}
+        run: make test
+
+      - name: Test (elph-agent full features)
+        if: (inputs.mode || 'full') == 'full' && (inputs.app || 'elph') == 'elph'
+        run: make test -- -p elph-agent --features full
 
       - name: Build debug
         if: (inputs.mode || 'full') == 'full'
-        run: make build-${{ inputs.app || 'elph' }}
+        run: make build
         env:
           RUSTC_WRAPPER: sccache
 

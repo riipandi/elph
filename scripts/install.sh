@@ -3,8 +3,8 @@
 # Elph -- Install script
 #
 # Usage:
-#   curl -fsSL https://elph.space/elph/install.sh | bash
-#   curl -fsSL https://elph.space/elph/install.sh | bash -s -- --canary
+#   curl -fsSL https://elph.space/install.sh | bash
+#   curl -fsSL https://elph.space/install.sh | bash -s -- --canary
 #   curl -fsSL https://raw.githubusercontent.com/riipandi/elph/main/scripts/install.sh | bash
 #
 # Options:
@@ -28,8 +28,8 @@ show_install_help() {
 Elph -- Install script
 
 Usage:
-  curl -fsSL https://elph.space/elph/install.sh | bash
-  curl -fsSL https://elph.space/elph/install.sh | bash -s -- --canary
+  curl -fsSL https://elph.space/install.sh | bash
+  curl -fsSL https://elph.space/install.sh | bash -s -- --canary
 
 Options:
   --version <tag>      Pin a specific version (default: latest v* release)

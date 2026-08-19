@@ -9,7 +9,7 @@ headless prompts (`elph run`), and speaks ACP for editor integrations
 **Pre-built binaries** (Linux and macOS):
 
 ```sh
-curl -fsSL https://elph.space/elph/install.sh | bash
+curl -fsSL https://elph.space/install.sh | bash
 ```
 
 **From source** (Rust ≥ 1.97):
