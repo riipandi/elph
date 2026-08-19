@@ -29,11 +29,14 @@ pub fn get_builtin_models(provider: &str) -> Vec<crate::types::Model> {
 
 /// Provider ids from embedded catalogs ∪ disk-only providers (sorted).
 pub fn get_builtin_providers() -> Vec<String> {
-    let ids = provider_dir::all_provider_ids();
+    let mut ids = provider_dir::all_provider_ids();
     // `amazon-bedrock` ships embedded models but its provider is only constructed under the
-    // `bedrock` feature, so keep the catalog list in sync with `builtin_providers()`.
-    #[cfg(not(feature = "bedrock"))]
-    ids.retain(|id| id != "amazon-bedrock");
+    // `bedrock` feature, so keep the catalog list in sync with `builtin_providers()`. The
+    // `retain` is compiled in both configs (`cfg!` is a compile-time bool, not a code-removing
+    // attribute) so `ids` is always mutated and never triggers `unused_mut`.
+    if !cfg!(feature = "bedrock") {
+        ids.retain(|id| id != "amazon-bedrock");
+    }
     ids
 }
 
