@@ -130,6 +130,15 @@ const PROVIDERS: &[ProviderSource] = &[
         live_pricing_env: None,
     },
     ProviderSource {
+        id: "hetzner",
+        models_dev_keys: &["hetzner"],
+        default_api: "openai-completions",
+        default_base_url: "https://inference.hetzner.com/api/v1",
+        gateway_preserve_ids: true,
+        live_pricing_base: Some("https://inference.hetzner.com/api/v1"),
+        live_pricing_env: Some("HETZNER_API_KEY"),
+    },
+    ProviderSource {
         id: "google",
         models_dev_keys: &["google"],
         default_api: "google-generative-ai",

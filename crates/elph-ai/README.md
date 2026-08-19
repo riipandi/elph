@@ -406,6 +406,7 @@ Built-in providers resolve these environment variables:
 | MiniMax (China)                        | `MINIMAX_CN_API_KEY`                                                                                                                                                   |
 | Moonshot AI / Moonshot AI (China)      | `MOONSHOT_API_KEY`                                                                                                                                                     |
 | Hugging Face                           | `HF_TOKEN`                                                                                                                                                             |
+| Hetzner                                | `HETZNER_API_KEY`                                                                                                                                                       |
 | OpenCode Zen / OpenCode Go             | `OPENCODE_API_KEY`                                                                                                                                                     |
 | Kimi For Coding                        | `KIMI_API_KEY`                                                                                                                                                         |
 | Xiaomi MiMo (API billing)              | `XIAOMI_API_KEY`                                                                                                                                                       |

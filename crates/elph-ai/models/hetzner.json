@@ -1,0 +1,57 @@
+{
+    "$schema": "https://elph.space/provider-schema.json",
+    "Qwen/Qwen3.6-35B-A3B-FP8": {
+        "api": "openai-completions",
+        "baseUrl": "https://inference.hetzner.com/api/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "description": "Qwen3.6 35B-A3B sparse MoE model (FP8) served on Hetzner AI Inference. Strong multilingual coding, agentic, and reasoning performance with toggleable thinking.",
+        "id": "Qwen/Qwen3.6-35B-A3B-FP8",
+        "input": ["text"],
+        "maxTokens": 32768,
+        "name": "Qwen3.6 35B-A3B (FP8)",
+        "provider": "hetzner",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "Qwen3.8-27B": {
+        "api": "openai-completions",
+        "baseUrl": "https://inference.hetzner.com/api/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "description": "Qwen3.8 27B dense model served on Hetzner AI Inference. Balanced coding and reasoning with toggleable thinking.",
+        "id": "Qwen3.8-27B",
+        "input": ["text"],
+        "maxTokens": 32768,
+        "name": "Qwen3.8 27B",
+        "provider": "hetzner",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    }
+}

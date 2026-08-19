@@ -78,6 +78,11 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
             api_key_env_key: "COPILOT_GITHUB_TOKEN",
             default_model: "claude-fable-5",
         }),
+        "hetzner" => Some(ProviderConfig {
+            label: "Hetzner",
+            api_key_env_key: "HETZNER_API_KEY",
+            default_model: "Qwen3.8-27B",
+        }),
         "google" => Some(ProviderConfig {
             label: "Google",
             api_key_env_key: "GEMINI_API_KEY",
@@ -406,6 +411,14 @@ mod tests {
     }
 
     #[test]
+    fn hetzner_is_a_known_provider() {
+        let cfg = provider_config("hetzner").expect("hetzner config");
+        assert_eq!(cfg.label, "Hetzner");
+        assert_eq!(cfg.api_key_env_key, "HETZNER_API_KEY");
+        assert!(elph_ai::get_builtin_model("hetzner", cfg.default_model).is_some());
+    }
+
+    #[test]
     fn agnes_is_a_known_provider() {
         let cfg = provider_config("agnes").expect("agnes config");
         assert_eq!(cfg.label, "Agnes");
@@ -452,6 +465,7 @@ mod tests {
             ("cloudflare-workers-ai", "Cloudflare Workers AI", "CLOUDFLARE_API_KEY"),
             ("fireworks", "Fireworks", "FIREWORKS_API_KEY"),
             ("github-copilot", "GitHub Copilot", "COPILOT_GITHUB_TOKEN"),
+            ("hetzner", "Hetzner", "HETZNER_API_KEY"),
             ("google-vertex", "Google Vertex AI", "GOOGLE_CLOUD_API_KEY"),
             ("groq", "Groq", "GROQ_API_KEY"),
             ("huggingface", "Hugging Face", "HF_TOKEN"),
@@ -514,6 +528,7 @@ mod tests {
             "deepseek",
             "fireworks",
             "github-copilot",
+            "hetzner",
             "google",
             "google-vertex",
             "groq",

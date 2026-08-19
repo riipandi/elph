@@ -281,6 +281,24 @@ pub fn github_copilot_provider() -> Provider {
     })
 }
 
+/// Hetzner AI Inference — OpenAI-compatible gateway (https://docs.hetzner.com/ai).
+/// Model list comes from `https://inference.hetzner.com/api/v1/models` (Bearer `HETZNER_API_KEY`).
+pub fn hetzner_provider() -> Provider {
+    create_provider(CreateProviderOptions {
+        id: "hetzner".to_string(),
+        name: Some("Hetzner".to_string()),
+        base_url: Some("https://inference.hetzner.com/api/v1".to_string()),
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("Hetzner API key", vec!["HETZNER_API_KEY"])),
+            oauth: None,
+        },
+        models: builtin_catalog("hetzner").as_ref().clone(),
+        refresh_models: None,
+        api: ProviderApi::Single(openai_completions_api()),
+    })
+}
+
 pub fn hyper_provider() -> Provider {
     let mut headers = HashMap::new();
     headers.insert("User-Agent".to_string(), Some(hyper_user_agent()));
@@ -537,6 +555,7 @@ pub fn builtin_providers() -> Vec<Provider> {
         ),
         fireworks_provider(),
         github_copilot_provider(),
+        hetzner_provider(),
         simple_provider!(
             "google",
             "Google",
