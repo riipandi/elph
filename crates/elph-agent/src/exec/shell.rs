@@ -476,7 +476,7 @@ async fn path_exists(path: &Path) -> bool {
 async fn find_bash_on_path() -> Option<PathBuf> {
     #[cfg(windows)]
     {
-        return find_bash_windows().await;
+        find_bash_windows().await
     }
     #[cfg(not(windows))]
     {

@@ -530,6 +530,7 @@ fn windows_machine_guid() -> Option<Vec<u8>> {
     if guid.len() < 8 { None } else { Some(guid.into_bytes()) }
 }
 
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 fn read_command_stdout(cmd: &[&str], extractor: impl FnOnce(&str) -> Option<String>) -> Result<Option<String>> {
     let output = match std::process::Command::new(cmd[0]).args(&cmd[1..]).output() {
         Ok(o) => o,
