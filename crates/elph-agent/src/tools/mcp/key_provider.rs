@@ -54,7 +54,7 @@ pub fn default_auth_lock_path() -> PathBuf {
         && !xdg.trim().is_empty()
     {
         PathBuf::from(xdg.trim())
-    } else if let Some(home) = std::env::var_os("HOME") {
+    } else if let Some(home) = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE")) {
         PathBuf::from(home).join(".local").join("share")
     } else {
         std::env::temp_dir()
@@ -412,9 +412,26 @@ fn machine_fingerprint_uncached() -> Result<Vec<u8>> {
         }
     }
 
-    // Windows: WMI UUID (VMware/physical) or MachineGuid.
+    // Windows: MachineGuid (stable, no admin). `wmic` is removed on recent images.
     #[cfg(target_os = "windows")]
     {
+        if let Some(guid) = read_command_stdout(
+            &[
+                "reg",
+                "query",
+                r"HKLM\SOFTWARE\Microsoft\Cryptography",
+                "/v",
+                "MachineGuid",
+            ],
+            |out| {
+                out.lines().find_map(|line| {
+                    let t = line.trim();
+                    t.split_whitespace().nth(2).filter(|s| s.len() >= 8).map(str::to_owned)
+                })
+            },
+        )? {
+            return Ok(guid.into_bytes());
+        }
         if let Some(uuid) = read_command_stdout(&["wmic", "csproduct", "get", "UUID"], |out| {
             out.lines()
                 .nth(1)
@@ -437,10 +454,10 @@ fn machine_fingerprint_uncached() -> Result<Vec<u8>> {
 /// Returns Ok(None) when the command fails or extracts nothing — callers
 /// fall back to the next identifier source.
 fn read_command_stdout(cmd: &[&str], extractor: impl FnOnce(&str) -> Option<String>) -> Result<Option<String>> {
-    let output = std::process::Command::new(cmd[0])
-        .args(&cmd[1..])
-        .output()
-        .with_context(|| format!("run {}", cmd.join(" ")))?;
+    let output = match std::process::Command::new(cmd[0]).args(&cmd[1..]).output() {
+        Ok(o) => o,
+        Err(_) => return Ok(None),
+    };
     if !output.status.success() {
         return Ok(None);
     }

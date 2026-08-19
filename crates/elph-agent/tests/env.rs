@@ -28,6 +28,11 @@ fn env_in_temp() -> (TempDir, LocalExecutionEnv) {
     (temp, env)
 }
 
+/// LocalExecutionEnv stores absolute paths with `/`; `Path` Display on Windows uses `\`.
+fn posix(path: &str) -> String {
+    path.replace('\\', "/")
+}
+
 #[tokio::test]
 async fn reads_writes_lists_and_removes_files() {
     let (_temp, env) = env_in_temp();
@@ -58,7 +63,7 @@ async fn reads_writes_lists_and_removes_files() {
     let entries = get_or_throw(env.list_dir("nested/child", None).await);
     assert_eq!(entries.len(), 1);
     assert_eq!(entries[0].name, "file.txt");
-    assert_eq!(entries[0].path, format!("{root}/nested/child/file.txt"));
+    assert_eq!(entries[0].path, format!("{}/nested/child/file.txt", posix(&root)));
     assert_eq!(entries[0].kind, FileKind::File);
     assert_eq!(entries[0].size, 5);
 
@@ -72,13 +77,14 @@ async fn absolute_path_and_join_path() {
     let (_temp, env) = env_in_temp();
     let root = env.cwd();
 
+    let root_posix = posix(root);
     assert_eq!(
         get_or_throw(env.absolute_path("nested/child", None).await),
-        format!("{root}/nested/child")
+        format!("{root_posix}/nested/child")
     );
     assert_eq!(
         get_or_throw(env.join_path(&[root, "nested", "child"], None).await),
-        format!("{root}/nested/child")
+        format!("{root_posix}/nested/child")
     );
 }
 
@@ -91,7 +97,7 @@ async fn returns_file_error_for_missing_paths() {
     assert!(info.is_err());
     if let Result::Err(error) = info {
         assert_eq!(error.code, FileErrorCode::NotFound);
-        assert_eq!(error.path.as_deref(), Some(format!("{root}/missing.txt").as_str()));
+        assert_eq!(error.path.as_deref(), Some(format!("{}/missing.txt", posix(&root)).as_str()));
     }
 
     assert!(!get_or_throw(env.exists("missing.txt", None).await));

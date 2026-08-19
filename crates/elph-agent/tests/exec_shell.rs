@@ -7,6 +7,20 @@ use elph_agent::exec::{ShellConfig, ShellExecOptions, exec_shell_command};
 use tempfile::TempDir;
 use tokio_util::sync::CancellationToken;
 
+fn which_bash_for_test() -> Option<std::path::PathBuf> {
+    let output = std::process::Command::new("where.exe").arg("bash").output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let line = stdout.lines().next()?.trim();
+    if line.is_empty() {
+        return None;
+    }
+    let path = std::path::PathBuf::from(line);
+    path.exists().then_some(path)
+}
+
 #[tokio::test]
 async fn executes_command_in_cwd_with_env_overrides() {
     let temp = TempDir::new().expect("temp dir");
@@ -88,7 +102,12 @@ async fn abort_token_cancels_long_running_command() {
 #[tokio::test]
 async fn custom_shell_path_is_configurable() {
     let temp = TempDir::new().expect("temp dir");
-    let config = ShellConfig::default().with_shell_path("/bin/sh");
+    let sh = if cfg!(windows) {
+        which_bash_for_test().expect("Git Bash required for this test on Windows")
+    } else {
+        std::path::PathBuf::from("/bin/sh")
+    };
+    let config = ShellConfig::default().with_shell_path(sh);
 
     let result = exec_shell_command(&config, "echo hi", temp.path(), ShellExecOptions::default())
         .await

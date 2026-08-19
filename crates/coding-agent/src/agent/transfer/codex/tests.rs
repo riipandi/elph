@@ -144,9 +144,9 @@ fn now_ms() -> u64 {
 
 fn set_mtime(path: &std::path::Path, unix_ms: u64) {
     let modified = std::time::UNIX_EPOCH + std::time::Duration::from_millis(unix_ms);
-    if let Ok(file) = fs::File::open(path) {
-        let _ = file.set_times(std::fs::FileTimes::new().set_modified(modified));
-    }
+    let file = fs::OpenOptions::new().write(true).open(path).expect("open for mtime");
+    file.set_times(std::fs::FileTimes::new().set_modified(modified))
+        .expect("set mtime");
 }
 
 #[test]

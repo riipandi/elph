@@ -37,7 +37,14 @@ pub async fn resolve_shell(config: &ShellConfig) -> Result<(PathBuf, Vec<String>
     if let Some(path) = find_bash_on_path().await {
         return Ok((path, config.shell_args.clone()));
     }
-    Ok((PathBuf::from("/bin/sh"), config.shell_args.clone()))
+    let sh = PathBuf::from("/bin/sh");
+    if path_exists(&sh).await {
+        return Ok((sh, config.shell_args.clone()));
+    }
+    Err(ExecError::new(
+        ExecErrorCode::ShellUnavailable,
+        "No bash/sh found on PATH (install Git Bash or set a custom shell path)",
+    ))
 }
 
 /// Execute `command` with the given [`ShellConfig`] and per-run options.
@@ -467,6 +474,12 @@ async fn path_exists(path: &Path) -> bool {
 }
 
 async fn find_bash_on_path() -> Option<PathBuf> {
+    #[cfg(windows)]
+    {
+        if let Some(path) = find_bash_windows().await {
+            return Some(path);
+        }
+    }
     let output = Command::new("which").arg("bash").output().await.ok()?;
     if !output.status.success() {
         return None;
@@ -478,6 +491,38 @@ async fn find_bash_on_path() -> Option<PathBuf> {
     }
     let path = PathBuf::from(first);
     if path_exists(&path).await { Some(path) } else { None }
+}
+
+/// GitHub `windows-latest` has Git Bash; `which` is not a Windows builtin.
+#[cfg(windows)]
+async fn find_bash_windows() -> Option<PathBuf> {
+    let output = Command::new("where.exe").arg("bash").output().await.ok()?;
+    if output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        for line in stdout.lines() {
+            let first = line.trim();
+            if first.is_empty() {
+                continue;
+            }
+            let path = PathBuf::from(first);
+            if path_exists(&path).await {
+                return Some(path);
+            }
+        }
+    }
+    let program_files = std::env::var_os("ProgramFiles").map(PathBuf::from);
+    let mut candidates = Vec::new();
+    if let Some(pf) = program_files {
+        candidates.push(pf.join("Git/bin/bash.exe"));
+        candidates.push(pf.join("Git/usr/bin/bash.exe"));
+    }
+    candidates.push(PathBuf::from(r"C:\Program Files\Git\bin\bash.exe"));
+    for path in candidates {
+        if path_exists(&path).await {
+            return Some(path);
+        }
+    }
+    None
 }
 
 fn invoke_output_callback(callback: &ShellOutputCallback, chunk: &str) -> Option<ExecError> {
@@ -521,7 +566,7 @@ mod tests {
                 exec_shell_command(
                     &config,
                     "sleep 30",
-                    Path::new("/tmp"),
+                    &std::env::temp_dir(),
                     ShellExecOptions {
                         abort_token: Some(token),
                         ..Default::default()
@@ -593,7 +638,7 @@ mod tests {
                 exec_shell_command(
                     &config,
                     "sleep 30",
-                    Path::new("/tmp"),
+                    &std::env::temp_dir(),
                     ShellExecOptions {
                         abort_token: Some(token),
                         ..Default::default()
@@ -636,7 +681,7 @@ mod tests {
                 exec_shell_command(
                     &config,
                     "echo start; sleep 30",
-                    Path::new("/tmp"),
+                    &std::env::temp_dir(),
                     ShellExecOptions {
                         abort_token: Some(token),
                         on_stdout: Some(on_stdout),
@@ -669,7 +714,7 @@ mod tests {
         let result = exec_shell_command(
             &config,
             "sleep 30",
-            Path::new("/tmp"),
+            &std::env::temp_dir(),
             ShellExecOptions {
                 timeout: Some(1),
                 ..Default::default()

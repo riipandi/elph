@@ -225,6 +225,9 @@ mod tests {
             outputs_root: Some(std::path::PathBuf::from("/data/sessions/s1")),
         };
         let dir = bootstrap.output_dir_for("agent_abc").expect("dir");
-        assert_eq!(dir.to_string_lossy(), "/data/sessions/s1/subagents/agent_abc");
+        let expected = std::path::PathBuf::from("/data/sessions/s1")
+            .join("subagents")
+            .join("agent_abc");
+        assert_eq!(dir, expected);
     }
 }

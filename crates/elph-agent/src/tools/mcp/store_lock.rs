@@ -1,10 +1,11 @@
 //! In-process locking + atomic write for the sealed auth store.
 //!
-//! **No sidecar lock file** (`auth.json.lock` is never created).
+//! **No `auth.json.lock` sidecar** (legacy name is never created).
 //!
-//! Cross-process writers use exclusive flock on the store path itself when the
-//! file exists; atomic rename + in-process mutex cover the common single-host
-//! multi-task case.
+//! Cross-process writers take an exclusive flock. On Unix that flock is on the
+//! store file itself. On Windows locking the data file is mandatory and blocks
+//! `read`/`rename` (os error 33), so the lock is a sibling `auth.json.flock`
+//! instead. In-process async mutexes still serialize same-process writers.
 
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
@@ -69,15 +70,30 @@ pub async fn lock_auth_store(path: &Path) -> Result<AuthStoreGuard> {
 
     let path_clone = path.to_path_buf();
     let file = tokio::task::spawn_blocking(move || {
+        // Unix: advisory flock on the data file (rename-over is allowed while locked).
+        // Windows: locking the data file is mandatory and blocks read/rename (os error 33).
+        // Use a sibling `.flock` handle so atomic replace of `auth.json` still works.
+        let lock_target = {
+            #[cfg(windows)]
+            {
+                let mut s = path_clone.as_os_str().to_os_string();
+                s.push(".flock");
+                PathBuf::from(s)
+            }
+            #[cfg(not(windows))]
+            {
+                path_clone.clone()
+            }
+        };
         let file = OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
             .truncate(false)
-            .open(&path_clone)
-            .with_context(|| format!("open auth store {}", path_clone.display()))?;
+            .open(&lock_target)
+            .with_context(|| format!("open auth store lock {}", lock_target.display()))?;
         file.lock()
-            .with_context(|| format!("exclusive flock on auth store {}", path_clone.display()))?;
+            .with_context(|| format!("exclusive flock on {}", lock_target.display()))?;
         Ok::<File, anyhow::Error>(file)
     })
     .await
