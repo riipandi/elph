@@ -2,9 +2,12 @@
 
 # git tag --delete v0.0.1
 # git push origin --delete tag v0.0.1
+#
 # git tag v0.0.1 -m "version bump"
 # git push origin v0.0.1
+#
 # git tag v0.0.1-canary -m "canary build"
+# git push origin v0.0.1
 
 name: Release
 
@@ -198,7 +201,8 @@ jobs:
   build-windows:
     name: windows
     needs: [version-gate, quality-gate]
-    if: needs.version-gate.outputs.should_continue == 'true'
+    # Deferred: Windows builds are deferred (focus on macOS + Linux). Re-enable later.
+    if: false
     runs-on: namespace-profile-windows-base-amd64
     timeout-minutes: 90
     steps:
@@ -250,7 +254,7 @@ jobs:
 
   publish:
     name: publish
-    needs: [version-gate, build-linux, build-macos, build-windows]
+    needs: [version-gate, build-linux, build-macos]
     if: needs.version-gate.outputs.should_continue == 'true'
     runs-on: ubuntu-slim
     timeout-minutes: 15
@@ -267,12 +271,6 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.app || 'elph' }}-macos
-          path: .
-
-      - name: Fetch windows
-        uses: actions/download-artifact@v8
-        with:
-          name: ${{ inputs.app || 'elph' }}-windows
           path: .
 
       - name: Log version
