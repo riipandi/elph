@@ -57,8 +57,8 @@ function Resolve-Tag { param([bool]$CanaryFlag)
         Write-Die "Failed to fetch GitHub releases from $api"
     }
     # Split into release-channel (v*.*.*) and canary (*-canary) tags. The
-    # release channel prefers a v*.*.* build, but falls back to the latest
-    # *-canary when no release-channel tag exists yet (project ships canaries).
+    # release channel selects a stable v*.*.* build only; canary builds are
+    # opt-in via the -Canary switch.
     $stable = @(); $canary = @()
     foreach ($rel in $releases) {
         $tn = [string]$rel.tag_name
@@ -68,7 +68,8 @@ function Resolve-Tag { param([bool]$CanaryFlag)
     if ($CanaryFlag) {
         $matched = $canary
     } else {
-        $matched = if ($stable.Count -gt 0) { $stable } else { $canary }
+        # Stable release channel only. Canary builds are opt-in via -Canary.
+        $matched = $stable
     }
     if ($matched.Count -eq 0) { return $null }
     $matched = $matched | Sort-Object -Descending {
@@ -81,7 +82,11 @@ function Resolve-Tag { param([bool]$CanaryFlag)
 # Resolve version tag
 $tag = if ($Version) { Normalize-Tag $Version } else { Resolve-Tag $UseCanary }
 if ([string]::IsNullOrWhiteSpace($tag)) {
-    Write-Die "No $App releases found on GitHub (prefix: v*). Try -Canary for pre-releases."
+    if ($UseCanary) {
+        Write-Die "No $App canary pre-releases found on GitHub (prefix: v*-canary)."
+    } else {
+        Write-Die "No stable $App release found on GitHub (prefix: v*.*.*). Use -Canary to install a pre-release."
+    }
 }
 
 $versionNum = $tag.TrimStart('v')

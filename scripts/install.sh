@@ -211,10 +211,8 @@ for release in releases:
 if canary:
     tags = canaries
 else:
-    # Release channel prefers a v*.*.* (stable-or-pre-release) build, but falls
-    # back to the latest *-canary when no release-channel tag exists yet (this
-    # project currently ships only pre-releases / canaries).
-    tags = stable if stable else canaries
+    # Stable release channel only. Canary builds are opt-in via --canary.
+    tags = stable
 
 if not tags:
     sys.exit(1)
@@ -224,7 +222,10 @@ print(tags[0])
 ' "${canary}")" || tag=""
 
     if [[ -z "${tag}" ]]; then
-        install_die "No ${INSTALL_APP} releases found on GitHub (prefix: ${prefix}*)"
+        if [[ -n "${INSTALL_CANARY}" ]]; then
+            install_die "No ${INSTALL_APP} canary pre-releases found on GitHub (prefix: ${prefix}*-canary)"
+        fi
+        install_die "No stable ${INSTALL_APP} release found on GitHub (prefix: ${prefix}*.*.*). Use --canary to install a pre-release."
     fi
 
     echo "${tag}"
