@@ -300,9 +300,12 @@ install_run() {
         exit 0
     fi
 
-    local tmpdir archive_sum binary_path install_path
+    local archive_sum binary_path install_path
     tmpdir="$(mktemp -d)"
-    trap 'rm -rf "${tmpdir}"' EXIT
+    # Expand the path into the trap at registration time so the EXIT handler
+    # still works after this function returns (a `local` tmpdir would be
+    # unbound by then under `set -u`).
+    trap "rm -rf -- '${tmpdir}'" EXIT
 
     install_step "Downloading ${archive_name}..."
     curl -fL# "${archive_url}" -o "${tmpdir}/${archive_name}" ||
@@ -335,8 +338,8 @@ install_run() {
     [[ -f "${binary_path}" ]] || install_die "Binary not found in archive (expected ${INSTALL_APP})"
 
     chmod +x "${binary_path}"
-    "${binary_path}" version >/dev/null 2>&1 ||
-        install_warn "Binary may not run correctly; '${INSTALL_APP} version' failed."
+    "${binary_path}" --version >/dev/null 2>&1 ||
+        install_warn "Binary may not run correctly; '${INSTALL_APP} --version' failed."
 
     mkdir -p "${INSTALL_INSTALL_DIR}"
     install_path="${INSTALL_INSTALL_DIR}/${INSTALL_APP}"
