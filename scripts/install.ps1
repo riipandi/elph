@@ -56,11 +56,19 @@ function Resolve-Tag { param([bool]$CanaryFlag)
     } catch {
         Write-Die "Failed to fetch GitHub releases from $api"
     }
-    $pattern = if ($CanaryFlag) { '^v\d+\.\d+\.\d+-canary$' } else { '^v\d+\.\d+\.\d+$' }
-    $matched = @()
+    # Split into release-channel (v*.*.*) and canary (*-canary) tags. The
+    # release channel prefers a v*.*.* build, but falls back to the latest
+    # *-canary when no release-channel tag exists yet (project ships canaries).
+    $stable = @(); $canary = @()
     foreach ($rel in $releases) {
         $tn = [string]$rel.tag_name
-        if ($tn -match $pattern) { $matched += $tn }
+        if ($tn -match '^v\d+\.\d+\.\d+-canary$') { $canary += $tn }
+        elseif ($tn -match '^v\d+\.\d+\.\d+$') { $stable += $tn }
+    }
+    if ($CanaryFlag) {
+        $matched = $canary
+    } else {
+        $matched = if ($stable.Count -gt 0) { $stable } else { $canary }
     }
     if ($matched.Count -eq 0) { return $null }
     $matched = $matched | Sort-Object -Descending {

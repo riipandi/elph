@@ -197,17 +197,24 @@ def ver_key(tag: str) -> tuple[int, int, int]:
     return tuple(int(part) for part in match.groups())
 
 releases = json.load(sys.stdin)
-tags: list[str] = []
+stable: list[str] = []
+canaries: list[str] = []
 for release in releases:
     tag_name = release.get("tag_name", "")
     if not tag_name.startswith(prefix):
         continue
-    if canary:
-        if not release.get("prerelease", False) or not tag_name.endswith("-canary"):
-            continue
-    elif release.get("prerelease", False) or tag_name.endswith("-canary"):
-        continue
-    tags.append(tag_name)
+    if tag_name.endswith("-canary"):
+        canaries.append(tag_name)
+    else:
+        stable.append(tag_name)
+
+if canary:
+    tags = canaries
+else:
+    # Release channel prefers a v*.*.* (stable-or-pre-release) build, but falls
+    # back to the latest *-canary when no release-channel tag exists yet (this
+    # project currently ships only pre-releases / canaries).
+    tags = stable if stable else canaries
 
 if not tags:
     sys.exit(1)
