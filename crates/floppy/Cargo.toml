@@ -25,7 +25,7 @@ memory = []
 # The CPU backend is selected per target: Apple Accelerate on macOS
 # (see the target-specific dependency table below); other platforms use
 # Candle's default CPU backend. GPU backends are opt-in via `metal`/`cuda`.
-# Intel MKL is opt-in (`mkl`) — it needs GNU ld/lld and fails with wild.
+# Intel MKL is opt-in (`mkl`). Note: MKL static archives don't link with the wild linker; use GNU ld or lld instead.
 embed = ["dep:embed_anything"]
 # GPU acceleration (optional, requires matching hardware):
 # - metal: Apple Silicon GPU (macOS)

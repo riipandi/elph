@@ -130,12 +130,12 @@ jobs:
         shell: bash
         run: make build
 
-      - name: Build musl (Linux)
+      - name: Build musl
         if: runner.os == 'Linux' && (inputs.mode || 'full') == 'full'
         shell: bash
         run: |
-          cargo build --bin ${{ inputs.app || 'elph' }} \
-            --target x86_64-unknown-linux-musl
+          rustup target add x86_64-unknown-linux-musl
+          cargo build --bin ${{ inputs.app || 'elph' }} --target x86_64-unknown-linux-musl
         env:
           APP: ${{ inputs.app || 'elph' }}
           RUSTC_WRAPPER: sccache

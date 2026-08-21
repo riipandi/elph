@@ -12,15 +12,15 @@ repository variables are required. The composite sets `RUSTC_WRAPPER=sccache`,
 
 Create these runner profiles in the [Namespace dashboard](https://cloud.namespace.so/workspace/actions/profiles) and enable a cache volume on each:
 
-| `runs-on`                              | OS / arch     | Used by      |
-| -------------------------------------- | ------------- | ------------ |
-| `namespace-profile-linux-base-amd64`   | Linux AMD64   | CI + release |
-| `namespace-profile-macos-base-arm64`   | macOS ARM64   | CI + release |
-| `windows-latest` (GitHub-hosted)       | Windows AMD64 | Release only |
+| `runs-on`                            | OS / arch     | Used by      |
+| ------------------------------------ | ------------- | ------------ |
+| `namespace-profile-linux-base-amd64` | Linux AMD64   | CI + release |
+| `namespace-profile-macos-base-arm64` | macOS ARM64   | CI + release |
+| `windows-latest` (GitHub-hosted)     | Windows AMD64 | Release only |
 
 Connect the GitHub org to Namespace before the first run. Lightweight jobs (version gate, publish, sync) stay on GitHub `ubuntu-slim`.
 
-`.cargo/config.toml` uses the [wild](https://github.com/wild-linker/wild) linker for `x86_64-unknown-linux-gnu` (`clang --ld-path=wild`). Linux AMD64 jobs install `clang` and `wild-linker` (`cargo binstall wild-linker`) before compiling.
+`.cargo/config.toml` uses zig as the linker for musl targets (`x86_64-unknown-linux-musl`, `aarch64-unknown-linux-musl`). Linux AMD64 jobs download zig from ziglang.org in `setup-rust` for musl builds; the default glibc target uses the system linker.
 
 ## Test (debug)
 
@@ -49,7 +49,7 @@ The channel is derived from the tag suffix:
 Sequence:
 
 1. Actor allow-list (`RELEASE_ALLOWED_ACTORS` repo variable, checked by `scripts/ci-check-release-actor.sh`).
-2. Version gate (`.github/version-gate` → `scripts/ci-check-release-version.sh`) — tag version must be newer than the latest GitHub release *of the same channel* and at least the version in `crates/coding-agent/Cargo.toml`.
+2. Version gate (`.github/version-gate` → `scripts/ci-check-release-version.sh`) — tag version must be newer than the latest GitHub release _of the same channel_ and at least the version in `crates/coding-agent/Cargo.toml`.
 3. Quality gate — fmt, check, lint only (no test, no debug build).
 4. Binaries on Linux, macOS, and Windows — each built with `cargo build --profile dist` (release) or `--profile release` (canary), via the `BUILD_PROFILE` env derived from the tag.
 5. GitHub pre-release (every tag) with archives and `SHA256SUMS`.

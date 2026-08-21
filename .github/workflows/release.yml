@@ -112,14 +112,27 @@ jobs:
           cacheBackend: namespace
           installNextest: "false"
 
-      - name: Install musl targets for cross-build
+      - name: Install musl targets & zig linker for cross-build
         if: runner.os == 'Linux'
         shell: bash
         run: |
           set -euo pipefail
           TARGET_TRIPLE="${{ matrix.label }}-unknown-linux-musl"
           rustup target add "$TARGET_TRIPLE"
-          sudo apt-get update -y && sudo apt-get install -y --no-install-recommends musl-tools
+          # Zig bundles musl libc — no apt package needed.
+          if ! command -v zig >/dev/null 2>&1; then
+            ZIG_VER="0.15.2"
+            case "$(uname -m)" in
+              x86_64) ZIG_FILE="zig-x86_64-linux-${ZIG_VER}.tar.xz" ;;
+              aarch64) ZIG_FILE="zig-aarch64-linux-${ZIG_VER}.tar.xz" ;;
+            esac
+            mkdir -p /opt/zig
+            curl -L --proto '=https' --tlsv1.2 -sSf \
+              "https://ziglang.org/download/${ZIG_VER}/${ZIG_FILE}" \
+              -o /tmp/zig.tar.xz
+            tar -xf /tmp/zig.tar.xz -C /opt/zig --strip-components=1
+            echo "/opt/zig" >> "$GITHUB_PATH"
+          fi
 
       - name: Build release
         run: |

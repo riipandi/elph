@@ -8,12 +8,12 @@ Two Windows-only `make test` failures were fixed:
    local Turso database open (`floppy`, `coding-agent` datastore/transcript cache,
    `elph-agent` datastore) used `experimental_multiprocess_wal(true)`. Turso's Windows IO
    backend rejects this with `experimental multiprocess WAL is not supported by the active
-   IO backend`, so all turso-backed tests failed to open `store.db` on Windows.
+IO backend`, so all turso-backed tests failed to open `store.db` on Windows.
 
-   Fixed by gating the flag off on Windows at every open site via
-   `experimental_multiprocess_wal(cfg!(not(target_os = "windows")))`. Behavior on Unix is
-   unchanged (`cfg!` evaluates to `true`). `experimental_index_method(true)` is kept — it
-   works on Windows.
+    Fixed by gating the flag off on Windows at every open site via
+    `experimental_multiprocess_wal(cfg!(not(target_os = "windows")))`. Behavior on Unix is
+    unchanged (`cfg!` evaluates to `true`). `experimental_index_method(true)` is kept — it
+    works on Windows.
 
 2. **`concurrent_aborts_do_not_deadlock` hung on low-CPU Windows runners.** The test runs 4
    harnesses whose provider factory blocks a tokio worker (`std::thread::sleep`) to simulate
@@ -21,8 +21,8 @@ Two Windows-only `make test` failures were fixed:
    (= CPU count), a 2-vCPU Windows runner let those 4 blocking turns starve the abort tasks
    and the test's own 5s timeout, so the test hung until the 1200s job timeout.
 
-   Fixed by pinning `worker_threads = 8` on that test so abort tasks stay schedulable.
-   Test-only change; Unix behavior unchanged.
+    Fixed by pinning `worker_threads = 8` on that test so abort tasks stay schedulable.
+    Test-only change; Unix behavior unchanged.
 
 ### Status
 
@@ -31,44 +31,6 @@ Resolved 2026-08-20. Affected files: `crates/floppy/src/core/db.rs`,
 `crates/coding-agent/src/platform/datastore/mod.rs`,
 `crates/coding-agent/src/tui/transcript/cache.rs`, `crates/coding-agent/tests/unified_store.rs`,
 `crates/elph-agent/tests/harness.rs`.
-
-## 2026-08-18 — Intel MKL embeddings cannot link with the wild linker
-
-`.cargo/config.toml` uses [wild](https://github.com/wild-linker/wild) for `x86_64-unknown-linux-gnu` (`clang --ld-path=wild`). `floppy` embeddings go through `embed_anything` / Candle.
-
-Enabling `embed_anything/mkl` (Intel MKL via `intel-mkl-src`) fails at link time with wild:
-
-```
-wild: error: Undefined symbol hgemm_, referenced by candle-core …/mkl.rs
-```
-
-`hgemm_` is an MKL BLAS symbol. Wild does not resolve the static MKL archives the way GNU ld / lld do.
-
-### Current behavior
-
-- **macOS** — Apple Accelerate (`embed_anything/accelerate`). Unrelated to this issue.
-- **Linux / Windows (default)** — Candle’s built-in CPU backend. No MKL.
-- **Opt-in MKL** — `floppy` feature `mkl` (`embed_anything/mkl`). Use only with GNU ld or lld, not wild.
-
-`floppy/full` and the `elph` binary do **not** enable `mkl`. CI Linux AMD64 therefore links with wild.
-
-### Workaround
-
-Keep the default CPU backend, or disable wild for that target and build with MKL:
-
-```toml
-# crates/coding-agent or a local override — not compatible with wild
-floppy = { workspace = true, features = ["full", "mkl"] }
-```
-
-```bash
-# drop wild for one build, then:
-# RUSTFLAGS='-C link-arg=-fuse-ld=lld' make test
-```
-
-### Follow-up
-
-Re-test `floppy/mkl` when wild can link MKL static archives, or document a supported linker matrix if MKL becomes a default again.
 
 ## 2026-08-13 — Turso multiprocess WAL integration requires hardening
 
