@@ -38,6 +38,7 @@ fn format_prompt_template_invocation_substitutes_positional_arguments() {
         description: String::new(),
         content: "Review $1 with $ARGUMENTS".to_string(),
         argument_hint: None,
+        file_path: "/tmp/review.md".to_string(),
     };
 
     assert_eq!(

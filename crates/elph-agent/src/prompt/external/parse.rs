@@ -86,6 +86,7 @@ pub(super) async fn load_template_from_file(env: &LocalExecutionEnv, file_path: 
             description,
             content: parsed.body,
             argument_hint: parsed.frontmatter.argument_hint,
+            file_path: file_path.to_string(),
         }),
         diagnostics,
     }

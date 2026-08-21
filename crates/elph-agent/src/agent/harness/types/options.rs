@@ -38,6 +38,8 @@ pub struct PromptTemplate {
     pub content: String,
     /// Optional argument hint shown in the slash palette (e.g. `"<PR-URL>"`).
     pub argument_hint: Option<String>,
+    /// Source file path (used for `resources.prompts` `!` / `-` exclude matching).
+    pub file_path: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

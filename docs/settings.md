@@ -54,12 +54,14 @@ Schema: `schemas/elph-schema.json`, `schemas/mcp-schema.json`, `schemas/auth-sch
   "compaction": { "thresholdPct": 80, "keepRecentTokens": 20000, "reserveTokens": 16384 },
   "session": { "enabled": true, "gcOnOpen": true, "maxSessionsPerCwd": 40 },
   "workers": { "enabled": true },
-  "resources": { "skills": [], "disabledSkills": [], "enableSkillCommands": true },
+  "resources": { "skills": [], "prompts": [], "disabledSkills": [], "disabledPrompts": [], "enableSkillCommands": true },
   "logging": { "level": "info", "file": true, "rotation": "daily", "trace": true }
 }
 ```
 
 `notifications.onStartupReady` in a **project** `.elph/settings.json` overrides home. Restart or `/reload` after edits.
+
+`resources.skills` / `resources.prompts` entries may carry a `!` or `-` prefix to exclude a skill/template by name or path (leading `~` expands to the home dir; a bare directory path excludes everything under it; a relative path like `.agents/skills` matches any project at that relative location), and `+` to force-include. `resources.disabledSkills` / `resources.disabledPrompts` drop entries by name glob after discovery.
 
 ## Memory (agent)
 

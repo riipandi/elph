@@ -32,11 +32,13 @@ Project skill dirs always load. Extra paths that resolve to the same folder as a
 ```json
 {
   "resources": {
-    "skills": ["~/extra/skills", "!legacy-*"],
+    "skills": ["~/extra/skills", "!~/.agents/skills/*", "!legacy-*"],
     "disabledSkills": ["create-skill"],
     "enableSkillCommands": true
   }
 }
 ```
+
+`resources.skills` entries with a `!` or `-` prefix exclude a skill by name or path (leading `~` expands to the home dir; a bare directory path excludes everything under it; a relative path like `.agents/skills` matches any project at that relative location); `+` force-includes. `resources.disabledSkills` drops skills by name glob after discovery.
 
 `enableSkillCommands: false` keeps skills in the model catalog (`list_skills`) but does not register `/name` commands.

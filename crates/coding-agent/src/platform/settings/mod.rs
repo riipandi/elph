@@ -268,6 +268,9 @@ pub struct ResourcesSettings {
     /// Skill names (globs) to drop after discovery.
     #[serde(default)]
     pub disabled_skills: Vec<String>,
+    /// Prompt template names (globs) to drop after discovery.
+    #[serde(default)]
+    pub disabled_prompts: Vec<String>,
     /// Extension names to skip (same role as former `extensions.json` `disabled`).
     #[serde(default)]
     pub disabled_extensions: Vec<String>,
@@ -283,6 +286,7 @@ impl Default for ResourcesSettings {
             prompts: Vec::new(),
             extensions: Vec::new(),
             disabled_skills: Vec::new(),
+            disabled_prompts: Vec::new(),
             disabled_extensions: Vec::new(),
             enable_skill_commands: true,
         }

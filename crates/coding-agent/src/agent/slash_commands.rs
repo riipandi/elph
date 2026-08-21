@@ -995,6 +995,7 @@ mod tests {
             description: "Review code".into(),
             content: "Review $@".into(),
             argument_hint: None,
+            file_path: "/tmp/review.md".into(),
         }];
         assert_eq!(
             dispatch_slash_command("/review main.rs", None, Some(&templates), None),
@@ -1162,6 +1163,7 @@ mod tests {
             description: "Custom help".into(),
             content: "Help me".into(),
             argument_hint: None,
+            file_path: "/tmp/help.md".into(),
         }];
         let names: Vec<_> = slash_commands_for_palette(None, Some(&templates), None)
             .into_iter()

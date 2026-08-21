@@ -610,7 +610,8 @@
                 "prompts": {
                     "type": "array",
                     "default": [],
-                    "items": { "type": "string" }
+                    "items": { "type": "string" },
+                    "description": "Extra prompt template paths. Supports globs, !exclude, +exact, -exact."
                 },
                 "extensions": {
                     "type": "array",
@@ -623,6 +624,12 @@
                     "default": [],
                     "items": { "type": "string" },
                     "description": "Skill names (globs) to drop after discovery."
+                },
+                "disabledPrompts": {
+                    "type": "array",
+                    "default": [],
+                    "items": { "type": "string" },
+                    "description": "Prompt template names (globs) to drop after discovery."
                 },
                 "disabledExtensions": {
                     "type": "array",
