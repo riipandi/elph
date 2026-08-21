@@ -123,7 +123,8 @@ fn path_or_name_excluded(skill_patterns: &[String], name: &str, path: &str) -> b
             return false;
         };
         let rest = expand_user_pattern(rest);
-        crate::platform::settings::patterns::matches_any(&[rest.clone()], name) || path_matches_pattern(&rest, path)
+        crate::platform::settings::patterns::matches_any(std::slice::from_ref(&rest), name)
+            || path_matches_pattern(&rest, path)
     })
 }
 
@@ -181,10 +182,10 @@ fn path_under_dir(dir: &str, path: &str) -> bool {
 /// Expand a leading `~/` in an exclude pattern so it matches absolute file paths.
 fn expand_user_pattern(raw: &str) -> String {
     let s = raw.trim();
-    if let Some(rest) = s.strip_prefix("~/") {
-        if let Some(home) = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE")) {
-            return PathBuf::from(home).join(rest).to_string_lossy().into_owned();
-        }
+    if let Some(rest) = s.strip_prefix("~/")
+        && let Some(home) = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE"))
+    {
+        return PathBuf::from(home).join(rest).to_string_lossy().into_owned();
     }
     s.to_string()
 }
