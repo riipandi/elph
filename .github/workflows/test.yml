@@ -75,25 +75,10 @@ env:
 jobs:
   test:
     name: ${{ matrix.name }}
-    if: >-
-      inputs.os == '' || inputs.os == 'all' || inputs.os == matrix.name
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - name: linux
-            runner: namespace-profile-linux-base-amd64
-            cacheBackend: namespace
-          - name: macos
-            runner: namespace-profile-macos-base-arm64
-            cacheBackend: namespace
-          # Windows runs on Avrea (4 vCPU / 16 GB, vs 4 vCPU / 16 GB GitHub-hosted).
-          # No sharding: Avrea colocated caching keeps a single runner fast enough,
-          # and sharded runs duplicate compile work across jobs.
-          - name: windows
-            runner: avrea-windows-2025-4-vcpu
-            cacheBackend: avrea
-            timeoutMinutes: 90
+        include: ${{ ((inputs.os || 'all') == 'all') && fromJson('[{"name":"linux","runner":"namespace-profile-linux-base-amd64","cacheBackend":"namespace"},{"name":"macos","runner":"namespace-profile-macos-base-arm64","cacheBackend":"namespace"},{"name":"windows","runner":"avrea-windows-2025-4-vcpu","cacheBackend":"avrea","timeoutMinutes":90}]') || fromJson(format('[{{"name":"{0}","runner":"{1}","cacheBackend":"{2}"}}]', inputs.os || 'all', fromJson('{"linux":"namespace-profile-linux-base-amd64","macos":"namespace-profile-macos-base-arm64","windows":"avrea-windows-2025-4-vcpu"}')[inputs.os || 'all'], fromJson('{"linux":"namespace","macos":"namespace","windows":"avrea"}')[inputs.os || 'all'])) }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: ${{ matrix.timeoutMinutes || 45 }}
     env:
