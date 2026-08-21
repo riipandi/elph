@@ -52,6 +52,8 @@ pub struct CreateSessionOptions<'a> {
     /// Whether the session runs in headless mode (`elph run`). Relaxes some tool
     /// defaults (e.g. no background-task timeout by default).
     pub headless: bool,
+    /// WASM extension host; bound to the harness after restore when present.
+    pub extension_host: Option<&'a crate::extensions::ExtensionHost>,
 }
 
 pub async fn create_coding_session_with_events(
@@ -520,6 +522,10 @@ pub async fn create_coding_session_with_events(
     if let Err(err) = crate::memory::hooks::register_automatic_memory_hooks(&harness, Arc::clone(&memory_runtime)).await
     {
         log::warn!("automatic memory hooks: {err:#}");
+    }
+
+    if let Some(host) = options.extension_host {
+        host.bind_to_harness(&harness).await;
     }
 
     // Wire the work tracker: increment on every successful mutating tool call so

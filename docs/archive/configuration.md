@@ -23,7 +23,7 @@ Override with `ELPH_HOME` (config) and `ELPH_DATA_DIR` (data).
 ├── extensions/              # Global WASM extension bundles (placeholder / installed)
 │   └── <name>/
 │       ├── extension.toml
-│       └── component.wasm
+│       └── plugin.wasm
 ├── hooks/                   # User hooks
 ├── prompts/
 │   └── *.md                 # Global templates → /name

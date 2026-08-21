@@ -116,6 +116,7 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
         preloaded_resources: None,
         defer_mcp_load: false,
         headless: true,
+        extension_host: None,
     };
     let session_result = tokio::select! {
         result = create_coding_session_with_events(create_opts) => result,

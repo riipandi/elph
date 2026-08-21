@@ -1,6 +1,6 @@
 [package]
 name = "elco"
-version = "0.0.1"
+version = "0.0.0"
 license = "MIT"
 description = "Coordinator for the Elph coding agent."
 homepage.workspace = true

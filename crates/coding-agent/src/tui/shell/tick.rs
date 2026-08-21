@@ -230,9 +230,8 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 skills.set(new_skills);
                 {
                     let ext_registry = extension_host_for_loop.registry();
-                    let reg = ext_registry.read();
                     slash_commands.set(slash_commands_for_palette_with(
-                        Some(&reg),
+                        Some(ext_registry.as_ref()),
                         Some(&prompt_templates.read()),
                         Some(&skills.read()),
                         settings.resources.enable_skill_commands,
@@ -248,6 +247,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     resume_id: resume_id_req,
                     model_override: boot.ok().map(|(provider, model_id)| format!("{provider}/{model_id}")),
                     preloaded_resources: loaded,
+                    extension_host: extension_host_for_loop.clone(),
                 };
                 bootstrap_config.set(Some(new_config));
             }
@@ -294,7 +294,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     .map(|s| s.resources.enable_skill_commands)
                     .unwrap_or(true);
                 slash_commands.set(slash_commands_for_palette_with(
-                    Some(&extension_host_for_palette.registry().read()),
+                    Some(extension_host_for_palette.registry().as_ref()),
                     Some(&templates),
                     Some(&loaded_skills),
                     enable_skill_commands,

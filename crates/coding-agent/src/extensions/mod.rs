@@ -1,11 +1,13 @@
-//! Extension host wiring for the Elph CLI (wasmtime + Component Model).
+//! Extension host wiring for the Elph CLI (wasmi core Wasm).
 
 use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::Result;
+use elph_agent::harness::AgentHarness;
 use elph_agent::plugins::global_extensions_dir;
 use elph_agent::plugins::{ExtensionCommand, ExtensionRegistry, ExtensionSlashResult, ExtensionsSettings};
+use elph_agent::session::types::{HasSessionId, SessionStorage};
 use parking_lot::RwLock;
 
 use crate::platform::{AppPaths, Paths};
@@ -13,8 +15,14 @@ use crate::platform::{AppPaths, Paths};
 /// Shared extension registry for slash dispatch and `/reload`.
 #[derive(Clone, Default)]
 pub struct ExtensionHost {
-    registry: Arc<RwLock<ExtensionRegistry>>,
+    registry: Arc<ExtensionRegistry>,
     settings: Arc<RwLock<ExtensionsSettings>>,
+}
+
+impl std::fmt::Debug for ExtensionHost {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ExtensionHost").finish_non_exhaustive()
+    }
 }
 
 impl ExtensionHost {
@@ -22,8 +30,8 @@ impl ExtensionHost {
         Self::default()
     }
 
-    pub fn registry(&self) -> Arc<RwLock<ExtensionRegistry>> {
-        self.registry.clone()
+    pub fn registry(&self) -> Arc<ExtensionRegistry> {
+        Arc::clone(&self.registry)
     }
 
     pub fn load_settings(paths: &Paths) -> ExtensionsSettings {
@@ -47,7 +55,7 @@ impl ExtensionHost {
     pub fn reload(&self, paths: &Paths, host_settings: &crate::platform::Settings) -> Result<()> {
         let settings = host_settings.extensions_settings();
         *self.settings.write() = settings.clone();
-        self.registry.read().load(
+        self.registry.load(
             paths.config_dir(),
             &paths.project_elph_dir(),
             &settings,
@@ -56,11 +64,19 @@ impl ExtensionHost {
     }
 
     pub fn commands(&self) -> Vec<ExtensionCommand> {
-        self.registry.read().commands()
+        self.registry.commands()
     }
 
     pub fn dispatch_slash(&self, name: &str, args: &str) -> Option<Result<ExtensionSlashResult>> {
-        self.registry.read().dispatch_slash(name, args)
+        self.registry.dispatch_slash(name, args)
+    }
+
+    pub async fn bind_to_harness<S>(&self, harness: &AgentHarness<S>)
+    where
+        S: SessionStorage + Clone + Send + Sync + 'static,
+        S::Metadata: HasSessionId + Send + Sync,
+    {
+        self.registry.bind_to_harness(harness).await;
     }
 
     pub fn ensure_dirs(paths: &Paths) -> Result<()> {
@@ -69,7 +85,7 @@ impl ExtensionHost {
     }
 
     pub fn install_bundle(&self, source: &Path, paths: &Paths, force: bool) -> Result<std::path::PathBuf> {
-        let dest = self.registry.read().install_bundle(source, paths.config_dir(), force)?;
+        let dest = self.registry.install_bundle(source, paths.config_dir(), force)?;
         let host = crate::platform::Settings::load(paths).unwrap_or_else(|_| crate::platform::Settings::defaults());
         self.reload(paths, &host)?;
         Ok(dest)

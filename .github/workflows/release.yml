@@ -134,6 +134,51 @@ jobs:
             tar -xf /tmp/zig.tar.xz -C /opt/zig --strip-components=1
             echo "/opt/zig" >> "$GITHUB_PATH"
           fi
+          # Provide a C/C++ compiler for the musl target. ring's build script
+          # (cc-rs) looks for `<triple>-gcc`, which no longer exists since we
+          # dropped musl-tools. Point it at zig cc via a wrapper so the same zig
+          # toolchain compiles the C sources for the musl target.
+          CC_WRAPPER="/usr/local/bin/${TARGET_TRIPLE}-gcc"
+          CXX_WRAPPER="/usr/local/bin/${TARGET_TRIPLE}-g++"
+          # Zig uses its own triple format without the `unknown` vendor
+          # (x86_64-linux-musl); it rejects the Rust triple's
+          # x86_64-unknown-linux-musl ("UnknownOperatingSystem").
+          ZIG_TRIPLE=$(printf '%s' "$TARGET_TRIPLE" | sed 's/-unknown-/-/')
+          cat > "$CC_WRAPPER" <<EOF
+          #!/bin/sh
+          # cc-rs appends --target=<rust-triple> for clang-family compilers;
+          # zig cannot parse that triple, so drop it here and pass the
+          # zig-native target explicitly.
+          new=""
+          for a in "\$@"; do
+            case "\$a" in
+              --target=*) continue ;;
+            esac
+            new="\$new \$a"
+          done
+          exec zig cc -target ${ZIG_TRIPLE} \$new
+          EOF
+          cat > "$CXX_WRAPPER" <<EOF
+          #!/bin/sh
+          # Same as the C wrapper: drop --target=<rust-triple>, pass zig triple.
+          new=""
+          for a in "\$@"; do
+            case "\$a" in
+              --target=*) continue ;;
+            esac
+            new="\$new \$a"
+          done
+          exec zig c++ -target ${ZIG_TRIPLE} \$new
+          EOF
+          chmod +x "$CC_WRAPPER" "$CXX_WRAPPER"
+          # cc-rs reads CC_<target> in lowercase, checking both the dash form
+          # (exact triple) and the underscore form. Export both to be safe
+          # across cc crate versions.
+          ENV_KEY_UNDER=$(echo "$TARGET_TRIPLE" | tr '-' '_')
+          echo "CC_${TARGET_TRIPLE}=${CC_WRAPPER}" >> "$GITHUB_ENV"
+          echo "CC_${ENV_KEY_UNDER}=${CC_WRAPPER}" >> "$GITHUB_ENV"
+          echo "CXX_${TARGET_TRIPLE}=${CXX_WRAPPER}" >> "$GITHUB_ENV"
+          echo "CXX_${ENV_KEY_UNDER}=${CXX_WRAPPER}" >> "$GITHUB_ENV"
 
       - name: Build release
         run: |
@@ -141,7 +186,10 @@ jobs:
             --target ${{ matrix.label }}-unknown-linux-musl
         env:
           APP: ${{ inputs.app || 'elph' }}
-          RUSTC_WRAPPER: sccache
+          # sccache does not support zig as a compiler family, so it cannot wrap
+          # the zig cc C compiler above. Disable the wrapper for this cross-build;
+          # target/ is still cached on the Namespace cache volume.
+          RUSTC_WRAPPER: ""
 
       - name: Package
         shell: bash

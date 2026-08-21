@@ -289,6 +289,7 @@ pub(super) async fn open_or_create(
             preloaded_resources: None,
             defer_mcp_load: true,
             headless: true,
+            extension_host: None,
         }),
     )
     .await

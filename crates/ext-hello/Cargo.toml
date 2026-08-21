@@ -8,11 +8,5 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-wit-bindgen = "0.36.0"
-
-[package.metadata.component]
-package = "elph:extension-say-hello"
-
-[package.metadata.component.target]
-path = "../elph-agent/wit/extension.wit"
-world = "guest"
+elph-extension-pdk = { path = "../elph-extension-pdk" }
+serde_json = "1"

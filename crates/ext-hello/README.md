@@ -1,23 +1,20 @@
 # Elph Example Extension
 
-WASM component extension (wasmtime + Component Model) that adds `/say-hello <name>`.
+Core Wasm extension (wasmi) that adds `/say-hello <name>` and can block `shell_exec` commands containing `rm -rf` (confirm defaults to deny without a TUI).
 
 ## Build
 
-Requires the [cargo-component](https://github.com/bytecodealliance/cargo-component) subcommand:
-
 ```sh
-cargo install cargo-component
-rustup target add wasm32-wasip2
-cd extensions/say-hello
-cargo component build --release
-cp target/wasm32-wasip2/release/elph_extension_say_hello.wasm component.wasm
+rustup target add wasm32-unknown-unknown
+cd crates/ext-hello
+cargo build --release --target wasm32-unknown-unknown
+cp target/wasm32-unknown-unknown/release/elph_extension_say_hello.wasm plugin.wasm
 ```
 
 ## Install
 
 ```sh
-elph plugin install extensions/say-hello --force
+elph extensions install crates/ext-hello --force
 ```
 
 ## Usage

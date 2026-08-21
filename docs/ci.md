@@ -27,7 +27,7 @@ Create these runner profiles in the [Namespace dashboard](https://cloud.namespac
 
 Connect the GitHub org to Namespace before the first run. Lightweight jobs (version gate, publish, sync) stay on GitHub `ubuntu-slim`.
 
-`.cargo/config.toml` uses zig as the linker for musl targets (`x86_64-unknown-linux-musl`, `aarch64-unknown-linux-musl`). Linux AMD64 jobs download zig from ziglang.org in `setup-rust` for musl builds; the default glibc target uses the system linker.
+`.cargo/config.toml` uses zig as the linker for musl targets (`x86_64-unknown-linux-musl`, `aarch64-unknown-linux-musl`). Linux AMD64 jobs download zig from ziglang.org in `setup-rust` for musl builds; the default glibc target uses the system linker. The musl cross-build also points `CC_*`/`CXX_*` at a `zig cc` wrapper (ring's build script needs a C compiler for the target) and disables `RUSTC_WRAPPER` for that step — sccache does not support zig as a compiler family, so it cannot wrap the zig cc C compiler.
 
 ## Test (debug)
 
@@ -40,7 +40,7 @@ Triggers:
 
 Both use path filters on the elph workspace, lockfile, toolchain, Makefile, and `.github/`.
 
-On Linux and macOS the job runs, in order: `cargo fmt --check`, `make check`, `make lint`, `make lint/test -p elph-agent --features full`, `make test`, then `make build`. Windows (`avrea-windows-2025-4-vcpu`, 90 min) runs fmt + check + lint + `make test` only: compiling wasmtime (`elph-agent` `full`) and a second debug build routinely exceed the gap between `main` pushes and get `The operation was canceled`. Workflow concurrency cancels in-progress runs on pull requests only, not on `main`. Shell exec locates Git Bash (`where.exe` / `Git\\bin\\bash.exe`); abort/timeout uses `taskkill /T`. Auth store locking uses a sibling `.flock` file (NTFS mandatory locks cannot sit on `auth.json`). Home directories fall back to `USERPROFILE` when `HOME` is unset. With `CI=true` (or profiling flags like `make build -- --ci`), those targets use Cargo profile `ci` (`target/ci/`: `opt-level=0`, no debuginfo, no incremental — sccache is the cache). Local `make` stays on `dev`. Profiles: `--debug`, `--release`, `--dist`, `--ci` (last flag wins). `PROFILE=dist` / `--dist` is unchanged (`opt-level=3`, thin LTO, `codegen-units=1`).
+On Linux and macOS the job runs, in order: `cargo fmt --check`, `make check`, `make lint`, `make lint/test -p elph-agent --features full`, `make test`, then `make build`. Windows (`avrea-windows-2025-4-vcpu`, 90 min) runs fmt + check + lint + `make test` (and `make build` when the workflow mode is `full`). Extensions use the wasmi interpreter. Workflow concurrency cancels in-progress runs on pull requests only, not on `main`. Shell exec locates Git Bash (`where.exe` / `Git\\bin\\bash.exe`); abort/timeout uses `taskkill /T`. Auth store locking uses a sibling `.flock` file (NTFS mandatory locks cannot sit on `auth.json`). Home directories fall back to `USERPROFILE` when `HOME` is unset. With `CI=true` (or profiling flags like `make build -- --ci`), those targets use Cargo profile `ci` (`target/ci/`: `opt-level=0`, no debuginfo, no incremental — sccache is the cache). Local `make` stays on `dev`. Profiles: `--debug`, `--release`, `--dist`, `--ci` (last flag wins). `PROFILE=dist` / `--dist` is unchanged (`opt-level=3`, thin LTO, `codegen-units=1`).
 
 ## Release
 

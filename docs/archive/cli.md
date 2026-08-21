@@ -156,7 +156,7 @@ Subcommands: `list`, `add`, `remove`, `doctor`, `auth`, `logout`.
 
 ### `plugin`
 
-Manage WASM extension bundles (wasmtime + Component Model). See [extensions.md](./extensions.md).
+Manage WASM extension bundles (wasmi). See [extensions.md](./extensions.md) and [../extensions.md](../extensions.md).
 
 | Subcommand       | Flags             | Design behavior                                   |
 | ---------------- | ----------------- | ------------------------------------------------- |

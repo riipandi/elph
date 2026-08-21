@@ -67,8 +67,8 @@ All share the same config/data layout (`CONFIG_DIR` / `APP_DATA`); override with
 
 ## Extension development loop
 
-1. Build guest WASM: see [extensions.md](./extensions.md) and `crates/ext-hello/README.md`.
-2. Install: `elph plugin install crates/ext-hello --force`
+1. Build guest WASM: see [../extensions.md](../extensions.md) and `crates/ext-hello/README.md`.
+2. Install: `elph extensions install crates/ext-hello --force`
 3. Verify: `elph plugin list`
 4. In TUI: `/say-hello World` or `/reload` after changes.
 
