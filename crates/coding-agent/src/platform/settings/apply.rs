@@ -262,7 +262,7 @@ mod tests {
             .expect("HOME");
         let mut settings = Settings::defaults();
         settings.resources.disabled_prompts = vec!["legacy-*".into()];
-        settings.resources.prompts = vec![format!("!{}/.agents/prompts/*", home.display())];
+        settings.resources.prompts = vec!["!~/.agents/prompts/*".into()];
 
         let templates = vec![
             PromptTemplate {

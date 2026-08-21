@@ -1,5 +1,5 @@
 [build]
-rustflags = ["-C", "target-cpu=native"]
+rustflags = ["-Ctarget-cpu=native"]
 
 # Linux musl — fully static builds (CI release channel only)
 # Zig bundles musl libc internally — no distro package needed.
@@ -20,12 +20,7 @@ rustflags = ["-Clink-arg=-fuse-ld=zig", "-Clink-args=--target=aarch64-unknown-li
 # Ring checks CPU features at compile time which panics when the host isn't ARM macOS.
 # Force the baseline NEON+crypto feature set that all Apple Silicon chips support.
 [target.aarch64-apple-darwin]
-rustflags = [
-  "-C",
-  "target-cpu=apple-a14",
-  "-C",
-  "target-feature=+neon,+crc,+crypto,+fp-armv8,+parentaccess16,+fullfp16",
-]
+rustflags = ["-Clink-arg=--ld-path=/usr/bin/ld"]
 
 # Link the C runtime statically on Windows. The alternative is shipping
 # (or installing) the Visual C++ redistributable. Windows on Arm makes
