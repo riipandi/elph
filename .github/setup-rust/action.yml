@@ -34,6 +34,31 @@ runs:
         toolchain: 1.97.0
         components: clippy, rustfmt
 
+    - name: Install musl targets & zig linker
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        set -euo pipefail
+        # Static musl builds require these targets in rustup.
+        rustup target add x86_64-unknown-linux-musl
+        rustup target add aarch64-unknown-linux-musl
+
+        # Zig acts as the cross-linker for all musl targets.
+        # It bundles musl libc internally — no distro package needed.
+        if ! command -v zig >/dev/null 2>&1; then
+          ZIG_VER="0.14.0"
+          case "$(uname -m)" in
+            x86_64) ZIG_ARCH="x86_64" ;;
+            aarch64) ZIG_ARCH="aarch64" ;;
+          esac
+          curl -L --proto '=https' --tlsv1.2 -sSf \
+            "https://github.com/ziglang/zig/releases/download/zig-${ZIG_VER}/zig-linux-${ZIG_ARCH}-${ZIG_VER}.tar.xz" \
+            -o /tmp/zig.tar.xz
+          mkdir -p /opt/zig
+          tar -xf /tmp/zig.tar.xz -C /opt/zig --strip-components=1
+          echo "/opt/zig" >> "$GITHUB_PATH"
+        fi
+
     - name: Install tools
       if: inputs.installNextest == 'true' || inputs.installSccache == 'true' || inputs.cacheBackend == 'namespace' || runner.os == 'Linux'
       shell: bash
@@ -50,16 +75,6 @@ runs:
         if [ "${{ inputs.installSccache }}" = "true" ] || [ "${{ inputs.cacheBackend }}" = "namespace" ]; then
           if ! command -v sccache >/dev/null 2>&1; then
             cargo binstall --locked -y sccache
-          fi
-        fi
-        # .cargo/config.toml uses clang --ld-path=wild for Linux targets.
-        if [ "$(uname -s)" = "Linux" ]; then
-          if ! command -v clang >/dev/null 2>&1; then
-            sudo apt-get update -y
-            sudo apt-get install -y --no-install-recommends clang
-          fi
-          if ! command -v wild >/dev/null 2>&1; then
-            cargo binstall --locked -y wild-linker
           fi
         fi
 
@@ -83,8 +98,6 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        # Provision Namespace sccache credentials (WebDAV backend) and expose them
-        # to every subsequent step via $GITHUB_ENV.
         nsc cache sccache setup --cache_name default >> "$GITHUB_ENV"
         {
           echo "RUSTC_WRAPPER=sccache"

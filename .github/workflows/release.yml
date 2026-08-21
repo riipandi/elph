@@ -112,8 +112,19 @@ jobs:
           cacheBackend: namespace
           installNextest: "false"
 
+      - name: Install musl targets for cross-build
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGET_TRIPLE="${{ matrix.label }}-unknown-linux-musl"
+          rustup target add "$TARGET_TRIPLE"
+          sudo apt-get update -y && sudo apt-get install -y --no-install-recommends musl-tools
+
       - name: Build release
-        run: cargo build --profile ${{ env.BUILD_PROFILE }} --bin ${{ inputs.app || 'elph' }}
+        run: |
+          cargo build --profile ${{ env.BUILD_PROFILE }} --bin ${{ inputs.app || 'elph' }} \
+            --target ${{ matrix.label }}-unknown-linux-musl
         env:
           APP: ${{ inputs.app || 'elph' }}
           RUSTC_WRAPPER: sccache
@@ -123,10 +134,11 @@ jobs:
         run: |
           set -euo pipefail
           app="${{ inputs.app || 'elph' }}"
+          triple="${{ matrix.label }}-unknown-linux-musl"
           label="${app}-linux-${{ matrix.label }}"
           mkdir -p release/archives release/binaries
-          cp "target/${{ env.BUILD_PROFILE }}/${app}" "release/binaries/${label}"
-          tar -C "target/${{ env.BUILD_PROFILE }}" -czf "release/archives/${label}.tar.gz" "${app}"
+          cp "target/${triple}/${{ env.BUILD_PROFILE }}/${app}" "release/binaries/${label}"
+          tar -C "target/${triple}/${{ env.BUILD_PROFILE }}" -czf "release/archives/${label}.tar.gz" "${app}"
 
       - name: Show sccache stats
         if: always()

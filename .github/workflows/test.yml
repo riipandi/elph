@@ -20,18 +20,18 @@ on:
         required: false
         type: string
         default: full
-  # push:
-  #   branches: [main]
-  #   paths:
-  #     - "crates/coding-agent/**"
-  #     - "crates/elph-agent/**"
-  #     - "crates/elph-ai/**"
-  #     - "crates/elph-tui/**"
-  #     - "Cargo.toml"
-  #     - "Cargo.lock"
-  #     - "rust-toolchain.toml"
-  #     - "Makefile"
-  #     - ".github/**"
+  push:
+    branches: [main]
+    paths:
+      - "crates/coding-agent/**"
+      - "crates/elph-agent/**"
+      - "crates/elph-ai/**"
+      - "crates/elph-tui/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - "Makefile"
+      - ".github/**"
   pull_request:
     paths:
       - "crates/coding-agent/**"
@@ -129,6 +129,16 @@ jobs:
         if: (inputs.mode || 'full') == 'full'
         shell: bash
         run: make build
+
+      - name: Build musl (Linux)
+        if: runner.os == 'Linux' && (inputs.mode || 'full') == 'full'
+        shell: bash
+        run: |
+          cargo build --bin ${{ inputs.app || 'elph' }} \
+            --target x86_64-unknown-linux-musl
+        env:
+          APP: ${{ inputs.app || 'elph' }}
+          RUSTC_WRAPPER: sccache
 
       - name: Show sccache stats
         if: always()

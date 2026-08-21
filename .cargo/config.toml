@@ -2,18 +2,35 @@
 rustflags = ["-C", "target-cpu=native"]
 
 ################################################################################
+# Target-specific linker & flags
 # Using alternative linker to improves compilation time.
 # Since Rust 1.90 lld is the default linker on x86_64-unknown-linux-gnu
 # @ref: https://nnethercote.github.io/perf-book/build-configuration.html
 # @ref: https://github.com/wild-linker/wild
 ################################################################################
 
-[target.'cfg(target_os = "macos")']
+# macOS targets — system linker
+[target.x86_64-apple-darwin]
 rustflags = ["-Clink-arg=--ld-path=/usr/bin/ld"]
 
-[target.'cfg(target_os = "linux")']
+[target.aarch64-apple-darwin]
+rustflags = ["-Clink-arg=--ld-path=/usr/bin/ld"]
+
+# Linux glibc — wild linker (local dev; no shipping target here)
+[target.x86_64-unknown-linux-gnu]
 linker = "clang"
-rustflags = ["-Clink-arg=--ld-path=wild"]
+rustflags = ["-Clink-arg=--ld-path=wild", "-Ctarget-cpu=native"]
+
+# Linux musl — fully static builds (CI release channel only)
+# Zig bundles musl libc internally — no distro package needed.
+# Format: `zig <extra_args>` where --target selects the C ABI + libc.
+[target.x86_64-unknown-linux-musl]
+linker = "zig"
+rustflags = ["-Clink-args=--target=x86_64-unknown-linux-musl"]
+
+[target.aarch64-unknown-linux-musl]
+linker = "zig"
+rustflags = ["-Clink-args=--target=aarch64-unknown-linux-musl"]
 
 # Link the C runtime statically on Windows. The alternative is shipping
 # (or installing) the Visual C++ redistributable. Windows on Arm makes
