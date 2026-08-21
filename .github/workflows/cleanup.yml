@@ -25,60 +25,90 @@ permissions:
 jobs:
   clean-cache:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 90
     steps:
       - uses: actions/github-script@v9
+        env:
+          # Optional: a PAT with `repo` scope raises the API limit from 1000 to
+          # 5000 req/h, so a single run can wipe thousands of caches. Without it,
+          # re-run the workflow if the run ends with caches remaining.
+          GH_PAT: ${{ secrets.GH_PAT }}
         with:
           script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const api = process.env.GH_PAT ? github.getOctokit(process.env.GH_PAT) : github;
+            const usingPat = !!process.env.GH_PAT;
+
             const deleteAll = ${{ inputs.all == true }};
             const maxAgeDays = Number(${{ inputs.days || 14 }});
             const CACHE_MAX_AGE_MS = maxAgeDays * 24 * 60 * 60 * 1000;
             const now = Date.now();
+            const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
             let deleted = 0, skipped = 0, failed = 0;
 
-            const listPage = async (page) => {
-              const { data } = await github.rest.actions.getActionsCacheList({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                per_page: 100,
-                page,
-              });
+            const isRateLimited = (err) => {
+              const status = err && (err.status || (err.response && err.response.status));
+              const msg = String((err && err.message) || '');
+              return status === 429 || (status === 403 && /rate limit/i.test(msg));
+            };
+
+            // Retry transient rate-limit errors with a 60s backoff.
+            const call = async (fn) => {
+              for (let attempt = 0; ; attempt++) {
+                try {
+                  return await fn();
+                } catch (err) {
+                  if (isRateLimited(err) && attempt < 20) {
+                    console.log(`Rate limited; sleeping 60s (attempt ${attempt + 1}/20)`);
+                    await sleep(60_000);
+                    continue;
+                  }
+                  throw err;
+                }
+              }
+            };
+
+            const listFirstPage = async () => {
+              const { data } = await call(() =>
+                api.rest.actions.getActionsCacheList({ owner, repo, per_page: 100, page: 1 })
+              );
               return data.actions_caches;
             };
 
-            const deleteBatch = async (caches) => {
-              // Delete in small parallel batches to stay under the REST rate limit.
-              for (let i = 0; i < caches.length; i += 10) {
-                const batch = caches.slice(i, i + 10);
-                await Promise.all(batch.map(async (cache) => {
-                  try {
-                    console.log(`Deleting ${cache.id}: ${cache.key}`);
-                    await github.rest.actions.deleteActionsCacheById({
-                      owner: context.repo.owner,
-                      repo: context.repo.repo,
-                      cache_id: cache.id,
-                    });
-                    deleted++;
-                  } catch (err) {
-                    failed++;
-                    console.warn(`Failed to delete ${cache.id}: ${err.message}`);
-                  }
-                }));
+            // Throttle to stay under the per-repo API limits before they hit:
+            // GITHUB_TOKEN = 1000 req/h (~16/min) → 1 req / 4s.
+            // PAT          = 5000 req/h (~83/min) → 1 req / 1s.
+            const delayMs = usingPat ? 1000 : 4000;
+
+            const deleteCaches = async (caches) => {
+              for (const cache of caches) {
+                try {
+                  await call(() =>
+                    api.rest.actions.deleteActionsCacheById({ owner, repo, cache_id: cache.id })
+                  );
+                  deleted++;
+                } catch (err) {
+                  failed++;
+                  console.warn(`Failed ${cache.id} ${cache.key}: ${err.message}`);
+                }
+                await sleep(delayMs);
               }
             };
 
             if (deleteAll) {
-              // Deleting caches shifts the remaining entries, so sequential pagination
-              // (page 1, 2, 3…) skips a whole chunk. Re-list from the start after every
-              // pass and loop until empty — this also drains past the API's 1000-entry cap.
-              for (let pass = 0; pass < 100; pass++) {
-                const entries = await listPage(1);
+              // Deleting shifts the remaining entries, so re-list from page 1 after
+              // every pass. Re-listing also drains caches beyond the API's 1000-entry
+              // listing cap.
+              for (let pass = 0; pass < 500; pass++) {
+                const entries = await listFirstPage();
                 if (entries.length === 0) break;
-                const before = deleted;
-                await deleteBatch(entries);
-                if (deleted === before) {
-                  console.warn('No deletions made this pass; stopping to avoid an infinite loop.');
-                  break;
+                console.log(`Pass ${pass + 1}: ${entries.length} caches to delete`);
+                await deleteCaches(entries);
+                if (failed > 0) {
+                  console.warn(`${failed} deletions failed this pass; retrying.`);
+                  failed = 0;
                 }
               }
             } else {
@@ -86,7 +116,10 @@ jobs:
               // shift), then delete the stale ones.
               const toDelete = [];
               for (let page = 1; page <= 10; page++) {
-                const entries = await listPage(page);
+                const { data } = await call(() =>
+                  api.rest.actions.getActionsCacheList({ owner, repo, per_page: 100, page })
+                );
+                const entries = data.actions_caches;
                 if (entries.length === 0) break;
                 for (const cache of entries) {
                   const lastUsed = new Date(cache.last_accessed_at || cache.created_at).getTime();
@@ -94,7 +127,21 @@ jobs:
                   else skipped++;
                 }
               }
-              await deleteBatch(toDelete);
+              await deleteCaches(toDelete);
             }
 
-            console.log(`Deleted ${deleted} caches${deleteAll ? ' (all)' : ` (unused >${maxAgeDays}d)`}, skipped ${skipped}, failed ${failed}`);
+            const remaining = await listFirstPage();
+            console.log(
+              `Deleted ${deleted}, skipped ${skipped}, failed ${failed}. ` +
+              `Remaining visible caches: ${remaining.length}. ` +
+              `Auth: ${usingPat ? 'GH_PAT (5000 req/h)' : 'GITHUB_TOKEN (1000 req/h)'}`
+            );
+            if (deleteAll && remaining.length > 0) {
+              console.log(
+                'Not all caches were deleted. Likely causes: the GITHUB_TOKEN rate limit ' +
+                '(1000 req/h) was hit, or new caches were saved by concurrently running ' +
+                'workflows. Re-run after other workflows finish, or set the GH_PAT secret ' +
+                'for a 5000 req/h limit.'
+              );
+              core.setFailed('Not all caches were deleted');
+            }
