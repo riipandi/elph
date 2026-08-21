@@ -132,19 +132,29 @@ fn path_or_name_excluded(skill_patterns: &[String], name: &str, path: &str) -> b
 /// or as a relative suffix of `path` (so `!.agents/skills` / `!.agents/skills/*` exclude
 /// project skills regardless of the project's absolute location).
 fn path_matches_pattern(pat: &str, path: &str) -> bool {
-    if path_under_dir(pat, path) {
+    // Normalize separators so `~`-expanded patterns (platform separators, e.g. `\` on
+    // Windows) still match paths that may use `/` or `\` interchangeably.
+    let pat = normalize_separators(pat);
+    let path = normalize_separators(path);
+    if path_under_dir(&pat, &path) {
         return true;
     }
-    if crate::platform::settings::patterns::matches_any(&[pat.to_string()], path) {
+    if crate::platform::settings::patterns::matches_any(std::slice::from_ref(&pat), &path) {
         return true;
     }
-    for suffix in path_suffixes(path) {
-        if crate::platform::settings::patterns::matches_any(&[pat.to_string()], &suffix) || path_under_dir(pat, &suffix)
+    for suffix in path_suffixes(&path) {
+        if crate::platform::settings::patterns::matches_any(std::slice::from_ref(&pat), &suffix)
+            || path_under_dir(&pat, &suffix)
         {
             return true;
         }
     }
     false
+}
+
+/// Replace `\` with `/` so path matching is separator-agnostic across platforms.
+fn normalize_separators(s: &str) -> String {
+    s.replace('\\', "/")
 }
 
 /// Trailing path suffixes starting at each separator boundary, longest first.
@@ -400,6 +410,16 @@ mod tests {
         let out = settings.filter_prompts(templates);
         let names: Vec<_> = out.iter().map(|t| t.name.as_str()).collect();
         assert_eq!(names, vec!["keep"]);
+    }
+
+    #[test]
+    fn path_matches_pattern_normalizes_windows_separators() {
+        // On Windows `~`-expansion yields `\` separators while paths may use `/`.
+        let pat = "C:\\Users\\foo\\.agents\\skills\\*";
+        let path = "C:/Users/foo/.agents/skills/demo/SKILL.md";
+        assert!(path_matches_pattern(pat, path));
+        assert!(path_matches_pattern(pat, "C:\\Users\\foo\\.agents\\skills\\demo\\SKILL.md"));
+        assert!(!path_matches_pattern(pat, "C/Users/foo/.agents/sks/demo/SKILL.md"));
     }
 
     #[test]
