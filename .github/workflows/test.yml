@@ -49,8 +49,6 @@ permissions:
 
 concurrency:
   group: test-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  # Windows GitHub-hosted compiles (wasmtime) often exceed the gap between main
-  # pushes. Cancelling those runs also drops rust-cache, so the next job starts cold.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:

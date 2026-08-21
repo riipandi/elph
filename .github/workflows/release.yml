@@ -27,6 +27,7 @@ on:
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: true
+  queue: single
 
 permissions:
   contents: write
