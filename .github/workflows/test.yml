@@ -20,18 +20,18 @@ on:
         required: false
         type: string
         default: full
-  push:
-    branches: [main]
-    paths:
-      - "crates/coding-agent/**"
-      - "crates/elph-agent/**"
-      - "crates/elph-ai/**"
-      - "crates/elph-tui/**"
-      - "Cargo.toml"
-      - "Cargo.lock"
-      - "rust-toolchain.toml"
-      - "Makefile"
-      - ".github/**"
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - "crates/coding-agent/**"
+  #     - "crates/elph-agent/**"
+  #     - "crates/elph-ai/**"
+  #     - "crates/elph-tui/**"
+  #     - "Cargo.toml"
+  #     - "Cargo.lock"
+  #     - "rust-toolchain.toml"
+  #     - "Makefile"
+  #     - ".github/**"
   pull_request:
     paths:
       - "crates/coding-agent/**"
