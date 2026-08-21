@@ -1,13 +1,10 @@
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 
-# git tag --delete v0.0.1
-# git push origin --delete tag v0.0.1
+# git tag -d v0.0.4-canary
+# git push origin --delete v0.0.4-canary
 #
-# git tag v0.0.1 -m "version bump"
-# git push origin v0.0.1
-#
-# git tag v0.0.1-canary -m "canary build"
-# git push origin v0.0.1-canary
+# git tag v0.0.4-canary -m "canary build"
+# git push origin v0.0.4-canary
 
 name: Release
 
