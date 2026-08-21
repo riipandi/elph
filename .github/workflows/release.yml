@@ -70,8 +70,8 @@ jobs:
         with:
           app: ${{ inputs.app || 'elph' }}
 
-  quality-gate:
-    name: check
+  check-linux:
+    name: check (linux)
     needs: version-gate
     if: needs.version-gate.outputs.should_continue == 'true'
     uses: ./.github/workflows/test.yml
@@ -80,10 +80,35 @@ jobs:
       app: ${{ inputs.app || 'elph' }}
       sharedKeyPrefix: release
       mode: check
+      os: linux
+
+  check-macos:
+    name: check (macos)
+    needs: version-gate
+    if: needs.version-gate.outputs.should_continue == 'true'
+    uses: ./.github/workflows/test.yml
+    secrets: inherit
+    with:
+      app: ${{ inputs.app || 'elph' }}
+      sharedKeyPrefix: release
+      mode: check
+      os: macos
+
+  check-windows:
+    name: check (windows)
+    needs: version-gate
+    if: needs.version-gate.outputs.should_continue == 'true'
+    uses: ./.github/workflows/test.yml
+    secrets: inherit
+    with:
+      app: ${{ inputs.app || 'elph' }}
+      sharedKeyPrefix: release
+      mode: check
+      os: windows
 
   build-linux:
     name: linux (${{ matrix.arch }})
-    needs: [version-gate, quality-gate]
+    needs: [version-gate, check-linux]
     if: needs.version-gate.outputs.should_continue == 'true'
     strategy:
       fail-fast: false
@@ -217,7 +242,7 @@ jobs:
 
   build-macos:
     name: macos
-    needs: [version-gate, quality-gate]
+    needs: [version-gate, check-macos]
     if: needs.version-gate.outputs.should_continue == 'true'
     runs-on: namespace-profile-macos-base-arm64
     timeout-minutes: 90
@@ -277,7 +302,7 @@ jobs:
 
   build-windows:
     name: windows
-    needs: [version-gate, quality-gate]
+    needs: [version-gate, check-windows]
     if: needs.version-gate.outputs.should_continue == 'true'
     runs-on: avrea-windows-2025-4-vcpu
     timeout-minutes: 90

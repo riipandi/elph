@@ -44,7 +44,7 @@ On Linux and macOS the job runs, in order: `cargo fmt --check`, `make check`, `m
 
 ## Release
 
-Workflow: `.github/workflows/release.yml` (`Release / auth`, `version`, `check`, `linux`, `macos`, `windows`, `publish`, `sync`).
+Workflow: `.github/workflows/release.yml` (`Release / auth`, `version`, `check (linux)`, `check (macos)`, `check (windows)`, `linux`, `macos`, `windows`, `publish`, `sync`).
 
 Trigger: push a tag matching `v*.*.*` (release, e.g. `v0.1.0`) or `v*.*.*-canary` (canary, e.g. `v0.1.0-canary`).
 
@@ -57,8 +57,8 @@ Sequence:
 
 1. Actor allow-list (`RELEASE_ALLOWED_ACTORS` repo variable, checked by `scripts/ci-check-release-actor.sh`).
 2. Version gate (`.github/version-gate` → `scripts/ci-check-release-version.sh`) — tag version must be newer than the latest GitHub release _of the same channel_ and at least the version in `crates/coding-agent/Cargo.toml`.
-3. Quality gate — fmt, check, lint only (no test, no debug build).
-4. Binaries on Linux, macOS, and Windows — each built with `cargo build --profile dist` (release) or `--profile release` (canary), via the `BUILD_PROFILE` env derived from the tag.
+3. Quality gate — fmt, check, lint only (no test, no debug build), run per-OS as `check (linux)`, `check (macos)`, `check (windows)`. Each platform's build job depends only on its own check job (not on the others), so a finishing Linux check starts the Linux build immediately without waiting for the macOS/Windows checks.
+4. Binaries on Linux, macOS, and Windows — each built with `cargo build --profile dist` (release) or `--profile release` (canary), via the `BUILD_PROFILE` env derived from the tag, and gated on its own per-OS check.
 5. GitHub pre-release (every tag) with archives and `SHA256SUMS`.
 6. Sync `crates/coding-agent/Cargo.toml` on `main` if the tag version is ahead — **release channel only**; canary tags do not advance `main`.
 

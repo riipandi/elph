@@ -20,6 +20,36 @@ on:
         required: false
         type: string
         default: full
+      os:
+        description: Restrict the matrix to a single platform (linux/macos/windows). Empty runs all.
+        required: false
+        type: string
+        default: ""
+  workflow_dispatch:
+    inputs:
+      app:
+        description: Application to test (elph)
+        required: false
+        type: string
+        default: elph
+      sharedKeyPrefix:
+        description: Cache key prefix (manual runs use an isolated prefix)
+        required: false
+        type: string
+        default: manual
+      mode:
+        description: full = fmt+check+lint+test+debug build; check = fmt+check+lint
+        required: false
+        type: choice
+        options:
+          - full
+          - check
+        default: full
+      os:
+        description: Restrict the matrix to a single platform (linux/macos/windows). Leave empty to run all.
+        required: false
+        type: string
+        default: ""
   # push:
   #   branches: [main]
   #   paths:
@@ -58,6 +88,8 @@ env:
 jobs:
   test:
     name: ${{ matrix.name }}
+    if: >-
+      inputs.os == '' || inputs.os == matrix.name
     strategy:
       fail-fast: false
       matrix:
