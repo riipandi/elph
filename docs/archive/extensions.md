@@ -2,14 +2,14 @@
 
 Design for Pi-compatible WASM extensions — sandboxed plugins that contribute slash commands, tools, and lifecycle hooks without running arbitrary native code in the host process.
 
-Inspired by [Pi extensions](https://pi.dev/docs/latest/extensions); Elph uses **wasmtime + WebAssembly Component Model** instead of TypeScript/jiti.
+Inspired by [Pi extensions](https://pi.dev/docs/latest/extensions); Elph uses **wasmi + core Wasm** (JSON ABI, host imports) instead of TypeScript/jiti. Current spec: [../extensions.md](../extensions.md).
 
 ## Goals
 
 - **Safe by default** — extensions run in a WASM sandbox; host APIs are explicit imports.
 - **Hot reload** — `/reload` rediscovers extensions without restarting the TUI.
 - **Pi-compatible layout** — global + project-local discovery, built-in commands win over extension commands.
-- **Incremental surface** — phase 1: slash commands; later: tools, hooks, custom UI.
+- **Incremental surface** — slash commands, tools, and selected harness events; custom TUI later.
 
 ## Discovery layout
 
@@ -23,8 +23,8 @@ Each extension bundle:
 
 ```
 <name>/
-├── extension.toml    # manifest (name, version, component path, enabled)
-└── component.wasm    # WASM Component (guest world)
+├── extension.toml    # manifest (name, version, wasm path, enabled)
+└── plugin.wasm       # core Wasm guest
 ```
 
 ### `extension.toml` (manifest)
@@ -34,7 +34,7 @@ Each extension bundle:
 | `name`        | yes      | Stable id; install directory name          |
 | `version`     | no       | Semver string for display                  |
 | `description` | no       | Human-readable summary                     |
-| `component`   | yes      | Path to `.wasm`, relative to bundle root   |
+| `wasm`        | yes      | Path to `.wasm`, relative to bundle root   |
 | `enabled`     | no       | Default `true`                             |
 | `trusted`     | no       | Skip trust prompt when installing (future) |
 
@@ -51,24 +51,19 @@ Path: `~/.elph/extensions.json`
 
 Merge order for slash dispatch: **built-in commands → extension commands → prompt templates**.
 
-## WASM guest contract (phase 1)
+## WASM guest contract
 
-Guest exports a single component interface:
+See [../extensions.md](../extensions.md) for the current ABI (`elph_init`, host imports, JSON blobs).
 
-| Export            | Description                                       |
-| ----------------- | ------------------------------------------------- |
-| `list-commands`   | Return slash commands (`name`, `description`)     |
-| `execute-command` | Run `/<name> <args>`; return message + error flag |
-
-Future phases add tool registration, lifecycle events (`session_start`, `tool_call`, …), and TUI widgets — aligned with Pi's `ExtensionAPI` event map.
+Tools and lifecycle events (`session_start`, `tool_call`, …) are on the host ABI in [../extensions.md](../extensions.md). Custom TUI widgets remain later.
 
 ### Build toolchain
 
-- Guest: Rust + `wit-bindgen`, built with `cargo component` → `wasm32-wasip2`.
-- Host: `wasmtime` with component model enabled.
-- Example bundle: `crates/ext-hello/say-hello/` in the repository (reference only).
+- Guest: Rust + `elph-extension-pdk`, `wasm32-unknown-unknown`.
+- Host: `wasmi` interpreter (no WASI).
+- Example bundle: `crates/ext-hello/`.
 
-## CLI: `elph plugin`
+## CLI: `elph extensions`
 
 | Subcommand           | Design behavior                                                 |
 | -------------------- | --------------------------------------------------------------- |

@@ -118,7 +118,7 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
     let prompt_templates = bootstrap_resources.resources.prompt_templates.clone();
     let skills = bootstrap_resources.resources.skills.clone();
     let slash_commands = slash_commands_for_palette_with(
-        Some(&extension_host.registry().read()),
+        Some(extension_host.registry().as_ref()),
         Some(&prompt_templates),
         Some(&skills),
         settings.resources.enable_skill_commands,
@@ -146,6 +146,7 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
             .is_none()
             .then(|| format!("{boot_provider}/{boot_model_id}")),
         preloaded_resources: bootstrap_resources,
+        extension_host: extension_host.clone(),
     };
 
     let model_label = model_footer_label(Some(&boot_provider), Some(&boot_model_id));

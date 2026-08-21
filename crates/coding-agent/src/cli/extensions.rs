@@ -10,7 +10,7 @@ use crate::platform::{AppPaths, EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths};
 #[derive(Parser, Default)]
 #[command(
     name = "extensions",
-    about = "Manage WASM extensions (wasmtime + Component Model)",
+    about = "Manage WASM extensions (wasmi core Wasm)",
     color = clap::ColorChoice::Auto
 )]
 pub struct ExtensionsArgs {
@@ -22,7 +22,7 @@ pub struct ExtensionsArgs {
 pub enum ExtensionsCommands {
     /// List installed extensions
     List,
-    /// Install an extension bundle from a local directory (contains extension.toml + component wasm)
+    /// Install an extension bundle from a local directory (extension.toml + plugin.wasm)
     Install {
         /// Local path to extension bundle directory
         source: String,
@@ -91,7 +91,7 @@ fn list_extensions(host: &ExtensionHost) -> ExitCode {
         }
     };
     let settings = ExtensionHost::load_settings(&paths);
-    let manifests = host.registry().read().extensions();
+    let manifests = host.registry().extensions();
     let mut out = String::new();
 
     if manifests.is_empty() {
@@ -128,7 +128,6 @@ fn list_extensions(host: &ExtensionHost) -> ExitCode {
 
         for cmd in host
             .registry()
-            .read()
             .commands()
             .iter()
             .filter(|cmd| cmd.extension == manifest.name)

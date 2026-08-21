@@ -174,7 +174,7 @@ TUI shows `agent_id` + `agent_path` in subagent status lines.
 
 ### Extensions (WASM)
 
-Pi-compatible extension bundles discovered from `CONFIG_DIR/extensions/` (default `~/.config/elph/extensions/`) and `<project>/.elph/extensions/`. Phase 1: slash commands via wasmtime Component Model. `/reload` refreshes registry. See [extensions.md](./extensions.md).
+Pi-compatible extension bundles discovered from `CONFIG_DIR/extensions/` (default `~/.elph/extensions/`) and `<project>/.elph/extensions/`. Slash commands, tools, and selected harness events via wasmi. `/reload` refreshes registry. See [../extensions.md](../extensions.md).
 
 ## Thinking levels
 

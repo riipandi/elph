@@ -31,7 +31,7 @@ Elph deliberately **diverges** in product design (memory, ACP, WASM extensions, 
 - RPC / JSON automation — **[Gap]** in elph (pi has RPC); Elph has **ACP** instead (**[Elph delta]**, different protocol)
 - Public SDK (`createAgentSession`) — **[Gap]** as a first-class TS-style SDK; library is `elph` + crates, not a pi-compatible SDK API
 - Built-in tools — **[Parity]** via `elph-agent` tools (+ Elph web/multi-agent extras)
-- Extensions — **[Partial]** / different — pi: JS/TS host; elph: WASM Component Model
+- Extensions — **[Partial]** / different — pi: JS/TS host; elph: wasmi core Wasm (Pi-shaped host API, not jiti)
 - Skills + prompt templates — **[Partial]** — load paths in agent crate; product wiring incomplete
 - Themes / keybindings editor — **[Gap]** (or minimal)
 - Project trust — **[Partial]**

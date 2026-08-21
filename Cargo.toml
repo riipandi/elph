@@ -1,7 +1,14 @@
 [workspace]
 resolver = "2"
 members = ["crates/coding-agent", "crates/elph-agent", "crates/elph-ai", "crates/floppy", "crates/rendown"]
-exclude = ["crates/control-plane", "crates/elph-cron", "crates/elph-sandbox", "crates/ext-hello", "vendor/iocraft"]
+exclude = [
+  "crates/control-plane",
+  "crates/elph-cron",
+  "crates/elph-sandbox",
+  "crates/ext-hello",
+  "crates/elph-extension-pdk",
+  "vendor/iocraft",
+]
 
 [workspace.package]
 homepage = "https://elph.space"
@@ -146,7 +153,8 @@ unicode-width = "0.2.2"
 url = "2.5.8"
 urlencoding = "2.1.3"
 walkdir = "2.5.0"
-wasmtime = { version = "47.0.3", default-features = false, features = ["component-model", "async", "cranelift", "std"] }
+wasmi = "2.0.0-beta.10"
+wat = "1"
 webpki-roots = "1.0.9"
 zstd = "0.13.3"
 

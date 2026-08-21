@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.0.28
 
+### Extensions
+
+- WASM host is **wasmi** (core module ABI, JSON in linear memory). wasmtime, Cranelift, and the WIT Component Model guest world are removed.
+- Guests export `elph_init` / `elph_on_event` / `elph_execute_command` / `elph_execute_tool` and import `elph::{register_command,register_tool,subscribe,notify,confirm}`.
+- Manifest field is `wasm` (not `component`). Target `wasm32-unknown-unknown`; WASI modules are rejected.
+
 ### Library contract
 
 - MSRV 1.89, edition 2024. Package metadata: `documentation = "https://docs.rs/elph-agent"`.

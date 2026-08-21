@@ -3279,8 +3279,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     }
                 };
 
-                let extension_registry = extension_host_for_keys.registry();
-                let ext_registry = extension_registry.read();
+                let ext_registry = extension_host_for_keys.registry();
                 let templates = prompt_templates.read().clone();
                 let loaded_skills = skills.read().clone();
 
@@ -3290,7 +3289,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
 
                 let outcome = handle_slash_submit(SlashContext {
                     input: &slash_input,
-                    extensions: Some(&ext_registry),
+                    extensions: Some(ext_registry.as_ref()),
                     prompt_templates: Some(&templates),
                     skills: Some(&loaded_skills),
                     agent_session: agent_session.clone(),

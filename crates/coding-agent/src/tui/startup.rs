@@ -44,6 +44,7 @@ pub struct TuiBootstrapConfig {
     /// the session restores its own model from the tree.
     pub model_override: Option<String>,
     pub preloaded_resources: LoadResourcesResult,
+    pub extension_host: crate::extensions::ExtensionHost,
 }
 
 /// Bootstrap phases surfaced in the status row and transcript.
@@ -347,6 +348,7 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
         preloaded_resources: Some(config.preloaded_resources.clone()),
         defer_mcp_load: true,
         headless: false,
+        extension_host: Some(&config.extension_host),
     })
     .await?;
 
