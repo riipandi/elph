@@ -30,41 +30,71 @@ jobs:
       - uses: actions/github-script@v9
         with:
           script: |
-            const deleteAll = ${{ inputs.all == true || false }};
+            const deleteAll = ${{ inputs.all == true }};
             const maxAgeDays = Number(${{ inputs.days || 14 }});
             const CACHE_MAX_AGE_MS = maxAgeDays * 24 * 60 * 60 * 1000;
             const now = Date.now();
-            let deleted = 0, skipped = 0;
-            let page = 1;
+            let deleted = 0, skipped = 0, failed = 0;
 
-            while (true) {
-              const caches = await github.rest.actions.getActionsCacheList({
+            const listPage = async (page) => {
+              const { data } = await github.rest.actions.getActionsCacheList({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 per_page: 100,
                 page,
               });
+              return data.actions_caches;
+            };
 
-              const entries = caches.data.actions_caches;
-              if (entries.length === 0) break;
+            const deleteBatch = async (caches) => {
+              // Delete in small parallel batches to stay under the REST rate limit.
+              for (let i = 0; i < caches.length; i += 10) {
+                const batch = caches.slice(i, i + 10);
+                await Promise.all(batch.map(async (cache) => {
+                  try {
+                    console.log(`Deleting ${cache.id}: ${cache.key}`);
+                    await github.rest.actions.deleteActionsCacheById({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      cache_id: cache.id,
+                    });
+                    deleted++;
+                  } catch (err) {
+                    failed++;
+                    console.warn(`Failed to delete ${cache.id}: ${err.message}`);
+                  }
+                }));
+              }
+            };
 
-              for (const cache of entries) {
-                // delete caches unused for `days`+ days, or created `days`+ days ago
-                const lastUsed = new Date(cache.last_accessed_at || cache.created_at).getTime();
-                const age = now - lastUsed;
-                if (deleteAll || age > CACHE_MAX_AGE_MS) {
-                  console.log(`Deleting ${cache.id}: ${cache.key} (${Math.round(age / 86400000)}d stale)`);
-                  await github.rest.actions.deleteActionsCacheById({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    cache_id: cache.id,
-                  });
-                  deleted++;
-                } else {
-                  skipped++;
+            if (deleteAll) {
+              // Deleting caches shifts the remaining entries, so sequential pagination
+              // (page 1, 2, 3…) skips a whole chunk. Re-list from the start after every
+              // pass and loop until empty — this also drains past the API's 1000-entry cap.
+              for (let pass = 0; pass < 100; pass++) {
+                const entries = await listPage(1);
+                if (entries.length === 0) break;
+                const before = deleted;
+                await deleteBatch(entries);
+                if (deleted === before) {
+                  console.warn('No deletions made this pass; stopping to avoid an infinite loop.');
+                  break;
                 }
               }
-              page++;
+            } else {
+              // Collect every page first (no deletions during pagination → no page
+              // shift), then delete the stale ones.
+              const toDelete = [];
+              for (let page = 1; page <= 10; page++) {
+                const entries = await listPage(page);
+                if (entries.length === 0) break;
+                for (const cache of entries) {
+                  const lastUsed = new Date(cache.last_accessed_at || cache.created_at).getTime();
+                  if (now - lastUsed > CACHE_MAX_AGE_MS) toDelete.push(cache);
+                  else skipped++;
+                }
+              }
+              await deleteBatch(toDelete);
             }
 
-            console.log(`Deleted ${deleted} caches${deleteAll ? ' (all)' : ` (unused >${maxAgeDays}d)`}, skipped ${skipped} recent entries`);
+            console.log(`Deleted ${deleted} caches${deleteAll ? ' (all)' : ` (unused >${maxAgeDays}d)`}, skipped ${skipped}, failed ${failed}`);
