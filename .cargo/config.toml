@@ -5,11 +5,27 @@ rustflags = ["-C", "target-cpu=native"]
 # Zig bundles musl libc internally — no distro package needed.
 [target.x86_64-unknown-linux-musl]
 linker = "zig"
-rustflags = ["-Clink-args=--target=x86_64-unknown-linux-musl"]
+rustflags = [
+  "-Clink-arg=-fuse-ld=zig",
+  "-Clink-args=--target=x86_64-unknown-linux-musl",
+  # Disable self-contained to avoid bundling system libs with zig
+  "-Clink-args=--no-pie",
+]
 
 [target.aarch64-unknown-linux-musl]
 linker = "zig"
-rustflags = ["-Clink-args=--target=aarch64-unknown-linux-musl"]
+rustflags = ["-Clink-arg=-fuse-ld=zig", "-Clink-args=--target=aarch64-unknown-linux-musl", "-Clink-args=--no-pie"]
+
+# Workaround for ring 0.17.14 assertion failure on aarch64-apple-darwin cross-builds.
+# Ring checks CPU features at compile time which panics when the host isn't ARM macOS.
+# Force the baseline NEON+crypto feature set that all Apple Silicon chips support.
+[target.aarch64-apple-darwin]
+rustflags = [
+  "-C",
+  "target-cpu=apple-a14",
+  "-C",
+  "target-feature=+neon,+crc,+crypto,+fp-armv8,+parentaccess16,+fullfp16",
+]
 
 # Link the C runtime statically on Windows. The alternative is shipping
 # (or installing) the Visual C++ redistributable. Windows on Arm makes
