@@ -140,13 +140,35 @@ jobs:
           # toolchain compiles the C sources for the musl target.
           CC_WRAPPER="/usr/local/bin/${TARGET_TRIPLE}-gcc"
           CXX_WRAPPER="/usr/local/bin/${TARGET_TRIPLE}-g++"
+          # Zig uses its own triple format without the `unknown` vendor
+          # (x86_64-linux-musl); it rejects the Rust triple's
+          # x86_64-unknown-linux-musl ("UnknownOperatingSystem").
+          ZIG_TRIPLE=$(printf '%s' "$TARGET_TRIPLE" | sed 's/-unknown-/-/')
           cat > "$CC_WRAPPER" <<EOF
           #!/bin/sh
-          exec zig cc -target ${TARGET_TRIPLE} "\$@"
+          # cc-rs appends --target=<rust-triple> for clang-family compilers;
+          # zig cannot parse that triple, so drop it here and pass the
+          # zig-native target explicitly.
+          new=""
+          for a in "\$@"; do
+            case "\$a" in
+              --target=*) continue ;;
+            esac
+            new="\$new \$a"
+          done
+          exec zig cc -target ${ZIG_TRIPLE} \$new
           EOF
           cat > "$CXX_WRAPPER" <<EOF
           #!/bin/sh
-          exec zig c++ -target ${TARGET_TRIPLE} "\$@"
+          # Same as the C wrapper: drop --target=<rust-triple>, pass zig triple.
+          new=""
+          for a in "\$@"; do
+            case "\$a" in
+              --target=*) continue ;;
+            esac
+            new="\$new \$a"
+          done
+          exec zig c++ -target ${ZIG_TRIPLE} \$new
           EOF
           chmod +x "$CC_WRAPPER" "$CXX_WRAPPER"
           # cc-rs reads CC_<target> in lowercase, checking both the dash form
