@@ -34,30 +34,29 @@ runs:
         toolchain: 1.97.0
         components: clippy, rustfmt
 
-    - name: Install musl targets & zig linker
+    - name: Install zig linker (Linux musl builds)
       if: runner.os == 'Linux'
       shell: bash
       run: |
         set -euo pipefail
-        # Static musl builds require these targets in rustup.
-        rustup target add x86_64-unknown-linux-musl
-        rustup target add aarch64-unknown-linux-musl
-
-        # Zig acts as the cross-linker for all musl targets.
-        # It bundles musl libc internally — no distro package needed.
-        if ! command -v zig >/dev/null 2>&1; then
-          ZIG_VER="0.14.0"
-          case "$(uname -m)" in
-            x86_64) ZIG_ARCH="x86_64" ;;
-            aarch64) ZIG_ARCH="aarch64" ;;
-          esac
-          curl -L --proto '=https' --tlsv1.2 -sSf \
-            "https://github.com/ziglang/zig/releases/download/zig-${ZIG_VER}/zig-linux-${ZIG_ARCH}-${ZIG_VER}.tar.xz" \
-            -o /tmp/zig.tar.xz
-          mkdir -p /opt/zig
-          tar -xf /tmp/zig.tar.xz -C /opt/zig --strip-components=1
-          echo "/opt/zig" >> "$GITHUB_PATH"
+        if command -v zig >/dev/null 2>&1; then
+          echo "zig already installed at $(which zig)"
+          exit 0
         fi
+        # Zig bundles musl libc internally — no rustup musl target or distro package needed.
+        # Download from ziglang.org CDN (GitHub releases no longer host these).
+        ZIG_VER="0.15.2"
+        case "$(uname -m)" in
+          x86_64) ZIG_FILE="zig-x86_64-linux-${ZIG_VER}.tar.xz" ;;
+          aarch64) ZIG_FILE="zig-aarch64-linux-${ZIG_VER}.tar.xz" ;;
+        esac
+        mkdir -p /opt/zig
+        curl -L --proto '=https' --tlsv1.2 -sSf \
+          "https://ziglang.org/download/${ZIG_VER}/${ZIG_FILE}" \
+          -o /tmp/zig.tar.xz
+        tar -xf /tmp/zig.tar.xz -C /opt/zig --strip-components=1
+        echo "/opt/zig" >> "$GITHUB_PATH"
+        echo "zig ${ZIG_VER} installed at /opt/zig"
 
     - name: Install tools
       if: inputs.installNextest == 'true' || inputs.installSccache == 'true' || inputs.cacheBackend == 'namespace' || runner.os == 'Linux'
