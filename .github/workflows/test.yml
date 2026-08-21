@@ -28,7 +28,7 @@ on:
   workflow_dispatch:
     inputs:
       os:
-        description: Platform to test (all runs linux, macos, and windows)
+        description: Platform to test
         required: false
         type: choice
         options:
