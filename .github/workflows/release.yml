@@ -230,8 +230,7 @@ jobs:
     name: windows
     needs: [version-gate, quality-gate]
     if: needs.version-gate.outputs.should_continue == 'true'
-    # Namespace has no Windows runner yet; use a GitHub-hosted runner.
-    runs-on: windows-latest
+    runs-on: avrea-windows-2025-4-vcpu
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
@@ -247,7 +246,7 @@ jobs:
         uses: ./.github/setup-rust
         with:
           sharedKey: release-windows
-          cacheBackend: rust-cache
+          cacheBackend: avrea
           installNextest: "false"
 
       - name: Build release

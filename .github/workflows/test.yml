@@ -59,7 +59,7 @@ env:
 
 jobs:
   test:
-    name: ${{ matrix.name }}${{ matrix.shard && format(' ({0})', matrix.shard) || '' }}
+    name: ${{ matrix.name }}
     strategy:
       fail-fast: false
       matrix:
@@ -70,24 +70,17 @@ jobs:
           - name: macos
             runner: namespace-profile-macos-base-arm64
             cacheBackend: namespace
-          # Windows GitHub-hosted runners are 4 vCPU / 16 GB (vs 8/6 on Namespace),
-          # so the pipeline is core-bound. Shard the nextest run across two runners
-          # to parallelize both compilation and execution, roughly halving wall time.
+          # Windows runs on Avrea (4 vCPU / 16 GB, vs 4 vCPU / 16 GB GitHub-hosted).
+          # No sharding: Avrea colocated caching keeps a single runner fast enough,
+          # and sharded runs duplicate compile work across jobs.
           - name: windows
-            runner: windows-latest
-            cacheBackend: rust-cache
+            runner: avrea-windows-2025-4-vcpu
+            cacheBackend: avrea
             timeoutMinutes: 90
-            shard: "1/2"
-          - name: windows
-            runner: windows-latest
-            cacheBackend: rust-cache
-            timeoutMinutes: 90
-            shard: "2/2"
     runs-on: ${{ matrix.runner }}
     timeout-minutes: ${{ matrix.timeoutMinutes || 45 }}
     env:
-      # sccache via the GitHub Actions cache backend (no R2/S3) — Windows only.
-      SCCACHE_GHA_ENABLED: ${{ matrix.name == 'windows' && 'true' || '' }}
+      # sccache via the Avrea WebDAV endpoint (no R2/S3) — Windows only.
       CARGO_INCREMENTAL: ${{ matrix.name == 'windows' && '0' || '' }}
     steps:
       - uses: actions/checkout@v7
@@ -98,10 +91,6 @@ jobs:
           sharedKey: ${{ inputs.sharedKeyPrefix || 'ci' }}-${{ inputs.app || 'elph' }}-${{ matrix.name }}
           cacheBackend: ${{ matrix.cacheBackend }}
           saveCache: ${{ github.ref == 'refs/heads/main' || matrix.name == 'windows' }}
-
-      - name: Sccache (GitHub Actions cache)
-        if: matrix.name == 'windows'
-        uses: mozilla-actions/sccache-action@v0.0.11
 
       - name: Check format
         shell: bash
@@ -118,12 +107,7 @@ jobs:
       - name: Test
         if: (inputs.mode || 'full') == 'full'
         shell: bash
-        run: |
-          SHARD=""
-          if [ -n "${{ matrix.shard }}" ]; then
-            SHARD="--partition count:${{ matrix.shard }}"
-          fi
-          make test SHARD="$SHARD"
+        run: make test
 
       - name: Build debug
         if: (inputs.mode || 'full') == 'full'

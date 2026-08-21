@@ -1,14 +1,21 @@
 # CI / CD
 
-GitHub Actions run on [Namespace](https://namespace.so/docs/solutions/github-actions) runners. Compiler artifacts go through [sccache](https://github.com/mozilla/sccache) backed by a Namespace cache (`nsc cache sccache setup`). Cargo registry and `target/` live on a Namespace cache volume (`namespacelabs/nscloud-cache-action`). Windows release builds run on GitHub-hosted `windows-latest` (Namespace has no Windows runner yet).
+GitHub Actions run on [Namespace](https://namespace.so/docs/solutions/github-actions) runners (Linux, macOS) and [Avrea](https://docs.avrea.com/getting-started/) runners (Windows). Compiler artifacts go through [sccache](https://github.com/mozilla/sccache): Namespace WebDAV on Linux/macOS, Avrea WebDAV (`SCCACHE_WEBDAV_ENDPOINT`) on Windows. Cargo registry and `target/` live on a Namespace cache volume (`namespacelabs/nscloud-cache-action`) for Linux/macOS; Windows uses the Avrea GitHub Actions cache proxy (`swatinem/rust-cache`).
 
 ### sccache / Namespace
 
 `setup-rust` provisions sccache credentials automatically on Namespace runners via
 `nsc cache sccache setup --cache_name default` (WebDAV backend). No R2 secrets or
 repository variables are required. The composite sets `RUSTC_WRAPPER=sccache`,
-`SCCACHE_DIRECT=true`, and `SCCACHE_MAXSIZE=20G`. Windows builds use `cacheBackend: rust-cache`
-(GitHub Actions cache) and do not invoke sccache.
+`SCCACHE_DIRECT=true`, and `SCCACHE_MAXSIZE=20G`.
+
+### sccache / Avrea (Windows)
+
+Windows uses `cacheBackend: avrea`: `swatinem/rust-cache` through the Avrea GitHub
+Actions cache proxy, plus sccache against the Avrea WebDAV endpoint
+(`http://cache.avrea.com:8290/sccache-build/webdav`). `setup-rust` installs sccache,
+sets `RUSTC_WRAPPER`, and starts the daemon. No sharding — a single Avrea Windows
+runner (4 vCPU / 16 GB) with colocated caching covers the full pipeline.
 
 Create these runner profiles in the [Namespace dashboard](https://cloud.namespace.so/workspace/actions/profiles) and enable a cache volume on each:
 
@@ -16,7 +23,7 @@ Create these runner profiles in the [Namespace dashboard](https://cloud.namespac
 | ------------------------------------ | ------------- | ------------ |
 | `namespace-profile-linux-base-amd64` | Linux AMD64   | CI + release |
 | `namespace-profile-macos-base-arm64` | macOS ARM64   | CI + release |
-| `windows-latest` (GitHub-hosted)     | Windows AMD64 | Release only |
+| `avrea-windows-2025-4-vcpu`          | Windows AMD64 | CI + release |
 
 Connect the GitHub org to Namespace before the first run. Lightweight jobs (version gate, publish, sync) stay on GitHub `ubuntu-slim`.
 
@@ -33,7 +40,7 @@ Triggers:
 
 Both use path filters on the elph workspace, lockfile, toolchain, Makefile, and `.github/`.
 
-On Linux and macOS the job runs, in order: `cargo fmt --check`, `make check`, `make lint`, `make lint/test -p elph-agent --features full`, `make test`, then `make build`. Windows (`windows-latest`, 90 min) runs fmt + check + lint + `make test` only: compiling wasmtime (`elph-agent` `full`) and a second debug build routinely exceed the gap between `main` pushes and get `The operation was canceled`. Workflow concurrency cancels in-progress runs on pull requests only, not on `main`. Shell exec locates Git Bash (`where.exe` / `Git\\bin\\bash.exe`); abort/timeout uses `taskkill /T`. Auth store locking uses a sibling `.flock` file (NTFS mandatory locks cannot sit on `auth.json`). Home directories fall back to `USERPROFILE` when `HOME` is unset. With `CI=true` (or profiling flags like `make build -- --ci`), those targets use Cargo profile `ci` (`target/ci/`: `opt-level=0`, no debuginfo, no incremental — sccache is the cache). Local `make` stays on `dev`. Profiles: `--debug`, `--release`, `--dist`, `--ci` (last flag wins). `PROFILE=dist` / `--dist` is unchanged (`opt-level=3`, thin LTO, `codegen-units=1`).
+On Linux and macOS the job runs, in order: `cargo fmt --check`, `make check`, `make lint`, `make lint/test -p elph-agent --features full`, `make test`, then `make build`. Windows (`avrea-windows-2025-4-vcpu`, 90 min) runs fmt + check + lint + `make test` only: compiling wasmtime (`elph-agent` `full`) and a second debug build routinely exceed the gap between `main` pushes and get `The operation was canceled`. Workflow concurrency cancels in-progress runs on pull requests only, not on `main`. Shell exec locates Git Bash (`where.exe` / `Git\\bin\\bash.exe`); abort/timeout uses `taskkill /T`. Auth store locking uses a sibling `.flock` file (NTFS mandatory locks cannot sit on `auth.json`). Home directories fall back to `USERPROFILE` when `HOME` is unset. With `CI=true` (or profiling flags like `make build -- --ci`), those targets use Cargo profile `ci` (`target/ci/`: `opt-level=0`, no debuginfo, no incremental — sccache is the cache). Local `make` stays on `dev`. Profiles: `--debug`, `--release`, `--dist`, `--ci` (last flag wins). `PROFILE=dist` / `--dist` is unchanged (`opt-level=3`, thin LTO, `codegen-units=1`).
 
 ## Release
 

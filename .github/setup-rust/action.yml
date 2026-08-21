@@ -9,7 +9,7 @@ inputs:
     required: false
     default: ci
   cacheBackend:
-    description: rust-cache (GitHub Actions cache) or namespace (Cache Volume + Namespace sccache).
+    description: rust-cache (GitHub Actions cache), namespace (Cache Volume + Namespace sccache), or avrea (GitHub Actions cache + Avrea WebDAV sccache).
     required: false
     default: rust-cache
   installNextest:
@@ -17,7 +17,7 @@ inputs:
     required: false
     default: "true"
   installSccache:
-    description: Install sccache (needed when cacheBackend is namespace)
+    description: Install sccache (needed when cacheBackend is namespace or avrea)
     required: false
     default: "false"
   saveCache:
@@ -59,7 +59,7 @@ runs:
         echo "zig ${ZIG_VER} installed at /opt/zig"
 
     - name: Install tools
-      if: inputs.installNextest == 'true' || inputs.installSccache == 'true' || inputs.cacheBackend == 'namespace' || runner.os == 'Linux'
+      if: inputs.installNextest == 'true' || inputs.installSccache == 'true' || inputs.cacheBackend == 'namespace' || inputs.cacheBackend == 'avrea' || runner.os == 'Linux'
       shell: bash
       run: |
         set -euo pipefail
@@ -71,7 +71,7 @@ runs:
         if [ "${{ inputs.installNextest }}" = "true" ] && ! command -v cargo-nextest >/dev/null 2>&1; then
           cargo binstall --locked -y cargo-nextest
         fi
-        if [ "${{ inputs.installSccache }}" = "true" ] || [ "${{ inputs.cacheBackend }}" = "namespace" ]; then
+        if [ "${{ inputs.installSccache }}" = "true" ] || [ "${{ inputs.cacheBackend }}" = "namespace" ] || [ "${{ inputs.cacheBackend }}" = "avrea" ]; then
           if ! command -v sccache >/dev/null 2>&1; then
             cargo binstall --locked -y sccache
           fi
@@ -92,6 +92,15 @@ runs:
       with:
         cache: rust
 
+    - name: Cache Cargo (Avrea)
+      if: inputs.cacheBackend == 'avrea'
+      uses: swatinem/rust-cache@v2.9.1
+      with:
+        cache-on-failure: true
+        shared-key: ${{ inputs.sharedKey }}
+        cache-bin: false
+        save-if: ${{ inputs.saveCache }}
+
     - name: Configure sccache
       if: inputs.cacheBackend == 'namespace'
       shell: bash
@@ -105,3 +114,18 @@ runs:
           echo "SCCACHE_DIRECT=true"
           echo "SCCACHE_MAXSIZE=50GB"
         } >> "$GITHUB_ENV"
+
+    - name: Configure sccache (Avrea)
+      if: inputs.cacheBackend == 'avrea'
+      shell: bash
+      run: |
+        set -euo pipefail
+        {
+          echo "RUSTC_WRAPPER=sccache"
+          echo "SCCACHE_WEBDAV_ENDPOINT=http://cache.avrea.com:8290/sccache-build/webdav"
+          echo "SCCACHE_WEBDAV_KEY_PREFIX="
+          echo "CARGO_TERM_COLOR=always"
+          echo "CARGO_INCREMENTAL=0"
+          echo "SCCACHE_MAXSIZE=50GB"
+        } >> "$GITHUB_ENV"
+        sccache --start-server
