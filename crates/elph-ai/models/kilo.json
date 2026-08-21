@@ -1,37 +1,5 @@
 {
     "$schema": "https://elph.space/provider-schema.json",
-    "ai21/jamba-large-1.7": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.kilo.ai/api/gateway",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 256000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 2.0,
-            "output": 8.0
-        },
-        "description": "Flagship model for demanding analysis, coding, and production agent workflows",
-        "id": "ai21/jamba-large-1.7",
-        "input": ["text"],
-        "maxTokens": 4096,
-        "name": "AI21: Jamba Large 1.7",
-        "provider": "kilo",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "aion-labs/aion-2.0": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
@@ -1530,7 +1498,7 @@
         "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek/deepseek-chat-v3-0324",
         "input": ["text"],
-        "maxTokens": 65536,
+        "maxTokens": 163840,
         "name": "DeepSeek: DeepSeek V3 0324",
         "provider": "kilo",
         "reasoning": false,
@@ -1682,7 +1650,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 163840,
+        "contextWindow": 131072,
         "cost": {
             "cacheRead": 0.135,
             "cacheWrite": 0.0,
@@ -1693,7 +1661,7 @@
         "id": "deepseek/deepseek-v3.1-terminus",
         "input": ["text"],
         "maxTokens": 32768,
-        "name": "DeepSeek: DeepSeek V3.1 Terminus (retires Aug 17)",
+        "name": "DeepSeek: DeepSeek V3.1 Terminus",
         "provider": "kilo",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1820,7 +1788,7 @@
         "id": "deepseek/deepseek-v4-flash-0731",
         "input": ["text"],
         "knowledgeCutoff": "2025-05",
-        "maxTokens": 393216,
+        "maxTokens": 384000,
         "name": "DeepSeek V4 Flash 0731",
         "provider": "kilo",
         "reasoning": true,
@@ -1835,36 +1803,31 @@
             "xhigh": null
         }
     },
-    "deepseek/deepseek-v4-flash:discounted": {
+    "deepseek/deepseek-v4-flash-vision-exp": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false,
-            "thinkingFormat": "openrouter"
-        },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.0028,
+            "cacheRead": 0.007,
             "cacheWrite": 0.0,
-            "input": 0.14,
-            "output": 0.28
+            "input": 0.22,
+            "output": 0.66
         },
-        "description": "This DeepSeek V4 Flash endpoint provides the lowest cost for multi-turn conversations for this model. This is accomplished with an exceptionally low cache read price. By using this endpoint you agree prompts and completions may be retained by DeepSeek and used to train future models.",
-        "id": "deepseek/deepseek-v4-flash:discounted",
-        "input": ["text"],
+        "description": "DeepSeek V4 Flash Vision Exp is an experimental vision-enabled version of [DeepSeek V4 Flash 0731](https://openrouter.ai/deepseek/deepseek-v4-flash-0731) from DeepSeek, adding image understanding while matching the base model on text capabilities including agents,...",
+        "id": "deepseek/deepseek-v4-flash-vision-exp",
+        "input": ["text", "image"],
         "maxTokens": 384000,
-        "name": "DeepSeek: DeepSeek V4 Flash 0731 (lowest price)",
+        "name": "DeepSeek: DeepSeek V4 Flash Vision Exp",
         "provider": "kilo",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": null,
-            "max": null,
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": "off",
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "deepseek/deepseek-v4-pro": {
@@ -1904,9 +1867,9 @@
     "deepseek/deepseek-v4-pro-0813": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
-        "contextWindow": 1048576,
+        "contextWindow": 1048575,
         "cost": {
-            "cacheRead": 0.35,
+            "cacheRead": 0.13199999999999998,
             "cacheWrite": 0.0,
             "input": 1.32,
             "output": 3.9600000000000004
@@ -1927,38 +1890,6 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        }
-    },
-    "deepseek/deepseek-v4-pro:discounted": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.kilo.ai/api/gateway",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.003625,
-            "cacheWrite": 0.0,
-            "input": 0.435,
-            "output": 0.87
-        },
-        "description": "This DeepSeek V4 Pro endpoint provides the lowest cost for multi-turn conversations for this model. This is accomplished with an exceptionally low cache read price. By using this endpoint you agree prompts and completions may be retained by DeepSeek and used to train future models.",
-        "id": "deepseek/deepseek-v4-pro:discounted",
-        "input": ["text"],
-        "maxTokens": 384000,
-        "name": "DeepSeek: DeepSeek V4 Pro 0813 (lowest price)",
-        "provider": "kilo",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
         }
     },
     "dots-studio/dots-3-note-preview:free": {
@@ -2411,7 +2342,7 @@
         "id": "google/gemini-3.1-flash-lite-image",
         "input": ["image", "text", "pdf"],
         "knowledgeCutoff": "2025-01",
-        "maxTokens": 66000,
+        "maxTokens": 65536,
         "name": "Nano Banana 2 Lite",
         "provider": "kilo",
         "reasoning": true,
@@ -2635,10 +2566,10 @@
         "baseUrl": "https://api.kilo.ai/api/gateway",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.075,
-            "cacheWrite": 0.041667,
-            "input": 0.75,
-            "output": 3.75
+            "cacheRead": 0.15,
+            "cacheWrite": 0.083333,
+            "input": 1.5,
+            "output": 7.5
         },
         "description": "Gemini 3.7 Flash is a multimodal model from Google for fast agentic workflows, coding, and complex multi-step reasoning. It is designed for tasks that require responsive performance and reliable multi-step...",
         "id": "google/gemini-3.7-flash",
@@ -2831,13 +2762,13 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.07,
-            "output": 0.33999999999999997
+            "input": 0.049999999999999996,
+            "output": 0.25
         },
         "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-4-26b-a4b-it",
         "input": ["image", "text", "video"],
-        "maxTokens": 262144,
+        "maxTokens": 16384,
         "name": "Gemma 4 26B A4B IT",
         "provider": "kilo",
         "reasoning": true,
@@ -3098,7 +3029,7 @@
         "id": "inclusionai/ling-2.6-1t",
         "input": ["text"],
         "maxTokens": 32768,
-        "name": "inclusionAI: Ling-2.6-1T",
+        "name": "inclusionAI: Ling-2.6-1T (retires Aug 24)",
         "provider": "kilo",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -3130,7 +3061,7 @@
         "id": "inclusionai/ling-2.6-flash",
         "input": ["text"],
         "maxTokens": 32768,
-        "name": "inclusionAI: Ling-2.6-flash",
+        "name": "inclusionAI: Ling-2.6-flash (retires Aug 24)",
         "provider": "kilo",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -3189,7 +3120,7 @@
         "id": "inclusionai/ring-2.6-1t",
         "input": ["text"],
         "maxTokens": 65536,
-        "name": "inclusionAI: Ring-2.6-1T",
+        "name": "inclusionAI: Ring-2.6-1T (retires Aug 24)",
         "provider": "kilo",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -3461,7 +3392,7 @@
     "liquid/lfm-2.5-2.6b:free": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
-        "contextWindow": 128000,
+        "contextWindow": 65536,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -3500,7 +3431,7 @@
             "input": 0.5,
             "output": 0.75
         },
-        "description": "General-purpose chat model for instruction following, writing, and analysis",
+        "description": "An attempt to recreate Claude-style verbosity, but don't expect the same level of coherence or memory. Meant for use in roleplay/narrative situations.",
         "id": "mancer/weaver",
         "input": ["text"],
         "maxTokens": 6000,
@@ -3814,7 +3745,7 @@
             "cacheRead": 0.04,
             "cacheWrite": 0.0,
             "input": 0.3,
-            "output": 1.2
+            "output": 1.1
         },
         "description": "Muse Glimmer 30B is a dense, open-weight multimodal model from Meta Superintelligence Labs, distilled from Muse Spark and optimized for autonomous agents on consumer hardware. It is suited for long-horizon...",
         "id": "meta/muse-glimmer-30b",
@@ -4128,7 +4059,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 196608,
+        "contextWindow": 198000,
         "cost": {
             "cacheRead": 0.03,
             "cacheWrite": 0.0,
@@ -4138,7 +4069,7 @@
         "description": "MiniMax model for chat, coding, office work, and agentic tasks",
         "id": "minimax/minimax-m2.5",
         "input": ["text"],
-        "maxTokens": 196608,
+        "maxTokens": 32768,
         "name": "MiniMax-M2.5",
         "provider": "kilo",
         "reasoning": true,
@@ -4300,6 +4231,33 @@
         "input": ["text", "image"],
         "maxTokens": 32768,
         "name": "Mistral: Ministral 3 3B 2512",
+        "provider": "kilo",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "mistralai/ministral-8b": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.kilo.ai/api/gateway",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.11,
+            "output": 0.11
+        },
+        "description": "Ministral 8B is an 8B parameter model featuring a unique interleaved sliding-window attention pattern for faster, memory-efficient inference. Designed for edge use cases, it supports up to 128k context length...",
+        "id": "mistralai/ministral-8b",
+        "input": ["text"],
+        "maxTokens": 128000,
+        "name": "Mistral: Ministral 8B",
         "provider": "kilo",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -5021,7 +4979,7 @@
             "max": "max",
             "medium": null,
             "minimal": null,
-            "off": "off",
+            "off": null,
             "xhigh": null
         }
     },
@@ -5291,7 +5249,7 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.03,
+            "cacheRead": 0.024999999999999998,
             "cacheWrite": 0.0,
             "input": 0.049999999999999996,
             "output": 0.19999999999999998
@@ -5299,7 +5257,7 @@
         "description": "Small Nemotron 3 MoE for efficient coding, math, and long-context agents",
         "id": "nvidia/nemotron-3-nano-30b-a3b",
         "input": ["text"],
-        "maxTokens": 228000,
+        "maxTokens": 262144,
         "name": "Nemotron 3 Nano 30B A3B",
         "provider": "kilo",
         "reasoning": true,
@@ -6927,6 +6885,33 @@
         "provider": "kilo",
         "reasoning": true,
         "releaseDate": "2026-07-09",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "openai/gpt-5.6-sol-discounted": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.kilo.ai/api/gateway",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0.25,
+            "cacheWrite": 3.125,
+            "input": 2.5,
+            "output": 15.0
+        },
+        "description": "GPT-5.6 Sol served by OpenAI through Vercel AI Gateway at 50% lower cost than other available inference providers. This promotion runs through September 18, 2026.",
+        "id": "openai/gpt-5.6-sol-discounted",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "OpenAI: GPT-5.6 Sol (50% off)",
+        "provider": "kilo",
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -8772,7 +8757,7 @@
         "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "qwen/qwen3-next-80b-a3b-instruct",
         "input": ["text"],
-        "maxTokens": 262144,
+        "maxTokens": 16384,
         "name": "Qwen3-Next 80B-A3B Instruct",
         "provider": "kilo",
         "reasoning": false,
@@ -8837,7 +8822,7 @@
         "id": "qwen/qwen3-vl-235b-a22b-instruct",
         "input": ["text", "image"],
         "maxTokens": 32768,
-        "name": "Qwen: Qwen3 VL 235B A22B Instruct",
+        "name": "Qwen3 VL 235B A22B Instruct",
         "provider": "kilo",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -8869,7 +8854,7 @@
         "id": "qwen/qwen3-vl-235b-a22b-thinking",
         "input": ["text", "image"],
         "maxTokens": 32768,
-        "name": "Qwen: Qwen3 VL 235B A22B Thinking",
+        "name": "Qwen3 VL 235B A22B Thinking",
         "provider": "kilo",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -9060,7 +9045,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-122b-a10b",
         "input": ["text", "image", "video"],
-        "maxTokens": 81920,
+        "maxTokens": 65536,
         "name": "Qwen3.5 122B-A10B",
         "provider": "kilo",
         "reasoning": true,
@@ -9124,7 +9109,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-35b-a3b",
         "input": ["text", "image", "video"],
-        "maxTokens": 65536,
+        "maxTokens": 262144,
         "name": "Qwen3.5 35B-A3B",
         "provider": "kilo",
         "reasoning": true,
@@ -9316,7 +9301,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.6-27b",
         "input": ["text", "image", "video"],
-        "maxTokens": 65536,
+        "maxTokens": 262144,
         "name": "Qwen3.6 27B",
         "provider": "kilo",
         "reasoning": true,
@@ -9581,10 +9566,10 @@
         "baseUrl": "https://api.kilo.ai/api/gateway",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.049999999999999996,
-            "cacheWrite": 0.0,
-            "input": 0.44999999999999996,
-            "output": 3.1999999999999997
+            "cacheRead": 0.11499999999999999,
+            "cacheWrite": 0.71875,
+            "input": 0.575,
+            "output": 3.45
         },
         "description": "Qwen3.8 27B is an open-weight dense vision-language model from Qwen. It is suited for coding, professional workflows, research, multimodal interaction, and long-running agent tasks, with flexible thinking that can be...",
         "id": "qwen/qwen3.8-27b",
@@ -9800,9 +9785,10 @@
         "id": "sakana/sakana-namazu",
         "input": ["text", "image", "pdf"],
         "maxTokens": 65536,
-        "name": "Sakana: Sakana Namazu",
+        "name": "Sakana Namazu",
         "provider": "kilo",
         "reasoning": true,
+        "releaseDate": "2026-08-03",
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
@@ -10037,36 +10023,31 @@
             "xhigh": "xhigh"
         }
     },
-    "stealth/gpt-5.6-sol": {
+    "stealth/ox-alpha": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 1050000,
+        "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.39999999999999997,
-            "cacheWrite": 5.0,
-            "input": 4.0,
-            "output": 24.0
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
         },
-        "description": "Your prompts and completions may be retained and used to train or improve the provider's services. This third-party-served variant of GPT-5.6 Sol is offered at 20% lower cost than standard GPT-5.6 Sol pricing and is not served by OpenAI or Kilo Code.",
-        "id": "stealth/gpt-5.6-sol",
-        "input": ["text", "image", "pdf"],
-        "maxTokens": 128000,
-        "name": "Stealth: GPT-5.6 Sol (20% off)",
+        "description": "Ox Alpha is a reasoning model designed for coding, sustained agentic work, and production workloads. It is suited for long-horizon software engineering, complex reasoning, and workflows that combine text with...",
+        "id": "stealth/ox-alpha",
+        "input": ["text", "image", "video"],
+        "maxTokens": 131072,
+        "name": "Ox Alpha",
         "provider": "kilo",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": "max",
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
+            "off": null,
+            "xhigh": null
         }
     },
     "stealth/qwen3.6-plus": {
@@ -10233,6 +10214,60 @@
             "xhigh": null
         }
     },
+    "tencent/hy-mt2-1.8b": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.kilo.ai/api/gateway",
+        "contextWindow": 8192,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.044,
+            "output": 0.17700000000000002
+        },
+        "description": "Hy-MT2-1.8B is a compact 1.8B-parameter translation model from Tencent. It supports 33 language pairs and five Chinese dialect and minority-language pairs, with workflows for structured, delimiter-based, contextual, glossary-based, and style-guided...",
+        "id": "tencent/hy-mt2-1.8b",
+        "input": ["text"],
+        "maxTokens": 4096,
+        "name": "Tencent: Hy-MT2-1.8B",
+        "provider": "kilo",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "tencent/hy-mt2-30b-a3b": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.kilo.ai/api/gateway",
+        "contextWindow": 8192,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.074,
+            "output": 0.295
+        },
+        "description": "Hy-MT2-30B-A3B is Tencent's flagship translation model in the Hy-MT2 family. It supports 33 language pairs and five Chinese dialect and minority-language pairs, with workflows for structured, delimiter-based, contextual, glossary-based, and...",
+        "id": "tencent/hy-mt2-30b-a3b",
+        "input": ["text"],
+        "maxTokens": 4096,
+        "name": "Tencent: Hy-MT2-30B-A3B",
+        "provider": "kilo",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "tencent/hy3": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
@@ -10243,10 +10278,10 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.032999999999999995,
+            "cacheRead": 0.035,
             "cacheWrite": 0.16,
-            "input": 0.13199999999999998,
-            "output": 0.5279999999999999
+            "input": 0.14,
+            "output": 0.58
         },
         "description": "Hy3 is a 295B-parameter Mixture-of-Experts model from Tencent (21B active, 192 experts with top-8 routing) built for reasoning, agentic workflows, and real-world production use. It supports a configurable reasoning effort:...",
         "id": "tencent/hy3",
@@ -10999,12 +11034,12 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 204800,
+        "contextWindow": 202752,
         "cost": {
-            "cacheRead": 0.11,
+            "cacheRead": 0.09999999999999999,
             "cacheWrite": 0.0,
-            "input": 0.55,
-            "output": 2.2
+            "input": 0.5,
+            "output": 2.0
         },
         "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "z-ai/glm-4.6",
@@ -11223,7 +11258,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 1024000,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.26,
             "cacheWrite": 1.2,
@@ -11233,7 +11268,7 @@
         "description": "GLM 5.2 is a large-scale reasoning model from Z.ai. It supports text input and output with a 1M-token context window, and is suited for long-horizon agent workflows, project-level software engineering,...",
         "id": "z-ai/glm-5.2",
         "input": ["text"],
-        "maxTokens": 128000,
+        "maxTokens": 131072,
         "name": "GLM-5.2",
         "provider": "kilo",
         "reasoning": true,
@@ -11247,31 +11282,31 @@
             "xhigh": "xhigh"
         }
     },
-    "z-ai/glm-5.2:free": {
+    "z-ai/glm-5.3": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
-        "contextWindow": 128000,
+        "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.26,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 1.4,
+            "output": 4.4
         },
-        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
-        "id": "z-ai/glm-5.2:free",
+        "description": "GLM-5.3 is a large-scale reasoning model from Z.ai, built for complex software engineering and long-horizon agent tasks. It supports text input and output with a 1M-token context window, and improves...",
+        "id": "z-ai/glm-5.3",
         "input": ["text"],
-        "maxTokens": 128000,
-        "name": "GLM 5.2 (free)",
+        "maxTokens": 131072,
+        "name": "GLM-5.3",
         "provider": "kilo",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": null,
-            "max": null,
+            "low": "low",
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "z-ai/glm-5v-turbo": {
@@ -11437,17 +11472,17 @@
     "~deepseek/deepseek-v4-flash-latest": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
-        "contextWindow": 262144,
+        "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.01206,
+            "cacheRead": 0.02,
             "cacheWrite": 0.0,
-            "input": 0.060300000000000006,
-            "output": 0.12060000000000001
+            "input": 0.065,
+            "output": 0.18
         },
         "description": "This model always redirects to the latest model in the DeepSeek V4 Flash family.",
         "id": "~deepseek/deepseek-v4-flash-latest",
         "input": ["text"],
-        "maxTokens": 262144,
+        "maxTokens": 1048576,
         "name": "DeepSeek V4 Flash Latest",
         "provider": "kilo",
         "reasoning": true,
@@ -11533,17 +11568,17 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 1048576,
+        "contextWindow": 974842,
         "cost": {
             "cacheRead": 0.29,
             "cacheWrite": 0.0,
-            "input": 2.8,
-            "output": 14.0
+            "input": 2.6,
+            "output": 13.0
         },
         "description": "Kimi multimodal agent model for visual understanding, coding, and planning",
         "id": "~moonshotai/kimi-latest",
         "input": ["text", "image", "video"],
-        "maxTokens": 1048576,
+        "maxTokens": 974842,
         "name": "MoonshotAI Kimi Latest",
         "provider": "kilo",
         "reasoning": true,
@@ -11567,10 +11602,10 @@
         },
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.5,
-            "cacheWrite": 6.25,
-            "input": 5.0,
-            "output": 30.0
+            "cacheRead": 0.25,
+            "cacheWrite": 3.125,
+            "input": 2.5,
+            "output": 15.0
         },
         "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "~openai/gpt-latest",
@@ -11651,6 +11686,33 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
+        }
+    },
+    "~z-ai/glm-latest": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.kilo.ai/api/gateway",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.26,
+            "cacheWrite": 0.0,
+            "input": 1.4,
+            "output": 4.4
+        },
+        "description": "This model always redirects to the latest GLM model from Z.ai.",
+        "id": "~z-ai/glm-latest",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "Z.ai: GLM Latest",
+        "provider": "kilo",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     }
 }

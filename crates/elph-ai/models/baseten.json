@@ -13,24 +13,24 @@
         "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
         "id": "deepseek-ai/DeepSeek-V4-Flash-0731",
         "input": ["text"],
-        "maxTokens": 1048576,
-        "name": "Deepseek V4 Flash 0731",
+        "maxTokens": 384000,
+        "name": "DeepSeek V4 Flash 0731",
         "provider": "baseten",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": "max",
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "deepseek-ai/DeepSeek-V4-Pro": {
         "api": "openai-completions",
         "baseUrl": "https://inference.baseten.co/v1",
-        "contextWindow": 262144,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.145,
             "cacheWrite": 0.0,
@@ -41,7 +41,7 @@
         "id": "deepseek-ai/DeepSeek-V4-Pro",
         "input": ["text"],
         "maxTokens": 262144,
-        "name": "Deepseek V4 Pro",
+        "name": "DeepSeek V4 Pro",
         "provider": "baseten",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -68,17 +68,17 @@
         "id": "deepseek-ai/DeepSeek-V4-Pro-0813",
         "input": ["text"],
         "maxTokens": 262144,
-        "name": "Deepseek V4 Pro 0813",
+        "name": "DeepSeek V4 Pro 0813",
         "provider": "baseten",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": "max",
-            "medium": "medium",
-            "minimal": "minimal",
+            "medium": null,
+            "minimal": null,
             "off": "off",
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "moonshotai/Kimi-K2.6": {
@@ -312,7 +312,7 @@
         },
         "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "zai-org/GLM-5.2",
-        "input": ["text"],
+        "input": ["text", "image"],
         "maxTokens": 262144,
         "name": "GLM 5.2",
         "provider": "baseten",
@@ -339,7 +339,7 @@
         },
         "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "zai-org/GLM-5.2-Fast",
-        "input": ["text"],
+        "input": ["text", "image"],
         "maxTokens": 262144,
         "name": "GLM 5.2 Fast",
         "provider": "baseten",

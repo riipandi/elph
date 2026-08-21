@@ -362,33 +362,17 @@ fn parse_registered_provider_ids(builtin_src: &str) -> Result<std::collections::
         .find("pub fn builtin_providers()")
         .context("builtin_providers() not found in providers/builtin.rs")?;
     let after = &builtin_src[start..];
-    let body_start = after.find("vec![").context("builtin_providers vec![ not found")?;
-    let body = &after[body_start..];
-    let end = body
-        .find("\n    ]")
-        .context("could not find end of builtin_providers vec")?;
-    let body = &body[..end];
+    let end = after.find("\npub fn builtin_models").unwrap_or(after.len());
+    let body = &after[..end];
 
     let mut ids = BTreeSet::new();
     for cap in regex_lite_simple_provider_ids(body) {
         ids.insert(cap);
     }
-    for name in body.split_whitespace() {
-        let name = name.trim_end_matches([',', '(', ')']);
-        if name.ends_with("_provider")
-            && let Some(id) = named_factory_provider_id(name)
-        {
-            ids.insert(id.to_string());
-        }
-    }
-    for line in body.lines() {
-        let trimmed = line.trim();
-        if let Some(name) = trimmed.strip_suffix("(),") {
-            if let Some(id) = named_factory_provider_id(name) {
-                ids.insert(id.to_string());
-            }
-        } else if let Some(name) = trimmed.strip_suffix("()")
-            && let Some(id) = named_factory_provider_id(name)
+    for word in body.split_whitespace() {
+        let clean = word.trim_matches(|c: char| !c.is_alphanumeric() && c != '_');
+        if clean.ends_with("_provider")
+            && let Some(id) = named_factory_provider_id(clean)
         {
             ids.insert(id.to_string());
         }

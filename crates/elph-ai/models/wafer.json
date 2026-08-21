@@ -27,33 +27,6 @@
             "xhigh": null
         }
     },
-    "GLM-5.1": {
-        "api": "openai-completions",
-        "baseUrl": "https://pass.wafer.ai/v1",
-        "contextWindow": 202752,
-        "cost": {
-            "cacheRead": 0.1,
-            "cacheWrite": 0.0,
-            "input": 1.0,
-            "output": 3.2
-        },
-        "description": "General Language Model 5.1 — high-quality bilingual (EN/ZH) generation with strong coding and reasoning capabilities.",
-        "id": "GLM-5.1",
-        "input": ["text"],
-        "maxTokens": 131072,
-        "name": "GLM-5.1",
-        "provider": "wafer",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
     "GLM-5.2": {
         "api": "openai-completions",
         "baseUrl": "https://pass.wafer.ai/v1",
@@ -120,7 +93,7 @@
         },
         "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
         "id": "Kimi-K3",
-        "input": ["text"],
+        "input": ["text", "image", "video"],
         "maxTokens": 131072,
         "name": "Kimi K3",
         "provider": "wafer",
@@ -156,60 +129,6 @@
             "high": "high",
             "low": "low",
             "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "glm5.2-fast": {
-        "api": "openai-completions",
-        "baseUrl": "https://pass.wafer.ai/v1",
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.21,
-            "cacheWrite": 0.0,
-            "input": 2.1,
-            "output": 6.6
-        },
-        "description": "The same model served for high TPS.",
-        "id": "glm5.2-fast",
-        "input": ["text"],
-        "maxTokens": 131072,
-        "name": "GLM5.2-Fast",
-        "provider": "wafer",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": "max",
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": null
-        }
-    },
-    "kimi-k3-fast": {
-        "api": "openai-completions",
-        "baseUrl": "https://pass.wafer.ai/v1",
-        "contextWindow": 1040384,
-        "cost": {
-            "cacheRead": 0.45,
-            "cacheWrite": 0.0,
-            "input": 4.5,
-            "output": 22.5
-        },
-        "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
-        "id": "kimi-k3-fast",
-        "input": ["text", "image", "video"],
-        "maxTokens": 131072,
-        "name": "Kimi K3",
-        "provider": "wafer",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": "off",

@@ -27,10 +27,10 @@ so there is no Rust catalog file to regenerate.
 
 ### Sources (compiled, in precedence order for each field)
 
-1. **Official provider APIs (live, with env-key auth)** — OpenAI-compatible `/models` endpoints
-   for providers that expose a `live_pricing_base` + `live_pricing_env` (OpenAI, xAI, Mistral,
-   Hyper, Infron, Kilo, OpenRouter, …). These return live **pricing** and, where exposed,
-   **thinking/reasoning capability**.
+1. **Official provider APIs (live, with optional env-key auth)** — OpenAI-compatible `/models` endpoints
+   for providers that expose a `live_pricing_base` (OpenAI, xAI, Mistral, Hyper, Infron, Kilo,
+   OpenRouter, OpenCode `https://opencode.ai/zen/v1/models`, OpenCode Go `https://opencode.ai/zen/go/v1/models`, …).
+   These return live **pricing**, **model lists**, and, where exposed, **thinking/reasoning capability**.
 2. **models.dev `api.json`** — nested `provider → {models}`. Authoritative for `cost`,
    `reasoning_options`, `modalities`, `limit`.
 3. **models.dev `models.json` / `catalog.json`** — flat `provider/modelid` index. Authoritative
@@ -213,10 +213,11 @@ The generator keeps model data current through four layers:
    lack a price for a model. Keyed by `provider/modelid` then bare `modelid`.
 
 5. **Live model list (gateway providers)** — for `gateway_preserve_ids` providers with a live
-   `/models` endpoint, the **live id list replaces the previous catalog ids** (source of truth).
-   New upstream models appear automatically; removed ones drop out. When the API exposes
-   `category_type`, only `LLM` entries are kept so image/video models never pollute the chat catalog.
-   If no live endpoint/key is available, the previous catalog ids are preserved.
+   `/models` endpoint (such as OpenRouter, OpenCode, OpenCode Go, Hyper, Infron, Kilo, etc.), the
+   **live id list replaces the previous catalog ids** (source of truth). New upstream models appear
+   automatically; removed ones drop out. When the API exposes `category_type`, only `LLM` entries are
+   kept so image/video models never pollute the chat catalog. If no live endpoint/key is available,
+   the previous catalog ids are preserved.
 
 ## Rules
 

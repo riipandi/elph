@@ -42,12 +42,12 @@
             "supportsStore": false,
             "thinkingFormat": "deepseek"
         },
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.04,
+            "cacheRead": 0.0152432,
             "cacheWrite": 0.0,
-            "input": 0.2,
-            "output": 0.4
+            "input": 0.479072,
+            "output": 1.437216
         },
         "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
         "id": "deepseek-v4-flash-0731",
@@ -59,10 +59,10 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
+            "max": "max",
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -137,8 +137,8 @@
         "contextWindow": 256000,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.062,
-            "input": 0.124,
+            "cacheWrite": 0.06,
+            "input": 0.12,
             "output": 0.42
         },
         "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
@@ -164,9 +164,9 @@
         "contextWindow": 202752,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.38,
-            "input": 0.76,
-            "output": 2.356
+            "cacheWrite": 0.415,
+            "input": 0.83,
+            "output": 2.558
         },
         "description": "General GLM flagship for coding, analysis, and tool-heavy engineering workflows",
         "id": "glm-5",
@@ -194,12 +194,12 @@
             "supportsStore": false,
             "thinkingFormat": "deepseek"
         },
-        "contextWindow": 202800,
+        "contextWindow": 202750,
         "cost": {
             "cacheRead": 0.283088,
-            "cacheWrite": 0.0,
-            "input": 1.52432,
-            "output": 4.79072
+            "cacheWrite": 0.68,
+            "input": 1.36,
+            "output": 4.4
         },
         "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
         "id": "glm-5.1",
@@ -210,12 +210,12 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": null,
-            "max": "max",
-            "medium": null,
+            "low": "low",
+            "max": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "glm-5.2": {
@@ -227,16 +227,16 @@
             "supportsStore": false,
             "thinkingFormat": "deepseek"
         },
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.28,
+            "cacheRead": 0.152432,
             "cacheWrite": 0.0,
-            "input": 1.4,
-            "output": 4.4
+            "input": 1.52432,
+            "output": 4.79072
         },
         "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "glm-5.2",
-        "input": ["text"],
+        "input": ["text", "image"],
         "maxTokens": 32768,
         "name": "GLM-5.2",
         "provider": "hyper",
@@ -244,11 +244,11 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
-            "max": null,
+            "max": "max",
             "medium": null,
             "minimal": null,
-            "off": null,
-            "xhigh": "xhigh"
+            "off": "off",
+            "xhigh": null
         }
     },
     "gpt-oss-120b": {
@@ -264,8 +264,8 @@
         "cost": {
             "cacheRead": 0.0152432,
             "cacheWrite": 0.094,
-            "input": 0.16332,
-            "output": 0.65328
+            "input": 0.188,
+            "output": 0.7
         },
         "description": "Open GPT reasoning model for self-hosted agents and controllable deployments",
         "id": "gpt-oss-120b",
@@ -295,9 +295,9 @@
         "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.279,
-            "input": 0.558,
-            "output": 2.94
+            "cacheWrite": 0.2752,
+            "input": 0.5504,
+            "output": 2.885
         },
         "description": "Earlier Kimi frontier model for long-context agents, coding, and multimodal work",
         "id": "kimi-k2.5",
@@ -327,10 +327,10 @@
         },
         "contextWindow": 262000,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.174208,
             "cacheWrite": 0.16,
-            "input": 0.95,
-            "output": 4.0
+            "input": 1.03436,
+            "output": 4.3552
         },
         "description": "Multimodal Kimi workhorse for agent loops, coding tasks, and visual context",
         "id": "kimi-k2.6",
@@ -345,8 +345,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "kimi-k2.7-code": {
@@ -359,10 +359,10 @@
         },
         "contextWindow": 256000,
         "cost": {
-            "cacheRead": 0.19,
+            "cacheRead": 0.206872,
             "cacheWrite": 0.0,
-            "input": 0.95,
-            "output": 4.0
+            "input": 1.03436,
+            "output": 4.3552
         },
         "description": "Coding-focused Kimi model, stronger on long-horizon repo work with less overthinking",
         "id": "kimi-k2.7-code",
@@ -394,8 +394,8 @@
         "cost": {
             "cacheRead": 0.32664,
             "cacheWrite": 0.3,
-            "input": 3.0,
-            "output": 15.0
+            "input": 3.2664,
+            "output": 16.332
         },
         "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
         "id": "kimi-k3",
@@ -425,9 +425,9 @@
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.304,
-            "input": 0.608,
-            "output": 0.838
+            "cacheWrite": 0.319,
+            "input": 0.638,
+            "output": 0.768
         },
         "description": "Popular open Llama workhorse for multilingual chat, coding, and self-hosting",
         "id": "llama-3.3-70b-instruct",
@@ -489,9 +489,9 @@
         "contextWindow": 262100,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.213,
-            "input": 0.426,
-            "output": 1.62
+            "cacheWrite": 0.204,
+            "input": 0.408,
+            "output": 1.512
         },
         "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
         "id": "minimax-m2.7",

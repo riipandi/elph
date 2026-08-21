@@ -32,6 +32,33 @@
             "xhigh": null
         }
     },
+    "claude-fable-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 1.0,
+            "cacheWrite": 12.5,
+            "input": 10.0,
+            "output": 50.0
+        },
+        "description": "Claude model for creative writing, analysis, and controlled agent workflows",
+        "id": "claude-fable-5",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "Claude Fable 5",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
     "claude-haiku-4-5": {
         "api": "anthropic-messages",
         "baseUrl": "https://opencode.ai/zen",
@@ -57,6 +84,114 @@
             "minimal": null,
             "off": null,
             "xhigh": null
+        }
+    },
+    "claude-opus-4-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5.0,
+            "output": 25.0
+        },
+        "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
+        "id": "claude-opus-4-5",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 64000,
+        "name": "Claude Opus 4.5",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "claude-opus-4-6": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5.0,
+            "output": 25.0
+        },
+        "description": "High-end Claude for difficult coding, planning, and slower expert reasoning",
+        "id": "claude-opus-4-6",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "Claude Opus 4.6",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "claude-opus-4-7": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5.0,
+            "output": 25.0
+        },
+        "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
+        "id": "claude-opus-4-7",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "Claude Opus 4.7",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "claude-opus-4-8": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5.0,
+            "output": 25.0
+        },
+        "description": "Top Claude Opus tier for the hardest reasoning, coding, and long-horizon agents",
+        "id": "claude-opus-4-8",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "Claude Opus 4.8",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
         }
     },
     "claude-opus-5": {
@@ -88,6 +223,87 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
+        }
+    },
+    "claude-sonnet-4": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.3,
+            "cacheWrite": 3.75,
+            "input": 3.0,
+            "output": 15.0
+        },
+        "description": "Balanced Claude model for coding, analysis, agent workflows, and cost control",
+        "id": "claude-sonnet-4",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 64000,
+        "name": "Claude Sonnet 4",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "claude-sonnet-4-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.3,
+            "cacheWrite": 3.75,
+            "input": 3.0,
+            "output": 15.0
+        },
+        "description": "Balanced Claude model for coding, analysis, agent workflows, and cost control",
+        "id": "claude-sonnet-4-5",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 64000,
+        "name": "Claude Sonnet 4.5",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "claude-sonnet-4-6": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.3,
+            "cacheWrite": 3.75,
+            "input": 3.0,
+            "output": 15.0
+        },
+        "description": "Balanced Claude model for coding, analysis, agent workflows, and cost control",
+        "id": "claude-sonnet-4-6",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 64000,
+        "name": "Claude Sonnet 4.6",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "claude-sonnet-5": {
@@ -221,6 +437,114 @@
             "xhigh": null
         }
     },
+    "gemini-3-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.05,
+            "cacheWrite": 0.0,
+            "input": 0.5,
+            "output": 3.0
+        },
+        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
+        "id": "gemini-3-flash",
+        "input": ["text", "image", "video", "audio", "pdf"],
+        "maxTokens": 65536,
+        "name": "Gemini 3 Flash",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gemini-3.1-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.2,
+            "cacheWrite": 0.0,
+            "input": 2.0,
+            "output": 12.0
+        },
+        "description": "Advanced Gemini model for complex reasoning, coding, and multimodal analysis",
+        "id": "gemini-3.1-pro",
+        "input": ["text", "image", "video", "audio", "pdf"],
+        "maxTokens": 65536,
+        "name": "Gemini 3.1 Pro Preview",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gemini-3.5-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.15,
+            "cacheWrite": 0.0,
+            "input": 1.5,
+            "output": 9.0
+        },
+        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
+        "id": "gemini-3.5-flash",
+        "input": ["text", "image", "video", "audio", "pdf"],
+        "maxTokens": 65536,
+        "name": "Gemini 3.5 Flash",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gemini-3.5-flash-lite": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.03,
+            "cacheWrite": 0.0,
+            "input": 0.3,
+            "output": 2.5
+        },
+        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
+        "id": "gemini-3.5-flash-lite",
+        "input": ["text", "image", "video", "audio", "pdf"],
+        "maxTokens": 65536,
+        "name": "Gemini 3.5 Flash Lite",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": null
+        }
+    },
     "gemini-3.6-flash": {
         "api": "google-generative-ai",
         "baseUrl": "https://opencode.ai/zen/v1",
@@ -273,6 +597,33 @@
             "minimal": null,
             "off": null,
             "xhigh": null
+        }
+    },
+    "glm-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 204800,
+        "cost": {
+            "cacheRead": 0.2,
+            "cacheWrite": 0.0,
+            "input": 1.0,
+            "output": 3.2
+        },
+        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
+        "id": "glm-5",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "GLM-5",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "glm-5.1": {
@@ -339,6 +690,465 @@
             "xhigh": null
         }
     },
+    "gpt-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0.107,
+            "cacheWrite": 0.0,
+            "input": 1.07,
+            "output": 8.5
+        },
+        "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
+        "id": "gpt-5",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gpt-5-codex": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0.107,
+            "cacheWrite": 0.0,
+            "input": 1.07,
+            "output": 8.5
+        },
+        "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
+        "id": "gpt-5-codex",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5 Codex",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gpt-5-nano": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0.005,
+            "cacheWrite": 0.0,
+            "input": 0.05,
+            "output": 0.4
+        },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
+        "id": "gpt-5-nano",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5 Nano",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gpt-5.1": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0.107,
+            "cacheWrite": 0.0,
+            "input": 1.07,
+            "output": 8.5
+        },
+        "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
+        "id": "gpt-5.1",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.1",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "gpt-5.1-codex": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0.107,
+            "cacheWrite": 0.0,
+            "input": 1.07,
+            "output": 8.5
+        },
+        "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
+        "id": "gpt-5.1-codex",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.1 Codex",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gpt-5.1-codex-max": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0.125,
+            "cacheWrite": 0.0,
+            "input": 1.25,
+            "output": 10.0
+        },
+        "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
+        "id": "gpt-5.1-codex-max",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.1 Codex Max",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.1-codex-mini": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0.025,
+            "cacheWrite": 0.0,
+            "input": 0.25,
+            "output": 2.0
+        },
+        "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
+        "id": "gpt-5.1-codex-mini",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.1 Codex Mini",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gpt-5.2": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0.175,
+            "cacheWrite": 0.0,
+            "input": 1.75,
+            "output": 14.0
+        },
+        "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
+        "id": "gpt-5.2",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.2",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.2-codex": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0.175,
+            "cacheWrite": 0.0,
+            "input": 1.75,
+            "output": 14.0
+        },
+        "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
+        "id": "gpt-5.2-codex",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "GPT-5.2 Codex",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.3-codex": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0.175,
+            "cacheWrite": 0.0,
+            "input": 1.75,
+            "output": 14.0
+        },
+        "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
+        "id": "gpt-5.3-codex",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "GPT-5.3 Codex",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.3-codex-spark": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.175,
+            "cacheWrite": 0.0,
+            "input": 1.75,
+            "output": 14.0
+        },
+        "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
+        "id": "gpt-5.3-codex-spark",
+        "input": ["text"],
+        "maxTokens": 128000,
+        "name": "GPT-5.3 Codex Spark",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.4": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0.25,
+            "cacheWrite": 0.0,
+            "input": 2.5,
+            "output": 15.0
+        },
+        "description": "Agent-ready GPT for coding and computer-use workflows at a lower cost",
+        "id": "gpt-5.4",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "GPT-5.4",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.4-mini": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0.075,
+            "cacheWrite": 0.0,
+            "input": 0.75,
+            "output": 4.5
+        },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
+        "id": "gpt-5.4-mini",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "GPT-5.4 Mini",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.4-nano": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0.02,
+            "cacheWrite": 0.0,
+            "input": 0.2,
+            "output": 1.25
+        },
+        "description": "Compact GPT model for low-latency assistance and high-volume workloads",
+        "id": "gpt-5.4-nano",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "GPT-5.4 Nano",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.4-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 30.0,
+            "cacheWrite": 0.0,
+            "input": 30.0,
+            "output": 180.0
+        },
+        "description": "Frontier GPT model for professional reasoning, coding, and multimodal work",
+        "id": "gpt-5.4-pro",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "GPT-5.4 Pro",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.5": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 0.0,
+            "input": 5.0,
+            "output": 30.0
+        },
+        "description": "Default frontier GPT for coding, computer use, research, and knowledge work",
+        "id": "gpt-5.5",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "GPT-5.5",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.5-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 30.0,
+            "cacheWrite": 0.0,
+            "input": 30.0,
+            "output": 180.0
+        },
+        "description": "Frontier GPT model for professional reasoning, coding, and multimodal work",
+        "id": "gpt-5.5-pro",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "GPT-5.5 Pro",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
     "gpt-5.6-luna": {
         "api": "openai-responses",
         "baseUrl": "https://opencode.ai/zen/v1",
@@ -370,6 +1180,87 @@
             "xhigh": "xhigh"
         }
     },
+    "gpt-5.6-sol": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0.25,
+            "cacheWrite": 3.125,
+            "input": 2.5,
+            "output": 15.0
+        },
+        "description": "Frontier GPT-5.6 model for complex professional work, coding, and agentic workflows",
+        "id": "gpt-5.6-sol",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "GPT-5.6 Sol (50% Off)",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.6-terra": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0.25,
+            "cacheWrite": 3.125,
+            "input": 2.5,
+            "output": 15.0
+        },
+        "description": "Balanced GPT-5.6 model for capable, cost-efficient everyday work",
+        "id": "gpt-5.6-terra",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "GPT-5.6 Terra",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "grok-4.5": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 500000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 0.0,
+            "input": 2.0,
+            "output": 6.0
+        },
+        "description": "xAI's Grok model for chat, coding, agentic tools, and lower hallucination risk",
+        "id": "grok-4.5",
+        "input": ["text", "image"],
+        "maxTokens": 500000,
+        "name": "Grok 4.5",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "grok-4.6": {
         "api": "openai-completions",
         "baseUrl": "https://opencode.ai/zen/v1",
@@ -397,6 +1288,33 @@
             "xhigh": "xhigh"
         }
     },
+    "grok-build-0.1": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 256000,
+        "cost": {
+            "cacheRead": 0.2,
+            "cacheWrite": 0.0,
+            "input": 1.0,
+            "output": 2.0
+        },
+        "description": "Fast Grok coding model tuned for agentic engineering and iterative edits",
+        "id": "grok-build-0.1",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 256000,
+        "name": "Grok Build 0.1",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "hy3-free": {
         "api": "openai-completions",
         "baseUrl": "https://opencode.ai/zen/v1",
@@ -422,6 +1340,60 @@
             "minimal": null,
             "off": null,
             "xhigh": null
+        }
+    },
+    "kimi-k2.5": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.08,
+            "cacheWrite": 0.0,
+            "input": 0.6,
+            "output": 3.0
+        },
+        "description": "Kimi multimodal agent model for visual understanding, coding, and planning",
+        "id": "kimi-k2.5",
+        "input": ["text", "image", "video"],
+        "maxTokens": 65536,
+        "name": "Kimi K2.5",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "kimi-k2.6": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.16,
+            "cacheWrite": 0.0,
+            "input": 0.95,
+            "output": 4.0
+        },
+        "description": "Kimi multimodal agent model for visual understanding, coding, and planning",
+        "id": "kimi-k2.6",
+        "input": ["text", "image", "video"],
+        "maxTokens": 65536,
+        "name": "Kimi K2.6",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "kimi-k2.7-code": {
@@ -552,6 +1524,87 @@
             "xhigh": null
         }
     },
+    "minimax-m2.5": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 204800,
+        "cost": {
+            "cacheRead": 0.06,
+            "cacheWrite": 0.0,
+            "input": 0.3,
+            "output": 1.2
+        },
+        "description": "MiniMax model for chat, coding, office work, and agentic tasks",
+        "id": "minimax-m2.5",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "MiniMax-M2.5",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "minimax-m2.7": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 204800,
+        "cost": {
+            "cacheRead": 0.06,
+            "cacheWrite": 0.0,
+            "input": 0.3,
+            "output": 1.2
+        },
+        "description": "MiniMax model for chat, coding, office work, and agentic tasks",
+        "id": "minimax-m2.7",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "MiniMax-M2.7",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "minimax-m3": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 512000,
+        "cost": {
+            "cacheRead": 0.06,
+            "cacheWrite": 0.0,
+            "input": 0.3,
+            "output": 1.2
+        },
+        "description": "MiniMax multimodal model for long-context coding, perception, and agent planning",
+        "id": "minimax-m3",
+        "input": ["text", "image", "video"],
+        "maxTokens": 128000,
+        "name": "MiniMax-M3",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "muse-spark-1.2": {
         "api": "openai-completions",
         "baseUrl": "https://opencode.ai/zen/v1",
@@ -567,6 +1620,33 @@
         "input": ["text", "image", "video", "pdf", "audio"],
         "maxTokens": 131072,
         "name": "Muse Spark 1.2",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "muse-spark-1.2-contributor-free": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "description": "Muse Spark 1.2 is a coding-focused update to Muse Spark 1.1 with improvements in code generation, complex debugging, codebase understanding, and end-to-end developer workflows.",
+        "id": "muse-spark-1.2-contributor-free",
+        "input": ["text", "image", "video", "pdf", "audio"],
+        "maxTokens": 131072,
+        "name": "Muse Spark 1.2 Free",
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -638,6 +1718,33 @@
             "xhigh": null
         }
     },
+    "qwen3.5-plus": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.02,
+            "cacheWrite": 0.25,
+            "input": 0.2,
+            "output": 1.2
+        },
+        "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
+        "id": "qwen3.5-plus",
+        "input": ["text", "image", "video"],
+        "maxTokens": 65536,
+        "name": "Qwen3.5 Plus",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
     "qwen3.6-plus": {
         "api": "anthropic-messages",
         "baseUrl": "https://opencode.ai/zen",
@@ -663,6 +1770,33 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
+        }
+    },
+    "x-preview-f-free": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "description": "Stealth reasoning model for coding, agentic tasks, and tool use",
+        "id": "x-preview-f-free",
+        "input": ["text", "image", "video"],
+        "maxTokens": 131072,
+        "name": "Ox Alpha Free (Unlimited)",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     }
 }

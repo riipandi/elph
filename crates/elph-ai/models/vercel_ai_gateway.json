@@ -428,10 +428,12 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "alibaba/qwen3-vl-235b-a22b-instruct",
         "input": ["text", "image"],
+        "knowledgeCutoff": "2025-03-31",
         "maxTokens": 129024,
         "name": "Qwen3 VL 235B A22B Instruct",
         "provider": "vercel-ai-gateway",
         "reasoning": false,
+        "releaseDate": "2025-09-23",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1555,10 +1557,10 @@
         "baseUrl": "https://ai-gateway.vercel.sh",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.04,
+            "cacheRead": 0.028,
             "cacheWrite": 0.0,
-            "input": 0.2,
-            "output": 0.4
+            "input": 0.13,
+            "output": 0.26
         },
         "description": "Fast DeepSeek V4 lane for economical reasoning, coding, and long-context work",
         "id": "deepseek/deepseek-v4-flash",
@@ -1843,10 +1845,10 @@
         "baseUrl": "https://ai-gateway.vercel.sh",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.15,
+            "cacheRead": 0.075,
             "cacheWrite": 0.0,
-            "input": 1.5,
-            "output": 7.5
+            "input": 0.75,
+            "output": 3.75
         },
         "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
         "id": "google/gemini-3.6-flash",
@@ -2200,8 +2202,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 1041338.178,
-            "output": 1041338.178
+            "input": 1051324.551,
+            "output": 1051324.551
         },
         "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "meta/llama-3.3-70b",
@@ -4107,10 +4109,10 @@
         "baseUrl": "https://ai-gateway.vercel.sh",
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.5,
-            "cacheWrite": 6.25,
-            "input": 5.0,
-            "output": 30.0
+            "cacheRead": 0.25,
+            "cacheWrite": 3.125,
+            "input": 2.5,
+            "output": 15.0
         },
         "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "openai/gpt-5.6-sol",
@@ -4561,17 +4563,17 @@
     "tencent/hy3": {
         "api": "anthropic-messages",
         "baseUrl": "https://ai-gateway.vercel.sh",
-        "contextWindow": 262144,
+        "contextWindow": 256000,
         "cost": {
-            "cacheRead": 0.035,
+            "cacheRead": 0.033,
             "cacheWrite": 0.0,
-            "input": 0.14,
-            "output": 0.58
+            "input": 0.132,
+            "output": 0.528
         },
         "description": "Tencent Hy reasoning model for coding, instruction following, and agent tasks",
         "id": "tencent/hy3",
         "input": ["text"],
-        "maxTokens": 262144,
+        "maxTokens": 128000,
         "name": "Hy3",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
@@ -4617,7 +4619,7 @@
     "xai/grok-4.1-fast-non-reasoning": {
         "api": "anthropic-messages",
         "baseUrl": "https://ai-gateway.vercel.sh",
-        "contextWindow": 1000000,
+        "contextWindow": 2000000,
         "cost": {
             "cacheRead": 0.05,
             "cacheWrite": 0.0,
@@ -4626,9 +4628,9 @@
         },
         "description": "Fast Grok model for responsive chat, reasoning, and tool-assisted work",
         "id": "xai/grok-4.1-fast-non-reasoning",
-        "input": ["text", "image", "pdf"],
-        "maxTokens": 1000000,
-        "name": "Grok 4.1 Fast Non-Reasoning",
+        "input": ["text", "image"],
+        "maxTokens": 30000,
+        "name": "Grok-4.1-Fast-Non-Reasoning",
         "provider": "vercel-ai-gateway",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -4644,7 +4646,7 @@
     "xai/grok-4.1-fast-reasoning": {
         "api": "anthropic-messages",
         "baseUrl": "https://ai-gateway.vercel.sh",
-        "contextWindow": 1000000,
+        "contextWindow": 2000000,
         "cost": {
             "cacheRead": 0.05,
             "cacheWrite": 0.0,
@@ -4653,9 +4655,9 @@
         },
         "description": "Fast Grok model for responsive chat, reasoning, and tool-assisted work",
         "id": "xai/grok-4.1-fast-reasoning",
-        "input": ["text", "image", "pdf"],
-        "maxTokens": 1000000,
-        "name": "Grok 4.1 Fast Reasoning",
+        "input": ["text", "image"],
+        "maxTokens": 30000,
+        "name": "Grok-4.1-Fast-Reasoning",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -4671,28 +4673,28 @@
     "xai/grok-4.20-multi-agent": {
         "api": "anthropic-messages",
         "baseUrl": "https://ai-gateway.vercel.sh",
-        "contextWindow": 2000000,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.2,
             "cacheWrite": 0.0,
-            "input": 1.25,
-            "output": 2.5
+            "input": 2.0,
+            "output": 6.0
         },
         "description": "Grok model for agentic tool use, reasoning, coding, and live assistance",
         "id": "xai/grok-4.20-multi-agent",
-        "input": ["text", "image", "pdf"],
-        "maxTokens": 2000000,
-        "name": "Grok 4.20 Multi-Agent",
+        "input": ["text", "image"],
+        "maxTokens": 0,
+        "name": "Grok-4.20-Multi-Agent",
         "provider": "vercel-ai-gateway",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "xai/grok-4.20-multi-agent-beta": {
@@ -4715,11 +4717,11 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "xai/grok-4.20-non-reasoning": {
@@ -4738,7 +4740,7 @@
         "maxTokens": 2000000,
         "name": "Grok 4.20 Non-Reasoning",
         "provider": "vercel-ai-gateway",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4765,7 +4767,7 @@
         "maxTokens": 2000000,
         "name": "Grok 4.20 Beta Non-Reasoning",
         "provider": "vercel-ai-gateway",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4843,7 +4845,7 @@
         "description": "xAI's default Grok for chat, coding, agentic tools, and lower hallucination risk",
         "id": "xai/grok-4.3",
         "input": ["text", "image", "pdf"],
-        "maxTokens": 1000000,
+        "maxTokens": 30000,
         "name": "Grok 4.3",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
@@ -4851,10 +4853,10 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
-            "off": "off",
+            "off": null,
             "xhigh": null
         }
     },
@@ -4868,7 +4870,7 @@
             "input": 2.0,
             "output": 6.0
         },
-        "description": "Grok model for agentic tool use, reasoning, coding, and live assistance",
+        "description": "xAI's Grok model for chat, coding, agentic tools, and lower hallucination risk",
         "id": "xai/grok-4.5",
         "input": ["text", "image", "pdf"],
         "maxTokens": 500000,
@@ -4898,7 +4900,7 @@
         },
         "description": "Fast Grok coding model tuned for agentic engineering and iterative edits",
         "id": "xai/grok-build-0.1",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 256000,
         "name": "Grok Build 0.1",
         "provider": "vercel-ai-gateway",
@@ -5083,7 +5085,7 @@
     "zai/glm-4.6v": {
         "api": "anthropic-messages",
         "baseUrl": "https://ai-gateway.vercel.sh",
-        "contextWindow": 128000,
+        "contextWindow": 131072,
         "cost": {
             "cacheRead": 0.05,
             "cacheWrite": 0.0,
@@ -5092,8 +5094,8 @@
         },
         "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
         "id": "zai/glm-4.6v",
-        "input": ["text", "image", "pdf"],
-        "maxTokens": 24000,
+        "input": ["text", "image", "video"],
+        "maxTokens": 32768,
         "name": "GLM-4.6V",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
@@ -5301,10 +5303,10 @@
         "baseUrl": "https://ai-gateway.vercel.sh",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.275,
+            "cacheRead": 0.16,
             "cacheWrite": 0.0,
-            "input": 1.1,
-            "output": 3.851
+            "input": 0.8,
+            "output": 2.55
         },
         "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "zai/glm-5.2",

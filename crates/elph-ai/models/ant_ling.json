@@ -13,17 +13,18 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0.06,
-            "output": 0.25
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.27,
+            "output": 2.25
         },
+        "description": "Inclusion AI ling-2.6-1t",
         "id": "Ling-2.6-1T",
         "input": ["text"],
-        "maxTokens": 65536,
-        "name": "Ling 2.6 1T",
+        "maxTokens": 262144,
+        "name": "ling-2.6-1t",
         "provider": "ant-ling",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -47,17 +48,18 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0.01,
-            "output": 0.02
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.09,
+            "output": 0.27
         },
+        "description": "Inclusion AI ling-2.6-flash",
         "id": "Ling-2.6-flash",
         "input": ["text"],
-        "maxTokens": 65536,
-        "name": "Ling 2.6 Flash",
+        "maxTokens": 262144,
+        "name": "ling-2.6-flash",
         "provider": "ant-ling",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -81,25 +83,26 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0.06,
-            "output": 0.25
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.27,
+            "output": 2.25
         },
+        "description": "Inclusion AI ring-2.6-1t",
         "id": "Ring-2.6-1T",
         "input": ["text"],
-        "maxTokens": 65536,
-        "name": "Ring 2.6 1T",
+        "maxTokens": 262144,
+        "name": "ring-2.6-1t",
         "provider": "ant-ling",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": null,
-            "max": null,
-            "medium": null,
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": "xhigh"
+            "off": "off",
+            "xhigh": null
         }
     }
 }

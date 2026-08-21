@@ -65,38 +65,5 @@
             "off": null,
             "xhigh": null
         }
-    },
-    "zai-glm-4.7": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.cerebras.ai/v1",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false
-        },
-        "contextWindow": 131072,
-        "cost": {
-            "cacheRead": 2.25,
-            "cacheWrite": 0.0,
-            "input": 2.25,
-            "output": 2.75
-        },
-        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
-        "id": "zai-glm-4.7",
-        "input": ["text"],
-        "knowledgeCutoff": "",
-        "maxTokens": 40960,
-        "name": "Z.AI GLM-4.7",
-        "provider": "cerebras",
-        "reasoning": true,
-        "releaseDate": "",
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": "off",
-            "xhigh": null
-        }
     }
 }

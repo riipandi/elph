@@ -2,17 +2,17 @@
     {
         "providerId": "agnes",
         "rustMod": "agnes",
-        "count": 4
+        "count": 5
     },
     {
         "providerId": "amazon-bedrock",
         "rustMod": "amazon_bedrock",
-        "count": 119
+        "count": 120
     },
     {
         "providerId": "ant-ling",
         "rustMod": "ant_ling",
-        "count": 3
+        "count": 4
     },
     {
         "providerId": "anthropic",
@@ -22,7 +22,7 @@
     {
         "providerId": "azure-openai-responses",
         "rustMod": "azure_openai_responses",
-        "count": 38
+        "count": 39
     },
     {
         "providerId": "baseten",
@@ -32,17 +32,17 @@
     {
         "providerId": "cerebras",
         "rustMod": "cerebras",
-        "count": 3
+        "count": 2
     },
     {
         "providerId": "cloudflare-ai-gateway",
         "rustMod": "cloudflare_ai_gateway",
-        "count": 43
+        "count": 44
     },
     {
         "providerId": "cloudflare-workers-ai",
         "rustMod": "cloudflare_workers_ai",
-        "count": 13
+        "count": 14
     },
     {
         "providerId": "deepseek",
@@ -57,7 +57,7 @@
     {
         "providerId": "github-copilot",
         "rustMod": "github_copilot",
-        "count": 30
+        "count": 31
     },
     {
         "providerId": "google",
@@ -75,9 +75,14 @@
         "count": 15
     },
     {
+        "providerId": "hetzner",
+        "rustMod": "hetzner",
+        "count": 2
+    },
+    {
         "providerId": "huggingface",
         "rustMod": "huggingface",
-        "count": 137
+        "count": 133
     },
     {
         "providerId": "hyper",
@@ -87,12 +92,12 @@
     {
         "providerId": "infron",
         "rustMod": "infron",
-        "count": 288
+        "count": 283
     },
     {
         "providerId": "kilo",
         "rustMod": "kilo",
-        "count": 362
+        "count": 365
     },
     {
         "providerId": "kimi-coding",
@@ -127,12 +132,12 @@
     {
         "providerId": "nara-router",
         "rustMod": "nara_router",
-        "count": 51
+        "count": 50
     },
     {
         "providerId": "neuralwatt",
         "rustMod": "neuralwatt",
-        "count": 14
+        "count": 15
     },
     {
         "providerId": "nvidia",
@@ -152,62 +157,62 @@
     {
         "providerId": "openai-codex",
         "rustMod": "openai_codex",
-        "count": 7
+        "count": 8
     },
     {
         "providerId": "opencode",
         "rustMod": "opencode",
-        "count": 22
+        "count": 64
     },
     {
         "providerId": "opencode-go",
         "rustMod": "opencode_go",
-        "count": 26
+        "count": 28
     },
     {
         "providerId": "opengateway",
         "rustMod": "opengateway",
-        "count": 12
+        "count": 13
     },
     {
         "providerId": "openrouter",
         "rustMod": "openrouter",
-        "count": 414
+        "count": 420
     },
     {
         "providerId": "qwen-token-plan",
         "rustMod": "qwen_token_plan",
-        "count": 15
+        "count": 16
     },
     {
         "providerId": "qwen-token-plan-cn",
         "rustMod": "qwen_token_plan_cn",
-        "count": 15
+        "count": 16
     },
     {
         "providerId": "sumopod",
         "rustMod": "sumopod",
-        "count": 48
+        "count": 49
     },
     {
         "providerId": "together",
         "rustMod": "together",
-        "count": 17
+        "count": 18
     },
     {
         "providerId": "tokenrouter",
         "rustMod": "tokenrouter",
-        "count": 125
+        "count": 127
     },
     {
         "providerId": "vercel-ai-gateway",
         "rustMod": "vercel_ai_gateway",
-        "count": 192
+        "count": 193
     },
     {
         "providerId": "wafer",
         "rustMod": "wafer",
-        "count": 8
+        "count": 5
     },
     {
         "providerId": "xai",
@@ -222,17 +227,17 @@
     {
         "providerId": "xiaomi-token-plan-ams",
         "rustMod": "xiaomi_token_plan_ams",
-        "count": 3
+        "count": 4
     },
     {
         "providerId": "xiaomi-token-plan-cn",
         "rustMod": "xiaomi_token_plan_cn",
-        "count": 3
+        "count": 4
     },
     {
         "providerId": "xiaomi-token-plan-sgp",
         "rustMod": "xiaomi_token_plan_sgp",
-        "count": 3
+        "count": 4
     },
     {
         "providerId": "zai",
