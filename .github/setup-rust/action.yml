@@ -76,6 +76,16 @@ runs:
             cargo binstall --locked -y sccache
           fi
         fi
+        # .cargo/config.toml uses clang --ld-path=wild for glibc Linux targets.
+        if [ "$(uname -s)" = "Linux" ]; then
+          if ! command -v clang >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y --no-install-recommends clang
+          fi
+          if ! command -v wild >/dev/null 2>&1; then
+            cargo binstall --locked -y wild-linker
+          fi
+        fi
 
     - name: Cache Cargo
       if: inputs.cacheBackend == 'rust-cache'
