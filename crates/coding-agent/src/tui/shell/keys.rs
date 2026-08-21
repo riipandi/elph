@@ -2476,6 +2476,11 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                                                         log::info!(
                                                             "saved OAuth credential for {provider_id_for_task} to auth.json"
                                                         );
+                                                        // Reload provider catalog so it's available immediately.
+                                                        if let Some(config_dir) = auth_store_path_for_task.parent() {
+                                                            let providers_dir = config_dir.join("providers");
+                                                            let _ = crate::agent::install_providers_dir(&providers_dir);
+                                                        }
                                                         true
                                                     }
                                                     Err(e) => {
@@ -2930,6 +2935,11 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             .await
                             .map(|_| {
                                 log::info!("Saved env ref for provider: {pid}");
+                                // Reload provider catalog so it's available immediately.
+                                if let Some(config_dir) = auth_store_path.parent() {
+                                    let providers_dir = config_dir.join("providers");
+                                    let _ = crate::agent::install_providers_dir(&providers_dir);
+                                }
                                 crate::agent::model_registry::credential_from_auth_value(&format!(
                                     "{}{env_var}",
                                     elph_agent::mcp::ENV_REF_PREFIX
@@ -2944,6 +2954,11 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             .await
                             .map(|_| {
                                 log::info!("Saved encrypted API key for provider: {pid}");
+                                // Reload provider catalog so it's available immediately.
+                                if let Some(config_dir) = auth_store_path.parent() {
+                                    let providers_dir = config_dir.join("providers");
+                                    let _ = crate::agent::install_providers_dir(&providers_dir);
+                                }
                                 crate::agent::model_registry::credential_from_auth_value(&api_key_clone)
                             })
                         };

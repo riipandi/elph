@@ -17,3 +17,4 @@
 - https://github.com/Opencode-DCP/opencode-dynamic-context-pruning
 - https://github.com/dodo-reach/pi-clarify
 - https://crates.io/crates/shellflip
+- https://tanmaymanojgandhi.github.io/circadia

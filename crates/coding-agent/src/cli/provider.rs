@@ -303,6 +303,11 @@ fn handle_connect(provider: Option<&str>, env_var: Option<&str>) -> ExitCode {
             rt.block_on(save_provider_env_ref(&auth_store, &pid_owned, &env_owned))
         }) {
             Ok(()) => {
+                // Reload provider catalog so it's available immediately.
+                if let Some(config_dir) = auth_store_path.parent() {
+                    let providers_dir = config_dir.join("providers");
+                    let _ = crate::agent::install_providers_dir(&providers_dir);
+                }
                 println!(
                     "{}",
                     ok(format!("Registered {name} to read credential from env: {env_var_name}."))
@@ -368,6 +373,11 @@ fn handle_connect(provider: Option<&str>, env_var: Option<&str>) -> ExitCode {
                 Ok(credential)
             }) {
                 Ok(_) => {
+                    // Reload provider catalog so it's available immediately.
+                    if let Some(config_dir) = auth_store_path.parent() {
+                        let providers_dir = config_dir.join("providers");
+                        let _ = crate::agent::install_providers_dir(&providers_dir);
+                    }
                     println!("{}", ok(format!("Signed in to {provider_name}.")));
                     EXIT_SUCCESS
                 }
@@ -408,6 +418,11 @@ fn handle_connect(provider: Option<&str>, env_var: Option<&str>) -> ExitCode {
                     rt.block_on(save_provider_env_ref(&auth_store, &pid_for_closure, &env_var_for_closure))
                 }) {
                     Ok(()) => {
+                        // Reload provider catalog so it's available immediately.
+                        if let Some(config_dir) = auth_store_path.parent() {
+                            let providers_dir = config_dir.join("providers");
+                            let _ = crate::agent::install_providers_dir(&providers_dir);
+                        }
                         println!("{}", ok(format!("Registered {name} to read credential from env: {env_var}.")));
                         EXIT_SUCCESS
                     }
@@ -422,6 +437,11 @@ fn handle_connect(provider: Option<&str>, env_var: Option<&str>) -> ExitCode {
                     rt.block_on(save_provider_credential(&auth_store, &pid_for_closure, &api_key))
                 }) {
                     Ok(()) => {
+                        // Reload provider catalog so it's available immediately.
+                        if let Some(config_dir) = auth_store_path.parent() {
+                            let providers_dir = config_dir.join("providers");
+                            let _ = crate::agent::install_providers_dir(&providers_dir);
+                        }
                         println!("{}", ok(format!("Saved API key for {name}.")));
                         EXIT_SUCCESS
                     }
