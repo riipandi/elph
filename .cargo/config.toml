@@ -1,25 +1,17 @@
 [build]
 rustflags = ["-Ctarget-cpu=native"]
 
-# Linux musl — fully static builds (CI release channel only)
-# Zig bundles musl libc internally — no distro package needed.
+# Linux musl — fully static builds (CI release channel only).
+# Rust 1.70+ ships rust-lld for the musl targets, so the Rust code links
+# statically with no external linker (forced via -Clinker-features=+lld below).
+# The only C dependency (ring) is compiled by a musl-targeting GCC provided in
+# CI (see release.yml build-linux) and selected via the CC_/CXX_ env vars that
+# ring's cc-rs build script consumes.
 [target.x86_64-unknown-linux-musl]
-linker = "zig"
-rustflags = [
-  "-Clink-arg=-fuse-ld=zig",
-  "-Clink-args=--target=x86_64-unknown-linux-musl",
-  # Disable self-contained to avoid bundling system libs with zig
-  "-Clink-args=--no-pie",
-]
+rustflags = ["-Clinker-features=+lld"]
 
 [target.aarch64-unknown-linux-musl]
-linker = "zig"
-rustflags = [
-  "-Clink-arg=-fuse-ld=zig",
-  "-Clink-args=--target=aarch64-unknown-linux-musl",
-  # Disable self-contained to avoid bundling system libs with zig
-  "-Clink-args=--no-pie",
-]
+rustflags = ["-Clinker-features=+lld"]
 
 [target.aarch64-apple-darwin]
 rustflags = ["-Clink-arg=--ld-path=/usr/bin/ld"]

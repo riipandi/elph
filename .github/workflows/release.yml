@@ -138,72 +138,48 @@ jobs:
           cacheBackend: namespace
           installNextest: "false"
 
-      - name: Install musl targets & zig linker for cross-build
+      - name: Install musl targets & cross toolchain
         if: runner.os == 'Linux'
         shell: bash
         run: |
           set -euo pipefail
           TARGET_TRIPLE="${{ matrix.label }}-unknown-linux-musl"
           rustup target add "$TARGET_TRIPLE"
-          # Zig bundles musl libc — no apt package needed.
-          if ! command -v zig >/dev/null 2>&1; then
-            ZIG_VER="0.15.2"
-            case "$(uname -m)" in
-              x86_64) ZIG_FILE="zig-x86_64-linux-${ZIG_VER}.tar.xz" ;;
-              aarch64) ZIG_FILE="zig-aarch64-linux-${ZIG_VER}.tar.xz" ;;
-            esac
-            mkdir -p /opt/zig
-            curl -L --proto '=https' --tlsv1.2 -sSf \
-              "https://ziglang.org/download/${ZIG_VER}/${ZIG_FILE}" \
-              -o /tmp/zig.tar.xz
-            tar -xf /tmp/zig.tar.xz -C /opt/zig --strip-components=1
-            echo "/opt/zig" >> "$GITHUB_PATH"
+          CC_BIN=""
+          if command -v apt-get >/dev/null 2>&1; then
+            apt-get update -y >/dev/null 2>&1 || true
+            if apt-get install -y musl-tools >/dev/null 2>&1 && command -v musl-gcc >/dev/null 2>&1; then
+              CC_BIN="musl-gcc"
+            fi
           fi
-          # Provide a C/C++ compiler for the musl target. ring's build script
-          # (cc-rs) looks for `<triple>-gcc`, which no longer exists since we
-          # dropped musl-tools. Point it at zig cc via a wrapper so the same zig
-          # toolchain compiles the C sources for the musl target.
-          CC_WRAPPER="/usr/local/bin/${TARGET_TRIPLE}-gcc"
-          CXX_WRAPPER="/usr/local/bin/${TARGET_TRIPLE}-g++"
-          # Zig uses its own triple format without the `unknown` vendor
-          # (x86_64-linux-musl); it rejects the Rust triple's
-          # x86_64-unknown-linux-musl ("UnknownOperatingSystem").
-          ZIG_TRIPLE=$(printf '%s' "$TARGET_TRIPLE" | sed 's/-unknown-/-/')
-          cat > "$CC_WRAPPER" <<EOF
-          #!/bin/sh
-          # cc-rs appends --target=<rust-triple> for clang-family compilers;
-          # zig cannot parse that triple, so drop it here and pass the
-          # zig-native target explicitly.
-          new=""
-          for a in "\$@"; do
-            case "\$a" in
-              --target=*) continue ;;
+
+          if [ -z "$CC_BIN" ]; then
+            # Pick a toolchain hosted on the runner's own arch so it runs natively.
+            case "${{ matrix.label }}" in
+              x86_64)  PKG="x86_64-linux-musl-cross" ;;
+              aarch64) PKG="aarch64-linux-musl-native" ;;
             esac
-            new="\$new \$a"
-          done
-          exec zig cc -target ${ZIG_TRIPLE} \$new
-          EOF
-          cat > "$CXX_WRAPPER" <<EOF
-          #!/bin/sh
-          # Same as the C wrapper: drop --target=<rust-triple>, pass zig triple.
-          new=""
-          for a in "\$@"; do
-            case "\$a" in
-              --target=*) continue ;;
-            esac
-            new="\$new \$a"
-          done
-          exec zig c++ -target ${ZIG_TRIPLE} \$new
-          EOF
-          chmod +x "$CC_WRAPPER" "$CXX_WRAPPER"
-          # cc-rs reads CC_<target> in lowercase, checking both the dash form
-          # (exact triple) and the underscore form. Export both to be safe
-          # across cc crate versions.
+            GCC_BIN="${{ matrix.label }}-linux-musl-gcc"
+            DEST="/opt/${PKG}"
+            if [ ! -x "${DEST}/bin/${GCC_BIN}" ]; then
+              curl -L --proto '=https' --tlsv1.2 -sSf "https://musl.cc/${PKG}.tgz" -o /tmp/musl.tgz
+              mkdir -p "$DEST"
+              tar -xzf /tmp/musl.tgz -C "$DEST" --strip-components=1
+            fi
+            echo "${DEST}/bin" >> "$GITHUB_PATH"
+            CC_BIN="${GCC_BIN}"
+          fi
+
+          # cc-rs reads CC_<target> (and the underscore form) for the musl target
+          # and treats a *-gcc compiler as the gcc family (no --target flag), so a
+          # plain musl GCC works directly. Export CC/CXX both forms for safety.
           ENV_KEY_UNDER=$(echo "$TARGET_TRIPLE" | tr '-' '_')
-          echo "CC_${TARGET_TRIPLE}=${CC_WRAPPER}" >> "$GITHUB_ENV"
-          echo "CC_${ENV_KEY_UNDER}=${CC_WRAPPER}" >> "$GITHUB_ENV"
-          echo "CXX_${TARGET_TRIPLE}=${CXX_WRAPPER}" >> "$GITHUB_ENV"
-          echo "CXX_${ENV_KEY_UNDER}=${CXX_WRAPPER}" >> "$GITHUB_ENV"
+          {
+            echo "CC_${TARGET_TRIPLE}=${CC_BIN}"
+            echo "CC_${ENV_KEY_UNDER}=${CC_BIN}"
+            echo "CXX_${TARGET_TRIPLE}=${CC_BIN}"
+            echo "CXX_${ENV_KEY_UNDER}=${CC_BIN}"
+          } >> "$GITHUB_ENV"
 
       - name: Build release
         run: |
@@ -211,10 +187,10 @@ jobs:
             --target ${{ matrix.label }}-unknown-linux-musl
         env:
           APP: ${{ inputs.app || 'elph' }}
-          # sccache does not support zig as a compiler family, so it cannot wrap
-          # the zig cc C compiler above. Disable the wrapper for this cross-build;
-          # target/ is still cached on the Namespace cache volume.
-          RUSTC_WRAPPER: ""
+          # The musl C compiler (musl-gcc / musl.cc GCC) is invoked directly by
+          # cc-rs and is unaffected by RUSTC_WRAPPER; sccache only wraps rustc,
+          # so it is safe (and beneficial) to enable it for this cross-build.
+          RUSTC_WRAPPER: sccache
 
       - name: Package
         shell: bash
