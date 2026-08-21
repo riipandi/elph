@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use elph_agent::harness::Skill;
+use elph_agent::harness::{PromptTemplate, Skill};
 use elph_agent::plugins::ExtensionsSettings;
 
 use super::Settings;
@@ -39,6 +39,15 @@ impl Settings {
             .into_iter()
             .filter(|s| !name_denied(&self.resources.disabled_skills, &s.name))
             .filter(|s| !path_or_name_excluded(&self.resources.skills, &s.name, &s.file_path))
+            .collect()
+    }
+
+    /// Filter discovered prompt templates by `resources.disabledPrompts` and `resources.prompts` `!` / `-` patterns.
+    pub fn filter_prompts(&self, templates: Vec<PromptTemplate>) -> Vec<PromptTemplate> {
+        templates
+            .into_iter()
+            .filter(|t| !name_denied(&self.resources.disabled_prompts, &t.name))
+            .filter(|t| !path_or_name_excluded(&self.resources.prompts, &t.name, &t.file_path))
             .collect()
     }
 
@@ -113,9 +122,71 @@ fn path_or_name_excluded(skill_patterns: &[String], name: &str, path: &str) -> b
         } else {
             return false;
         };
-        crate::platform::settings::patterns::matches_any(&[rest.to_string()], name)
-            || crate::platform::settings::patterns::matches_any(&[rest.to_string()], path)
+        let rest = expand_user_pattern(rest);
+        crate::platform::settings::patterns::matches_any(&[rest.clone()], name) || path_matches_pattern(&rest, path)
     })
+}
+
+/// True when `pat` excludes `path`: as an absolute path, as a parent directory of `path`,
+/// or as a relative suffix of `path` (so `!.agents/skills` / `!.agents/skills/*` exclude
+/// project skills regardless of the project's absolute location).
+fn path_matches_pattern(pat: &str, path: &str) -> bool {
+    if path_under_dir(pat, path) {
+        return true;
+    }
+    if crate::platform::settings::patterns::matches_any(&[pat.to_string()], path) {
+        return true;
+    }
+    for suffix in path_suffixes(path) {
+        if crate::platform::settings::patterns::matches_any(&[pat.to_string()], &suffix) || path_under_dir(pat, &suffix)
+        {
+            return true;
+        }
+    }
+    false
+}
+
+/// Trailing path suffixes starting at each separator boundary, longest first.
+///
+/// `/a/b/.agents/skills/demo` yields `b/.agents/skills/demo`, `.agents/skills/demo`, …
+fn path_suffixes(path: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    for (i, ch) in path.char_indices() {
+        if ch == '/' || ch == '\\' {
+            out.push(path[i + 1..].to_string());
+        }
+    }
+    out
+}
+
+/// True when `dir` (expanded, no glob) is `path` itself or a parent directory of `path`.
+///
+/// Lets a bare `!~/.agents/skills` exclude every skill under that directory, not just an
+/// exact-path match. Accepts both `/` and `\` separators so patterns work on any platform.
+fn path_under_dir(dir: &str, path: &str) -> bool {
+    if dir.is_empty() || dir.contains('*') {
+        return false;
+    }
+    if path == dir {
+        return true;
+    }
+    for sep in ['/', '\\'] {
+        if path.starts_with(&format!("{dir}{sep}")) {
+            return true;
+        }
+    }
+    false
+}
+
+/// Expand a leading `~/` in an exclude pattern so it matches absolute file paths.
+fn expand_user_pattern(raw: &str) -> String {
+    let s = raw.trim();
+    if let Some(rest) = s.strip_prefix("~/") {
+        if let Some(home) = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE")) {
+            return PathBuf::from(home).join(rest).to_string_lossy().into_owned();
+        }
+    }
+    s.to_string()
 }
 
 fn expand_user_path(raw: &str) -> PathBuf {
@@ -180,5 +251,215 @@ mod tests {
             out,
             vec!["read_file".to_string(), "grep".to_string(), "list_skills".to_string()]
         );
+    }
+
+    #[test]
+    fn filter_prompts_disabled_names_and_path_excludes() {
+        let home = std::env::var_os("HOME")
+            .or_else(|| std::env::var_os("USERPROFILE"))
+            .map(std::path::PathBuf::from)
+            .expect("HOME");
+        let mut settings = Settings::defaults();
+        settings.resources.disabled_prompts = vec!["legacy-*".into()];
+        settings.resources.prompts = vec![format!("!{}/.agents/prompts/*", home.display())];
+
+        let templates = vec![
+            PromptTemplate {
+                name: "ship".into(),
+                description: String::new(),
+                content: String::new(),
+                argument_hint: None,
+                file_path: format!("{}/.agents/prompts/ship.md", home.display()),
+            },
+            PromptTemplate {
+                name: "legacy-x".into(),
+                description: String::new(),
+                content: String::new(),
+                argument_hint: None,
+                file_path: format!("{}/.config/elph/prompts/legacy-x.md", home.display()),
+            },
+            PromptTemplate {
+                name: "keep".into(),
+                description: String::new(),
+                content: String::new(),
+                argument_hint: None,
+                file_path: format!("{}/.config/elph/prompts/keep.md", home.display()),
+            },
+        ];
+        let out = settings.filter_prompts(templates);
+        let names: Vec<_> = out.iter().map(|t| t.name.as_str()).collect();
+        assert_eq!(names, vec!["keep"]);
+    }
+
+    #[test]
+    fn filter_skills_tilde_exclude_matches_absolute_path() {
+        let home = std::env::var_os("HOME")
+            .or_else(|| std::env::var_os("USERPROFILE"))
+            .map(std::path::PathBuf::from)
+            .expect("HOME");
+        let mut settings = Settings::defaults();
+        settings.resources.skills = vec!["!~/.agents/skills/*".into()];
+
+        let skills = vec![
+            Skill {
+                name: "demo".into(),
+                description: String::new(),
+                content: String::new(),
+                file_path: format!("{}/.agents/skills/demo/SKILL.md", home.display()),
+                disable_model_invocation: false,
+                license: None,
+                compatibility: None,
+                metadata: None,
+                allowed_tools: None,
+                argument_hint: None,
+            },
+            Skill {
+                name: "keep".into(),
+                description: String::new(),
+                content: String::new(),
+                file_path: format!("{}/.config/elph/skills/keep/SKILL.md", home.display()),
+                disable_model_invocation: false,
+                license: None,
+                compatibility: None,
+                metadata: None,
+                allowed_tools: None,
+                argument_hint: None,
+            },
+        ];
+        let out = settings.filter_skills(skills);
+        let names: Vec<_> = out.iter().map(|s| s.name.as_str()).collect();
+        assert_eq!(names, vec!["keep"]);
+    }
+
+    #[test]
+    fn filter_skills_bare_tilde_dir_excludes_whole_directory() {
+        let home = std::env::var_os("HOME")
+            .or_else(|| std::env::var_os("USERPROFILE"))
+            .map(std::path::PathBuf::from)
+            .expect("HOME");
+        let mut settings = Settings::defaults();
+        settings.resources.skills = vec!["!~/.agents/skills".into()];
+
+        let skills = vec![
+            Skill {
+                name: "demo".into(),
+                description: String::new(),
+                content: String::new(),
+                file_path: format!("{}/.agents/skills/demo/SKILL.md", home.display()),
+                disable_model_invocation: false,
+                license: None,
+                compatibility: None,
+                metadata: None,
+                allowed_tools: None,
+                argument_hint: None,
+            },
+            Skill {
+                name: "keep".into(),
+                description: String::new(),
+                content: String::new(),
+                file_path: format!("{}/.config/elph/skills/keep/SKILL.md", home.display()),
+                disable_model_invocation: false,
+                license: None,
+                compatibility: None,
+                metadata: None,
+                allowed_tools: None,
+                argument_hint: None,
+            },
+        ];
+        let out = settings.filter_skills(skills);
+        let names: Vec<_> = out.iter().map(|s| s.name.as_str()).collect();
+        assert_eq!(names, vec!["keep"]);
+    }
+
+    #[test]
+    fn filter_prompts_bare_tilde_dir_excludes_whole_directory() {
+        let home = std::env::var_os("HOME")
+            .or_else(|| std::env::var_os("USERPROFILE"))
+            .map(std::path::PathBuf::from)
+            .expect("HOME");
+        let mut settings = Settings::defaults();
+        settings.resources.prompts = vec!["!~/.agents/prompts".into()];
+
+        let templates = vec![
+            PromptTemplate {
+                name: "ship".into(),
+                description: String::new(),
+                content: String::new(),
+                argument_hint: None,
+                file_path: format!("{}/.agents/prompts/ship.md", home.display()),
+            },
+            PromptTemplate {
+                name: "keep".into(),
+                description: String::new(),
+                content: String::new(),
+                argument_hint: None,
+                file_path: format!("{}/.config/elph/prompts/keep.md", home.display()),
+            },
+        ];
+        let out = settings.filter_prompts(templates);
+        let names: Vec<_> = out.iter().map(|t| t.name.as_str()).collect();
+        assert_eq!(names, vec!["keep"]);
+    }
+
+    #[test]
+    fn filter_skills_relative_agents_dir_excludes_project_skills() {
+        let mut settings = Settings::defaults();
+        settings.resources.skills = vec!["!.agents/skills".into(), "!.agents/skills/*".into()];
+
+        let skills = vec![
+            Skill {
+                name: "demo".into(),
+                description: String::new(),
+                content: String::new(),
+                file_path: "/home/user/proj/.agents/skills/demo/SKILL.md".into(),
+                disable_model_invocation: false,
+                license: None,
+                compatibility: None,
+                metadata: None,
+                allowed_tools: None,
+                argument_hint: None,
+            },
+            Skill {
+                name: "keep".into(),
+                description: String::new(),
+                content: String::new(),
+                file_path: "/home/user/proj/.elph/skills/keep/SKILL.md".into(),
+                disable_model_invocation: false,
+                license: None,
+                compatibility: None,
+                metadata: None,
+                allowed_tools: None,
+                argument_hint: None,
+            },
+        ];
+        let out = settings.filter_skills(skills);
+        let names: Vec<_> = out.iter().map(|s| s.name.as_str()).collect();
+        assert_eq!(names, vec!["keep"]);
+    }
+
+    #[test]
+    fn filter_prompts_relative_agents_dir_excludes_project_prompts() {
+        let mut settings = Settings::defaults();
+        settings.resources.prompts = vec!["!.agents/prompts".into(), "!.agents/prompts/*".into()];
+
+        let templates = vec![
+            PromptTemplate {
+                name: "ship".into(),
+                description: String::new(),
+                content: String::new(),
+                argument_hint: None,
+                file_path: "/home/user/proj/.agents/prompts/ship.md".into(),
+            },
+            PromptTemplate {
+                name: "keep".into(),
+                description: String::new(),
+                content: String::new(),
+                argument_hint: None,
+                file_path: "/home/user/proj/.elph/prompts/keep.md".into(),
+            },
+        ];
+        let out = settings.filter_prompts(templates);
+        let names: Vec<_> = out.iter().map(|t| t.name.as_str()).collect();
+        assert_eq!(names, vec!["keep"]);
     }
 }

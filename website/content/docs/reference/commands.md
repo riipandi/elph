@@ -21,4 +21,4 @@ Type `/` in the prompt to open the command palette. Dispatch order:
 | `/trust`    | Trust the current workspace              |
 | `/exit`     | Quit                                     |
 
-Skills appear as `/skill-name` when enabled.
+Skills appear as `/skill-name` when enabled. Prompt templates appear as `/name` (filter with `resources.disabledPrompts` or `resources.prompts` `!` excludes).

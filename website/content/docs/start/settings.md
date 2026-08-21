@@ -21,7 +21,7 @@ Project overrides: `<project>/.elph/settings.json`, `skills/`, `prompts/` always
 
 `models.defaultModel` seeds **new** sessions only. Live model, thinking level, and agent mode are per-session.
 
-Catalog filter: `models.enabled` (globs). Skill filter: `resources.disabledSkills`. Builtin tools: `defaultTools`. Full key list: repo `docs/settings.md`.
+Catalog filter: `models.enabled` (globs). Skill filter: `resources.disabledSkills`. Prompt filter: `resources.disabledPrompts`. Builtin tools: `defaultTools`. Full key list: repo `docs/settings.md`.
 
 ## Environment
 

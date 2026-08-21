@@ -142,6 +142,7 @@ fn format_prompt_template_invocation_substitutes_arguments() {
         description: String::new(),
         content: "$1 ${@:2} $ARGUMENTS".to_string(),
         argument_hint: None,
+        file_path: "/tmp/one.md".to_string(),
     };
     assert_eq!(
         format_prompt_template_invocation(&template, &["hello world".to_string(), "test".to_string()],),

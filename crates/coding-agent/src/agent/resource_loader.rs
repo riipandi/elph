@@ -155,6 +155,7 @@ async fn load_prompt_templates_resolved(
     }
 
     let mut prompt_templates: Vec<PromptTemplate> = by_name.into_values().collect();
+    prompt_templates = settings.filter_prompts(prompt_templates);
     prompt_templates.sort_by(|a, b| a.name.cmp(&b.name));
     conflicts.sort_by(|a, b| a.name.cmp(&b.name));
     (prompt_templates, conflicts, warnings)

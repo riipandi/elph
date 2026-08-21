@@ -903,6 +903,7 @@ mod tests {
             description: "Ship".into(),
             content: "Ship $ARGS".into(),
             argument_hint: None,
+            file_path: "/tmp/ship-it.md".into(),
         }];
 
         match dispatch_slash_command("/skill:code-review src/", None, Some(&templates), Some(&skills)) {
