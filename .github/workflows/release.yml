@@ -149,9 +149,14 @@ jobs:
           exec zig c++ -target ${TARGET_TRIPLE} "\$@"
           EOF
           chmod +x "$CC_WRAPPER" "$CXX_WRAPPER"
-          ENV_KEY=$(echo "$TARGET_TRIPLE" | tr '-' '_' | tr 'a-z' 'A-Z')
-          echo "CC_${ENV_KEY}=${CC_WRAPPER}" >> "$GITHUB_ENV"
-          echo "CXX_${ENV_KEY}=${CXX_WRAPPER}" >> "$GITHUB_ENV"
+          # cc-rs reads CC_<target> in lowercase, checking both the dash form
+          # (exact triple) and the underscore form. Export both to be safe
+          # across cc crate versions.
+          ENV_KEY_UNDER=$(echo "$TARGET_TRIPLE" | tr '-' '_')
+          echo "CC_${TARGET_TRIPLE}=${CC_WRAPPER}" >> "$GITHUB_ENV"
+          echo "CC_${ENV_KEY_UNDER}=${CC_WRAPPER}" >> "$GITHUB_ENV"
+          echo "CXX_${TARGET_TRIPLE}=${CXX_WRAPPER}" >> "$GITHUB_ENV"
+          echo "CXX_${ENV_KEY_UNDER}=${CXX_WRAPPER}" >> "$GITHUB_ENV"
 
       - name: Build release
         run: |
