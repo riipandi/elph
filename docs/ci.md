@@ -27,7 +27,7 @@ Create these runner profiles in the [Namespace dashboard](https://cloud.namespac
 
 Connect the GitHub org to Namespace before the first run. Lightweight jobs (version gate, publish, sync) stay on GitHub `ubuntu-slim`.
 
-`.cargo/config.toml` uses zig as the linker for musl targets (`x86_64-unknown-linux-musl`, `aarch64-unknown-linux-musl`). Linux AMD64 jobs download zig from ziglang.org in `setup-rust` for musl builds; the default glibc target uses the system linker.
+`.cargo/config.toml` uses zig as the linker for musl targets (`x86_64-unknown-linux-musl`, `aarch64-unknown-linux-musl`). Linux AMD64 jobs download zig from ziglang.org in `setup-rust` for musl builds; the default glibc target uses the system linker. The musl cross-build also points `CC_*`/`CXX_*` at a `zig cc` wrapper (ring's build script needs a C compiler for the target) and disables `RUSTC_WRAPPER` for that step — sccache does not support zig as a compiler family, so it cannot wrap the zig cc C compiler.
 
 ## Test (debug)
 

@@ -134,6 +134,24 @@ jobs:
             tar -xf /tmp/zig.tar.xz -C /opt/zig --strip-components=1
             echo "/opt/zig" >> "$GITHUB_PATH"
           fi
+          # Provide a C/C++ compiler for the musl target. ring's build script
+          # (cc-rs) looks for `<triple>-gcc`, which no longer exists since we
+          # dropped musl-tools. Point it at zig cc via a wrapper so the same zig
+          # toolchain compiles the C sources for the musl target.
+          CC_WRAPPER="/usr/local/bin/${TARGET_TRIPLE}-gcc"
+          CXX_WRAPPER="/usr/local/bin/${TARGET_TRIPLE}-g++"
+          cat > "$CC_WRAPPER" <<EOF
+          #!/bin/sh
+          exec zig cc -target ${TARGET_TRIPLE} "\$@"
+          EOF
+          cat > "$CXX_WRAPPER" <<EOF
+          #!/bin/sh
+          exec zig c++ -target ${TARGET_TRIPLE} "\$@"
+          EOF
+          chmod +x "$CC_WRAPPER" "$CXX_WRAPPER"
+          ENV_KEY=$(echo "$TARGET_TRIPLE" | tr '-' '_' | tr 'a-z' 'A-Z')
+          echo "CC_${ENV_KEY}=${CC_WRAPPER}" >> "$GITHUB_ENV"
+          echo "CXX_${ENV_KEY}=${CXX_WRAPPER}" >> "$GITHUB_ENV"
 
       - name: Build release
         run: |
@@ -141,7 +159,10 @@ jobs:
             --target ${{ matrix.label }}-unknown-linux-musl
         env:
           APP: ${{ inputs.app || 'elph' }}
-          RUSTC_WRAPPER: sccache
+          # sccache does not support zig as a compiler family, so it cannot wrap
+          # the zig cc C compiler above. Disable the wrapper for this cross-build;
+          # target/ is still cached on the Namespace cache volume.
+          RUSTC_WRAPPER: ""
 
       - name: Package
         shell: bash
