@@ -7,24 +7,24 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.17,
+            "output": 1.1
         },
-        "description": "Qwen3.6 35B-A3B sparse MoE model (FP8) served on Hetzner AI Inference. Strong multilingual coding, agentic, and reasoning performance with toggleable thinking.",
+        "description": "Open multimodal Qwen MoE for local agents that need vision, audio, and code",
         "id": "Qwen/Qwen3.6-35B-A3B-FP8",
-        "input": ["text"],
-        "maxTokens": 32768,
-        "name": "Qwen3.6 35B-A3B (FP8)",
+        "input": ["text", "image"],
+        "maxTokens": 262144,
+        "name": "Qwen3.6 35B A3B FP8",
         "provider": "hetzner",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
+            "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "Qwen3.8-27B": {
@@ -37,21 +37,21 @@
             "input": 0.0,
             "output": 0.0
         },
-        "description": "Qwen3.8 27B dense model served on Hetzner AI Inference. Balanced coding and reasoning with toggleable thinking.",
+        "description": "Dense 27B vision-language model for coding, agent tasks, and image and video understanding",
         "id": "Qwen3.8-27B",
-        "input": ["text"],
-        "maxTokens": 32768,
-        "name": "Qwen3.8 27B",
+        "input": ["text", "image"],
+        "maxTokens": 262144,
+        "name": "Qwen3.8-27B",
         "provider": "hetzner",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
+            "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     }
 }

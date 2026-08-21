@@ -316,7 +316,7 @@ const PROVIDERS: &[ProviderSource] = &[
         default_base_url: "https://opencode.ai/zen/v1",
         gateway_preserve_ids: true,
         live_pricing_base: Some("https://opencode.ai/zen/v1"),
-        live_pricing_env: Some("OPENCODE_API_KEY"),
+        live_pricing_env: None,
     },
     ProviderSource {
         id: "opencode-go",
@@ -325,7 +325,7 @@ const PROVIDERS: &[ProviderSource] = &[
         default_base_url: "https://opencode.ai/zen/go/v1",
         gateway_preserve_ids: true,
         live_pricing_base: Some("https://opencode.ai/zen/go/v1"),
-        live_pricing_env: Some("OPENCODE_API_KEY"),
+        live_pricing_env: None,
     },
     ProviderSource {
         id: "opengateway",

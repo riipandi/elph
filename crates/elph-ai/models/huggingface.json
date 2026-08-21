@@ -156,84 +156,6 @@
             "xhigh": null
         }
     },
-    "CohereLabs/command-a-plus-05-2026-bf16": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "id": "CohereLabs/command-a-plus-05-2026-bf16",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "CohereLabs/command-a-plus-05-2026-bf16",
-        "provider": "huggingface",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "CohereLabs/command-a-plus-05-2026-fp8": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "id": "CohereLabs/command-a-plus-05-2026-fp8",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "CohereLabs/command-a-plus-05-2026-fp8",
-        "provider": "huggingface",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "CohereLabs/command-a-plus-05-2026-w4a4": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "id": "CohereLabs/command-a-plus-05-2026-w4a4",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "CohereLabs/command-a-plus-05-2026-w4a4",
-        "provider": "huggingface",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "CohereLabs/command-a-reasoning-08-2025": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
@@ -650,33 +572,6 @@
             "xhigh": "xhigh"
         }
     },
-    "Qwen/Qwen2.5-7B-Instruct": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 33000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.05,
-            "output": 0.05
-        },
-        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
-        "id": "Qwen/Qwen2.5-7B-Instruct",
-        "input": ["text"],
-        "maxTokens": 4000,
-        "name": "Qwen/Qwen2.5-7B-Instruct",
-        "provider": "huggingface",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
     "Qwen/Qwen2.5-Coder-32B-Instruct": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
@@ -957,7 +852,7 @@
     "Qwen/Qwen3-4B-Instruct-2507": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 262144,
+        "contextWindow": 32768,
         "cost": {
             "cacheRead": 0.2,
             "cacheWrite": 0.2,
@@ -967,7 +862,7 @@
         "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "Qwen/Qwen3-4B-Instruct-2507",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 32768,
         "name": "Qwen3 4B Instruct",
         "provider": "huggingface",
         "reasoning": true,
@@ -978,7 +873,7 @@
             "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "Qwen/Qwen3-4B-Thinking-2507": {
@@ -1010,7 +905,7 @@
     "Qwen/Qwen3-8B": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 131072,
+        "contextWindow": 40960,
         "cost": {
             "cacheRead": 0.2,
             "cacheWrite": 0.2,
@@ -1020,7 +915,7 @@
         "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "Qwen/Qwen3-8B",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 40960,
         "name": "Qwen3 8B",
         "provider": "huggingface",
         "reasoning": true,
@@ -1031,7 +926,7 @@
             "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "Qwen/Qwen3-Coder-30B-A3B-Instruct": {
@@ -1157,7 +1052,7 @@
     "Qwen/Qwen3-VL-235B-A22B-Instruct": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 262000,
+        "contextWindow": 131072,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -1167,8 +1062,8 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "Qwen/Qwen3-VL-235B-A22B-Instruct",
         "input": ["text", "image"],
-        "maxTokens": 262000,
-        "name": "Qwen/Qwen3-VL-235B-A22B-Instruct",
+        "maxTokens": 32768,
+        "name": "Qwen3 VL 235B A22B Instruct",
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -1184,18 +1079,18 @@
     "Qwen/Qwen3-VL-235B-A22B-Thinking": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 262000,
+        "contextWindow": 131072,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.45,
-            "output": 3.5
+            "input": 0.98,
+            "output": 3.95
         },
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "Qwen/Qwen3-VL-235B-A22B-Thinking",
         "input": ["text", "image"],
-        "maxTokens": 262000,
-        "name": "Qwen/Qwen3-VL-235B-A22B-Thinking",
+        "maxTokens": 32768,
+        "name": "Qwen3 VL 235B A22B Thinking",
         "provider": "huggingface",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1204,8 +1099,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
+            "off": null,
+            "xhigh": null
         }
     },
     "Qwen/Qwen3-VL-30B-A3B-Instruct": {
@@ -2367,7 +2262,7 @@
         "id": "inclusionAI/Ling-2.6-1T",
         "input": ["text"],
         "maxTokens": 32768,
-        "name": "inclusionAI: Ling-2.6-1T",
+        "name": "inclusionAI: Ling-2.6-1T (retires Aug 24)",
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -2808,17 +2703,17 @@
     "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 262144,
+        "contextWindow": 8192,
         "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.05,
-            "output": 0.15
+            "cacheRead": 0.5,
+            "cacheWrite": 0.5,
+            "input": 0.5,
+            "output": 0.5
         },
         "description": "Fast NVIDIA Nemotron MoE for reliable agentic tasks across enterprise workloads",
         "id": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16",
         "input": ["text"],
-        "maxTokens": 32768,
+        "maxTokens": 4096,
         "name": "Nemotron 3.5 Lightning 30B A3B",
         "provider": "huggingface",
         "reasoning": true,
@@ -2826,10 +2721,10 @@
             "high": "high",
             "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "openai/gpt-oss-120b": {
@@ -3550,17 +3445,18 @@
     "zai-org/GLM-4.6V-Flash": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 128000,
+        "contextWindow": 131072,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 0.3,
             "output": 0.9
         },
+        "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
         "id": "zai-org/GLM-4.6V-Flash",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "zai-org/GLM-4.6V-Flash",
+        "input": ["text", "image"],
+        "maxTokens": 32768,
+        "name": "GLM-4.6V-Flash",
         "provider": "huggingface",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -3610,8 +3506,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 809929.694,
-            "output": 2892606.05
+            "input": 817696.873,
+            "output": 2920345.975
         },
         "id": "zai-org/GLM-4.7-FP8",
         "input": ["text"],

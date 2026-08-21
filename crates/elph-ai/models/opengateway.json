@@ -308,10 +308,10 @@
         "baseUrl": "https://opengateway.gitlawb.com/v1",
         "contextWindow": 202752,
         "cost": {
-            "cacheRead": 0.2,
+            "cacheRead": 0.15,
             "cacheWrite": 1.2,
-            "input": 1.05,
-            "output": 4.4
+            "input": 0.6,
+            "output": 2.0
         },
         "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "z-ai/glm-5.2",

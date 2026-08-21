@@ -353,7 +353,7 @@
         "baseUrl": "https://aiplatform.googleapis.com",
         "contextWindow": 163840,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.06,
             "cacheWrite": 0.0,
             "input": 0.6,
             "output": 1.7
@@ -411,7 +411,7 @@
         "baseUrl": "https://{location}-aiplatform.googleapis.com",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.075,
+            "cacheRead": 0.03,
             "cacheWrite": 0.383,
             "input": 0.3,
             "output": 2.5
@@ -614,7 +614,7 @@
         "baseUrl": "https://aiplatform.googleapis.com",
         "contextWindow": 65536,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.2,
             "cacheWrite": 0.0,
             "input": 2.0,
             "output": 120.0
@@ -643,7 +643,7 @@
         "baseUrl": "https://aiplatform.googleapis.com",
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.05,
             "cacheWrite": 0.0,
             "input": 0.5,
             "output": 60.0
@@ -846,10 +846,10 @@
         "baseUrl": "https://{location}-aiplatform.googleapis.com",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.15,
+            "cacheRead": 0.075,
             "cacheWrite": 0.0,
-            "input": 1.5,
-            "output": 7.5
+            "input": 0.75,
+            "output": 3.75
         },
         "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
         "id": "gemini-3.6-flash",
@@ -938,7 +938,7 @@
             "input": 1.5,
             "output": 9.0
         },
-        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
+        "description": "High-efficiency Gemini model for agentic workflows, coding, and multimodal reasoning",
         "id": "gemini-flash-latest",
         "input": ["text", "image", "video", "audio", "pdf"],
         "knowledgeCutoff": "",
@@ -967,7 +967,7 @@
             "input": 0.25,
             "output": 1.5
         },
-        "description": "Low-latency Gemini model for high-volume multimodal and agent workloads",
+        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
         "id": "gemini-flash-lite-latest",
         "input": ["text", "image", "video", "audio", "pdf"],
         "knowledgeCutoff": "",
@@ -1049,7 +1049,7 @@
         "baseUrl": "https://aiplatform.googleapis.com",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.06,
             "cacheWrite": 0.0,
             "input": 0.6,
             "output": 2.5
@@ -1107,7 +1107,7 @@
         "baseUrl": "https://aiplatform.googleapis.com",
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.007,
             "cacheWrite": 0.0,
             "input": 0.07,
             "output": 0.25
@@ -1165,7 +1165,7 @@
         "baseUrl": "https://aiplatform.googleapis.com",
         "contextWindow": 200000,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.06,
             "cacheWrite": 0.0,
             "input": 0.6,
             "output": 2.2

@@ -228,7 +228,7 @@
             "input": 1.0,
             "output": 5.0
         },
-        "description": "Fast Claude model for responsive assistance, classification, and lightweight agents",
+        "description": "Fast Claude lane for lightweight agents, office tasks, and responsive chat",
         "id": "anthropic/claude-haiku-4.5",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
@@ -237,11 +237,11 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": null,
-            "max": null,
-            "medium": null,
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
             "minimal": null,
-            "off": "off",
+            "off": null,
             "xhigh": null
         }
     },
@@ -291,18 +291,18 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": null,
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": "off",
+            "off": null,
             "xhigh": null
         }
     },
     "anthropic/claude-opus-4.6": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 409600,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
@@ -311,34 +311,34 @@
         },
         "description": "High-end Claude for difficult coding, planning, and slower expert reasoning",
         "id": "anthropic/claude-opus-4.6",
-        "input": ["text"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 4.6",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "anthropic/claude-opus-4.7": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 409600,
+        "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.45,
+            "cacheRead": 0.5,
             "cacheWrite": 6.25,
             "input": 5.0,
             "output": 25.0
         },
         "description": "Stronger Opus tier for advanced software work and high-stakes reasoning",
         "id": "anthropic/claude-opus-4.7",
-        "input": ["text"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 4.7",
         "provider": "infron",
@@ -371,10 +371,10 @@
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
@@ -482,11 +482,11 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": null,
-            "max": null,
-            "medium": null,
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
             "minimal": null,
-            "off": "off",
+            "off": null,
             "xhigh": null
         }
     },
@@ -503,14 +503,14 @@
         "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
         "id": "anthropic/claude-sonnet-4.6",
         "input": ["text", "image", "pdf"],
-        "maxTokens": 64000,
+        "maxTokens": 128000,
         "name": "Claude Sonnet 4.6",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -910,7 +910,7 @@
         "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek/deepseek-chat-v3-0324",
         "input": ["text"],
-        "maxTokens": 65536,
+        "maxTokens": 163840,
         "name": "DeepSeek: DeepSeek V3 0324",
         "provider": "infron",
         "reasoning": false,
@@ -1092,7 +1092,7 @@
     "deepseek/deepseek-v3.1-terminus": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 163840,
+        "contextWindow": 131072,
         "cost": {
             "cacheRead": 0.135,
             "cacheWrite": 0.0,
@@ -1103,63 +1103,7 @@
         "id": "deepseek/deepseek-v3.1-terminus",
         "input": ["text"],
         "maxTokens": 32768,
-        "name": "DeepSeek: DeepSeek V3.1 Terminus (retires Aug 17)",
-        "provider": "infron",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": "off",
-            "xhigh": null
-        }
-    },
-    "deepseek/deepseek-v3.2": {
-        "api": "openai-completions",
-        "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 163840,
-        "cost": {
-            "cacheRead": 0.1345,
-            "cacheWrite": 0.375,
-            "input": 0.26,
-            "output": 0.38
-        },
-        "description": "DeepSeek chat model for instruction following, coding, and analysis",
-        "id": "deepseek/deepseek-v3.2",
-        "input": ["text"],
-        "knowledgeCutoff": "2024-07",
-        "maxTokens": 65536,
-        "name": "DeepSeek V3.2",
-        "provider": "infron",
-        "reasoning": true,
-        "releaseDate": "2025-12-01",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": "off",
-            "xhigh": null
-        }
-    },
-    "deepseek/deepseek-v3.2-exp": {
-        "api": "openai-completions",
-        "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 163840,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.26,
-            "output": 0.38
-        },
-        "description": "DeepSeek chat model for instruction following, coding, and analysis",
-        "id": "deepseek/deepseek-v3.2-exp",
-        "input": ["text"],
-        "maxTokens": 65536,
-        "name": "DeepSeek: DeepSeek V3.2 Exp",
+        "name": "DeepSeek: DeepSeek V3.1 Terminus",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1206,10 +1150,10 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.028,
+            "cacheRead": 0.016,
             "cacheWrite": 0.0,
-            "input": 0.069,
-            "output": 0.1375
+            "input": 0.1696,
+            "output": 0.5088
         },
         "description": "Fast DeepSeek model for efficient chat, coding help, and agent loops",
         "id": "deepseek/deepseek-v4-flash-0731",
@@ -1227,6 +1171,33 @@
             "medium": null,
             "minimal": null,
             "off": null,
+            "xhigh": null
+        }
+    },
+    "deepseek/deepseek-v4-flash-vision-exp": {
+        "api": "openai-completions",
+        "baseUrl": "https://llm.onerouter.pro/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.007,
+            "cacheWrite": 0.0,
+            "input": 0.44,
+            "output": 1.32
+        },
+        "description": "DeepSeek V4 Flash Vision Exp is an experimental vision-enabled version of [DeepSeek V4 Flash 0731](https://openrouter.ai/deepseek/deepseek-v4-flash-0731) from DeepSeek, adding image understanding while matching the base model on text capabilities including agents,...",
+        "id": "deepseek/deepseek-v4-flash-vision-exp",
+        "input": ["text", "image"],
+        "maxTokens": 384000,
+        "name": "DeepSeek: DeepSeek V4 Flash Vision Exp",
+        "provider": "infron",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -1291,12 +1262,12 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.35,
+            "cacheRead": 0.044,
             "cacheWrite": 0.0,
-            "input": 0.636,
-            "output": 1.908
+            "input": 0.5088,
+            "output": 1.5264
         },
-        "description": "DeepSeek V4 Pro 0813 is a large-scale mixture-of-experts model from DeepSeek. This is the GA release of DeepSeek V4 Pro.",
+        "description": "DeepSeek V4 Pro snapshot with million-token context and support for thinking and non-thinking modes",
         "id": "deepseek/deepseek-v4-pro-0813",
         "input": ["text"],
         "maxTokens": 384000,
@@ -1306,34 +1277,8 @@
         "releaseDate": "2026-08-12",
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
-            "max": "max",
-            "medium": null,
-            "minimal": null,
-            "off": "off",
-            "xhigh": null
-        }
-    },
-    "ds-archive/doctor-shotgun-3.3-70b-magnum-v4-se": {
-        "api": "openai-completions",
-        "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 32000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "id": "ds-archive/doctor-shotgun-3.3-70b-magnum-v4-se",
-        "input": ["text"],
-        "maxTokens": 32000,
-        "name": "L3.3 70B Magnum v4 SE (free)",
-        "provider": "infron",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
             "low": null,
-            "max": null,
+            "max": "max",
             "medium": null,
             "minimal": null,
             "off": null,
@@ -1878,8 +1823,8 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.075,
-            "cacheWrite": 0.041667,
+            "cacheRead": 0.15,
+            "cacheWrite": 0.083333,
             "input": 0.375,
             "output": 1.875
         },
@@ -2133,7 +2078,7 @@
         "id": "inclusionai/ling-2.6-1t",
         "input": ["text"],
         "maxTokens": 32768,
-        "name": "inclusionAI: Ling-2.6-1T",
+        "name": "inclusionAI: Ling-2.6-1T (retires Aug 24)",
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -2160,7 +2105,7 @@
         "id": "inclusionai/ling-2.6-flash",
         "input": ["text"],
         "maxTokens": 32768,
-        "name": "inclusionAI: Ling-2.6-flash",
+        "name": "inclusionAI: Ling-2.6-flash (retires Aug 24)",
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -2686,32 +2631,6 @@
             "xhigh": null
         }
     },
-    "minimax/minimax-m2.5:free": {
-        "api": "openai-completions",
-        "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 205000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "id": "minimax/minimax-m2.5:free",
-        "input": ["text"],
-        "maxTokens": 205000,
-        "name": "MiniMax M2.5 (free)",
-        "provider": "infron",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": "max",
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "minimax/minimax-m2.7": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
@@ -2724,33 +2643,6 @@
         },
         "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
         "id": "minimax/minimax-m2.7",
-        "input": ["text"],
-        "maxTokens": 131072,
-        "name": "MiniMax-M2.7",
-        "provider": "infron",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": "max",
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "minimax/minimax-m2.7:free": {
-        "api": "openai-completions",
-        "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 204800,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
-        "id": "minimax/minimax-m2.7:free",
         "input": ["text"],
         "maxTokens": 131072,
         "name": "MiniMax-M2.7",
@@ -2850,7 +2742,7 @@
     "mistral/ministral-14b-2512": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 128000,
+        "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -2860,8 +2752,8 @@
         "description": "Compact Mistral model for edge, latency-sensitive, and cost-efficient workloads",
         "id": "mistral/ministral-14b-2512",
         "input": ["text", "image"],
-        "maxTokens": 128000,
-        "name": "ministral-14b-2512",
+        "maxTokens": 262144,
+        "name": "Ministral 14B (Mistral AI)",
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -3561,7 +3453,7 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.03,
+            "cacheRead": 0.025,
             "cacheWrite": 0.0,
             "input": 0.05,
             "output": 0.2
@@ -3569,7 +3461,7 @@
         "description": "Small Nemotron 3 MoE for efficient coding, math, and long-context agents",
         "id": "nvidia/nemotron-3-nano-30b-a3b",
         "input": ["text"],
-        "maxTokens": 228000,
+        "maxTokens": 262144,
         "name": "Nemotron 3 Nano 30B A3B",
         "provider": "infron",
         "reasoning": true,
@@ -3750,6 +3642,32 @@
             "xhigh": null
         }
     },
+    "nvidia/nvidia-nemotron-3.5-lightning": {
+        "api": "openai-completions",
+        "baseUrl": "https://llm.onerouter.pro/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.08,
+            "output": 0.2
+        },
+        "id": "nvidia/nvidia-nemotron-3.5-lightning",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "nvidia/nvidia-nemotron-3.5-lightning",
+        "provider": "infron",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "openai/gpt-35-turbo": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
@@ -3897,7 +3815,7 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 1.25,
+            "cacheRead": 0.625,
             "cacheWrite": 0.0,
             "input": 2.5,
             "output": 10.0
@@ -3926,7 +3844,7 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0.075,
+            "cacheRead": 0.0375,
             "cacheWrite": 0.15,
             "input": 0.15,
             "output": 0.6
@@ -5568,11 +5486,11 @@
             "input": 0.2,
             "output": 0.88
         },
-        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
+        "description": "Qwen vision-language instruct model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3-vl-235b-a22b-instruct",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 32768,
-        "name": "Qwen: Qwen3 VL 235B A22B Instruct",
+        "name": "Qwen3 VL 235B A22B Instruct",
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -5595,21 +5513,21 @@
             "input": 0.5,
             "output": 2.5
         },
-        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
+        "description": "Qwen vision-language thinking model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3-vl-235b-a22b-thinking",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 32768,
-        "name": "Qwen: Qwen3 VL 235B A22B Thinking",
+        "name": "Qwen3 VL 235B A22B Thinking",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": null,
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3-vl-flash": {
@@ -5679,7 +5597,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-122b-a10b",
         "input": ["text", "image", "video"],
-        "maxTokens": 81920,
+        "maxTokens": 65536,
         "name": "Qwen3.5 122B-A10B",
         "provider": "infron",
         "reasoning": true,
@@ -6136,7 +6054,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-35b-a3b",
         "input": ["text", "image", "video"],
-        "maxTokens": 65536,
+        "maxTokens": 262144,
         "name": "Qwen3.5 35B-A3B",
         "provider": "infron",
         "reasoning": true,
@@ -6393,32 +6311,6 @@
             "xhigh": "xhigh"
         }
     },
-    "qwen/qwen3.6-plus:free": {
-        "api": "openai-completions",
-        "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 1000000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "id": "qwen/qwen3.6-plus:free",
-        "input": ["text", "image", "video"],
-        "maxTokens": 64000,
-        "name": "Qwen 3.6 Plus (Free)",
-        "provider": "infron",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
     "qwen/qwen3.7-flash": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
@@ -6524,6 +6416,33 @@
             "medium": "medium",
             "minimal": null,
             "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "qwen/qwen3.8-27b": {
+        "api": "openai-completions",
+        "baseUrl": "https://llm.onerouter.pro/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.1,
+            "cacheWrite": 0.625,
+            "input": 0.4,
+            "output": 3.0
+        },
+        "description": "Dense 27B vision-language model for coding, agent tasks, and image and video understanding",
+        "id": "qwen/qwen3.8-27b",
+        "input": ["text", "image", "video"],
+        "maxTokens": 32768,
+        "name": "Qwen3.8 27B",
+        "provider": "infron",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -6634,32 +6553,6 @@
             "xhigh": "xhigh"
         }
     },
-    "sao10k/72b-qwen2.5-kunou-v1": {
-        "api": "openai-completions",
-        "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 32000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "id": "sao10k/72b-qwen2.5-kunou-v1",
-        "input": ["text"],
-        "maxTokens": 32000,
-        "name": "72B Qwen2.5 Kunou v1 (free)",
-        "provider": "infron",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
     "sao10k/l3.1-70b-euryale-v2.2": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
@@ -6741,32 +6634,6 @@
             "xhigh": null
         }
     },
-    "sapiens-ai/agnes-2.0-flash:free": {
-        "api": "openai-completions",
-        "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 256000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "id": "sapiens-ai/agnes-2.0-flash:free",
-        "input": ["text", "image"],
-        "maxTokens": 65500,
-        "name": "Agnes-2.0-Flash (Free)",
-        "provider": "infron",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "stepfun/step-3.5-flash": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
@@ -6832,8 +6699,8 @@
         "cost": {
             "cacheRead": 0.04,
             "cacheWrite": 0.16,
-            "input": 0.14,
-            "output": 0.58
+            "input": 0.132,
+            "output": 0.528
         },
         "description": "Tencent Hy reasoning model for coding, instruction following, and agent tasks",
         "id": "tencent/hy3",
@@ -6850,33 +6717,6 @@
             "medium": null,
             "minimal": null,
             "off": "off",
-            "xhigh": null
-        }
-    },
-    "thedrummer/anubis-70b-v1.1": {
-        "api": "openai-completions",
-        "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 131072,
-        "cost": {
-            "cacheRead": 0.155,
-            "cacheWrite": 0.0,
-            "input": 0.31,
-            "output": 0.31
-        },
-        "description": "General-purpose chat model for instruction following, writing, and analysis",
-        "id": "thedrummer/anubis-70b-v1.1",
-        "input": ["text"],
-        "maxTokens": 16384,
-        "name": "Anubis 70B v1.1",
-        "provider": "infron",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
             "xhigh": null
         }
     },
@@ -7531,9 +7371,9 @@
     "z-ai/glm-4.6": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 204800,
+        "contextWindow": 202752,
         "cost": {
-            "cacheRead": 0.11,
+            "cacheRead": 0.1,
             "cacheWrite": 0.0,
             "input": 0.431,
             "output": 1.74
@@ -7803,7 +7643,7 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 202752,
         "cost": {
-            "cacheRead": 0.2,
+            "cacheRead": 0.15,
             "cacheWrite": 1.2,
             "input": 0.55,
             "output": 1.9255
@@ -7828,20 +7668,20 @@
     "z-ai/glm-5.2-fast": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 1048560,
+        "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.3625,
+            "cacheRead": 0.4,
             "cacheWrite": 0.0,
             "input": 2.29,
             "output": 8.0
         },
-        "description": "Efficient GLM model for fast reasoning, coding, and agent workflows",
+        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "z-ai/glm-5.2-fast",
         "input": ["text"],
-        "maxTokens": 1048560,
-        "name": "GLM 5.2 Fast",
+        "maxTokens": 131072,
+        "name": "GLM-5.2",
         "provider": "infron",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -7850,6 +7690,33 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
+        }
+    },
+    "z-ai/glm-5.3": {
+        "api": "openai-completions",
+        "baseUrl": "https://llm.onerouter.pro/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.3,
+            "cacheWrite": 1.2,
+            "input": 1.4,
+            "output": 4.4
+        },
+        "description": "Flagship GLM model for long-horizon coding, agents, and complex project delivery",
+        "id": "z-ai/glm-5.3",
+        "input": ["text"],
+        "maxTokens": 128000,
+        "name": "GLM-5.3",
+        "provider": "infron",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "z-ai/glm-5v-turbo": {

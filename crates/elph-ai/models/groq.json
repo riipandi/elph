@@ -152,7 +152,7 @@
         "cost": {
             "cacheRead": 0.024999999999999998,
             "cacheWrite": 0.0,
-            "input": 0.049999999999999996,
+            "input": 0.05,
             "output": 0.08
         },
         "description": "Compact Llama instruction model for fast chat and local deployment",
@@ -182,7 +182,7 @@
             "cacheRead": 0.295,
             "cacheWrite": 0.0,
             "input": 0.59,
-            "output": 0.7899999999999999
+            "output": 0.79
         },
         "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "llama-3.3-70b-versatile",

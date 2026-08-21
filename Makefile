@@ -208,7 +208,7 @@ lint: ## Run clippy (workspace, all targets; pass -p <pkg> for a subset)
 
 fmt: ## Format all code
 	@$(CARGO) fmt --all -- --style-edition 2024
-	@pnpm dlx --silent oxfmt crates/elph-ai/models/ schemas/
+	@pnpm --silent dlx oxfmt crates/elph-ai/models/ schemas/
 
 coverage: ## Run tests with coverage (requires cargo-llvm-cov)
 	@$(CARGO) llvm-cov nextest --no-cfg-coverage 2>&1

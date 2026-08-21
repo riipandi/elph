@@ -701,10 +701,10 @@
         "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.15,
+            "cacheRead": 0.075,
             "cacheWrite": 0.0,
-            "input": 1.5,
-            "output": 7.5
+            "input": 0.75,
+            "output": 3.75
         },
         "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
         "id": "gemini-3.6-flash",
@@ -817,26 +817,26 @@
         "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.15,
+            "cacheRead": 0.075,
             "cacheWrite": 0.0,
-            "input": 1.5,
-            "output": 9.0
+            "input": 0.75,
+            "output": 3.75
         },
-        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
+        "description": "High-efficiency Gemini model for agentic workflows, coding, and multimodal reasoning",
         "id": "gemini-flash-latest",
         "input": ["text", "image", "video", "audio", "pdf"],
-        "knowledgeCutoff": "2025-01",
+        "knowledgeCutoff": "2026-03",
         "maxTokens": 65536,
         "name": "Gemini Flash Latest",
         "provider": "google",
         "reasoning": true,
-        "releaseDate": "2026-05-19",
+        "releaseDate": "2026-08-13",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": "minimal",
+            "minimal": null,
             "off": null,
             "xhigh": null
         }
@@ -846,20 +846,20 @@
         "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.025,
+            "cacheRead": 0.03,
             "cacheWrite": 0.0,
-            "input": 0.25,
-            "output": 1.5
+            "input": 0.3,
+            "output": 2.5
         },
-        "description": "Low-latency Gemini model for high-volume multimodal and agent workloads",
+        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
         "id": "gemini-flash-lite-latest",
         "input": ["text", "image", "video", "audio", "pdf"],
-        "knowledgeCutoff": "2025-01",
+        "knowledgeCutoff": "2026-03",
         "maxTokens": 65536,
         "name": "Gemini Flash-Lite Latest",
         "provider": "google",
         "reasoning": true,
-        "releaseDate": "2026-05-07",
+        "releaseDate": "2026-07-21",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",

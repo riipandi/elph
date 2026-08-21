@@ -38,7 +38,7 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 1000000,
+        "contextWindow": 524288,
         "cost": {
             "cacheRead": 0.06,
             "cacheWrite": 0.0,

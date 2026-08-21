@@ -191,16 +191,16 @@
         "baseUrl": "https://opencode.ai/zen/go/v1",
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.01,
-            "cacheWrite": 0.125,
-            "input": 0.1,
-            "output": 0.6
+            "cacheRead": 0.02,
+            "cacheWrite": 0.25,
+            "input": 0.2,
+            "output": 1.2
         },
         "description": "Cost-efficient GPT-5.6 model for fast, high-volume workloads",
         "id": "gpt-5.6-luna",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
-        "name": "GPT-5.6 Luna (2x usage)",
+        "name": "GPT-5.6 Luna",
         "provider": "opencode-go",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -253,16 +253,16 @@
         },
         "contextWindow": 256000,
         "cost": {
-            "cacheRead": 0.035,
+            "cacheRead": 0.004375,
             "cacheWrite": 0.0,
-            "input": 0.14,
-            "output": 0.58
+            "input": 0.0175,
+            "output": 0.0725
         },
         "description": "Tencent Hy reasoning model for coding, instruction following, and agent tasks",
         "id": "hy3",
         "input": ["text"],
         "maxTokens": 64000,
-        "name": "Hy3",
+        "name": "Hy3 (8x usage)",
         "provider": "opencode-go",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -627,6 +627,60 @@
             "low": "low",
             "max": "max",
             "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "muse-spark-1.2-contributor": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/go/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.002,
+            "cacheWrite": 0.0,
+            "input": 0.1,
+            "output": 0.2
+        },
+        "description": "Muse Spark 1.2 is a coding-focused update to Muse Spark 1.1 with improvements in code generation, complex debugging, codebase understanding, and end-to-end developer workflows.",
+        "id": "muse-spark-1.2-contributor",
+        "input": ["text", "image", "video", "pdf", "audio"],
+        "maxTokens": 131072,
+        "name": "Muse Spark 1.2 Contributor",
+        "provider": "opencode-go",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "ox-alpha-free": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/go/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "description": "Stealth reasoning model for coding, agentic tasks, and tool use",
+        "id": "ox-alpha-free",
+        "input": ["text", "image", "video"],
+        "maxTokens": 131072,
+        "name": "Ox Alpha Free (Unlimited)",
+        "provider": "opencode-go",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null

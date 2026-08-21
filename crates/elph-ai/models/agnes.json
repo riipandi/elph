@@ -93,7 +93,7 @@
         "maxTokens": 65536,
         "name": "Agnes 2.5 Pro Alpha",
         "provider": "agnes",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
             "low": null,

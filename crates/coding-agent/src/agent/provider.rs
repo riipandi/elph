@@ -231,7 +231,7 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
         "wafer" => Some(ProviderConfig {
             label: "Wafer",
             api_key_env_key: "WAFER_API_KEY",
-            default_model: "GLM-5.1",
+            default_model: "GLM-5.2",
         }),
         "xai" => Some(ProviderConfig {
             label: "xAI",

@@ -223,7 +223,7 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 20.0,
+            "input": 228.38,
             "output": 228.38
         },
         "description": "Image model for prompt-driven generation, editing, and visual design workflows",
