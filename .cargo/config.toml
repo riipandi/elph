@@ -2,17 +2,11 @@
 rustflags = ["-Ctarget-cpu=native"]
 
 # Linux musl — fully static builds (CI release channel only).
-# Rust 1.70+ ships rust-lld for the musl targets, so the Rust code links
-# statically with no external linker (forced via -Clinker-features=+lld below).
-# The only C dependency (ring) is compiled by a musl-targeting GCC provided in
-# CI (see release.yml build-linux) and selected via the CC_/CXX_ env vars that
-# ring's cc-rs build script consumes.
-[target.x86_64-unknown-linux-musl]
-rustflags = ["-Clinker-features=+lld"]
-
-[target.aarch64-unknown-linux-musl]
-rustflags = ["-Clinker-features=+lld"]
-
+# The musl targets (x86_64 / aarch64) use the bundled `rust-lld` linker by
+# default on Rust 1.70+, so the Rust code links statically with no external
+# linker config. The only C dependency (ring) is compiled by a musl-targeting
+# GCC provided in CI (see release.yml build-linux) and selected via the
+# CC_/CXX_ env vars that ring's cc-rs build script consumes.
 [target.aarch64-apple-darwin]
 rustflags = ["-Clink-arg=--ld-path=/usr/bin/ld"]
 

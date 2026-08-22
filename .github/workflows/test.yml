@@ -65,7 +65,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: test-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # Include inputs.os so the release pipeline's per-OS check jobs
+  # (linux/macos/windows, invoked via workflow_call) each get a distinct group
+  # and run in parallel. For pull_request runs os is empty, so all matrix legs
+  # share the group and cancel-in-progress still applies per PR.
+  group: test-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ inputs.os || '' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
