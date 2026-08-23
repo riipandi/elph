@@ -419,6 +419,9 @@ pub struct StatusZoneProps {
     ///
     /// Uses clonable [`Handler`] so each chip can bind its own `(index, action)`.
     pub on_queue_action: Handler<(usize, PromptQueueAction)>,
+    /// When true, omit the `StatusRow` (e.g. while the `/aside` panel renders it
+    /// above itself). The dialogs above/below the row still render.
+    pub suppress_status_row: bool,
 }
 
 impl Default for StatusZoneProps {
@@ -449,6 +452,7 @@ impl Default for StatusZoneProps {
             provider_connect_oauth_provider_name: None,
             queue_count: 0,
             on_queue_action: Handler::default(),
+            suppress_status_row: false,
         }
     }
 }
@@ -593,6 +597,30 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
         .as_ref()
         .map(|(text, color)| render_ephemeral_banner(props.screen_width, text, *color));
 
+    // StatusRow is omitted (and re-homed above the `/aside` panel) when suppressed.
+    let status_row: Option<AnyElement<'static>> = if props.suppress_status_row {
+        None
+    } else {
+        Some(
+            element! {
+                StatusRow(
+                    screen_width: props.screen_width,
+                    busy: props.busy,
+                    activity_label: props.activity_label.clone(),
+                    accent: props.accent,
+                    activity_started_at: props.activity_started_at,
+                    busy_started_at: props.busy_started_at,
+                    session_elapsed_secs: props.session_elapsed_secs,
+                    idle_notice: props.idle_notice.clone(),
+                    quit_confirm_pending: props.quit_confirm_pending,
+                    select_mode: props.select_mode,
+                    queue_count: props.queue_count,
+                )
+            }
+            .into(),
+        )
+    };
+
     /// Render the provider connect dialog.
     // TODO(refactor): group args into a parameter struct; WIP feature, suppress for now.
     #[allow(clippy::too_many_arguments)]
@@ -697,19 +725,7 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
         ) {
             #(banner)
             #(above_status_row)
-            StatusRow(
-                screen_width: props.screen_width,
-                busy: props.busy,
-                activity_label: props.activity_label.clone(),
-                accent: props.accent,
-                activity_started_at: props.activity_started_at,
-                busy_started_at: props.busy_started_at,
-                session_elapsed_secs: props.session_elapsed_secs,
-                idle_notice: props.idle_notice.clone(),
-                quit_confirm_pending: props.quit_confirm_pending,
-                select_mode: props.select_mode,
-                queue_count: props.queue_count,
-            )
+            #(status_row)
             #(below_status_row)
         }
     }
