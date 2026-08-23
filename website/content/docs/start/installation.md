@@ -14,10 +14,15 @@ Use the PowerShell installer:
 powershell -ExecutionPolicy Bypass -c "irm https://elph.space/install.ps1 | iex"
 ```
 
-Pin a version or install the latest pre-release with environment variables:
+Pin a version:
 
 ```powershell
 $env:ELPH_VERSION="0.0.26"; powershell -ExecutionPolicy Bypass -c "irm https://elph.space/install.ps1 | iex"
+```
+
+Install the latest pre-release with environment variables:
+
+```powershell
 $env:ELPH_CANARY="1"; powershell -ExecutionPolicy Bypass -c "irm https://elph.space/install.ps1 | iex"
 ```
 
@@ -26,10 +31,15 @@ The binary is installed to `%LOCALAPPDATA%\Programs\elph\bin`; add that director
 
 ### Linux / macOS
 
-Pin a version or install the latest pre-release:
+Pin a version:
 
 ```sh
 curl -fsSL https://elph.space/install.sh | bash -s -- --version 0.0.26
+```
+
+Install the latest pre-release:
+
+```sh
 curl -fsSL https://elph.space/install.sh | bash -s -- --canary
 ```
 
