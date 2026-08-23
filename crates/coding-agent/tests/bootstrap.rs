@@ -29,7 +29,6 @@ async fn ensure_creates_full_home() {
     assert!(paths.project_elph_dir().exists());
     assert!(paths.project_gitignore_path().exists());
     assert!(paths.bundled_dir().join("agents").is_dir());
-    assert!(paths.bundled_dir().join("personas").is_dir());
     assert!(paths.bundled_dir().join("skills").is_dir());
     assert!(paths.bundled_dir().join("user-guide").is_dir());
     assert!(paths.agents_dir().is_dir());

@@ -149,11 +149,10 @@ pub trait AppPaths {
         ]
     }
 
-    fn bundled_content_dirs(&self) -> [PathBuf; 4] {
+    fn bundled_content_dirs(&self) -> [PathBuf; 3] {
         let bundled = self.bundled_dir();
         [
             bundled.join("agents"),
-            bundled.join("personas"),
             bundled.join("skills"),
             bundled.join("user-guide"),
         ]
