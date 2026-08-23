@@ -680,8 +680,9 @@ impl MemoryRuntime {
     /// Session-start note only — full recall is turn-based (avoids double injection).
     ///
     /// `warm_store` gates the store open/init (embedder + model weights). The
-    /// returned hint is static, so the TUI fast path may skip the warm-up; the
-    /// first turn's `before_agent_start` recall opens the store anyway.
+    /// returned hint is static, so the TUI fast path passes `false`; the caller
+    /// (`agent/runtime.rs`) spawns a detached warm-up task so the first turn's
+    /// recall never blocks on a cold embedder.
     pub async fn build_bootstrap_context(&self, warm_store: bool) -> Result<String> {
         if !self.options.enabled {
             log::debug!("memory.recall.start phase=bootstrap skipped_reason=settings_disabled");

@@ -73,45 +73,6 @@ pub async fn create_coding_session_with_events(
     // they all connect from one open database instead of each opening the file.
     let database = Arc::new(crate::platform::datastore::ensure_database(options.paths).await?);
 
-    // Best-effort session retention GC (settings-driven). Never mid-turn; skip if disabled.
-    if options.settings.session.enabled && options.settings.session.gc_on_open {
-        let r = &options.settings.session;
-        let policy = elph_agent::session::RetentionPolicy {
-            enabled: true,
-            max_sessions_per_cwd: r.max_sessions_per_cwd,
-            max_session_age_days: r.max_session_age_days,
-            max_store_db_bytes: r.max_store_db_bytes,
-            protect_latest_per_cwd: r.protect_latest_per_cwd,
-            protect_session_id: options.resume_id.map(|s| s.to_string()),
-        };
-        let database_for_gc = Arc::clone(&database);
-        let db_path = options.paths.memory_db_path();
-        let sessions_root = options.paths.data_dir().join("sessions");
-        let run_gc = async move {
-            match elph_agent::session::run_full_session_gc(database_for_gc, db_path, Some(sessions_root), policy, false)
-                .await
-            {
-                Ok(report) if !report.deleted_ids.is_empty() => {
-                    log::info!(
-                        "session GC removed {} session(s) (examined {})",
-                        report.deleted_ids.len(),
-                        report.examined
-                    );
-                }
-                Ok(_) => {}
-                Err(err) => log::warn!("session GC failed: {err:#}"),
-            }
-        };
-        if options.defer_session_gc {
-            // TUI fast path: `AgentReady` must not wait for retention GC. Run it
-            // detached; it shares the open DB handle and never touches the session
-            // being created (the resume id is protected by the policy).
-            tokio::spawn(run_gc);
-        } else {
-            run_gc.await;
-        }
-    }
-
     let mut env = LocalExecutionEnv::new(options.cwd);
     if let Some(path) = options
         .settings
@@ -155,6 +116,47 @@ pub async fn create_coding_session_with_events(
         session.metadata().await.session_id().to_string()
     };
     let project_key = session_manager.project_key().to_string();
+
+    // Best-effort session retention GC (settings-driven). Never mid-turn; skip if disabled.
+    // Runs after the session row exists so the new/resumed session is always protected
+    // (`protect_session_id`) — a detached GC can never delete the session being opened.
+    if options.settings.session.enabled && options.settings.session.gc_on_open {
+        let r = &options.settings.session;
+        let policy = elph_agent::session::RetentionPolicy {
+            enabled: true,
+            max_sessions_per_cwd: r.max_sessions_per_cwd,
+            max_session_age_days: r.max_session_age_days,
+            max_store_db_bytes: r.max_store_db_bytes,
+            protect_latest_per_cwd: r.protect_latest_per_cwd,
+            protect_session_id: Some(session_id.clone()),
+        };
+        let database_for_gc = Arc::clone(&database);
+        let db_path = options.paths.memory_db_path();
+        let sessions_root = options.paths.data_dir().join("sessions");
+        let run_gc = async move {
+            match elph_agent::session::run_full_session_gc(database_for_gc, db_path, Some(sessions_root), policy, false)
+                .await
+            {
+                Ok(report) if !report.deleted_ids.is_empty() => {
+                    log::info!(
+                        "session GC removed {} session(s) (examined {})",
+                        report.deleted_ids.len(),
+                        report.examined
+                    );
+                }
+                Ok(_) => {}
+                Err(err) => log::warn!("session GC failed: {err:#}"),
+            }
+        };
+        if options.defer_session_gc {
+            // TUI fast path: `AgentReady` must not wait for retention GC. Run it
+            // detached; it shares the open DB handle and the current session is
+            // protected by the policy, so it never deletes the session being opened.
+            tokio::spawn(run_gc);
+        } else {
+            run_gc.await;
+        }
+    }
 
     // resolve_model and discover_mcp_registry are pure file reads independent
     // of each other and of the DB operations above — run them concurrently.
@@ -378,12 +380,26 @@ pub async fn create_coding_session_with_events(
     // Lock errors are handled internally (logged + empty context returned).
     // The bootstrap context is a static turn-only hint (no real recall). The store
     // warm-up is deferred for the TUI fast path — `AgentReady` must not wait for
-    // the embedder/store init; the first turn's `before_agent_start` recall warms
-    // the store anyway. The hint itself is still injected (cheap, static).
+    // the embedder/store init. A detached warm-up task keeps the store ready before
+    // the first turn (which would otherwise block on `ensure_store`), so recall on
+    // turn one is never delayed by a cold embedder.
     let ctx = crate::memory::hooks::build_memories_context(memory_runtime.as_ref(), !options.defer_memory_warm)
         .await
         .unwrap_or_default();
     let injected_memory = if ctx.is_empty() { None } else { Some(ctx) };
+    if options.defer_memory_warm {
+        // Best-effort detached warm-up so the first turn's recall does not block on
+        // embedder/store init. Bounded by the same startup lock timeout; errors are
+        // ignored (the first turn re-opens the store on demand).
+        let runtime_for_warm = Arc::clone(&memory_runtime);
+        tokio::spawn(async move {
+            let _ = tokio::time::timeout(
+                crate::memory::runtime::MEMORY_STARTUP_LOCK_TIMEOUT,
+                runtime_for_warm.ensure_store(),
+            )
+            .await;
+        });
+    }
     // Static (per-run) prompt knobs; `mode` is filled in per turn from `mode_state`.
     let prompt_options = CodingPromptOptions {
         mode: agent_mode,
