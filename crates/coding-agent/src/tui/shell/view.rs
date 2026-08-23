@@ -309,7 +309,6 @@ pub(crate) fn build_shell_view(
     let provider_api_key_open = pending_provider_api_key.read().is_some();
     let queue_manager_is_open = queue_manager_open.get();
     let aside_open = pending_aside.read().is_some();
-    let tool_approval_open = pending_tool_approval.read().is_some();
     let status_dialog_open = pending_tool_approval.read().is_some()
         || pending_mode_change.read().is_some()
         || pending_plan_confirmation.read().is_some()
@@ -846,6 +845,13 @@ pub(crate) fn build_shell_view(
     // the closure below always sees the current value.
     let aside_open = pending_aside.read().is_some();
 
+    // Hide the prompt editor whenever a bottom-band overlay owns that band — the
+    // `/aside` panel or any StatusZone dialog (tool approval, mode change, plan,
+    // memory flush, feedback, provider auth/disconnect, mcp auth, prompt queue) —
+    // so its `❯` box doesn't sit underneath the dialog. Computed as a `bool` here
+    // because `status_dialog` is moved into `StatusZone` later.
+    let editor_hidden = aside_open || status_dialog.is_some();
+
     // `/aside` re-homes the tips row above the panel; StatusZone suppresses its own
     // StatusRow while the panel is open so the tip only appears once.
     let aside_tips: Option<AnyElement<'static>> = if aside_open {
@@ -1294,7 +1300,7 @@ pub(crate) fn build_shell_view(
                     .map(|s| s.is_intercom_replying())
                     .unwrap_or(false),
                 chrome_revision: chrome_ui_revision.get(),
-                hide_editor: aside_open || tool_approval_open,
+                hide_editor: editor_hidden,
                 draft: Some(draft),
                 live_draft: Some(live_draft),
                 input_prefix_kind: Some(input_prefix_kind),
