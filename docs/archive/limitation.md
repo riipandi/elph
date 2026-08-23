@@ -6,13 +6,14 @@ Known release and platform constraints.
 
 Linux builds are glibc only; musl/Alpine is not published yet. Windows builds run on GitHub-hosted runners (no Namespace Windows runner yet).
 
-| Archive                  | Target                      | For                                   |
-| ------------------------ | --------------------------- | ------------------------------------- |
-| `*-linux-x86_64.tar.gz`  | `x86_64-unknown-linux-gnu`  | RedHat/Ubuntu/Debian x86_64           |
-| `*-linux-arm64.tar.gz`   | `aarch64-unknown-linux-gnu` | Pi 3/4/5 64-bit OS, ARM64 glibc       |
-| `*-macos-aarch64.tar.gz` | `aarch64-apple-darwin`      | macOS on Apple Silicon                |
-| `*-macos-x86_64.tar.gz`  | `x86_64-apple-darwin`       | macOS on Intel                        |
-| `*-windows-x86_64.zip`   | `x86_64-pc-windows-msvc`    | Windows x86_64 (GitHub-hosted runner) |
+| Archive                  | Target                      | For                                                                      |
+| ------------------------ | --------------------------- | ------------------------------------------------------------------------ |
+| `*-linux-x86_64.tar.gz`  | `x86_64-unknown-linux-gnu`  | RedHat/Ubuntu/Debian x86_64                                              |
+| `*-linux-arm64.tar.gz`   | `aarch64-unknown-linux-gnu` | General ARM64 (Apple Silicon, Graviton, Ampere); also Pi 3/4/5 64-bit OS |
+| `*-linux-armv8.tar.gz`   | `aarch64-unknown-linux-gnu` | Raspberry Pi 3/4/5 — explicit ARMv8.0 (Cortex-A53) baseline              |
+| `*-macos-aarch64.tar.gz` | `aarch64-apple-darwin`      | macOS on Apple Silicon                                                   |
+| `*-macos-x86_64.tar.gz`  | `x86_64-apple-darwin`       | macOS on Intel                                                           |
+| `*-windows-x86_64.zip`   | `x86_64-pc-windows-msvc`    | Windows x86_64 (GitHub-hosted runner)                                    |
 
 ## Not supported
 

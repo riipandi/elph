@@ -29,6 +29,8 @@ Connect the GitHub org to Namespace before the first run. Lightweight jobs (vers
 
 Linux release builds use standard gnu targets (`x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`) with dynamic linking for broad compatibility across Linux distributions. The release workflow installs the appropriate gnu target and builds with standard system tooling, using `RUSTC_WRAPPER=sccache` for compiler caching.
 
+Both aarch64 jobs (`linux/arm64` and `linux/armv8`) are pinned to the **ARMv8.0 baseline** so the binaries also run on the Raspberry Pi 3's Cortex-A53 (a plain ARMv8.0 core). Rust codegen uses `-Ctarget-cpu=generic` (set in `.cargo/config.toml`), and the workflow exports `CFLAGS`/`CXXFLAGS=-march=armv8-a` so C dependencies (libgit2, turso, mimalloc, ring, …) are compiled to the same baseline. Do not set `-Ctarget-cpu=native` for these targets — a build on a newer arm64 runner (Graviton / Ampere, ARMv8.2+) would bake in instructions the Pi 3 cannot execute, crashing with "Illegal instruction" (SIGILL) at startup.
+
 ## Test (debug)
 
 Workflow: `.github/workflows/test.yml` (`Test / linux`, `Test / macos`, `Test / windows`).

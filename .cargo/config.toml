@@ -1,5 +1,14 @@
-[build]
-rustflags = ["-Ctarget-cpu=native"]
+# IMPORTANT — CPU baseline for distributed binaries
+#
+# Do NOT set `-Ctarget-cpu=native` here. A binary built with it on a newer arm64
+# runner (Graviton / Ampere, ARMv8.2+) bakes in instructions that older ARMv8.0
+# cores — e.g. the Raspberry Pi 3's Cortex-A53 — cannot execute, crashing at
+# startup with "Illegal instruction" (SIGILL).
+#
+# rustflags only control Rust codegen. C dependencies (libgit2, turso, mimalloc,
+# ring, …) are compiled by their own build scripts and ignore this file; the
+# release workflow exports CFLAGS/CXXFLAGS=-march=armv8-a for the arm64 jobs to
+# keep those at the same ARMv8.0 baseline.
 
 # Linux gnu — dynamic linking for broad compatibility
 # Uses standard gnu targets with dynamic linking for reliable builds
@@ -7,8 +16,10 @@ rustflags = ["-Ctarget-cpu=native"]
 [target.x86_64-unknown-linux-gnu]
 rustflags = []
 
+# ARMv8.0 baseline (Cortex-A53 / Raspberry Pi 3). Kept at `generic` so the
+# aarch64 binary also runs on the Pi; do not raise this to a newer micro-arch.
 [target.aarch64-unknown-linux-gnu]
-rustflags = []
+rustflags = ["-Ctarget-cpu=generic"]
 
 [target.aarch64-apple-darwin]
 rustflags = ["-Clink-arg=--ld-path=/usr/bin/ld"]

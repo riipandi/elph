@@ -117,6 +117,9 @@ jobs:
           - arch: arm64
             runner: namespace-profile-linux-base-arm64
             rust_arch: aarch64
+          - arch: armv8
+            runner: namespace-profile-linux-base-arm64
+            rust_arch: aarch64
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     steps:
@@ -150,6 +153,12 @@ jobs:
         env:
           APP: ${{ inputs.app || 'elph' }}
           RUSTC_WRAPPER: sccache
+          # Keep C dependencies (libgit2, turso, mimalloc, ring, …) at the
+          # ARMv8.0 baseline so the aarch64 binary also runs on Raspberry Pi 3
+          # (Cortex-A53). Without this a build on a newer arm64 runner can emit
+          # ARMv8.1+ instructions and crash the Pi with SIGILL at startup.
+          CFLAGS: ${{ matrix.rust_arch == 'aarch64' && '-march=armv8-a' || '' }}
+          CXXFLAGS: ${{ matrix.rust_arch == 'aarch64' && '-march=armv8-a' || '' }}
 
       - name: Package
         shell: bash
@@ -308,6 +317,12 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.app || 'elph' }}-linux-arm64
+          path: .
+
+      - name: Fetch linux (armv8 / raspberry pi)
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.app || 'elph' }}-linux-armv8
           path: .
 
       - name: Fetch macos (aarch64)

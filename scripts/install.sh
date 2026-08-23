@@ -5,6 +5,9 @@
 # Windows users must use the PowerShell installer instead:
 #   powershell -ExecutionPolicy Bypass -c "irm https://elph.space/install.ps1 | iex"
 #
+# Raspberry Pi (ARMv8.0) automatically receives the ARMv8.0-baseline (armv8)
+# release asset; other arm64 Linux uses the general arm64 asset.
+#
 # Usage:
 #   curl -fsSL https://elph.space/install.sh | bash
 #   curl -fsSL https://elph.space/install.sh | bash -s -- --canary
@@ -43,6 +46,9 @@ Options:
   --install-dir <dir>  Binary install directory (default: ~/.local/bin)
   --dry-run            Print what would happen without downloading
   --help               Show this help
+
+On Raspberry Pi (ARMv8.0) the installer automatically selects the
+  ARMv8.0-baseline (armv8) build.
 
 Also via env vars: ELPH_VERSION, ELPH_CANARY, ELPH_INSTALL_DIR
 EOF
@@ -148,11 +154,27 @@ install_detect_arch() {
     esac
 }
 
+# Detect a Raspberry Pi via the device-tree model string. Used to prefer the
+# ARMv8.0-baseline (`armv8`) release asset on Pi hardware.
+install_is_raspberry_pi() {
+    local model=""
+    if [[ -r /proc/device-tree/model ]]; then
+        model="$(tr -d '\0' </proc/device-tree/model 2>/dev/null || true)"
+    fi
+    if [[ -z "$model" && -r /sys/firmware/devicetree/base/model ]]; then
+        model="$(tr -d '\0' </sys/firmware/devicetree/base/model 2>/dev/null || true)"
+    fi
+    [[ "$model" == *"Raspberry Pi"* ]]
+}
+
 # Release archives label arm64 as `aarch64` on macOS and `arm64` on Linux.
+# On a Raspberry Pi the ARMv8.0-baseline `armv8` asset is preferred.
 install_release_arch() {
-    local platform="$1" arch="$2"
+    local platform="$1" arch="$2" rpi="$3"
     if [[ "$platform" == "macos" && "$arch" == "arm64" ]]; then
         echo "aarch64"
+    elif [[ "$platform" == "linux" && "$arch" == "arm64" && "$rpi" == "1" ]]; then
+        echo "armv8"
     else
         echo "$arch"
     fi
@@ -272,7 +294,12 @@ install_run() {
     local platform arch release_arch archive_name archive_url checksum_url version_tag version_num
     platform="$(install_detect_platform)"
     arch="$(install_detect_arch)"
-    release_arch="$(install_release_arch "$platform" "$arch")"
+    local rpi=0
+    if [[ "$platform" == "linux" && "$arch" == "arm64" ]] && install_is_raspberry_pi; then
+        rpi=1
+        install_info "Raspberry Pi detected -- using the ARMv8.0 (armv8) build"
+    fi
+    release_arch="$(install_release_arch "$platform" "$arch" "$rpi")"
     version_tag="$(install_resolve_version)"
     if [[ -z "${version_tag}" ]]; then
         install_die "Failed to resolve ${INSTALL_APP} version"
@@ -309,8 +336,20 @@ install_run() {
     trap "rm -rf -- '${tmpdir}'" EXIT
 
     install_step "Downloading ${archive_name}..."
-    curl -fL# "${archive_url}" -o "${tmpdir}/${archive_name}" ||
-        install_die "Download failed: ${archive_url}"
+    if ! curl -fL# "${archive_url}" -o "${tmpdir}/${archive_name}" 2>/dev/null; then
+        # Older releases shipped only elph-linux-arm64 (no armv8 asset); fall
+        # back to it so Pi users on a pinned old version can still install.
+        if [[ "$release_arch" == "armv8" ]]; then
+            local fallback_name="${INSTALL_APP}-${platform}-arm64.tar.gz"
+            install_warn "Asset ${archive_name} not found; falling back to ${fallback_name}"
+            archive_name="$fallback_name"
+            archive_url="https://github.com/${INSTALL_REPO_OWNER}/${INSTALL_REPO_NAME}/releases/download/${version_tag}/${archive_name}"
+            curl -fL# "${archive_url}" -o "${tmpdir}/${archive_name}" ||
+                install_die "Download failed: ${archive_url}"
+        else
+            install_die "Download failed: ${archive_url}"
+        fi
+    fi
     echo
 
     install_step "Downloading SHA256SUMS..."
