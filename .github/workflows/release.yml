@@ -176,9 +176,17 @@ jobs:
           if-no-files-found: error
 
   build-macos:
-    name: macos
+    name: macos (${{ matrix.arch }})
     needs: [version-gate, check-macos]
     if: needs.version-gate.outputs.should_continue == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: aarch64
+            target: aarch64-apple-darwin
+          - arch: x86_64
+            target: x86_64-apple-darwin
     runs-on: namespace-profile-macos-base-arm64
     timeout-minutes: 90
     steps:
@@ -193,17 +201,16 @@ jobs:
       - name: Setup Rust
         uses: ./.github/setup-rust
         with:
-          sharedKey: release-macos
+          sharedKey: release-macos-${{ matrix.arch }}
           cacheBackend: namespace
           installNextest: "false"
 
-      - name: Install x86_64-apple-darwin target
-        run: rustup target add x86_64-apple-darwin
+      - name: Install ${{ matrix.target }} target
+        run: rustup target add ${{ matrix.target }}
 
       - name: Build release
         run: |
-          cargo build --profile ${{ env.BUILD_PROFILE }} --bin ${{ inputs.app || 'elph' }} --target aarch64-apple-darwin
-          cargo build --profile ${{ env.BUILD_PROFILE }} --bin ${{ inputs.app || 'elph' }} --target x86_64-apple-darwin
+          cargo build --profile ${{ env.BUILD_PROFILE }} --bin ${{ inputs.app || 'elph' }} --target ${{ matrix.target }}
         env:
           APP: ${{ inputs.app || 'elph' }}
           RUSTC_WRAPPER: sccache
@@ -213,14 +220,10 @@ jobs:
         run: |
           set -euo pipefail
           app="${{ inputs.app || 'elph' }}"
-          declare -A arch_map=( [aarch64-apple-darwin]=aarch64 [x86_64-apple-darwin]=x86_64 )
+          label="${app}-macos-${{ matrix.arch }}"
           mkdir -p release/archives release/binaries
-          for target in aarch64-apple-darwin x86_64-apple-darwin; do
-            arch="${arch_map[$target]}"
-            label="${app}-macos-${arch}"
-            cp "target/${target}/${{ env.BUILD_PROFILE }}/${app}" "release/binaries/${label}"
-            tar -C "target/${target}/${{ env.BUILD_PROFILE }}" -czf "release/archives/${label}.tar.gz" "${app}"
-          done
+          cp "target/${{ matrix.target }}/${{ env.BUILD_PROFILE }}/${app}" "release/binaries/${label}"
+          tar -C "target/${{ matrix.target }}/${{ env.BUILD_PROFILE }}" -czf "release/archives/${label}.tar.gz" "${app}"
 
       - name: Show sccache stats
         if: always()
@@ -229,10 +232,10 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ inputs.app || 'elph' }}-macos
+          name: ${{ inputs.app || 'elph' }}-macos-${{ matrix.arch }}
           path: |
-            release/archives/${{ inputs.app || 'elph' }}-macos-*.tar.gz
-            release/binaries/${{ inputs.app || 'elph' }}-macos-*
+            release/archives/${{ inputs.app || 'elph' }}-macos-${{ matrix.arch }}.tar.gz
+            release/binaries/${{ inputs.app || 'elph' }}-macos-${{ matrix.arch }}
           if-no-files-found: error
 
   build-windows:
@@ -307,10 +310,16 @@ jobs:
           name: ${{ inputs.app || 'elph' }}-linux-arm64
           path: .
 
-      - name: Fetch macos
+      - name: Fetch macos (aarch64)
         uses: actions/download-artifact@v8
         with:
-          name: ${{ inputs.app || 'elph' }}-macos
+          name: ${{ inputs.app || 'elph' }}-macos-aarch64
+          path: .
+
+      - name: Fetch macos (x86_64)
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.app || 'elph' }}-macos-x86_64
           path: .
 
       - name: Fetch windows

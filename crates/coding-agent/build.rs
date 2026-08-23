@@ -15,6 +15,14 @@ use std::time::SystemTime;
 
 fn main() {
     println!("cargo::rerun-if-changed=build.rs");
+    // Re-run when the CI-provided SHA changes (e.g. between jobs), so the
+    // emitted BUILD_HASH is deterministic per commit and sccache can cache the
+    // final crate instead of recompiling it on every build.
+    println!("cargo::rerun-if-env-changed=BUILD_GIT_SHA");
+    // Track the git HEAD so local branch switches re-run the script.
+    if let Some(head) = git_head_path() {
+        println!("cargo::rerun-if-changed={}", head.display());
+    }
 
     let profile = env::var("PROFILE").unwrap_or_default();
     let target = env::var("TARGET").unwrap_or_default();
@@ -31,7 +39,7 @@ fn main() {
     let is_dist = profile == "dist" || (profile == "release" && opt_level == "3");
 
     let build_date = format_date(timestamp);
-    let build_hash = build_build_hash(git_sha.as_deref(), timestamp);
+    let build_hash = build_build_hash(git_sha.as_deref());
     let effective_profile = if is_dist { "dist" } else { &profile };
 
     println!("cargo::rustc-env=BUILD_PROFILE={effective_profile}");
@@ -102,12 +110,31 @@ fn is_leap(year: u64) -> bool {
     (year.is_multiple_of(4) && !year.is_multiple_of(100)) || year.is_multiple_of(400)
 }
 
-/// Produce a short, unique build hash from the git SHA and timestamp.
-/// Uses SHA-256 over `<sha>:<timestamp>` and returns the first 8 hex chars.
-fn build_build_hash(git_sha: Option<&str>, timestamp: u64) -> String {
-    let input = format!("{}:{}", git_sha.unwrap_or("nogit"), timestamp);
+/// Produce a short, deterministic build hash from the git SHA.
+/// Uses SHA-256 over the SHA and returns the first 8 hex chars. Deterministic
+/// per commit so rebuilds of the same commit (e.g. a workflow retry) hit the
+/// sccache entry for the final crate instead of recompiling it.
+fn build_build_hash(git_sha: Option<&str>) -> String {
+    let input = git_sha.unwrap_or("nogit");
     let hash = sha2::Sha256::digest(input.as_bytes());
     encode_hex(&hash[..4])
+}
+
+/// Path to the git HEAD file (`.git/HEAD` or a gitdir worktree), used to
+/// re-run this build script when the checked-out commit changes.
+fn git_head_path() -> Option<PathBuf> {
+    let manifest_dir = env::var_os("CARGO_MANIFEST_DIR")?;
+    let git_dir = PathBuf::from(&manifest_dir).join(".git");
+    if git_dir.is_file() {
+        // Worktree: `.git` is a file pointing to the real git dir.
+        let contents = std::fs::read_to_string(&git_dir).ok()?;
+        let path = contents.strip_prefix("gitdir:")?.trim();
+        return Some(PathBuf::from(path).join("HEAD"));
+    }
+    if git_dir.is_dir() {
+        return Some(git_dir.join("HEAD"));
+    }
+    None
 }
 
 fn encode_hex(bytes: &[u8]) -> String {

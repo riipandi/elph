@@ -166,7 +166,6 @@ panic = "abort"
 strip = "symbols"
 debug = false
 
-# Shipping binaries only (`make install PROFILE=dist` / `-- --dist`).
 [profile.dist]
 inherits = "release"
 opt-level = 3
@@ -176,22 +175,6 @@ codegen-units = 1
 [profile.dev]
 incremental = true
 debug = "line-tables-only"
-
-# CI check / clippy / nextest / debug build (`CI=1 make …`).
-# Compile-fast, no debuginfo, no incremental (sccache is the cache).
-# Do not inherit this into `dist`.
-[profile.ci]
-inherits = "dev"
-incremental = false
-debug = false
-opt-level = 0
-codegen-units = 256
-lto = false
-strip = "none"
-
-[profile.ci.build-override]
-opt-level = 0
-codegen-units = 256
 
 [patch.crates-io]
 # Bracketed multiline paste (`TerminalEvent::Paste`) — not in iocraft 0.8.4 on crates.io.

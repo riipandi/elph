@@ -64,8 +64,8 @@ $(foreach a,$(_RESIDUAL_),$(eval .PHONY: $a))
 $(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
 
 # Forwarded cargo args after `--`: drop Make-level profile flags (--debug/--release/
-# --dist/--ci) so they don't leak to cargo; keep -p/--features/--all-targets etc.
-_FWD_ARGS  := $(filter-out --debug --release --dist --ci,$(_RESIDUAL_)) $(ARGS)
+# --dist) so they don't leak to cargo; keep -p/--features/--all-targets etc.
+_FWD_ARGS  := $(filter-out --debug --release --dist,$(_RESIDUAL_)) $(ARGS)
 # Default to building the elph binary unless the caller selected a package/bin.
 _BUILD_BIN := $(if $(filter -p --bin --lib --all-targets --examples --tests --benches --bins,$(_RESIDUAL_)),,--bin $(APP_BIN))
 
@@ -79,11 +79,11 @@ endef
 #   make build -- --features metal --debug
 #   make build -- --features metal --release
 #   make build -- --features metal --dist
-#   make build -- --features metal --ci
 # Same flags work on `make install`.
-# Env still works: RELEASE=1, CI=1, PROFILE=debug|release|dist|ci
+# Env still works: RELEASE=1, PROFILE=debug|release|dist
+# Note: CI=1 no longer selects a special profile — CI builds use debug.
 # Note: `make install --release` is rejected by GNU make. Use `-- --release`.
-_PROFILE_FLAGS := $(filter --debug --release --dist --ci,$(MAKECMDGOALS) $(_RESIDUAL_))
+_PROFILE_FLAGS := $(filter --debug --release --dist,$(MAKECMDGOALS) $(_RESIDUAL_))
 _PROFILE_FLAG  := $(lastword $(_PROFILE_FLAGS))
 
 # Explicit `--features <name>` residual overrides the auto-detected default.
@@ -96,22 +96,16 @@ ifeq ($(_PROFILE_FLAG),--dist)
   BUILD_PROFILE := dist
 else ifeq ($(_PROFILE_FLAG),--release)
   BUILD_PROFILE := release
-else ifeq ($(_PROFILE_FLAG),--ci)
-  BUILD_PROFILE := ci
 else ifeq ($(_PROFILE_FLAG),--debug)
   BUILD_PROFILE := debug
 else ifneq ($(filter dist,$(PROFILE)),)
   BUILD_PROFILE := dist
 else ifneq ($(filter release,$(PROFILE)),)
   BUILD_PROFILE := release
-else ifneq ($(filter ci,$(PROFILE)),)
-  BUILD_PROFILE := ci
 else ifneq ($(filter debug,$(PROFILE)),)
   BUILD_PROFILE := debug
 else ifneq ($(filter 1 true yes,$(RELEASE)),)
   BUILD_PROFILE := release
-else ifneq ($(filter 1 true yes,$(CI)),)
-  BUILD_PROFILE := ci
 else
   BUILD_PROFILE := debug
 endif
@@ -120,8 +114,6 @@ ifeq ($(BUILD_PROFILE),dist)
   CARGO_BUILD_FLAGS := --profile dist
 else ifeq ($(BUILD_PROFILE),release)
   CARGO_BUILD_FLAGS := --release
-else ifeq ($(BUILD_PROFILE),ci)
-  CARGO_BUILD_FLAGS := --profile ci
 else
   CARGO_BUILD_FLAGS :=
 endif
@@ -130,10 +122,6 @@ BUILD_DIR := ./target/$(BUILD_PROFILE)
 # Shared by check / clippy / nextest so they reuse target/$(BUILD_PROFILE).
 CARGO_QA_FLAGS :=
 NEXTEST_CARGO_FLAGS :=
-ifeq ($(BUILD_PROFILE),ci)
-  CARGO_QA_FLAGS := --profile ci
-  NEXTEST_CARGO_FLAGS := --cargo-profile ci
-endif
 
 .PHONY: build install run watch test check generate-models prepare
 .PHONY: lint fmt clean coverage help stats
@@ -145,7 +133,7 @@ check: ## Check code compiles (fast, no codegen); pass -p <pkg> for a subset
 	@$(CARGO) check --workspace $(CARGO_QA_FLAGS) $(_FWD_ARGS) 2>&1
 # 	@$(CARGO) bloat --release -n 50
 
-build: ## Build elph binary (debug default; pass -- --debug|--release|--dist|--ci, --features, or -p)
+build: ## Build elph binary (debug default; pass -- --debug|--release|--dist, --features, or -p)
 	@_rustc_display=$$(if [ -n "$$RUSTC_WRAPPER" ]; then echo "$$RUSTC_WRAPPER"; else echo "rustc"; fi); \
 	echo "Building $(APP_BIN) v$(ELPH_VERSION) ($(BUILD_HASH)) [$$_rustc_display] ($(BUILD_PROFILE))"
 	@_start=$$(python3 -c "import time; print(int(time.time()*1000))"); \
@@ -169,13 +157,12 @@ build: ## Build elph binary (debug default; pass -- --debug|--release|--dist|--c
 	done; \
 	printf "Build time:  %d.%03ds\n" $$(( _elapsed / 1000 )) $$(( _elapsed % 1000 ))
 
-install: build ## Install elph (debug -> elph-debug; ci -> elph-ci; release -> elph-canary; dist -> elph)
+install: build ## Install elph (debug -> elph-debug; release -> elph-canary; dist -> elph)
 	@mkdir -p $(INSTALL_DIR) && echo
 	@for bin in $(APP_BINS); do \
 	  case "$(BUILD_PROFILE)" in \
 	    dist) _suffix="" ;; \
 	    release) _suffix="-canary" ;; \
-	    ci) _suffix="-ci" ;; \
 	    *) _suffix="-debug" ;; \
 	  esac; \
 	  rm -f "$(INSTALL_DIR)/$$bin$${_suffix}"; \
@@ -194,7 +181,7 @@ run: ## Run elph coding agent
 watch: ## Run elph with hot reload (requires watchexec)
 	@-$(CARGO) watch -c -- cargo run --bin $(APP_BIN) $(or $(_RESIDUAL_),$(ARGS)) 2>&1
 
-test: ## Run tests (workspace; pass -p <pkg>, --features, -- --debug|--release|--dist|--ci)
+test: ## Run tests (workspace; pass -p <pkg>, --features, -- --debug|--release|--dist)
 	@$(CARGO) nextest run --no-fail-fast $(NEXTEST_CARGO_FLAGS) $(_FWD_ARGS) $(SHARD)
 
 generate-models: ## Regenerate elph-ai model catalogs (pi packages/ai; ARGS=--skip-scripts)
@@ -404,9 +391,7 @@ help: ## Show this help
 	@printf ' \033[36mmake build -- --features metal --debug\033[0m\n'
 	@printf ' \033[36mmake build -- --features metal --release\033[0m\n'
 	@printf ' \033[36mmake build -- --features metal --dist\033[0m\n'
-	@printf ' \033[36mmake build -- --features metal --ci\033[0m\n'
 	@printf ' \033[36mmake install -- --features metal --debug\033[0m    -> elph-debug\n'
 	@printf ' \033[36mmake install -- --features metal --release\033[0m  -> elph-canary\n'
 	@printf ' \033[36mmake install -- --features metal --dist\033[0m     -> elph\n'
-	@printf ' \033[36mmake install -- --features metal --ci\033[0m       -> elph-ci\n'
 	@printf '\033[33mNote: \033[36mmake install --release\033[0m is invalid (make option parse)\n'
