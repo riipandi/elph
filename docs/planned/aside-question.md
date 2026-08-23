@@ -33,7 +33,7 @@ Reference (Grok Build):
 | Context         | Full harness snapshot: system prompt + messages (+ optional streaming assistant truncated); **strip unpaired tool_calls** if mid-turn    |
 | Session storage | **Do not** `append_message` / persist branch entries for aside Q or A                                                                    |
 | Main turn       | Uninterrupted                                                                                                                            |
-| UI              | Panel above prompt: spinner → answer (markdown) / error; **Esc** dismisses                                                               |
+| UI              | Inline panel between the tips/help line and the status footer: spinner → answer (markdown) / error; **Esc** dismisses. While open, the prompt editor is hidden and the help line moves above the panel. |
 | After dismiss   | Optional sticky transcript meta card `/aside …` (collapsed), not a user/assistant chat pair                                              |
 | Concurrent      | One active aside panel; a second `/aside` replaces/cancels prior in-flight request (request-id correlation like Grok minimal_request_id) |
 
@@ -114,7 +114,7 @@ Grok parity target (iocraft, not ratatui):
 | ------------- | ------------------------------------------------------------------------------------------------------------ |
 | State enum    | `tui/aside_panel.rs`: `Loading { question }`, `Done { question, text, scroll }`, `Error { question, error }` |
 | Shell state   | `pending_aside: Option<AsidePanelState>` + `aside_request_id` + focus flag                                   |
-| Layout        | Reserve height above prompt (like status/queue), `DONE_MAX_BODY_LINES` ~12, Esc hint in chrome               |
+| Layout        | Panel sits between the tips/help line (above) and the status footer (below); `DONE_MAX_BODY_LINES` ~12, Esc hint in chrome. Prompt editor is suppressed while the panel is open. |
 | Events        | Esc dismisses; ↑↓ scroll when Done + focused; click Esc hit optional                                         |
 | Render answer | Prefer plain wrapped text first; markdown via existing transcript markdown path or `rendown` if cheap        |
 
