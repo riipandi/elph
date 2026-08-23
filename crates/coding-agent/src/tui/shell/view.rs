@@ -848,9 +848,14 @@ pub(crate) fn build_shell_view(
     // Hide the prompt editor whenever a bottom-band overlay owns that band — the
     // `/aside` panel or any StatusZone dialog (tool approval, mode change, plan,
     // memory flush, feedback, provider auth/disconnect, mcp auth, prompt queue) —
-    // so its `❯` box doesn't sit underneath the dialog. Computed as a `bool` here
-    // because `status_dialog` is moved into `StatusZone` later.
-    let editor_hidden = aside_open || status_dialog.is_some();
+    // so its `❯` box doesn't sit underneath the dialog. The prompt-queue dialog is
+    // rendered above StatusRow and the editor stays visible beneath it, so it is
+    // excluded. Computed as a `bool` here because `status_dialog` is moved into
+    // `StatusZone` later.
+    let editor_hidden = aside_open
+        || status_dialog
+            .as_ref()
+            .is_some_and(|d| !matches!(d, StatusDialogKind::PromptQueue { .. }));
 
     // `/aside` re-homes the tips row above the panel; StatusZone suppresses its own
     // StatusRow while the panel is open so the tip only appears once.
