@@ -115,6 +115,8 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
         system_prompt_override: options.system_prompt_override,
         preloaded_resources: None,
         defer_mcp_load: false,
+        defer_session_gc: false,
+        defer_memory_warm: false,
         headless: true,
         extension_host: None,
     };

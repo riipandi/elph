@@ -347,6 +347,11 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
         system_prompt_override: None,
         preloaded_resources: Some(config.preloaded_resources.clone()),
         defer_mcp_load: true,
+        // TUI fast path: `AgentReady` must not wait for retention GC or the memory
+        // store warm-up. GC runs detached (shares the open DB handle, resume id is
+        // protected); the first turn's recall warms the memory store.
+        defer_session_gc: true,
+        defer_memory_warm: true,
         headless: false,
         extension_host: Some(&config.extension_host),
     })

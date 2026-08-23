@@ -49,6 +49,13 @@ pub struct CreateSessionOptions<'a> {
     pub preloaded_resources: Option<LoadResourcesResult>,
     /// When true, MCP discovery is skipped; use [`super::mcp_bootstrap`] to load later.
     pub defer_mcp_load: bool,
+    /// When true, session retention GC runs in the background instead of blocking
+    /// session creation (TUI fast path — `AgentReady` must not wait for GC).
+    pub defer_session_gc: bool,
+    /// When true, the memory store warm-up (embedder/store init) is skipped during
+    /// session creation; the static bootstrap hint is still injected. The first
+    /// turn's recall warms the store anyway.
+    pub defer_memory_warm: bool,
     /// Whether the session runs in headless mode (`elph run`). Relaxes some tool
     /// defaults (e.g. no background-task timeout by default).
     pub headless: bool,
@@ -77,24 +84,31 @@ pub async fn create_coding_session_with_events(
             protect_latest_per_cwd: r.protect_latest_per_cwd,
             protect_session_id: options.resume_id.map(|s| s.to_string()),
         };
-        match elph_agent::session::run_full_session_gc(
-            Arc::clone(&database),
-            options.paths.memory_db_path(),
-            Some(options.paths.data_dir().join("sessions")),
-            policy,
-            false,
-        )
-        .await
-        {
-            Ok(report) if !report.deleted_ids.is_empty() => {
-                log::info!(
-                    "session GC removed {} session(s) (examined {})",
-                    report.deleted_ids.len(),
-                    report.examined
-                );
+        let database_for_gc = Arc::clone(&database);
+        let db_path = options.paths.memory_db_path();
+        let sessions_root = options.paths.data_dir().join("sessions");
+        let run_gc = async move {
+            match elph_agent::session::run_full_session_gc(database_for_gc, db_path, Some(sessions_root), policy, false)
+                .await
+            {
+                Ok(report) if !report.deleted_ids.is_empty() => {
+                    log::info!(
+                        "session GC removed {} session(s) (examined {})",
+                        report.deleted_ids.len(),
+                        report.examined
+                    );
+                }
+                Ok(_) => {}
+                Err(err) => log::warn!("session GC failed: {err:#}"),
             }
-            Ok(_) => {}
-            Err(err) => log::warn!("session GC failed: {err:#}"),
+        };
+        if options.defer_session_gc {
+            // TUI fast path: `AgentReady` must not wait for retention GC. Run it
+            // detached; it shares the open DB handle and never touches the session
+            // being created (the resume id is protected by the policy).
+            tokio::spawn(run_gc);
+        } else {
+            run_gc.await;
         }
     }
 
@@ -362,7 +376,11 @@ pub async fn create_coding_session_with_events(
 
     // Build memory context from top-weighted memories for the system prompt.
     // Lock errors are handled internally (logged + empty context returned).
-    let ctx = crate::memory::hooks::build_memories_context(memory_runtime.as_ref())
+    // The bootstrap context is a static turn-only hint (no real recall). The store
+    // warm-up is deferred for the TUI fast path — `AgentReady` must not wait for
+    // the embedder/store init; the first turn's `before_agent_start` recall warms
+    // the store anyway. The hint itself is still injected (cheap, static).
+    let ctx = crate::memory::hooks::build_memories_context(memory_runtime.as_ref(), !options.defer_memory_warm)
         .await
         .unwrap_or_default();
     let injected_memory = if ctx.is_empty() { None } else { Some(ctx) };
