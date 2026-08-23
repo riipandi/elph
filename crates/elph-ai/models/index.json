@@ -47,7 +47,7 @@
     {
         "providerId": "deepseek",
         "rustMod": "deepseek",
-        "count": 4
+        "count": 5
     },
     {
         "providerId": "fireworks",
@@ -67,7 +67,7 @@
     {
         "providerId": "google-vertex",
         "rustMod": "google_vertex",
-        "count": 42
+        "count": 43
     },
     {
         "providerId": "groq",
@@ -82,7 +82,7 @@
     {
         "providerId": "huggingface",
         "rustMod": "huggingface",
-        "count": 133
+        "count": 129
     },
     {
         "providerId": "hyper",
@@ -92,12 +92,12 @@
     {
         "providerId": "infron",
         "rustMod": "infron",
-        "count": 283
+        "count": 284
     },
     {
         "providerId": "kilo",
         "rustMod": "kilo",
-        "count": 365
+        "count": 369
     },
     {
         "providerId": "kimi-coding",
@@ -132,7 +132,7 @@
     {
         "providerId": "nara-router",
         "rustMod": "nara_router",
-        "count": 50
+        "count": 51
     },
     {
         "providerId": "neuralwatt",
@@ -142,7 +142,7 @@
     {
         "providerId": "nvidia",
         "rustMod": "nvidia",
-        "count": 100
+        "count": 102
     },
     {
         "providerId": "ollama-cloud",
@@ -167,7 +167,7 @@
     {
         "providerId": "opencode-go",
         "rustMod": "opencode_go",
-        "count": 28
+        "count": 29
     },
     {
         "providerId": "opengateway",
@@ -177,7 +177,7 @@
     {
         "providerId": "openrouter",
         "rustMod": "openrouter",
-        "count": 420
+        "count": 422
     },
     {
         "providerId": "qwen-token-plan",

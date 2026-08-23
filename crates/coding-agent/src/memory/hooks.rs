@@ -258,8 +258,13 @@ pub async fn register_automatic_memory_hooks(
 }
 
 /// Session-start memory note (turn-only recall carries the real payload).
-pub async fn build_memories_context(runtime: &MemoryRuntime) -> Result<String> {
-    runtime.build_bootstrap_context().await
+///
+/// `warm_store` controls whether the embed-capable store is opened/initialized now
+/// (embedder + model weights). The returned hint is static and does not need the
+/// store, so callers on the TUI fast path may pass `false` to defer the warm-up to
+/// the first turn's recall.
+pub async fn build_memories_context(runtime: &MemoryRuntime, warm_store: bool) -> Result<String> {
+    runtime.build_bootstrap_context(warm_store).await
 }
 
 /// Best-effort end-of-session maintenance (embed pending + decay).

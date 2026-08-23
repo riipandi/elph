@@ -93,6 +93,35 @@
             "xhigh": null
         }
     },
+    "deepseek-v4-flash-vision-exp": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.deepseek.com",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0028,
+            "cacheWrite": 0.0,
+            "input": 0.14,
+            "output": 0.28
+        },
+        "description": "Experimental multimodal DeepSeek V4 Flash model for image understanding, coding, and agentic work",
+        "id": "deepseek-v4-flash-vision-exp",
+        "input": ["text", "image"],
+        "knowledgeCutoff": "",
+        "maxTokens": 384000,
+        "name": "DeepSeek V4 Flash Vision Exp",
+        "provider": "deepseek",
+        "reasoning": true,
+        "releaseDate": "2026-08-21",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "deepseek-v4-pro": {
         "api": "openai-completions",
         "baseUrl": "https://api.deepseek.com",

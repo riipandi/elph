@@ -18,7 +18,6 @@ Override with `ELPH_HOME` (config) and `ELPH_DATA_DIR` (data).
 │   ├── user-guide/          # Built-in docs (embedded from repo assets/user-guide)
 │   │   ├── README.md
 │   │   └── 01-….md …
-│   ├── personas/
 │   └── manifest.json        # Version + checksums for newly written bundled files
 ├── extensions/              # Global WASM extension bundles (placeholder / installed)
 │   └── <name>/

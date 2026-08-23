@@ -927,7 +927,7 @@
     "deepseek/deepseek-chat-v3.1": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 163840,
+        "contextWindow": 161000,
         "cost": {
             "cacheRead": 0.135,
             "cacheWrite": 0.25,
@@ -937,7 +937,7 @@
         "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek/deepseek-chat-v3.1",
         "input": ["text"],
-        "maxTokens": 32768,
+        "maxTokens": 161000,
         "name": "DeepSeek: DeepSeek V3.1",
         "provider": "infron",
         "reasoning": true,
@@ -1152,8 +1152,8 @@
         "cost": {
             "cacheRead": 0.016,
             "cacheWrite": 0.0,
-            "input": 0.1696,
-            "output": 0.5088
+            "input": 0.1272,
+            "output": 0.3816
         },
         "description": "Fast DeepSeek model for efficient chat, coding help, and agent loops",
         "id": "deepseek/deepseek-v4-flash-0731",
@@ -1177,28 +1177,29 @@
     "deepseek/deepseek-v4-flash-vision-exp": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.007,
-            "cacheWrite": 0.0,
+            "cacheRead": 0.0135,
+            "cacheWrite": 0.405,
             "input": 0.44,
             "output": 1.32
         },
-        "description": "DeepSeek V4 Flash Vision Exp is an experimental vision-enabled version of [DeepSeek V4 Flash 0731](https://openrouter.ai/deepseek/deepseek-v4-flash-0731) from DeepSeek, adding image understanding while matching the base model on text capabilities including agents,...",
+        "description": "Experimental multimodal DeepSeek V4 Flash model for image understanding, coding, and agentic work",
         "id": "deepseek/deepseek-v4-flash-vision-exp",
         "input": ["text", "image"],
         "maxTokens": 384000,
-        "name": "DeepSeek: DeepSeek V4 Flash Vision Exp",
+        "name": "DeepSeek V4 Flash Vision Exp",
         "provider": "infron",
         "reasoning": true,
+        "releaseDate": "2026-08-21",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": "off",
-            "xhigh": null
+            "off": null,
+            "xhigh": "xhigh"
         }
     },
     "deepseek/deepseek-v4-flash:free": {
@@ -1264,8 +1265,8 @@
         "cost": {
             "cacheRead": 0.044,
             "cacheWrite": 0.0,
-            "input": 0.5088,
-            "output": 1.5264
+            "input": 0.3816,
+            "output": 1.1448
         },
         "description": "DeepSeek V4 Pro snapshot with million-token context and support for thinking and non-thinking modes",
         "id": "deepseek/deepseek-v4-pro-0813",
@@ -1854,8 +1855,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.04,
-            "output": 0.13
+            "input": 0.05,
+            "output": 0.15
         },
         "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-3-12b-it",
@@ -3131,8 +3132,8 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 0.0,
-            "input": 3.0,
-            "output": 15.0
+            "input": 1.4135,
+            "output": 7.0665
         },
         "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
         "id": "moonshotai/kimi-k3",
@@ -5048,7 +5049,7 @@
     "qwen/qwen3-30b-a3b": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 131072,
+        "contextWindow": 40960,
         "cost": {
             "cacheRead": 0.05,
             "cacheWrite": 0.0,
@@ -5058,7 +5059,7 @@
         "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "qwen/qwen3-30b-a3b",
         "input": ["text"],
-        "maxTokens": 8192,
+        "maxTokens": 16384,
         "name": "Qwen3 30B A3B",
         "provider": "infron",
         "reasoning": true,
@@ -5597,7 +5598,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-122b-a10b",
         "input": ["text", "image", "video"],
-        "maxTokens": 65536,
+        "maxTokens": 262144,
         "name": "Qwen3.5 122B-A10B",
         "provider": "infron",
         "reasoning": true,
@@ -6426,8 +6427,8 @@
         "cost": {
             "cacheRead": 0.1,
             "cacheWrite": 0.625,
-            "input": 0.4,
-            "output": 3.0
+            "input": 0.212,
+            "output": 0.848
         },
         "description": "Dense 27B vision-language model for coding, agent tasks, and image and video understanding",
         "id": "qwen/qwen3.8-27b",
@@ -6438,6 +6439,32 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "qwen/qwen3.8-27b:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://llm.onerouter.pro/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "qwen/qwen3.8-27b:free",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "qwen/qwen3.8-27b:free",
+        "provider": "infron",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",

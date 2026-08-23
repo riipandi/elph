@@ -956,10 +956,10 @@
         },
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.5,
-            "cacheWrite": 6.25,
-            "input": 5.0,
-            "output": 30.0
+            "cacheRead": 0.25,
+            "cacheWrite": 3.125,
+            "input": 2.5,
+            "output": 15.0
         },
         "description": "Frontier GPT-5.6 model for complex professional work, coding, and agentic workflows",
         "headers": {

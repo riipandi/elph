@@ -582,7 +582,7 @@
         "id": "deepseek/deepseek-v3.2",
         "input": ["text"],
         "knowledgeCutoff": "2024-07",
-        "maxTokens": 65536,
+        "maxTokens": 163840,
         "name": "DeepSeek V3.2",
         "provider": "tokenrouter",
         "reasoning": true,
@@ -658,28 +658,29 @@
     "deepseek/deepseek-v4-flash-vision-exp": {
         "api": "openai-completions",
         "baseUrl": "https://api.tokenrouter.com/v1",
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.007,
-            "cacheWrite": 0.0,
-            "input": 0.22,
-            "output": 0.66
+            "cacheRead": 0.0135,
+            "cacheWrite": 0.405,
+            "input": 0.405,
+            "output": 1.215
         },
-        "description": "DeepSeek V4 Flash Vision Exp is an experimental vision-enabled version of [DeepSeek V4 Flash 0731](https://openrouter.ai/deepseek/deepseek-v4-flash-0731) from DeepSeek, adding image understanding while matching the base model on text capabilities including agents,...",
+        "description": "Experimental multimodal DeepSeek V4 Flash model for image understanding, coding, and agentic work",
         "id": "deepseek/deepseek-v4-flash-vision-exp",
         "input": ["text", "image"],
         "maxTokens": 384000,
-        "name": "DeepSeek: DeepSeek V4 Flash Vision Exp",
+        "name": "DeepSeek V4 Flash Vision Exp",
         "provider": "tokenrouter",
         "reasoning": true,
+        "releaseDate": "2026-08-21",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": "off",
-            "xhigh": null
+            "off": null,
+            "xhigh": "xhigh"
         }
     },
     "deepseek/deepseek-v4-pro": {
@@ -689,8 +690,8 @@
         "cost": {
             "cacheRead": 0.135,
             "cacheWrite": 0.47,
-            "input": 0.435,
-            "output": 0.87
+            "input": 1.32,
+            "output": 3.96
         },
         "description": "Open MoE flagship with million-token context for coding and long agent runs",
         "id": "deepseek/deepseek-v4-pro",
@@ -1118,8 +1119,8 @@
         "cost": {
             "cacheRead": 0.015,
             "cacheWrite": 0.0,
-            "input": 0.05,
-            "output": 0.25
+            "input": 0.042,
+            "output": 0.22
         },
         "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-4-26b-a4b-it",
@@ -2397,7 +2398,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-122b-a10b",
         "input": ["text", "image", "video"],
-        "maxTokens": 65536,
+        "maxTokens": 262144,
         "name": "Qwen3.5 122B-A10B",
         "provider": "tokenrouter",
         "reasoning": true,

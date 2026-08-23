@@ -17,20 +17,25 @@ See [GitHub Releases](https://github.com/riipandi/elph/releases).
 
 - Linux / macOS:
 
-  ```sh
-  curl -fsSL https://elph.space/install.sh | bash
-  ```
+    ```sh
+    curl -fsSL https://elph.space/install.sh | bash
+    ```
 
 - Windows (x86_64):
 
-  ```powershell
-  powershell -ExecutionPolicy Bypass -c "irm https://elph.space/install.ps1 | iex"
-  ```
+    ```powershell
+    powershell -ExecutionPolicy Bypass -c "irm https://elph.space/install.ps1 | iex"
+    ```
 
-Pin a version or install the latest pre-release (Linux / macOS):
+Pin a version (Linux / macOS):
 
 ```sh
 curl -fsSL https://elph.space/install.sh | bash -s -- --version 0.0.26
+```
+
+Install the latest pre-release (Linux / macOS):
+
+```sh
 curl -fsSL https://elph.space/install.sh | bash -s -- --canary
 ```
 

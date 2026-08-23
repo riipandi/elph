@@ -1185,10 +1185,10 @@
         "baseUrl": "https://opencode.ai/zen/v1",
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.25,
-            "cacheWrite": 3.125,
-            "input": 2.5,
-            "output": 15.0
+            "cacheRead": 0.2,
+            "cacheWrite": 2.5,
+            "input": 2.0,
+            "output": 10.0
         },
         "description": "Frontier GPT-5.6 model for complex professional work, coding, and agentic workflows",
         "id": "gpt-5.6-sol",

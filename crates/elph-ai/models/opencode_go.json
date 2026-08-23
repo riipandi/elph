@@ -34,6 +34,33 @@
             "xhigh": null
         }
     },
+    "deepseek-v4-flash-vision-exp": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/go/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.007,
+            "cacheWrite": 0.0,
+            "input": 0.22,
+            "output": 0.66
+        },
+        "description": "Experimental multimodal DeepSeek V4 Flash model for image understanding, coding, and agentic work",
+        "id": "deepseek-v4-flash-vision-exp",
+        "input": ["text", "image"],
+        "maxTokens": 384000,
+        "name": "DeepSeek V4 Flash Vision Exp",
+        "provider": "opencode-go",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "deepseek-v4-pro": {
         "api": "openai-completions",
         "baseUrl": "https://opencode.ai/zen/go/v1",

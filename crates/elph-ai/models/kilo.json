@@ -1414,38 +1414,6 @@
             "xhigh": null
         }
     },
-    "deepcogito/cogito-v2.1-671b": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.kilo.ai/api/gateway",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 1.25,
-            "output": 1.25
-        },
-        "description": "Reasoning model for deliberate analysis, multi-step problem solving, and tool use",
-        "id": "deepcogito/cogito-v2.1-671b",
-        "input": ["text"],
-        "maxTokens": 32768,
-        "name": "Deep Cogito: Cogito v2.1 671B",
-        "provider": "kilo",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": "off",
-            "xhigh": null
-        }
-    },
     "deepseek/deepseek-chat": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
@@ -1520,7 +1488,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 163840,
+        "contextWindow": 161000,
         "cost": {
             "cacheRead": 0.135,
             "cacheWrite": 0.0,
@@ -1530,7 +1498,7 @@
         "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek/deepseek-chat-v3.1",
         "input": ["text"],
-        "maxTokens": 32768,
+        "maxTokens": 161000,
         "name": "DeepSeek: DeepSeek V3.1",
         "provider": "kilo",
         "reasoning": true,
@@ -1693,7 +1661,7 @@
         "id": "deepseek/deepseek-v3.2",
         "input": ["text"],
         "knowledgeCutoff": "2024-07",
-        "maxTokens": 65536,
+        "maxTokens": 163840,
         "name": "DeepSeek V3.2",
         "provider": "kilo",
         "reasoning": true,
@@ -1781,8 +1749,8 @@
         "cost": {
             "cacheRead": 0.028,
             "cacheWrite": 0.0,
-            "input": 0.14,
-            "output": 0.28
+            "input": 0.44,
+            "output": 1.32
         },
         "description": "DeepSeek V4 Flash 0731 is a sparse mixture-of-experts model from DeepSeek, with 13B active parameters out of 284B total. This re-post-trained revision is suited for coding, reasoning, and agent workflows.",
         "id": "deepseek/deepseek-v4-flash-0731",
@@ -1817,9 +1785,10 @@
         "id": "deepseek/deepseek-v4-flash-vision-exp",
         "input": ["text", "image"],
         "maxTokens": 384000,
-        "name": "DeepSeek: DeepSeek V4 Flash Vision Exp",
+        "name": "DeepSeek V4 Flash Vision Exp",
         "provider": "kilo",
         "reasoning": true,
+        "releaseDate": "2026-08-21",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -1838,7 +1807,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 1048576,
+        "contextWindow": 1024000,
         "cost": {
             "cacheRead": 0.135,
             "cacheWrite": 0.0,
@@ -1849,7 +1818,7 @@
         "id": "deepseek/deepseek-v4-pro",
         "input": ["text"],
         "knowledgeCutoff": "2025-05",
-        "maxTokens": 393216,
+        "maxTokens": 384000,
         "name": "DeepSeek V4 Pro",
         "provider": "kilo",
         "reasoning": true,
@@ -2762,8 +2731,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.049999999999999996,
-            "output": 0.25
+            "input": 0.041999999999999996,
+            "output": 0.22
         },
         "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-4-26b-a4b-it",
@@ -3481,6 +3450,33 @@
             "xhigh": null
         }
     },
+    "meituan/longcat-2.0-free": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.kilo.ai/api/gateway",
+        "contextWindow": 1048756,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "description": "LongCat 2.0 is a sparse mixture-of-experts language model from Meituan, with 48B active parameters out of 1.6T total. It is suited for coding, repository-level changes, long-horizon problem solving, and agentic workflows. Available free in Kilo for a limited time.",
+        "id": "meituan/longcat-2.0-free",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "Meituan: LongCat 2.0 (free)",
+        "provider": "kilo",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
     "meta-llama/llama-3.1-70b-instruct": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
@@ -3827,6 +3823,33 @@
             "xhigh": "xhigh"
         }
     },
+    "meta/muse-spark-1.2-contributor": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.kilo.ai/api/gateway",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.002,
+            "cacheWrite": 0.0,
+            "input": 0.09999999999999999,
+            "output": 0.19999999999999998
+        },
+        "description": "Muse Spark 1.2 contributor tier is a reasoning model from Meta designed for developers who want to start building at an even lower cost. It’s meaningfully cheaper than Muse Spark...",
+        "id": "meta/muse-spark-1.2-contributor",
+        "input": ["text", "image", "video", "pdf", "audio"],
+        "maxTokens": 1048576,
+        "name": "Meta: Muse Spark 1.2 Contributor",
+        "provider": "kilo",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
     "microsoft/phi-4": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
@@ -4059,7 +4082,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 198000,
+        "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.03,
             "cacheWrite": 0.0,
@@ -4069,7 +4092,7 @@
         "description": "MiniMax model for chat, coding, office work, and agentic tasks",
         "id": "minimax/minimax-m2.5",
         "input": ["text"],
-        "maxTokens": 32768,
+        "maxTokens": 128000,
         "name": "MiniMax-M2.5",
         "provider": "kilo",
         "reasoning": true,
@@ -4091,7 +4114,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 204800,
+        "contextWindow": 196608,
         "cost": {
             "cacheRead": 0.06,
             "cacheWrite": 0.0,
@@ -4662,12 +4685,12 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 256000,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.03,
             "cacheWrite": 0.0,
-            "input": 0.09375,
-            "output": 0.25
+            "input": 0.075,
+            "output": 0.19999999999999998
         },
         "description": "Efficient Mistral model for fast chat, extraction, and production assistants",
         "id": "mistralai/mistral-small-3.2-24b-instruct",
@@ -6871,10 +6894,10 @@
         },
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.5,
-            "cacheWrite": 6.25,
-            "input": 5.0,
-            "output": 30.0
+            "cacheRead": 0.39999999999999997,
+            "cacheWrite": 5.0,
+            "input": 4.0,
+            "output": 20.0
         },
         "description": "GPT-5.6 Sol is the flagship model in OpenAI's GPT-5.6 series. It is suited for complex reasoning, coding, and agentic workflows, and is particularly strong at command-line and multi-step coding tasks...",
         "id": "openai/gpt-5.6-sol",
@@ -6932,10 +6955,10 @@
         },
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.5,
-            "cacheWrite": 6.25,
-            "input": 5.0,
-            "output": 30.0
+            "cacheRead": 0.39999999999999997,
+            "cacheWrite": 5.0,
+            "input": 4.0,
+            "output": 20.0
         },
         "description": "GPT-5.6 Sol Pro is the same underlying model as [GPT-5.6 Sol](https://openrouter.ai/openai/gpt-5.6-sol), served with `reasoning.mode` set to `pro` for higher-quality responses on complex tasks. Learn more in OpenAI's docs: https://developers.openai.com/api/docs/guides/reasoning#reasoning-mode",
         "id": "openai/gpt-5.6-sol-pro",
@@ -8363,7 +8386,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 131072,
+        "contextWindow": 40960,
         "cost": {
             "cacheRead": 0.03,
             "cacheWrite": 0.0,
@@ -8373,7 +8396,7 @@
         "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "qwen/qwen3-30b-a3b",
         "input": ["text"],
-        "maxTokens": 8192,
+        "maxTokens": 16384,
         "name": "Qwen3 30B A3B",
         "provider": "kilo",
         "reasoning": true,
@@ -8757,7 +8780,7 @@
         "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "qwen/qwen3-next-80b-a3b-instruct",
         "input": ["text"],
-        "maxTokens": 16384,
+        "maxTokens": 262144,
         "name": "Qwen3-Next 80B-A3B Instruct",
         "provider": "kilo",
         "reasoning": false,
@@ -9045,7 +9068,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-122b-a10b",
         "input": ["text", "image", "video"],
-        "maxTokens": 65536,
+        "maxTokens": 262144,
         "name": "Qwen3.5 122B-A10B",
         "provider": "kilo",
         "reasoning": true,
@@ -9537,7 +9560,7 @@
     "qwen/qwen3.8-2.4t-a95b": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.25,
             "cacheWrite": 2.5,
@@ -9547,7 +9570,7 @@
         "description": "Open-weight sparse MoE (2.4T total, 95B active), the open-weight twin of Qwen3.8 Max for coding, research, complex reasoning, and agentic workflows",
         "id": "qwen/qwen3.8-2.4t-a95b",
         "input": ["text"],
-        "maxTokens": 262144,
+        "maxTokens": 131072,
         "name": "Qwen3.8 2.4T A95B",
         "provider": "kilo",
         "reasoning": true,
@@ -9566,10 +9589,10 @@
         "baseUrl": "https://api.kilo.ai/api/gateway",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.11499999999999999,
-            "cacheWrite": 0.71875,
-            "input": 0.575,
-            "output": 3.45
+            "cacheRead": 0.09999999999999999,
+            "cacheWrite": 0.625,
+            "input": 0.5,
+            "output": 3.0
         },
         "description": "Qwen3.8 27B is an open-weight dense vision-language model from Qwen. It is suited for coding, professional workflows, research, multimodal interaction, and long-running agent tasks, with flexible thinking that can be...",
         "id": "qwen/qwen3.8-27b",
@@ -10030,8 +10053,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.05,
+            "output": 0.05
         },
         "description": "Ox Alpha is a reasoning model designed for coding, sustained agentic work, and production workloads. It is suited for long-horizon software engineering, complex reasoning, and workflows that combine text with...",
         "id": "stealth/ox-alpha",
@@ -10268,6 +10291,33 @@
             "xhigh": null
         }
     },
+    "tencent/hy-mt2-7b": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.kilo.ai/api/gateway",
+        "contextWindow": 8192,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.074,
+            "output": 0.295
+        },
+        "description": "Hy-MT2-7B is a 7B-parameter translation model from Tencent. It supports 33 language pairs and five Chinese dialect and minority-language pairs, with workflows for structured, delimiter-based, contextual, glossary-based, and style-guided translation.",
+        "id": "tencent/hy-mt2-7b",
+        "input": ["text"],
+        "maxTokens": 4096,
+        "name": "Tencent: Hy-MT2-7B",
+        "provider": "kilo",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "tencent/hy3": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
@@ -10278,10 +10328,10 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.035,
+            "cacheRead": 0.032999999999999995,
             "cacheWrite": 0.16,
-            "input": 0.14,
-            "output": 0.58
+            "input": 0.13199999999999998,
+            "output": 0.5279999999999999
         },
         "description": "Hy3 is a 295B-parameter Mixture-of-Experts model from Tencent (21B active, 192 experts with top-8 routing) built for reasoning, agentic workflows, and real-world production use. It supports a configurable reasoning effort:...",
         "id": "tencent/hy3",
@@ -10540,6 +10590,60 @@
         "provider": "kilo",
         "reasoning": true,
         "releaseDate": "2026-07-30",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "thinkingmachines/inkling-small:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.kilo.ai/api/gateway",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "description": "Inkling Small is an open-weight multimodal mixture-of-experts model from Thinking Machines Lab, with 12B active parameters out of 276B total. It is positioned as the smaller, more efficient member of...",
+        "id": "thinkingmachines/inkling-small:free",
+        "input": ["text", "image", "audio"],
+        "maxTokens": 262144,
+        "name": "Thinking Machines: Inkling Small (free)",
+        "provider": "kilo",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "thinkingmachines/inkling:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.kilo.ai/api/gateway",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "description": "Inkling is an open-weight multimodal mixture-of-experts model from Thinking Machines Lab, with 41B active parameters out of 975B total. It is designed for general-purpose reasoning, coding, agentic and tool-use systems,...",
+        "id": "thinkingmachines/inkling:free",
+        "input": ["text", "image", "audio"],
+        "maxTokens": 262144,
+        "name": "Thinking Machines: Inkling (free)",
+        "provider": "kilo",
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -11472,17 +11576,17 @@
     "~deepseek/deepseek-v4-flash-latest": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
-        "contextWindow": 1048576,
+        "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.02,
+            "cacheRead": 0.01,
             "cacheWrite": 0.0,
-            "input": 0.065,
-            "output": 0.18
+            "input": 0.04,
+            "output": 0.13
         },
         "description": "This model always redirects to the latest model in the DeepSeek V4 Flash family.",
         "id": "~deepseek/deepseek-v4-flash-latest",
         "input": ["text"],
-        "maxTokens": 1048576,
+        "maxTokens": 262144,
         "name": "DeepSeek V4 Flash Latest",
         "provider": "kilo",
         "reasoning": true,
@@ -11602,10 +11706,10 @@
         },
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.25,
-            "cacheWrite": 3.125,
-            "input": 2.5,
-            "output": 15.0
+            "cacheRead": 0.19999999999999998,
+            "cacheWrite": 2.5,
+            "input": 2.0,
+            "output": 10.0
         },
         "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "~openai/gpt-latest",

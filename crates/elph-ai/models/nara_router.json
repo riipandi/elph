@@ -345,32 +345,6 @@
             "xhigh": null
         }
     },
-    "deepseek-v4-pro-free": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "id": "deepseek-v4-pro-free",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "deepseek-v4-pro-free",
-        "provider": "nara-router",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": "max",
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "glm-5.2": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
@@ -722,7 +696,7 @@
     "mimo-v2.5": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.0028,
             "cacheWrite": 0.0,
@@ -739,11 +713,11 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
-            "minimal": null,
+            "minimal": "minimal",
             "off": "off",
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "mimo-v2.5-free": {
@@ -1039,6 +1013,58 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": "xhigh"
+        }
+    },
+    "ox-alpha": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "ox-alpha",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "ox-alpha",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "ox-alpha-bynara": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "ox-alpha-bynara",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "ox-alpha-bynara",
+        "provider": "nara-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "qwen-3.8-max-free": {
