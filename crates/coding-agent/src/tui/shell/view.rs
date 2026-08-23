@@ -840,6 +840,36 @@ pub(crate) fn build_shell_view(
         }
     }
 
+    // While the `/aside` panel is open, the tips row moves above the panel and the
+    // prompt editor is hidden (the footer stays at the bottom). Recomputed here so
+    // the closure below always sees the current value.
+    let aside_open = pending_aside.read().is_some();
+
+    // `/aside` re-homes the tips row above the panel; StatusZone suppresses its own
+    // StatusRow while the panel is open so the tip only appears once.
+    let aside_tips: Option<AnyElement<'static>> = if aside_open {
+        Some(
+            element! {
+                crate::tui::chrome::StatusRow(
+                    screen_width: screen_width,
+                    busy: busy.get(),
+                    activity_label: activity_label.read().clone(),
+                    accent: scanner_accent,
+                    activity_started_at: *activity_started_at.read(),
+                    busy_started_at: *busy_started_at.read(),
+                    session_elapsed_secs: session_elapsed_secs.get(),
+                    idle_notice: idle_status_notice.read().as_ref().map(|notice| notice.text.clone()),
+                    quit_confirm_pending: pending_quit_confirm.get(),
+                    select_mode: select_mode.get(),
+                    queue_count: queue_count,
+                )
+            }
+            .into(),
+        )
+    } else {
+        None
+    };
+
     element! {
         View(
             width: screen_width,
@@ -897,6 +927,7 @@ pub(crate) fn build_shell_view(
                     }))
                 },
             )
+            #(aside_tips)
             #(pending_aside.read().as_ref().map(|state| -> AnyElement<'static> {
                 // The aside panel owns focus while it shows an answer so its keyboard
                 // scroll does not conflict with the transcript underneath (the wheel is
@@ -1230,6 +1261,7 @@ pub(crate) fn build_shell_view(
                         .unwrap_or_default(),
                 ),
                 queue_count: queue_count,
+                suppress_status_row: aside_open,
                 on_queue_action: on_queue_action_click,
             )
             PromptChrome(
@@ -1261,6 +1293,7 @@ pub(crate) fn build_shell_view(
                     .map(|s| s.is_intercom_replying())
                     .unwrap_or(false),
                 chrome_revision: chrome_ui_revision.get(),
+                hide_editor: aside_open,
                 draft: Some(draft),
                 live_draft: Some(live_draft),
                 input_prefix_kind: Some(input_prefix_kind),

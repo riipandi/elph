@@ -65,6 +65,9 @@ pub struct PromptChromeProps {
     pub worker_pending_count: usize,
     /// True while the agent is replying to / sending a response for a peer (colors `⬡` green).
     pub worker_replying: bool,
+    /// When true, hide the editor + palettes (e.g. while the `/aside` panel owns the
+    /// bottom band). The footer below stays visible.
+    pub hide_editor: bool,
 }
 
 #[component]
@@ -76,6 +79,99 @@ pub fn PromptChrome(props: &mut PromptChromeProps) -> impl Into<AnyElement<'stat
         .or_else(|| props.draft.as_ref().map(|draft| draft.read().clone()))
         .unwrap_or_default();
     let palette_anchor = palette_anchor_bottom(&draft_text, props.screen_width, props.screen_height);
+
+    // Editor + palettes are dropped while an overlay (e.g. `/aside`) owns the bottom
+    // band; the footer below always renders. Build the subtree first so we can skip it.
+    let editor_view: Option<AnyElement<'static>> = if props.hide_editor {
+        None
+    } else {
+        Some(
+            element! {
+                View(
+                    width: props.screen_width,
+                    flex_shrink: 0f32,
+                    position: Position::Relative,
+                    align_items: AlignItems::FlexStart,
+                ) {
+                    Editor(
+                        screen_width: props.screen_width,
+                        screen_height: props.screen_height,
+                        agent_mode: props.agent_mode,
+                        has_focus: props.has_focus,
+                        project_name: props.project_name.clone(),
+                        git_branch: props.git.as_ref().map(|g| g.branch.clone()),
+                        chrome_revision: props.chrome_revision,
+                        input_prefix_kind: props.input_prefix_kind,
+                        draft: props.draft,
+                        live_draft: props.live_draft,
+                        suppress_enter_newline: props.suppress_enter_newline,
+                        slash_palette_active: props.slash_palette_active,
+                        file_picker_active: props.file_picker_active,
+                        styled_content: props.styled_content,
+                        live_cursor: props.live_cursor,
+                        force_palette_sync: props.force_palette_sync,
+                        force_clear: props.force_editor_clear,
+                        blocked_hint: props.blocked_hint.clone(),
+                        text_select_mode: props.text_select_mode,
+                        clipboard_toast: props.clipboard_toast,
+                        on_submit: props.on_submit.take(),
+                        on_escape: if props.slash_palette_snapshot.visible
+                            || props.file_picker_snapshot.visible
+                            || props.prompt_history_snapshot.visible
+                        {
+                            HandlerMut::default()
+                        } else {
+                            props.on_escape.take()
+                        },
+                        on_file_picker_key: props.on_file_picker_key.take(),
+                        file_picker_key_handled: props.file_picker_key_handled,
+                        prompt_editor_mirror: props.prompt_editor_mirror,
+                    )
+                    SlashCommandPalette(
+                        screen_width: props.screen_width,
+                        screen_height: props.screen_height,
+                        agent_mode: props.agent_mode,
+                        snapshot: props.slash_palette_snapshot.clone(),
+                        anchor_bottom: palette_anchor,
+                        selected_index: props.slash_palette_selected,
+                    )
+                    FilePickerPalette(
+                        screen_width: props.screen_width,
+                        screen_height: props.screen_height,
+                        agent_mode: props.agent_mode,
+                        snapshot: props.file_picker_snapshot.clone(),
+                        anchor_bottom: palette_anchor,
+                        selected_index: props.file_picker_selected,
+                        show_hidden_files: props.file_picker_show_hidden,
+                    )
+                    PromptHistoryPalette(
+                        screen_width: props.screen_width,
+                        screen_height: props.screen_height,
+                        agent_mode: props.agent_mode,
+                        snapshot: props.prompt_history_snapshot.clone(),
+                        anchor_bottom: palette_anchor,
+                        selected_index: props.prompt_history_selected,
+                    )
+                    #(props.editor_overlay.take().map(|overlay| -> AnyElement<'static> {
+                        element! {
+                            View(
+                                width: props.screen_width,
+                                position: Position::Absolute,
+                                left: 0,
+                                bottom: palette_anchor,
+                                flex_shrink: 0f32,
+                                align_items: AlignItems::FlexStart,
+                            ) {
+                                #(overlay)
+                            }
+                        }
+                        .into()
+                    }))
+                }
+            }
+            .into(),
+        )
+    };
 
     element! {
         View(
@@ -90,87 +186,7 @@ pub fn PromptChrome(props: &mut PromptChromeProps) -> impl Into<AnyElement<'stat
             padding_left: 0,
             padding_right: 0,
         ) {
-            View(
-                width: props.screen_width,
-                flex_shrink: 0f32,
-                position: Position::Relative,
-                align_items: AlignItems::FlexStart,
-            ) {
-                Editor(
-                    screen_width: props.screen_width,
-                    screen_height: props.screen_height,
-                    agent_mode: props.agent_mode,
-                    has_focus: props.has_focus,
-                    project_name: props.project_name.clone(),
-                    git_branch: props.git.as_ref().map(|g| g.branch.clone()),
-                    chrome_revision: props.chrome_revision,
-                    input_prefix_kind: props.input_prefix_kind,
-                    draft: props.draft,
-                    live_draft: props.live_draft,
-                    suppress_enter_newline: props.suppress_enter_newline,
-                    slash_palette_active: props.slash_palette_active,
-                    file_picker_active: props.file_picker_active,
-                    styled_content: props.styled_content,
-                    live_cursor: props.live_cursor,
-                    force_palette_sync: props.force_palette_sync,
-                    force_clear: props.force_editor_clear,
-                    blocked_hint: props.blocked_hint.clone(),
-                    text_select_mode: props.text_select_mode,
-                    clipboard_toast: props.clipboard_toast,
-                    on_submit: props.on_submit.take(),
-                    on_escape: if props.slash_palette_snapshot.visible
-                        || props.file_picker_snapshot.visible
-                        || props.prompt_history_snapshot.visible
-                    {
-                        HandlerMut::default()
-                    } else {
-                        props.on_escape.take()
-                    },
-                    on_file_picker_key: props.on_file_picker_key.take(),
-                    file_picker_key_handled: props.file_picker_key_handled,
-                    prompt_editor_mirror: props.prompt_editor_mirror,
-                )
-                SlashCommandPalette(
-                    screen_width: props.screen_width,
-                    screen_height: props.screen_height,
-                    agent_mode: props.agent_mode,
-                    snapshot: props.slash_palette_snapshot.clone(),
-                    anchor_bottom: palette_anchor,
-                    selected_index: props.slash_palette_selected,
-                )
-                FilePickerPalette(
-                    screen_width: props.screen_width,
-                    screen_height: props.screen_height,
-                    agent_mode: props.agent_mode,
-                    snapshot: props.file_picker_snapshot.clone(),
-                    anchor_bottom: palette_anchor,
-                    selected_index: props.file_picker_selected,
-                    show_hidden_files: props.file_picker_show_hidden,
-                )
-                PromptHistoryPalette(
-                    screen_width: props.screen_width,
-                    screen_height: props.screen_height,
-                    agent_mode: props.agent_mode,
-                    snapshot: props.prompt_history_snapshot.clone(),
-                    anchor_bottom: palette_anchor,
-                    selected_index: props.prompt_history_selected,
-                )
-                #(props.editor_overlay.take().map(|overlay| -> AnyElement<'static> {
-                    element! {
-                        View(
-                            width: props.screen_width,
-                            position: Position::Absolute,
-                            left: 0,
-                            bottom: palette_anchor,
-                            flex_shrink: 0f32,
-                            align_items: AlignItems::FlexStart,
-                        ) {
-                            #(overlay)
-                        }
-                    }
-                    .into()
-                }))
-            }
+            #(editor_view)
             Footer(
                 screen_width: props.screen_width,
                 agent_mode: props.agent_mode,
