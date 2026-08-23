@@ -200,10 +200,10 @@ mod tests {
             paths.mcp_tool_stderr_log_path("my server", "tool/name"),
             data.join("logs/mcp/my_server/tool_name.stderr.log")
         );
-        // 4 bundled + 14 standard (sessions, no projects) = 18
-        // + config + data + global_ext + project_elph = 18+2+1+1 = 22
-        assert_eq!(paths.standard_required_dirs().len(), 18);
-        assert_eq!(paths.required_dirs().len(), 22);
+        // 3 bundled + 14 standard (sessions, no projects) = 17
+        // + config + data + global_ext + project_elph = 17+2+1+1 = 21
+        assert_eq!(paths.standard_required_dirs().len(), 17);
+        assert_eq!(paths.required_dirs().len(), 21);
     }
 
     #[test]
