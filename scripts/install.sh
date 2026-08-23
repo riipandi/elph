@@ -148,10 +148,10 @@ install_detect_arch() {
     esac
 }
 
-# Release archives label arm64 as `aarch64` on Linux and `arm64` on macOS.
+# Release archives label arm64 as `aarch64` on macOS and `arm64` on Linux.
 install_release_arch() {
     local platform="$1" arch="$2"
-    if [[ "$platform" == "linux" && "$arch" == "arm64" ]]; then
+    if [[ "$platform" == "macos" && "$arch" == "arm64" ]]; then
         echo "aarch64"
     else
         echo "$arch"

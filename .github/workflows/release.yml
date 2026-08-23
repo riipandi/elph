@@ -111,12 +111,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - arch: amd64
+          - arch: x86_64
             runner: namespace-profile-linux-base-amd64
-            label: x86_64
+            rust_arch: x86_64
           - arch: arm64
             runner: namespace-profile-linux-base-arm64
-            label: aarch64
+            rust_arch: aarch64
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     steps:
@@ -140,13 +140,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TARGET_TRIPLE="${{ matrix.label }}-unknown-linux-gnu"
+          TARGET_TRIPLE="${{ matrix.rust_arch }}-unknown-linux-gnu"
           rustup target add "$TARGET_TRIPLE"
 
       - name: Build release
         run: |
           cargo build --profile ${{ env.BUILD_PROFILE }} --bin ${{ inputs.app || 'elph' }} \
-            --target ${{ matrix.label }}-unknown-linux-gnu
+            --target ${{ matrix.rust_arch }}-unknown-linux-gnu
         env:
           APP: ${{ inputs.app || 'elph' }}
           RUSTC_WRAPPER: sccache
@@ -156,7 +156,7 @@ jobs:
         run: |
           set -euo pipefail
           app="${{ inputs.app || 'elph' }}"
-          triple="${{ matrix.label }}-unknown-linux-gnu"
+          triple="${{ matrix.rust_arch }}-unknown-linux-gnu"
           label="${app}-linux-${{ matrix.arch }}"
           mkdir -p release/archives release/binaries
           cp "target/${triple}/${{ env.BUILD_PROFILE }}/${app}" "release/binaries/${label}"
@@ -171,8 +171,8 @@ jobs:
         with:
           name: ${{ inputs.app || 'elph' }}-linux-${{ matrix.arch }}
           path: |
-            release/archives/${{ inputs.app || 'elph' }}-*
-            release/binaries/${{ inputs.app || 'elph' }}-*
+            release/archives/${{ inputs.app || 'elph' }}-linux-${{ matrix.arch }}.tar.gz
+            release/binaries/${{ inputs.app || 'elph' }}-linux-${{ matrix.arch }}
           if-no-files-found: error
 
   build-macos:
@@ -213,7 +213,7 @@ jobs:
         run: |
           set -euo pipefail
           app="${{ inputs.app || 'elph' }}"
-          declare -A arch_map=( [aarch64-apple-darwin]=arm64 [x86_64-apple-darwin]=x86_64 )
+          declare -A arch_map=( [aarch64-apple-darwin]=aarch64 [x86_64-apple-darwin]=x86_64 )
           mkdir -p release/archives release/binaries
           for target in aarch64-apple-darwin x86_64-apple-darwin; do
             arch="${arch_map[$target]}"
@@ -231,8 +231,8 @@ jobs:
         with:
           name: ${{ inputs.app || 'elph' }}-macos
           path: |
-            release/archives/${{ inputs.app || 'elph' }}-*
-            release/binaries/${{ inputs.app || 'elph' }}-*
+            release/archives/${{ inputs.app || 'elph' }}-macos-*.tar.gz
+            release/binaries/${{ inputs.app || 'elph' }}-macos-*
           if-no-files-found: error
 
   build-windows:
@@ -282,8 +282,8 @@ jobs:
         with:
           name: ${{ inputs.app || 'elph' }}-windows
           path: |
-            release/archives/${{ inputs.app || 'elph' }}-*
-            release/binaries/${{ inputs.app || 'elph' }}-*
+            release/archives/${{ inputs.app || 'elph' }}-windows-*.zip
+            release/binaries/${{ inputs.app || 'elph' }}-windows-*
           if-no-files-found: error
 
   publish:
@@ -295,10 +295,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Fetch linux (amd64)
+      - name: Fetch linux (x86_64)
         uses: actions/download-artifact@v8
         with:
-          name: ${{ inputs.app || 'elph' }}-linux-amd64
+          name: ${{ inputs.app || 'elph' }}-linux-x86_64
           path: .
 
       - name: Fetch linux (arm64)

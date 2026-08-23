@@ -6,12 +6,12 @@ Known release and platform constraints.
 
 Linux builds are glibc only; musl/Alpine is not published yet. Windows builds run on GitHub-hosted runners (no Namespace Windows runner yet).
 
-| Archive                  | Target                      | For                             |
-| ------------------------ | --------------------------- | ------------------------------- |
-| `*-linux-x86_64.tar.gz`  | `x86_64-unknown-linux-gnu`  | RedHat/Ubuntu/Debian x86_64     |
-| `*-linux-aarch64.tar.gz` | `aarch64-unknown-linux-gnu` | Pi 3/4/5 64-bit OS, ARM64 glibc |
-| `*-macos-arm64.tar.gz`   | `aarch64-apple-darwin`      | macOS on Apple Silicon          |
-| `*-macos-x86_64.tar.gz`  | `x86_64-apple-darwin`       | macOS on Intel                  |
+| Archive                  | Target                      | For                                   |
+| ------------------------ | --------------------------- | ------------------------------------- |
+| `*-linux-x86_64.tar.gz`  | `x86_64-unknown-linux-gnu`  | RedHat/Ubuntu/Debian x86_64           |
+| `*-linux-arm64.tar.gz`   | `aarch64-unknown-linux-gnu` | Pi 3/4/5 64-bit OS, ARM64 glibc       |
+| `*-macos-aarch64.tar.gz` | `aarch64-apple-darwin`      | macOS on Apple Silicon                |
+| `*-macos-x86_64.tar.gz`  | `x86_64-apple-darwin`       | macOS on Intel                        |
 | `*-windows-x86_64.zip`   | `x86_64-pc-windows-msvc`    | Windows x86_64 (GitHub-hosted runner) |
 
 ## Not supported
@@ -27,7 +27,7 @@ are now resolved (2026-08-20):
 
 - **Turso multiprocess WAL** — `experimental_multiprocess_wal(true)` is rejected by Turso's
   Windows IO backend (`experimental multiprocess WAL is not supported by the active IO
-  backend`). The flag is now gated off on Windows; behavior on Unix is unchanged.
+backend`). The flag is now gated off on Windows; behavior on Unix is unchanged.
 - **Abort race-test hang** — `concurrent_aborts_do_not_deadlock` blocked all tokio workers
   on low-CPU Windows runners, starving the abort tasks and the test timeout. The test now
   pins `worker_threads = 8`.
