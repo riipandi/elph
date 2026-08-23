@@ -242,7 +242,7 @@ jobs:
     name: windows
     needs: [version-gate, check-windows]
     if: needs.version-gate.outputs.should_continue == 'true'
-    runs-on: avrea-windows-2025-4-vcpu
+    runs-on: avrea-windows-2025-16-vcpu
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
