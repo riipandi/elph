@@ -27,7 +27,7 @@ Create these runner profiles in the [Namespace dashboard](https://cloud.namespac
 
 Connect the GitHub org to Namespace before the first run. Lightweight jobs (version gate, publish, sync) stay on GitHub `ubuntu-slim`.
 
-`.cargo/config.toml` relies on the bundled `rust-lld` linker that the musl targets (`x86_64-unknown-linux-musl`, `aarch64-unknown-linux-musl`) use by default since Rust 1.70, so the Rust code links fully static with no external linker config. The only C dependency (`ring`) is compiled by a musl-targeting GCC provided in the release `build-linux` job: it prefers distro `musl-tools` (`musl-gcc`) when apt is available and otherwise downloads a prebuilt `musl.cc` cross/native toolchain, then points `CC_*`/`CXX_*` at that compiler for `ring`'s `cc-rs` build script. `RUSTC_WRAPPER=sccache` is enabled for the musl build (sccache only wraps `rustc`; the musl GCC is invoked directly by `cc-rs`).
+`.cargo/config.toml` pins the bundled `rust-lld` linker for the musl targets (`x86_64-unknown-linux-musl`, `aarch64-unknown-linux-musl`), so the Rust code links fully static with no external linker config. The only C dependency (`ring`) is compiled by a musl-targeting GCC provided in the release `build-linux` job: it prefers distro `musl-tools` (`musl-gcc`) when apt is available and otherwise downloads a prebuilt `musl.cc` cross/native toolchain, then points `CC_*`/`CXX_*` at that compiler for `ring`'s `cc-rs` build script. `RUSTC_WRAPPER=sccache` is enabled for the musl build (sccache only wraps `rustc`; the musl GCC is invoked directly by `cc-rs`).
 
 ## Test (debug)
 

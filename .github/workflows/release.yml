@@ -170,6 +170,9 @@ jobs:
           # cc-rs reads CC_<target> (and the underscore form) for the musl target
           # and treats a *-gcc compiler as the gcc family (no --target flag), so a
           # plain musl GCC works directly. Export CC/CXX both forms for safety.
+          #
+          # These only drive ring's cc-rs build script. Rust code is linked by
+          # rust-lld (see .cargo/config.toml), so no external `ld` is involved.
           ENV_KEY_UNDER=$(echo "$TARGET_TRIPLE" | tr '-' '_')
           {
             echo "CC_${TARGET_TRIPLE}=${CC_BIN}"
