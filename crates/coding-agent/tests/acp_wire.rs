@@ -84,6 +84,12 @@ async fn v1_initialize_and_rejects_relative_cwd() {
     let failed = read_json(&mut reader).await;
     assert_eq!(failed["id"], 5);
     assert!(failed.get("error").is_some(), "relative cwd must be rejected: {failed}");
+    // A bad cwd is a caller mistake, not an agent fault: invalid_params, not internal_error.
+    assert_eq!(failed["error"]["code"], -32602, "relative cwd must be invalid_params: {failed}");
+    assert!(
+        failed["error"]["data"].as_str().unwrap_or("").contains("absolute"),
+        "invalid_params must explain the cwd rule: {failed}"
+    );
 
     write_line(&mut writer, &rpc(6, "logout", json!({}))).await;
     let out = read_json(&mut reader).await;

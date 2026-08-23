@@ -301,6 +301,15 @@ const PROVIDERS: &[ProviderSource] = &[
         live_pricing_env: Some("OPENAI_API_KEY"),
     },
     ProviderSource {
+        id: "orca-router",
+        models_dev_keys: &["orca-router", "orcarouter"],
+        default_api: "openai-completions",
+        default_base_url: "https://api.orcarouter.ai/v1",
+        gateway_preserve_ids: true,
+        live_pricing_base: Some("https://api.orcarouter.ai/v1"),
+        live_pricing_env: Some("ORCAROUTER_API_KEY"),
+    },
+    ProviderSource {
         id: "openai-codex",
         models_dev_keys: &["openai", "openai-codex"],
         default_api: "openai-codex-responses",

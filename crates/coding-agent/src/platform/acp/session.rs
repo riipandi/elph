@@ -20,15 +20,24 @@ use crate::platform::acp::replay;
 use crate::platform::acp::state::{AcpAgentState, AcpSessionState, MessageIds, lookup_session, session_key};
 use crate::platform::acp::updates::send_update;
 
+/// A non-absolute workspace root is a caller mistake: report `invalid_params`
+/// (-32602), not `internal_error`.
+pub fn require_absolute_cwd(cwd: &std::path::Path) -> Result<(), agent_client_protocol::Error> {
+    if cwd.is_absolute() {
+        return Ok(());
+    }
+    Err(agent_client_protocol::Error::invalid_params().data(serde_json::json!(format!(
+        "cwd must be an absolute path, got `{}`",
+        cwd.display()
+    ))))
+}
+
 pub async fn create_session(
     state: &Arc<Mutex<AcpAgentState>>,
     request: &NewSessionRequest,
     _connection: &ConnectionTo<Client>,
 ) -> anyhow::Result<NewSessionResponse> {
     let cwd = request.cwd.0.clone();
-    if !cwd.is_absolute() {
-        anyhow::bail!("cwd must be an absolute path");
-    }
     let additional: Vec<PathBuf> = request.additional_directories.iter().map(|p| p.0.clone()).collect();
 
     let session_id = open_or_create(state, &cwd, additional, None).await?;
@@ -93,9 +102,6 @@ pub async fn resume_session(
     _connection: &ConnectionTo<Client>,
 ) -> anyhow::Result<ResumeSessionResponse> {
     let cwd = request.cwd.0.clone();
-    if !cwd.is_absolute() {
-        anyhow::bail!("cwd must be an absolute path");
-    }
     let additional: Vec<PathBuf> = request.additional_directories.iter().map(|p| p.0.clone()).collect();
     let resume_id = request.session_id.0.to_string();
     let session_id = open_or_create(state, &cwd, additional, Some(&resume_id)).await?;

@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **ACP steering:** a second `session/prompt` while a turn is running no longer emits its
+  own `idle` state update (and no longer claims the output was lost). The owning turn closes
+  the stretch; a mid-turn `running` refresh no longer reopens the idle slot, so a steer or
+  retry cannot double-idle the client.
+- **ACP diffs:** `git_patch` text is now a valid unified diff — `diff --git` header,
+  `--- /dev/null` on add, `+++ /dev/null` on delete, and a hunk header whose line counts
+  match the body. Oversized changes ship `changes` without `patch` instead of a truncated
+  patch that contradicts its own header.
+- **ACP tool locations:** absolute-path detection accepts drive-letter (`C:\…`) and UNC
+  (`\\server\share`) paths, so `locations` is no longer always empty on Windows.
+- **ACP v1 stop reasons:** a failed `session/prompt` reports the real reason
+  (`max_tokens`, `max_turn_requests`, `refusal`) instead of always `end_turn`.
+- **ACP error codes:** a relative `cwd` on `session/new` / `load` / `resume` returns
+  `invalid_params` (-32602) with the offending path, not `internal_error`. v1 `session/load`
+  and `session/resume` validate `cwd` too.
+- **ACP Registry entry:** `crates/coding-agent/agent.json` (moved out of `docs/acp-registry/elph/`) used an invalid platform key
+  (`linux-arm64`) and archive filenames that no release publishes. Keys and asset names now
+  match `release.yml`, every target pins its `sha256`, and the README documents the mapping
+  plus the prerelease caveat for the registry's hourly auto-update.
+
 ### Changed
 
 - **ACP rate limits:** provider 429 / retry status is shown in the session instead of
