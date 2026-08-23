@@ -41,10 +41,9 @@ pub fn build_identity() -> BuildIdentity {
     };
 
     let os_arch = simplify_target(&target);
-    let hash = if profile == "dist" {
-        git_sha.chars().take(7).collect()
-    } else {
-        build_hash
+    let hash = match profile.as_str() {
+        "dist" | "release" => git_sha.chars().take(7).collect(),
+        _ => build_hash,
     };
 
     BuildIdentity {

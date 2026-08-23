@@ -4,7 +4,7 @@
 //! `BUILD_GIT_SHA` as env vars consumed by `cli/version.rs`. The version line
 //! changes by profile:
 //!   - debug:   `elph 0.0.0-debug os/arch (build_hash yyyy-mm-dd)`
-//!   - release: `elph 0.0.0-canary os/arch (build_hash yyyy-mm-dd)`
+//!   - release: `elph 0.0.0-canary os/arch (commit_hash yyyy-mm-dd)`
 //!   - dist:    `elph 0.0.0 os/arch (commit_hash yyyy-mm-dd)`
 
 use sha2::Digest;
