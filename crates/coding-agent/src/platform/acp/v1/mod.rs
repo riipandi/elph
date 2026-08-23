@@ -103,10 +103,8 @@ where
                         let _ = responder.respond_with_error(error);
                         return Ok(());
                     }
-                    if !request.cwd.is_absolute() {
-                        let _ = responder.respond_with_error(agent_client_protocol::util::internal_error(
-                            "cwd must be an absolute path",
-                        ));
+                    if let Err(error) = crate::platform::acp::session::require_absolute_cwd(&request.cwd) {
+                        let _ = responder.respond_with_error(error);
                         return Ok(());
                     }
                     let state = Arc::clone(&state);
@@ -157,6 +155,10 @@ where
                         let _ = responder.respond_with_error(error);
                         return Ok(());
                     }
+                    if let Err(error) = crate::platform::acp::session::require_absolute_cwd(&request.cwd) {
+                        let _ = responder.respond_with_error(error);
+                        return Ok(());
+                    }
                     let state = Arc::clone(&state);
                     let conn = connection.clone();
                     if let Err(error) = connection.spawn(async move {
@@ -196,6 +198,10 @@ where
                 let state = Arc::clone(&state);
                 async move |request: ResumeSessionRequest, responder, connection| {
                     if let Err(error) = crate::platform::acp::auth::require(&state) {
+                        let _ = responder.respond_with_error(error);
+                        return Ok(());
+                    }
+                    if let Err(error) = crate::platform::acp::session::require_absolute_cwd(&request.cwd) {
                         let _ = responder.respond_with_error(error);
                         return Ok(());
                     }
@@ -804,27 +810,38 @@ where
                 "Error: {error:#}"
             ))))),
         );
-        return Ok(StopReason::EndTurn);
+        // Report the real reason (context window, turn limit, refusal) instead of
+        // always claiming a clean end of turn.
+        return Ok(v1_stop_reason(crate::platform::acp::updates::stop_reason_from_error(&error)));
     }
     Ok(StopReason::EndTurn)
 }
 
+/// Finish a prompt merged into a turn that already owns the UI stream (steer).
+///
+/// The owning `session/prompt` streams the output, so a successful steer stays silent
+/// instead of claiming the output was lost. Failures are still surfaced as agent text.
 async fn v1_finish_submit_only(
     connection: &ConnectionTo<Client>,
     key: &str,
     submit: tokio::task::JoinHandle<anyhow::Result<()>>,
 ) -> anyhow::Result<StopReason> {
-    let message = match submit.await {
-        Ok(Ok(())) => "Turn finished, but output could not be streamed.".to_string(),
-        Ok(Err(error)) => format!("Error: {error:#}"),
-        Err(join) => format!("Turn panicked: {join}"),
+    let (message, reason) = match submit.await {
+        Ok(Ok(())) => (None, StopReason::EndTurn),
+        Ok(Err(error)) => {
+            let reason = crate::platform::acp::updates::stop_reason_from_error(&error);
+            (Some(format!("Error: {error:#}")), v1_stop_reason(reason))
+        }
+        Err(join) => (Some(format!("Turn panicked: {join}")), StopReason::EndTurn),
     };
-    let _ = notify(
-        connection,
-        key,
-        SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::Text(TextContent::new(message)))),
-    );
-    Ok(StopReason::EndTurn)
+    if let Some(message) = message {
+        let _ = notify(
+            connection,
+            key,
+            SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::Text(TextContent::new(message)))),
+        );
+    }
+    Ok(reason)
 }
 
 async fn run_slash_v1(
@@ -947,6 +964,18 @@ fn v1_tool_update(id: String, status: ToolCallStatus, output: String) -> ToolCal
         ContentBlock::Text(TextContent::new(output)),
     )]);
     ToolCallUpdate::new(id, fields)
+}
+
+/// Narrow a v2 stop reason onto the v1 enum, which has no `Other` variant.
+fn v1_stop_reason(reason: agent_client_protocol::schema::v2::StopReason) -> StopReason {
+    use agent_client_protocol::schema::v2::StopReason as V2;
+    match reason {
+        V2::MaxTokens => StopReason::MaxTokens,
+        V2::MaxTurnRequests => StopReason::MaxTurnRequests,
+        V2::Refusal => StopReason::Refusal,
+        V2::Cancelled => StopReason::Cancelled,
+        _ => StopReason::EndTurn,
+    }
 }
 
 fn map_kind(name: &str) -> ToolKind {
@@ -1378,5 +1407,30 @@ fn v1_config_raw(value: &agent_client_protocol::schema::v1::SessionConfigOptionV
     match value {
         agent_client_protocol::schema::v1::SessionConfigOptionValue::ValueId { value } => Ok(value.0.to_string()),
         _ => anyhow::bail!("config option expects an id value"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::platform::acp::updates::stop_reason_from_error;
+
+    #[test]
+    fn narrows_v2_stop_reasons_onto_v1() {
+        use agent_client_protocol::schema::v2::StopReason as V2;
+        assert_eq!(v1_stop_reason(V2::MaxTokens), StopReason::MaxTokens);
+        assert_eq!(v1_stop_reason(V2::MaxTurnRequests), StopReason::MaxTurnRequests);
+        assert_eq!(v1_stop_reason(V2::Refusal), StopReason::Refusal);
+        assert_eq!(v1_stop_reason(V2::Cancelled), StopReason::Cancelled);
+        assert_eq!(v1_stop_reason(V2::EndTurn), StopReason::EndTurn);
+        assert_eq!(v1_stop_reason(V2::Other("_elph".into())), StopReason::EndTurn);
+    }
+
+    #[test]
+    fn v1_prompt_failures_report_the_real_reason() {
+        let error = anyhow::anyhow!("context window exceeded");
+        assert_eq!(v1_stop_reason(stop_reason_from_error(&error)), StopReason::MaxTokens);
+        let error = anyhow::anyhow!("network timeout");
+        assert_eq!(v1_stop_reason(stop_reason_from_error(&error)), StopReason::EndTurn);
     }
 }

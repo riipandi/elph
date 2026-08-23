@@ -335,6 +335,10 @@ where
     Ok(())
 }
 
+/// Finish a prompt that was merged into a turn already owning the UI stream (steer).
+///
+/// The owning turn emits the state updates, so this path must **not** idle on success:
+/// that would tell the client the turn ended while it is still streaming.
 async fn finish_submit_only(
     state: &Arc<Mutex<AcpAgentState>>,
     connection: &ConnectionTo<Client>,
@@ -342,24 +346,20 @@ async fn finish_submit_only(
     submit: tokio::task::JoinHandle<anyhow::Result<()>>,
 ) -> anyhow::Result<()> {
     match submit.await {
-        Ok(Ok(())) => {
-            fail_visible(
-                state,
-                connection,
-                session_id,
-                "Turn finished, but this session is already streaming another prompt so output was not shown.",
-            );
-            Ok(())
-        }
+        Ok(Ok(())) => {}
         Ok(Err(error)) => {
-            fail_visible(state, connection, session_id, &format!("Error: {error:#}"));
-            Ok(())
+            let _ = send_agent_text(state, connection, session_id, &format!("Error: {error:#}"));
         }
         Err(join) => {
-            fail_visible(state, connection, session_id, &format!("Turn panicked: {join}"));
-            Ok(())
+            let _ = send_agent_text(state, connection, session_id, &format!("Turn panicked: {join}"));
         }
     }
+    // Safety net: the owning turn may have gone idle first, in which case nothing
+    // else will close this stretch and the client would stay `running` forever.
+    if !is_running(state, session_id) {
+        let _ = send_idle(state, connection, session_id, StopReason::EndTurn);
+    }
+    Ok(())
 }
 
 pub(crate) fn is_interactive_event(event: &AgentUiEvent) -> bool {
@@ -613,9 +613,13 @@ fn mark_idle(state: &Arc<Mutex<AcpAgentState>>, session_id: &SessionId) {
 
 pub fn mark_running(state: &Arc<Mutex<AcpAgentState>>, session_id: &SessionId) {
     if let Some(s) = state.lock().sessions.get(&session_key(session_id)) {
-        s.running.store(true, Ordering::Relaxed);
+        let was_running = s.running.swap(true, Ordering::Relaxed);
         s.cancelled.store(false, Ordering::Relaxed);
-        s.idle_emitted.store(false, Ordering::Relaxed);
+        // Only a new foreground stretch reopens the idle slot. A steering prompt or a
+        // mid-turn `running` refresh must not reopen it, or the turn can idle twice.
+        if !was_running {
+            s.idle_emitted.store(false, Ordering::Relaxed);
+        }
     }
 }
 

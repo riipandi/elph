@@ -138,6 +138,10 @@ where
                         let _ = responder.respond_with_error(error);
                         return Ok(());
                     }
+                    if let Err(error) = session::require_absolute_cwd(&request.cwd.0) {
+                        let _ = responder.respond_with_error(error);
+                        return Ok(());
+                    }
                     let state = Arc::clone(&state);
                     let conn = connection.clone();
                     if let Err(error) = connection.spawn(async move {
@@ -181,6 +185,10 @@ where
                 let state = Arc::clone(&state);
                 async move |request: ResumeSessionRequest, responder, connection| {
                     if let Err(error) = auth::require(&state) {
+                        let _ = responder.respond_with_error(error);
+                        return Ok(());
+                    }
+                    if let Err(error) = session::require_absolute_cwd(&request.cwd.0) {
                         let _ = responder.respond_with_error(error);
                         return Ok(());
                     }

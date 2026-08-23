@@ -256,15 +256,23 @@ pub fn diff_from_details(details: &serde_json::Value) -> Option<ToolCallContent>
     }
     let old = details.get("old_content").and_then(|v| v.as_str());
     let new = details.get("new_content").and_then(|v| v.as_str());
-    let change = if old.is_none() && new.is_some() {
+    let added = old.is_none() && new.is_some();
+    let deleted = old.is_some() && new.is_none();
+    let change = if added {
         DiffChange::add(path)
-    } else if old.is_some() && new.is_none() {
+    } else if deleted {
         DiffChange::delete(path)
     } else {
         DiffChange::modify(path)
     };
-    let patch = unified_patch(path, old.unwrap_or(""), new.unwrap_or(""));
-    Some(ToolCallContent::Diff(Diff::patch(patch, vec![change])))
+    // `changes` alone is valid: a patch that had to be truncated would be a lie,
+    // so drop the text instead of shipping an unparseable hunk.
+    Some(ToolCallContent::Diff(
+        match unified_patch(path, old.unwrap_or(""), new.unwrap_or(""), added, deleted) {
+            Some(patch) => Diff::patch(patch, vec![change]),
+            None => Diff::new(vec![change]),
+        },
+    ))
 }
 
 fn truncate_details(details: &serde_json::Value) -> serde_json::Value {
@@ -285,18 +293,210 @@ fn truncate_details(details: &serde_json::Value) -> serde_json::Value {
     }
 }
 
-fn unified_patch(path: &str, old: &str, new: &str) -> String {
-    let mut out = format!("--- a/{path}\n+++ b/{path}\n");
-    for line in old.lines() {
+/// Largest whole-file replacement still worth sending as `git_patch` text.
+const MAX_PATCH_LINES: usize = 2_000;
+
+/// Build a single-hunk unified diff (whole-file replacement).
+///
+/// Returns `None` when the change is too large to encode without truncation —
+/// a clipped patch has line counts that no longer match its hunk header, and
+/// clients that parse `git_patch` reject it.
+fn unified_patch(path: &str, old: &str, new: &str, added: bool, deleted: bool) -> Option<String> {
+    let old_lines = patch_lines(old);
+    let new_lines = patch_lines(new);
+    if old_lines.len().saturating_add(new_lines.len()) > MAX_PATCH_LINES {
+        return None;
+    }
+
+    // Git patch bodies are conventionally `a/<relative>`; the absolute path stays
+    // authoritative in `changes`.
+    let rel = path.trim_start_matches(['/', '\\']);
+    let mut out = format!("diff --git a/{rel} b/{rel}\n");
+    if added {
+        out.push_str("--- /dev/null\n");
+    } else {
+        out.push_str(&format!("--- a/{rel}\n"));
+    }
+    if deleted {
+        out.push_str("+++ /dev/null\n");
+    } else {
+        out.push_str(&format!("+++ b/{rel}\n"));
+    }
+    out.push_str(&hunk_header(old_lines.len(), new_lines.len()));
+    for line in &old_lines {
         out.push_str(&format!("-{line}\n"));
     }
-    for line in new.lines() {
+    for line in &new_lines {
         out.push_str(&format!("+{line}\n"));
     }
-    truncate_text(&out)
+    Some(out)
 }
 
+fn patch_lines(text: &str) -> Vec<&str> {
+    if text.is_empty() {
+        Vec::new()
+    } else {
+        text.lines().collect()
+    }
+}
+
+/// Unified-diff hunk header. An empty side starts at line 0, per the format.
+fn hunk_header(old_count: usize, new_count: usize) -> String {
+    let old_start = usize::from(old_count > 0);
+    let new_start = usize::from(new_count > 0);
+    format!("@@ -{old_start},{old_count} +{new_start},{new_count} @@\n")
+}
+
+/// First absolute path in a tool argument summary, or `None`.
+///
+/// Must accept Windows paths (`C:\dir`, `\\server\share`) as well as POSIX ones,
+/// otherwise `locations` is silently empty on Windows and IDE follow-along breaks.
 fn path_from_summary(summary: &str) -> Option<String> {
-    let candidate = summary.split_whitespace().find(|p| p.starts_with('/'))?;
-    Some(candidate.trim_matches(|c| c == '`' || c == '"').to_string())
+    summary
+        .split_whitespace()
+        .map(|token| token.trim_matches(|c: char| "`\"',()".contains(c)))
+        .find(|token| is_absolute_path_token(token))
+        .map(str::to_string)
+}
+
+fn is_absolute_path_token(token: &str) -> bool {
+    if token.len() < 2 {
+        return false;
+    }
+    // POSIX root, or a UNC / drive-letter path.
+    if let Some(rest) = token.strip_prefix('/') {
+        return rest.starts_with(|c: char| !c.is_whitespace());
+    }
+    if token.starts_with("\\\\") {
+        return true;
+    }
+    let mut chars = token.chars();
+    let drive = chars.next().is_some_and(|c| c.is_ascii_alphabetic());
+    let colon = chars.next() == Some(':');
+    let sep = matches!(chars.next(), Some('\\') | Some('/'));
+    drive && colon && sep
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn abs_path() -> String {
+        std::env::temp_dir()
+            .join("elph-acp-diff.rs")
+            .to_string_lossy()
+            .into_owned()
+    }
+
+    #[test]
+    fn patch_has_valid_hunk_header_for_modify() {
+        let patch = unified_patch("/w/main.rs", "a\nb", "a\nc", false, false).expect("patch");
+        assert!(patch.starts_with("diff --git a/w/main.rs b/w/main.rs\n"), "{patch}");
+        assert!(patch.contains("--- a/w/main.rs\n"), "{patch}");
+        assert!(patch.contains("+++ b/w/main.rs\n"), "{patch}");
+        assert!(patch.contains("@@ -1,2 +1,2 @@\n"), "{patch}");
+        assert!(patch.contains("-a\n-b\n+a\n+c\n"), "{patch}");
+    }
+
+    #[test]
+    fn added_file_uses_dev_null_source_and_zero_start() {
+        let patch = unified_patch("/w/new.rs", "", "one\ntwo", true, false).expect("patch");
+        assert!(patch.contains("--- /dev/null\n"), "{patch}");
+        assert!(patch.contains("+++ b/w/new.rs\n"), "{patch}");
+        assert!(patch.contains("@@ -0,0 +1,2 @@\n"), "{patch}");
+    }
+
+    #[test]
+    fn deleted_file_uses_dev_null_target_and_zero_start() {
+        let patch = unified_patch("/w/gone.rs", "one\ntwo", "", false, true).expect("patch");
+        assert!(patch.contains("--- a/w/gone.rs\n"), "{patch}");
+        assert!(patch.contains("+++ /dev/null\n"), "{patch}");
+        assert!(patch.contains("@@ -1,2 +0,0 @@\n"), "{patch}");
+    }
+
+    #[test]
+    fn hunk_line_counts_match_body() {
+        let patch = unified_patch("/w/f.rs", "a\nb\nc", "x", false, false).expect("patch");
+        assert!(patch.contains("@@ -1,3 +1,1 @@\n"), "{patch}");
+        assert_eq!(
+            patch
+                .lines()
+                .filter(|l| l.starts_with('-') && *l != "--- a/w/f.rs")
+                .count(),
+            3
+        );
+        assert_eq!(
+            patch
+                .lines()
+                .filter(|l| l.starts_with('+') && *l != "+++ b/w/f.rs")
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn oversized_change_drops_patch_text_instead_of_truncating() {
+        let big = (0..=MAX_PATCH_LINES)
+            .map(|i| format!("line {i}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(unified_patch("/w/big.rs", "", &big, true, false).is_none());
+
+        let details = serde_json::json!({ "path": abs_path(), "new_content": big });
+        match diff_from_details(&details) {
+            Some(ToolCallContent::Diff(diff)) => {
+                assert!(diff.patch.is_none(), "oversized diff must ship changes only");
+                assert_eq!(diff.changes.len(), 1);
+            }
+            _ => panic!("expected a diff content block"),
+        }
+    }
+
+    #[test]
+    fn small_change_keeps_patch_text() {
+        let details = serde_json::json!({ "path": abs_path(), "old_content": "a", "new_content": "b" });
+        match diff_from_details(&details) {
+            Some(ToolCallContent::Diff(diff)) => {
+                let patch = diff.patch.expect("patch text");
+                assert!(patch.text.contains("@@ -1,1 +1,1 @@"), "{}", patch.text);
+            }
+            _ => panic!("expected a diff content block"),
+        }
+    }
+
+    #[test]
+    fn relative_path_details_produce_no_diff() {
+        let details = serde_json::json!({ "path": "src/main.rs", "old_content": "a", "new_content": "b" });
+        assert!(diff_from_details(&details).is_none());
+    }
+
+    #[test]
+    fn finds_posix_and_windows_absolute_paths() {
+        assert_eq!(path_from_summary("read /Users/x/main.rs").as_deref(), Some("/Users/x/main.rs"));
+        assert_eq!(
+            path_from_summary("edit `C:\\Users\\x\\main.rs`").as_deref(),
+            Some("C:\\Users\\x\\main.rs")
+        );
+        assert_eq!(
+            path_from_summary("open \\\\server\\share\\f.rs").as_deref(),
+            Some("\\\\server\\share\\f.rs")
+        );
+        assert_eq!(path_from_summary("(/tmp/a.rs)").as_deref(), Some("/tmp/a.rs"));
+    }
+
+    #[test]
+    fn ignores_relative_and_plain_tokens() {
+        assert_eq!(path_from_summary("read src/main.rs"), None);
+        assert_eq!(path_from_summary("list the current folder"), None);
+        assert_eq!(path_from_summary(""), None);
+        assert_eq!(path_from_summary("C:relative\\x"), None);
+    }
+
+    #[test]
+    fn maps_tool_kinds() {
+        assert_eq!(kind_for_tool("read_file"), ToolKind::Read);
+        assert_eq!(kind_for_tool("edit_file"), ToolKind::Edit);
+        assert_eq!(kind_for_tool("shell_exec"), ToolKind::Execute);
+        assert_eq!(kind_for_tool("mcp_x__run"), ToolKind::Other);
+    }
 }

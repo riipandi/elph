@@ -24,7 +24,7 @@ Elph’s wire shape follows the same product conventions as [pi-acp](https://git
 
 ## Shared behavior
 
-- Working directory must be an **absolute** path.
+- Working directory must be an **absolute** path. A relative `cwd` on `session/new`, `session/load`, or `session/resume` is rejected with `invalid_params` (-32602) before any session work starts; the error `data` names the offending path.
 - Resume `cwd` must match the stored session cwd.
 - **Authentication (required for the [ACP Registry](https://agentclientprotocol.com/get-started/registry)):** initialize advertises `authMethods`. v1: `authenticate` + `logout` (`agentCapabilities.auth.logout`). v2: `auth/login` + `auth/logout`. Methods: `existing-credentials` plus `openai`, `anthropic`, `xai`, `openrouter`, `github-copilot`. Login succeeds when the matching env var or `auth.json` entry is present. Only **privileged** methods need credentials: `session/new`, `session/load`, `session/resume`, `session/prompt`, `session/set_mode`, `session/set_config_option`. `initialize`, login/logout, `session/list`, `session/close`, `session/delete`, and `session/cancel` do not. If the connection has not logged out and keys already exist, privileged methods succeed **without** a separate authenticate call. Logout is **connection-scoped** (does not delete `auth.json`); open sessions are aborted and later privileged methods return `auth_required` until the client logs in again.
 - No audio prompts.
@@ -42,11 +42,14 @@ Elph’s wire shape follows the same product conventions as [pi-acp](https://git
 - `ask_user_question` uses v2 `elicitation/create` forms when the client advertises form elicitation; otherwise each step uses `session/request_permission`.
 - Client `mcpServers` on `session/new`, `session/load`, and `session/resume` are overlaid on `mcp.json` (home ← project ← client; same name wins) and stored on the session registry **without contacting servers**. Discovery runs next in `ensure_mcp_tools_ready` (12s cap), then MCP tools are registered (still **inactive** until `list_available_tools`).
 - Tool calls are created as `pending` (including when waiting on `session/request_permission`), then `in_progress` when execution starts.
+- File edits emit a v2 `diff` with absolute-path `changes` plus `patch` text in `git_patch` format: a `diff --git` header, `--- /dev/null` on add, `+++ /dev/null` on delete, and one hunk header whose line counts match the body. Changes larger than 2000 combined lines ship `changes` **without** `patch` — a clipped patch would contradict its own hunk header.
+- `locations` are taken from the tool argument summary and recognise POSIX (`/dir/file`), drive-letter (`C:\dir\file`), and UNC (`\\server\share`) absolute paths.
 - `session/cancel` aborts the harness turn **and** marks in-flight tool calls cancelled (v2 status `cancelled`; v1 has no cancelled status, so `failed` with output `cancelled`).
 - v2 emits **at most one** idle `state_update` per foreground stretch so cancel cannot double-idle the client.
 - `usage_update.used` is session context tokens; `size` is the model context window. Optional `cost` is USD when the turn reports a cost.
 - A harness `RunCompleted` mid-turn (auto-retry after a stream cut, compact-then-resume) does **not** end the ACP prompt. The client stays in `running` until `submit_prompt` finishes. A failed `session/update` (tool chunk, terminal) is logged and ignored so the turn does not die mid tool-call.
-- One turn owns the UI stream (`stream_gate`). A second `session/prompt` while a turn is running still **submits immediately** (steer) and does not steal `ui_rx`. `/aside` answers via a side completion and does not lock the event channel.
+- One turn owns the UI stream (`stream_gate`). A second `session/prompt` while a turn is running still **submits immediately** (steer) and does not steal `ui_rx`. A steering prompt does **not** emit its own `idle`: the owning turn closes the stretch, so the client is never told the turn ended while output is still streaming. It only idles as a safety net if the owning turn already went idle. `/aside` answers via a side completion and does not lock the event channel.
+- `state_update: running` refreshes mid-turn are idempotent and do not reopen the idle slot. Only a transition from not-running to running does, so a steer or retry cannot produce a second idle.
 - `session/cancel`, `session/close`, and logout notify in-flight `request_permission` / elicitation so the harness is not left waiting. Stale UI drain keeps `*Required` events (never drops a pending tool approval).
 - `session/list`, `session/close`, `session/delete`, `set_config`/`set_mode`, and logout run on a spawned task (same as `session/new`). The session response is sent first; then slash catalog, MCP config overlay (no I/O), timed discovery, catalog refresh.
 - ACP sessions are created `headless: true` (no TUI worker-inbox noise on the event channel).
@@ -79,7 +82,7 @@ Methods:
 | `session/list` | Cursor pagination (page size 50) |
 | `session/close` | Abort + drop in-memory session |
 | `session/delete` | Close + delete stored session |
-| `session/prompt` | **Held** until `PromptResponse { stopReason }` |
+| `session/prompt` | **Held** until `PromptResponse { stopReason }`. The reason is derived from the failure (`max_tokens`, `max_turn_requests`, `refusal`, `cancelled`), not hardcoded to `end_turn`. v1 has no `Other` variant, so unknown v2 reasons narrow to `end_turn`. |
 | `session/cancel` | Abort + cancel open tools |
 | `session/set_mode` | Thinking level |
 | `session/set_config_option` | `model`, `thought_level`, or `mode` |
@@ -134,7 +137,7 @@ Unsupported transports (including ACP-over-MCP) are ignored with a warning. A fa
 - **Client `terminal/*`** — not used. Local shell + display-only terminal updates only.
 - **In-band OAuth on `authenticate`** — not used. First-run uses **Terminal Auth** (`elph acp --setup` → `elph provider connect`). After that, `authenticate` / `auth/login` with `existing-credentials` (or a provider id) checks env/`auth.json`.
 
-Wire tests: `crates/coding-agent/tests/acp_wire.rs` (initialize, capability ads including v1 `session/delete`, relative-cwd, login, `session/new` list/close, v1 `/help` `stopReason`, v2 `/help` ack + `user_message` + running + single idle). Unit tests cover slash catalog, permission option mapping, stop-reason mapping, and display-only terminal encoding. CLI flag tests: `tests/acp.rs`. There is no automated Zed UI smoke.
+Wire tests: `crates/coding-agent/tests/acp_wire.rs` (initialize, capability ads including v1 `session/delete`, relative-cwd `invalid_params`, login, `session/new` list/close, v1 `/help` `stopReason`, v2 `/help` ack + `user_message` + running + single idle). Tests that need a live provider handshake are gated behind `ELPH_ACP_LIVE_TESTS=1` and skip otherwise. Unit tests cover slash catalog, permission option mapping, stop-reason mapping (v2 and the v1 narrowing), `git_patch` hunk headers, absolute-path detection, and display-only terminal encoding. CLI flag tests: `tests/acp.rs`. There is no automated Zed UI smoke.
 
 Registry submission: `docs/acp-registry/`.
 

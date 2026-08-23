@@ -1,0 +1,45 @@
+{
+    "$schema": "https://cdn.agentclientprotocol.com/registry/v1/latest/agent.schema.json",
+    "id": "elph",
+    "name": "Elph",
+    "version": "0.0.5",
+    "description": "Minimalist opinionated AI agent harness: extensible TUI and mouse support.",
+    "repository": "https://github.com/riipandi/elph",
+    "website": "https://elph.space",
+    "authors": ["Aris Ripandi"],
+    "license": "Apache-2.0",
+    "distribution": {
+        "binary": {
+            "darwin-aarch64": {
+                "archive": "https://github.com/riipandi/elph/releases/download/v0.0.5-canary/elph-macos-aarch64.tar.gz",
+                "sha256": "86a538ef5990b064950bece41b7d2dbd44d62e941a099a4de64ed94d1dffa68b",
+                "cmd": "~/.local/bin/elph",
+                "args": ["acp", "--stdio"]
+            },
+            "darwin-x86_64": {
+                "archive": "https://github.com/riipandi/elph/releases/download/v0.0.5-canary/elph-macos-x86_64.tar.gz",
+                "sha256": "38e1a58b12035a6509a929926f10ce9540e42c740a6af5c0084d5d0686fa3579",
+                "cmd": "~/.local/bin/elph",
+                "args": ["acp", "--stdio"]
+            },
+            "linux-aarch64": {
+                "archive": "https://github.com/riipandi/elph/releases/download/v0.0.5-canary/elph-linux-arm64.tar.gz",
+                "sha256": "31af462bbce30fec60e7d39f2602cc46070614de238b7424b3347cb41b6adb41",
+                "cmd": "~/.local/bin/elph",
+                "args": ["acp", "--stdio"]
+            },
+            "linux-x86_64": {
+                "archive": "https://github.com/riipandi/elph/releases/download/v0.0.5-canary/elph-linux-x86_64.tar.gz",
+                "sha256": "545e09acb145680780297d53e66054aa5fca58c4b0847331d2b018c012b452bb",
+                "cmd": "~/.local/bin/elph",
+                "args": ["acp", "--stdio"]
+            },
+            "windows-x86_64": {
+                "archive": "https://github.com/riipandi/elph/releases/download/v0.0.5-canary/elph-windows-x86_64.zip",
+                "sha256": "3501d7521b78561a77cdc935dd6cd22d9b990e78f68c5346685f6667119fd9f1",
+                "cmd": "elph.exe",
+                "args": ["acp", "--stdio"]
+            }
+        }
+    }
+}
