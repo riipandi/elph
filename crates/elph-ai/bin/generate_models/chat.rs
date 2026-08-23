@@ -346,6 +346,7 @@ fn named_factory_provider_id(fn_name: &str) -> Option<&'static str> {
         "nvidia_provider" => "nvidia",
         "openai_provider" => "openai",
         "openai_codex_provider" => "openai-codex",
+        "orca_router_provider" => "orca-router",
         "opencode_provider" => "opencode",
         "opencode_go_provider" => "opencode-go",
         "sumopod_provider" => "sumopod",

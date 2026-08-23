@@ -173,6 +173,11 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
             api_key_env_key: "OPENAI_API_KEY",
             default_model: "gpt-5.6-luna",
         }),
+        "orca-router" => Some(ProviderConfig {
+            label: "OrcaRouter",
+            api_key_env_key: "ORCAROUTER_API_KEY",
+            default_model: "orcarouter/fusion",
+        }),
         "openai-codex" => Some(ProviderConfig {
             label: "OpenAI Codex",
             api_key_env_key: "OPENAI_CODEX_OAUTH_TOKEN",
@@ -411,6 +416,22 @@ mod tests {
     }
 
     #[test]
+    fn orca_router_is_a_known_provider() {
+        let cfg = provider_config("orca-router").expect("orca-router config");
+        assert_eq!(cfg.label, "OrcaRouter");
+        assert_eq!(cfg.api_key_env_key, "ORCAROUTER_API_KEY");
+        assert!(elph_ai::get_builtin_model("orca-router", cfg.default_model).is_some());
+    }
+
+    #[test]
+    fn resolve_orca_router_from_settings() {
+        let (provider, model) = resolve_provider_and_model(None, None, Some("orca-router"), Some("orcarouter/fusion"))
+            .expect("resolve orca-router");
+        assert_eq!(provider, "orca-router");
+        assert_eq!(model, "orcarouter/fusion");
+    }
+
+    #[test]
     fn hetzner_is_a_known_provider() {
         let cfg = provider_config("hetzner").expect("hetzner config");
         assert_eq!(cfg.label, "Hetzner");
@@ -479,6 +500,7 @@ mod tests {
             ("moonshotai-cn", "Moonshot AI (China)", "MOONSHOT_API_KEY"),
             ("nara-router", "Nara Router", "NARA_API_KEY"),
             ("nvidia", "NVIDIA NIM", "NVIDIA_API_KEY"),
+            ("orca-router", "OrcaRouter", "ORCAROUTER_API_KEY"),
             ("ollama-cloud", "Ollama Cloud", "OLLAMA_API_KEY"),
             ("openai-codex", "OpenAI Codex", "OPENAI_CODEX_OAUTH_TOKEN"),
             ("together", "Together AI", "TOGETHER_API_KEY"),
@@ -550,6 +572,7 @@ mod tests {
             "openai-codex",
             "opencode",
             "opencode-go",
+            "orca-router",
             "opengateway",
             "openrouter",
             "qwen-token-plan",

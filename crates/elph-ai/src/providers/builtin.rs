@@ -233,6 +233,24 @@ pub fn openai_provider() -> Provider {
     })
 }
 
+/// OrcaRouter — OpenAI-compatible gateway (https://orcarouter.ai).
+/// Model list and pricing come from `https://api.orcarouter.ai/v1/models` (Bearer `ORCAROUTER_API_KEY`).
+pub fn orca_router_provider() -> Provider {
+    create_provider(CreateProviderOptions {
+        id: "orca-router".to_string(),
+        name: Some("OrcaRouter".to_string()),
+        base_url: Some("https://api.orcarouter.ai/v1".to_string()),
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("OrcaRouter API key", vec!["ORCAROUTER_API_KEY"])),
+            oauth: None,
+        },
+        models: builtin_catalog("orca-router").as_ref().clone(),
+        refresh_models: None,
+        api: ProviderApi::Single(openai_completions_api()),
+    })
+}
+
 pub fn opencode_provider() -> Provider {
     create_provider(CreateProviderOptions {
         id: "opencode".to_string(),
@@ -581,6 +599,7 @@ pub fn builtin_providers() -> Vec<Provider> {
         ),
         openai_provider(),
         openai_codex_provider(),
+        orca_router_provider(),
         hyper_provider(),
         infron_provider(),
         // Kilo AI Gateway — OpenAI-compatible (https://kilo.ai/docs/gateway).

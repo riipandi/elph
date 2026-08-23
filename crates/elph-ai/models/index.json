@@ -150,6 +150,11 @@
         "count": 19
     },
     {
+        "providerId": "orca-router",
+        "rustMod": "orca_router",
+        "count": 190
+    },
+    {
         "providerId": "openai",
         "rustMod": "openai",
         "count": 47
