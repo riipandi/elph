@@ -309,6 +309,7 @@ pub(crate) fn build_shell_view(
     let provider_api_key_open = pending_provider_api_key.read().is_some();
     let queue_manager_is_open = queue_manager_open.get();
     let aside_open = pending_aside.read().is_some();
+    let tool_approval_open = pending_tool_approval.read().is_some();
     let status_dialog_open = pending_tool_approval.read().is_some()
         || pending_mode_change.read().is_some()
         || pending_plan_confirmation.read().is_some()
@@ -1293,7 +1294,7 @@ pub(crate) fn build_shell_view(
                     .map(|s| s.is_intercom_replying())
                     .unwrap_or(false),
                 chrome_revision: chrome_ui_revision.get(),
-                hide_editor: aside_open,
+                hide_editor: aside_open || tool_approval_open,
                 draft: Some(draft),
                 live_draft: Some(live_draft),
                 input_prefix_kind: Some(input_prefix_kind),
