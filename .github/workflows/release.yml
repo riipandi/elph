@@ -163,8 +163,14 @@ jobs:
               mkdir -p "$DEST"
               tar -xzf /tmp/musl.tgz -C "$DEST" --strip-components=1
             fi
-            echo "${DEST}/bin" >> "$GITHUB_PATH"
-            CC_BIN="${GCC_BIN}"
+            # Do NOT prepend ${DEST}/bin to PATH: the musl.cc toolchain ships a
+            # bare `ld` that shadows the distro linker, and on aarch64 that ld
+            # cannot load the distro GCC's liblto_plugin.so ("Dynamic loading not
+            # supported"), breaking the host (aarch64-unknown-linux-gnu) build
+            # scripts. Point cc-rs at the tools by absolute path instead.
+            CC_BIN="${DEST}/bin/${GCC_BIN}"
+            AR_BIN="${DEST}/bin/${{ matrix.label }}-linux-musl-ar"
+            RANLIB_BIN="${DEST}/bin/${{ matrix.label }}-linux-musl-ranlib"
           fi
 
           # cc-rs reads CC_<target> (and the underscore form) for the musl target
@@ -179,6 +185,12 @@ jobs:
             echo "CC_${ENV_KEY_UNDER}=${CC_BIN}"
             echo "CXX_${TARGET_TRIPLE}=${CC_BIN}"
             echo "CXX_${ENV_KEY_UNDER}=${CC_BIN}"
+            if [ -n "${AR_BIN:-}" ]; then
+              echo "AR_${TARGET_TRIPLE}=${AR_BIN}"
+              echo "AR_${ENV_KEY_UNDER}=${AR_BIN}"
+              echo "RANLIB_${TARGET_TRIPLE}=${RANLIB_BIN}"
+              echo "RANLIB_${ENV_KEY_UNDER}=${RANLIB_BIN}"
+            fi
           } >> "$GITHUB_ENV"
 
       - name: Build release
