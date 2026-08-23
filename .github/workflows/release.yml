@@ -135,73 +135,20 @@ jobs:
           cacheBackend: namespace
           installNextest: "false"
 
-      - name: Install musl targets & cross toolchain
+      - name: Install gnu targets
         if: runner.os == 'Linux'
         shell: bash
         run: |
           set -euo pipefail
-          TARGET_TRIPLE="${{ matrix.label }}-unknown-linux-musl"
+          TARGET_TRIPLE="${{ matrix.label }}-unknown-linux-gnu"
           rustup target add "$TARGET_TRIPLE"
-          CC_BIN=""
-          if command -v apt-get >/dev/null 2>&1; then
-            apt-get update -y >/dev/null 2>&1 || true
-            if apt-get install -y musl-tools >/dev/null 2>&1 && command -v musl-gcc >/dev/null 2>&1; then
-              CC_BIN="musl-gcc"
-            fi
-          fi
-
-          if [ -z "$CC_BIN" ]; then
-            # Pick a toolchain hosted on the runner's own arch so it runs natively.
-            case "${{ matrix.label }}" in
-              x86_64)  PKG="x86_64-linux-musl-cross" ;;
-              aarch64) PKG="aarch64-linux-musl-cross" ;;
-            esac
-            GCC_BIN="${{ matrix.label }}-linux-musl-gcc"
-            DEST="/opt/${PKG}"
-            if [ ! -x "${DEST}/bin/${GCC_BIN}" ]; then
-              curl -L --proto '=https' --tlsv1.2 -sSf "https://musl.cc/${PKG}.tgz" -o /tmp/musl.tgz
-              mkdir -p "$DEST"
-              tar -xzf /tmp/musl.tgz -C "$DEST" --strip-components=1
-            fi
-            # Do NOT prepend ${DEST}/bin to PATH: the musl.cc toolchain ships a
-            # bare `ld` that shadows the distro linker, and on aarch64 that ld
-            # cannot load the distro GCC's liblto_plugin.so ("Dynamic loading not
-            # supported"), breaking the host (aarch64-unknown-linux-gnu) build
-            # scripts. Point cc-rs at the tools by absolute path instead.
-            CC_BIN="${DEST}/bin/${GCC_BIN}"
-            AR_BIN="${DEST}/bin/${{ matrix.label }}-linux-musl-ar"
-            RANLIB_BIN="${DEST}/bin/${{ matrix.label }}-linux-musl-ranlib"
-          fi
-
-          # cc-rs reads CC_<target> (and the underscore form) for the musl target
-          # and treats a *-gcc compiler as the gcc family (no --target flag), so a
-          # plain musl GCC works directly. Export CC/CXX both forms for safety.
-          #
-          # These only drive ring's cc-rs build script. Rust code is linked by
-          # rust-lld (see .cargo/config.toml), so no external `ld` is involved.
-          ENV_KEY_UNDER=$(echo "$TARGET_TRIPLE" | tr '-' '_')
-          {
-            echo "CC_${TARGET_TRIPLE}=${CC_BIN}"
-            echo "CC_${ENV_KEY_UNDER}=${CC_BIN}"
-            echo "CXX_${TARGET_TRIPLE}=${CC_BIN}"
-            echo "CXX_${ENV_KEY_UNDER}=${CC_BIN}"
-            if [ -n "${AR_BIN:-}" ]; then
-              echo "AR_${TARGET_TRIPLE}=${AR_BIN}"
-              echo "AR_${ENV_KEY_UNDER}=${AR_BIN}"
-              echo "RANLIB_${TARGET_TRIPLE}=${RANLIB_BIN}"
-              echo "RANLIB_${ENV_KEY_UNDER}=${RANLIB_BIN}"
-            fi
-          } >> "$GITHUB_ENV"
 
       - name: Build release
         run: |
           cargo build --profile ${{ env.BUILD_PROFILE }} --bin ${{ inputs.app || 'elph' }} \
-            --target ${{ matrix.label }}-unknown-linux-musl
+            --target ${{ matrix.label }}-unknown-linux-gnu
         env:
           APP: ${{ inputs.app || 'elph' }}
-          # The musl C compiler (musl-gcc / musl.cc GCC) is invoked directly by
-          # cc-rs and is unaffected by RUSTC_WRAPPER; sccache only wraps rustc,
-          # so it is safe (and beneficial) to enable it for this cross-build.
           RUSTC_WRAPPER: sccache
 
       - name: Package
@@ -209,8 +156,8 @@ jobs:
         run: |
           set -euo pipefail
           app="${{ inputs.app || 'elph' }}"
-          triple="${{ matrix.label }}-unknown-linux-musl"
-          label="${app}-linux-${{ matrix.label }}"
+          triple="${{ matrix.label }}-unknown-linux-gnu"
+          label="${app}-linux-${{ matrix.arch }}"
           mkdir -p release/archives release/binaries
           cp "target/${triple}/${{ env.BUILD_PROFILE }}/${app}" "release/binaries/${label}"
           tar -C "target/${triple}/${{ env.BUILD_PROFILE }}" -czf "release/archives/${label}.tar.gz" "${app}"

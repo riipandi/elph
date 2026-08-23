@@ -1,23 +1,14 @@
 [build]
 rustflags = ["-Ctarget-cpu=native"]
 
-# Linux musl — fully static builds (CI release channel only).
-# The musl targets (x86_64 / aarch64) link with the bundled `rust-lld` (pinned
-# explicitly, not relied on as a default) so no external linker config is
-# needed and the result is a fully static binary. The only C dependency (ring)
-# is compiled by a musl-targeting GCC provided in CI (see release.yml
-# build-linux) and selected via the CC_/CXX_ env vars that ring's cc-rs build
-# script consumes; rust-lld then links those ELF objects.
-#
-# Pinning the linker matters on aarch64: the musl.cc `ld` that ships with the
-# cross GCC cannot load the distro GCC's liblto_plugin.so ("Dynamic loading not
-# supported"), so letting rustc default to `cc` (the aarch64 GCC) fails at link
-# time. rust-lld has no such dependency.
-[target.x86_64-unknown-linux-musl]
-rustflags = ["-Clinker=rust-lld"]
+# Linux gnu — dynamic linking for broad compatibility
+# Uses standard gnu targets with dynamic linking for reliable builds
+# on both x86_64 and aarch64 platforms.
+[target.x86_64-unknown-linux-gnu]
+rustflags = []
 
-[target.aarch64-unknown-linux-musl]
-rustflags = ["-Clinker=rust-lld"]
+[target.aarch64-unknown-linux-gnu]
+rustflags = []
 
 [target.aarch64-apple-darwin]
 rustflags = ["-Clink-arg=--ld-path=/usr/bin/ld"]
