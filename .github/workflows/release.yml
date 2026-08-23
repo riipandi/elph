@@ -154,7 +154,7 @@ jobs:
             # Pick a toolchain hosted on the runner's own arch so it runs natively.
             case "${{ matrix.label }}" in
               x86_64)  PKG="x86_64-linux-musl-cross" ;;
-              aarch64) PKG="aarch64-linux-musl-native" ;;
+              aarch64) PKG="aarch64-linux-musl-cross" ;;
             esac
             GCC_BIN="${{ matrix.label }}-linux-musl-gcc"
             DEST="/opt/${PKG}"
