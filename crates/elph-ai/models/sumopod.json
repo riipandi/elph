@@ -1091,7 +1091,7 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.0028,
             "cacheWrite": 0.0,
@@ -1108,11 +1108,11 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
-            "minimal": null,
+            "minimal": "minimal",
             "off": "off",
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "mimo-v2.5-pro": {

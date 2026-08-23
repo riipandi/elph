@@ -1581,58 +1581,6 @@
             "xhigh": null
         }
     },
-    "deepcogito/cogito-671b-v2.1": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 1.25,
-            "output": 1.25
-        },
-        "id": "deepcogito/cogito-671b-v2.1",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "deepcogito/cogito-671b-v2.1",
-        "provider": "huggingface",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "deepcogito/cogito-671b-v2.1-FP8": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 1.25,
-            "output": 1.25
-        },
-        "id": "deepcogito/cogito-671b-v2.1-FP8",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "deepcogito/cogito-671b-v2.1-FP8",
-        "provider": "huggingface",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
     "deepseek-ai/DeepSeek-R1": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
@@ -2272,6 +2220,33 @@
             "medium": "medium",
             "minimal": null,
             "off": null,
+            "xhigh": null
+        }
+    },
+    "inclusionAI/Ling-3.0-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.012,
+            "cacheWrite": 0.0,
+            "input": 0.06,
+            "output": 0.18
+        },
+        "description": "*Ling-3.0-flash* is a *124B-parameter Mixture-of-Experts (MoE) model*, with approximately *5.1B parameters activated per token*. The model is designed with *token efficiency and production-scale agentic inference* as key priorities, enabling developers...",
+        "id": "inclusionAI/Ling-3.0-flash",
+        "input": ["text"],
+        "maxTokens": 32768,
+        "name": "Ling-3.0-flash",
+        "provider": "huggingface",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -2981,58 +2956,6 @@
             "xhigh": null
         }
     },
-    "swiss-ai/Apertus-70B-Instruct-2509": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.82,
-            "output": 2.92
-        },
-        "id": "swiss-ai/Apertus-70B-Instruct-2509",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "swiss-ai/Apertus-70B-Instruct-2509",
-        "provider": "huggingface",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "swiss-ai/Apertus-8B-Instruct-2509": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.1,
-            "output": 0.2
-        },
-        "id": "swiss-ai/Apertus-8B-Instruct-2509",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "swiss-ai/Apertus-8B-Instruct-2509",
-        "provider": "huggingface",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
     "swiss-ai/Apertus-v1.5-70B": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
@@ -3050,32 +2973,6 @@
         "name": "Apertus v1.5 70B",
         "provider": "huggingface",
         "reasoning": false,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "swiss-ai/Apertus-v1.5-8B": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.1,
-            "output": 0.2
-        },
-        "id": "swiss-ai/Apertus-v1.5-8B",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "swiss-ai/Apertus-v1.5-8B",
-        "provider": "huggingface",
-        "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3506,8 +3403,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 817696.873,
-            "output": 2920345.975
+            "input": 817329.065,
+            "output": 2919032.375
         },
         "id": "zai-org/GLM-4.7-FP8",
         "input": ["text"],

@@ -232,6 +232,35 @@
             "xhigh": null
         }
     },
+    "deepseek-ai/deepseek-v4-flash-0731": {
+        "api": "openai-completions",
+        "baseUrl": "https://integrate.api.nvidia.com/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
+        "id": "deepseek-ai/deepseek-v4-flash-0731",
+        "input": ["text"],
+        "knowledgeCutoff": "",
+        "maxTokens": 384000,
+        "name": "DeepSeek V4 Flash 0731",
+        "provider": "nvidia",
+        "reasoning": true,
+        "releaseDate": "",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
     "deepseek-ai/deepseek-v4-pro": {
         "api": "openai-completions",
         "baseUrl": "https://integrate.api.nvidia.com/v1",
@@ -1395,6 +1424,35 @@
             "minimal": "minimal",
             "off": "off",
             "xhigh": "xhigh"
+        }
+    },
+    "moonshotai/kimi-k3": {
+        "api": "openai-completions",
+        "baseUrl": "https://integrate.api.nvidia.com/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 0.0,
+            "input": 3.0,
+            "output": 12.5
+        },
+        "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
+        "id": "moonshotai/kimi-k3",
+        "input": ["text", "image", "video"],
+        "knowledgeCutoff": "",
+        "maxTokens": 131072,
+        "name": "Kimi K3",
+        "provider": "nvidia",
+        "reasoning": true,
+        "releaseDate": "2026-07-16",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "nvidia/active-speaker-detection": {

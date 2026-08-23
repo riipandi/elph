@@ -1626,33 +1626,6 @@
             "xhigh": null
         }
     },
-    "deepcogito/cogito-v2.1-671b": {
-        "api": "openai-completions",
-        "baseUrl": "https://openrouter.ai/api/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 1.25,
-            "output": 1.25
-        },
-        "description": "Reasoning model for deliberate analysis, multi-step problem solving, and tool use",
-        "id": "deepcogito/cogito-v2.1-671b",
-        "input": ["text"],
-        "maxTokens": 128000,
-        "name": "Cogito v2.1 671B",
-        "provider": "openrouter",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
     "deepseek/deepseek-chat": {
         "api": "openai-completions",
         "baseUrl": "https://openrouter.ai/api/v1",
@@ -1726,15 +1699,15 @@
         },
         "contextWindow": 163840,
         "cost": {
-            "cacheRead": 0.13,
+            "cacheRead": 0.55,
             "cacheWrite": 0.0,
-            "input": 0.25,
-            "output": 0.95
+            "input": 0.55,
+            "output": 1.6500000000000001
         },
         "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek/deepseek-chat-v3.1",
         "input": ["text"],
-        "maxTokens": 32768,
+        "maxTokens": 161000,
         "name": "DeepSeek V3.1",
         "provider": "openrouter",
         "reasoning": true,
@@ -1879,16 +1852,16 @@
         },
         "contextWindow": 163840,
         "cost": {
-            "cacheRead": 0.13449999999999998,
+            "cacheRead": 0.13,
             "cacheWrite": 0.0,
-            "input": 0.26899999999999996,
-            "output": 0.39999999999999997
+            "input": 0.26,
+            "output": 0.38
         },
         "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek/deepseek-v3.2",
         "input": ["text"],
         "knowledgeCutoff": "2024-07",
-        "maxTokens": 65536,
+        "maxTokens": 163840,
         "name": "DeepSeek V3.2",
         "provider": "openrouter",
         "reasoning": true,
@@ -1944,10 +1917,10 @@
         },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.01652,
+            "cacheRead": 0.009772,
             "cacheWrite": 0.0,
-            "input": 0.08259999999999999,
-            "output": 0.16519999999999999
+            "input": 0.04886,
+            "output": 0.09772
         },
         "description": "Fast DeepSeek V4 lane for economical reasoning, coding, and long-context work",
         "id": "deepseek/deepseek-v4-flash",
@@ -2014,6 +1987,7 @@
         "name": "DeepSeek V4 Flash Vision Exp",
         "provider": "openrouter",
         "reasoning": true,
+        "releaseDate": "2026-08-21",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2034,16 +2008,16 @@
         },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.135,
+            "cacheRead": 0.0330745,
             "cacheWrite": 0.0,
-            "input": 1.5999999999999999,
-            "output": 3.1999999999999997
+            "input": 0.396894,
+            "output": 0.793788
         },
         "description": "Open MoE flagship with million-token context for coding and long agent runs",
         "id": "deepseek/deepseek-v4-pro",
         "input": ["text"],
         "knowledgeCutoff": "2025-05",
-        "maxTokens": 393216,
+        "maxTokens": 384000,
         "name": "DeepSeek V4 Pro",
         "provider": "openrouter",
         "reasoning": true,
@@ -2063,10 +2037,10 @@
         "baseUrl": "https://openrouter.ai/api/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.039599999999999996,
+            "cacheRead": 0.037399999999999996,
             "cacheWrite": 0.0,
-            "input": 1.1880000000000002,
-            "output": 3.564
+            "input": 1.122,
+            "output": 3.366
         },
         "description": "DeepSeek V4 Pro snapshot with million-token context and support for thinking and non-thinking modes",
         "id": "deepseek/deepseek-v4-pro-0813",
@@ -3988,8 +3962,8 @@
         "cost": {
             "cacheRead": 0.04,
             "cacheWrite": 0.0,
-            "input": 0.3,
-            "output": 1.1
+            "input": 0.35,
+            "output": 1.5
         },
         "description": "Muse Glimmer is a 30-billion-parameter open-weight multimodal model from Meta Superintelligence Labs, distilled from Muse Spark for always-on local agents, tool use, coding, and image understanding.",
         "id": "meta/muse-glimmer-30b",
@@ -4060,6 +4034,33 @@
         "provider": "openrouter",
         "reasoning": true,
         "releaseDate": "2026-08-05",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "meta/muse-spark-1.2-contributor": {
+        "api": "openai-completions",
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.002,
+            "cacheWrite": 0.0,
+            "input": 0.09999999999999999,
+            "output": 0.19999999999999998
+        },
+        "description": "Open Llama multimodal model for image understanding and text reasoning",
+        "id": "meta/muse-spark-1.2-contributor",
+        "input": ["text", "image", "video", "pdf", "audio"],
+        "maxTokens": 1048576,
+        "name": "Muse Spark 1.2 Contributor",
+        "provider": "openrouter",
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -4280,15 +4281,15 @@
         },
         "contextWindow": 204800,
         "cost": {
-            "cacheRead": 0.03,
+            "cacheRead": 0.027,
             "cacheWrite": 0.0,
             "input": 0.27,
-            "output": 0.95
+            "output": 1.08
         },
         "description": "Prior MiniMax coding model for agent workflows, office edits, and automation",
         "id": "minimax/minimax-m2.5",
         "input": ["text"],
-        "maxTokens": 32768,
+        "maxTokens": 128000,
         "name": "MiniMax-M2.5",
         "provider": "openrouter",
         "reasoning": true,
@@ -4311,10 +4312,10 @@
         },
         "contextWindow": 204800,
         "cost": {
-            "cacheRead": 0.06,
+            "cacheRead": 0.048,
             "cacheWrite": 0.0,
-            "input": 0.3,
-            "output": 1.2
+            "input": 0.24,
+            "output": 0.96
         },
         "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
         "id": "minimax/minimax-m2.7",
@@ -4881,12 +4882,12 @@
             "supportsDeveloperRole": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 256000,
+        "contextWindow": 131072,
         "cost": {
             "cacheRead": 0.01,
             "cacheWrite": 0.0,
-            "input": 0.09375,
-            "output": 0.25
+            "input": 0.075,
+            "output": 0.19999999999999998
         },
         "description": "Efficient Mistral model for fast chat, extraction, and production assistants",
         "id": "mistralai/mistral-small-3.2-24b-instruct",
@@ -5105,10 +5106,10 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.15839999999999999,
+            "cacheRead": 0.16,
             "cacheWrite": 0.0,
-            "input": 0.9405,
-            "output": 3.9600000000000004
+            "input": 0.95,
+            "output": 4.0
         },
         "description": "Multimodal Kimi workhorse for agent loops, coding tasks, and visual context",
         "id": "moonshotai/kimi-k2.6",
@@ -7662,10 +7663,10 @@
         },
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.25,
-            "cacheWrite": 3.125,
-            "input": 2.5,
-            "output": 15.0
+            "cacheRead": 0.19999999999999998,
+            "cacheWrite": 2.5,
+            "input": 2.0,
+            "output": 10.0
         },
         "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "openai/gpt-5.6-sol",
@@ -7694,10 +7695,10 @@
         },
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.25,
-            "cacheWrite": 3.125,
-            "input": 2.5,
-            "output": 15.0
+            "cacheRead": 0.19999999999999998,
+            "cacheWrite": 2.5,
+            "input": 2.0,
+            "output": 10.0
         },
         "description": "Frontier GPT model for professional reasoning, coding, and multimodal work",
         "id": "openai/gpt-5.6-sol-pro",
@@ -7721,10 +7722,10 @@
         "baseUrl": "https://openrouter.ai/api/v1",
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0.125,
+            "cacheRead": 0.09999999999999999,
             "cacheWrite": 0.0,
-            "input": 1.25,
-            "output": 7.5
+            "input": 1.0,
+            "output": 5.0
         },
         "id": "openai/gpt-5.6-sol-pro:batch",
         "input": ["text"],
@@ -7747,10 +7748,10 @@
         "baseUrl": "https://openrouter.ai/api/v1",
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0.125,
+            "cacheRead": 0.09999999999999999,
             "cacheWrite": 0.0,
-            "input": 1.25,
-            "output": 7.5
+            "input": 1.0,
+            "output": 5.0
         },
         "id": "openai/gpt-5.6-sol:batch",
         "input": ["text"],
@@ -8008,7 +8009,7 @@
         "cost": {
             "cacheRead": 0.03,
             "cacheWrite": 0.0,
-            "input": 0.03,
+            "input": 0.037,
             "output": 0.16999999999999998
         },
         "description": "Open GPT reasoning model for self-hosted agents and controllable deployments",
@@ -8050,36 +8051,6 @@
         "provider": "openrouter",
         "reasoning": true,
         "releaseDate": "2025-08-05",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "openai/gpt-oss-20b:free": {
-        "api": "openai-completions",
-        "baseUrl": "https://openrouter.ai/api/v1",
-        "compat": {
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 131072,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "description": "Open-weight GPT model for self-hosted reasoning and instruction-following workloads",
-        "id": "openai/gpt-oss-20b:free",
-        "input": ["text"],
-        "maxTokens": 32768,
-        "name": "gpt-oss-20b (free)",
-        "provider": "openrouter",
-        "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -9394,13 +9365,13 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.13,
-            "output": 0.52
+            "input": 0.12,
+            "output": 0.5
         },
         "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "qwen/qwen3-30b-a3b",
         "input": ["text"],
-        "maxTokens": 8192,
+        "maxTokens": 16384,
         "name": "Qwen3 30B A3B",
         "provider": "openrouter",
         "reasoning": true,
@@ -9766,13 +9737,13 @@
         "cost": {
             "cacheRead": 0.07,
             "cacheWrite": 0.0,
-            "input": 0.09,
+            "input": 0.09999999999999999,
             "output": 1.1
         },
         "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "qwen/qwen3-next-80b-a3b-instruct",
         "input": ["text"],
-        "maxTokens": 16384,
+        "maxTokens": 262144,
         "name": "Qwen3-Next 80B-A3B Instruct",
         "provider": "openrouter",
         "reasoning": false,
@@ -10051,7 +10022,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-122b-a10b",
         "input": ["text", "image", "video"],
-        "maxTokens": 65536,
+        "maxTokens": 262144,
         "name": "Qwen3.5 122B-A10B",
         "provider": "openrouter",
         "reasoning": true,
@@ -10543,7 +10514,7 @@
         "description": "Open-weight sparse MoE (2.4T total, 95B active), the open-weight twin of Qwen3.8 Max for coding, research, complex reasoning, and agentic workflows",
         "id": "qwen/qwen3.8-2.4t-a95b",
         "input": ["text"],
-        "maxTokens": 262144,
+        "maxTokens": 131072,
         "name": "Qwen3.8 2.4T A95B",
         "provider": "openrouter",
         "reasoning": true,
@@ -10564,8 +10535,8 @@
         "cost": {
             "cacheRead": 0.049999999999999996,
             "cacheWrite": 0.0,
-            "input": 0.44999999999999996,
-            "output": 3.1999999999999997
+            "input": 0.39999999999999997,
+            "output": 3.0
         },
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.8-27b",
@@ -10879,8 +10850,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.05,
+            "output": 0.05
         },
         "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
         "id": "stealth/ox-alpha",
@@ -11034,6 +11005,33 @@
         "input": ["text"],
         "maxTokens": 4096,
         "name": "Hy-MT2-30B-A3B",
+        "provider": "openrouter",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "tencent/hy-mt2-7b": {
+        "api": "openai-completions",
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "contextWindow": 8192,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.074,
+            "output": 0.295
+        },
+        "description": "Tencent Hy reasoning model for coding, instruction following, and agent tasks",
+        "id": "tencent/hy-mt2-7b",
+        "input": ["text"],
+        "maxTokens": 4096,
+        "name": "Hy-MT2-7B",
         "provider": "openrouter",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -11231,9 +11229,9 @@
         },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.16,
+            "cacheRead": 0.16999999999999998,
             "cacheWrite": 0.0,
-            "input": 0.95,
+            "input": 1.0,
             "output": 4.05
         },
         "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
@@ -11282,6 +11280,33 @@
             "xhigh": null
         }
     },
+    "thinkingmachines/inkling-small:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
+        "id": "thinkingmachines/inkling-small:free",
+        "input": ["text", "image", "audio"],
+        "maxTokens": 262144,
+        "name": "Inkling Small (free)",
+        "provider": "openrouter",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": "off",
+            "xhigh": null
+        }
+    },
     "thinkingmachines/inkling:batch": {
         "api": "openai-completions",
         "baseUrl": "https://openrouter.ai/api/v1",
@@ -11296,6 +11321,33 @@
         "input": ["text"],
         "maxTokens": 64000,
         "name": "thinkingmachines/inkling:batch",
+        "provider": "openrouter",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "thinkingmachines/inkling:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
+        "id": "thinkingmachines/inkling:free",
+        "input": ["text", "image", "audio"],
+        "maxTokens": 262144,
+        "name": "Inkling (free)",
         "provider": "openrouter",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -12251,15 +12303,15 @@
         "baseUrl": "https://openrouter.ai/api/v1",
         "contextWindow": 1310720,
         "cost": {
-            "cacheRead": 0.02,
+            "cacheRead": 0.01,
             "cacheWrite": 0.0,
-            "input": 0.065,
-            "output": 0.18
+            "input": 0.04,
+            "output": 0.13
         },
         "description": "Fast DeepSeek model for efficient chat, coding help, and agent loops",
         "id": "~deepseek/deepseek-v4-flash-latest",
         "input": ["text"],
-        "maxTokens": 1048576,
+        "maxTokens": 262144,
         "name": "DeepSeek V4 Flash Latest",
         "provider": "openrouter",
         "reasoning": true,
@@ -12375,10 +12427,10 @@
         },
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.25,
-            "cacheWrite": 3.125,
-            "input": 2.5,
-            "output": 15.0
+            "cacheRead": 0.19999999999999998,
+            "cacheWrite": 2.5,
+            "input": 2.0,
+            "output": 10.0
         },
         "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "~openai/gpt-latest",

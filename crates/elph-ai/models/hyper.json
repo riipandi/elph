@@ -137,9 +137,9 @@
         "contextWindow": 256000,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.06,
-            "input": 0.12,
-            "output": 0.42
+            "cacheWrite": 0.055,
+            "input": 0.11,
+            "output": 0.408
         },
         "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "gemma-4-26b-a4b-it",
@@ -164,9 +164,9 @@
         "contextWindow": 202752,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.415,
-            "input": 0.83,
-            "output": 2.558
+            "cacheWrite": 0.455,
+            "input": 0.91,
+            "output": 2.934
         },
         "description": "General GLM flagship for coding, analysis, and tool-heavy engineering workflows",
         "id": "glm-5",
@@ -295,9 +295,9 @@
         "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.2752,
-            "input": 0.5504,
-            "output": 2.885
+            "cacheWrite": 0.2722,
+            "input": 0.5444,
+            "output": 2.855
         },
         "description": "Earlier Kimi frontier model for long-context agents, coding, and multimodal work",
         "id": "kimi-k2.5",
@@ -400,7 +400,7 @@
         "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
         "id": "kimi-k3",
         "input": ["text", "image"],
-        "maxTokens": 131072,
+        "maxTokens": 16000,
         "name": "Kimi K3",
         "provider": "hyper",
         "reasoning": true,
