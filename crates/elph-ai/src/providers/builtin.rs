@@ -728,6 +728,12 @@ pub fn builtin_providers() -> Vec<Provider> {
             openai_completions_api,
             (vec!["QWEN_TOKEN_PLAN_CN_API_KEY"], "Qwen Token Plan CN API key")
         ),
+        simple_provider!(
+            "qwen-token-plan-individual",
+            "Qwen Token Plan (Individual)",
+            openai_completions_api,
+            (vec!["QWEN_TOKEN_PLAN_API_KEY"], "Qwen Token Plan API key")
+        ),
         sumopod_provider(),
         simple_provider!(
             "tokenrouter",

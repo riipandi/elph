@@ -205,6 +205,11 @@
         "count": 16
     },
     {
+        "providerId": "qwen-token-plan-individual",
+        "rustMod": "qwen_token_plan_individual",
+        "count": 6
+    },
+    {
         "providerId": "sumopod",
         "rustMod": "sumopod",
         "count": 49

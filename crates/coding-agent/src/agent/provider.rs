@@ -223,6 +223,11 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
             api_key_env_key: "QWEN_TOKEN_PLAN_CN_API_KEY",
             default_model: "qwen3.7-plus",
         }),
+        "qwen-token-plan-individual" => Some(ProviderConfig {
+            label: "Qwen Token Plan (Individual)",
+            api_key_env_key: "QWEN_TOKEN_PLAN_API_KEY",
+            default_model: "qwen3.7-plus",
+        }),
         "sumopod" => Some(ProviderConfig {
             label: "Sumopod",
             api_key_env_key: "SUMOPOD_AI_API_KEY",
@@ -622,6 +627,7 @@ mod tests {
             "openrouter",
             "qwen-token-plan",
             "qwen-token-plan-cn",
+            "qwen-token-plan-individual",
             "sumopod",
             "together",
             "tokenrouter",

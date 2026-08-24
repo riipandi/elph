@@ -156,5 +156,7 @@ Initial gap audit.
 - Kilo provider OAuth (device code + org selection, `auth/oauth/kilo.rs`, ported from `Kilo-Org/kilo-pi-provider`)
 - Hugging Face OAuth (device code, `auth/oauth/huggingface.rs`, ported from `osolmaz/pi-huggingface-oauth`)
 - Cline + ClinePass OAuth (WorkOS device code + account/org activation, `auth/oauth/cline.rs`, ported from `maxpaulus43/pi-cline`)
+- `$VAR` / `${VAR}` API-key template interpolation in stored credentials (`auth/helpers.rs`, Pi-compatible)
+- `qwen-token-plan-individual` provider (curated Individual-plan catalog, `models/qwen_token_plan_individual.json`)
 - models.dev catalog pipeline (`bin/generate_models/`: `models_dev`, `provider_sources`, `thinking_map`, …)
 - OpenAI-compat gateway hardening + tool schema sanitize for non-standard gateways
