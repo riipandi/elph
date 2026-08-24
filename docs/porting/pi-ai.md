@@ -155,5 +155,6 @@ Initial gap audit.
 - Hyper provider + OAuth (`providers/`, `models/hyper.json`, `auth/oauth/hyper.rs`)
 - Kilo provider OAuth (device code + org selection, `auth/oauth/kilo.rs`, ported from `Kilo-Org/kilo-pi-provider`)
 - Hugging Face OAuth (device code, `auth/oauth/huggingface.rs`, ported from `osolmaz/pi-huggingface-oauth`)
+- Cline + ClinePass OAuth (WorkOS device code + account/org activation, `auth/oauth/cline.rs`, ported from `maxpaulus43/pi-cline`)
 - models.dev catalog pipeline (`bin/generate_models/`: `models_dev`, `provider_sources`, `thinking_map`, …)
 - OpenAI-compat gateway hardening + tool schema sanitize for non-standard gateways

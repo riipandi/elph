@@ -9,6 +9,7 @@ pub(crate) fn map_oauth(context: &str) -> impl FnOnce(anyhow::Error) -> ModelsEr
 
 mod anthropic;
 mod callback;
+mod cline;
 mod device_code;
 mod github_copilot;
 mod huggingface;
@@ -25,6 +26,8 @@ mod registry;
 mod xai;
 
 pub use anthropic::{anthropic_oauth, anthropic_oauth_loader, login_anthropic, refresh_anthropic_token};
+pub use cline::refresh_cline_token;
+pub use cline::{cline_api_key, cline_oauth, cline_oauth_loader, cline_pass_oauth, login_cline, login_cline_pass};
 pub use github_copilot::{
     ensure_copilot_available_model_ids, ensure_copilot_session_token, get_github_copilot_base_url,
     github_copilot_oauth, github_copilot_oauth_loader, is_copilot_session_token, login_github_copilot,

@@ -6,6 +6,7 @@ use std::sync::Arc;
 use crate::auth::env_api_key_auth;
 use crate::auth::oauth::openai_codex_oauth;
 use crate::auth::oauth::{anthropic_oauth, github_copilot_oauth, huggingface_oauth};
+use crate::auth::oauth::{cline_oauth, cline_pass_oauth};
 use crate::auth::oauth::{hyper_api_base_url, hyper_oauth, hyper_user_agent};
 use crate::auth::oauth::{kilo_api_base_url, kilo_oauth, kimi_oauth};
 use crate::auth::{AuthResolveInput, AuthResult, ModelAuth, ProviderAuth};
@@ -436,7 +437,7 @@ pub fn kimi_coding_provider() -> Provider {
     })
 }
 
-/// Cline (usage-billing) — OpenAI-compatible. Key: CLINE_API_KEY.
+/// Cline (usage-billing) — OpenAI-compatible. Key: CLINE_API_KEY or WorkOS OAuth.
 pub fn cline_provider() -> Provider {
     create_provider(CreateProviderOptions {
         id: "cline".to_string(),
@@ -445,7 +446,7 @@ pub fn cline_provider() -> Provider {
         headers: None,
         auth: ProviderAuth {
             api_key: Some(env_api_key_auth("Cline API key", vec!["CLINE_API_KEY"])),
-            oauth: None,
+            oauth: Some(cline_oauth()),
         },
         models: builtin_catalog("cline").as_ref().clone(),
         refresh_models: None,
@@ -453,7 +454,7 @@ pub fn cline_provider() -> Provider {
     })
 }
 
-/// ClinePass — flat-rate subscription. Key: CLINE_API_KEY.
+/// ClinePass — flat-rate subscription. Key: CLINE_API_KEY or WorkOS OAuth.
 pub fn cline_pass_provider() -> Provider {
     create_provider(CreateProviderOptions {
         id: "cline-pass".to_string(),
@@ -462,7 +463,7 @@ pub fn cline_pass_provider() -> Provider {
         headers: None,
         auth: ProviderAuth {
             api_key: Some(env_api_key_auth("Cline API key", vec!["CLINE_API_KEY"])),
-            oauth: None,
+            oauth: Some(cline_pass_oauth()),
         },
         models: builtin_catalog("cline-pass").as_ref().clone(),
         refresh_models: None,
