@@ -2,7 +2,6 @@ use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
 
-const CANCEL_MESSAGE: &str = "Login cancelled";
 const TIMEOUT_MESSAGE: &str = "Device flow timed out";
 const SLOW_DOWN_TIMEOUT_MESSAGE: &str = "Device flow timed out after one or more slow_down responses. This is often caused by clock drift in WSL or VM environments. Please sync or restart the VM clock and try again.";
 const MINIMUM_INTERVAL_MS: u64 = 1000;
@@ -71,9 +70,4 @@ pub async fn poll_oauth_device_code_flow<T>(options: DeviceCodePollOptions<T>) -
     } else {
         Err(anyhow::anyhow!(TIMEOUT_MESSAGE))
     }
-}
-
-#[allow(dead_code)]
-pub fn login_cancelled() -> anyhow::Error {
-    anyhow::anyhow!(CANCEL_MESSAGE)
 }

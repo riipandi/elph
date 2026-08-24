@@ -2,13 +2,11 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
+use super::device_code::poll_oauth_device_code_flow;
+use super::device_code::{DeviceCodePollOptions, DeviceCodePollResult};
 use crate::auth::OAuthLoader;
 use crate::auth::lazy_oauth;
 use crate::auth::types::{AuthEvent, AuthLoginCallbacks, AuthPrompt, ModelAuth, OAuthAuth, OAuthCredential};
-use crate::models::catalog::builtin_catalog;
-
-use super::device_code::poll_oauth_device_code_flow;
-use super::device_code::{DeviceCodePollOptions, DeviceCodePollResult};
 
 const CLIENT_ID: &str = "Iv1.b507a08c87ecfe98";
 const COPILOT_API_VERSION: &str = "2026-06-01";
@@ -439,24 +437,4 @@ pub(crate) async fn fetch_available_model_ids(
         })
         .collect();
     Ok(ids)
-}
-
-/// Optional: enable every catalog model via Copilot policy API (slow — one HTTP
-/// call per model). Login no longer calls this; keep for manual/debug use.
-#[allow(dead_code)]
-async fn enable_all_copilot_models(token: &str, enterprise_domain: Option<&str>) {
-    let base_url = get_github_copilot_base_url(Some(token), enterprise_domain);
-    let client = reqwest::Client::new();
-    for model in builtin_catalog("github-copilot").iter() {
-        let mut req = client
-            .post(format!("{base_url}/models/{}/policy", model.id))
-            .header("Content-Type", "application/json")
-            .header("Authorization", format!("Bearer {token}"))
-            .header("openai-intent", "chat-policy")
-            .header("x-interaction-type", "chat-policy");
-        for (k, v) in COPILOT_HEADERS {
-            req = req.header(*k, *v);
-        }
-        let _ = req.body(r#"{"state":"enabled"}"#).send().await;
-    }
 }

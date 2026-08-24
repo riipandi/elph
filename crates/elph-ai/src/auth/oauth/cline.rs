@@ -57,14 +57,28 @@ pub fn cline_oauth_loader(force_personal_account: bool) -> OAuthLoader {
 }
 
 fn client_headers() -> reqwest::header::HeaderMap {
+    // from_static validates at compile time — no runtime panic path (DeepWiki: hyperium/http).
     let mut headers = reqwest::header::HeaderMap::new();
-    headers.insert(reqwest::header::ACCEPT, "application/json".parse().expect("static"));
+    headers.insert(
+        reqwest::header::ACCEPT,
+        reqwest::header::HeaderValue::from_static("application/json"),
+    );
     headers.insert(
         reqwest::header::HeaderName::from_static("x-client-type"),
-        "pi".parse().expect("static"),
+        reqwest::header::HeaderValue::from_static("pi"),
     );
-    headers.insert(reqwest::header::USER_AGENT, USER_AGENT.parse().expect("static"));
+    headers.insert(
+        reqwest::header::USER_AGENT,
+        reqwest::header::HeaderValue::from_static(USER_AGENT),
+    );
     headers
+}
+
+/// Shared HTTP client. `Client` pools connections and clones cheaply
+/// (Arc internally), so one instance serves every Cline/WorkOS request.
+fn http_client() -> reqwest::Client {
+    static CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
+    CLIENT.get_or_init(reqwest::Client::new).clone()
 }
 
 fn cline_url(path: &str) -> String {
@@ -164,7 +178,7 @@ async fn post_form(url: &str, fields: Vec<(&str, &str)>) -> anyhow::Result<(bool
     let body = url::form_urlencoded::Serializer::new(String::new())
         .extend_pairs(fields)
         .finish();
-    let response = reqwest::Client::new()
+    let response = http_client()
         .post(url)
         .headers(client_headers())
         .header(reqwest::header::CONTENT_TYPE, "application/x-www-form-urlencoded")
@@ -173,8 +187,25 @@ async fn post_form(url: &str, fields: Vec<(&str, &str)>) -> anyhow::Result<(bool
         .send()
         .await?;
     let status = response.status();
-    let body: serde_json::Value = response.json().await.unwrap_or(serde_json::Value::Null);
-    Ok((status.is_success(), body))
+    Ok((status.is_success(), json_body(response).await))
+}
+
+/// Read a response body as JSON, falling back to an `error_description` envelope
+/// carrying the raw (truncated) text so server messages survive non-JSON errors.
+async fn json_body(response: reqwest::Response) -> serde_json::Value {
+    const MAX_RAW_LEN: usize = 500;
+    let text = response.text().await.unwrap_or_default();
+    match serde_json::from_str(&text) {
+        Ok(value) => value,
+        Err(_) => {
+            let mut raw = text;
+            if raw.len() > MAX_RAW_LEN {
+                raw.truncate(MAX_RAW_LEN);
+                raw.push('…');
+            }
+            serde_json::json!({ "error_description": raw })
+        }
+    }
 }
 
 async fn start_device_authorization() -> anyhow::Result<DeviceAuthorization> {
@@ -263,7 +294,7 @@ async fn poll_device_authorization(device: &DeviceAuthorization) -> anyhow::Resu
 }
 
 async fn post_json(url: &str, payload: serde_json::Value) -> anyhow::Result<(bool, serde_json::Value)> {
-    let response = reqwest::Client::new()
+    let response = http_client()
         .post(url)
         .headers(client_headers())
         .header(reqwest::header::CONTENT_TYPE, "application/json")
@@ -272,8 +303,7 @@ async fn post_json(url: &str, payload: serde_json::Value) -> anyhow::Result<(boo
         .send()
         .await?;
     let status = response.status();
-    let body: serde_json::Value = response.json().await.unwrap_or(serde_json::Value::Null);
-    Ok((status.is_success(), body))
+    Ok((status.is_success(), json_body(response).await))
 }
 
 /// Exchange WorkOS tokens for the Cline-scoped credential
@@ -311,10 +341,19 @@ pub async fn refresh_cline_token(credential: &OAuthCredential) -> anyhow::Result
 fn cline_credential(body: &serde_json::Value, fallback_refresh: Option<&str>) -> anyhow::Result<OAuthCredential> {
     let success = body.get("success").and_then(|v| v.as_bool()).unwrap_or(false);
     let data = body.get("data");
-    let access = data.and_then(|d| d.get("accessToken")).and_then(|v| v.as_str());
-    let expires_at = data.and_then(|d| d.get("expiresAt")).and_then(|v| v.as_str());
-    if !success || access.is_none() || expires_at.is_none() {
-        anyhow::bail!("Invalid token response from Cline");
+    let invalid = || anyhow::anyhow!("Invalid token response from Cline");
+    let access = data
+        .and_then(|d| d.get("accessToken"))
+        .and_then(|v| v.as_str())
+        .filter(|v| !v.is_empty())
+        .ok_or_else(invalid)?;
+    let expires_at = data
+        .and_then(|d| d.get("expiresAt"))
+        .and_then(|v| v.as_str())
+        .filter(|v| !v.is_empty())
+        .ok_or_else(invalid)?;
+    if !success {
+        anyhow::bail!(invalid());
     }
     let refresh = data
         .and_then(|d| d.get("refreshToken"))
@@ -323,13 +362,12 @@ fn cline_credential(body: &serde_json::Value, fallback_refresh: Option<&str>) ->
         .map(str::to_string)
         .or_else(|| fallback_refresh.map(str::to_string))
         .ok_or_else(|| anyhow::anyhow!("Token response did not include a refresh token"))?;
-    let expires_at = expires_at.expect("checked above");
     let expires_ms = chrono::DateTime::parse_from_rfc3339(expires_at)
         .map_err(|error| anyhow::anyhow!("Invalid token expiration from Cline: {error}"))?
         .timestamp_millis();
     Ok(OAuthCredential {
         kind: "oauth".to_string(),
-        access: access.expect("checked above").to_string(),
+        access: access.to_string(),
         refresh,
         expires: expires_ms - REFRESH_BUFFER_MS,
         account_id: None,
@@ -352,7 +390,7 @@ struct ClineOrganization {
 }
 
 async fn fetch_cline_me(api_key: &str) -> anyhow::Result<ClineAccount> {
-    let response = reqwest::Client::new()
+    let response = http_client()
         .get(cline_url(ME_PATH))
         .headers(client_headers())
         .header(reqwest::header::AUTHORIZATION, format!("Bearer {api_key}"))
@@ -360,7 +398,7 @@ async fn fetch_cline_me(api_key: &str) -> anyhow::Result<ClineAccount> {
         .send()
         .await?
         .error_for_status()?;
-    let json: serde_json::Value = response.json().await?;
+    let json = json_body(response).await;
     let organizations = json
         .pointer("/data/organizations")
         .or_else(|| json.get("organizations"))
@@ -415,7 +453,7 @@ async fn post_json_with_auth(
     payload: serde_json::Value,
     api_key: &str,
 ) -> anyhow::Result<(bool, serde_json::Value)> {
-    let response = reqwest::Client::new()
+    let response = http_client()
         .put(url)
         .headers(client_headers())
         .header(reqwest::header::CONTENT_TYPE, "application/json")
@@ -425,8 +463,7 @@ async fn post_json_with_auth(
         .send()
         .await?;
     let status = response.status();
-    let body: serde_json::Value = response.json().await.unwrap_or(serde_json::Value::Null);
-    Ok((status.is_success(), body))
+    Ok((status.is_success(), json_body(response).await))
 }
 
 /// Post-login account activation. `force_personal_account` (ClinePass) switches

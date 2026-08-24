@@ -114,13 +114,6 @@ pub async fn start_callback_server(
 }
 
 impl CallbackServer {
-    #[allow(dead_code)]
-    pub fn cancel_wait(&self) {
-        if let Some(tx) = self.shutdown.lock().take() {
-            let _ = tx.send(());
-        }
-    }
-
     pub async fn wait_for_code(self, timeout: std::time::Duration) -> Option<CallbackResult> {
         let shutdown = self.shutdown.clone();
         tokio::select! {
@@ -131,13 +124,6 @@ impl CallbackServer {
                 }
                 None
             }
-        }
-    }
-
-    #[allow(dead_code)]
-    pub fn close(self) {
-        if let Some(tx) = self.shutdown.lock().take() {
-            let _ = tx.send(());
         }
     }
 }
