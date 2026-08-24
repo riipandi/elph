@@ -5,10 +5,9 @@ use std::sync::{Arc, LazyLock, RwLock};
 
 use crate::auth::helpers::lazy_oauth;
 use crate::auth::oauth::openai_codex_oauth_loader;
-use crate::auth::oauth::{
-    anthropic_oauth_loader, github_copilot_oauth_loader, hyper_oauth_loader, kimi_oauth_loader,
-    openrouter_oauth_loader, radius_oauth_loader, xai_oauth_loader,
-};
+use crate::auth::oauth::{anthropic_oauth_loader, github_copilot_oauth_loader, hyper_oauth_loader};
+use crate::auth::oauth::{kilo_oauth_loader, kimi_oauth_loader, openrouter_oauth_loader};
+use crate::auth::oauth::{radius_oauth_loader, xai_oauth_loader};
 use crate::auth::types::{AuthLoginCallbacks, ModelAuth, OAuthAuth, OAuthCredential};
 use crate::models::catalog::builtin_catalog;
 use crate::types::Model;
@@ -56,6 +55,16 @@ fn hyper_provider() -> OAuthProviderInterface {
     }
 }
 
+fn kilo_provider() -> OAuthProviderInterface {
+    OAuthProviderInterface {
+        id: "kilo".to_string(),
+        name: "Kilo".to_string(),
+        auth: lazy_oauth("Kilo", kilo_oauth_loader()),
+        get_api_key: Arc::new(|c| c.access.clone()),
+        modify_models: None,
+    }
+}
+
 fn openai_codex_provider() -> OAuthProviderInterface {
     OAuthProviderInterface {
         id: "openai-codex".to_string(),
@@ -71,6 +80,7 @@ fn built_in_providers() -> Vec<OAuthProviderInterface> {
         anthropic_provider(),
         github_copilot_provider(),
         hyper_provider(),
+        kilo_provider(),
         openai_codex_provider(),
         xai_provider(),
         kimi_provider(),
@@ -304,6 +314,7 @@ pub fn builtin_oauth_provider_ids() -> Vec<&'static str> {
         "anthropic",
         "github-copilot",
         "hyper",
+        "kilo",
         "openai-codex",
         "xai",
         "kimi-coding",

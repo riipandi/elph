@@ -9,7 +9,8 @@
 # rustup target add wasm32-unknown-unknown
 
 [toolchain]
-channel = "1.97.0"
+channel = "1.97"
+profile = "minimal"
 components = ["clippy", "rustfmt", "rust-analysis", "rust-analyzer"]
 # targets = [
 #   "aarch64-apple-darwin",
