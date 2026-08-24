@@ -1,0 +1,354 @@
+{
+    "$schema": "https://elph.space/provider-schema.json",
+    "cline-pass/deepseek-v4-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.cline.bot/api/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.0112,
+            "cacheWrite": 0.0,
+            "input": 0.056,
+            "output": 0.112
+        },
+        "description": "DeepSeek V4 Flash is an efficiency-optimized Mixture-of-Experts model from DeepSeek with 284B total parameters and 13B activated parameters, supporting a 1M-token context window. It is designed for fast inference and...",
+        "id": "cline-pass/deepseek-v4-flash",
+        "input": ["text"],
+        "maxTokens": 128000,
+        "name": "DeepSeek: DeepSeek V4 Flash 0423",
+        "provider": "cline-pass",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "cline-pass/deepseek-v4-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.cline.bot/api/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.0435,
+            "cacheWrite": 0.0,
+            "input": 0.522,
+            "output": 1.044
+        },
+        "description": "DeepSeek V4 Pro is a large-scale Mixture-of-Experts model from DeepSeek with 1.6T total parameters and 49B activated parameters, supporting a 1M-token context window. It is designed for advanced reasoning, coding,...",
+        "id": "cline-pass/deepseek-v4-pro",
+        "input": ["text"],
+        "maxTokens": 128000,
+        "name": "DeepSeek: DeepSeek V4 Pro 0423",
+        "provider": "cline-pass",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "cline-pass/glm-5.2": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.cline.bot/api/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.1932,
+            "cacheWrite": 0.0,
+            "input": 0.966,
+            "output": 3.036
+        },
+        "description": "GLM 5.2 is a large-scale reasoning model from Z.ai. It supports text input and output with a 1M-token context window, and is suited for long-horizon agent workflows, project-level software engineering,...",
+        "id": "cline-pass/glm-5.2",
+        "input": ["text"],
+        "maxTokens": 128000,
+        "name": "Z.ai: GLM 5.2",
+        "provider": "cline-pass",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "cline-pass/glm-5.3": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.cline.bot/api/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.26,
+            "cacheWrite": 0.0,
+            "input": 1.4,
+            "output": 4.4
+        },
+        "description": "GLM-5.3 is a large-scale reasoning model from Z.ai, built for complex software engineering and long-horizon agent tasks. It supports text input and output with a 1M-token context window, and improves...",
+        "id": "cline-pass/glm-5.3",
+        "input": ["text"],
+        "maxTokens": 128000,
+        "name": "Z.ai: GLM 5.3",
+        "provider": "cline-pass",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "cline-pass/kimi-k2.6": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.cline.bot/api/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.16,
+            "cacheWrite": 0.0,
+            "input": 0.95,
+            "output": 4.0
+        },
+        "description": "Kimi K2.6 is Moonshot AI's next-generation multimodal model, designed for long-horizon coding, coding-driven UI/UX generation, and multi-agent orchestration. It handles complex end-to-end coding tasks across Python, Rust, and Go, and...",
+        "id": "cline-pass/kimi-k2.6",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "MoonshotAI: Kimi K2.6",
+        "provider": "cline-pass",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "cline-pass/kimi-k2.7-code": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.cline.bot/api/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.19,
+            "cacheWrite": 0.0,
+            "input": 0.67,
+            "output": 3.4
+        },
+        "description": "MoonshotAI: Kimi K2.7 Code is a coding-focused model in Moonshot AI's Kimi K2 family, built to complete end-to-end programming tasks reliably over long contexts. It uses a native multimodal mixture-of-experts...",
+        "id": "cline-pass/kimi-k2.7-code",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "MoonshotAI: Kimi K2.7 Code",
+        "provider": "cline-pass",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "cline-pass/kimi-k3": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.cline.bot/api/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.3,
+            "cacheWrite": 0.0,
+            "input": 3.0,
+            "output": 15.0
+        },
+        "description": "Kimi K3 is a 2.8T parameter open-weight multimodal reasoning model from Moonshot AI. It is suited for complex coding, knowledge work, and long-horizon agentic workflows, and is particularly strong at...",
+        "id": "cline-pass/kimi-k3",
+        "input": ["text", "image", "video"],
+        "maxTokens": 128000,
+        "name": "MoonshotAI: Kimi K3",
+        "provider": "cline-pass",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "cline-pass/mimo-v2.5": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.cline.bot/api/v1",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0.0028,
+            "cacheWrite": 0.0,
+            "input": 0.14,
+            "output": 0.28
+        },
+        "description": "MiMo-V2.5 is a native omnimodal model by Xiaomi. It delivers Pro-level agentic performance at roughly half the inference cost, while surpassing MiMo-V2-Omni in multimodal perception across image and video understanding...",
+        "id": "cline-pass/mimo-v2.5",
+        "input": ["text", "audio", "image", "video"],
+        "maxTokens": 128000,
+        "name": "Xiaomi: MiMo-V2.5",
+        "provider": "cline-pass",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "cline-pass/mimo-v2.5-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.cline.bot/api/v1",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0.0036,
+            "cacheWrite": 0.0,
+            "input": 0.435,
+            "output": 0.87
+        },
+        "description": "MiMo-V2.5-Pro is Xiaomi’s flagship model, delivering strong performance in general agentic capabilities, complex software engineering, and long-horizon tasks, with top rankings on benchmarks such as ClawEval, GDPVal, and SWE-bench Pro....",
+        "id": "cline-pass/mimo-v2.5-pro",
+        "input": ["text"],
+        "maxTokens": 128000,
+        "name": "Xiaomi: MiMo-V2.5-Pro",
+        "provider": "cline-pass",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "cline-pass/minimax-m3": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.cline.bot/api/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.06,
+            "cacheWrite": 0.0,
+            "input": 0.3,
+            "output": 1.2
+        },
+        "description": "MiniMax-M3 is a multimodal foundation model from MiniMax. It supports text, image, and video inputs with text output, a 1M-token context window, and is suited for long-horizon agentic work, coding,...",
+        "id": "cline-pass/minimax-m3",
+        "input": ["text", "image", "video"],
+        "maxTokens": 128000,
+        "name": "MiniMax: MiniMax M3",
+        "provider": "cline-pass",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "cline-pass/qwen3.7-max": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.cline.bot/api/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.295,
+            "cacheWrite": 0.0,
+            "input": 1.475,
+            "output": 4.425
+        },
+        "description": "Qwen3.7-Max is the flagship model in Alibaba's Qwen3.7 series. It supports text input and output and is designed for agent-centric workloads, with particular strengths in coding, office and productivity tasks,...",
+        "id": "cline-pass/qwen3.7-max",
+        "input": ["text"],
+        "maxTokens": 128000,
+        "name": "Qwen: Qwen3.7 Max",
+        "provider": "cline-pass",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "cline-pass/qwen3.7-plus": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.cline.bot/api/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.064,
+            "cacheWrite": 0.0,
+            "input": 0.32,
+            "output": 1.28
+        },
+        "description": "Qwen3.7-Plus is a cost-effective model in Alibaba's Qwen3.7 series. It supports text and image input with text output, building on the series' text capabilities with a comprehensive upgrade to its...",
+        "id": "cline-pass/qwen3.7-plus",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "Qwen: Qwen3.7 Plus",
+        "provider": "cline-pass",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "cline-pass/qwen3.8-max": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.cline.bot/api/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.25,
+            "cacheWrite": 0.0,
+            "input": 2.0,
+            "output": 6.0
+        },
+        "description": "Qwen3.8 Max is the flagship model in Alibaba's Qwen3.8 series, the general-availability successor to the Qwen3.8 Max Preview. It is a multimodal reasoning model intended for complex reasoning, visual understanding,...",
+        "id": "cline-pass/qwen3.8-max",
+        "input": ["text", "image", "video"],
+        "maxTokens": 128000,
+        "name": "Qwen: Qwen3.8 Max",
+        "provider": "cline-pass",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    }
+}

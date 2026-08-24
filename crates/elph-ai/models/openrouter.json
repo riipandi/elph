@@ -1917,10 +1917,10 @@
         },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.009772,
+            "cacheRead": 0.0112,
             "cacheWrite": 0.0,
-            "input": 0.04886,
-            "output": 0.09772
+            "input": 0.056,
+            "output": 0.112
         },
         "description": "Fast DeepSeek V4 lane for economical reasoning, coding, and long-context work",
         "id": "deepseek/deepseek-v4-flash",
@@ -1946,16 +1946,16 @@
         "baseUrl": "https://openrouter.ai/api/v1",
         "contextWindow": 1310720,
         "cost": {
-            "cacheRead": 0.016,
+            "cacheRead": 0.01316,
             "cacheWrite": 0.0,
-            "input": 0.08,
-            "output": 0.18
+            "input": 0.0658,
+            "output": 0.1316
         },
         "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
         "id": "deepseek/deepseek-v4-flash-0731",
         "input": ["text"],
         "knowledgeCutoff": "2025-05",
-        "maxTokens": 384000,
+        "maxTokens": 131072,
         "name": "DeepSeek V4 Flash 0731",
         "provider": "openrouter",
         "reasoning": true,
@@ -2008,10 +2008,10 @@
         },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.0330745,
+            "cacheRead": 0.0435,
             "cacheWrite": 0.0,
-            "input": 0.396894,
-            "output": 0.793788
+            "input": 0.522,
+            "output": 1.044
         },
         "description": "Open MoE flagship with million-token context for coding and long agent runs",
         "id": "deepseek/deepseek-v4-pro",
@@ -3420,68 +3420,6 @@
             "xhigh": null
         }
     },
-    "inclusionai/ling-2.6-1t": {
-        "api": "openai-completions",
-        "baseUrl": "https://openrouter.ai/api/v1",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0.015,
-            "cacheWrite": 0.0,
-            "input": 0.075,
-            "output": 0.625
-        },
-        "description": "Tool-capable chat model for instruction following and agentic application workflows",
-        "id": "inclusionai/ling-2.6-1t",
-        "input": ["text"],
-        "maxTokens": 32768,
-        "name": "Ling-2.6-1T",
-        "provider": "openrouter",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "inclusionai/ling-2.6-flash": {
-        "api": "openai-completions",
-        "baseUrl": "https://openrouter.ai/api/v1",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0.002,
-            "cacheWrite": 0.0,
-            "input": 0.01,
-            "output": 0.03
-        },
-        "description": "Efficient model for low-latency assistance, extraction, and routine automation",
-        "id": "inclusionai/ling-2.6-flash",
-        "input": ["text"],
-        "maxTokens": 32768,
-        "name": "Ling-2.6-flash",
-        "provider": "openrouter",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "inclusionai/ling-3.0-flash": {
         "api": "openai-completions",
         "baseUrl": "https://openrouter.ai/api/v1",
@@ -3507,37 +3445,6 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
-    },
-    "inclusionai/ring-2.6-1t": {
-        "api": "openai-completions",
-        "baseUrl": "https://openrouter.ai/api/v1",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0.015,
-            "cacheWrite": 0.0,
-            "input": 0.075,
-            "output": 0.625
-        },
-        "description": "Reasoning model for deliberate analysis, multi-step problem solving, and tool use",
-        "id": "inclusionai/ring-2.6-1t",
-        "input": ["text"],
-        "maxTokens": 65536,
-        "name": "Ring-2.6-1T",
-        "provider": "openrouter",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": "xhigh"
         }
     },
     "kwaipilot/kat-coder-air-v2.5": {
@@ -4312,10 +4219,10 @@
         },
         "contextWindow": 204800,
         "cost": {
-            "cacheRead": 0.048,
+            "cacheRead": 0.06,
             "cacheWrite": 0.0,
-            "input": 0.24,
-            "output": 0.96
+            "input": 0.3,
+            "output": 1.2
         },
         "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
         "id": "minimax/minimax-m2.7",
@@ -4410,6 +4317,33 @@
         "input": ["text", "pdf"],
         "maxTokens": 256000,
         "name": "Codestral 2508",
+        "provider": "openrouter",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "mistralai/devstral-2512": {
+        "api": "openai-completions",
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.044,
+            "cacheWrite": 0.0,
+            "input": 0.44,
+            "output": 2.2
+        },
+        "description": "Mistral coding agent model for repository tasks and software engineering workflows",
+        "id": "mistralai/devstral-2512",
+        "input": ["text", "pdf"],
+        "maxTokens": 262144,
+        "name": "Devstral 2",
         "provider": "openrouter",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -5072,10 +5006,10 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.07,
+            "cacheRead": 0.09999999999999999,
             "cacheWrite": 0.0,
-            "input": 0.44999999999999996,
-            "output": 2.25
+            "input": 0.6,
+            "output": 3.0
         },
         "description": "Earlier Kimi frontier model for long-context agents, coding, and multimodal work",
         "id": "moonshotai/kimi-k2.5",
@@ -5139,7 +5073,7 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.16999999999999998,
+            "cacheRead": 0.19,
             "cacheWrite": 0.0,
             "input": 0.67,
             "output": 3.4
@@ -5477,37 +5411,6 @@
             "xhigh": null
         }
     },
-    "nvidia/nemotron-3-nano-30b-a3b:free": {
-        "api": "openai-completions",
-        "baseUrl": "https://openrouter.ai/api/v1",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 256000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "description": "Small Nemotron 3 MoE for efficient coding, math, and long-context agents",
-        "id": "nvidia/nemotron-3-nano-30b-a3b:free",
-        "input": ["text"],
-        "maxTokens": 256000,
-        "name": "Nemotron 3 Nano 30B A3B (free)",
-        "provider": "openrouter",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free": {
         "api": "openai-completions",
         "baseUrl": "https://openrouter.ai/api/v1",
@@ -5761,68 +5664,6 @@
         "input": ["text"],
         "maxTokens": 65536,
         "name": "Nemotron 3.5 Lightning (free)",
-        "provider": "openrouter",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "nvidia/nemotron-nano-12b-v2-vl:free": {
-        "api": "openai-completions",
-        "baseUrl": "https://openrouter.ai/api/v1",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "description": "Nemotron multimodal model for visual reasoning and agentic AI workflows",
-        "id": "nvidia/nemotron-nano-12b-v2-vl:free",
-        "input": ["text", "image", "video"],
-        "maxTokens": 128000,
-        "name": "Nemotron Nano 12B 2 VL (free)",
-        "provider": "openrouter",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "nvidia/nemotron-nano-9b-v2:free": {
-        "api": "openai-completions",
-        "baseUrl": "https://openrouter.ai/api/v1",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "description": "Compact Nemotron model for efficient reasoning and deployable AI agents",
-        "id": "nvidia/nemotron-nano-9b-v2:free",
-        "input": ["text"],
-        "maxTokens": 128000,
-        "name": "Nemotron Nano 9B V2 (free)",
         "provider": "openrouter",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -9330,7 +9171,7 @@
             "supportsDeveloperRole": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 262144,
+        "contextWindow": 131072,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -10109,13 +9950,13 @@
         "cost": {
             "cacheRead": 0.3,
             "cacheWrite": 0.0,
-            "input": 0.39,
-            "output": 2.34
+            "input": 0.5,
+            "output": 3.5999999999999996
         },
         "description": "Large open Qwen multimodal MoE for visual agents and long technical tasks",
         "id": "qwen/qwen3.5-397b-a17b",
         "input": ["text", "image", "video"],
-        "maxTokens": 65536,
+        "maxTokens": 262144,
         "name": "Qwen3.5 397B-A17B",
         "provider": "openrouter",
         "reasoning": true,
@@ -10264,13 +10105,13 @@
         "cost": {
             "cacheRead": 0.12,
             "cacheWrite": 0.0,
-            "input": 0.6,
-            "output": 3.5999999999999996
+            "input": 0.32,
+            "output": 3.1999999999999997
         },
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.6-27b",
         "input": ["text", "image", "video"],
-        "maxTokens": 262144,
+        "maxTokens": 81920,
         "name": "Qwen3.6 27B",
         "provider": "openrouter",
         "reasoning": true,
@@ -11206,7 +11047,7 @@
         "description": "Open-weight instruction model for adaptable chat and self-hosted production workloads",
         "id": "thedrummer/unslopnemo-12b",
         "input": ["text"],
-        "maxTokens": 1024000,
+        "maxTokens": 32768,
         "name": "UnslopNemo 12B",
         "provider": "openrouter",
         "reasoning": false,
@@ -11373,7 +11214,7 @@
         "description": "Open-weight instruction model for adaptable chat and self-hosted production workloads",
         "id": "undi95/remm-slerp-l2-13b",
         "input": ["text"],
-        "maxTokens": 6144,
+        "maxTokens": 4096,
         "name": "ReMM SLERP 13B",
         "provider": "openrouter",
         "reasoning": false,
@@ -12305,13 +12146,13 @@
         "cost": {
             "cacheRead": 0.01,
             "cacheWrite": 0.0,
-            "input": 0.04,
-            "output": 0.13
+            "input": 0.035,
+            "output": 0.12
         },
         "description": "Fast DeepSeek model for efficient chat, coding help, and agent loops",
         "id": "~deepseek/deepseek-v4-flash-latest",
         "input": ["text"],
-        "maxTokens": 262144,
+        "maxTokens": 1048576,
         "name": "DeepSeek V4 Flash Latest",
         "provider": "openrouter",
         "reasoning": true,

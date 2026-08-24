@@ -8,7 +8,9 @@ use anyhow::{Context, Result, bail};
 use serde::Serialize;
 use serde_json::Value;
 
-use super::models_dev::{default_cache_dir, find_model, find_model_fuzzy, load_models_dev, models_for_provider_keys};
+use super::models_dev::{
+    ModelsDevData, default_cache_dir, find_model, find_model_fuzzy, load_models_dev, models_for_provider_keys,
+};
 use super::normalize::{enrich_existing, from_models_dev};
 use super::pricing::{
     aimd_reasoning, apply_cost, fetch_ai_model_directory, fetch_all_live_data, fetch_nara_pricing, resolve_cost,
@@ -239,6 +241,11 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
         });
     }
 
+    // Cline (usage-billing) + ClinePass live catalogs (public model directory).
+    if !options.offline {
+        write_cline_catalogs(&options.models_dir, &mut index, &models_dev)?;
+    }
+
     index.sort_by(|a, b| a.provider_id.cmp(&b.provider_id));
     let index_path = options.models_dir.join("index.json");
     let index_json = serde_json::to_string_pretty(&index).context("serialize index")?;
@@ -260,6 +267,39 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
     verify_providers_registered(&index, &options.builtin_rs)?;
 
     Ok(())
+}
+
+/// Fetch and write the Cline (usage-billing) + ClinePass catalogs from Cline's
+/// public model directory (recommended-models + ai/cline/models).
+fn write_cline_catalogs(
+    models_dir: &PathBuf,
+    index: &mut Vec<CatalogIndexEntry>,
+    models_dev: &ModelsDevData,
+) -> Result<()> {
+    for (provider_id, entries) in super::cline::fetch_cline_catalogs(models_dev) {
+        if entries.is_empty() {
+            term::warn(format!("{provider_id}: empty cline catalog — skipped"));
+            continue;
+        }
+        let rust_mod = provider_id.replace('-', "_");
+        let out_path = models_dir.join(format!("{rust_mod}.json"));
+        let catalog: BTreeMap<String, Value> = entries.into_iter().map(|e| (e.id.clone(), e.json)).collect();
+        let json = super::common::with_provider_schema(Value::Object(catalog.into_iter().collect()));
+        let count = catalog_len(&json);
+        let pretty = serde_json::to_string_pretty(&json).context("serialize cline catalog")?;
+        fs::write(&out_path, format!("{pretty}\n")).with_context(|| format!("write {}", out_path.display()))?;
+        term::provider_ok(&provider_id, count, &provider_id);
+        index.push(CatalogIndexEntry {
+            provider_id,
+            rust_mod,
+            count,
+        });
+    }
+    Ok(())
+}
+
+fn catalog_len(json: &Value) -> usize {
+    json.as_object().map(|o| o.len().saturating_sub(1)).unwrap_or(0)
 }
 
 fn load_previous_catalog(path: &std::path::Path) -> Result<Option<Value>> {
@@ -334,12 +374,16 @@ fn named_factory_provider_id(fn_name: &str) -> Option<&'static str> {
         "anthropic_provider" => "anthropic",
         "cloudflare_ai_gateway_provider" => "cloudflare-ai-gateway",
         "cloudflare_workers_ai_provider" => "cloudflare-workers-ai",
+        "cline_provider" => "cline",
+        "cline_pass_provider" => "cline-pass",
         "fireworks_provider" => "fireworks",
         "github_copilot_provider" => "github-copilot",
         "google_vertex_provider" => "google-vertex",
         "hetzner_provider" => "hetzner",
+        "huggingface_provider" => "huggingface",
         "hyper_provider" => "hyper",
         "infron_provider" => "infron",
+        "kilo_provider" => "kilo",
         "kimi_coding_provider" => "kimi-coding",
         "mistral_provider" => "mistral",
         "neuralwatt_provider" => "neuralwatt",

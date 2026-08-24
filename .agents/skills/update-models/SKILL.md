@@ -72,6 +72,12 @@ Additional data sources and provider-specific configurations:
     - _Authwalled endpoints_: e.g. OpenAI, xAI, Mistral, Hyper, Infron, Kilo, etc. (probed with provider env keys when present).
 - **Dedicated Pricing Endpoints**:
     - e.g. Nara Router (`https://router.bynara.id/api/pricing`) provides official USD per million rates (`official_in_usd_m` / `official_out_usd_m`) since Nara's `/v1/models` endpoint exposes no pricing. Credit fields are ignored.
+- **Cline Model Directory** (`cline.rs`):
+    - Cline (usage-billing) and ClinePass catalogs are built from Cline's **public** model directory (no API key required), not models.dev:
+        - `https://api.cline.bot/api/v1/ai/cline/recommended-models` — curated id groups (`recommended` + `free` for `cline`, `clinePass` for `cline-pass`).
+        - `https://api.cline.bot/api/v1/ai/cline/models` — full detail (per-token pricing, context length, input modalities) keyed by OpenRouter-style id.
+    - Detail entries are paired to catalog ids by tail segment (`kimi-k3` → `moonshotai/kimi-k3`). ClinePass ids keep the `cline-pass/` prefix.
+    - `CLINE_API_KEY` is **not** required for catalog generation (the `/v1/models` endpoint is authwalled, but the model directory is public).
 - **Preserved Overlays & Previous Catalog Snapshot**:
     - Existing `models/*.json` entries are preserved for non-gateway manual overrides and fallback non-zero pricing when fresh sources are unpriced.
 
@@ -198,16 +204,17 @@ Pricing precedence:
 
 ## Code Map
 
-| Path                                                     | Purpose                                                                              |
-| :------------------------------------------------------- | :----------------------------------------------------------------------------------- |
-| `crates/elph-ai/bin/generate_models/main.rs`             | CLI entry point and argument parsing.                                                |
-| `crates/elph-ai/bin/generate_models/models_dev.rs`       | Fetches, caches, and merges models.dev `api`, `models`, and `catalog` datasets.      |
-| `crates/elph-ai/bin/generate_models/provider_sources.rs` | Maps Elph providers to models.dev keys, base URLs, and live probe endpoints.         |
-| `crates/elph-ai/bin/generate_models/pricing.rs`          | Live `/models` probes, Nara `/api/pricing` sync, and ai-model-directory fallback.    |
-| `crates/elph-ai/bin/generate_models/thinking_map.rs`     | Strict multi-source resolution of the 7-key `thinkingLevelMap`.                      |
-| `crates/elph-ai/bin/generate_models/chat.rs`             | Catalog generation pipeline, index creation, and provider registration verification. |
-| `crates/elph-ai/models/*.json`                           | JSON catalog outputs (embedded into binary via `build.rs`).                          |
-| `crates/elph-ai/src/providers/builtin.rs`                | Built-in provider registrations and factory functions.                               |
+| Path                                                     | Purpose                                                                                        |
+| :------------------------------------------------------- | :--------------------------------------------------------------------------------------------- |
+| `crates/elph-ai/bin/generate_models/main.rs`             | CLI entry point and argument parsing.                                                          |
+| `crates/elph-ai/bin/generate_models/models_dev.rs`       | Fetches, caches, and merges models.dev `api`, `models`, and `catalog` datasets.                |
+| `crates/elph-ai/bin/generate_models/provider_sources.rs` | Maps Elph providers to models.dev keys, base URLs, and live probe endpoints.                   |
+| `crates/elph-ai/bin/generate_models/pricing.rs`          | Live `/models` probes, Nara `/api/pricing` sync, and ai-model-directory fallback.              |
+| `crates/elph-ai/bin/generate_models/thinking_map.rs`     | Strict multi-source resolution of the 7-key `thinkingLevelMap`.                                |
+| `crates/elph-ai/bin/generate_models/chat.rs`             | Catalog generation pipeline, index creation, and provider registration verification.           |
+| `crates/elph-ai/bin/generate_models/cline.rs`            | Cline (usage-billing) + ClinePass live catalog builder (recommended-models + ai/cline/models). |
+| `crates/elph-ai/models/*.json`                           | JSON catalog outputs (embedded into binary via `build.rs`).                                    |
+| `crates/elph-ai/src/providers/builtin.rs`                | Built-in provider registrations and factory functions.                                         |
 
 ---
 

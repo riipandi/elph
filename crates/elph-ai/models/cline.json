@@ -1,0 +1,192 @@
+{
+    "$schema": "https://elph.space/provider-schema.json",
+    "anthropic/claude-opus-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.cline.bot/api/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 0.0,
+            "input": 5.0,
+            "output": 25.0
+        },
+        "description": "Claude Opus 5 is Anthropic’s flagship model for demanding reasoning, coding, and long-horizon agentic work. It is particularly strong at end-to-end software tasks, code review and bug finding, visual analysis...",
+        "id": "anthropic/claude-opus-5",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "Claude Opus 5",
+        "provider": "cline",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "deepseek/deepseek-v4-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.cline.bot/api/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.0112,
+            "cacheWrite": 0.0,
+            "input": 0.056,
+            "output": 0.112
+        },
+        "description": "DeepSeek V4 Flash is an efficiency-optimized Mixture-of-Experts model from DeepSeek with 284B total parameters and 13B activated parameters, supporting a 1M-token context window. It is designed for fast inference and...",
+        "id": "deepseek/deepseek-v4-flash",
+        "input": ["text"],
+        "maxTokens": 128000,
+        "name": "DeepSeek: DeepSeek V4 Flash 0423",
+        "provider": "cline",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "moonshotai/kimi-k3": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.cline.bot/api/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.3,
+            "cacheWrite": 0.0,
+            "input": 3.0,
+            "output": 15.0
+        },
+        "description": "Kimi K3 is a 2.8T parameter open-weight multimodal reasoning model from Moonshot AI. It is suited for complex coding, knowledge work, and long-horizon agentic workflows, and is particularly strong at...",
+        "id": "moonshotai/kimi-k3",
+        "input": ["text", "image", "video"],
+        "maxTokens": 128000,
+        "name": "MoonshotAI: Kimi K3",
+        "provider": "cline",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "openai/gpt-5.6-sol": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.cline.bot/api/v1",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0.19999999999999998,
+            "cacheWrite": 0.0,
+            "input": 2.0,
+            "output": 10.0
+        },
+        "description": "GPT-5.6 Sol is the flagship model in OpenAI's GPT-5.6 series. It is suited for complex reasoning, coding, and agentic workflows, and is particularly strong at command-line and multi-step coding tasks...",
+        "id": "openai/gpt-5.6-sol",
+        "input": ["image", "text"],
+        "maxTokens": 128000,
+        "name": "OpenAI: GPT-5.6 Sol",
+        "provider": "cline",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "poolside/laguna-s-2.1:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.cline.bot/api/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "description": "Laguna S 2.1 is the latest coding agent model from [Poolside](<https://poolside.ai/>). Laguna S 2.1 is a 118B total parameter model with 8B active parameters, scoring 70.2% on Terminal-Bench 2.1 and...",
+        "id": "poolside/laguna-s-2.1:free",
+        "input": ["text"],
+        "maxTokens": 128000,
+        "name": "Poolside: Laguna S 2.1 (free)",
+        "provider": "cline",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "stealth/ox-alpha": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.cline.bot/api/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "description": "Ox Alpha is a reasoning model designed for coding, sustained agentic work, and production workloads. It is suited for long-horizon software engineering, complex reasoning, and workflows that combine text with...",
+        "id": "stealth/ox-alpha",
+        "input": ["text", "image", "video"],
+        "maxTokens": 128000,
+        "name": "Ox Alpha",
+        "provider": "cline",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "x-ai/grok-4.5": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.cline.bot/api/v1",
+        "contextWindow": 500000,
+        "cost": {
+            "cacheRead": 0.3,
+            "cacheWrite": 0.0,
+            "input": 2.0,
+            "output": 6.0
+        },
+        "description": "Grok 4.5 is a model from SpaceXAI with frontier performance on coding, knowledge work, and STEM.",
+        "id": "x-ai/grok-4.5",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "SpaceXAI: Grok 4.5",
+        "provider": "cline",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    }
+}

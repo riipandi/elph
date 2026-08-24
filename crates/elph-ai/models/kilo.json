@@ -1756,7 +1756,7 @@
         "id": "deepseek/deepseek-v4-flash-0731",
         "input": ["text"],
         "knowledgeCutoff": "2025-05",
-        "maxTokens": 384000,
+        "maxTokens": 131072,
         "name": "DeepSeek V4 Flash 0731",
         "provider": "kilo",
         "reasoning": true,
@@ -2979,70 +2979,6 @@
             "xhigh": null
         }
     },
-    "inclusionai/ling-2.6-1t": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.kilo.ai/api/gateway",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0.06,
-            "cacheWrite": 0.0,
-            "input": 0.3,
-            "output": 2.5
-        },
-        "description": "Tool-capable chat model for instruction following and agentic application workflows",
-        "id": "inclusionai/ling-2.6-1t",
-        "input": ["text"],
-        "maxTokens": 32768,
-        "name": "inclusionAI: Ling-2.6-1T (retires Aug 24)",
-        "provider": "kilo",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "inclusionai/ling-2.6-flash": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.kilo.ai/api/gateway",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0.02,
-            "cacheWrite": 0.0,
-            "input": 0.09999999999999999,
-            "output": 0.3
-        },
-        "description": "Efficient model for low-latency assistance, extraction, and routine automation",
-        "id": "inclusionai/ling-2.6-flash",
-        "input": ["text"],
-        "maxTokens": 32768,
-        "name": "inclusionAI: Ling-2.6-flash (retires Aug 24)",
-        "provider": "kilo",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "inclusionai/ling-3.0-flash": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
@@ -3068,38 +3004,6 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
-        }
-    },
-    "inclusionai/ring-2.6-1t": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.kilo.ai/api/gateway",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0.06,
-            "cacheWrite": 0.0,
-            "input": 0.3,
-            "output": 2.5
-        },
-        "description": "Reasoning model for deliberate analysis, multi-step problem solving, and tool use",
-        "id": "inclusionai/ring-2.6-1t",
-        "input": ["text"],
-        "maxTokens": 65536,
-        "name": "inclusionAI: Ring-2.6-1T (retires Aug 24)",
-        "provider": "kilo",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": "xhigh"
         }
     },
     "kilo-auto/balanced": {
@@ -4202,6 +4106,33 @@
             "xhigh": null
         }
     },
+    "mistralai/devstral-2512": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.kilo.ai/api/gateway",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.044,
+            "cacheWrite": 0.0,
+            "input": 0.44,
+            "output": 2.2
+        },
+        "description": "Devstral 2 is a state-of-the-art open-source model by Mistral AI specializing in agentic coding. It is a 123B-parameter dense transformer model supporting a 256K context window. Devstral 2 supports exploring...",
+        "id": "mistralai/devstral-2512",
+        "input": ["text", "pdf"],
+        "maxTokens": 262144,
+        "name": "Devstral 2",
+        "provider": "kilo",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "mistralai/ministral-14b-2512": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
@@ -4527,10 +4458,10 @@
         },
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0.015,
+            "cacheRead": 0.016499999999999997,
             "cacheWrite": 0.0,
-            "input": 0.019000000000000003,
-            "output": 0.03
+            "input": 0.165,
+            "output": 0.165
         },
         "description": "Mistral model for multilingual chat, reasoning, and tool-assisted workflows",
         "id": "mistralai/mistral-nemo",
@@ -4687,10 +4618,10 @@
         },
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0.03,
+            "cacheRead": 0.011,
             "cacheWrite": 0.0,
-            "input": 0.075,
-            "output": 0.19999999999999998
+            "input": 0.11,
+            "output": 0.33
         },
         "description": "Efficient Mistral model for fast chat, extraction, and production assistants",
         "id": "mistralai/mistral-small-3.2-24b-instruct",
@@ -9164,7 +9095,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-397b-a17b",
         "input": ["text", "image", "video"],
-        "maxTokens": 65536,
+        "maxTokens": 262144,
         "name": "Qwen3.5 397B-A17B",
         "provider": "kilo",
         "reasoning": true,
@@ -9324,7 +9255,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.6-27b",
         "input": ["text", "image", "video"],
-        "maxTokens": 262144,
+        "maxTokens": 81920,
         "name": "Qwen3.6 27B",
         "provider": "kilo",
         "reasoning": true,
@@ -9589,10 +9520,10 @@
         "baseUrl": "https://api.kilo.ai/api/gateway",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.09999999999999999,
-            "cacheWrite": 0.625,
-            "input": 0.5,
-            "output": 3.0
+            "cacheRead": 0.08499999999999999,
+            "cacheWrite": 0.53125,
+            "input": 0.425,
+            "output": 2.5500000000000003
         },
         "description": "Qwen3.8 27B is an open-weight dense vision-language model from Qwen. It is suited for coding, professional workflows, research, multimodal interaction, and long-running agent tasks, with flexible thinking that can be...",
         "id": "qwen/qwen3.8-27b",
@@ -10515,7 +10446,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 1024000,
+        "contextWindow": 32768,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -10525,7 +10456,7 @@
         "description": "Open-weight instruction model for adaptable chat and self-hosted production workloads",
         "id": "thedrummer/unslopnemo-12b",
         "input": ["text"],
-        "maxTokens": 1024000,
+        "maxTokens": 32768,
         "name": "TheDrummer: UnslopNemo 12B",
         "provider": "kilo",
         "reasoning": false,
@@ -10672,7 +10603,7 @@
         "description": "Open-weight instruction model for adaptable chat and self-hosted production workloads",
         "id": "undi95/remm-slerp-l2-13b",
         "input": ["text"],
-        "maxTokens": 6144,
+        "maxTokens": 4096,
         "name": "ReMM SLERP 13B",
         "provider": "kilo",
         "reasoning": false,
@@ -11576,17 +11507,17 @@
     "~deepseek/deepseek-v4-flash-latest": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
-        "contextWindow": 262144,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.01,
             "cacheWrite": 0.0,
-            "input": 0.04,
-            "output": 0.13
+            "input": 0.035,
+            "output": 0.12
         },
         "description": "This model always redirects to the latest model in the DeepSeek V4 Flash family.",
         "id": "~deepseek/deepseek-v4-flash-latest",
         "input": ["text"],
-        "maxTokens": 262144,
+        "maxTokens": 1048576,
         "name": "DeepSeek V4 Flash Latest",
         "provider": "kilo",
         "reasoning": true,

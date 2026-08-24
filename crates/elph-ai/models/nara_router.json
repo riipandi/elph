@@ -299,8 +299,8 @@
         "cost": {
             "cacheRead": 0.003625,
             "cacheWrite": 0.0,
-            "input": 0.435,
-            "output": 0.87
+            "input": 1.122,
+            "output": 3.366
         },
         "description": "Open MoE flagship with million-token context for coding and long agent runs",
         "id": "deepseek-v4-pro",
@@ -319,6 +319,32 @@
             "xhigh": null
         }
     },
+    "deepseek-v4-pro-0813-bynara": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 1.122,
+            "output": 3.366
+        },
+        "id": "deepseek-v4-pro-0813-bynara",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "deepseek-v4-pro-0813-bynara",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "deepseek-v4-pro-alibaba": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
@@ -326,8 +352,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.435,
-            "output": 0.87
+            "input": 1.122,
+            "output": 3.366
         },
         "id": "deepseek-v4-pro-alibaba",
         "input": ["text"],
@@ -386,6 +412,32 @@
         "input": ["text"],
         "maxTokens": 64000,
         "name": "glm-5.2-alibaba",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "glm-5.2-promo": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 1.4,
+            "output": 4.4
+        },
+        "id": "glm-5.2-promo",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "glm-5.2-promo",
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -634,6 +686,32 @@
             "high": "high",
             "low": "low",
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "kimi-k3-bynara": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "kimi-k3-bynara",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "kimi-k3-bynara",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
             "medium": null,
             "minimal": null,
             "off": null,
@@ -988,31 +1066,31 @@
             "xhigh": "xhigh"
         }
     },
-    "muse-spark-1.2-contributor-free": {
+    "nemotron-3-ultra": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1048576,
+        "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.5,
+            "output": 2.2
         },
-        "description": "Muse Spark 1.2 is a coding-focused update to Muse Spark 1.1 with improvements in code generation, complex debugging, codebase understanding, and end-to-end developer workflows.",
-        "id": "muse-spark-1.2-contributor-free",
-        "input": ["text", "image", "video", "pdf", "audio"],
-        "maxTokens": 131072,
-        "name": "Muse Spark 1.2 Free",
+        "description": "Largest Nemotron 3 model for maximum open-weight reasoning and agent accuracy",
+        "id": "nemotron-3-ultra",
+        "input": ["text"],
+        "maxTokens": 128000,
+        "name": "nemotron-3-ultra",
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
-            "medium": "medium",
-            "minimal": "minimal",
+            "medium": null,
+            "minimal": null,
             "off": null,
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "ox-alpha": {

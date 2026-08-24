@@ -2075,11 +2075,11 @@
             "input": 0.3,
             "output": 2.5
         },
-        "description": "Tool-capable chat model for instruction following and agentic application workflows",
+        "description": "Open-weight instruction model for adaptable chat and self-hosted production workloads",
         "id": "inclusionai/ling-2.6-1t",
         "input": ["text"],
         "maxTokens": 32768,
-        "name": "inclusionAI: Ling-2.6-1T (retires Aug 24)",
+        "name": "Ling-2.6-1T",
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -2106,7 +2106,7 @@
         "id": "inclusionai/ling-2.6-flash",
         "input": ["text"],
         "maxTokens": 32768,
-        "name": "inclusionAI: Ling-2.6-flash (retires Aug 24)",
+        "name": "Ling-2.6-flash",
         "provider": "infron",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -6082,7 +6082,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-397b-a17b",
         "input": ["text", "image", "video"],
-        "maxTokens": 65536,
+        "maxTokens": 262144,
         "name": "Qwen3.5 397B-A17B",
         "provider": "infron",
         "reasoning": true,

@@ -8,6 +8,7 @@
 //!   cargo run -p elph-ai --bin generate-models -- all --no-live-pricing
 
 mod chat;
+mod cline;
 mod common;
 mod image;
 mod models_dev;

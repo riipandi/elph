@@ -436,6 +436,40 @@ pub fn kimi_coding_provider() -> Provider {
     })
 }
 
+/// Cline (usage-billing) — OpenAI-compatible. Key: CLINE_API_KEY.
+pub fn cline_provider() -> Provider {
+    create_provider(CreateProviderOptions {
+        id: "cline".to_string(),
+        name: Some("Cline".to_string()),
+        base_url: Some("https://api.cline.bot/api/v1".to_string()),
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("Cline API key", vec!["CLINE_API_KEY"])),
+            oauth: None,
+        },
+        models: builtin_catalog("cline").as_ref().clone(),
+        refresh_models: None,
+        api: ProviderApi::Single(openai_completions_api()),
+    })
+}
+
+/// ClinePass — flat-rate subscription. Key: CLINE_API_KEY.
+pub fn cline_pass_provider() -> Provider {
+    create_provider(CreateProviderOptions {
+        id: "cline-pass".to_string(),
+        name: Some("ClinePass".to_string()),
+        base_url: Some("https://api.cline.bot/api/v1".to_string()),
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("Cline API key", vec!["CLINE_API_KEY"])),
+            oauth: None,
+        },
+        models: builtin_catalog("cline-pass").as_ref().clone(),
+        refresh_models: None,
+        api: ProviderApi::Single(openai_completions_api()),
+    })
+}
+
 pub fn xai_provider() -> Provider {
     use crate::auth::helpers::lazy_oauth;
     use crate::auth::oauth::xai_oauth;
@@ -618,6 +652,8 @@ pub fn builtin_providers() -> Vec<Provider> {
         ),
         google_vertex_provider(),
         simple_provider!("groq", "Groq", openai_completions_api, (vec!["GROQ_API_KEY"], "Groq API key")),
+        cline_provider(),
+        cline_pass_provider(),
         huggingface_provider(),
         mistral_provider(),
         neuralwatt_provider(),
