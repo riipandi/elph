@@ -5,8 +5,8 @@ use std::sync::{Arc, LazyLock, RwLock};
 
 use crate::auth::helpers::lazy_oauth;
 use crate::auth::oauth::openai_codex_oauth_loader;
-use crate::auth::oauth::{anthropic_oauth_loader, github_copilot_oauth_loader, hyper_oauth_loader};
-use crate::auth::oauth::{kilo_oauth_loader, kimi_oauth_loader, openrouter_oauth_loader};
+use crate::auth::oauth::{anthropic_oauth_loader, github_copilot_oauth_loader, huggingface_oauth_loader};
+use crate::auth::oauth::{hyper_oauth_loader, kilo_oauth_loader, kimi_oauth_loader, openrouter_oauth_loader};
 use crate::auth::oauth::{radius_oauth_loader, xai_oauth_loader};
 use crate::auth::types::{AuthLoginCallbacks, ModelAuth, OAuthAuth, OAuthCredential};
 use crate::models::catalog::builtin_catalog;
@@ -45,6 +45,16 @@ fn github_copilot_provider() -> OAuthProviderInterface {
     }
 }
 
+fn huggingface_provider() -> OAuthProviderInterface {
+    OAuthProviderInterface {
+        id: "huggingface".to_string(),
+        name: "Hugging Face Inference Providers".to_string(),
+        auth: lazy_oauth("Hugging Face Inference Providers", huggingface_oauth_loader()),
+        get_api_key: Arc::new(|c| c.access.clone()),
+        modify_models: None,
+    }
+}
+
 fn hyper_provider() -> OAuthProviderInterface {
     OAuthProviderInterface {
         id: "hyper".to_string(),
@@ -79,6 +89,7 @@ fn built_in_providers() -> Vec<OAuthProviderInterface> {
     vec![
         anthropic_provider(),
         github_copilot_provider(),
+        huggingface_provider(),
         hyper_provider(),
         kilo_provider(),
         openai_codex_provider(),
@@ -313,6 +324,7 @@ pub fn builtin_oauth_provider_ids() -> Vec<&'static str> {
     vec![
         "anthropic",
         "github-copilot",
+        "huggingface",
         "hyper",
         "kilo",
         "openai-codex",

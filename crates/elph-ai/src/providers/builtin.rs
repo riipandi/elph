@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use crate::auth::env_api_key_auth;
 use crate::auth::oauth::openai_codex_oauth;
-use crate::auth::oauth::{anthropic_oauth, github_copilot_oauth};
+use crate::auth::oauth::{anthropic_oauth, github_copilot_oauth, huggingface_oauth};
 use crate::auth::oauth::{hyper_api_base_url, hyper_oauth, hyper_user_agent};
 use crate::auth::oauth::{kilo_api_base_url, kilo_oauth, kimi_oauth};
 use crate::auth::{AuthResolveInput, AuthResult, ModelAuth, ProviderAuth};
@@ -15,10 +15,8 @@ use crate::models::{create_models, create_provider};
 use crate::providers::adapter::openai_responses_api;
 use crate::providers::adapter::{anthropic_messages_api, azure_openai_responses_api};
 use crate::providers::adapter::{google_generative_ai_api, google_vertex_api};
-use crate::providers::adapter::{
-    mistral_conversations_api, mixed_gateway_apis, mixed_openai_apis, openai_codex_responses_api,
-    openai_completions_api,
-};
+use crate::providers::adapter::{mistral_conversations_api, mixed_gateway_apis, mixed_openai_apis};
+use crate::providers::adapter::{openai_codex_responses_api, openai_completions_api};
 use crate::providers::cloudflare_auth::{cloudflare_ai_gateway_auth, cloudflare_workers_ai_auth};
 
 macro_rules! simple_provider {
@@ -467,6 +465,24 @@ pub fn xai_provider() -> Provider {
     })
 }
 
+/// Hugging Face Inference Providers — OpenAI-compatible (https://huggingface.co/docs/inference-providers).
+/// Base URL: https://router.huggingface.co/v1 · key: HF_TOKEN (or OAuth login).
+pub fn huggingface_provider() -> Provider {
+    create_provider(CreateProviderOptions {
+        id: "huggingface".to_string(),
+        name: Some("Hugging Face".to_string()),
+        base_url: Some("https://router.huggingface.co/v1".to_string()),
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("Hugging Face token", vec!["HF_TOKEN"])),
+            oauth: Some(huggingface_oauth()),
+        },
+        models: builtin_catalog("huggingface").as_ref().clone(),
+        refresh_models: None,
+        api: ProviderApi::Single(openai_completions_api()),
+    })
+}
+
 pub fn mistral_provider() -> Provider {
     create_provider(CreateProviderOptions {
         id: "mistral".to_string(),
@@ -602,12 +618,7 @@ pub fn builtin_providers() -> Vec<Provider> {
         ),
         google_vertex_provider(),
         simple_provider!("groq", "Groq", openai_completions_api, (vec!["GROQ_API_KEY"], "Groq API key")),
-        simple_provider!(
-            "huggingface",
-            "Hugging Face",
-            openai_completions_api,
-            (vec!["HF_TOKEN"], "Hugging Face token")
-        ),
+        huggingface_provider(),
         mistral_provider(),
         neuralwatt_provider(),
         nvidia_provider(),
