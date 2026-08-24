@@ -12,6 +12,7 @@ mod callback;
 mod device_code;
 mod github_copilot;
 mod hyper;
+mod kilo;
 mod kimi;
 mod openai_codex;
 mod openrouter;
@@ -30,6 +31,9 @@ pub use github_copilot::{
 };
 pub use hyper::refresh_hyper_token;
 pub use hyper::{hyper_api_base_url, hyper_base_url, hyper_oauth, hyper_oauth_loader, hyper_user_agent, login_hyper};
+pub use kilo::{
+    kilo_api_base_url, kilo_base_url, kilo_oauth, kilo_oauth_loader, kilo_org_id, login_kilo, refresh_kilo_token,
+};
 pub use kimi::{kimi_oauth, kimi_oauth_loader};
 pub use openai_codex::{OPENAI_CODEX_BROWSER_LOGIN_METHOD, OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD};
 pub use openai_codex::{login_openai_codex, login_openai_codex_device_code, openai_codex_oauth};

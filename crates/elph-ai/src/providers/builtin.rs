@@ -5,9 +5,9 @@ use std::sync::Arc;
 
 use crate::auth::env_api_key_auth;
 use crate::auth::oauth::openai_codex_oauth;
-use crate::auth::oauth::{
-    anthropic_oauth, github_copilot_oauth, hyper_api_base_url, hyper_oauth, hyper_user_agent, kimi_oauth,
-};
+use crate::auth::oauth::{anthropic_oauth, github_copilot_oauth};
+use crate::auth::oauth::{hyper_api_base_url, hyper_oauth, hyper_user_agent};
+use crate::auth::oauth::{kilo_api_base_url, kilo_oauth, kimi_oauth};
 use crate::auth::{AuthResolveInput, AuthResult, ModelAuth, ProviderAuth};
 use crate::models::catalog::builtin_catalog;
 use crate::models::{CreateModelsOptions, CreateProviderOptions, MutableModels, Provider, ProviderApi};
@@ -402,6 +402,26 @@ pub fn fireworks_provider() -> Provider {
     })
 }
 
+/// Kilo AI Gateway — OpenAI-compatible (https://kilo.ai/docs/gateway).
+/// Base URL: https://api.kilo.ai/api/gateway · key: KILO_API_KEY (or OAuth login).
+pub fn kilo_provider() -> Provider {
+    let mut headers = HashMap::new();
+    headers.insert("User-Agent".to_string(), Some("elph-kilo-provider".to_string()));
+    create_provider(CreateProviderOptions {
+        id: "kilo".to_string(),
+        name: Some("Kilo Gateway".to_string()),
+        base_url: Some(kilo_api_base_url()),
+        headers: Some(headers),
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("Kilo API key", vec!["KILO_API_KEY"])),
+            oauth: Some(kilo_oauth()),
+        },
+        models: builtin_catalog("kilo").as_ref().clone(),
+        refresh_models: None,
+        api: ProviderApi::Single(openai_completions_api()),
+    })
+}
+
 pub fn kimi_coding_provider() -> Provider {
     create_provider(CreateProviderOptions {
         id: "kimi-coding".to_string(),
@@ -602,14 +622,7 @@ pub fn builtin_providers() -> Vec<Provider> {
         orca_router_provider(),
         hyper_provider(),
         infron_provider(),
-        // Kilo AI Gateway — OpenAI-compatible (https://kilo.ai/docs/gateway).
-        // Base URL: https://api.kilo.ai/api/gateway · key: KILO_API_KEY
-        simple_provider!(
-            "kilo",
-            "Kilo Gateway",
-            openai_completions_api,
-            (vec!["KILO_API_KEY"], "Kilo API key")
-        ),
+        kilo_provider(),
         kimi_coding_provider(),
         simple_provider!(
             "minimax",

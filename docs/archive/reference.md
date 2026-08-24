@@ -18,3 +18,6 @@
 - https://github.com/dodo-reach/pi-clarify
 - https://crates.io/crates/shellflip
 - https://tanmaymanojgandhi.github.io/circadia
+- https://github.com/Kilo-Org/kilo-pi-provider
+- https://github.com/osolmaz/pi-huggingface-oauth
+- https://github.com/maxpaulus43/pi-cline

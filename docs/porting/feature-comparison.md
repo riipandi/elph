@@ -58,6 +58,7 @@ Mapping: `@earendil-works/pi-ai` → `crates/elph-ai`, `@earendil-works/pi-agent
 | OpenAI Codex OAuth                        | `auth/oauth/openai-codex-oauth.ts`   | `src/auth/oauth/openai_codex.rs`                 | **[Parity]**     |
 | GitHub Copilot OAuth                      | `auth/oauth/github-copilot-oauth.ts` | `src/auth/oauth/` (via `github_copilot_oauth()`) | **[Parity]**     |
 | Hyper OAuth (Elph-only)                   | —                                    | `src/auth/oauth/hyper.rs`                        | **[Elph delta]** |
+| Kilo OAuth (device code + org)            | `auth/oauth/kilo.ts` (kilo-pi-provider) | `src/auth/oauth/kilo.rs`                        | **[Elph delta]** |
 | Kimi Code OAuth                           | v0.82.0                              | `src/auth/oauth/kimi.rs`                         | **[Parity]**     |
 | OpenRouter OAuth PKCE                     | v0.82.0                              | `src/auth/oauth/openrouter.rs`                   | **[Parity]**     |
 | Radius OAuth gateway                      | `auth/oauth/radius.ts`               | `src/auth/oauth/radius.rs`                       | **[Parity]**     |
