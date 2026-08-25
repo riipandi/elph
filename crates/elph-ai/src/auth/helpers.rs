@@ -260,9 +260,8 @@ fn scan_key_template(value: &str) -> Vec<KeyTemplateSegment> {
                     }
                     name.push(inner);
                 }
-                let valid_name = !name.is_empty()
-                    && is_var_start(name.chars().next().expect("non-empty"))
-                    && name.chars().all(is_var_char);
+                let valid_name =
+                    !name.is_empty() && name.chars().next().is_some_and(is_var_start) && name.chars().all(is_var_char);
                 if terminated && valid_name {
                     if !literal.is_empty() {
                         segments.push(KeyTemplateSegment::Literal(std::mem::take(&mut literal)));
