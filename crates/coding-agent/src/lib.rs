@@ -1,5 +1,6 @@
 pub mod agent;
 pub mod cli;
+pub mod env;
 pub mod extensions;
 pub mod memory;
 pub mod platform;

@@ -37,6 +37,7 @@ chrono.workspace = true
 clap.workspace = true
 clap_complete.workspace = true
 crossterm.workspace = true
+dotenvy.workspace = true
 elph-agent = { workspace = true, features = [
   "tracing",
   "builtin-tools",
