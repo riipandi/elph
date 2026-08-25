@@ -46,6 +46,7 @@ pub fn create_grep_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
             constrained_sampling: None,
 
             description: "Search file contents with AST-aware and text-based search. AST patterns (structural code search) are detected automatically for code-like patterns. \
+**CRITICAL**: Never repeat the same grep with identical parameters in one turn. Cache results and reuse. If first search returns no results, try a different pattern or file. \
 Use glob ('**/*.rs', '*.{ts,tsx}') or type when sure of file kind. Use filesWithMatches to locate files before reading. \
 Use patterns[] for OR, paths[] for multiple roots, literal=true for exact text. Default limit 200 match lines. \
 Respects .gitignore. Do not use for file-name search — use find_path."
@@ -55,7 +56,7 @@ Respects .gitignore. Do not use for file-name search — use find_path."
                 "properties": {
                     "pattern": {
                         "type": "string",
-                        "description": "Search pattern. Automatically detected as AST pattern for code-like structures (e.g., 'fn $NAME($ARGS)', 'let $X = $Y'), otherwise treated as regex/literal text."
+                        "description": "Search pattern. Automatically detected as AST pattern for code-like structures (e.g., 'fn $NAME($ARGS)', 'let $X = $Y'), otherwise treated as regex/literal text. **Tip**: Start broad, then narrow down. Don't repeat the same pattern."
                     },
                     "patterns": {
                         "type": "array",
