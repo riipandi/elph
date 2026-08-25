@@ -114,6 +114,18 @@ pub struct Cli {
     )]
     pub resume: Option<String>,
 
+    /// Ignore environment variables from the system/OS
+    #[arg(long = "no-global-env", help = "Ignore environment variables from the system/OS")]
+    pub no_global_env: bool,
+
+    /// Load environment variables from a file (supersedes OS envars)
+    #[arg(
+        long = "env-file",
+        value_name = "PATH",
+        help = "Load environment variables from a file (supersedes OS envars)"
+    )]
+    pub env_file: Option<String>,
+
     #[command(subcommand)]
     pub command: Option<Commands>,
 }

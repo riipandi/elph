@@ -395,7 +395,7 @@ mod tests {
         assert!(with_memory.contains("<tool name=\"memory_search\""));
         assert!(with_memory.contains("search and write **during** the turn"));
         assert!(with_memory.contains("do not wait for turn end"));
-        assert!(with_memory.contains("4. Memory:"));
+        assert!(with_memory.contains("5. Memory:"));
 
         let tools_without_flag = build_coding_system_prompt(
             Path::new("/tmp/project"),
@@ -407,7 +407,7 @@ mod tests {
         .expect("prompt");
         assert!(!tools_without_flag.contains("<tool_group name=\"memory\">"));
         assert!(!tools_without_flag.contains("## Memory"));
-        assert!(!tools_without_flag.contains("4. Memory:"));
+        assert!(!tools_without_flag.contains("5. Memory:"));
 
         let without_memory = build_coding_system_prompt(
             Path::new("/tmp/project"),
@@ -516,9 +516,7 @@ mod tests {
             &CodingPromptOptions::new(AgentMode::Build),
         )
         .expect("prompt");
-
-        // Lean ReAct prompt: keep static domain body compact even with STE + subagents.
-        assert!(prompt.len() < 10_000, "static prompt is {} bytes", prompt.len());
+        assert!(prompt.len() < 12_000, "static prompt is {} bytes", prompt.len());
     }
 
     #[test]

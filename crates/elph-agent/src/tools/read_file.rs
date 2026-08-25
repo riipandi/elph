@@ -43,9 +43,9 @@ pub fn create_read_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
             name: "read_file".into(),
             constrained_sampling: None,
             description: format!(
-                "Read file contents. Prefer offset/limit (or ranges) after grep hits — do not load whole large files. \
-Batch with paths[] for multiple known files in one call. Windowed reads include line numbers and a (start-end of total) header. \
-Truncates to {DEFAULT_MAX_LINES} lines or {}/KB per file.",
+                "Read file contents. **CRITICAL**: For files >100 lines, ALWAYS use offset/limit or ranges[] to read specific sections. \
+Never read entire large files. Batch with paths[] for multiple known files in one call. Windowed reads include line numbers and a (start-end of total) header. \
+Truncates to {DEFAULT_MAX_LINES} lines or {}/KB per file. Use grep first to locate relevant sections, then read only those ranges.",
                 DEFAULT_MAX_BYTES / 1024
             ),
             parameters: json!({
@@ -62,11 +62,11 @@ Truncates to {DEFAULT_MAX_LINES} lines or {}/KB per file.",
                     },
                     "offset": {
                         "type": "number",
-                        "description": "1-indexed start line. Prefer with limit for large files (streams without full load)."
+                        "description": "1-indexed start line. **REQUIRED for files >100 lines** — always use with limit to avoid loading entire file."
                     },
                     "limit": {
                         "type": "number",
-                        "description": "Maximum number of lines to read from offset."
+                        "description": "Maximum number of lines to read from offset. **REQUIRED for files >100 lines** — prevents loading entire file into memory."
                     },
                     "ranges": {
                         "type": "array",
