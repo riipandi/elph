@@ -5,9 +5,9 @@ use std::sync::{Arc, LazyLock, RwLock};
 
 use crate::auth::helpers::lazy_oauth;
 use crate::auth::oauth::openai_codex_oauth_loader;
-use crate::auth::oauth::{anthropic_oauth_loader, github_copilot_oauth_loader, hyper_oauth_loader};
-use crate::auth::oauth::{kilo_oauth_loader, kimi_oauth_loader, openrouter_oauth_loader};
-use crate::auth::oauth::{radius_oauth_loader, xai_oauth_loader};
+use crate::auth::oauth::{anthropic_oauth_loader, cline_oauth_loader, github_copilot_oauth_loader};
+use crate::auth::oauth::{huggingface_oauth_loader, hyper_oauth_loader, kilo_oauth_loader};
+use crate::auth::oauth::{kimi_oauth_loader, openrouter_oauth_loader, radius_oauth_loader, xai_oauth_loader};
 use crate::auth::types::{AuthLoginCallbacks, ModelAuth, OAuthAuth, OAuthCredential};
 use crate::models::catalog::builtin_catalog;
 use crate::types::Model;
@@ -45,6 +45,36 @@ fn github_copilot_provider() -> OAuthProviderInterface {
     }
 }
 
+fn cline_provider() -> OAuthProviderInterface {
+    OAuthProviderInterface {
+        id: "cline".to_string(),
+        name: "Cline".to_string(),
+        auth: lazy_oauth("Cline", cline_oauth_loader(false)),
+        get_api_key: Arc::new(|c| crate::auth::oauth::cline_api_key(&c.access)),
+        modify_models: None,
+    }
+}
+
+fn cline_pass_provider() -> OAuthProviderInterface {
+    OAuthProviderInterface {
+        id: "cline-pass".to_string(),
+        name: "ClinePass".to_string(),
+        auth: lazy_oauth("ClinePass", cline_oauth_loader(true)),
+        get_api_key: Arc::new(|c| crate::auth::oauth::cline_api_key(&c.access)),
+        modify_models: None,
+    }
+}
+
+fn huggingface_provider() -> OAuthProviderInterface {
+    OAuthProviderInterface {
+        id: "huggingface".to_string(),
+        name: "Hugging Face Inference Providers".to_string(),
+        auth: lazy_oauth("Hugging Face Inference Providers", huggingface_oauth_loader()),
+        get_api_key: Arc::new(|c| c.access.clone()),
+        modify_models: None,
+    }
+}
+
 fn hyper_provider() -> OAuthProviderInterface {
     OAuthProviderInterface {
         id: "hyper".to_string(),
@@ -78,7 +108,10 @@ fn openai_codex_provider() -> OAuthProviderInterface {
 fn built_in_providers() -> Vec<OAuthProviderInterface> {
     vec![
         anthropic_provider(),
+        cline_pass_provider(),
+        cline_provider(),
         github_copilot_provider(),
+        huggingface_provider(),
         hyper_provider(),
         kilo_provider(),
         openai_codex_provider(),
@@ -312,14 +345,17 @@ pub fn oauth_provider_modify_models(provider_id: &str, models: Vec<Model>, crede
 pub fn builtin_oauth_provider_ids() -> Vec<&'static str> {
     vec![
         "anthropic",
+        "cline",
+        "cline-pass",
         "github-copilot",
+        "huggingface",
         "hyper",
         "kilo",
-        "openai-codex",
-        "xai",
         "kimi-coding",
+        "openai-codex",
         "openrouter",
         "radius",
+        "xai",
     ]
 }
 

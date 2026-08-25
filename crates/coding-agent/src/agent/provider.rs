@@ -53,6 +53,16 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
             api_key_env_key: "CEREBRAS_API_KEY",
             default_model: "gemma-4-31b",
         }),
+        "cline" => Some(ProviderConfig {
+            label: "Cline",
+            api_key_env_key: "CLINE_API_KEY",
+            default_model: "moonshotai/kimi-k3",
+        }),
+        "cline-pass" => Some(ProviderConfig {
+            label: "ClinePass",
+            api_key_env_key: "CLINE_API_KEY",
+            default_model: "cline-pass/kimi-k3",
+        }),
         "cloudflare-ai-gateway" => Some(ProviderConfig {
             label: "Cloudflare AI Gateway",
             api_key_env_key: "CLOUDFLARE_API_KEY",
@@ -211,6 +221,11 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
         "qwen-token-plan-cn" => Some(ProviderConfig {
             label: "Qwen Token Plan (China)",
             api_key_env_key: "QWEN_TOKEN_PLAN_CN_API_KEY",
+            default_model: "qwen3.7-plus",
+        }),
+        "qwen-token-plan-individual" => Some(ProviderConfig {
+            label: "Qwen Token Plan (Individual)",
+            api_key_env_key: "QWEN_TOKEN_PLAN_API_KEY",
             default_model: "qwen3.7-plus",
         }),
         "sumopod" => Some(ProviderConfig {
@@ -393,6 +408,37 @@ mod tests {
     }
 
     #[test]
+    fn cline_is_a_known_provider() {
+        let cfg = provider_config("cline").expect("cline config");
+        assert_eq!(cfg.label, "Cline");
+        assert_eq!(cfg.api_key_env_key, "CLINE_API_KEY");
+        assert!(elph_ai::get_builtin_model("cline", cfg.default_model).is_some());
+    }
+
+    #[test]
+    fn cline_pass_is_a_known_provider() {
+        let cfg = provider_config("cline-pass").expect("cline-pass config");
+        assert_eq!(cfg.label, "ClinePass");
+        assert_eq!(cfg.api_key_env_key, "CLINE_API_KEY");
+        assert!(elph_ai::get_builtin_model("cline-pass", cfg.default_model).is_some());
+    }
+
+    #[test]
+    fn resolve_cline_from_settings() {
+        let (provider, model) =
+            resolve_provider_and_model(None, None, Some("cline"), Some("openai/gpt-5.6-sol")).expect("resolve cline");
+        assert_eq!(provider, "cline");
+        assert_eq!(model, "openai/gpt-5.6-sol");
+    }
+
+    #[test]
+    fn parse_cline_slash_model_override() {
+        let (provider, model) = parse_model_override("cline/deepseek/deepseek-v4-flash").expect("parse cline");
+        assert_eq!(provider, "cline");
+        assert_eq!(model, "deepseek/deepseek-v4-flash");
+    }
+
+    #[test]
     fn resolve_kilo_from_settings() {
         let (provider, model) =
             resolve_provider_and_model(None, None, Some("kilo"), Some("kilo-auto/frontier")).expect("resolve");
@@ -484,6 +530,8 @@ mod tests {
             ("cerebras", "Cerebras", "CEREBRAS_API_KEY"),
             ("cloudflare-ai-gateway", "Cloudflare AI Gateway", "CLOUDFLARE_API_KEY"),
             ("cloudflare-workers-ai", "Cloudflare Workers AI", "CLOUDFLARE_API_KEY"),
+            ("cline", "Cline", "CLINE_API_KEY"),
+            ("cline-pass", "ClinePass", "CLINE_API_KEY"),
             ("fireworks", "Fireworks", "FIREWORKS_API_KEY"),
             ("github-copilot", "GitHub Copilot", "COPILOT_GITHUB_TOKEN"),
             ("hetzner", "Hetzner", "HETZNER_API_KEY"),
@@ -547,6 +595,8 @@ mod tests {
             "cerebras",
             "cloudflare-ai-gateway",
             "cloudflare-workers-ai",
+            "cline",
+            "cline-pass",
             "deepseek",
             "fireworks",
             "github-copilot",
@@ -577,6 +627,7 @@ mod tests {
             "openrouter",
             "qwen-token-plan",
             "qwen-token-plan-cn",
+            "qwen-token-plan-individual",
             "sumopod",
             "together",
             "tokenrouter",

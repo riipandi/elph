@@ -1282,7 +1282,7 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.045,
+            "input": 0.045000000000000005,
             "output": 0.15
         },
         "description": "Reasoning-tuned 26B MoE model with 3B active parameters for agents, tools, and multi-step workloads",
@@ -1291,7 +1291,7 @@
         "maxTokens": 131072,
         "name": "Trinity Mini",
         "provider": "vercel-ai-gateway",
-        "reasoning": false,
+        "reasoning": true,
         "releaseDate": "2025-12-01",
         "thinkingLevelMap": {
             "high": null,
@@ -2202,8 +2202,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 1050851.655,
-            "output": 1050851.655
+            "input": 1051669.368,
+            "output": 1051669.368
         },
         "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "meta/llama-3.3-70b",
@@ -4308,17 +4308,17 @@
         "baseUrl": "https://ai-gateway.vercel.sh",
         "contextWindow": 200000,
         "cost": {
-            "cacheRead": 2.5,
+            "cacheRead": 5.5,
             "cacheWrite": 0.0,
-            "input": 10.0,
-            "output": 40.0
+            "input": 11.0,
+            "output": 44.0
         },
         "description": "Research model for long-horizon investigation, synthesis, and analytical reports",
         "id": "openai/o3-deep-research",
-        "input": ["text", "image", "pdf"],
+        "input": ["text"],
         "knowledgeCutoff": "2024-05",
         "maxTokens": 100000,
-        "name": "o3-deep-research",
+        "name": "OpenAI o3 Deep Research",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
         "releaseDate": "2024-06-26",

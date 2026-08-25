@@ -44,10 +44,10 @@
         },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.0152432,
+            "cacheRead": 0.044,
             "cacheWrite": 0.0,
-            "input": 0.479072,
-            "output": 1.437216
+            "input": 0.44,
+            "output": 1.32
         },
         "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
         "id": "deepseek-v4-flash-0731",
@@ -118,12 +118,12 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": null,
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
+            "off": null,
+            "xhigh": null
         }
     },
     "gemma-4-26b-a4b-it": {
@@ -164,9 +164,9 @@
         "contextWindow": 202752,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.455,
-            "input": 0.91,
-            "output": 2.934
+            "cacheWrite": 0.43,
+            "input": 0.86,
+            "output": 2.784
         },
         "description": "General GLM flagship for coding, analysis, and tool-heavy engineering workflows",
         "id": "glm-5",
@@ -197,9 +197,9 @@
         "contextWindow": 202750,
         "cost": {
             "cacheRead": 0.283088,
-            "cacheWrite": 0.68,
-            "input": 1.36,
-            "output": 4.4
+            "cacheWrite": 0.666,
+            "input": 1.332,
+            "output": 4.312
         },
         "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
         "id": "glm-5.1",
@@ -260,12 +260,12 @@
             "supportsStore": false,
             "thinkingFormat": "deepseek"
         },
-        "contextWindow": 131072,
+        "contextWindow": 128072,
         "cost": {
             "cacheRead": 0.0152432,
-            "cacheWrite": 0.094,
-            "input": 0.188,
-            "output": 0.7
+            "cacheWrite": 0.089,
+            "input": 0.178,
+            "output": 0.68
         },
         "description": "Open GPT reasoning model for self-hosted agents and controllable deployments",
         "id": "gpt-oss-120b",
@@ -277,11 +277,11 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
+            "minimal": "minimal",
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "kimi-k2.5": {
@@ -345,8 +345,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
+            "off": null,
+            "xhigh": null
         }
     },
     "kimi-k2.7-code": {
@@ -357,7 +357,7 @@
             "supportsReasoningEffort": false,
             "supportsStore": false
         },
-        "contextWindow": 256000,
+        "contextWindow": 262000,
         "cost": {
             "cacheRead": 0.206872,
             "cacheWrite": 0.0,
@@ -425,9 +425,9 @@
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.319,
-            "input": 0.638,
-            "output": 0.768
+            "cacheWrite": 0.299,
+            "input": 0.598,
+            "output": 0.738
         },
         "description": "Popular open Llama workhorse for multilingual chat, coding, and self-hosting",
         "id": "llama-3.3-70b-instruct",
@@ -489,9 +489,9 @@
         "contextWindow": 262100,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.204,
-            "input": 0.408,
-            "output": 1.512
+            "cacheWrite": 0.205,
+            "input": 0.41,
+            "output": 1.52
         },
         "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
         "id": "minimax-m2.7",

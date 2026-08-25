@@ -373,6 +373,17 @@ const PROVIDERS: &[ProviderSource] = &[
         live_pricing_env: None,
     },
     ProviderSource {
+        id: "qwen-token-plan-individual",
+        // Individual reuses the international source with a narrower curated
+        // catalog; the seed file is derived from qwen_token_plan.json.
+        models_dev_keys: &[],
+        default_api: "openai-completions",
+        default_base_url: "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+        gateway_preserve_ids: true,
+        live_pricing_base: None,
+        live_pricing_env: None,
+    },
+    ProviderSource {
         id: "sumopod",
         models_dev_keys: &["sumopod"],
         default_api: "openai-completions",

@@ -2452,7 +2452,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-397b-a17b",
         "input": ["text", "image", "video"],
-        "maxTokens": 65536,
+        "maxTokens": 262144,
         "name": "Qwen3.5 397B-A17B",
         "provider": "tokenrouter",
         "reasoning": true,
@@ -2862,6 +2862,33 @@
             "low": "low",
             "max": "max",
             "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "stealth/ox-alpha": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.05,
+            "output": 0.05
+        },
+        "description": "Ox Alpha is a reasoning model designed for coding, sustained agentic work, and production workloads. It is suited for long-horizon software engineering, complex reasoning, and workflows that combine text with...",
+        "id": "stealth/ox-alpha",
+        "input": ["text", "image", "video"],
+        "maxTokens": 131072,
+        "name": "Ox Alpha",
+        "provider": "tokenrouter",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null

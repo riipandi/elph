@@ -1216,8 +1216,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 1.943936,
+            "output": 9.719676
         },
         "description": "Balanced Mistral model for enterprise assistants, multilingual work, and tools",
         "headers": {

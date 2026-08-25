@@ -99,6 +99,7 @@ fn to_oauth_credential(creds: HyperOAuthTokens) -> OAuthCredential {
     }
 }
 
+// TODO: get actual device name
 fn device_name() -> String {
     let host = std::env::var("HOSTNAME")
         .ok()
