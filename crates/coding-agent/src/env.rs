@@ -98,7 +98,6 @@ pub fn apply_environment(env_vars: &HashMap<String, String>, no_global_env: bool
 mod tests {
     use super::*;
     use std::env;
-    use std::fs;
     use std::io::Write;
     use tempfile::NamedTempFile;
 
@@ -146,7 +145,7 @@ mod tests {
         let mut temp_file = NamedTempFile::new().unwrap();
         writeln!(temp_file, "# This is a comment").unwrap();
         writeln!(temp_file, "VALID_VAR=value").unwrap();
-        writeln!(temp_file, "").unwrap(); // empty line
+        writeln!(temp_file).unwrap(); // empty line
         writeln!(temp_file, "ANOTHER_VAR=another").unwrap();
 
         let env = load_env_file(temp_file.path().to_str().unwrap()).unwrap();
