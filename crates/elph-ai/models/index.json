@@ -27,7 +27,7 @@
     {
         "providerId": "baseten",
         "rustMod": "baseten",
-        "count": 13
+        "count": 14
     },
     {
         "providerId": "cerebras",
@@ -57,7 +57,7 @@
     {
         "providerId": "deepseek",
         "rustMod": "deepseek",
-        "count": 5
+        "count": 3
     },
     {
         "providerId": "fireworks",
@@ -92,17 +92,17 @@
     {
         "providerId": "huggingface",
         "rustMod": "huggingface",
-        "count": 130
+        "count": 136
     },
     {
         "providerId": "hyper",
         "rustMod": "hyper",
-        "count": 26
+        "count": 29
     },
     {
         "providerId": "infron",
         "rustMod": "infron",
-        "count": 284
+        "count": 286
     },
     {
         "providerId": "kilo",
@@ -127,7 +127,7 @@
     {
         "providerId": "mistral",
         "rustMod": "mistral",
-        "count": 33
+        "count": 34
     },
     {
         "providerId": "moonshotai",
@@ -142,7 +142,7 @@
     {
         "providerId": "nara-router",
         "rustMod": "nara_router",
-        "count": 54
+        "count": 53
     },
     {
         "providerId": "neuralwatt",
@@ -157,7 +157,7 @@
     {
         "providerId": "ollama-cloud",
         "rustMod": "ollama_cloud",
-        "count": 19
+        "count": 20
     },
     {
         "providerId": "openai",
@@ -172,12 +172,12 @@
     {
         "providerId": "opencode",
         "rustMod": "opencode",
-        "count": 64
+        "count": 63
     },
     {
         "providerId": "opencode-go",
         "rustMod": "opencode_go",
-        "count": 30
+        "count": 31
     },
     {
         "providerId": "opengateway",
@@ -187,12 +187,12 @@
     {
         "providerId": "openrouter",
         "rustMod": "openrouter",
-        "count": 417
+        "count": 416
     },
     {
         "providerId": "orca-router",
         "rustMod": "orca_router",
-        "count": 190
+        "count": 192
     },
     {
         "providerId": "qwen-token-plan",
@@ -207,7 +207,7 @@
     {
         "providerId": "qwen-token-plan-individual",
         "rustMod": "qwen_token_plan_individual",
-        "count": 6
+        "count": 7
     },
     {
         "providerId": "sumopod",
@@ -222,7 +222,7 @@
     {
         "providerId": "tokenrouter",
         "rustMod": "tokenrouter",
-        "count": 128
+        "count": 130
     },
     {
         "providerId": "vercel-ai-gateway",
@@ -262,11 +262,11 @@
     {
         "providerId": "zai",
         "rustMod": "zai",
-        "count": 13
+        "count": 15
     },
     {
         "providerId": "zai-coding-cn",
         "rustMod": "zai_coding_cn",
-        "count": 13
+        "count": 15
     }
 ]

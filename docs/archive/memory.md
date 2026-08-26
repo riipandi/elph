@@ -71,6 +71,11 @@ First semantic search downloads from Hugging Face; later runs reuse the cache. T
 | `memory_retrievals` | Per (memory, task): similarity, self-report, credit   |
 | `meta`              | Key-value (e.g. Welford baseline JSON)                |
 
+`tasks.embedding` stores the vector of the task description (written once at
+`start_task`). It is read by `start_task` to surface **related past tasks** —
+past tasks with a similar description (cosine), letting the agent learn from
+their outcome. See [Task lifecycle](#task-lifecycle).
+
 Keyword search uses the Turso-native FTS index (`idx_memories_fts`, Tantivy-backed on
 `memories.content`), applied by migration V4. The index is auto-maintained by Turso on
 insert/update/delete. When `experimental_index_method` is not enabled, the FTS migration
@@ -156,9 +161,16 @@ using the Turso-native FTS index on `memories.content` (migration V4).
 
 | Phase  | Action                                                        |
 | ------ | ------------------------------------------------------------- |
-| Start  | `start_task(description)` → task id + top-k memories          |
+| Start  | `start_task(description)` → task id + top-k memories + related past tasks |
 | During | `report_correction`, `report_user_input`, `insert_raw_memory` |
 | End    | `end_task` with usage metrics + self-reports per memory       |
+
+`start_task` also returns `related_tasks`: past tasks whose description is
+semantically similar to the new one (cosine over `tasks.embedding`, which is
+stored at insert time — no extra inference). Each outcome carries `completed`,
+`task_score`, `tokens_used`, `errors`, `user_corrections`, and `similarity`, so
+the agent can learn from how a similar task went before. Only finished tasks
+above a `0.35` similarity threshold are surfaced (max 3).
 
 ### Query & maintenance
 

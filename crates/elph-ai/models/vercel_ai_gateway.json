@@ -2202,8 +2202,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 1051669.368,
-            "output": 1051669.368
+            "input": 1049850.306,
+            "output": 1049850.306
         },
         "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "meta/llama-3.3-70b",
@@ -4221,17 +4221,17 @@
     "openai/gpt-oss-safeguard-20b": {
         "api": "anthropic-messages",
         "baseUrl": "https://ai-gateway.vercel.sh",
-        "contextWindow": 131072,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.037,
             "cacheWrite": 0.0,
-            "input": 0.075,
-            "output": 0.3
+            "input": 0.07,
+            "output": 0.2
         },
         "description": "Safety model for policy screening, moderation, and risk-aware routing workflows",
         "id": "openai/gpt-oss-safeguard-20b",
         "input": ["text"],
-        "maxTokens": 65536,
+        "maxTokens": 16000,
         "name": "gpt-oss-safeguard-20b",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
@@ -4872,7 +4872,7 @@
         },
         "description": "xAI's Grok model for chat, coding, agentic tools, and lower hallucination risk",
         "id": "xai/grok-4.5",
-        "input": ["text", "image", "pdf"],
+        "input": ["text", "image"],
         "maxTokens": 500000,
         "name": "Grok 4.5",
         "provider": "vercel-ai-gateway",

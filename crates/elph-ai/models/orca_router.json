@@ -531,6 +531,33 @@
             "xhigh": null
         }
     },
+    "fish-audio/s2.1-pro-free": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.orcarouter.ai/v1",
+        "contextWindow": 0,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "description": "Speech generation model for controllable voice, narration, and audio delivery",
+        "id": "fish-audio/s2.1-pro-free",
+        "input": ["text"],
+        "maxTokens": 0,
+        "name": "S2.1 Pro (Free)",
+        "provider": "orca-router",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "google/gemini-2.5-flash": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
@@ -1550,8 +1577,8 @@
         "cost": {
             "cacheRead": 0.3,
             "cacheWrite": 0.0,
-            "input": 3.0,
-            "output": 15.0
+            "input": 3.3000000000000003,
+            "output": 16.5
         },
         "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
         "id": "kimi/kimi-k3",
@@ -1799,7 +1826,7 @@
         "description": "Muse Spark 1.1 is a multimodal reasoning model from Meta, built for agentic tasks. It accepts text, images, video, audio, and PDF documents and returns text, with a 1M-token context...",
         "id": "meta/muse-spark-1.1",
         "input": ["text", "image", "video", "pdf", "audio"],
-        "maxTokens": 1048576,
+        "maxTokens": 943718,
         "name": "Muse Spark 1.1",
         "provider": "orca-router",
         "reasoning": true,
@@ -1827,7 +1854,7 @@
         "description": "Muse Spark 1.2 is a reasoning model from Meta, designed for complex agentic tasks. It accepts text, images, video, audio, and PDF documents, returns text, and offers a 1M-token context...",
         "id": "meta/muse-spark-1.2",
         "input": ["text", "image", "video", "pdf", "audio"],
-        "maxTokens": 1048576,
+        "maxTokens": 943718,
         "name": "Muse Spark 1.2",
         "provider": "orca-router",
         "reasoning": true,
@@ -3747,8 +3774,8 @@
         "baseUrl": "https://api.orcarouter.ai/v1",
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.5,
-            "cacheWrite": 6.25,
+            "cacheRead": 0.25,
+            "cacheWrite": 3.125,
             "input": 4.0,
             "output": 20.0
         },
@@ -4990,6 +5017,32 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
+        }
+    },
+    "s2.1-pro-free": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.orcarouter.ai/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "s2.1-pro-free",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "s2.1-pro-free",
+        "provider": "orca-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "tencent/hy3": {

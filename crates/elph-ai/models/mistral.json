@@ -956,5 +956,34 @@
             "off": null,
             "xhigh": null
         }
+    },
+    "zai-glm-5-2": {
+        "api": "mistral-conversations",
+        "baseUrl": "https://api.mistral.ai",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.14,
+            "cacheWrite": 0.0,
+            "input": 1.4,
+            "output": 4.4
+        },
+        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "id": "zai-glm-5-2",
+        "input": ["text"],
+        "knowledgeCutoff": "",
+        "maxTokens": 131072,
+        "name": "GLM-5.2",
+        "provider": "mistral",
+        "reasoning": true,
+        "releaseDate": "",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     }
 }

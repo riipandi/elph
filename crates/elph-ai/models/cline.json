@@ -32,10 +32,10 @@
         "baseUrl": "https://api.cline.bot/api/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.0112,
+            "cacheRead": 0.015904,
             "cacheWrite": 0.0,
-            "input": 0.056,
-            "output": 0.112
+            "input": 0.07952,
+            "output": 0.15904
         },
         "description": "DeepSeek V4 Flash is an efficiency-optimized Mixture-of-Experts model from DeepSeek with 284B total parameters and 13B activated parameters, supporting a 1M-token context window. It is designed for fast inference and...",
         "id": "deepseek/deepseek-v4-flash",
@@ -135,33 +135,6 @@
             "xhigh": null
         }
     },
-    "stealth/ox-alpha": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.cline.bot/api/v1",
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "description": "Ox Alpha is a reasoning model designed for coding, sustained agentic work, and production workloads. It is suited for long-horizon software engineering, complex reasoning, and workflows that combine text with...",
-        "id": "stealth/ox-alpha",
-        "input": ["text", "image", "video"],
-        "maxTokens": 128000,
-        "name": "Ox Alpha",
-        "provider": "cline",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": "max",
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "x-ai/grok-4.5": {
         "api": "openai-completions",
         "baseUrl": "https://api.cline.bot/api/v1",
@@ -184,6 +157,33 @@
             "low": "low",
             "max": null,
             "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "z-ai/glm-5.3-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.cline.bot/api/v1",
+        "contextWindow": 1310720,
+        "cost": {
+            "cacheRead": 0.015,
+            "cacheWrite": 0.0,
+            "input": 0.075,
+            "output": 0.25
+        },
+        "description": "GLM-5.3-Flash is a native multimodal model from Z.ai. It is suited for efficient coding and long-horizon agent tasks. Its hybrid sparse and linear attention architecture maintains accurate long-context behavior while...",
+        "id": "z-ai/glm-5.3-flash",
+        "input": ["text", "image", "video"],
+        "maxTokens": 128000,
+        "name": "Z.ai: GLM 5.3 Flash",
+        "provider": "cline",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null

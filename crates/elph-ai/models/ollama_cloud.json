@@ -186,6 +186,33 @@
             "xhigh": null
         }
     },
+    "glm-5.3-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://ollama.com/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.03,
+            "cacheWrite": 0.0,
+            "input": 0.15,
+            "output": 0.5
+        },
+        "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
+        "id": "glm-5.3-flash",
+        "input": ["text", "image", "video", "pdf"],
+        "maxTokens": 131072,
+        "name": "GLM-5.3-Flash",
+        "provider": "ollama-cloud",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "gpt-oss:120b": {
         "api": "openai-completions",
         "baseUrl": "https://ollama.com/v1",

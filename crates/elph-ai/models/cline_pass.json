@@ -5,10 +5,10 @@
         "baseUrl": "https://api.cline.bot/api/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.0112,
+            "cacheRead": 0.015904,
             "cacheWrite": 0.0,
-            "input": 0.056,
-            "output": 0.112
+            "input": 0.07952,
+            "output": 0.15904
         },
         "description": "DeepSeek V4 Flash is an efficiency-optimized Mixture-of-Experts model from DeepSeek with 284B total parameters and 13B activated parameters, supporting a 1M-token context window. It is designed for fast inference and...",
         "id": "cline-pass/deepseek-v4-flash",
@@ -32,10 +32,10 @@
         "baseUrl": "https://api.cline.bot/api/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.0435,
+            "cacheRead": 0.0725,
             "cacheWrite": 0.0,
-            "input": 0.522,
-            "output": 1.044
+            "input": 0.87,
+            "output": 1.74
         },
         "description": "DeepSeek V4 Pro is a large-scale Mixture-of-Experts model from DeepSeek with 1.6T total parameters and 49B activated parameters, supporting a 1M-token context window. It is designed for advanced reasoning, coding,...",
         "id": "cline-pass/deepseek-v4-pro",
@@ -59,10 +59,10 @@
         "baseUrl": "https://api.cline.bot/api/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.1932,
+            "cacheRead": 0.221,
             "cacheWrite": 0.0,
-            "input": 0.966,
-            "output": 3.036
+            "input": 1.19,
+            "output": 3.74
         },
         "description": "GLM 5.2 is a large-scale reasoning model from Z.ai. It supports text input and output with a 1M-token context window, and is suited for long-horizon agent workflows, project-level software engineering,...",
         "id": "cline-pass/glm-5.2",
@@ -346,8 +346,8 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
-            "off": "off",
+            "minimal": "minimal",
+            "off": null,
             "xhigh": "xhigh"
         }
     }

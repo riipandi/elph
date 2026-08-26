@@ -1385,10 +1385,10 @@
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.022,
-            "cacheWrite": 0.275,
-            "input": 0.22,
-            "output": 1.32
+            "cacheRead": 0.02,
+            "cacheWrite": 0.25,
+            "input": 0.2,
+            "output": 1.2
         },
         "description": "Cost-efficient GPT-5.6 model for fast, high-volume workloads",
         "id": "global.openai.gpt-5.6-luna",
@@ -1414,10 +1414,10 @@
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.55,
-            "cacheWrite": 6.875,
-            "input": 5.5,
-            "output": 33.0
+            "cacheRead": 0.4,
+            "cacheWrite": 5.0,
+            "input": 4.0,
+            "output": 20.0
         },
         "description": "Frontier GPT-5.6 model for complex professional work, coding, and agentic workflows",
         "id": "global.openai.gpt-5.6-sol",
@@ -1443,10 +1443,10 @@
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.22,
-            "cacheWrite": 2.75,
-            "input": 2.2,
-            "output": 13.2
+            "cacheRead": 0.2,
+            "cacheWrite": 2.5,
+            "input": 2.0,
+            "output": 12.0
         },
         "description": "Balanced GPT-5.6 model for capable, cost-efficient everyday work",
         "id": "global.openai.gpt-5.6-terra",
@@ -2585,10 +2585,10 @@
         },
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.55,
-            "cacheWrite": 6.875,
-            "input": 5.5,
-            "output": 33.0
+            "cacheRead": 0.44,
+            "cacheWrite": 5.5,
+            "input": 4.4,
+            "output": 22.0
         },
         "description": "Frontier GPT-5.6 model for complex professional work, coding, and agentic workflows",
         "id": "openai.gpt-5.6-sol",

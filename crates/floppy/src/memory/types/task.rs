@@ -61,6 +61,25 @@ pub struct TimelineEvent {
 pub struct StartTaskResult {
     pub task_id: String,
     pub memories: Vec<super::memory::Memory>,
+    /// Past tasks whose description is semantically similar to this one
+    /// (cosine over `tasks.embedding`). Lets the agent learn from how a
+    /// similar task went before (outcome, cost, errors). Empty when no
+    /// embedding is available or no similar task exists yet.
+    pub related_tasks: Vec<TaskOutcome>,
+}
+
+/// Outcome summary of a past task, surfaced for a similar new task.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskOutcome {
+    pub id: String,
+    pub description: String,
+    pub completed: Option<bool>,
+    pub task_score: Option<f64>,
+    pub tokens_used: Option<u32>,
+    pub errors: Option<u32>,
+    pub user_corrections: Option<u32>,
+    pub started_at: Option<i64>,
+    pub similarity: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -13,6 +13,7 @@ use floppy::{
     TaskEndInput, UserInputSource,
 };
 
+use super::capture::truncate_chars;
 use super::runtime::MemoryRuntime;
 
 /// Create all memory tools wired to the shared runtime.
@@ -66,7 +67,11 @@ async fn execute_start_task(runtime: Arc<MemoryRuntime>, args: Value) -> Result<
         .filter(|s| !s.is_empty())
         .ok_or_else(|| anyhow::anyhow!("`description` is required"))?;
 
-    let StartTaskResult { task_id, memories } = runtime.start_task(description).await?;
+    let StartTaskResult {
+        task_id,
+        memories,
+        related_tasks,
+    } = runtime.start_task(description).await?;
 
     let memory_list: Vec<Value> = memories
         .iter()
@@ -116,12 +121,46 @@ async fn execute_start_task(runtime: Arc<MemoryRuntime>, args: Value) -> Result<
         format!("{summary}\n\n{}", lines.join("\n"))
     };
 
+    // Related past tasks: how a similar task went before (cost, outcome).
+    let related_text = if related_tasks.is_empty() {
+        String::new()
+    } else {
+        let lines: Vec<String> = related_tasks
+            .iter()
+            .map(|t| {
+                let status = match t.completed {
+                    Some(true) => "completed",
+                    Some(false) => "failed",
+                    None => "in-progress",
+                };
+                let score = t.task_score.map(|s| format!("{s:.2}")).unwrap_or_else(|| "?".into());
+                let tokens = t.tokens_used.map(|n| n.to_string()).unwrap_or_else(|| "?".into());
+                let errors = t.errors.unwrap_or(0);
+                let corr = t.user_corrections.unwrap_or(0);
+                format!(
+                    "- [{}] sim={:.2} score={} | {}tok, {}err, {}corr\n  {}",
+                    status,
+                    t.similarity,
+                    score,
+                    tokens,
+                    errors,
+                    corr,
+                    truncate_chars(&t.description, 120),
+                )
+            })
+            .collect();
+        format!("\n\nRelated past tasks (how similar tasks went before):\n{}", lines.join("\n"))
+    };
+
     Ok(AgentToolResult {
-        content: vec![elph_agent::ToolResultContent::Text(elph_ai::TextContent::new(text))],
+        content: vec![elph_agent::ToolResultContent::Text(elph_ai::TextContent::new(format!(
+            "{text}{related_text}"
+        )))],
         details: json!({
             "taskId": task_id,
             "memoryCount": memories.len(),
             "memories": memory_list,
+            "relatedTasks": related_tasks,
         }),
         added_tool_names: None,
         terminate: None,

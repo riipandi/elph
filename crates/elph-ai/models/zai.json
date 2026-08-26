@@ -375,6 +375,64 @@
             "xhigh": null
         }
     },
+    "glm-5.3": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.z.ai/api/coding/paas/v4",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.26,
+            "cacheWrite": 0.0,
+            "input": 1.4,
+            "output": 4.4
+        },
+        "description": "Flagship GLM model for long-horizon coding, agents, and complex project delivery",
+        "id": "glm-5.3",
+        "input": ["text"],
+        "knowledgeCutoff": "",
+        "maxTokens": 131072,
+        "name": "GLM-5.3",
+        "provider": "zai",
+        "reasoning": true,
+        "releaseDate": "",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "glm-5.3-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.z.ai/api/coding/paas/v4",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.015,
+            "cacheWrite": 0.0,
+            "input": 0.075,
+            "output": 0.25
+        },
+        "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
+        "id": "glm-5.3-flash",
+        "input": ["text", "image", "video", "pdf"],
+        "knowledgeCutoff": "",
+        "maxTokens": 131072,
+        "name": "GLM-5.3-Flash",
+        "provider": "zai",
+        "reasoning": true,
+        "releaseDate": "",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "glm-5v-turbo": {
         "api": "openai-completions",
         "baseUrl": "https://api.z.ai/api/coding/paas/v4",

@@ -435,8 +435,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.06,
-            "output": 0.12
+            "input": 0.0633,
+            "output": 0.1266
         },
         "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-3n-e4b-it",
@@ -1216,8 +1216,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 1.943936,
-            "output": 9.719676
+            "input": 1.937788,
+            "output": 9.688936
         },
         "description": "Balanced Mistral model for enterprise assistants, multilingual work, and tools",
         "headers": {
@@ -2943,8 +2943,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.6963,
-            "output": 1.055
+            "input": 0.0633,
+            "output": 0.211
         },
         "description": "Qwen coding model for software agents, repository edits, and code reasoning",
         "id": "qwen/qwen2.5-coder-32b-instruct",

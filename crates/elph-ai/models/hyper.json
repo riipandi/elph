@@ -60,10 +60,10 @@
             "high": "high",
             "low": "low",
             "max": "max",
-            "medium": "medium",
-            "minimal": "minimal",
+            "medium": null,
+            "minimal": null,
             "off": "off",
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "deepseek-v4-pro": {
@@ -119,10 +119,10 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -137,9 +137,9 @@
         "contextWindow": 256000,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.055,
-            "input": 0.11,
-            "output": 0.408
+            "cacheWrite": 0.06,
+            "input": 0.12,
+            "output": 0.42
         },
         "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "gemma-4-26b-a4b-it",
@@ -164,9 +164,9 @@
         "contextWindow": 202752,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.43,
-            "input": 0.86,
-            "output": 2.784
+            "cacheWrite": 0.46,
+            "input": 0.92,
+            "output": 2.976
         },
         "description": "General GLM flagship for coding, analysis, and tool-heavy engineering workflows",
         "id": "glm-5",
@@ -197,9 +197,9 @@
         "contextWindow": 202750,
         "cost": {
             "cacheRead": 0.283088,
-            "cacheWrite": 0.666,
-            "input": 1.332,
-            "output": 4.312
+            "cacheWrite": 0.645,
+            "input": 1.29,
+            "output": 4.22
         },
         "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
         "id": "glm-5.1",
@@ -295,9 +295,9 @@
         "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.2722,
-            "input": 0.5444,
-            "output": 2.855
+            "cacheWrite": 0.272,
+            "input": 0.544,
+            "output": 2.76
         },
         "description": "Earlier Kimi frontier model for long-context agents, coding, and multimodal work",
         "id": "kimi-k2.5",
@@ -425,9 +425,9 @@
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.299,
-            "input": 0.598,
-            "output": 0.738
+            "cacheWrite": 0.319,
+            "input": 0.638,
+            "output": 0.768
         },
         "description": "Popular open Llama workhorse for multilingual chat, coding, and self-hosting",
         "id": "llama-3.3-70b-instruct",
@@ -489,9 +489,9 @@
         "contextWindow": 262100,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.205,
-            "input": 0.41,
-            "output": 1.52
+            "cacheWrite": 0.212,
+            "input": 0.424,
+            "output": 1.612
         },
         "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
         "id": "minimax-m2.7",
@@ -787,6 +787,87 @@
         "input": ["text", "image"],
         "maxTokens": 64000,
         "name": "Qwen3.7 Plus",
+        "provider": "hyper",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "qwen3.8-2.4t-a95b": {
+        "api": "openai-completions",
+        "baseUrl": "https://hyper.charm.land/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.25,
+            "cacheWrite": 0.0,
+            "input": 2.0,
+            "output": 6.0
+        },
+        "description": "Open-weight sparse MoE (2.4T total, 95B active), the open-weight twin of Qwen3.8 Max for coding, research, complex reasoning, and agentic workflows",
+        "id": "qwen3.8-2.4t-a95b",
+        "input": ["text"],
+        "maxTokens": 128000,
+        "name": "Qwen3.8 2.4T A95B",
+        "provider": "hyper",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "qwen3.8-27b": {
+        "api": "openai-completions",
+        "baseUrl": "https://hyper.charm.land/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.1,
+            "cacheWrite": 0.0,
+            "input": 0.5,
+            "output": 3.0
+        },
+        "description": "Dense 27B vision-language model for coding, agent tasks, and image and video understanding",
+        "id": "qwen3.8-27b",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "Qwen3.8 27B",
+        "provider": "hyper",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "qwen3.8-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://hyper.charm.land/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.016,
+            "cacheWrite": 0.0,
+            "input": 0.16,
+            "output": 0.47
+        },
+        "description": "Efficient model for low-latency assistance, extraction, and routine automation",
+        "id": "qwen3.8-flash",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "Qwen3.8 Flash",
         "provider": "hyper",
         "reasoning": true,
         "thinkingLevelMap": {

@@ -29,6 +29,34 @@ fn mock_embed() -> EmbedFn {
     })
 }
 
+/// Discriminative bag-of-words embedder: shared words => similar vectors,
+/// disjoint words => near-orthogonal. Used where the naive byte-sum mock
+/// cannot tell topics apart.
+fn mock_embed_word() -> EmbedFn {
+    Arc::new(|texts: &[String]| {
+        let mut out = Vec::with_capacity(texts.len());
+        for text in texts {
+            let mut vec = vec![0.0f32; 64];
+            for w in text.split_whitespace() {
+                let mut h: u32 = 2_166_136_261;
+                for b in w.bytes() {
+                    h ^= b as u32;
+                    h = h.wrapping_mul(16_777_619);
+                }
+                vec[(h as usize) % 64] += 1.0;
+            }
+            let norm: f32 = vec.iter().map(|x| x * x).sum::<f32>().sqrt();
+            if norm > 0.0 {
+                for x in &mut vec {
+                    *x /= norm;
+                }
+            }
+            out.push(vec);
+        }
+        Box::pin(async move { Ok(out) })
+    })
+}
+
 fn test_config(db_path: &str) -> FloppyConfig {
     FloppyConfig {
         db_path: db_path.to_string(),
@@ -546,6 +574,74 @@ async fn start_task_with_no_memories_returns_empty() {
 
     let start = store.start_task("fresh task with no memories").await.expect("start");
     assert!(start.memories.is_empty());
+    assert!(start.related_tasks.is_empty());
+}
+
+#[tokio::test]
+async fn start_task_surfaces_similar_past_tasks() {
+    let ctx = TestCtx::new();
+    let store = create_memory_store(test_config(&ctx.db_path), mock_embed_word());
+
+    // First task: no past tasks yet.
+    let first = store.start_task("fix the auth middleware bug").await.expect("start");
+    assert!(first.related_tasks.is_empty());
+    store
+        .end_task(
+            &first.task_id,
+            TaskEndInput {
+                tokens_used: 10_000,
+                tool_calls: 5,
+                errors: 3,
+                user_corrections: 1,
+                completed: false,
+                self_report: None,
+            },
+        )
+        .await
+        .expect("end");
+
+    // Unrelated task: must not surface as related.
+    let unrelated = store.start_task("refactor the cli parser").await.expect("start");
+    store
+        .end_task(
+            &unrelated.task_id,
+            TaskEndInput {
+                tokens_used: 500,
+                tool_calls: 2,
+                errors: 0,
+                user_corrections: 0,
+                completed: true,
+                self_report: None,
+            },
+        )
+        .await
+        .expect("end");
+
+    // Similar task: the failed auth task should surface with its outcome.
+    let similar = store
+        .start_task("fix authentication in middleware")
+        .await
+        .expect("start");
+    assert!(
+        similar.related_tasks.iter().any(|t| t.id == first.task_id),
+        "expected the similar auth task to surface, got {:?}",
+        similar.related_tasks.iter().map(|t| &t.description).collect::<Vec<_>>()
+    );
+    let related = similar
+        .related_tasks
+        .iter()
+        .find(|t| t.id == first.task_id)
+        .expect("related");
+    assert_eq!(related.completed, Some(false));
+    assert_eq!(related.errors, Some(3));
+    assert_eq!(related.tokens_used, Some(10_000));
+    assert!(
+        related.similarity > 0.35,
+        "similarity should clear the threshold, got {}",
+        related.similarity
+    );
+    // The unrelated task must not appear (below the similarity threshold).
+    assert!(!similar.related_tasks.iter().any(|t| t.id == unrelated.task_id));
 }
 
 #[tokio::test]
