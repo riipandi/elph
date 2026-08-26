@@ -28,7 +28,8 @@ pub use types::{
     ReportUserInput, SelfReportEntry, StartTaskResult, StoreStatus, TaskBaseline, TaskCreatedMemory, TaskEndInput,
 };
 pub use types::{
-    TaskRecord, TaskRetrieval, TaskStatus, TimelineEvent, TimelineEventKind, TopMemory, UserInputSource, VectorType,
+    TaskOutcome, TaskRecord, TaskRetrieval, TaskStatus, TimelineEvent, TimelineEventKind, TopMemory, UserInputSource,
+    VectorType,
 };
 pub use util::category_str;
 

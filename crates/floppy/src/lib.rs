@@ -61,8 +61,8 @@ pub use memory::{
     CategoryCount, ConsolidateResult, ContradictResult, DecayResult, EmbeddingStatus, EndTaskWithDecayResult,
     FloppyBuilder, FloppyConfig, FlushResult, Memory, MemoryCategory, MemoryRecord, MemoryReportInput,
     MemoryReportType, MemoryStats, MemoryStore, ReportCorrectionInput, ReportUserInput, SelfReportEntry,
-    StartTaskResult, StoreStatus, TaskBaseline, TaskCreatedMemory, TaskEndInput, TaskRecord, TaskRetrieval, TaskStatus,
-    TimelineEvent, TimelineEventKind, TopMemory, UserInputSource, VectorType, category_str,
+    StartTaskResult, StoreStatus, TaskBaseline, TaskCreatedMemory, TaskEndInput, TaskOutcome, TaskRecord,
+    TaskRetrieval, TaskStatus, TimelineEvent, TimelineEventKind, TopMemory, UserInputSource, VectorType, category_str,
 };
 
 #[cfg(all(test, feature = "memory"))]

@@ -7,8 +7,13 @@ use super::{batch_set_weights, fetch_weights, new_id, now_secs, touch_retrieved_
 use crate::core::util::{drain_rows, vec_buf};
 use crate::memory::scoring::{compute_credit, compute_task_score, initial_weight, update_baseline, update_weight};
 use crate::memory::types::{
-    Memory, MemoryCategory, ReportCorrectionInput, ReportUserInput, StartTaskResult, TaskEndInput,
+    Memory, MemoryCategory, ReportCorrectionInput, ReportUserInput, StartTaskResult, TaskEndInput, TaskOutcome,
 };
+
+/// Max past tasks surfaced as "related" when a new task starts.
+const RELATED_TASKS_LIMIT: i64 = 3;
+/// Minimum cosine similarity for a past task to count as "related".
+const RELATED_TASKS_MIN_SIMILARITY: f64 = 0.35;
 
 impl MemoryStore {
     pub async fn start_task(&self, description: &str) -> Result<StartTaskResult> {
@@ -38,6 +43,11 @@ impl MemoryStore {
         let decay_rate = self.decay_rate;
         let task_id_clone = task_id.clone();
         let description = description.to_string();
+        let current_task_id = task_id.clone();
+        // Reuse the already-computed task embedding for the related-tasks query
+        // (no second inference pass).
+        let related_emb = task_embedding.clone();
+        let related_emb_buf = related_emb.as_ref().map(|v| vec_buf(v));
 
         let memories = self
             .with_db(move |conn| async move {
@@ -100,8 +110,70 @@ impl MemoryStore {
             })
             .await?;
 
-        *self.current_task_id.lock().unwrap() = Some(task_id.clone());
-        Ok(StartTaskResult { task_id, memories })
+        // INVARIANT: Mutex poison is unrecoverable here (store state is unusable
+        // after a panic while holding the lock), so unwrap is acceptable.
+        *self.current_task_id.lock().unwrap() = Some(current_task_id);
+        Ok(StartTaskResult {
+            task_id,
+            memories,
+            related_tasks: self.related_tasks(related_emb_buf).await.unwrap_or_default(),
+        })
+    }
+
+    /// Past tasks semantically similar to the current task, via cosine over
+    /// `tasks.embedding` (the embedding is already computed for retrieval, so
+    /// this reads stored blobs — no extra inference).
+    ///
+    /// Returns at most [`RELATED_TASKS_LIMIT`] outcomes, most similar first,
+    /// excluding the just-inserted current task. Empty when no task has an
+    /// embedding yet (e.g. noop embedder / read-only stores).
+    async fn related_tasks(&self, emb_buf: Option<Vec<u8>>) -> Result<Vec<TaskOutcome>> {
+        let vfn = self.vector_fn();
+        let Some(emb_buf) = emb_buf else {
+            return Ok(Vec::new());
+        };
+
+        self.with_db(move |conn| async move {
+            let sql = format!(
+                "SELECT id, description, completed, task_score, tokens_used, errors, user_corrections, started_at, \
+                 vector_distance_cos({vfn}(embedding), {vfn}(?)) AS distance \
+                 FROM tasks \
+                 WHERE embedding IS NOT NULL AND finished_at IS NOT NULL \
+                 AND (1.0 - vector_distance_cos({vfn}(embedding), {vfn}(?))) >= ? \
+                 ORDER BY (1.0 - vector_distance_cos({vfn}(embedding), {vfn}(?))) DESC \
+                 LIMIT ?"
+            );
+            let mut rows = conn
+                .query(
+                    &sql,
+                    params![
+                        emb_buf.as_slice(),
+                        emb_buf.as_slice(),
+                        RELATED_TASKS_MIN_SIMILARITY,
+                        emb_buf.as_slice(),
+                        RELATED_TASKS_LIMIT
+                    ],
+                )
+                .await?;
+            let mut out = Vec::with_capacity(RELATED_TASKS_LIMIT as usize);
+            while let Some(row) = rows.next().await? {
+                let distance: f64 = row.get(8)?;
+                out.push(TaskOutcome {
+                    id: row.get(0)?,
+                    description: row.get::<Option<String>>(1)?.unwrap_or_default(),
+                    completed: row.get(2)?,
+                    task_score: row.get(3)?,
+                    tokens_used: row.get::<Option<i64>>(4)?.map(|n| n as u32),
+                    errors: row.get::<Option<i64>>(5)?.map(|n| n as u32),
+                    user_corrections: row.get::<Option<i64>>(6)?.map(|n| n as u32),
+                    started_at: row.get(7)?,
+                    similarity: 1.0 - distance,
+                });
+            }
+            drain_rows(&mut rows).await?;
+            Ok(out)
+        })
+        .await
     }
 
     pub async fn report_correction(&self, input: ReportCorrectionInput) -> Result<String> {
