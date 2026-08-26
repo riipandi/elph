@@ -453,7 +453,7 @@
         "description": "NVIDIA Nemotron 3 Ultra is an open frontier-reasoning and orchestration model from NVIDIA, with 55B active parameters out of 550B total (MoE). Built on a hybrid Transformer-Mamba mixture-of-experts architecture, it...",
         "id": "nvidia/nemotron-3-ultra-550b-a55b",
         "input": ["text"],
-        "maxTokens": 512288,
+        "maxTokens": 461059,
         "name": "Nemotron 3 Ultra 550B A55B",
         "provider": "together",
         "reasoning": true,

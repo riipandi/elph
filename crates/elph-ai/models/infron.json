@@ -546,6 +546,58 @@
             "xhigh": "xhigh"
         }
     },
+    "apodex/apodex-1.1": {
+        "api": "openai-completions",
+        "baseUrl": "https://llm.onerouter.pro/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.24,
+            "output": 2.4
+        },
+        "id": "apodex/apodex-1.1",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "apodex/apodex-1.1",
+        "provider": "infron",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "apodex/apodex-1.1-mini": {
+        "api": "openai-completions",
+        "baseUrl": "https://llm.onerouter.pro/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.08,
+            "output": 0.8
+        },
+        "id": "apodex/apodex-1.1-mini",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "apodex/apodex-1.1-mini",
+        "provider": "infron",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "arcee-ai/trinity-large-thinking": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
@@ -559,7 +611,7 @@
         "description": "Reasoning-optimized 398B MoE agent model with extended thinking for long-horizon and multi-turn tool use",
         "id": "arcee-ai/trinity-large-thinking",
         "input": ["text"],
-        "maxTokens": 262144,
+        "maxTokens": 235929,
         "name": "Trinity Large Thinking",
         "provider": "infron",
         "reasoning": true,
@@ -910,7 +962,7 @@
         "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek/deepseek-chat-v3-0324",
         "input": ["text"],
-        "maxTokens": 163840,
+        "maxTokens": 147456,
         "name": "DeepSeek: DeepSeek V3 0324",
         "provider": "infron",
         "reasoning": false,
@@ -937,7 +989,7 @@
         "description": "DeepSeek chat model for instruction following, coding, and analysis",
         "id": "deepseek/deepseek-chat-v3.1",
         "input": ["text"],
-        "maxTokens": 161000,
+        "maxTokens": 144900,
         "name": "DeepSeek: DeepSeek V3.1",
         "provider": "infron",
         "reasoning": true,
@@ -1047,7 +1099,7 @@
         "description": "DeepSeek reasoning model for multi-step analysis, math, coding, and tools",
         "id": "deepseek/deepseek-r1-distill-llama-70b",
         "input": ["text"],
-        "maxTokens": 8192,
+        "maxTokens": 7372,
         "name": "DeepSeek: R1 Distill Llama 70B",
         "provider": "infron",
         "reasoning": true,
@@ -1888,7 +1940,7 @@
         "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-3-27b-it",
         "input": ["text", "image"],
-        "maxTokens": 131072,
+        "maxTokens": 117964,
         "name": "Google: Gemma 3 27B",
         "provider": "infron",
         "reasoning": false,
@@ -1997,7 +2049,7 @@
         "description": "Open-weight instruction model for adaptable chat and self-hosted production workloads",
         "id": "gryphe/mythomax-l2-13b",
         "input": ["text"],
-        "maxTokens": 4096,
+        "maxTokens": 3686,
         "name": "MythoMax 13B",
         "provider": "infron",
         "reasoning": false,
@@ -2473,7 +2525,7 @@
     "meta-llama/llama-3.3-70b-instruct": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 131072,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.025,
             "cacheWrite": 0.0,
@@ -2483,7 +2535,7 @@
         "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "meta-llama/llama-3.3-70b-instruct",
         "input": ["text"],
-        "maxTokens": 16384,
+        "maxTokens": 115200,
         "name": "Llama-3.3-70B-Instruct",
         "provider": "infron",
         "reasoning": false,
@@ -3352,7 +3404,7 @@
         "description": "Reasoning model for deliberate analysis, multi-step problem solving, and tool use",
         "id": "nousresearch/hermes-4-405b",
         "input": ["text"],
-        "maxTokens": 26215,
+        "maxTokens": 117964,
         "name": "Nous: Hermes 4 405B",
         "provider": "infron",
         "reasoning": true,
@@ -3379,7 +3431,7 @@
         "description": "Reasoning model for deliberate analysis, multi-step problem solving, and tool use",
         "id": "nousresearch/hermes-4-70b",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 117964,
         "name": "Nous: Hermes 4 70B",
         "provider": "infron",
         "reasoning": true,
@@ -3462,7 +3514,7 @@
         "description": "Small Nemotron 3 MoE for efficient coding, math, and long-context agents",
         "id": "nvidia/nemotron-3-nano-30b-a3b",
         "input": ["text"],
-        "maxTokens": 262144,
+        "maxTokens": 235929,
         "name": "Nemotron 3 Nano 30B A3B",
         "provider": "infron",
         "reasoning": true,
@@ -3546,7 +3598,7 @@
         "description": "NVIDIA Nemotron 3 Ultra is an open frontier-reasoning and orchestration model from NVIDIA, with 55B active parameters out of 550B total (MoE). Built on a hybrid Transformer-Mamba mixture-of-experts architecture, it...",
         "id": "nvidia/nemotron-3-ultra-550b-a55b",
         "input": ["text"],
-        "maxTokens": 512288,
+        "maxTokens": 461059,
         "name": "Nemotron 3 Ultra 550B A55B",
         "provider": "infron",
         "reasoning": true,
@@ -3698,7 +3750,7 @@
     "openai/gpt-4": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 8192,
+        "contextWindow": 8191,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -3785,7 +3837,7 @@
     "openai/gpt-4.1-nano": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 1047576,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.025,
             "cacheWrite": 0.0,
@@ -3986,7 +4038,7 @@
     "openai/gpt-5-nano": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 400000,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.005,
             "cacheWrite": 0.0,
@@ -4024,7 +4076,7 @@
         },
         "description": "Higher-accuracy GPT-5 tier for tough analysis, coding reviews, and planning",
         "id": "openai/gpt-5-pro",
-        "input": ["text", "image"],
+        "input": ["image", "text", "pdf"],
         "knowledgeCutoff": "2024-09-30",
         "maxTokens": 272000,
         "name": "GPT-5 Pro",
@@ -4272,7 +4324,7 @@
     "openai/gpt-5.4-mini": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 400000,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.075,
             "cacheWrite": 0.75,
@@ -4301,7 +4353,7 @@
     "openai/gpt-5.4-nano": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 400000,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.02,
             "cacheWrite": 0.2,
@@ -4330,7 +4382,7 @@
     "openai/gpt-5.4-pro": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 1050000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 3.0,
             "cacheWrite": 0.0,
@@ -4359,7 +4411,7 @@
     "openai/gpt-5.5": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 1050000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 5.0,
@@ -4388,7 +4440,7 @@
     "openai/gpt-5.5-pro": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 1050000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 3.0,
             "cacheWrite": 0.0,
@@ -4448,8 +4500,8 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.5,
-            "cacheWrite": 6.25,
+            "cacheRead": 0.25,
+            "cacheWrite": 3.125,
             "input": 2.5,
             "output": 15.0
         },
@@ -5598,7 +5650,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-122b-a10b",
         "input": ["text", "image", "video"],
-        "maxTokens": 262144,
+        "maxTokens": 235929,
         "name": "Qwen3.5 122B-A10B",
         "provider": "infron",
         "reasoning": true,
@@ -5685,12 +5737,12 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": "off",
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "qwen/qwen3.5-27b-bluestar-v3-derestricted-lite": {
@@ -5980,12 +6032,12 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": "off",
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "qwen/qwen3.5-27b-queen-derestricted-lite": {
@@ -6055,7 +6107,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-35b-a3b",
         "input": ["text", "image", "video"],
-        "maxTokens": 262144,
+        "maxTokens": 235929,
         "name": "Qwen3.5 35B-A3B",
         "provider": "infron",
         "reasoning": true,
@@ -6082,7 +6134,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-397b-a17b",
         "input": ["text", "image", "video"],
-        "maxTokens": 262144,
+        "maxTokens": 65536,
         "name": "Qwen3.5 397B-A17B",
         "provider": "infron",
         "reasoning": true,
@@ -6109,7 +6161,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-9b",
         "input": ["text", "image", "video"],
-        "maxTokens": 262144,
+        "maxTokens": 235929,
         "name": "Qwen3.5 9B",
         "provider": "infron",
         "reasoning": true,
@@ -6217,7 +6269,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.6-35b-a3b",
         "input": ["text", "image", "video"],
-        "maxTokens": 262144,
+        "maxTokens": 235929,
         "name": "Qwen3.6 35B-A3B",
         "provider": "infron",
         "reasoning": true,
@@ -6788,7 +6840,7 @@
         "description": "Flagship model for demanding analysis, coding, and production agent workflows",
         "id": "upstage/solar-pro-3",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 117964,
         "name": "Upstage: Solar Pro 3",
         "provider": "infron",
         "reasoning": true,

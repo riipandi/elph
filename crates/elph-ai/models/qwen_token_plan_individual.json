@@ -76,26 +76,26 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.28,
+            "cacheRead": 0.2817,
             "cacheWrite": 0.0,
-            "input": 1.4,
-            "output": 4.4
+            "input": 1.1268,
+            "output": 3.9438
         },
         "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "glm-5.2",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 128000,
         "name": "GLM-5.2",
         "provider": "qwen-token-plan-individual",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": "max",
-            "medium": "medium",
-            "minimal": "minimal",
-            "off": "off",
-            "xhigh": "xhigh"
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "qwen3.6-flash": {
@@ -106,17 +106,17 @@
             "supportsStore": false,
             "thinkingFormat": "qwen"
         },
-        "contextWindow": 1000000,
+        "contextWindow": 991000,
         "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.234375,
-            "input": 0.1875,
-            "output": 1.125
+            "cacheRead": 0.0169,
+            "cacheWrite": 0.21125,
+            "input": 0.17,
+            "output": 1.01
         },
-        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
+        "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
         "id": "qwen3.6-flash",
         "input": ["text", "image", "video"],
-        "maxTokens": 65536,
+        "maxTokens": 64000,
         "name": "Qwen3.6 Flash",
         "provider": "qwen-token-plan-individual",
         "reasoning": true,
@@ -148,7 +148,7 @@
         "description": "Qwen frontier model tuned for agent frameworks, coding assistants, and long tasks",
         "id": "qwen3.7-max",
         "input": ["text"],
-        "maxTokens": 65536,
+        "maxTokens": 64000,
         "name": "Qwen3.7 Max",
         "provider": "qwen-token-plan-individual",
         "reasoning": true,
@@ -170,17 +170,17 @@
             "supportsStore": false,
             "thinkingFormat": "qwen"
         },
-        "contextWindow": 1000000,
+        "contextWindow": 991000,
         "cost": {
-            "cacheRead": 0.05,
-            "cacheWrite": 0.625,
-            "input": 0.5,
-            "output": 3.0
+            "cacheRead": 0.0564,
+            "cacheWrite": 0.3525,
+            "input": 0.282,
+            "output": 1.128
         },
         "description": "Multimodal Qwen workhorse for long-context agents, visual inputs, and coding",
         "id": "qwen3.7-plus",
-        "input": ["text", "image", "video"],
-        "maxTokens": 65536,
+        "input": ["text"],
+        "maxTokens": 64000,
         "name": "Qwen3.7 Plus",
         "provider": "qwen-token-plan-individual",
         "reasoning": true,

@@ -39,7 +39,7 @@
         "description": "MiniMax multimodal model for long-context coding, perception, and agent planning",
         "id": "MiniMax-M3",
         "input": ["text", "image", "video"],
-        "maxTokens": 128000,
+        "maxTokens": 512000,
         "name": "MiniMax-M3",
         "provider": "tokenrouter",
         "reasoning": true,
@@ -582,7 +582,7 @@
         "id": "deepseek/deepseek-v3.2",
         "input": ["text"],
         "knowledgeCutoff": "2024-07",
-        "maxTokens": 163840,
+        "maxTokens": 147456,
         "name": "DeepSeek V3.2",
         "provider": "tokenrouter",
         "reasoning": true,
@@ -1552,7 +1552,7 @@
         "description": "Mistral model for multilingual chat, reasoning, and tool-assisted workflows",
         "id": "mistralai/mistral-medium-3-5",
         "input": ["text", "image", "pdf"],
-        "maxTokens": 262144,
+        "maxTokens": 209715,
         "name": "Mistral: Mistral Medium 3.5",
         "provider": "tokenrouter",
         "reasoning": true,
@@ -1579,7 +1579,7 @@
         "description": "Efficient Mistral model for fast chat, extraction, and production assistants",
         "id": "mistralai/mistral-small-2603",
         "input": ["text", "image"],
-        "maxTokens": 262144,
+        "maxTokens": 209715,
         "name": "Mistral Small 4",
         "provider": "tokenrouter",
         "reasoning": true,
@@ -1606,7 +1606,7 @@
         "description": "Efficient Mistral model for fast chat, extraction, and production assistants",
         "id": "mistralai/voxtral-small-24b-2507",
         "input": ["text", "audio", "pdf"],
-        "maxTokens": 6400,
+        "maxTokens": 25600,
         "name": "Mistral: Voxtral Small 24B 2507",
         "provider": "tokenrouter",
         "reasoning": false,
@@ -2047,7 +2047,7 @@
     "openai/gpt-5.4-mini": {
         "api": "openai-completions",
         "baseUrl": "https://api.tokenrouter.com/v1",
-        "contextWindow": 400000,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.075,
             "cacheWrite": 0.75,
@@ -2076,7 +2076,7 @@
     "openai/gpt-5.4-nano": {
         "api": "openai-completions",
         "baseUrl": "https://api.tokenrouter.com/v1",
-        "contextWindow": 400000,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.02,
             "cacheWrite": 0.2,
@@ -2105,7 +2105,7 @@
     "openai/gpt-5.4-pro": {
         "api": "openai-completions",
         "baseUrl": "https://api.tokenrouter.com/v1",
-        "contextWindow": 1050000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 3.0,
             "cacheWrite": 0.0,
@@ -2134,7 +2134,7 @@
     "openai/gpt-5.5": {
         "api": "openai-completions",
         "baseUrl": "https://api.tokenrouter.com/v1",
-        "contextWindow": 1050000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 5.0,
@@ -2163,7 +2163,7 @@
     "openai/gpt-5.5-pro": {
         "api": "openai-completions",
         "baseUrl": "https://api.tokenrouter.com/v1",
-        "contextWindow": 1050000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 3.0,
             "cacheWrite": 0.0,
@@ -2223,10 +2223,10 @@
         "baseUrl": "https://api.tokenrouter.com/v1",
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.5,
-            "cacheWrite": 6.25,
-            "input": 5.0,
-            "output": 30.0
+            "cacheRead": 0.25,
+            "cacheWrite": 3.125,
+            "input": 2.0,
+            "output": 10.0
         },
         "description": "Frontier GPT-5.6 model for complex professional work, coding, and agentic workflows",
         "id": "openai/gpt-5.6-sol",
@@ -2398,7 +2398,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-122b-a10b",
         "input": ["text", "image", "video"],
-        "maxTokens": 262144,
+        "maxTokens": 235929,
         "name": "Qwen3.5 122B-A10B",
         "provider": "tokenrouter",
         "reasoning": true,
@@ -2425,7 +2425,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-35b-a3b",
         "input": ["text", "image", "video"],
-        "maxTokens": 262144,
+        "maxTokens": 235929,
         "name": "Qwen3.5 35B-A3B",
         "provider": "tokenrouter",
         "reasoning": true,
@@ -2452,7 +2452,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-397b-a17b",
         "input": ["text", "image", "video"],
-        "maxTokens": 262144,
+        "maxTokens": 65536,
         "name": "Qwen3.5 397B-A17B",
         "provider": "tokenrouter",
         "reasoning": true,
@@ -2479,7 +2479,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-9b",
         "input": ["text", "image", "video"],
-        "maxTokens": 262144,
+        "maxTokens": 235929,
         "name": "Qwen3.5 9B",
         "provider": "tokenrouter",
         "reasoning": true,
@@ -2887,8 +2887,8 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
-            "medium": null,
+            "max": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -2965,7 +2965,7 @@
         "description": "Tencent Hy reasoning model for coding, instruction following, and agent tasks",
         "id": "tencent/hy3-preview",
         "input": ["text"],
-        "maxTokens": 262144,
+        "maxTokens": 235929,
         "name": "Hy3 preview",
         "provider": "tokenrouter",
         "reasoning": true,
@@ -2977,6 +2977,32 @@
             "medium": null,
             "minimal": null,
             "off": "off",
+            "xhigh": null
+        }
+    },
+    "wan3.0-video": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "wan3.0-video",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "wan3.0-video",
+        "provider": "tokenrouter",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": null
         }
     },
@@ -3517,6 +3543,33 @@
         "input": ["text"],
         "maxTokens": 128000,
         "name": "GLM-5.3",
+        "provider": "tokenrouter",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "z-ai/glm-5.3-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.015,
+            "cacheWrite": 0.0,
+            "input": 0.075,
+            "output": 0.25
+        },
+        "description": "GLM-5.3-Flash is a native multimodal model from Z.ai. It is suited for efficient coding and long-horizon agent tasks. Its hybrid sparse and linear attention architecture maintains accurate long-context behavior while...",
+        "id": "z-ai/glm-5.3-flash",
+        "input": ["text", "image", "video"],
+        "maxTokens": 131072,
+        "name": "GLM-5.3-Flash",
         "provider": "tokenrouter",
         "reasoning": true,
         "thinkingLevelMap": {
