@@ -45,6 +45,27 @@ fn memory_help_lists_subcommands() {
 }
 
 #[test]
+fn update_help_lists_release_options() {
+    let (_dir, mut command) = elph_command();
+    let output = command
+        .args(["update", "--help"])
+        .output()
+        .expect("failed to run elph update --help");
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for option in [
+        "--check",
+        "--json",
+        "--force-reinstall",
+        "--version",
+        "--canary",
+        "--stable",
+    ] {
+        assert!(stdout.contains(option), "missing option {option} in:\n{stdout}");
+    }
+}
+
+#[test]
 fn memory_status_on_empty_store() {
     let dir = tempfile::tempdir().expect("tempdir");
     let (_home, mut command) = elph_command();

@@ -38,6 +38,7 @@ clap.workspace = true
 clap_complete.workspace = true
 crossterm.workspace = true
 dotenvy.workspace = true
+flate2.workspace = true
 elph-agent = { workspace = true, features = [
   "tracing",
   "builtin-tools",
@@ -59,10 +60,14 @@ minijinja = { workspace = true, features = ["custom_syntax"] }
 parking_lot.workspace = true
 rand.workspace = true
 regex.workspace = true
+reqwest.workspace = true
 rustc-hash.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 rendown = { workspace = true, features = ["highlight", "mermaid", "stream"] }
+sha2.workspace = true
+tar.workspace = true
+tempfile.workspace = true
 tokio = { workspace = true, features = [
   "fs",
   "io-util",
@@ -78,6 +83,7 @@ tokio = { workspace = true, features = [
 ] }
 turso = { workspace = true, features = ["fts"] }
 tokio-util = { workspace = true, features = ["compat"] }
+zip.workspace = true
 yaml_serde.workspace = true
 
 [target.'cfg(unix)'.dependencies]
@@ -86,7 +92,6 @@ libc.workspace = true
 [dev-dependencies]
 elph-agent = { workspace = true, features = ["full"] }
 elph-ai = { workspace = true }
-tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time", "sync"] }
 
 [lints.rust]
