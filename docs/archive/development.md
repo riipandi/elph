@@ -35,12 +35,14 @@ See [`crates/elph-agent/docs/observability.md`](../crates/elph-agent/docs/observ
 
 ## Make targets (build)
 
-| Target            | Behavior                                              |
-| ----------------- | ----------------------------------------------------- |
-| `make build`      | Release-build `elph`; prints size, hash, elapsed time |
-| `make build-elph` | Same as `make build`                                  |
+| Target       | Behavior                                              |
+| ------------ | ----------------------------------------------------- |
+| `make build` | Debug-build `elph` by default; prints size, hash, elapsed time |
 
-Output directory: `target/release/`.
+Use `make build -- --release` for `target/release/` or `make build -- --dist` for
+the distribution profile in `target/dist/`. When `sccache` is installed but the
+configured temporary directory is unavailable, `make` automatically falls back
+to `rustc` instead of failing the build.
 
 ### Other common targets
 

@@ -32,10 +32,16 @@ OUTPUT_DIR   ?= release
 ifneq ($(SCCACHE_DISABLE),1)
   SCCACHE_BIN := $(shell command -v sccache 2>/dev/null)
   ifneq ($(SCCACHE_BIN),)
-    # Probe daemon health via --show-stats (no storage re-init). --start-server
-    # fails if remote cache (S3/R2) credentials are unreachable, even when the
-    # local daemon is already running fine.
-    SCCACHE_OK := $(shell "$(SCCACHE_BIN)" --show-stats >/dev/null 2>&1 && echo 1 || echo 0)
+    SCCACHE_TMPDIR := $(or $(TMPDIR),$(TEMP),$(TMP),/tmp)
+    SCCACHE_TMPDIR_OK := $(shell test -d "$(SCCACHE_TMPDIR)" && test -w "$(SCCACHE_TMPDIR)" && echo 1 || echo 0)
+    ifeq ($(SCCACHE_TMPDIR_OK),1)
+      # Probe daemon health via --show-stats (no storage re-init). --start-server
+      # fails if remote cache (S3/R2) credentials are unreachable, even when the
+      # local daemon is already running fine.
+      SCCACHE_OK := $(shell "$(SCCACHE_BIN)" --show-stats >/dev/null 2>&1 && echo 1 || echo 0)
+    else
+      $(warning sccache disabled: temporary directory '$(SCCACHE_TMPDIR)' does not exist or is not writable)
+    endif
   endif
 endif
 ifneq ($(SCCACHE_OK),)
