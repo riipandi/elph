@@ -21,6 +21,8 @@ BUILD_HASH   := $(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
 APP_BINS     := $(APP_BIN)
 INSTALL_DIR  := $(HOME)/.local/bin
 APP          ?= elph
+CHANNEL      ?= stable
+OUTPUT_DIR   ?= release
 
 # ─── Compiler cache ───────────────────────────────────────────────────────────
 # Use sccache when installed AND its daemon is responsive; otherwise disable it
@@ -30,10 +32,16 @@ APP          ?= elph
 ifneq ($(SCCACHE_DISABLE),1)
   SCCACHE_BIN := $(shell command -v sccache 2>/dev/null)
   ifneq ($(SCCACHE_BIN),)
-    # Probe daemon health via --show-stats (no storage re-init). --start-server
-    # fails if remote cache (S3/R2) credentials are unreachable, even when the
-    # local daemon is already running fine.
-    SCCACHE_OK := $(shell "$(SCCACHE_BIN)" --show-stats >/dev/null 2>&1 && echo 1 || echo 0)
+    SCCACHE_TMPDIR := $(or $(TMPDIR),$(TEMP),$(TMP),/tmp)
+    SCCACHE_TMPDIR_OK := $(shell test -d "$(SCCACHE_TMPDIR)" && test -w "$(SCCACHE_TMPDIR)" && echo 1 || echo 0)
+    ifeq ($(SCCACHE_TMPDIR_OK),1)
+      # Probe daemon health via --show-stats (no storage re-init). --start-server
+      # fails if remote cache (S3/R2) credentials are unreachable, even when the
+      # local daemon is already running fine.
+      SCCACHE_OK := $(shell "$(SCCACHE_BIN)" --show-stats >/dev/null 2>&1 && echo 1 || echo 0)
+    else
+      $(warning sccache disabled: temporary directory '$(SCCACHE_TMPDIR)' does not exist or is not writable)
+    endif
   endif
 endif
 ifneq ($(SCCACHE_OK),)
@@ -125,6 +133,7 @@ NEXTEST_CARGO_FLAGS :=
 
 .PHONY: build install run watch test check generate-models prepare
 .PHONY: lint fmt clean coverage help stats
+.PHONY: release
 .PHONY: bump bump-elph bump-libs publish publish-dry-run version
 
 # ─── Build ──────────────────────────────────────────────────────────────────
@@ -134,9 +143,10 @@ check: ## Check code compiles (fast, no codegen); pass -p <pkg> for a subset
 # 	@$(CARGO) bloat --release -n 50
 
 build: ## Build elph binary (debug default; pass -- --debug|--release|--dist, --features, or -p)
-	@_rustc_display=$$(if [ -n "$$RUSTC_WRAPPER" ]; then echo "$$RUSTC_WRAPPER"; else echo "rustc"; fi); \
+	@set -eu; \
+	_rustc_display=$$(if [ -n "$${RUSTC_WRAPPER:-}" ]; then echo "$${RUSTC_WRAPPER:-}"; else echo "rustc"; fi); \
 	echo "Building $(APP_BIN) v$(ELPH_VERSION) ($(BUILD_HASH)) [$$_rustc_display] ($(BUILD_PROFILE))"
-	@_start=$$(python3 -c "import time; print(int(time.time()*1000))"); \
+	@set -eu; _start=$$(python3 -c "import time; print(int(time.time()*1000))"); \
 	$(CARGO) build $(CARGO_BUILD_FLAGS) $(ELPH_METAL_FEATURE) $(_FWD_ARGS) $(_BUILD_BIN) 2>&1; \
 	_end=$$(python3 -c "import time; print(int(time.time()*1000))"); \
 	_elapsed=$$(( _end - _start )); \
@@ -156,6 +166,34 @@ build: ## Build elph binary (debug default; pass -- --debug|--release|--dist, --
 	  fi; \
 	done; \
 	printf "Build time:  %d.%03ds\n" $$(( _elapsed / 1000 )) $$(( _elapsed % 1000 ))
+
+release: ## Build a local release archive (CHANNEL=stable|canary, OUTPUT_DIR=release)
+	@set -eu; \
+case "$(CHANNEL)" in \
+  stable) _profile=dist ;; \
+  canary) _profile=release ;; \
+  *) echo "Usage: make release [CHANNEL=stable|canary]" >&2; exit 2 ;; \
+esac; \
+$(MAKE) --no-print-directory build PROFILE="$$_profile"; \
+_os="$$(uname -s)"; \
+_arch="$$(uname -m)"; \
+case "$$_os" in \
+  Darwin) _platform=macos; case "$$_arch" in arm64|aarch64) _release_arch=aarch64 ;; x86_64|amd64) _release_arch=x86_64 ;; *) echo "Unsupported macOS architecture: $$_arch" >&2; exit 2 ;; esac; _archive="elph-$${_platform}-$${_release_arch}.tar.gz" ;; \
+  Linux) _platform=linux; case "$$_arch" in arm64|aarch64) _release_arch=arm64 ;; x86_64|amd64) _release_arch=x86_64 ;; *) echo "Unsupported Linux architecture: $$_arch" >&2; exit 2 ;; esac; _archive="elph-$${_platform}-$${_release_arch}.tar.gz" ;; \
+  MINGW*|MSYS*|CYGWIN*) _platform=windows; _release_arch=x86_64; _archive="elph-windows-x86_64.zip" ;; \
+  *) echo "Unsupported operating system: $$_os" >&2; exit 2 ;; \
+esac; \
+mkdir -p "$(OUTPUT_DIR)/archives" "$(OUTPUT_DIR)/binaries"; \
+rm -f "$(OUTPUT_DIR)/archives/$${_archive}" "$(OUTPUT_DIR)/archives/SHA256SUMS" "$(OUTPUT_DIR)/binaries/elph-$${_platform}-$${_release_arch}" "$(OUTPUT_DIR)/binaries/elph-$${_platform}-$${_release_arch}.exe"; \
+if [ "$$_platform" = windows ]; then \
+  powershell.exe -NoProfile -NonInteractive -Command "Compress-Archive -LiteralPath 'target/'$${_profile}'/elph.exe' -DestinationPath '$(OUTPUT_DIR)/archives/'$${_archive} -Force; Copy-Item -LiteralPath 'target/'$${_profile}'/elph.exe' -Destination '$(OUTPUT_DIR)/binaries/elph-windows-x86_64.exe' -Force; (Get-FileHash -Algorithm SHA256 -LiteralPath '$(OUTPUT_DIR)/archives/'$${_archive}).Hash.ToLower() + '  ' + '$${_archive}' | Set-Content -NoNewline -LiteralPath '$(OUTPUT_DIR)/archives/SHA256SUMS'"; \
+else \
+  tar -C "target/$${_profile}" -czf "$(OUTPUT_DIR)/archives/$$_archive" elph; \
+  cp "target/$${_profile}/elph" "$(OUTPUT_DIR)/binaries/elph-$${_platform}-$${_release_arch}"; \
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$(OUTPUT_DIR)/archives/$$_archive" | sed 's#  .*/#  #' > "$(OUTPUT_DIR)/archives/SHA256SUMS"; else shasum -a 256 "$(OUTPUT_DIR)/archives/$$_archive" | sed 's#  .*/#  #' > "$(OUTPUT_DIR)/archives/SHA256SUMS"; fi; \
+fi; \
+echo "Release archive: $(OUTPUT_DIR)/archives/$$_archive"; \
+echo "Checksum file:   $(OUTPUT_DIR)/archives/SHA256SUMS"
 
 install: build ## Install elph (debug -> elph-debug; release -> elph-canary; dist -> elph)
 	@mkdir -p $(INSTALL_DIR) && echo
@@ -391,6 +429,8 @@ help: ## Show this help
 	@printf ' \033[36mmake build -- --features metal --debug\033[0m\n'
 	@printf ' \033[36mmake build -- --features metal --release\033[0m\n'
 	@printf ' \033[36mmake build -- --features metal --dist\033[0m\n'
+	@printf ' \033[36mmake release CHANNEL=stable\033[0m\n'
+	@printf ' \033[36mmake release CHANNEL=canary\033[0m\n'
 	@printf ' \033[36mmake install -- --features metal --debug\033[0m    -> elph-debug\n'
 	@printf ' \033[36mmake install -- --features metal --release\033[0m  -> elph-canary\n'
 	@printf ' \033[36mmake install -- --features metal --dist\033[0m     -> elph\n'

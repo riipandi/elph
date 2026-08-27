@@ -57,6 +57,19 @@ Launch without a subcommand starts the interactive TUI (see global `--continue` 
 
 Print version and exit. Equivalent to `-V`.
 
+### `update`
+
+Update the installed Elph binary from GitHub Releases. Stable releases are
+selected by default; use `--canary` for the canary channel or `--stable` to
+select stable explicitly. `--check` checks without installing and
+`--check --json` emits a machine-readable status. `--version <VERSION>` pins a
+release, and `--force-reinstall` reinstalls the selected release even when it
+matches the installed version.
+
+The archive is verified against its matching entry in `SHA256SUMS` before the
+binary is replaced. The installed version and channel check timestamps are
+recorded in `APP_DATA/version.json`.
+
 ### `memory`
 
 Inspect project-local memory at `<project>/.elph/store.db`.

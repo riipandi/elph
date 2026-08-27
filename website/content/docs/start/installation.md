@@ -55,6 +55,18 @@ Verify:
 elph --version
 ```
 
+Update an installed binary from GitHub Releases:
+
+```sh
+elph update
+```
+
+Use `elph update --check` to check without installing, `--canary` to follow
+canary releases, or `--version 0.1.2` to install a specific release. Updates
+verify the downloaded archive against the release `SHA256SUMS` file before
+replacing the running binary. On Windows, the replacement is staged and
+completed after Elph exits.
+
 ## First launch
 
 ```sh

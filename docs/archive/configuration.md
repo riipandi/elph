@@ -422,6 +422,9 @@ Empty default: `{ "directories": {} }`.
 }
 ```
 
+`elph update --check` refreshes `last_checked_at` and the selected channel
+version; a successful installation also updates `version`.
+
 Live inspection: `/diagnostic:system-prompt`, `/diagnostic:list-tools`.
 
 ## Provider catalog refresh
