@@ -600,6 +600,24 @@ pub fn wafer_provider() -> Provider {
     })
 }
 
+/// DataByte — OpenAI-compatible gateway (https://ai.databyte.co.id).
+/// Model list comes from `https://ai.databyte.co.id/v1/models` (Bearer `DATABYTE_API_KEY`).
+pub fn databyte_provider() -> Provider {
+    create_provider(CreateProviderOptions {
+        id: "databyte".to_string(),
+        name: Some("DataByte".to_string()),
+        base_url: Some("https://ai.databyte.co.id/v1".to_string()),
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("DataByte API key", vec!["DATABYTE_API_KEY"])),
+            oauth: None,
+        },
+        models: builtin_catalog("databyte").as_ref().clone(),
+        refresh_models: None,
+        api: ProviderApi::Single(openai_completions_api()),
+    })
+}
+
 pub fn builtin_providers() -> Vec<Provider> {
     #[allow(unused_mut)]
     let mut providers = vec![
@@ -642,6 +660,7 @@ pub fn builtin_providers() -> Vec<Provider> {
             openai_completions_api,
             (vec!["DEEPSEEK_API_KEY"], "DeepSeek API key")
         ),
+        databyte_provider(),
         fireworks_provider(),
         github_copilot_provider(),
         hetzner_provider(),

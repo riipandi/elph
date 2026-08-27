@@ -33,12 +33,14 @@ pub fn from_models_dev(
     let context = mdev
         .pointer("/limit/context")
         .and_then(|v| v.as_u64())
-        .or_else(|| previous.and_then(|p| p.get("contextWindow").and_then(|v| v.as_u64())))
+        .filter(|c| *c > 0)
+        .or_else(|| previous.and_then(|p| p.get("contextWindow").and_then(|v| v.as_u64()).filter(|c| *c > 0)))
         .unwrap_or(128_000);
     let max_tokens = mdev
         .pointer("/limit/output")
         .and_then(|v| v.as_u64())
-        .or_else(|| previous.and_then(|p| p.get("maxTokens").and_then(|v| v.as_u64())))
+        .filter(|o| *o > 0)
+        .or_else(|| previous.and_then(|p| p.get("maxTokens").and_then(|v| v.as_u64()).filter(|o| *o > 0)))
         .unwrap_or(context.min(64_000));
     let input = modalities_input(mdev, previous);
     let cost = merge_cost(mdev.get("cost"), previous.and_then(|p| p.get("cost")));
@@ -143,10 +145,10 @@ pub fn enrich_existing(
         if let Some(name) = m.get("name") {
             obj.insert("name".into(), name.clone());
         }
-        if let Some(ctx) = m.pointer("/limit/context").and_then(|v| v.as_u64()) {
+        if let Some(ctx) = m.pointer("/limit/context").and_then(|v| v.as_u64()).filter(|c| *c > 0) {
             obj.insert("contextWindow".into(), json!(ctx));
         }
-        if let Some(out) = m.pointer("/limit/output").and_then(|v| v.as_u64()) {
+        if let Some(out) = m.pointer("/limit/output").and_then(|v| v.as_u64()).filter(|o| *o > 0) {
             obj.insert("maxTokens".into(), json!(out));
         }
         let cost = merge_cost(m.get("cost"), obj.get("cost"));
@@ -191,10 +193,10 @@ pub fn enrich_existing(
     if !obj.contains_key("input") {
         obj.insert("input".into(), json!(["text"]));
     }
-    if !obj.contains_key("contextWindow") {
+    if obj.get("contextWindow").and_then(|v| v.as_u64()).unwrap_or(0) == 0 {
         obj.insert("contextWindow".into(), json!(128_000));
     }
-    if !obj.contains_key("maxTokens") {
+    if obj.get("maxTokens").and_then(|v| v.as_u64()).unwrap_or(0) == 0 {
         obj.insert("maxTokens".into(), json!(64_000));
     }
 

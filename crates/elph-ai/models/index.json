@@ -55,6 +55,11 @@
         "count": 14
     },
     {
+        "providerId": "databyte",
+        "rustMod": "databyte",
+        "count": 5
+    },
+    {
         "providerId": "deepseek",
         "rustMod": "deepseek",
         "count": 3
@@ -222,7 +227,7 @@
     {
         "providerId": "tokenrouter",
         "rustMod": "tokenrouter",
-        "count": 130
+        "count": 131
     },
     {
         "providerId": "vercel-ai-gateway",

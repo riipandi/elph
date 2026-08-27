@@ -31,6 +31,10 @@ pub struct LiveThinking {
 pub struct LiveProbeResult {
     pub pricing: HashMap<String, PriceTriple>,
     pub thinking: HashMap<String, LiveThinking>,
+    /// Live context window (tokens) per model, when the `/models` response provides it.
+    pub context: HashMap<String, u64>,
+    /// Live max output tokens per model, when the `/models` response provides it.
+    pub max_tokens: HashMap<String, u64>,
 }
 
 /// Fetch live OpenAI-compatible `/models` pricing and thinking capabilities
@@ -51,7 +55,11 @@ pub fn fetch_all_live_data(skip: bool) -> HashMap<String, LiveProbeResult> {
             continue;
         }
         let result = fetch_live_provider_data(src, base);
-        if !result.pricing.is_empty() || !result.thinking.is_empty() {
+        if !result.pricing.is_empty()
+            || !result.thinking.is_empty()
+            || !result.context.is_empty()
+            || !result.max_tokens.is_empty()
+        {
             term::live_pricing(src.id, result.pricing.len());
             out.insert(src.id.to_string(), result);
         }
@@ -113,6 +121,8 @@ fn fetch_live_provider_data(src: &ProviderSource, base_url: &str) -> LiveProbeRe
 
     let mut pricing = HashMap::new();
     let mut thinking = HashMap::new();
+    let mut context = HashMap::new();
+    let mut max_tokens = HashMap::new();
 
     if let Some(data) = body.get("data").and_then(|d| d.as_array()) {
         for entry in data {
@@ -164,6 +174,20 @@ fn fetch_live_provider_data(src: &ProviderSource, base_url: &str) -> LiveProbeRe
                 pricing.insert(mid.clone(), (inp, outp, cached));
             }
 
+            // --- Context window & max output tokens ---
+            // OpenAI-compatible `/models` responses may expose `context_window`
+            // and `max_output_tokens` (e.g. DataByte). Treat 0 as missing.
+            if let Some(ctx) = entry.get("context_window").and_then(|v| v.as_u64()).filter(|c| *c > 0) {
+                context.insert(mid.clone(), ctx);
+            }
+            if let Some(out) = entry
+                .get("max_output_tokens")
+                .and_then(|v| v.as_u64())
+                .filter(|o| *o > 0)
+            {
+                max_tokens.insert(mid.clone(), out);
+            }
+
             // --- Thinking capabilities ---
             if let Some(reasoning_obj) = entry.get("reasoning").and_then(|r| r.as_object()) {
                 let supported: Vec<String> = reasoning_obj
@@ -199,7 +223,12 @@ fn fetch_live_provider_data(src: &ProviderSource, base_url: &str) -> LiveProbeRe
             }
         }
     }
-    LiveProbeResult { pricing, thinking }
+    LiveProbeResult {
+        pricing,
+        thinking,
+        context,
+        max_tokens,
+    }
 }
 
 /// Wafer-style pricing nested under a vendor object, expressed in cents per

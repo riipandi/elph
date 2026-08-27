@@ -72,7 +72,7 @@
         "id": "black-forest-labs/flux.1-dev",
         "input": ["text"],
         "knowledgeCutoff": "",
-        "maxTokens": 0,
+        "maxTokens": 4096,
         "name": "FLUX.1-dev",
         "provider": "nvidia",
         "reasoning": false,
@@ -130,7 +130,7 @@
         "id": "black-forest-labs/flux_1-schnell",
         "input": ["text"],
         "knowledgeCutoff": "",
-        "maxTokens": 0,
+        "maxTokens": 77,
         "name": "FLUX.1-schnell",
         "provider": "nvidia",
         "reasoning": false,
@@ -1458,7 +1458,7 @@
     "nvidia/active-speaker-detection": {
         "api": "openai-completions",
         "baseUrl": "https://integrate.api.nvidia.com/v1",
-        "contextWindow": 0,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -1516,7 +1516,7 @@
     "nvidia/cosmos-predict1-5b": {
         "api": "openai-completions",
         "baseUrl": "https://integrate.api.nvidia.com/v1",
-        "contextWindow": 0,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -1585,7 +1585,7 @@
     "nvidia/cosmos-transfer1-7b": {
         "api": "openai-completions",
         "baseUrl": "https://integrate.api.nvidia.com/v1",
-        "contextWindow": 0,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -1614,7 +1614,7 @@
     "nvidia/cosmos-transfer2_5-2b": {
         "api": "openai-completions",
         "baseUrl": "https://integrate.api.nvidia.com/v1",
-        "contextWindow": 0,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -2028,7 +2028,7 @@
     "nvidia/magpie-tts-zeroshot": {
         "api": "openai-completions",
         "baseUrl": "https://integrate.api.nvidia.com/v1",
-        "contextWindow": 0,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -2645,7 +2645,7 @@
     "nvidia/synthetic-video-detector": {
         "api": "openai-completions",
         "baseUrl": "https://integrate.api.nvidia.com/v1",
-        "contextWindow": 0,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -2703,7 +2703,7 @@
     "nvidia/usdvalidate": {
         "api": "openai-completions",
         "baseUrl": "https://integrate.api.nvidia.com/v1",
-        "contextWindow": 0,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -2812,7 +2812,7 @@
     "openai/whisper-large-v3": {
         "api": "openai-completions",
         "baseUrl": "https://integrate.api.nvidia.com/v1",
-        "contextWindow": 0,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -2881,7 +2881,7 @@
     "qwen/qwen-image": {
         "api": "openai-completions",
         "baseUrl": "https://integrate.api.nvidia.com/v1",
-        "contextWindow": 0,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -2892,7 +2892,7 @@
         "id": "qwen/qwen-image",
         "input": ["text", "image"],
         "knowledgeCutoff": "",
-        "maxTokens": 0,
+        "maxTokens": 64000,
         "name": "Qwen Image",
         "provider": "nvidia",
         "reasoning": false,
@@ -2910,7 +2910,7 @@
     "qwen/qwen-image-edit": {
         "api": "openai-completions",
         "baseUrl": "https://integrate.api.nvidia.com/v1",
-        "contextWindow": 0,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -2921,7 +2921,7 @@
         "id": "qwen/qwen-image-edit",
         "input": ["text", "image"],
         "knowledgeCutoff": "",
-        "maxTokens": 0,
+        "maxTokens": 64000,
         "name": "Qwen Image Edit",
         "provider": "nvidia",
         "reasoning": false,

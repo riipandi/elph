@@ -67,19 +67,19 @@ The catalog compiler relies on **three primary compiled sources**:
 Additional data sources and provider-specific configurations:
 
 - **Provider Live `/models` Probes**:
-    - Queried for active model discovery and live pricing.
-    - _Public endpoints_: e.g. OpenCode (`/zen/v1/models`), OpenCode Go (`/zen/go/v1/models`), Hetzner, etc. (probed anonymously).
-    - _Authwalled endpoints_: e.g. OpenAI, xAI, Mistral, Hyper, Infron, Kilo, etc. (probed with provider env keys when present).
+  - Queried for active model discovery and live pricing.
+  - _Public endpoints_: e.g. OpenCode (`/zen/v1/models`), OpenCode Go (`/zen/go/v1/models`), Hetzner, etc. (probed anonymously).
+  - _Authwalled endpoints_: e.g. OpenAI, xAI, Mistral, Hyper, Infron, Kilo, DataByte, etc. (probed with provider env keys when present).
 - **Dedicated Pricing Endpoints**:
-    - e.g. Nara Router (`https://router.bynara.id/api/pricing`) provides official USD per million rates (`official_in_usd_m` / `official_out_usd_m`) since Nara's `/v1/models` endpoint exposes no pricing. Credit fields are ignored.
+  - e.g. Nara Router (`https://router.bynara.id/api/pricing`) provides official USD per million rates (`official_in_usd_m` / `official_out_usd_m`) since Nara's `/v1/models` endpoint exposes no pricing. Credit fields are ignored.
 - **Cline Model Directory** (`cline.rs`):
-    - Cline (usage-billing) and ClinePass catalogs are built from Cline's **public** model directory (no API key required), not models.dev:
-        - `https://api.cline.bot/api/v1/ai/cline/recommended-models` — curated id groups (`recommended` + `free` for `cline`, `clinePass` for `cline-pass`).
-        - `https://api.cline.bot/api/v1/ai/cline/models` — full detail (per-token pricing, context length, input modalities) keyed by OpenRouter-style id.
-    - Detail entries are paired to catalog ids by tail segment (`kimi-k3` → `moonshotai/kimi-k3`). ClinePass ids keep the `cline-pass/` prefix.
-    - `CLINE_API_KEY` is **not** required for catalog generation (the `/v1/models` endpoint is authwalled, but the model directory is public).
+  - Cline (usage-billing) and ClinePass catalogs are built from Cline's **public** model directory (no API key required), not models.dev:
+    - `https://api.cline.bot/api/v1/ai/cline/recommended-models` — curated id groups (`recommended` + `free` for `cline`, `clinePass` for `cline-pass`).
+    - `https://api.cline.bot/api/v1/ai/cline/models` — full detail (per-token pricing, context length, input modalities) keyed by OpenRouter-style id.
+  - Detail entries are paired to catalog ids by tail segment (`kimi-k3` → `moonshotai/kimi-k3`). ClinePass ids keep the `cline-pass/` prefix.
+  - `CLINE_API_KEY` is **not** required for catalog generation (the `/v1/models` endpoint is authwalled, but the model directory is public).
 - **Preserved Overlays & Previous Catalog Snapshot**:
-    - Existing `models/*.json` entries are preserved for non-gateway manual overrides and fallback non-zero pricing when fresh sources are unpriced.
+  - Existing `models/*.json` entries are preserved for non-gateway manual overrides and fallback non-zero pricing when fresh sources are unpriced.
 
 ---
 
@@ -91,7 +91,7 @@ When updating model catalogs, follow this systematic procedure:
 
 - Query each provider's configured `/models` endpoint to discover the actual active model list.
 - **Public Endpoints**: Query directly (e.g., OpenCode, OpenCode Go, Hetzner, etc.).
-- **Authwalled Endpoints**: Check the environment for the required API key (`OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `HYPER_API_KEY`, `INFRON_API_KEY`, `KILO_API_KEY`, `XAI_API_KEY`, etc.).
+- **Authwalled Endpoints**: Check the environment for the required API key (`OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `HYPER_API_KEY`, `INFRON_API_KEY`, `KILO_API_KEY`, `DATABYTE_API_KEY`, `XAI_API_KEY`, etc.).
 - **Graceful Fallback**: If the required API key is absent or the endpoint is unreachable, fall back gracefully to the compiled models.dev catalog or previous disk snapshot.
 
 ### Step 2: Handle Incomplete Endpoint Metadata
@@ -146,7 +146,29 @@ make check && make lint
 1. `thinkingLevelMap: complete=N incomplete=0` — Every model must have all 7 keys populated.
 2. `thinkingLevelMap source`: Unresolved count must be 0 for all `reasoning=true` models.
 3. `cost source`: `none` must be 0 (no model left unpriced unless genuinely free).
-4. `Verified N catalog providers are registered in builtin_providers()` — Every generated provider file must have a registered factory in `src/providers/builtin.rs`.
+4. `contextWindow` / `maxTokens`: Every model must have both keys present with a non-zero value. `0` (e.g. models.dev `limit.context = 0` for image/audio/tts/embedding models) is treated as missing and must fall back to a default (`contextWindow` → 128000, `maxTokens` → `min(contextWindow, 64000)`). Audit with:
+
+   ```sh
+   python3 - <<'EOF'
+   import json, glob, os
+   bad = []
+   for path in glob.glob('crates/elph-ai/models/*.json'):
+       if path.endswith('index.json'):
+           continue
+       for mid, e in json.load(open(path)).items():
+           if mid == '$schema':
+               continue
+           if 'contextWindow' not in e or e['contextWindow'] in (None, 0):
+               bad.append((path, mid, 'contextWindow'))
+           if 'maxTokens' not in e or e['maxTokens'] in (None, 0):
+               bad.append((path, mid, 'maxTokens'))
+   print('bad:', len(bad))
+   for p, m, k in bad:
+       print(f'  {p}: {m} ({k})')
+   EOF
+   ```
+
+5. `Verified N catalog providers are registered in builtin_providers()` — Every generated provider file must have a registered factory in `src/providers/builtin.rs`.
 
 ### Step 6: Rebuild the Binary
 
@@ -186,7 +208,19 @@ Resolution precedence:
 4. **Preserved Overlays**: Keep valid previous hand-authored overrides.
 5. **Explicit Unresolved**: Never guess from sibling models or silently fill `off`. Unconfirmed reasoning models must be flagged.
 
-### 2. Cost / Pricing Resolution
+### 2. Context Window & Max Tokens (`contextWindow` / `maxTokens`)
+
+Every model entry must have both keys present with a **non-zero** value.
+
+Resolution precedence:
+
+1. **models.dev `limit.context` / `limit.output`**: Canonical source when present and `> 0`.
+2. **Previous Catalog**: Retain previous non-zero disk values.
+3. **Default Fallback**: `contextWindow` → `128000`, `maxTokens` → `min(contextWindow, 64000)`.
+
+A `0` value (e.g. models.dev reports `limit.context = 0` for image/audio/tts/embedding models) is **not** a valid value — treat it as missing and fall back. Never ship a model with `contextWindow` or `maxTokens` equal to `0`.
+
+### 3. Cost / Pricing Resolution
 
 Pricing precedence:
 
@@ -196,7 +230,7 @@ Pricing precedence:
 4. **ai-model-directory**: `data/all.json` compiled fallback.
 5. **Previous Non-Zero**: Retain previous disk values if unpriced in current sources.
 
-### 3. Metadata Enrichment
+### 4. Metadata Enrichment
 
 - `description`, `knowledgeCutoff`, and `releaseDate` are populated from the merged models.dev `models.json` + `catalog.json` rich index.
 

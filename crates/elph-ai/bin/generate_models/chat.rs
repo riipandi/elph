@@ -48,6 +48,24 @@ fn live_efforts_for(
         .map(|t| t.supported_efforts.clone())
 }
 
+/// Live context window (tokens) for a model, when the `/models` response provides it.
+fn live_context_for(
+    live: &HashMap<String, super::pricing::LiveProbeResult>,
+    provider_id: &str,
+    model_id: &str,
+) -> Option<u64> {
+    live.get(provider_id).and_then(|r| r.context.get(model_id)).copied()
+}
+
+/// Live max output tokens for a model, when the `/models` response provides it.
+fn live_max_tokens_for(
+    live: &HashMap<String, super::pricing::LiveProbeResult>,
+    provider_id: &str,
+    model_id: &str,
+) -> Option<u64> {
+    live.get(provider_id).and_then(|r| r.max_tokens.get(model_id)).copied()
+}
+
 pub fn generate_chat(options: ChatOptions) -> Result<()> {
     term::header("generate-models chat · models.dev origin");
     fs::create_dir_all(&options.models_dir).context("create models output directory")?;
@@ -171,6 +189,14 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
                             Some(&models_dev),
                         )
                     };
+                    // Live `/models` context/max tokens take precedence over models.dev
+                    // and previous-catalog values when the provider reports them.
+                    if let Some(ctx) = live_context_for(&live, src.id, &mid) {
+                        entry["contextWindow"] = serde_json::json!(ctx);
+                    }
+                    if let Some(out) = live_max_tokens_for(&live, src.id, &mid) {
+                        entry["maxTokens"] = serde_json::json!(out);
+                    }
                     let (i, o, cr, cw, csrc) = resolve_cost(src, &mid, &models_dev, &live, &aimd, entry.get("cost"));
                     tally_cost(
                         csrc,
@@ -204,6 +230,14 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
                     aimd_reasoning,
                     Some(&models_dev),
                 );
+                // Live `/models` context/max tokens take precedence over models.dev
+                // and previous-catalog values when the provider reports them.
+                if let Some(ctx) = live_context_for(&live, src.id, mid) {
+                    entry["contextWindow"] = serde_json::json!(ctx);
+                }
+                if let Some(out) = live_max_tokens_for(&live, src.id, mid) {
+                    entry["maxTokens"] = serde_json::json!(out);
+                }
                 let (i, o, cr, cw, csrc) = resolve_cost(src, mid, &models_dev, &live, &aimd, entry.get("cost"));
                 tally_cost(
                     csrc,
@@ -376,6 +410,7 @@ fn named_factory_provider_id(fn_name: &str) -> Option<&'static str> {
         "cloudflare_workers_ai_provider" => "cloudflare-workers-ai",
         "cline_provider" => "cline",
         "cline_pass_provider" => "cline-pass",
+        "databyte_provider" => "databyte",
         "fireworks_provider" => "fireworks",
         "github_copilot_provider" => "github-copilot",
         "google_vertex_provider" => "google-vertex",
