@@ -4683,7 +4683,7 @@
         "description": "Grok model for agentic tool use, reasoning, coding, and live assistance",
         "id": "xai/grok-4.20-multi-agent",
         "input": ["text", "image"],
-        "maxTokens": 0,
+        "maxTokens": 64000,
         "name": "Grok-4.20-Multi-Agent",
         "provider": "vercel-ai-gateway",
         "reasoning": false,

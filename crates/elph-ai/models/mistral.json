@@ -873,7 +873,7 @@
     "voxtral-mini-latest": {
         "api": "mistral-conversations",
         "baseUrl": "https://api.mistral.ai",
-        "contextWindow": 0,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -884,7 +884,7 @@
         "id": "voxtral-mini-latest",
         "input": ["audio"],
         "knowledgeCutoff": "",
-        "maxTokens": 0,
+        "maxTokens": 64000,
         "name": "Voxtral Mini (latest)",
         "provider": "mistral",
         "reasoning": false,
@@ -902,7 +902,7 @@
     "voxtral-mini-tts-latest": {
         "api": "mistral-conversations",
         "baseUrl": "https://api.mistral.ai",
-        "contextWindow": 0,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -913,7 +913,7 @@
         "id": "voxtral-mini-tts-latest",
         "input": ["text"],
         "knowledgeCutoff": "",
-        "maxTokens": 0,
+        "maxTokens": 64000,
         "name": "Voxtral Mini TTS (latest)",
         "provider": "mistral",
         "reasoning": false,

@@ -127,3 +127,13 @@ fn opengateway_and_baseten_are_non_standard_gateways() {
         assert_eq!(compat.max_tokens_field, "max_tokens");
     }
 }
+
+#[test]
+fn databyte_is_a_non_standard_gateway() {
+    let models = elph_ai::get_builtin_models("databyte");
+    let model = models.into_iter().next().expect("databyte has models");
+    let compat = detect_compat(&model);
+    assert!(!compat.supports_store, "gateways must not send store");
+    assert!(!compat.supports_developer_role, "gateways must keep system role");
+    assert_eq!(compat.max_tokens_field, "max_tokens");
+}

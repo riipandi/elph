@@ -3,7 +3,7 @@
     "chatgpt-image-latest": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
-        "contextWindow": 0,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -14,7 +14,7 @@
         "id": "chatgpt-image-latest",
         "input": ["text", "image"],
         "knowledgeCutoff": "",
-        "maxTokens": 0,
+        "maxTokens": 64000,
         "name": "chatgpt-image-latest",
         "provider": "openai",
         "reasoning": false,
@@ -1080,7 +1080,7 @@
     "gpt-image-1": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
-        "contextWindow": 0,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 1.25,
             "cacheWrite": 0.0,
@@ -1091,7 +1091,7 @@
         "id": "gpt-image-1",
         "input": ["text", "image"],
         "knowledgeCutoff": "",
-        "maxTokens": 0,
+        "maxTokens": 64000,
         "name": "gpt-image-1",
         "provider": "openai",
         "reasoning": false,
@@ -1109,7 +1109,7 @@
     "gpt-image-1-mini": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
-        "contextWindow": 0,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -1120,7 +1120,7 @@
         "id": "gpt-image-1-mini",
         "input": ["text", "image"],
         "knowledgeCutoff": "",
-        "maxTokens": 0,
+        "maxTokens": 64000,
         "name": "gpt-image-1-mini",
         "provider": "openai",
         "reasoning": false,
@@ -1138,7 +1138,7 @@
     "gpt-image-1.5": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
-        "contextWindow": 0,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 1.25,
             "cacheWrite": 0.0,
@@ -1149,7 +1149,7 @@
         "id": "gpt-image-1.5",
         "input": ["text", "image"],
         "knowledgeCutoff": "",
-        "maxTokens": 0,
+        "maxTokens": 64000,
         "name": "gpt-image-1.5",
         "provider": "openai",
         "reasoning": false,
@@ -1167,7 +1167,7 @@
     "gpt-image-2": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
-        "contextWindow": 0,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 1.25,
             "cacheWrite": 0.0,
@@ -1178,7 +1178,7 @@
         "id": "gpt-image-2",
         "input": ["text", "image"],
         "knowledgeCutoff": "",
-        "maxTokens": 0,
+        "maxTokens": 64000,
         "name": "gpt-image-2",
         "provider": "openai",
         "reasoning": false,

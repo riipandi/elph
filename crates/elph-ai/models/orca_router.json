@@ -534,7 +534,7 @@
     "fish-audio/s2.1-pro-free": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 0,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -544,7 +544,7 @@
         "description": "Speech generation model for controllable voice, narration, and audio delivery",
         "id": "fish-audio/s2.1-pro-free",
         "input": ["text"],
-        "maxTokens": 0,
+        "maxTokens": 64000,
         "name": "S2.1 Pro (Free)",
         "provider": "orca-router",
         "reasoning": false,
@@ -1475,7 +1475,7 @@
         "description": "Image model for prompt-driven generation, editing, and visual design workflows",
         "id": "grok/grok-imagine-image",
         "input": ["text", "image", "pdf"],
-        "maxTokens": 0,
+        "maxTokens": 64000,
         "name": "Grok Imagine Image",
         "provider": "orca-router",
         "reasoning": false,
@@ -1577,8 +1577,8 @@
         "cost": {
             "cacheRead": 0.3,
             "cacheWrite": 0.0,
-            "input": 3.3000000000000003,
-            "output": 16.5
+            "input": 3.0,
+            "output": 15.0
         },
         "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
         "id": "kimi/kimi-k3",
@@ -1872,7 +1872,7 @@
     "minimax/minimax-h3": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 0,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -1882,7 +1882,7 @@
         "description": "Video model for prompt-guided generation, editing, and motion workflows",
         "id": "minimax/minimax-h3",
         "input": ["text", "image"],
-        "maxTokens": 0,
+        "maxTokens": 64000,
         "name": "MiniMax H3",
         "provider": "orca-router",
         "reasoning": false,
@@ -3840,7 +3840,7 @@
         "description": "Image model for prompt-driven generation, editing, and visual design workflows",
         "id": "openai/gpt-image-1",
         "input": ["text", "image"],
-        "maxTokens": 0,
+        "maxTokens": 64000,
         "name": "GPT-Image-1",
         "provider": "orca-router",
         "reasoning": false,
@@ -3858,7 +3858,7 @@
     "openai/gpt-image-1-mini": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 0,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -3868,7 +3868,7 @@
         "description": "Image model for prompt-driven generation, editing, and visual design workflows",
         "id": "openai/gpt-image-1-mini",
         "input": ["text", "image"],
-        "maxTokens": 0,
+        "maxTokens": 64000,
         "name": "GPT-Image-1-Mini",
         "provider": "orca-router",
         "reasoning": false,
@@ -3895,7 +3895,7 @@
         "description": "Image model for prompt-driven generation, editing, and visual design workflows",
         "id": "openai/gpt-image-1.5",
         "input": ["text", "image"],
-        "maxTokens": 0,
+        "maxTokens": 64000,
         "name": "gpt-image-1.5",
         "provider": "orca-router",
         "reasoning": false,
@@ -3923,7 +3923,7 @@
         "description": "Image model for prompt-driven generation, editing, and visual design workflows",
         "id": "openai/gpt-image-2",
         "input": ["text", "image"],
-        "maxTokens": 0,
+        "maxTokens": 64000,
         "name": "GPT Image 2",
         "provider": "orca-router",
         "reasoning": false,
@@ -4050,7 +4050,7 @@
     "openai/tts-1": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 0,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -4060,7 +4060,7 @@
         "description": "Speech generation model for controllable voice, narration, and audio delivery",
         "id": "openai/tts-1",
         "input": ["text"],
-        "maxTokens": 0,
+        "maxTokens": 64000,
         "name": "TTS-1",
         "provider": "orca-router",
         "reasoning": false,
@@ -4104,7 +4104,7 @@
     "openai/tts-1-hd": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 0,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -4114,7 +4114,7 @@
         "description": "Speech generation model for controllable voice, narration, and audio delivery",
         "id": "openai/tts-1-hd",
         "input": ["text"],
-        "maxTokens": 0,
+        "maxTokens": 64000,
         "name": "TTS-1 HD",
         "provider": "orca-router",
         "reasoning": false,

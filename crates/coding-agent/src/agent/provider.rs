@@ -53,6 +53,11 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
             api_key_env_key: "CEREBRAS_API_KEY",
             default_model: "gemma-4-31b",
         }),
+        "databyte" => Some(ProviderConfig {
+            label: "DataByte",
+            api_key_env_key: "DATABYTE_API_KEY",
+            default_model: "deepseek-v4-flash",
+        }),
         "cline" => Some(ProviderConfig {
             label: "Cline",
             api_key_env_key: "CLINE_API_KEY",
@@ -376,6 +381,22 @@ mod tests {
     use super::*;
 
     #[test]
+    fn databyte_is_a_known_provider() {
+        let cfg = provider_config("databyte").expect("databyte config");
+        assert_eq!(cfg.label, "DataByte");
+        assert_eq!(cfg.api_key_env_key, "DATABYTE_API_KEY");
+        assert!(elph_ai::get_builtin_model("databyte", cfg.default_model).is_some());
+    }
+
+    #[test]
+    fn resolve_databyte_from_settings() {
+        let (provider, model) = resolve_provider_and_model(None, None, Some("databyte"), Some("deepseek-v4-flash"))
+            .expect("resolve databyte");
+        assert_eq!(provider, "databyte");
+        assert_eq!(model, "deepseek-v4-flash");
+    }
+
+    #[test]
     fn opengateway_is_a_known_provider() {
         let cfg = provider_config("opengateway").expect("opengateway config");
         assert_eq!(cfg.label, "OpenGateway");
@@ -528,6 +549,7 @@ mod tests {
             ("azure-openai-responses", "Azure OpenAI", "AZURE_OPENAI_API_KEY"),
             ("baseten", "Baseten", "BASETEN_API_KEY"),
             ("cerebras", "Cerebras", "CEREBRAS_API_KEY"),
+            ("databyte", "DataByte", "DATABYTE_API_KEY"),
             ("cloudflare-ai-gateway", "Cloudflare AI Gateway", "CLOUDFLARE_API_KEY"),
             ("cloudflare-workers-ai", "Cloudflare Workers AI", "CLOUDFLARE_API_KEY"),
             ("cline", "Cline", "CLINE_API_KEY"),
@@ -598,6 +620,7 @@ mod tests {
             "cline",
             "cline-pass",
             "deepseek",
+            "databyte",
             "fireworks",
             "github-copilot",
             "hetzner",

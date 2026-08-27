@@ -380,7 +380,7 @@
     "whisper-large-v3": {
         "api": "openai-completions",
         "baseUrl": "https://api.groq.com/openai/v1",
-        "contextWindow": 0,
+        "contextWindow": 448,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -391,7 +391,7 @@
         "id": "whisper-large-v3",
         "input": ["audio"],
         "knowledgeCutoff": "",
-        "maxTokens": 0,
+        "maxTokens": 64000,
         "name": "Whisper",
         "provider": "groq",
         "reasoning": false,
@@ -409,7 +409,7 @@
     "whisper-large-v3-turbo": {
         "api": "openai-completions",
         "baseUrl": "https://api.groq.com/openai/v1",
-        "contextWindow": 0,
+        "contextWindow": 448,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -420,7 +420,7 @@
         "id": "whisper-large-v3-turbo",
         "input": ["audio"],
         "knowledgeCutoff": "",
-        "maxTokens": 0,
+        "maxTokens": 64000,
         "name": "Whisper Large V3 Turbo",
         "provider": "groq",
         "reasoning": false,

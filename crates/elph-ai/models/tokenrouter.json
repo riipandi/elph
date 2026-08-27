@@ -1086,7 +1086,7 @@
     "google/gemini-embedding-2": {
         "api": "openai-completions",
         "baseUrl": "https://api.tokenrouter.com/v1",
-        "contextWindow": 0,
+        "contextWindow": 8192,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -1097,7 +1097,7 @@
         "id": "google/gemini-embedding-2",
         "input": ["text"],
         "knowledgeCutoff": "2025-11",
-        "maxTokens": 0,
+        "maxTokens": 8192,
         "name": "Gemini Embedding 2",
         "provider": "tokenrouter",
         "reasoning": false,
@@ -2425,7 +2425,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-35b-a3b",
         "input": ["text", "image", "video"],
-        "maxTokens": 235929,
+        "maxTokens": 65536,
         "name": "Qwen3.5 35B-A3B",
         "provider": "tokenrouter",
         "reasoning": true,
@@ -2626,6 +2626,33 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
+        }
+    },
+    "qwen/qwen3.8-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.016,
+            "cacheWrite": 0.2,
+            "input": 0.16,
+            "output": 0.47
+        },
+        "description": "Qwen3.8 Flash is a multimodal reasoning model from Alibaba. It is suited for coding assistance, agentic workflows, visual understanding, document and codebase analysis, desktop interaction, chart analysis, and long-video analysis.",
+        "id": "qwen/qwen3.8-flash",
+        "input": ["text", "image", "video"],
+        "maxTokens": 131072,
+        "name": "Qwen3.8 Flash",
+        "provider": "tokenrouter",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
         }
     },
     "qwen/qwen3.8-max": {
@@ -3342,17 +3369,17 @@
     "z-ai/glm-4.6": {
         "api": "openai-completions",
         "baseUrl": "https://api.tokenrouter.com/v1",
-        "contextWindow": 202752,
+        "contextWindow": 198000,
         "cost": {
-            "cacheRead": 0.1,
+            "cacheRead": 0.08,
             "cacheWrite": 0.0,
-            "input": 0.5,
-            "output": 2.0
+            "input": 0.43,
+            "output": 1.75
         },
         "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "z-ai/glm-4.6",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 16384,
         "name": "GLM-4.6",
         "provider": "tokenrouter",
         "reasoning": true,
