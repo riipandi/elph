@@ -166,7 +166,7 @@ pub struct CompactionSettings {
     pub enabled: bool,
     pub reserve_tokens: u64,
     /// Context-window usage percentage that triggers compaction.
-    /// When `Some(pct)`, compaction fires when `context > context_window * pct / 100`.
+    /// When `Some(pct)`, compaction fires when `context >= context_window * pct / 100`.
     /// When `None`, falls back to `reserve_tokens` (legacy behavior).
     pub threshold_pct: Option<u8>,
     pub keep_recent_tokens: u64,

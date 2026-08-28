@@ -791,7 +791,7 @@ impl Default for NotificationSettings {
 #[serde(rename_all = "camelCase")]
 pub struct CompactionConfig {
     /// Context-window usage percentage that triggers auto-compaction (1–100).
-    /// Compact when context tokens exceed `context_window * threshold_pct / 100`.
+    /// Compact when context tokens reach `context_window * threshold_pct / 100`.
     #[serde(default = "default_compaction_threshold_pct")]
     pub threshold_pct: u8,
     /// Number of recent tokens to keep after compaction.

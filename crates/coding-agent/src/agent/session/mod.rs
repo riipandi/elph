@@ -6,6 +6,7 @@ mod wiring;
 use crate::types::AgentMode;
 use anyhow::Result;
 use elph_agent::collaboration::PlanConfirmationChoice;
+use elph_agent::compaction::should_compact;
 use elph_agent::goals::GoalRuntime;
 use elph_agent::harness::{AgentHarness, AgentHarnessErrorCode, FileSystem};
 use elph_agent::mcp::McpToolRegistry;
@@ -1009,7 +1010,7 @@ impl CodingAgentSession {
         let _guard = self.turn_gate.lock().await;
         let started = Instant::now();
         let result = self
-            .run_compact_with_notices(compaction::CompactSource::Manual, None, None, None)
+            .run_compact_with_notices(compaction::CompactSource::Manual, None, None, None, None)
             .await;
         self.finish_ui_turn(started).await;
         if let Err(err) = &result {
@@ -1022,6 +1023,29 @@ impl CodingAgentSession {
     pub async fn compact_with_options(&self, options: crate::agent::slash_commands::CompactOptions) -> Result<()> {
         let _guard = self.turn_gate.lock().await;
         let started = Instant::now();
+        let mut settings = self.harness.compaction_settings();
+        if let Some(threshold_pct) = options.threshold_pct {
+            settings.threshold_pct = Some(threshold_pct.clamp(1, 100));
+        }
+        if let Some(keep_recent_tokens) = options.keep_recent_tokens {
+            settings.keep_recent_tokens = keep_recent_tokens;
+        }
+
+        // An explicit `/compact` remains forceful by default. When a threshold is supplied,
+        // make it a useful conditional form: skip only when the current context is below it.
+        if options.threshold_pct.is_some()
+            && let Ok((used, window)) = self.estimate_context_usage().await
+            && window > 0
+            && !should_compact(used, window, settings)
+        {
+            let threshold_pct = settings.threshold_pct.unwrap_or(100);
+            let threshold_tokens = window.saturating_mul(threshold_pct as u64) / 100;
+            let _ = self.ui_tx.send(AgentUiEvent::TranscriptNotice(format!(
+                "Compaction skipped: context ~{used}/{window} tokens is below the {threshold_pct}% threshold (~{threshold_tokens} tokens)."
+            )));
+            self.finish_ui_turn(started).await;
+            return Ok(());
+        }
 
         // Build custom instructions from options
         let custom_instructions = if options.memory_flush {
@@ -1045,16 +1069,13 @@ impl CodingAgentSession {
             None
         };
 
-        // Note: threshold_pct and keep_recent_tokens overrides would require extending
-        // the harness API to accept per-operation settings. For now, only model and
-        // memory-flush are fully supported.
-
         let result = self
             .run_compact_with_notices(
                 compaction::CompactSource::Manual,
                 custom_instructions.as_deref(),
                 None,
                 model_override.as_ref(),
+                Some(settings),
             )
             .await;
 

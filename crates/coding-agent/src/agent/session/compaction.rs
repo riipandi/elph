@@ -19,18 +19,18 @@ pub(crate) fn auto_compact_will_message(
     settings: CompactionSettings,
 ) -> String {
     let threshold = match settings.threshold_pct {
-        Some(pct) => window * (pct as u64) / 100,
+        Some(pct) => window.saturating_mul(pct as u64) / 100,
         None => window.saturating_sub(settings.reserve_tokens),
     };
-    let history_over = used > threshold;
+    let history_over = used >= threshold;
     let pct = used.saturating_mul(100).checked_div(window).unwrap_or(0);
     if !history_over && prompt_tokens > 0 {
         format!(
-            "Auto-compaction: context ~{used}/{window} tokens ({pct}%) + prompt ~{prompt_tokens} tokens would exceed threshold — summarizing older history…"
+            "Auto-compaction: context ~{used}/{window} tokens ({pct}%) + prompt ~{prompt_tokens} tokens reaches the threshold — summarizing older history…"
         )
     } else {
         format!(
-            "Auto-compaction: context ~{used}/{window} tokens ({pct}%) exceeds threshold — summarizing older history…"
+            "Auto-compaction: context ~{used}/{window} tokens ({pct}%) reaches the threshold — summarizing older history…"
         )
     }
 }
@@ -85,6 +85,7 @@ impl CodingAgentSession {
         custom_instructions: Option<&str>,
         will_message: Option<String>,
         model_override: Option<&Model>,
+        settings_override: Option<CompactionSettings>,
     ) -> Result<CompactResult> {
         let had_will = will_message.is_some();
         if let Some(msg) = will_message {
@@ -114,7 +115,11 @@ impl CodingAgentSession {
         let before = self.estimate_context_usage().await.ok().map(|(t, _)| t);
         let result = self
             .harness
-            .compact(custom_instructions, Some(&model))
+            .compact_with_settings(
+                custom_instructions,
+                Some(&model),
+                settings_override.unwrap_or_else(|| self.harness.compaction_settings()),
+            )
             .await
             .map_err(|e| anyhow::anyhow!("{e}"))?;
 
@@ -137,13 +142,17 @@ impl CodingAgentSession {
         Ok(result)
     }
 
-    /// Auto-compact when usage exceeds threshold. Returns `true` when a compaction ran.
+    /// Auto-compact when usage reaches the configured threshold. Returns `true` when a compaction ran.
     ///
     /// Always considered; threshold comes from settings. There is no host kill-switch.
     pub(crate) async fn maybe_auto_compact(&self, prompt_text: Option<&str>) -> bool {
         let settings = self.harness.compaction_settings();
-        let Ok((used, window)) = self.estimate_context_usage().await else {
-            return false;
+        let (used, window) = match self.estimate_context_usage().await {
+            Ok(usage) => usage,
+            Err(err) => {
+                log::debug!("auto-compaction context estimate failed: {err:#}");
+                return false;
+            }
         };
         let prompt_tokens = prompt_text.map(count_tokens_text).unwrap_or(0);
         let total = used.saturating_add(prompt_tokens);
@@ -152,7 +161,7 @@ impl CodingAgentSession {
         }
         let will = auto_compact_will_message(used, window, prompt_tokens, settings);
         match self
-            .run_compact_with_notices(CompactSource::Automatic, None, Some(will), None)
+            .run_compact_with_notices(CompactSource::Automatic, None, Some(will), None, None)
             .await
         {
             Ok(result) => !result.is_noop(),
@@ -185,7 +194,7 @@ impl CodingAgentSession {
         }
         let will = "Context may exceed the model limit — compacting history before retrying…".to_string();
         match self
-            .run_compact_with_notices(CompactSource::Automatic, None, Some(will), None)
+            .run_compact_with_notices(CompactSource::Automatic, None, Some(will), None, None)
             .await
         {
             Ok(result) => !result.is_noop(),
@@ -252,7 +261,7 @@ impl CodingAgentSession {
                 ))
             };
             match self
-                .run_compact_with_notices(CompactSource::ModelSwitch, None, will_msg, None)
+                .run_compact_with_notices(CompactSource::ModelSwitch, None, will_msg, None, None)
                 .await
             {
                 Ok(r) if r.is_noop() => break,
@@ -380,7 +389,7 @@ mod tests {
         };
         // History over threshold → normal message.
         let msg = auto_compact_will_message(180_000, 200_000, 0, settings);
-        assert!(msg.contains("180000/200000 tokens (90%) exceeds threshold"), "{msg}");
+        assert!(msg.contains("180000/200000 tokens (90%) reaches the threshold"), "{msg}");
         assert!(!msg.contains("+ prompt"), "{msg}");
     }
 
@@ -396,6 +405,6 @@ mod tests {
         // History under threshold, but history + prompt over → mention prompt.
         let msg = auto_compact_will_message(150_000, 200_000, 20_000, settings);
         assert!(msg.contains("150000/200000 tokens (75%)"), "{msg}");
-        assert!(msg.contains("+ prompt ~20000 tokens would exceed threshold"), "{msg}");
+        assert!(msg.contains("+ prompt ~20000 tokens reaches the threshold"), "{msg}");
     }
 }
