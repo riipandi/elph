@@ -43,6 +43,10 @@ pub struct TuiBootstrapConfig {
     /// session or settings default at startup). Ignored when `resume_id` is set —
     /// the session restores its own model from the tree.
     pub model_override: Option<String>,
+    /// Thinking level seed for a **new** session (last used level in this
+    /// project, or settings default). Ignored when `resume_id` is set — the
+    /// session restores its own thinking level from the tree.
+    pub thinking_override: Option<String>,
     pub preloaded_resources: LoadResourcesResult,
     pub extension_host: crate::extensions::ExtensionHost,
 }
@@ -343,6 +347,7 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
         session_name: None,
         provider_override: None,
         model_override: config.model_override.as_deref(),
+        thinking_override: config.thinking_override.as_deref(),
         agent_mode: None,
         system_prompt_override: None,
         preloaded_resources: Some(config.preloaded_resources.clone()),

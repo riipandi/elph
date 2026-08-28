@@ -259,7 +259,7 @@ Project overrides **per nested key** (deep merge). Runtime saves write **home on
 
 Legacy nested `provider: { maxRetries, defaultTimeout }` is lifted to the root on load.
 
-**Per-session state** (active model, thinking level, agent mode) lives on the coding session / Turso session tree so concurrent Elph instances do not race on `settings.json`. New sessions start in agent mode **`build`**. Switching to a model with a smaller context window may auto-compact history so it fits.
+**Per-session state** (active model, thinking level, agent mode) lives on the coding session / Turso session tree so concurrent Elph instances do not race on `settings.json`. New sessions seed model and thinking level from the previous session's last used values (falling back to `models.defaultModel` / `models.defaultThinkingLevel`) and start in agent mode **`build`**. Switching to a model with a smaller context window may auto-compact history so it fits.
 
 ### Session titles (`models.sessionTitleModel`)
 

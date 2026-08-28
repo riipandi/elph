@@ -111,6 +111,9 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
         session_name: options.name,
         provider_override: None,
         model_override: options.model,
+        // Explicit `--effort` wins; `None` → settings default (headless runs do
+        // not inherit session state, matching `model_override` behavior).
+        thinking_override: options.effort.map(|level| level.label()),
         agent_mode: Some(options.mode),
         system_prompt_override: options.system_prompt_override,
         preloaded_resources: None,

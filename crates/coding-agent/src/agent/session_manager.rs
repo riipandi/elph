@@ -248,6 +248,22 @@ impl SessionManager {
         Ok(model.map(|m| (m.provider, m.model_id)))
     }
 
+    /// Thinking level last used in the most recent session for this project, if any.
+    ///
+    /// Reads the last `ThinkingLevelChange` from the latest session's tree entries —
+    /// the same source used to restore the thinking level on resume. Returns `None`
+    /// for a brand-new project (no saved sessions yet) or when the latest session
+    /// never recorded a thinking level.
+    pub async fn last_used_thinking_level(&self) -> Result<Option<String>> {
+        let Some(id) = self.latest_session_id().await? else {
+            return Ok(None);
+        };
+        let session = self.repo.open(&id).await?;
+        let entries = session.entries().await;
+        let (thinking, _, _, _) = derive_session_context_state(&entries);
+        Ok(thinking)
+    }
+
     /// True when the session tree has at least one entry (user/assistant/tool/custom).
     pub async fn session_has_entries(&self, session_id: &str) -> Result<bool> {
         self.repo
@@ -517,5 +533,50 @@ mod tests {
 
         let model = manager.last_used_model().await.expect("read model");
         assert_eq!(model, Some(("openai".to_string(), "gpt-5.6-luna".to_string())));
+    }
+
+    #[tokio::test]
+    async fn last_used_thinking_level_returns_change_from_latest_session() {
+        let paths = test_paths("thinking-single");
+        let cwd = paths.project_dir().clone();
+        let manager = SessionManager::new(&paths, &cwd).expect("manager");
+        let mut session = manager.create(None).await.expect("create session");
+        session
+            .append_thinking_level_change("max")
+            .await
+            .expect("thinking change");
+
+        let thinking = manager.last_used_thinking_level().await.expect("read thinking");
+        assert_eq!(thinking, Some("max".to_string()));
+    }
+
+    #[tokio::test]
+    async fn last_used_thinking_level_none_without_sessions() {
+        let paths = test_paths("thinking-empty");
+        let cwd = paths.project_dir().clone();
+        let manager = SessionManager::new(&paths, &cwd).expect("manager");
+        let thinking = manager.last_used_thinking_level().await.expect("read thinking");
+        assert_eq!(thinking, None);
+    }
+
+    #[tokio::test]
+    async fn last_used_thinking_level_prefers_newest_session() {
+        let paths = test_paths("thinking-newest");
+        let cwd = paths.project_dir().clone();
+        let manager = SessionManager::new(&paths, &cwd).expect("manager");
+        let mut first = manager.create(None).await.expect("first session");
+        first
+            .append_thinking_level_change("low")
+            .await
+            .expect("thinking change");
+        tokio::time::sleep(Duration::from_millis(5)).await;
+        let mut second = manager.create(None).await.expect("second session");
+        second
+            .append_thinking_level_change("high")
+            .await
+            .expect("thinking change");
+
+        let thinking = manager.last_used_thinking_level().await.expect("read thinking");
+        assert_eq!(thinking, Some("high".to_string()));
     }
 }

@@ -195,7 +195,7 @@ TypeID with prefix `sess` — shown in the footer.
 | Data                 | Location                                                                                                                          |
 | -------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | Provider / model     | Per-session (tree + Turso row); new sessions seed from the project's last used model, falling back to `models.defaultModel` (TUI) |
-| Mode / thinking      | Per-session (default mode `build`; thinking seed `models.defaultThinkingLevel`)                                                   |
+| Mode / thinking      | Per-session (default mode `build`; thinking seed from the project's last used level, falling back to `models.defaultThinkingLevel`) |
 | Platform metadata    | Same DB: goals, spawn graph, session index                                                                                        |
 | Model catalog        | Embedded + merge `CONFIG_DIR/providers/*.json` (disk wins by id)                                                                  |
 | Crash recovery       | Semi-durable harness journal + tool-result repair (see below)                                                                     |

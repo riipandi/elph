@@ -39,6 +39,10 @@ pub struct CreateSessionOptions<'a> {
     pub session_name: Option<&'a str>,
     pub provider_override: Option<&'a str>,
     pub model_override: Option<&'a str>,
+    /// Thinking level seed override for a **new** session (e.g. last used level in
+    /// this project). `None` → `settings.models.defaultThinkingLevel`. Ignored on
+    /// resume: the harness restores the thinking level from the session tree.
+    pub thinking_override: Option<&'a str>,
     /// Host override for agent mode (e.g. `elph run --mode`). Default: `build` (TUI)
     /// or headless caller default (brave for `elph run`).
     /// Not read from settings — mode is per-session.
@@ -341,8 +345,14 @@ pub async fn create_coding_session_with_events(
     tools.push(create_session_summary_tool(Arc::clone(&summary_store)));
 
     // Clamp default thinking (new-session seed) to the resolved model catalog.
+    // `thinking_override` (last used level from the latest session) wins over
+    // `settings.models.defaultThinkingLevel`. Ignored on resume — the harness
+    // restores the session's own thinking level from its tree.
     let thinking = {
-        let raw = thinking_level_from_setting(&options.settings.models.default_thinking_level);
+        let raw = options
+            .thinking_override
+            .map(thinking_level_from_setting)
+            .unwrap_or_else(|| thinking_level_from_setting(&options.settings.models.default_thinking_level));
         let clamped = raw.clamp_for_model(&selection.model);
         to_agent_thinking(clamped)
     };

@@ -241,11 +241,15 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 let boot =
                     crate::tui::resolve_boot_model(&settings, &paths_for_load, &cwd_for_load, resume_id_req.as_deref())
                         .await;
+                let boot_thinking =
+                    crate::tui::resolve_boot_thinking_level(&settings, &paths_for_load, &cwd_for_load, resume_id_req.as_deref())
+                        .await;
                 let new_config = TuiBootstrapConfig {
                     paths: paths_for_load,
                     settings,
                     resume_id: resume_id_req,
                     model_override: boot.ok().map(|(provider, model_id)| format!("{provider}/{model_id}")),
+                    thinking_override: boot_thinking.ok().map(|level| level.label().to_string()),
                     preloaded_resources: loaded,
                     extension_host: extension_host_for_loop.clone(),
                 };

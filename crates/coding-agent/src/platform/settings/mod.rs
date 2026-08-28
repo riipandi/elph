@@ -67,7 +67,8 @@
 //!
 //! **Per-session state** (active model, thinking level, agent mode) is **not** stored here —
 //! it lives on the coding session / Turso session tree so concurrent Elph instances do not
-//! race on `settings.json`. New sessions seed model/thinking from `models.defaultModel` /
+//! race on `settings.json`. New sessions seed model/thinking from the previous session's
+//! last used values (stored on the session tree) falling back to `models.defaultModel` /
 //! `models.defaultThinkingLevel`; agent mode always starts as `build`.
 //!
 //! Host-only: `elph-ai` and `elph-agent` never read these paths; the binary maps fields

@@ -290,6 +290,7 @@ pub(super) async fn open_or_create(
             session_name: None,
             provider_override: None,
             model_override: None,
+            thinking_override: None,
             agent_mode: None,
             system_prompt_override: None,
             preloaded_resources: None,
