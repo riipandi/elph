@@ -8,7 +8,10 @@ use super::input::handle_textarea_terminal_event;
 use super::input::{TextareaInputContext, TextareaInputResult};
 use super::layout::{layout_cursor_for_viewport, layout_metrics_from_wrapped, layout_textarea_measured};
 use super::state::{TextareaState, selection_display_rows};
-use crate::clipboard::{ClipboardNotice, copy_to_clipboard};
+use crate::clipboard::{
+    ClipboardNotice, ImageAttachment, copy_to_clipboard, read_from_clipboard, remove_image_attachments,
+    save_clipboard_image,
+};
 use crate::components::scroll_bar::VerticalScrollbar;
 use crate::components::theme::resolve_ui_theme;
 use crate::input_prefix::{InputPrefixKind, PromptPrefixConfig, absorb_inline_triggers};
@@ -199,6 +202,20 @@ fn sync_editor_from_parent(ed: &mut TextareaState, external: &str, has_focus: bo
     ed.sync_external(external);
 }
 
+fn prune_removed_image_attachments(text: &str, attachments: &mut Vec<ImageAttachment>) {
+    let mut removed = Vec::new();
+    attachments.retain(|attachment| {
+        let marker = format!("[Image #{}]", attachment.id);
+        if text.contains(&marker) {
+            true
+        } else {
+            removed.push(attachment.clone());
+            false
+        }
+    });
+    remove_image_attachments(&removed);
+}
+
 fn apply_palette_draft_to_editor(ed: &mut TextareaState, external: &str, forced_cursor: Option<usize>) {
     ed.sync_external_with_cursor(external, forced_cursor);
 }
@@ -246,6 +263,7 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
     let mut scroll_row = hooks.use_ref(|| 0u16);
     let mut layout_cache = hooks.use_ref(|| None::<TextareaLayoutCache>);
     let mut viewport_cache = hooks.use_ref(|| None::<ViewportRenderCache>);
+    let mut image_counter = hooks.use_ref(|| 0usize);
     let mut generation = hooks.use_state(|| 0u32);
     let on_submit = props.on_submit.take();
     let on_escape = props.on_escape.take();
@@ -253,6 +271,8 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
     let file_picker_key_handled = props.file_picker_key_handled;
     let prompt_editor_mirror = props.prompt_editor_mirror;
     let clipboard_toast = props.clipboard_toast;
+    let image_attachment_dir = props.image_attachment_dir.clone();
+    let image_attachments = props.image_attachments;
 
     // Flush raw paste-burst buffers after a typing gap so rapid keys are not lost when the
     // user stops (merge used to run only on the *next* keypress).
@@ -310,6 +330,12 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
     {
         let mut ed = editor.write();
         if force_clear.is_some_and(|signal| signal.get()) {
+            if let Some(mut attachments) = image_attachments {
+                let pending = attachments.read().clone();
+                remove_image_attachments(&pending);
+                attachments.set(Vec::new());
+            }
+            image_counter.set(0);
             ed.clear_after_submit();
             if let Some(mut signal) = force_clear {
                 signal.set(false);
@@ -335,6 +361,10 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
         } else {
             sync_editor_from_parent(&mut ed, &value.read(), has_focus);
         }
+    }
+    if let Some(mut attachments) = image_attachments {
+        let text = editor.read().text.clone();
+        prune_removed_image_attachments(&text, &mut attachments.write());
     }
 
     let h_pad = if show_border { 2 } else { 0 };
@@ -443,10 +473,12 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
         let mut on_submit = on_submit;
         let mut on_escape = on_escape;
         let mut on_file_picker_key = on_file_picker_key;
+        let mut image_counter = image_counter;
         let mut pending_esc = pending_esc;
         let mut paste_burst = paste_burst;
         let mut last_key_at = last_key_at;
         let submit_on_enter = props.submit_on_enter;
+        let image_attachment_dir = image_attachment_dir.clone();
         let input_width = layout.input_width;
         move |event| {
             if !has_focus {
@@ -556,6 +588,12 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
                     }
                     let mut ed = editor.write();
                     ed.clear_after_submit();
+                    if let Some(mut attachments) = image_attachments {
+                        let pending = attachments.read().clone();
+                        remove_image_attachments(&pending);
+                        attachments.set(Vec::new());
+                    }
+                    image_counter.set(0);
                     sync_live_draft("", 0);
                     value.set(String::new());
                     if let Some(mut kind) = input_prefix_kind {
@@ -614,6 +652,33 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
                         sync_live_draft(&ed.text, ed.cursor);
                     }
                     generation.set(generation.get().wrapping_add(1));
+                }
+                TextareaInputResult::PasteImage => {
+                    let next_id = image_counter.get().saturating_add(1);
+                    let image = image_attachment_dir
+                        .as_deref()
+                        .and_then(|dir| save_clipboard_image(dir, next_id).ok());
+                    if let Some(attachment) = image {
+                        if let Some(mut attachments) = image_attachments {
+                            attachments.write().push(attachment);
+                            image_counter.set(next_id);
+                            editor.write().insert_image_marker(next_id);
+                            let ed = editor.read();
+                            sync_live_draft(&ed.text, ed.cursor);
+                            value.set(ed.text.clone());
+                            layout_cache.set(None);
+                            viewport_cache.set(None);
+                            generation.set(generation.get().wrapping_add(1));
+                        }
+                    } else if let Ok(text) = read_from_clipboard() {
+                        let mut ed = editor.write();
+                        ed.apply_paste(&text);
+                        sync_live_draft(&ed.text, ed.cursor);
+                        value.set(ed.text.clone());
+                        layout_cache.set(None);
+                        viewport_cache.set(None);
+                        generation.set(generation.get().wrapping_add(1));
+                    }
                 }
                 TextareaInputResult::Ignored => {}
             }

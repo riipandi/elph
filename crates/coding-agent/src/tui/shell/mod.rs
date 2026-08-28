@@ -478,6 +478,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let live_cursor = hooks.use_ref(|| 0usize);
     // Plain-`y` selection yank toast from Textarea — drained into ephemeral banner.
     let clipboard_toast = hooks.use_state(|| None::<elph_tui::ClipboardNotice>);
+    let image_attachments = hooks.use_ref(Vec::<elph_tui::ImageAttachment>::new);
     let pending_mode_change = hooks.use_ref(|| None::<PendingModeChange>);
     let pending_retry_prompt = hooks.use_ref(|| None::<String>);
     let prompt_editor_mirror = hooks.use_ref(|| (String::new(), 0usize));
@@ -675,6 +676,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         chrome_tick,
         chrome_ui_revision,
         clipboard_toast,
+        image_attachments,
         colored_status_footer,
         confetti_frame,
         confetti_runtime,

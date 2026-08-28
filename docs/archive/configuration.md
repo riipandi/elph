@@ -79,6 +79,12 @@ Override with `ELPH_HOME` (config) and `ELPH_DATA_DIR` (data).
 └── skills/<name>/SKILL.md
 ```
 
+Interactive Ctrl/Cmd+V image pastes are written as PNG files in
+`APP_DATA/attachments/` and shown in the prompt as atomic `[Image #N]` markers.
+On submit, Elph base64-encodes the staged files into `ImageContent` blocks for the
+model request, then removes the temporary files. Removing a marker or submitting
+a local/slash/shell command also removes its staged file.
+
 ### Storage roles
 
 | Store                  | Path                                      | Contents                                                                                               |
@@ -87,6 +93,7 @@ Override with `ELPH_HOME` (config) and `ELPH_DATA_DIR` (data).
 | Session artifacts      | `APP_DATA/sessions/<SESSION_ID>/`         | `mcp_cache/` (JSONL tool result cache), `terminals/`, `tool_outputs.jsonl`, optional `event_log.jsonl` |
 | Host MCP cache         | `APP_DATA/mcp_cache/`                     | CLI MCP ops when no session is active (JSONL tool result cache)                                        |
 | App / crash / MCP logs | `APP_DATA/logs/`                          | Rolling JSONL, dated crash logs, MCP stderr                                                            |
+| Clipboard attachments  | `APP_DATA/attachments/`                  | Temporary PNG files staged by Ctrl/Cmd+V until the prompt is submitted or discarded                   |
 | MCP client stderr      | `APP_DATA/logs/mcp.log`                   | Raw fd 2 from the MCP (rmcp) client, redirected out of the TUI (suppression)                           |
 | Config files           | `CONFIG_DIR/*.json`                       | Settings, auth, trust, MCP, providers                                                                  |
 | Provider catalogs      | `CONFIG_DIR/providers/*.json`             | Disk model overlays (see below)                                                                        |

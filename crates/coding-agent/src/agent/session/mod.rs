@@ -696,7 +696,7 @@ impl CodingAgentSession {
     ) -> Result<()> {
         if steer {
             // Mid-turn interjection: enqueue only — never wait_for_idle / RunCompleted.
-            return self.queue_steer(text).await;
+            return self.queue_steer_with(text, images).await;
         }
         // Keep the session row's `updated_at` current so the resume list and
         // retention ordering reflect real activity even when the turn appends no
@@ -722,7 +722,9 @@ impl CodingAgentSession {
         self.maybe_auto_compact(Some(&text)).await;
 
         let started = Instant::now();
-        let options = images.map(|images| elph_agent::harness::AgentHarnessPromptOptions { images: Some(images) });
+        let options = images
+            .clone()
+            .map(|images| elph_agent::harness::AgentHarnessPromptOptions { images: Some(images) });
         let result = self.harness.prompt(text.clone(), options).await;
         match &result {
             Ok(message) => {
@@ -933,15 +935,23 @@ impl CodingAgentSession {
     /// If the harness is idle (UI busy flag desynced, bootstrap, race after turn end), starts a
     /// normal turn instead of failing with "Cannot follow up while idle".
     pub async fn queue_follow_up(&self, text: String) -> Result<()> {
+        self.queue_follow_up_with(text, None).await
+    }
+
+    /// Enqueue a follow-up prompt, preserving any image attachments.
+    pub async fn queue_follow_up_with(&self, text: String, images: Option<Vec<elph_ai::ImageContent>>) -> Result<()> {
         let trimmed = text.trim();
         if trimmed.is_empty() {
             return Ok(());
         }
-        match self.harness.follow_up(trimmed, None).await {
+        let options = images
+            .clone()
+            .map(|images| elph_agent::harness::AgentHarnessPromptOptions { images: Some(images) });
+        match self.harness.follow_up(trimmed, options).await {
             Ok(()) => Ok(()),
             Err(err) if err.code == AgentHarnessErrorCode::InvalidState => {
                 log::debug!("follow_up while idle — starting a normal turn");
-                self.run_prompt_turn(trimmed.to_string(), None).await
+                self.run_prompt_turn(trimmed.to_string(), images).await
             }
             Err(err) => Err(anyhow::anyhow!("{err}")),
         }
@@ -951,15 +961,23 @@ impl CodingAgentSession {
     ///
     /// If the harness is idle, starts a normal turn instead of failing with "Cannot steer while idle".
     pub async fn queue_steer(&self, text: String) -> Result<()> {
+        self.queue_steer_with(text, None).await
+    }
+
+    /// Enqueue a mid-turn steer, preserving any image attachments.
+    pub async fn queue_steer_with(&self, text: String, images: Option<Vec<elph_ai::ImageContent>>) -> Result<()> {
         let trimmed = text.trim();
         if trimmed.is_empty() {
             return Ok(());
         }
-        match self.harness.steer(trimmed, None).await {
+        let options = images
+            .clone()
+            .map(|images| elph_agent::harness::AgentHarnessPromptOptions { images: Some(images) });
+        match self.harness.steer(trimmed, options).await {
             Ok(()) => Ok(()),
             Err(err) if err.code == AgentHarnessErrorCode::InvalidState => {
                 log::debug!("steer while idle — starting a normal turn");
-                self.run_prompt_turn(trimmed.to_string(), None).await
+                self.run_prompt_turn(trimmed.to_string(), images).await
             }
             Err(err) => Err(anyhow::anyhow!("{err}")),
         }

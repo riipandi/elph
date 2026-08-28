@@ -19,6 +19,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         mut chrome_refresh_pending,
         mut chrome_stats,
         mut chrome_ui_revision,
+        mut image_attachments,
         mut confetti_runtime,
         cwd,
         mut draft,
@@ -350,6 +351,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         // never enqueue as follow-up and never prefer the prompt-queue list.
         // (Queue items are sent via the queue [Send] chip or when the editor is empty.)
         if !body.is_empty() {
+            let pending_attachments = image_attachments.read().clone();
+            image_attachments.set(Vec::new());
             if let Some(session) = agent_session.as_ref() {
                 let mut submitted = TranscriptMessage::text(body.clone(), TranscriptStyle::User);
                 submitted.submitted_at = Some(chrono::Utc::now());
@@ -363,7 +366,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     // the prompt reappears in the queue UI as if it was never sent.
                     prompt_queue.write().suppress_sent(body.clone());
                     queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
-                    TurnDispatcher::spawn_steer(Arc::clone(session), body);
+                    TurnDispatcher::spawn_steer_with_attachments(Arc::clone(session), body, pending_attachments);
                 } else {
                     // Idle: start a normal turn (steer while idle falls back the same way).
                     agent_turn_active.set(true);
@@ -382,8 +385,10 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         None,
                     );
                     begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
-                    TurnDispatcher::spawn_turn(Arc::clone(session), body, false);
+                    TurnDispatcher::spawn_turn_with_attachments(Arc::clone(session), body, false, pending_attachments);
                 }
+            } else {
+                crate::tui::prompt::images::remove_files(&pending_attachments);
             }
             draft.set(String::new());
             live_draft.set(String::new());

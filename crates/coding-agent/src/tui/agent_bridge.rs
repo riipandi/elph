@@ -23,8 +23,31 @@ pub struct TurnDispatcher;
 
 impl TurnDispatcher {
     pub fn spawn_turn(session: Arc<CodingAgentSession>, text: String, steer: bool) {
+        Self::spawn_turn_with_images(session, text, steer, None);
+    }
+
+    pub fn spawn_turn_with_images(
+        session: Arc<CodingAgentSession>,
+        text: String,
+        steer: bool,
+        images: Option<Vec<elph_ai::ImageContent>>,
+    ) {
         tokio::spawn(async move {
-            if let Err(err) = session.submit_prompt(text, steer).await {
+            if let Err(err) = session.submit_prompt_with(text, steer, images).await {
+                log::error!("agent turn failed: {err}");
+            }
+        });
+    }
+
+    pub fn spawn_turn_with_attachments(
+        session: Arc<CodingAgentSession>,
+        text: String,
+        steer: bool,
+        attachments: Vec<elph_tui::ImageAttachment>,
+    ) {
+        tokio::spawn(async move {
+            let images = load_attachment_images(attachments).await;
+            if let Err(err) = session.submit_prompt_with(text, steer, images).await {
                 log::error!("agent turn failed: {err}");
             }
         });
@@ -38,24 +61,15 @@ impl TurnDispatcher {
         });
     }
 
-    pub fn spawn_follow_up(session: Arc<CodingAgentSession>, text: String) {
+    pub fn spawn_follow_up_with_attachments(
+        session: Arc<CodingAgentSession>,
+        text: String,
+        attachments: Vec<elph_tui::ImageAttachment>,
+    ) {
         tokio::spawn(async move {
-            if let Err(err) = session.queue_follow_up(text).await {
+            let images = load_attachment_images(attachments).await;
+            if let Err(err) = session.queue_follow_up_with(text, images).await {
                 log::warn!("queue follow-up failed: {err}");
-                let _ = session
-                    .ui_event_sender()
-                    .send(AgentUiEvent::Status(format!("Could not queue prompt: {err}")));
-            }
-        });
-    }
-
-    pub fn spawn_steer(session: Arc<CodingAgentSession>, text: String) {
-        tokio::spawn(async move {
-            if let Err(err) = session.queue_steer(text).await {
-                log::warn!("queue steer failed: {err}");
-                let _ = session
-                    .ui_event_sender()
-                    .send(AgentUiEvent::Status(format!("Could not interject: {err}")));
             }
         });
     }
@@ -64,6 +78,19 @@ impl TurnDispatcher {
         tokio::spawn(async move {
             if let Err(err) = session.remove_queued(kind, kind_index).await {
                 log::warn!("remove queued prompt failed: {err}");
+            }
+        });
+    }
+
+    pub fn spawn_steer_with_attachments(
+        session: Arc<CodingAgentSession>,
+        text: String,
+        attachments: Vec<elph_tui::ImageAttachment>,
+    ) {
+        tokio::spawn(async move {
+            let images = load_attachment_images(attachments).await;
+            if let Err(err) = session.queue_steer_with(text, images).await {
+                log::warn!("queue steer failed: {err}");
             }
         });
     }
@@ -87,6 +114,25 @@ impl TurnDispatcher {
             }
         });
     }
+}
+
+async fn load_attachment_images(attachments: Vec<elph_tui::ImageAttachment>) -> Option<Vec<elph_ai::ImageContent>> {
+    if attachments.is_empty() {
+        return None;
+    }
+    let for_read = attachments.clone();
+    let images = tokio::task::spawn_blocking(move || crate::tui::prompt::images::read_image_contents(&for_read))
+        .await
+        .ok()
+        .and_then(|result| match result {
+            Ok(images) => Some(images),
+            Err(err) => {
+                log::warn!("read prompt image attachments failed: {err:#}");
+                None
+            }
+        });
+    crate::tui::prompt::images::remove_files(&attachments);
+    images
 }
 
 /// Runs wired slash commands on the agent session and reports via UI events.

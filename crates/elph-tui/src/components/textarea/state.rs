@@ -70,6 +70,7 @@ impl TextareaState {
         let Some((a, b)) = self.selection_range() else {
             return false;
         };
+        let (a, b) = expand_image_marker_range(&self.text, a, b);
         self.text.drain(a..b);
         self.cursor = a;
         self.clear_selection();
@@ -174,9 +175,14 @@ impl TextareaState {
         if cursor == 0 {
             return;
         }
-        let prev = self.text[..cursor].chars().last().map(|c| c.len_utf8()).unwrap_or(0);
-        self.text.drain(cursor - prev..cursor);
-        self.cursor = cursor - prev;
+        if let Some((start, end)) = image_marker_range_at(&self.text, cursor.saturating_sub(1)) {
+            self.text.drain(start..end);
+            self.cursor = start;
+        } else {
+            let prev = self.text[..cursor].chars().last().map(|c| c.len_utf8()).unwrap_or(0);
+            self.text.drain(cursor - prev..cursor);
+            self.cursor = cursor - prev;
+        }
         self.vertical_col_preference = None;
     }
 
@@ -188,22 +194,28 @@ impl TextareaState {
         if cursor >= self.text.len() {
             return;
         }
-        let next = self.text[cursor..].chars().next().map(|c| c.len_utf8()).unwrap_or(0);
-        self.text.drain(cursor..cursor + next);
+        if let Some((start, end)) = image_marker_range_at(&self.text, cursor) {
+            self.text.drain(start..end);
+        } else {
+            let next = self.text[cursor..].chars().next().map(|c| c.len_utf8()).unwrap_or(0);
+            self.text.drain(cursor..cursor + next);
+        }
         self.vertical_col_preference = None;
     }
 
     pub fn move_left(&mut self, input_width: u16) {
         let _ = input_width;
         self.clear_selection();
-        self.cursor = WrappedTextLayout::left_of_offset(&self.text, self.cursor);
+        self.cursor = image_marker_end_or_left(&self.text, self.cursor)
+            .unwrap_or_else(|| WrappedTextLayout::left_of_offset(&self.text, self.cursor));
         self.vertical_col_preference = None;
     }
 
     pub fn move_right(&mut self, input_width: u16) {
         let _ = input_width;
         self.clear_selection();
-        self.cursor = WrappedTextLayout::right_of_offset(&self.text, self.cursor);
+        self.cursor = image_marker_start_or_right(&self.text, self.cursor)
+            .unwrap_or_else(|| WrappedTextLayout::right_of_offset(&self.text, self.cursor));
         self.vertical_col_preference = None;
     }
 
@@ -371,11 +383,98 @@ impl TextareaState {
         self.vertical_col_preference = None;
     }
 
+    /// Insert an image marker as one cursor/deletion unit.
+    pub fn insert_image_marker(&mut self, id: usize) {
+        self.delete_selection();
+        let marker = format!("[Image #{id}]");
+        let cursor = self.cursor.min(self.text.len());
+        self.text.insert_str(cursor, &marker);
+        self.cursor = cursor + marker.len();
+        self.vertical_col_preference = None;
+    }
+
     pub fn clear_after_submit(&mut self) {
         self.text.clear();
         self.cursor = 0;
         self.clear_selection();
         self.vertical_col_preference = None;
+    }
+}
+
+fn image_marker_range_at(text: &str, offset: usize) -> Option<(usize, usize)> {
+    let mut search_from = 0;
+    while let Some(relative) = text[search_from..].find("[Image #") {
+        let start = search_from + relative;
+        let digits_start = start + "[Image #".len();
+        let end = text[digits_start..].find(']')? + digits_start + 1;
+        if digits_start < end - 1
+            && text[digits_start..end - 1].chars().all(|ch| ch.is_ascii_digit())
+            && offset >= start
+            && offset < end
+        {
+            return Some((start, end));
+        }
+        search_from = end;
+    }
+    None
+}
+
+fn expand_image_marker_range(text: &str, mut start: usize, mut end: usize) -> (usize, usize) {
+    let mut cursor = 0;
+    while let Some(relative) = text[cursor..].find("[Image #") {
+        let marker_start = cursor + relative;
+        let digits_start = marker_start + "[Image #".len();
+        let Some(relative_end) = text[digits_start..].find(']') else {
+            break;
+        };
+        let marker_end = digits_start + relative_end + 1;
+        if digits_start < marker_end - 1
+            && text[digits_start..marker_end - 1].chars().all(|ch| ch.is_ascii_digit())
+            && start < marker_end
+            && end > marker_start
+        {
+            start = start.min(marker_start);
+            end = end.max(marker_end);
+        }
+        cursor = marker_end;
+    }
+    (start, end)
+}
+
+fn image_marker_end_or_left(text: &str, cursor: usize) -> Option<usize> {
+    let marker = image_marker_range_at(text, cursor.saturating_sub(1))?;
+    (marker.1 == cursor).then_some(marker.0)
+}
+
+fn image_marker_start_or_right(text: &str, cursor: usize) -> Option<usize> {
+    let marker = image_marker_range_at(text, cursor)?;
+    (marker.0 == cursor).then_some(marker.1)
+}
+
+#[cfg(test)]
+mod image_marker_tests {
+    use super::TextareaState;
+
+    #[test]
+    fn image_marker_is_inserted_and_deleted_atomically() {
+        let mut state = TextareaState::from_text("before after".into());
+        state.cursor = "before ".len();
+        state.insert_image_marker(1);
+        assert_eq!(state.text, "before [Image #1]after");
+
+        state.delete_char_back();
+        assert_eq!(state.text, "before after");
+        assert_eq!(state.cursor, "before ".len());
+    }
+
+    #[test]
+    fn cursor_skips_image_marker() {
+        let mut state = TextareaState::from_text("[Image #7]x".into());
+        state.cursor = "[Image #7]".len();
+        state.move_left(80);
+        assert_eq!(state.cursor, 0);
+        state.move_right(80);
+        assert_eq!(state.cursor, "[Image #7]".len());
     }
 }
 

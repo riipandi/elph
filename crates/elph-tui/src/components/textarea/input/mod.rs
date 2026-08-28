@@ -32,6 +32,8 @@ pub enum TextareaInputResult {
     Submit(String),
     /// Yank selected text (Ctrl+Y with a non-empty selection). Shell shows the toast.
     Yank(String),
+    /// Ctrl/Cmd+V requests an image-first clipboard paste.
+    PasteImage,
     /// Event consumed without mutation.
     Consumed,
     /// Not handled.
@@ -72,6 +74,14 @@ pub fn handle_textarea_terminal_event(
     else {
         return TextareaInputResult::Ignored;
     };
+
+    if kind != KeyEventKind::Release
+        && matches!(code, KeyCode::Char('v') | KeyCode::Char('V'))
+        && modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::META)
+        && !modifiers.intersects(KeyModifiers::ALT | KeyModifiers::SHIFT)
+    {
+        return TextareaInputResult::PasteImage;
+    }
 
     if kind != KeyEventKind::Release && code == KeyCode::Esc && modifiers.is_empty() {
         if state.has_selection() {

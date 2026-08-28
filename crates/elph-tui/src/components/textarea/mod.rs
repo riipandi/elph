@@ -66,8 +66,13 @@ pub struct TextareaProps {
     pub prompt_editor_mirror: Option<Ref<(String, usize)>>,
     /// One-shot clipboard toast request (plain `y` selection yank). Shell drains into the ephemeral banner.
     pub clipboard_toast: Option<State<Option<crate::clipboard::ClipboardNotice>>>,
+    /// Directory for staged clipboard images (`APP_DATA/attachments`).
+    pub image_attachment_dir: Option<std::path::PathBuf>,
+    /// Pending image files keyed by the atomic markers in the editor.
+    pub image_attachments: Option<Ref<Vec<ImageAttachment>>>,
 }
 
+use crate::clipboard::ImageAttachment;
 use crate::components::scroll_bar::ScrollbarStyle;
 use crate::components::theme::UiTheme;
 use crate::input_prefix::{InputPrefixKind, PromptPrefixConfig};

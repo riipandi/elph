@@ -2,8 +2,24 @@
 //!
 //! Replaces ad-hoc `pbcopy` / `xclip` process spawns with a cross-platform native API.
 
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use anyhow::{Result, bail};
+use clipboard_rs::common::RustImage;
 use clipboard_rs::{Clipboard, ClipboardContext};
+
+static IMAGE_FILE_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+/// A clipboard image staged for the next prompt.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImageAttachment {
+    pub id: usize,
+    pub path: PathBuf,
+    pub width: u32,
+    pub height: u32,
+}
 
 /// Probe whether the system clipboard can be opened (no read/write).
 pub fn clipboard_available() -> bool {
@@ -45,6 +61,46 @@ pub fn read_from_clipboard() -> Result<String> {
         log::warn!("clipboard read failed: {err}");
         anyhow::anyhow!("get clipboard text: {err}")
     })
+}
+
+/// Save the image currently on the system clipboard as a PNG attachment.
+pub fn save_clipboard_image(dir: &Path, id: usize) -> Result<ImageAttachment> {
+    let ctx = ClipboardContext::new().map_err(|err| anyhow::anyhow!("open system clipboard: {err}"))?;
+    let image = ctx
+        .get_image()
+        .map_err(|err| anyhow::anyhow!("read clipboard image: {err}"))?;
+    if image.is_empty() {
+        bail!("clipboard image is empty");
+    }
+
+    std::fs::create_dir_all(dir)?;
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    let counter = IMAGE_FILE_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let path = dir.join(format!("clipboard-{timestamp}-{counter}.png"));
+    image
+        .save_to_path(&path.to_string_lossy())
+        .map_err(|err| anyhow::anyhow!("save clipboard image: {err}"))?;
+    let (width, height) = image.get_size();
+    Ok(ImageAttachment {
+        id,
+        path,
+        width,
+        height,
+    })
+}
+
+/// Remove staged attachment files. Missing files are already consumed/cleaned.
+pub fn remove_image_attachments(attachments: &[ImageAttachment]) {
+    for attachment in attachments {
+        if let Err(err) = std::fs::remove_file(&attachment.path)
+            && err.kind() != std::io::ErrorKind::NotFound
+        {
+            log::debug!("remove image attachment {}: {err}", attachment.path.display());
+        }
+    }
 }
 
 /// Copy text and return a short human status for a11y / toast banners.

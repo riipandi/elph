@@ -23,8 +23,8 @@ pub mod word_wrap;
 pub use cli_progress::{CliProgress, CliSpinner, interrupt_requested, note_interrupt};
 pub use cli_progress::{progress_enabled, progress_spinner};
 pub use clipboard::{
-    ClipboardCopyStatus, ClipboardNotice, clipboard_available, clipboard_backend, copy_to_clipboard, copy_with_status,
-    read_from_clipboard,
+    ClipboardCopyStatus, ClipboardNotice, ImageAttachment, clipboard_available, clipboard_backend, copy_to_clipboard,
+    copy_with_status, read_from_clipboard, remove_image_attachments, save_clipboard_image,
 };
 pub use color::{from_hex, from_rgb_fn, parse_color, parse_color_value, rgb};
 pub use components::*;

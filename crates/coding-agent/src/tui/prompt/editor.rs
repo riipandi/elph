@@ -51,6 +51,10 @@ pub struct EditorProps {
     pub prompt_editor_mirror: Option<Ref<(String, usize)>>,
     /// Selection yank toast (`y`) — shell drains into ephemeral banner.
     pub clipboard_toast: Option<State<Option<elph_tui::ClipboardNotice>>>,
+    /// Directory for staged clipboard images.
+    pub image_attachment_dir: Option<std::path::PathBuf>,
+    /// Pending clipboard images paired with `[Image #N]` markers.
+    pub image_attachments: Option<Ref<Vec<elph_tui::ImageAttachment>>>,
     /// Shown centered when the editor is blocked by an inline dialog.
     pub blocked_hint: Option<String>,
     /// Native terminal text-select mode (mouse capture off). Prompt stays focused/interactive;
@@ -155,6 +159,8 @@ pub fn Editor(props: &mut EditorProps) -> impl Into<AnyElement<'static>> {
                     force_palette_sync: props.force_palette_sync,
                     force_clear: props.force_clear,
                     clipboard_toast: props.clipboard_toast,
+                    image_attachment_dir: props.image_attachment_dir.clone(),
+                    image_attachments: props.image_attachments,
                     submit_on_enter: true,
                     on_submit: props.on_submit.take(),
                     on_escape: props.on_escape.take(),

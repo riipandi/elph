@@ -54,6 +54,8 @@ pub struct PromptChromeProps {
     pub file_picker_key_handled: Option<Ref<bool>>,
     pub prompt_editor_mirror: Option<Ref<(String, usize)>>,
     pub clipboard_toast: Option<State<Option<elph_tui::ClipboardNotice>>>,
+    pub image_attachment_dir: Option<std::path::PathBuf>,
+    pub image_attachments: Option<Ref<Vec<elph_tui::ImageAttachment>>>,
     pub blocked_hint: Option<String>,
     /// Native terminal text-select mode (mouse capture off). Prompt stays interactive.
     pub text_select_mode: bool,
@@ -114,6 +116,8 @@ pub fn PromptChrome(props: &mut PromptChromeProps) -> impl Into<AnyElement<'stat
                         blocked_hint: props.blocked_hint.clone(),
                         text_select_mode: props.text_select_mode,
                         clipboard_toast: props.clipboard_toast,
+                        image_attachment_dir: props.image_attachment_dir.clone(),
+                        image_attachments: props.image_attachments,
                         on_submit: props.on_submit.take(),
                         on_escape: if props.slash_palette_snapshot.visible
                             || props.file_picker_snapshot.visible
