@@ -1188,8 +1188,17 @@ impl CodingAgentSession {
     pub async fn set_model_from_value(&self, value: &str) -> Result<String> {
         let _guard = self.turn_gate.lock().await;
         let model = super::overlays::resolve_model_from_value(value)?;
-        let old_window = self.selection.read().model.context_window as u64;
+        let old_model = self.selection.read().model.clone();
+        let old_window = old_model.context_window as u64;
         let new_window = model.context_window as u64;
+        // Preflight against the target model's limit while the current (larger) model is still
+        // active. This keeps compaction summarization runnable when the target cannot accept the
+        // existing history, and prevents appending the model-change entry before the calculation.
+        if new_window < old_window
+            && let Err(err) = self.ensure_context_fits_new_model(old_window, new_window).await
+        {
+            log::warn!("model-switch fit compact: {err}");
+        }
         self.harness
             .set_model(model.clone())
             .await
@@ -1215,10 +1224,6 @@ impl CodingAgentSession {
         let clamped = level.clamp_for_model(&model);
         if clamped != level {
             let _ = self.harness.set_thinking_level(to_agent_thinking(clamped)).await;
-        }
-        // If the new model has a smaller context window, compact until history fits.
-        if let Err(err) = self.ensure_context_fits_new_model(old_window, new_window).await {
-            log::warn!("model-switch fit compact: {err}");
         }
         Ok(format!("{display_name} [{provider}]"))
     }

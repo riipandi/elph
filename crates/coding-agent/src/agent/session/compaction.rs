@@ -217,7 +217,7 @@ impl CodingAgentSession {
         window == 0 || used_after.saturating_add(prompt_tokens) <= window
     }
 
-    /// After switching to a smaller context window, compact until history fits (or max 2 passes).
+    /// Prepare history before switching to a smaller context window (or max 2 passes).
     pub(crate) async fn ensure_context_fits_new_model(&self, old_window: u64, new_window: u64) -> Result<()> {
         if new_window == 0 || new_window >= old_window {
             return Ok(());
@@ -231,24 +231,23 @@ impl CodingAgentSession {
             return Ok(());
         };
 
-        let soft_over = should_compact(used, new_window, settings);
-        let hard_over = used > hard_budget;
-        if !hard_over && !soft_over {
+        if !context_requires_model_switch_compaction(used, new_window, hard_budget, settings) {
             return Ok(());
         }
 
         let old_k = old_window / 1000;
         let new_k = new_window / 1000;
         let will = format!(
-            "Model context is smaller ({old_k}k → {new_k}k). Current history ~{used} tokens exceeds the new limit — compacting…"
+            "Model context is smaller ({old_k}k → {new_k}k). Current history ~{used} tokens requires compaction for the new model — compacting…"
         );
 
         for pass in 1..=2u32 {
             let Ok((used_now, _)) = self.estimate_context_usage().await else {
                 break;
             };
-            // Stop when under hard budget (pass 2+) or under soft threshold when not hard-over.
-            if used_now <= hard_budget {
+            // Continue while either the configured soft threshold or the safety budget is
+            // exceeded. This matters when a model switch lands between the two boundaries.
+            if !context_requires_model_switch_compaction(used_now, new_window, hard_budget, settings) {
                 break;
             }
 
@@ -282,6 +281,15 @@ impl CodingAgentSession {
         }
         Ok(())
     }
+}
+
+fn context_requires_model_switch_compaction(
+    used: u64,
+    new_window: u64,
+    hard_budget: u64,
+    settings: CompactionSettings,
+) -> bool {
+    should_compact(used, new_window, settings) || used > hard_budget
 }
 
 /// Substrings (lowercased) that identify provider context-limit errors.
@@ -406,5 +414,17 @@ mod tests {
         let msg = auto_compact_will_message(150_000, 200_000, 20_000, settings);
         assert!(msg.contains("150000/200000 tokens (75%)"), "{msg}");
         assert!(msg.contains("+ prompt ~20000 tokens reaches the threshold"), "{msg}");
+    }
+
+    #[test]
+    fn model_switch_compacts_at_soft_boundary_even_before_hard_budget() {
+        let settings = CompactionSettings {
+            threshold_pct: Some(80),
+            ..CompactionSettings::default()
+        };
+
+        assert!(context_requires_model_switch_compaction(80_000, 100_000, 84_000, settings));
+        assert!(!context_requires_model_switch_compaction(79_999, 100_000, 84_000, settings));
+        assert!(context_requires_model_switch_compaction(84_001, 100_000, 84_000, settings));
     }
 }
