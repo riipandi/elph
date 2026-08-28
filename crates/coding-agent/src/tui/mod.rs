@@ -130,6 +130,14 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
     let (boot_provider, boot_model_id) =
         resolve_boot_model(&settings, &paths, &cwd, options.resume_id.as_deref()).await?;
     let boot_model = get_builtin_model(&boot_provider, &boot_model_id);
+    let boot_thinking_level = {
+        let raw = resolve_boot_thinking_level(&settings, &paths, &cwd, options.resume_id.as_deref()).await?;
+        if let Some(model) = boot_model.as_ref() {
+            raw.clamp_for_model(model)
+        } else {
+            raw
+        }
+    };
     let context_limit = boot_model
         .as_ref()
         .map(|model| model.context_window as u64)
@@ -147,6 +155,12 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
             .resume_id
             .is_none()
             .then(|| format!("{boot_provider}/{boot_model_id}")),
+        // Seed thinking for a **new** session with the last used level; ignored on
+        // resume — the harness restores the thinking level from the session tree.
+        thinking_override: options
+            .resume_id
+            .is_none()
+            .then(|| boot_thinking_level.label().to_string()),
         preloaded_resources: bootstrap_resources,
         extension_host: extension_host.clone(),
     };
@@ -164,14 +178,7 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
         bootstrap: Some(bootstrap_config),
         // Live agent mode is per-session; new sessions always start in build.
         initial_agent_mode: AgentMode::Build,
-        initial_thinking_level: {
-            let raw = ThinkingLevel::from_setting(&settings.models.default_thinking_level);
-            if let Some(model) = boot_model.as_ref() {
-                raw.clamp_for_model(model)
-            } else {
-                raw
-            }
-        },
+        initial_thinking_level: boot_thinking_level,
         model_label: model_label,
         context_limit: context_limit,
         supports_images: supports_images,
@@ -258,6 +265,38 @@ pub(crate) async fn resolve_boot_model(
         }
         Ok(None) | Err(_) => Ok(resolved_default),
     }
+}
+
+/// Resolve the thinking level a fresh session should boot on.
+///
+/// Priority:
+/// 1. The thinking level last used in this project's sessions — a fresh session
+///    continues with the same reasoning intensity as the previous one.
+/// 2. `models.defaultThinkingLevel` from settings — used on first run (no saved
+///    sessions) or when the latest session never recorded a thinking level.
+///
+/// `resume_id: Some(..)` short-circuits to the settings default: the harness
+/// restores the session's own thinking level from its tree instead.
+pub(crate) async fn resolve_boot_thinking_level(
+    settings: &Settings,
+    paths: &Paths,
+    cwd: &std::path::Path,
+    resume_id: Option<&str>,
+) -> Result<ThinkingLevel> {
+    let raw = ThinkingLevel::from_setting(&settings.models.default_thinking_level);
+
+    // When resuming, the harness restores its own thinking level from the session
+    // tree — short-circuit to the settings default so we don't override it.
+    if resume_id.is_some() {
+        return Ok(raw);
+    }
+
+    let manager = crate::agent::SessionManager::new(paths, cwd)?;
+    let remembered = match manager.last_used_thinking_level().await {
+        Ok(Some(level)) => ThinkingLevel::from_setting(&level),
+        Ok(None) | Err(_) => raw,
+    };
+    Ok(remembered)
 }
 
 #[cfg(test)]
@@ -419,5 +458,58 @@ mod tests {
         // Falls back to the hardcoded DEFAULT_PROVIDER / DEFAULT_MODEL_ID.
         assert_eq!(provider, DEFAULT_PROVIDER);
         assert_eq!(model, DEFAULT_MODEL_ID);
+    }
+
+    #[tokio::test]
+    async fn resolve_boot_thinking_uses_last_used_from_latest_session() {
+        let paths = test_paths("boot-thinking-last-used");
+        let cwd = paths.project_dir().clone();
+        let settings = Settings::defaults();
+        assert_eq!(settings.models.default_thinking_level, "high");
+
+        let manager = crate::agent::SessionManager::new(&paths, &cwd).expect("manager");
+        let mut session = manager.create(None).await.expect("create session");
+        session
+            .append_thinking_level_change("max")
+            .await
+            .expect("thinking change");
+
+        let level = resolve_boot_thinking_level(&settings, &paths, &cwd, None)
+            .await
+            .expect("resolve");
+        assert_eq!(level, ThinkingLevel::Max);
+    }
+
+    #[tokio::test]
+    async fn resolve_boot_thinking_falls_back_to_settings_default() {
+        let paths = test_paths("boot-thinking-default");
+        let cwd = paths.project_dir().clone();
+        let settings = Settings::defaults();
+
+        // No sessions recorded → settings default ("high").
+        let level = resolve_boot_thinking_level(&settings, &paths, &cwd, None)
+            .await
+            .expect("resolve");
+        assert_eq!(level, ThinkingLevel::High);
+    }
+
+    #[tokio::test]
+    async fn resolve_boot_thinking_resume_id_uses_settings_default() {
+        let paths = test_paths("boot-thinking-resume");
+        let cwd = paths.project_dir().clone();
+        let settings = Settings::defaults();
+
+        let manager = crate::agent::SessionManager::new(&paths, &cwd).expect("manager");
+        let mut session = manager.create(None).await.expect("create session");
+        session
+            .append_thinking_level_change("max")
+            .await
+            .expect("thinking change");
+
+        // Resume short-circuits: the harness restores the tree value itself.
+        let level = resolve_boot_thinking_level(&settings, &paths, &cwd, Some("some-session-id"))
+            .await
+            .expect("resolve");
+        assert_eq!(level, ThinkingLevel::High);
     }
 }
