@@ -5,10 +5,10 @@
         "baseUrl": "https://api.cline.bot/api/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.015904,
+            "cacheRead": 0.017721200000000003,
             "cacheWrite": 0.0,
-            "input": 0.07952,
-            "output": 0.15904
+            "input": 0.088606,
+            "output": 0.177212
         },
         "description": "DeepSeek V4 Flash is an efficiency-optimized Mixture-of-Experts model from DeepSeek with 284B total parameters and 13B activated parameters, supporting a 1M-token context window. It is designed for fast inference and...",
         "id": "cline-pass/deepseek-v4-flash",
@@ -140,9 +140,9 @@
         "baseUrl": "https://api.cline.bot/api/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.19,
+            "cacheRead": 0.18,
             "cacheWrite": 0.0,
-            "input": 0.67,
+            "input": 0.66,
             "output": 3.4
         },
         "description": "MoonshotAI: Kimi K2.7 Code is a coding-focused model in Moonshot AI's Kimi K2 family, built to complete end-to-end programming tasks reliably over long contexts. It uses a native multimodal mixture-of-experts...",

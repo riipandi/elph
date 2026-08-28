@@ -210,33 +210,6 @@
             "xhigh": null
         }
     },
-    "CohereLabs/command-a-vision-07-2025": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 2.5,
-            "output": 10.0
-        },
-        "description": "Cohere vision model for multilingual document analysis, OCR, and image understanding",
-        "id": "CohereLabs/command-a-vision-07-2025",
-        "input": ["text", "image"],
-        "maxTokens": 8000,
-        "name": "Command A Vision",
-        "provider": "huggingface",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "CohereLabs/tiny-aya-earth": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
@@ -2674,33 +2647,6 @@
             "xhigh": null
         }
     },
-    "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 1000000,
-        "cost": {
-            "cacheRead": 0.15,
-            "cacheWrite": 0.5,
-            "input": 0.5,
-            "output": 2.5
-        },
-        "description": "Largest Nemotron 3 model for maximum open-weight reasoning and agent accuracy",
-        "id": "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16",
-        "input": ["text"],
-        "maxTokens": 65000,
-        "name": "Nemotron 3 Ultra 550B A55B",
-        "provider": "huggingface",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-NVFP4": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
@@ -2838,32 +2784,6 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "pearl-ai/Gemma-4-31B-it-pearl": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.27999999999999997,
-            "output": 0.86
-        },
-        "id": "pearl-ai/Gemma-4-31B-it-pearl",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "pearl-ai/Gemma-4-31B-it-pearl",
-        "provider": "huggingface",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": "max",
-            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3533,8 +3453,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 816550.238,
-            "output": 2916250.85
+            "input": 816885.93,
+            "output": 2917449.75
         },
         "id": "zai-org/GLM-4.7-FP8",
         "input": ["text"],

@@ -9,10 +9,10 @@
         },
         "contextWindow": 1048560,
         "cost": {
-            "cacheRead": 0.026,
+            "cacheRead": 0.028,
             "cacheWrite": 0.0,
-            "input": 0.104,
-            "output": 0.207
+            "input": 0.14,
+            "output": 0.28
         },
         "description": "Fast DeepSeek V4 lane for economical reasoning, coding, and long-context work",
         "id": "deepseek-v4-flash",
@@ -27,7 +27,7 @@
             "max": "max",
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -40,7 +40,7 @@
         },
         "contextWindow": 262128,
         "cost": {
-            "cacheRead": 0.036,
+            "cacheRead": 0.0144,
             "cacheWrite": 0.0,
             "input": 0.144,
             "output": 0.42
@@ -53,12 +53,12 @@
         "provider": "neuralwatt",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": "max",
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -71,7 +71,7 @@
         },
         "contextWindow": 1048560,
         "cost": {
-            "cacheRead": 0.3625,
+            "cacheRead": 0.145,
             "cacheWrite": 0.0,
             "input": 1.45,
             "output": 4.5
@@ -85,12 +85,12 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": "max",
-            "medium": "medium",
-            "minimal": "minimal",
+            "medium": null,
+            "minimal": null,
             "off": "off",
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "glm-5.2-fast": {
@@ -102,7 +102,7 @@
         },
         "contextWindow": 1048560,
         "cost": {
-            "cacheRead": 0.3625,
+            "cacheRead": 0.145,
             "cacheWrite": 0.0,
             "input": 1.45,
             "output": 4.5
@@ -113,15 +113,15 @@
         "maxTokens": 1048560,
         "name": "GLM 5.2 Fast",
         "provider": "neuralwatt",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
+            "low": null,
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": "off",
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "glm-5.2-short": {
@@ -133,7 +133,7 @@
         },
         "contextWindow": 199984,
         "cost": {
-            "cacheRead": 0.3625,
+            "cacheRead": 0.145,
             "cacheWrite": 0.0,
             "input": 1.45,
             "output": 4.5
@@ -141,18 +141,18 @@
         "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "glm-5.2-short",
         "input": ["text"],
-        "maxTokens": 199984,
+        "maxTokens": 32000,
         "name": "GLM 5.2 Short",
         "provider": "neuralwatt",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": "max",
-            "medium": "medium",
-            "minimal": "minimal",
+            "medium": null,
+            "minimal": null,
             "off": "off",
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "glm-5.2-short-fast": {
@@ -164,7 +164,7 @@
         },
         "contextWindow": 199984,
         "cost": {
-            "cacheRead": 0.3625,
+            "cacheRead": 0.145,
             "cacheWrite": 0.0,
             "input": 1.45,
             "output": 4.5
@@ -172,18 +172,18 @@
         "description": "Efficient GLM model for fast reasoning, coding, and agent workflows",
         "id": "glm-5.2-short-fast",
         "input": ["text"],
-        "maxTokens": 199984,
+        "maxTokens": 32000,
         "name": "GLM 5.2 Short Fast",
         "provider": "neuralwatt",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
+            "low": null,
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": "off",
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "kimi-k2.6": {
@@ -224,20 +224,20 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 262128,
+        "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.1725,
             "cacheWrite": 0.0,
-            "input": 0.69,
-            "output": 3.22
+            "input": 1.655,
+            "output": 8.778
         },
-        "description": "Kimi multimodal agent model for visual understanding, coding, and planning",
+        "description": "Multimodal Kimi workhorse for agent loops, coding tasks, and visual context",
         "id": "kimi-k2.6-fast",
         "input": ["text", "image"],
-        "maxTokens": 262128,
+        "maxTokens": 262144,
         "name": "Kimi K2.6 Fast",
         "provider": "neuralwatt",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -255,17 +255,17 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 262144,
+        "contextWindow": 262128,
         "cost": {
-            "cacheRead": 0.160835,
+            "cacheRead": 0.095,
             "cacheWrite": 0.0,
             "input": 0.95,
-            "output": 3.9995
+            "output": 4.0
         },
         "description": "Coding-focused Kimi model, stronger on long-horizon repo work with less overthinking",
         "id": "kimi-k2.7-code",
-        "input": ["text", "image", "video"],
-        "maxTokens": 32768,
+        "input": ["text", "image"],
+        "maxTokens": 262128,
         "name": "Kimi K2.7 Code",
         "provider": "neuralwatt",
         "reasoning": true,
@@ -288,14 +288,15 @@
         },
         "contextWindow": 262128,
         "cost": {
-            "cacheRead": 0.2375,
-            "cacheWrite": 0,
+            "cacheRead": 0.095,
+            "cacheWrite": 0.0,
             "input": 0.95,
             "output": 4.0
         },
+        "description": "Kimi K2.7 Code with reasoning capped to a short budget for lower latency; reasoning cannot be disabled on this model",
         "id": "kimi-k2.7-code-fast",
         "input": ["text", "image"],
-        "maxTokens": 65536,
+        "maxTokens": 262128,
         "name": "Kimi K2.7 Code Fast",
         "provider": "neuralwatt",
         "reasoning": true,
@@ -359,7 +360,7 @@
         "maxTokens": 262128,
         "name": "Qwen3.5 397B Fast",
         "provider": "neuralwatt",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -377,18 +378,18 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 256000,
+        "contextWindow": 131056,
         "cost": {
-            "cacheRead": 0.0725,
+            "cacheRead": 0.029,
             "cacheWrite": 0.0,
-            "input": 0.15,
-            "output": 0.5
+            "input": 0.29,
+            "output": 1.15
         },
         "description": "Open multimodal Qwen MoE for local agents that need vision, audio, and code",
         "id": "qwen3.6-35b",
         "input": ["text", "image"],
-        "maxTokens": 32768,
-        "name": "Qwen3.6 35B-A3B",
+        "maxTokens": 131056,
+        "name": "Qwen3.6 35B",
         "provider": "neuralwatt",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -410,7 +411,7 @@
         },
         "contextWindow": 131056,
         "cost": {
-            "cacheRead": 0.0725,
+            "cacheRead": 0.029,
             "cacheWrite": 0.0,
             "input": 0.29,
             "output": 1.15

@@ -54,32 +54,6 @@
             "xhigh": null
         }
     },
-    "agnes-2.5-pro": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1000000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.45,
-            "output": 0.9
-        },
-        "id": "agnes-2.5-pro",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "agnes-2.5-pro",
-        "provider": "nara-router",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "agnes-video-v2.0": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
@@ -136,7 +110,7 @@
     "claude-opus-4.7": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 200000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
@@ -163,7 +137,7 @@
     "claude-opus-4.8": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 200000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
@@ -297,7 +271,7 @@
     "deepseek-v4-flash-vision-exp": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0028,
             "cacheWrite": 0.0,
@@ -351,7 +325,7 @@
     "deepseek-v4-pro-0813-bynara": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 128000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -456,7 +430,7 @@
     "glm-5.2-promo": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 128000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -479,10 +453,63 @@
             "xhigh": "xhigh"
         }
     },
+    "glm-5.3-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.03,
+            "cacheWrite": 0.0,
+            "input": 0.15,
+            "output": 0.5
+        },
+        "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
+        "id": "glm-5.3-flash",
+        "input": ["text", "image", "video"],
+        "maxTokens": 1048576,
+        "name": "GLM5.3 Flash",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "glm-5.3-flash-free": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "glm-5.3-flash-free",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "glm-5.3-flash-free",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
     "gpt-5.4": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1050000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.25,
             "cacheWrite": 0.0,
@@ -644,7 +671,7 @@
     "kimi-k2.7-code": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 262144,
+        "contextWindow": 262000,
         "cost": {
             "cacheRead": 0.160835,
             "cacheWrite": 0.0,
@@ -697,7 +724,7 @@
     "kimi-k3": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.3,
             "cacheWrite": 0.0,
@@ -724,7 +751,7 @@
     "kimi-k3-bynara": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 128000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -776,7 +803,7 @@
     "mimo-v2.5": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.0028,
             "cacheWrite": 0.0,
@@ -803,7 +830,7 @@
     "mimo-v2.5-free": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 200000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -830,7 +857,7 @@
     "mimo-v2.5-pro": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.003,
             "cacheWrite": 0.0,
@@ -857,7 +884,7 @@
     "mimo-v2.5-pro-ultraspeed": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.0108,
             "cacheWrite": 0.0,
@@ -884,7 +911,7 @@
     "minimax-m3": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.099,
             "cacheWrite": 0.0,
@@ -911,7 +938,7 @@
     "minimax-m3-free": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 200000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -964,9 +991,9 @@
     "mistral-medium-3-5": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 262144,
+        "contextWindow": 256000,
         "cost": {
-            "cacheRead": 1.485,
+            "cacheRead": 1.65,
             "cacheWrite": 0.0,
             "input": 1.5,
             "output": 7.5
@@ -1018,7 +1045,7 @@
     "muse-spark-1.2": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.15,
             "cacheWrite": 0.0,
@@ -1045,7 +1072,7 @@
     "muse-spark-1.2-contributor": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.002,
             "cacheWrite": 0.0,
@@ -1072,7 +1099,7 @@
     "nemotron-3-ultra": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 262144,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -1099,7 +1126,7 @@
     "qwen-3.8-max-free": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 128000,
+        "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -1231,7 +1258,7 @@
     "qwen3.7-plus": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 991000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.0564,
             "cacheWrite": 0.3525,
@@ -1284,7 +1311,7 @@
     "qwen3.8-27b": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
-        "contextWindow": 262144,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.1,
             "cacheWrite": 0.0,
@@ -1300,6 +1327,32 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": null,
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "qwen3.8-flash-free": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "qwen3.8-flash-free",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "qwen3.8-flash-free",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
             "low": "low",
             "max": null,
             "medium": "medium",

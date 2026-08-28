@@ -27,32 +27,6 @@
             "xhigh": null
         }
     },
-    "deepseek-v4-flash:preview": {
-        "api": "openai-completions",
-        "baseUrl": "https://ollama.com/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "id": "deepseek-v4-flash:preview",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "deepseek-v4-flash:preview",
-        "provider": "ollama-cloud",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": "max",
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "deepseek-v4-pro:0813": {
         "api": "openai-completions",
         "baseUrl": "https://ollama.com/v1",
@@ -67,32 +41,6 @@
         "input": ["text"],
         "maxTokens": 64000,
         "name": "deepseek-v4-pro:0813",
-        "provider": "ollama-cloud",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": "max",
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "deepseek-v4-pro:preview": {
-        "api": "openai-completions",
-        "baseUrl": "https://ollama.com/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "id": "deepseek-v4-pro:preview",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "deepseek-v4-pro:preview",
         "provider": "ollama-cloud",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -189,7 +137,7 @@
     "glm-5.3-flash": {
         "api": "openai-completions",
         "baseUrl": "https://ollama.com/v1",
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.03,
             "cacheWrite": 0.0,

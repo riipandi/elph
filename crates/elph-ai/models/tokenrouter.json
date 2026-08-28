@@ -1803,7 +1803,7 @@
         "description": "NVIDIA Nemotron 3.5 Lightning is an open mixture-of-experts model from NVIDIA, with 3B active parameters out of 30B total. It is suited for high-throughput agentic workloads and specialized tasks that...",
         "id": "nvidia/nemotron-3.5-lightning",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 235929,
         "name": "Nemotron 3.5 Lightning 30B A3B",
         "provider": "tokenrouter",
         "reasoning": true,
@@ -2425,7 +2425,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-35b-a3b",
         "input": ["text", "image", "video"],
-        "maxTokens": 65536,
+        "maxTokens": 235929,
         "name": "Qwen3.5 35B-A3B",
         "provider": "tokenrouter",
         "reasoning": true,
@@ -2635,10 +2635,10 @@
         "cost": {
             "cacheRead": 0.016,
             "cacheWrite": 0.2,
-            "input": 0.16,
-            "output": 0.47
+            "input": 0.13,
+            "output": 0.43
         },
-        "description": "Qwen3.8 Flash is a multimodal reasoning model from Alibaba. It is suited for coding assistance, agentic workflows, visual understanding, document and codebase analysis, desktop interaction, chart analysis, and long-video analysis.",
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.8-flash",
         "input": ["text", "image", "video"],
         "maxTokens": 131072,
@@ -2646,13 +2646,13 @@
         "provider": "tokenrouter",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": null,
+            "high": null,
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
-            "off": "off",
-            "xhigh": null
+            "off": null,
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.8-max": {
@@ -3015,7 +3015,7 @@
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 0.0,
-            "output": 0.0
+            "output": 0.4
         },
         "id": "wan3.0-video",
         "input": ["text"],
@@ -3585,17 +3585,17 @@
     "z-ai/glm-5.3-flash": {
         "api": "openai-completions",
         "baseUrl": "https://api.tokenrouter.com/v1",
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.015,
-            "cacheWrite": 0.0,
+            "cacheWrite": 0.075,
             "input": 0.075,
             "output": 0.25
         },
-        "description": "GLM-5.3-Flash is a native multimodal model from Z.ai. It is suited for efficient coding and long-horizon agent tasks. Its hybrid sparse and linear attention architecture maintains accurate long-context behavior while...",
+        "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
         "id": "z-ai/glm-5.3-flash",
         "input": ["text", "image", "video"],
-        "maxTokens": 131072,
+        "maxTokens": 128000,
         "name": "GLM-5.3-Flash",
         "provider": "tokenrouter",
         "reasoning": true,

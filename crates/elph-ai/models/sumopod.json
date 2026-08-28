@@ -968,12 +968,12 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 262144,
+        "contextWindow": 256000,
         "cost": {
             "cacheRead": 0.035,
             "cacheWrite": 0.0,
-            "input": 0.14,
-            "output": 0.58
+            "input": 0.1562,
+            "output": 0.6248
         },
         "description": "Tencent Hy reasoning model for coding, instruction following, and agent tasks",
         "id": "hy3",
