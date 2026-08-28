@@ -642,10 +642,12 @@ impl CodingAgentSession {
 
     pub async fn set_agent_mode(&self, mode: AgentMode) -> Result<()> {
         let _guard = self.mode_gate.lock().await;
+        // Do not mutate the policy or reconcile the harness while a turn is
+        // executing. A mode change requested during plan implementation must
+        // take effect only after that implementation prompt has completed.
+        let _turn_guard = self.turn_gate.lock().await;
         *self.mode_state.lock().await = mode;
         self.policy.lock().await.set_mode(mode);
-        // Wait for any in-flight turn before reconciling tools (avoids mid-turn mode races).
-        let _turn_guard = self.turn_gate.lock().await;
         self.apply_agent_mode(mode).await
     }
 
@@ -1243,18 +1245,51 @@ impl CodingAgentSession {
     }
 
     pub async fn resolve_plan(&self, choice: PlanConfirmationChoice) -> Result<()> {
-        self.harness
-            .resolve_plan_confirmation(choice)
-            .await
-            .map_err(|e| anyhow::anyhow!("{e}"))?;
-        // Implementing a plan exits harness Plan mode — restore Build tool surface.
-        if matches!(
+        // Plan implementation runs a nested harness prompt. Keep it in the
+        // session turn gate so a concurrent Build/Brave switch cannot mutate
+        // the policy or active tool surface while that prompt is streaming.
+        let _mode_guard = self.mode_gate.lock().await;
+        let _turn_guard = self.turn_gate.lock().await;
+        // The implementation prompt is executed by the harness before this method
+        // returns. Switch the policy first so any mutating tools requested by that
+        // prompt receive the normal Build approval choices (once/session/all/deny)
+        // instead of the restricted Plan-mode choices.
+        let implementing = matches!(
             choice,
             PlanConfirmationChoice::Implement | PlanConfirmationChoice::ImplementFresh
-        ) {
-            *self.mode_state.lock().await = AgentMode::Build;
+        );
+        if implementing {
+            // The TUI updates mode_state eagerly. ACP does not, so only fill in
+            // Build when the session is still in Plan; preserve a mode selected
+            // by the user while the implementation prompt was running.
+            if *self.mode_state.lock().await == AgentMode::Plan {
+                *self.mode_state.lock().await = AgentMode::Build;
+            }
             self.policy.lock().await.set_mode(AgentMode::Build);
-            self.apply_agent_mode(AgentMode::Build).await?;
+        }
+        let started = Instant::now();
+        let resolution = self
+            .harness
+            .resolve_plan_confirmation(choice)
+            .await
+            .map_err(|e| anyhow::anyhow!("{e}"));
+        // `resolve_plan_confirmation` runs the implementation prompt directly
+        // through the harness, bypassing `run_prompt_turn`. Finalize that nested
+        // turn here so the TUI receives RunCompleted and can leave busy state.
+        if implementing {
+            self.finish_ui_turn(started).await;
+        }
+        resolution?;
+        // Implementing a plan exits harness Plan mode — restore Build tool surface.
+        if implementing {
+            // A mode switch may have been requested while the nested prompt
+            // was running. The queued switch owns the later reconciliation;
+            // only reconcile Build here when no different mode was selected.
+            let mode = *self.mode_state.lock().await;
+            if mode == AgentMode::Build {
+                self.policy.lock().await.set_mode(AgentMode::Build);
+                self.apply_agent_mode(AgentMode::Build).await?;
+            }
         }
         Ok(())
     }
