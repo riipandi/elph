@@ -1243,15 +1243,24 @@ impl CodingAgentSession {
     }
 
     pub async fn resolve_plan(&self, choice: PlanConfirmationChoice) -> Result<()> {
+        // The implementation prompt is executed by the harness before this method
+        // returns. Switch the policy first so any mutating tools requested by that
+        // prompt receive the normal Build approval choices (once/session/all/deny)
+        // instead of the restricted Plan-mode choices.
+        let implementing = matches!(
+            choice,
+            PlanConfirmationChoice::Implement | PlanConfirmationChoice::ImplementFresh
+        );
+        if implementing {
+            *self.mode_state.lock().await = AgentMode::Build;
+            self.policy.lock().await.set_mode(AgentMode::Build);
+        }
         self.harness
             .resolve_plan_confirmation(choice)
             .await
             .map_err(|e| anyhow::anyhow!("{e}"))?;
         // Implementing a plan exits harness Plan mode — restore Build tool surface.
-        if matches!(
-            choice,
-            PlanConfirmationChoice::Implement | PlanConfirmationChoice::ImplementFresh
-        ) {
+        if implementing {
             *self.mode_state.lock().await = AgentMode::Build;
             self.policy.lock().await.set_mode(AgentMode::Build);
             self.apply_agent_mode(AgentMode::Build).await?;
