@@ -2048,15 +2048,30 @@ pub(crate) fn build_shell_view(
                                 suppress_enter_newline.set(true);
                                 return;
                             }
-                            SlashOutcome::OpenThinkingSelector { levels } => {
+                            SlashOutcome::OpenThinkingSelector => {
+                                let pending = {
+                                    let (provider, model_id) = if let Some(session) = agent_session.as_ref() {
+                                        (session.model_provider(), session.model_id())
+                                    } else {
+                                        let label = chrome_stats.read().model_label.clone();
+                                        match crate::agent::parse_model_value(&label) {
+                                            Ok((p, m)) => (p, m),
+                                            Err(_) => (String::new(), String::new()),
+                                        }
+                                    };
+                                    crate::tui::thinking_selector::PendingThinkingSelector::open_for_model(
+                                        &provider,
+                                        &model_id,
+                                        thinking_level.get(),
+                                    )
+                                };
                                 open_thinking_selector(OpenThinkingSelectorArgs {
                                     pending: &mut pending_thinking_selector,
                                     draft: &mut draft,
                                     live_draft: &mut live_draft,
                                     shell_focus: &mut shell_focus,
                                     selected_index: Some(&mut thinking_selector_selected),
-                                    levels,
-                                    current: thinking_level.get(),
+                                    pending_selector: pending,
                                 });
                                 draft.set(String::new());
                                 live_draft.set(String::new());

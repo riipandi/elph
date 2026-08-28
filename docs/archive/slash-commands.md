@@ -17,7 +17,7 @@ Built-in commands always win over extension and template names.
 | `/help`                     | —             | List all commands                                                                                                                     |
 | `/aside`                    | —             | Side question without interrupting the main turn (tool-free one-shot; inline panel above prompt, Esc dismisses)                    |
 | `/model`                    | —             | Open model selector (optional filter args)                                                                                            |
-| `/thinking`                 | `/think`      | Open thinking level picker (levels supported by the active model)                                                                     |
+| `/thinking`                 | `/think`      | Open thinking level picker (levels supported by the active model; also opens after `/model` picks a model)                            |
 | `/goal`                     | `/goals`      | Manage session goals                                                                                                                  |
 | `/exit`                     | `/quit`, `/q` | Quit                                                                                                                                  |
 | `/commit`                   | —             | Generate commit message from staged changes                                                                                           |

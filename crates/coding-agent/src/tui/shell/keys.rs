@@ -1555,7 +1555,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                                 model_set_notice_text(&label),
                             );
                             if let Some(session) = agent {
-                                spawn_runtime_model_switch(session, value, thinking_level.get());
+                                spawn_runtime_model_switch(session, value.clone(), thinking_level.get());
                             }
                         }
                         Err(err) => {
@@ -1566,10 +1566,36 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                                 &mut prompt_history,
                                 TranscriptMessage::text(format!("{err}"), TranscriptStyle::Meta),
                             );
+                            return;
                         }
                     }
+
+                    // Model applied: close the picker, then open the thinking level
+                    // picker filtered to the newly selected model's catalog (same
+                    // multi-step dialog pattern as the provider-connect flow).
+                    close_model_selector(&mut pending_model_selector, &mut draft, &mut live_draft, &mut shell_focus);
+                    let pending = {
+                        let (provider, model_id) = match crate::agent::parse_model_value(&value) {
+                            Ok((p, m)) => (p, m),
+                            Err(_) => (String::new(), String::new()),
+                        };
+                        crate::tui::thinking_selector::PendingThinkingSelector::open_for_model(
+                            &provider,
+                            &model_id,
+                            thinking_level.get(),
+                        )
+                    };
+                    open_thinking_selector(OpenThinkingSelectorArgs {
+                        pending: &mut pending_thinking_selector,
+                        draft: &mut draft,
+                        live_draft: &mut live_draft,
+                        shell_focus: &mut shell_focus,
+                        selected_index: Some(&mut thinking_selector_selected),
+                        pending_selector: pending,
+                    });
+                    force_editor_clear.set(true);
+                    suppress_enter_newline.set(true);
                 }
-                close_model_selector(&mut pending_model_selector, &mut draft, &mut live_draft, &mut shell_focus);
                 return;
             }
 
@@ -3440,15 +3466,32 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             session_scoped: &session_scoped_items.read(),
                         });
                     }
-                    SlashOutcome::OpenThinkingSelector { levels } => {
+                    SlashOutcome::OpenThinkingSelector => {
+                        // `mut` + write guard: resolve the active model (session or
+                        // footer label) and build model-catalog-limited levels.
+                        let pending = {
+                            let (provider, model_id) = if let Some(session) = agent_session.as_ref() {
+                                (session.model_provider(), session.model_id())
+                            } else {
+                                let label = chrome_stats.read().model_label.clone();
+                                match crate::agent::parse_model_value(&label) {
+                                    Ok((p, m)) => (p, m),
+                                    Err(_) => (String::new(), String::new()),
+                                }
+                            };
+                            crate::tui::thinking_selector::PendingThinkingSelector::open_for_model(
+                                &provider,
+                                &model_id,
+                                thinking_level.get(),
+                            )
+                        };
                         open_thinking_selector(OpenThinkingSelectorArgs {
                             pending: &mut pending_thinking_selector,
                             draft: &mut draft,
                             live_draft: &mut live_draft,
                             shell_focus: &mut shell_focus,
                             selected_index: Some(&mut thinking_selector_selected),
-                            levels,
-                            current: thinking_level.get(),
+                            pending_selector: pending,
                         });
                         force_editor_clear.set(true);
                         suppress_enter_newline.set(true);

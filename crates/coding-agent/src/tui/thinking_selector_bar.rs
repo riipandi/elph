@@ -37,10 +37,13 @@ impl Default for ThinkingSelectorBarProps {
     }
 }
 
-fn thinking_row(theme: UiTheme, level: &str, selected: bool) -> AnyElement<'static> {
+fn thinking_row(theme: UiTheme, level: &str, supported: bool, selected: bool) -> AnyElement<'static> {
     let prefix = list_selection_row_prefix(selected);
     let (name_color, name_weight) = dialog_option_name_style(theme, selected);
     let row_surface = dialog_row_surface(theme, selected);
+    // Unsupported levels (not in the active model's thinkingLevelMap) show a dim
+    // marker; they still collapse to Off if confirmed.
+    let marker = if supported { " " } else { "·" };
     element! {
         View(
             width: 100pct,
@@ -53,7 +56,7 @@ fn thinking_row(theme: UiTheme, level: &str, selected: bool) -> AnyElement<'stat
             overflow: Overflow::Hidden,
         ) {
             Text(
-                content: format!("{prefix}{level}"),
+                content: format!("{prefix}{marker}{level}"),
                 color: name_color,
                 weight: name_weight,
                 wrap: TextWrap::NoWrap,
@@ -76,10 +79,10 @@ pub fn ThinkingSelectorBar(props: &mut ThinkingSelectorBarProps, _hooks: Hooks) 
     let selected = props.selected_index.map(|s| s.get()).unwrap_or(0);
 
     let rows: Vec<AnyElement<'static>> = pending
-        .levels
+        .rows
         .iter()
         .enumerate()
-        .map(|(i, level)| thinking_row(theme, level.label(), i == selected))
+        .map(|(i, (level, supported))| thinking_row(theme, level.label(), *supported, i == selected))
         .collect();
 
     element! {

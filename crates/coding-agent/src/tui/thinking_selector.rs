@@ -1,44 +1,72 @@
-//! Shell helpers for the `/thinking` level picker.
+//! Shell helpers for the thinking level picker.
 //!
 //! Pattern matches `model_selector_shell.rs` / `item_selector.rs`: stash the
 //! prompt draft, focus [`ShellFocus::StatusDialog`], navigate with ↑↓, Enter
 //! confirms. Selection state is synced on open / keys only — never during render.
+//!
+//! The level list may be filtered to the active model's catalog
+//! (`cycle_for_model`); `selected` is an index **into the display list**, which
+//! for full-list mode is order-independent from the enum ranking (`low` sits
+//! before `minimal` in the picker, but `Minimal` still ranks below `Low`).
 
 use iocraft::prelude::{KeyCode, KeyModifiers};
 
 use crate::tui::focus::ShellFocus;
 use crate::types::ThinkingLevel;
 
+/// Display row: level + whether the active model supports it.
+pub type ThinkingLevelRow = (ThinkingLevel, bool);
+
 /// Open state for the thinking level picker overlay.
 #[derive(Debug, Clone)]
 pub struct PendingThinkingSelector {
-    pub levels: Vec<ThinkingLevel>,
+    /// Display-list rows (already filtered to the model catalog where available).
+    pub rows: Vec<ThinkingLevelRow>,
+    /// Selected **display-list** index.
     pub selected: usize,
     pub stashed_prompt_draft: Option<String>,
 }
 
 impl PendingThinkingSelector {
-    pub fn open(levels: Vec<ThinkingLevel>, current: ThinkingLevel) -> Self {
-        let selected = levels.iter().position(|level| *level == current).unwrap_or(0);
+    /// Open with the active model's catalog cycle (`Off` + supported levels).
+    pub fn open_for_model(provider: &str, model_id: &str, current: ThinkingLevel) -> Self {
+        Self::open(
+            crate::tui::model_selector_shell::thinking_levels_for_model(provider, model_id)
+                .into_iter()
+                .map(|level| (level, true))
+                .collect(),
+            current,
+        )
+    }
+
+    /// Open with an explicit row list (model-filtered or full) + known capabilities.
+    pub fn open(rows: Vec<ThinkingLevelRow>, current: ThinkingLevel) -> Self {
+        // Prefer the current level only when it is supported; else default to the
+        // first supported row (usually Off).
+        let selected = if let Some(supported) = rows.iter().position(|(level, ok)| *level == current && *ok) {
+            supported
+        } else {
+            rows.iter().position(|(_, ok)| *ok).unwrap_or(0)
+        };
         Self {
-            levels,
+            rows,
             selected,
             stashed_prompt_draft: None,
         }
     }
 
     pub fn selected_level(&self) -> Option<ThinkingLevel> {
-        self.levels.get(self.selected).copied()
+        self.rows.get(self.selected).map(|(level, _)| *level)
     }
 
     pub fn move_delta(&mut self, delta: isize) {
-        if self.levels.is_empty() {
+        if self.rows.is_empty() {
             return;
         }
         let next = if delta < 0 {
             self.selected.saturating_sub((-delta) as usize)
         } else {
-            self.selected.saturating_add(delta as usize).min(self.levels.len() - 1)
+            self.selected.saturating_add(delta as usize).min(self.rows.len() - 1)
         };
         self.selected = next;
     }
@@ -52,8 +80,7 @@ pub struct OpenThinkingSelectorArgs<'a> {
     pub shell_focus: &'a mut iocraft::prelude::State<ShellFocus>,
     /// SelectList highlight state — set **once** on open, then only from key handlers.
     pub selected_index: Option<&'a mut iocraft::prelude::State<usize>>,
-    pub levels: Vec<ThinkingLevel>,
-    pub current: ThinkingLevel,
+    pub pending_selector: PendingThinkingSelector,
 }
 
 pub fn open_thinking_selector(args: OpenThinkingSelectorArgs<'_>) {
@@ -65,7 +92,7 @@ pub fn open_thinking_selector(args: OpenThinkingSelectorArgs<'_>) {
         args.draft.set(String::new());
         args.live_draft.set(String::new());
     }
-    let mut pending = PendingThinkingSelector::open(args.levels, args.current);
+    let mut pending = args.pending_selector;
     pending.stashed_prompt_draft = stashed;
     if let Some(sel) = args.selected_index {
         sel.set(pending.selected);
@@ -113,29 +140,42 @@ pub fn thinking_selector_confirm_on_enter(modifiers: KeyModifiers, code: KeyCode
 mod tests {
     use super::*;
 
-    fn levels() -> Vec<ThinkingLevel> {
+    fn rows() -> Vec<ThinkingLevelRow> {
         use ThinkingLevel::*;
-        vec![Off, Minimal, Low, Medium, High, Xhigh, Max]
+        vec![Off, Low, Minimal, Medium, High, Xhigh, Max]
+            .into_iter()
+            .map(|level| (level, true))
+            .collect()
     }
 
     #[test]
     fn open_selects_current_level() {
-        let pending = PendingThinkingSelector::open(levels(), ThinkingLevel::Medium);
+        let pending = PendingThinkingSelector::open(rows(), ThinkingLevel::Medium);
         assert_eq!(pending.selected, 3);
         assert_eq!(pending.selected_level(), Some(ThinkingLevel::Medium));
     }
 
     #[test]
     fn open_falls_back_to_off_when_current_missing() {
-        let pending = PendingThinkingSelector::open(levels(), ThinkingLevel::Max);
+        let pending = PendingThinkingSelector::open(rows(), ThinkingLevel::Max);
         assert_eq!(pending.selected, 6);
-        let pending = PendingThinkingSelector::open(vec![ThinkingLevel::Off], ThinkingLevel::Max);
+        let pending = PendingThinkingSelector::open(vec![(ThinkingLevel::Off, true)], ThinkingLevel::Max);
         assert_eq!(pending.selected, 0);
     }
 
     #[test]
+    fn open_selects_first_supported_when_current_unsupported() {
+        use ThinkingLevel::*;
+        let pending =
+            PendingThinkingSelector::open(vec![(Off, true), (Low, false), (Minimal, true), (Medium, false)], Low);
+        // Current level is unsupported for the active model → fall back to Off.
+        assert_eq!(pending.selected, 0);
+        assert_eq!(pending.selected_level(), Some(Off));
+    }
+
+    #[test]
     fn nav_clamps() {
-        let mut pending = PendingThinkingSelector::open(levels(), ThinkingLevel::Off);
+        let mut pending = PendingThinkingSelector::open(rows(), ThinkingLevel::Off);
         pending.move_delta(-1);
         assert_eq!(pending.selected, 0);
         pending.move_delta(100);
@@ -162,5 +202,13 @@ mod tests {
         assert!(thinking_selector_confirm_on_enter(KeyModifiers::empty(), KeyCode::Enter));
         assert!(!thinking_selector_confirm_on_enter(KeyModifiers::CONTROL, KeyCode::Enter));
         assert!(!thinking_selector_confirm_on_enter(KeyModifiers::empty(), KeyCode::Char('e')));
+    }
+
+    #[test]
+    fn open_for_model_filters_to_model_catalog() {
+        // Unknown provider/model pair → Off-only fallback.
+        let pending = PendingThinkingSelector::open_for_model("nope", "nope", ThinkingLevel::Low);
+        assert_eq!(pending.rows, vec![(ThinkingLevel::Off, true)]);
+        assert_eq!(pending.selected_level(), Some(ThinkingLevel::Off));
     }
 }
