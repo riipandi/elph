@@ -1,8 +1,9 @@
 ---
 name: tui-design
 description: >-
-    Guide terminal UI development with iocraft (components, flex layout, scroll, a11y) and CLI/slash
-    command UX: anstyle coloring, readable structured output, TTY/NO_COLOR rules, and dialog-safe plain text.
+    Guide Elph terminal UI development with iocraft (components, flex layout, scroll,
+    a11y, dialogs, and transcript ergonomics) and CLI/slash command UX: anstyle
+    coloring, readable structured output, TTY/NO_COLOR rules, and dialog-safe plain text.
     Use when building or refactoring a TUI, CLI subcommands, slash commands, colored terminal output,
     fixing scroll/focus/layout bugs, improving keyboard/contrast ergonomics, or the user mentions iocraft,
     terminal UI, CLI colors, anstyle, command UX, accessibility, a11y, or runs /tui-design.
@@ -12,6 +13,12 @@ metadata:
 
 # TUI & Terminal UX Design
 
+## Language
+
+- In-chat guidance follows the user's language.
+- Code, paths, identifiers, key names, and command names stay literal.
+- Permanent documentation and code comments are written in English.
+
 ## Objective
 
 Help implement and refine:
@@ -19,7 +26,48 @@ Help implement and refine:
 1. **Interactive TUIs** with **iocraft** — mental model, layout, hooks, a11y.
 2. **CLI / slash command output** — structured, scannable text with optional **ANSI color** (`anstyle`), good defaults, and safe behavior when color is off or output is not a TTY.
 
-Read existing TUI and CLI code in the repo first; match local conventions (e.g. `crates/coding-agent/src/cli/*`, `crates/coding-agent/src/memory/format.rs`, provider/interactive styles).
+Read existing TUI and CLI code in the repo first; match local conventions (for
+example `crates/coding-agent/src/tui/`, `crates/elph-tui/src/`,
+`crates/coding-agent/src/cli/`, `crates/coding-agent/src/memory/format.rs`,
+and `crates/rendown/`). Do not design against generic ratatui assumptions:
+Elph uses iocraft, the local `vendor/iocraft` patch, crossterm events, smol-backed
+`use_future`, and `rendown` for Markdown/terminal rendering.
+
+## Elph UI architecture
+
+The application shell lives under `crates/coding-agent/src/tui/` and owns
+session state, global events, transcript, prompt input, dialogs, and slash
+palette. Reusable visual primitives live in `crates/elph-tui/src/`; rendered
+Markdown and code go through `rendown`. Keep these responsibilities separate:
+
+```text
+MainShell
+  ├── fixed chrome (header/status)
+  ├── transcript panel (scroll + sticky prompt behavior)
+  ├── modal/dialog or overlay
+  └── prompt/editor/footer
+```
+
+Before editing, locate the nearest existing component and its tests. Prefer a
+new file under the existing module tree over enlarging `shell/mod.rs`,
+`status_dialog.rs`, or another already cohesive-but-large module. Preserve the
+existing `pub`/`pub(crate)` visibility and do not make internals public to
+support an integration test.
+
+### Runtime and platform facts
+
+- iocraft is pinned to `=0.8.4` and patched to `vendor/iocraft` because Elph
+  needs bracketed paste support.
+- `use_future` runs on smol; use smol timers for iocraft hook work rather than
+  assuming a Tokio runtime is present.
+- Tokio is used by application/agent async work. Never block the render loop
+  with filesystem, process, network, database, or embedding work; use the
+  established async/task boundary.
+- Clipboard dependencies have Linux Wayland-specific features. PTY, signals,
+  and shell behavior are platform-specific; keep Unix code gated and provide a
+  Windows path or an explicit documented limitation.
+- Use `Path`/`PathBuf` and `MAIN_SEPARATOR`; never construct OS paths with
+  hardcoded `/` or `\`.
 
 ## Mental model
 
@@ -119,7 +167,7 @@ View(
 | Header/footer scroll away   | Root `justify_content: FlexEnd` with auto-scroll                   | Root stays `FlexStart`; only inner content uses `FlexEnd` if needed |
 | Extra blank row under input | Overlap label in normal flow                                       | `position: Absolute` on label container                             |
 | Props compile errors        | Missing `Default` or wrong prop syntax                             | `#[derive(Default, Props)]`, named props in `element!`              |
-| State won't init            | Passed value instead of initializer                                | `use_state(                                                         |     | value)` |
+| State won't init            | Passed value instead of initializer                                | `use_state(|| initial)`                                             |
 
 ### Width discipline
 
@@ -151,7 +199,8 @@ Use `Clone` on props when passing owned strings into child components. Use `Copy
 - `use_state(|| …)` — UI state
 - `use_terminal_events(closure)` — keyboard/mouse
 - `use_context_mut::<SystemContext>()` — `system.exit()`
-- `use_future(async { … })` — intervals, background work (keep loops cancel-friendly)
+- `use_future(async { … })` — smol-compatible intervals/background work (keep
+  loops cancel-friendly; do not assume Tokio APIs inside the hook)
 
 ### Entry point
 
@@ -159,12 +208,14 @@ Use `Clone` on props when passing owned strings into child components. Use `Copy
 element!(App(/* props */))
     .render_loop()
     .fullscreen()
-    .enable_mouse_capture()  // when click/scroll matters
-    .ignore_ctrl_c()         // handle Ctrl+C in app logic if needed
+    .enable_mouse_capture()  // only when click/scroll matters
+    .ignore_ctrl_c()         // only when app logic owns Ctrl+C
     .await?;
 ```
 
-Use `.print()` for static snapshots in examples without a runtime loop.
+Use `.print()` for static snapshots in examples without a runtime loop. The
+production Elph shell is started from `crates/coding-agent/src/tui/mod.rs`;
+do not add a second render loop for a dialog or panel.
 
 ## Input & focus
 
@@ -495,6 +546,92 @@ parse (clap | slash tokens)
 
 ---
 
+## Interaction and rendering safety
+
+- Treat input events as a state machine: define which component owns each key,
+  then handle it in one place. Do not let global shell handlers and focused
+  editors both submit, delete, scroll, or change mode for the same event.
+- Ignore `KeyEventKind::Release` unless a feature explicitly needs release
+  semantics. Account for bracketed paste and enhanced keyboard events before
+  interpreting individual characters.
+- Keep UI callbacks short. Send work to the existing agent/event channel and
+  render progress from state; do not perform network, shell, filesystem,
+  database, or model work inside a component render function.
+- Cancel timers, streams, and background work when a component unmounts or a
+  dialog closes. A closed dialog must not continue emitting events into a
+  replaced state object.
+- Do not hold a `RefCell`, `MutexGuard`, or other borrow/lock across an
+  `.await`. Prefer message passing for long-running agent work.
+- Treat model output, tool output, paths, and repository text as untrusted
+  display data. Use the existing Markdown renderer and width-aware text
+  truncation; never interpret model output as terminal control sequences.
+- Every loading, empty, error, cancelled, and permission-denied state needs a
+  visible textual representation and a recovery action where one exists.
+- Preserve transcript meaning when colors, Unicode box drawing, or animations
+  are unavailable. `NO_COLOR`, redirected output, narrow terminals, and
+  accessibility tools are supported states, not exceptional states.
+
+## Testing and verification
+
+Use the repository wrappers rather than direct Cargo commands:
+
+```sh
+make fmt
+make check -- -p elph-tui
+make lint -- -p elph-tui
+make test -- -p elph-tui
+```
+
+For changes in `crates/coding-agent/src/tui/`, use `-p elph` and include
+dependent tests. Run the full workspace gates when changing shared components,
+public APIs, event routing, or layout primitives. If sccache is unavailable,
+`SCCACHE_DISABLE=1` is an acceptable diagnostic fallback; report it.
+
+Test the behavior, not terminal escape strings:
+
+- render deterministic component snapshots/strings at widths including 80×24,
+  a narrow width, and a wide width;
+- assert plain text for content and use a separate opt-in ANSI smoke test;
+- exercise keyboard-only paths with release events, pasted text, focus
+  transitions, and modal open/close;
+- verify long Unicode text truncates on character/display-cell boundaries;
+- cover loading, empty, error, cancellation, and terminal-resize states;
+- test CLI output in TTY-like, pipe-like, and `NO_COLOR=1` modes;
+- test slash dialogs with plain output because dialog surfaces do not interpret
+  ANSI reliably;
+- on Unix, cover PTY/signal behavior only in Unix-gated tests; use sentinel
+  files and `Path` assertions rather than comparing shell `$PWD` strings on
+  Windows.
+
+Do not introduce browser-style visual snapshots or a new UI framework solely
+for testing. Reuse existing iocraft/rendown test helpers and component seams.
+
+## Change workflow
+
+Before implementation, record:
+
+1. the affected zone (shell, transcript, prompt, dialog, palette, or CLI);
+2. the state owner and event owner;
+3. fixed versus growing layout regions;
+4. terminal widths/heights and platform modes to verify;
+5. whether the change affects a documented CLI/slash contract.
+
+After implementation:
+
+1. run `make fmt`;
+2. run the narrow package gates;
+3. manually inspect at 80×24 and a wide terminal, with mouse disabled;
+4. check `NO_COLOR=1`, piped/plain output, and reduced-motion behavior if
+   animation is involved;
+5. run the accessibility and command checklists;
+6. run full `make check`, `make lint`, and `make test` for shared or
+   cross-crate changes;
+7. inspect `git diff --check` and preserve unrelated working-tree edits.
+
+Do not commit or push unless explicitly requested.
+
+---
+
 ## Workflow
 
 When implementing or fixing a **TUI**:
@@ -505,11 +642,13 @@ When implementing or fixing a **TUI**:
 4. **Wire state** at the lowest ancestor that needs it; pass derived values as props.
 5. **Test layout** at small and large terminal sizes mentally: does the grow region still clip?
 6. **Run the accessibility checklist** — keyboard-only path, focus visibility, sticky/scroll traps, color+text labels.
-7. **Verify** compile the affected crate/example:
+7. **Verify** the affected package/example through the repository wrapper:
+
     ```sh
-    cargo check -p <crate>
-    cargo check -p <crate> --example <name>   # if applicable
+    make check -- -p <crate>
+    make check -- -p <crate> --example <name>   # if applicable
     ```
+
 8. **Change only what the task needs** — no drive-by refactors across unrelated widgets.
 
 When implementing or fixing a **CLI / slash command report**:
@@ -520,7 +659,8 @@ When implementing or fixing a **CLI / slash command report**:
 4. **CLI** → `auto_stdout()`; **slash / dialog** → `plain()`.
 5. **Empty states, tips, and help** before polish.
 6. **Run the command UX checklist**; assert plain output in unit tests.
-7. **Smoke** interactive: TTY color on, `NO_COLOR=1` off, pipe off.
+7. **Smoke** interactive: TTY color on, `NO_COLOR=1` off, pipe off; also
+   verify the slash/dialog path remains plain.
 
 ## Decision guide
 

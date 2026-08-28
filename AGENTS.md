@@ -21,7 +21,7 @@ Skip for: pure internal refactor, lint/format, test-only, typos, dep bumps w/o A
 
 ## Cross-platform (macOS / Linux / Windows)
 
-**Code**
+### Code
 
 - OS-specific APIs -> `#[cfg(target_os = "...")]`. Gate helper fns too, or `-D warnings` fails `dead_code` on platforms where unused.
 - Binding must exist in all builds but only conditionally mutated -> use `cfg!(target_os = "...")` **macro**, not the attribute (avoids `unused_mut`/`E0596`).
@@ -34,7 +34,7 @@ Skip for: pure internal refactor, lint/format, test-only, typos, dep bumps w/o A
 - No `return` in tail position of `#[cfg(windows)]` (or other cfg) blocks — use tail expression (`needless_return`).
 - Ungated OS-only helper -> `dead_code` fails on the platforms that don't call it.
 
-**Tests**
+### Tests
 
 - No POSIX shell assumption. Windows: `elph-agent` shell exec -> git-bash, `$PWD` is MSYS format (`/c/Users/...`). Assertions comparing shell `$PWD`/`cygpath` output to a Rust-canonicalized path are fragile (drive-letter case, separators, 8.3 names). Prefer writing a sentinel file from the command and reading it back via `std::fs`/`Path` to verify cwd + env (see `tests/env.rs` / `tests/exec_shell.rs` `executes_command_in_cwd_with_env_overrides`).
 - Prefer `std::fs`/`Path` assertions over parsing shell output.
