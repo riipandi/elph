@@ -30,11 +30,11 @@ anstyle = "1.0.14"
 anstyle-syntect = "1.0.5"
 anyhow = "1.0.104"
 aws-config = "1.11.0"
-aws-sdk-bedrockruntime = "1.141.0"
+aws-sdk-bedrockruntime = "1.142.0"
 aws-smithy-runtime-api = "1.15.0"
 aws-smithy-types = "1.6.2"
-ast-grep-core = "0.45.1"
-ast-grep-language = { version = "0.45.1", default-features = false, features = [
+ast-grep-core = "0.45.2"
+ast-grep-language = { version = "0.45.2", default-features = false, features = [
   "tree-sitter-c",
   "tree-sitter-cpp",
   "tree-sitter-c-sharp",
@@ -57,7 +57,6 @@ clap_complete = "4.6.9"
 clipboard-rs = "0.3.5"
 crossterm = { version = "0.29.0", default-features = false, features = ["bracketed-paste", "events"] }
 dotenvy = "0.15.7"
-flate2 = "1.1.9"
 elph-agent = { path = "crates/elph-agent", version = "0.0.28" }
 elph-ai = { path = "crates/elph-ai", version = "0.0.28" }
 elph-tui = { path = "crates/elph-tui", version = "0.0.27" }
@@ -69,10 +68,12 @@ fastrace = "0.7.19"
 fastrace-reqwest = "0.3.0"
 fff-search = "0.10.5"
 figlet-rs = "1.0.0"
+flate2 = "1.1.10"
 floppy = { path = "crates/floppy", version = "0.0.1" }
 futures = "0.3.34"
 git2 = { version = "0.21.0", features = ["cred"] }
 governor = "0.10.4"
+hkdf = "0.13.0"
 htmd = "0.5.5"
 html-escape = "0.2.15"
 http = "1.5.0"
@@ -80,14 +81,13 @@ httpmock = "0.8.3"
 ignore = "0.4.33"
 image = "0.25.10"
 inquire = "0.9.4"
-iocraft = "0.8.4"
-jsonschema = "0.50.0"
+iocraft = { version = "=0.8.4" }
+jsonschema = "0.52.0"
 kalid = "0.1.0"
-hkdf = "0.13.0"
 libc = "0.2.189"
 linkify = "0.11.0"
 lipsum = "0.9.1"
-log = "0.4.33"
+log = "0.4.34"
 logforth = { version = "0.30.1", features = [
   "append-async",
   "append-fastrace",
@@ -99,14 +99,14 @@ logforth = { version = "0.30.1", features = [
 ] }
 macro_rules_attribute = "0.2.3"
 memchr = "2.8.3"
-mermaid-text = "0.57.0"
 memorable-ids = "0.1.1"
+mermaid-text = "0.57.0"
 mexprp = { version = "0.3.1", default-features = false }
 minijinja = "2.24.0"
 parking_lot = "0.12.5"
 pulldown-cmark = { version = "0.13.4", default-features = false, features = ["simd"] }
 qrcode = "0.14.1"
-quick-xml = { version = "0.41.0", features = ["serialize"] }
+quick-xml = { version = "0.42.0", features = ["serialize"] }
 rand = "0.10.2"
 regex = "1.13.1"
 reqwest = { version = "0.13.4", default-features = false, features = ["json", "rustls", "stream"] }
@@ -118,30 +118,30 @@ rmcp = { version = "3.1.4", features = [
   "transport-streamable-http-client-reqwest",
   "reqwest",
 ] }
+rendown = { path = "crates/rendown", version = "0.0.1" }
 rustc-hash = { version = "2.1.3", features = ["std"] }
 rustix = { version = "1.1.4", features = ["pty", "termios", "process", "fs"] }
 rustls = { version = "0.23.43", default-features = false, features = ["ring", "std", "tls12"] }
 schemars = "1.2.2"
 serde = { version = "1.0.229", default-features = false, features = ["derive", "std"] }
-serde-jsonlines = "0.7.0"
 serde_json = { version = "1.0.151", default-features = false, features = ["std"] }
-rendown = { path = "crates/rendown", version = "0.0.1" }
+serde-jsonlines = "0.7.0"
+sha2 = "0.11.0"
 shell-use = { version = "0.0.1-beta.6" }
+similar = { version = "3.2.0", features = ["inline", "unicode"] }
 smol = "2.0.2"
 smol-macros = "0.1.1"
-yaml_serde = "0.10.7"
-sha2 = "0.11.0"
-zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
-similar = { version = "3.2.0", features = ["inline", "unicode"] }
 supports-color = "3.0.2"
+yaml_serde = "0.10.7"
+zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
 syntect = { version = "5.3.0", default-features = false, features = [
   "default-syntaxes",
   "default-themes",
   "plist-load",
   "regex-fancy",
 ] }
-tempfile = "3.27.0"
 tar = "0.4.46"
+tempfile = "3.27.0"
 textwrap = "0.16.2"
 tokio = { version = "1.53.1", default-features = false, features = ["macros", "rt"] }
 tokio-rustls = "0.26.4"
@@ -149,7 +149,7 @@ tokio-tungstenite = { version = "0.30.0", default-features = false, features = [
 tokio-util = "0.7.19"
 toml = "1.1.4"
 toon-format = { version = "0.5.0", default-features = false }
-turso = { version = "0.8.0-pre.7", default-features = false, features = ["fts", "mimalloc"] }
+turso = { version = "=0.8.0-pre.7", default-features = false, features = ["fts", "mimalloc"] }
 two-face = { version = "0.5.2", default-features = false, features = ["syntect-fancy"] }
 unicode-linebreak = "0.1.5"
 unicode-segmentation = "1.13.3"
@@ -158,7 +158,7 @@ url = "2.5.8"
 urlencoding = "2.1.3"
 walkdir = "2.5.0"
 wasmi = "1.1.0"
-wat = "1.257.1"
+wat = "1.258.0"
 webpki-roots = "1.0.9"
 zstd = "0.13.3"
 
