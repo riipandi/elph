@@ -3,10 +3,11 @@
 use crate::utils::path::AppPaths;
 use anyhow::{Context, Result};
 use elph_agent::session::{
-    Session, TursoSessionListOptions, TursoSessionMetadata, TursoSessionRepo, TursoSessionRepoCreateOptions,
-    TursoSessionStorage, derive_session_context_state, reconcile_session,
+    Session, SessionTreeEntry, TursoSessionListOptions, TursoSessionMetadata, TursoSessionRepo,
+    TursoSessionRepoCreateOptions, TursoSessionStorage, derive_session_context_state, reconcile_session,
 };
 use elph_agent::workers::SessionLeaseStore;
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -285,6 +286,53 @@ impl SessionManager {
         Ok(all.into_iter().find(|s| s.id == session_id))
     }
 
+    /// Display titles for the given session ids, read from the latest
+    /// `session_info` tree entry (the source of truth for names written via
+    /// `/rename` and auto-title). The `sessions.name` column only carries the
+    /// name set at create time, so tree entries are authoritative.
+    ///
+    /// `None` when a session has no `session_info` entry with a name yet.
+    pub async fn session_titles(&self, session_ids: &[String]) -> Result<HashMap<String, String>> {
+        if session_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+        let conn = open_session_conn(&self.db_path, self.database.as_ref())
+            .await
+            .context("open connection for session titles")?;
+        let placeholders = (1..=session_ids.len())
+            .map(|i| format!("?{i}"))
+            .collect::<Vec<_>>()
+            .join(",");
+        let sql = format!(
+            "SELECT session_id, payload FROM session_entries \
+             WHERE type = 'session_info' AND session_id IN ({placeholders}) \
+             ORDER BY entry_seq"
+        );
+        let params: Vec<String> = session_ids.to_vec();
+        let mut rows = conn
+            .query(&sql, turso::params_from_iter(params))
+            .await
+            .context("query session_info titles")?;
+        let mut latest: HashMap<String, Option<String>> = session_ids.iter().map(|id| (id.clone(), None)).collect();
+        while let Some(row) = rows.next().await.context("read session title row")? {
+            let session_id: String = row.get(0).context("read session title session_id")?;
+            let payload: String = row.get(1).context("read session title payload")?;
+            // Later entries win (append-only tree; last rename is the current name).
+            if let Ok(entry) = serde_json::from_str::<SessionTreeEntry>(&payload)
+                && let SessionTreeEntry::SessionInfo { name: Some(name), .. } = entry
+            {
+                let trimmed = name.trim().to_string();
+                if !trimmed.is_empty() {
+                    latest.insert(session_id, Some(trimmed));
+                }
+            }
+        }
+        Ok(latest
+            .into_iter()
+            .filter_map(|(id, name)| name.map(|n| (id, n)))
+            .collect())
+    }
+
     pub async fn open(&self, metadata: &TursoSessionMetadata) -> Result<Session<TursoSessionStorage>> {
         let mut session = self.repo.open_metadata(metadata).await.context("open session")?;
         self.ensure_artifact_dirs(&metadata.id)?;
@@ -548,6 +596,45 @@ mod tests {
 
         let thinking = manager.last_used_thinking_level().await.expect("read thinking");
         assert_eq!(thinking, Some("max".to_string()));
+    }
+
+    #[tokio::test]
+    async fn session_titles_read_latest_session_info_entry() {
+        let paths = test_paths("titles");
+        let cwd = paths.project_dir().clone();
+        let manager = SessionManager::new(&paths, &cwd).expect("manager");
+        let mut first = manager.create(None).await.expect("first session");
+        let mut second = manager.create(None).await.expect("second session");
+        // Two names on the same session: the last one wins (append-only tree).
+        first.append_session_name("First title").await.expect("first name");
+        first.append_session_name("Renamed title").await.expect("rename");
+        second.append_session_name("Second session").await.expect("second name");
+
+        let ids = vec![first.metadata().await.id, second.metadata().await.id];
+        let titles = manager.session_titles(&ids).await.expect("read titles");
+        assert_eq!(
+            titles.get(&ids[0]).map(String::as_str),
+            Some("Renamed title"),
+            "last session_info entry must win"
+        );
+        assert_eq!(titles.get(&ids[1]).map(String::as_str), Some("Second session"));
+    }
+
+    #[tokio::test]
+    async fn session_titles_skips_empty_and_unnamed() {
+        let paths = test_paths("titles-empty");
+        let cwd = paths.project_dir().clone();
+        let manager = SessionManager::new(&paths, &cwd).expect("manager");
+        let mut named = manager.create(None).await.expect("named session");
+        let unnamed = manager.create(None).await.expect("unnamed session");
+        named.append_session_name("   ").await.expect("blank name"); // blank names are dropped
+        named.append_session_name("Real title").await.expect("real name");
+
+        let ids = vec![named.metadata().await.id, unnamed.metadata().await.id];
+        let titles = manager.session_titles(&ids).await.expect("read titles");
+        assert_eq!(titles.len(), 1);
+        assert_eq!(titles.get(&ids[0]).map(String::as_str), Some("Real title"));
+        assert!(!titles.contains_key(&ids[1]), "unnamed session has no title");
     }
 
     #[tokio::test]

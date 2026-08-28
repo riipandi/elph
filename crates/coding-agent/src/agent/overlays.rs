@@ -29,11 +29,18 @@ pub fn list_model_select_items() -> Vec<SelectItem> {
 
 pub async fn list_session_select_items(session_manager: &SessionManager) -> Result<Vec<SelectItem>> {
     let sessions = session_manager.list().await?;
+    // The `sessions.name` column only carries the create-time name; display
+    // titles live in `session_info` tree entries (auto-title / `/rename`).
+    let ids: Vec<String> = sessions.iter().map(|m| m.id.clone()).collect();
+    let titles = session_manager.session_titles(&ids).await?;
     // Repo already sorts by last activity (`updated_at`); keep that order.
     let items: Vec<SelectItem> = sessions
         .into_iter()
         .map(|meta| {
-            let title = meta.name.as_deref().map(str::trim).filter(|s| !s.is_empty());
+            let title = titles
+                .get(&meta.id)
+                .map(String::as_str)
+                .or_else(|| meta.name.as_deref().map(str::trim).filter(|s| !s.is_empty()));
             let timestamp = format_session_timestamp(&meta.updated_at);
             match title {
                 Some(title) => {
