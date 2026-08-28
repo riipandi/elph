@@ -1,6 +1,6 @@
 //! Inline model picker above the status row.
 
-use elph_tui::components::{DialogUserInputContent, UiTheme};
+use elph_tui::components::UiTheme;
 use iocraft::prelude::*;
 
 use crate::tui::inline_dialog::{
@@ -8,8 +8,8 @@ use crate::tui::inline_dialog::{
 };
 use crate::tui::model_option_list::ModelOptionList;
 use crate::tui::model_selector::{
-    ModelCatalogSnapshot, ModelRow, ModelScopeMode, ModelSelectorFocus, PendingModelSelector, global_count_label,
-    model_selector_footer_hint, model_selector_list_viewport_height, scope_tab_index, scope_tab_labels,
+    ModelCatalogSnapshot, ModelRow, ModelScopeMode, PendingModelSelector, model_selector_footer_hint,
+    model_selector_list_viewport_height, model_selector_status_label, scope_tab_index, scope_tab_labels,
 };
 
 /// Render snapshot for [`ModelSelectorBar`].
@@ -18,18 +18,19 @@ pub struct ModelSelectorView {
     pub catalog: ModelCatalogSnapshot,
     pub provider_index: usize,
     pub filtered_models: Vec<ModelRow>,
-    pub global_count: String,
+    pub status: String,
     pub footer_hint: String,
 }
 
 impl ModelSelectorView {
     pub fn from_pending(pending: &PendingModelSelector) -> Self {
         let filtered_models = pending.filtered_models();
+        let model_count = filtered_models.len();
         Self {
             catalog: pending.catalog.clone(),
             provider_index: pending.provider_index,
-            global_count: global_count_label(&pending.catalog),
-            filtered_models: filtered_models.clone(),
+            filtered_models,
+            status: model_selector_status_label(&pending.filter, model_count),
             footer_hint: model_selector_footer_hint(pending.is_provider_scope_mode(), pending.sort_order),
         }
     }
@@ -65,14 +66,8 @@ pub struct ModelSelectorBarProps {
     pub screen_width: u16,
     pub screen_height: u16,
     pub view: ModelSelectorView,
-    pub provider_index: Option<State<usize>>,
     pub model_index: Option<State<usize>>,
-    pub filter: Option<State<String>>,
-    pub input_focus: ModelSelectorFocus,
     pub has_focus: bool,
-    pub on_filter_submit: HandlerMut<'static, ()>,
-    pub on_confirm: HandlerMut<'static, ()>,
-    pub on_cancel: HandlerMut<'static, ()>,
 }
 
 impl Default for ModelSelectorBarProps {
@@ -87,17 +82,11 @@ impl Default for ModelSelectorBarProps {
                 ),
                 provider_index: 0,
                 filtered_models: Vec::new(),
-                global_count: String::new(),
+                status: String::new(),
                 footer_hint: String::new(),
             },
-            provider_index: None,
             model_index: None,
-            filter: None,
-            input_focus: ModelSelectorFocus::Search,
             has_focus: false,
-            on_filter_submit: HandlerMut::default(),
-            on_confirm: HandlerMut::default(),
-            on_cancel: HandlerMut::default(),
         }
     }
 }
@@ -117,8 +106,6 @@ pub fn ModelSelectorBar(props: &mut ModelSelectorBarProps, _hooks: Hooks) -> imp
     );
 
     let list_height = model_selector_list_viewport_height(props.screen_width, props.screen_height);
-    let search_focused = props.has_focus && props.input_focus == ModelSelectorFocus::Search;
-
     let body = element! {
         View(
             width: body_width,
@@ -127,30 +114,10 @@ pub fn ModelSelectorBar(props: &mut ModelSelectorBarProps, _hooks: Hooks) -> imp
             flex_shrink: 0f32,
         ) {
             Text(
-                content: props.view.global_count.clone(),
+                content: props.view.status.clone(),
                 color: theme.text_muted,
                 wrap: TextWrap::NoWrap,
             )
-            View(width: body_width, padding_top: 1, flex_shrink: 0f32) {
-                DialogUserInputContent(
-                    width: body_width,
-                    question: String::new(),
-                    placeholder: "Filter models…".to_string(),
-                    value: props.filter,
-                    has_focus: search_focused,
-                    theme: Some(theme),
-                    show_prompt: false,
-                    show_footer_hint: false,
-                    show_placeholder_when_focused: true,
-                    dialog_chrome: true,
-                    compact: true,
-                    // Never type scope/nav/scoped shortcuts into the filter field.
-                    // `=` / `_` cover Shift layouts for `+` / `-`.
-                    blocked_chars: vec!['[', ']', '+', '-', '=', '_', '$'],
-                    on_submit: props.on_filter_submit.take(),
-                    on_cancel: props.on_cancel.take(),
-                )
-            }
             View(width: body_width, padding_top: OPTIONS_LIST_TOP_GAP, flex_shrink: 0f32) {
                 ModelOptionList(
                     width: body_width,

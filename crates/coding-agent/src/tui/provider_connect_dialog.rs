@@ -672,7 +672,6 @@ fn render_select_auth_method_step(
             context_k: 0,
             reasoning: false,
             images: false,
-            is_free: false,
             cost_per_m_input: 0.0,
         })
         .collect();
@@ -825,7 +824,6 @@ fn render_select_provider_step(
             context_k: 0,
             reasoning: false,
             images: false,
-            is_free: false,
             cost_per_m_input: 0.0,
         })
         .collect();
@@ -913,7 +911,6 @@ fn render_oauth_select_step(
             context_k: 0,
             reasoning: false,
             images: false,
-            is_free: false,
             cost_per_m_input: 0.0,
         })
         .collect();

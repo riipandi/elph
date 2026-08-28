@@ -312,7 +312,6 @@ fn model_row_for_value(value: &str) -> Option<ModelRow> {
         context_k: model.context_window / 1000,
         reasoning: model.reasoning,
         images: model.input.iter().any(|cap| cap == "image"),
-        is_free: (model.cost.input == 0.0 && model.cost.output == 0.0) || model.id.contains("free"),
         cost_per_m_input: model.cost.input,
     })
 }
@@ -349,7 +348,6 @@ fn filter_items(items: &[ScopedModelItem], query: &str) -> Vec<ScopedModelItem> 
                 context_k: 0,
                 reasoning: false,
                 images: false,
-                is_free: false,
                 cost_per_m_input: 0.0,
             };
             model_match_score(&row, query).map(|score| (item.clone(), score))

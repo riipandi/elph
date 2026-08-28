@@ -299,7 +299,6 @@ mod tests {
             context_k,
             reasoning,
             images,
-            is_free: false,
             cost_per_m_input: 0.0,
         }
     }

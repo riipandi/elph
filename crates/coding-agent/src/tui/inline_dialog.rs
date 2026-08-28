@@ -3,7 +3,6 @@
 use elph_tui::components::{UiTheme, dialog_header_title_fit};
 use iocraft::prelude::*;
 
-use crate::tui::model_selector::PROVIDER_HEADER_TABS_PER_PAGE;
 use crate::tui::user_question::{QuestionStepTab, QuestionStepTabState};
 
 /// Space above the first selectable answer row in inline dialogs.
@@ -180,8 +179,8 @@ fn tab_segment_width(label_widths: &[usize], start: usize, end: usize) -> usize 
     labels.saturating_add(separators.saturating_mul(separator_width))
 }
 
-/// Header for the model picker: `All · Scoped · Provider` and, in provider mode,
-/// built-in providers on the same row (`All | Scoped | Provider · Anthropic | OpenAI`).
+/// Header for the model picker: `All | Scoped | Provider` and, in provider mode,
+/// the selected provider position and name (`All | Scoped | Provider (2/55) · ‹ OpenAI ›`).
 pub fn render_model_scope_header(
     scope_labels: &[String],
     scope_tab_index: usize,
@@ -190,10 +189,22 @@ pub fn render_model_scope_header(
     inner: u16,
     theme: UiTheme,
 ) -> AnyElement<'static> {
-    let scope_widths: Vec<usize> = scope_labels.iter().map(|label| label.chars().count()).collect();
+    let provider_selected = provider_selected_index
+        .unwrap_or(0)
+        .min(provider_labels.map_or(0, |labels| labels.len().saturating_sub(1)));
+    let mut displayed_scope_labels = scope_labels.to_vec();
+    if let Some(provider_labels) = provider_labels.filter(|labels| !labels.is_empty())
+        && let Some(provider_label) = displayed_scope_labels.last_mut()
+    {
+        *provider_label = format!("{} ({}/{})", provider_label, provider_selected + 1, provider_labels.len());
+    }
+    let scope_widths: Vec<usize> = displayed_scope_labels
+        .iter()
+        .map(|label| label.chars().count())
+        .collect();
     let scope_width = tab_segment_width(&scope_widths, 0, scope_labels.len());
     let scope_row = render_provider_tab_row(
-        scope_labels,
+        &displayed_scope_labels,
         scope_tab_index,
         scope_width.max(1) as u16,
         theme,
@@ -208,17 +219,13 @@ pub fn render_model_scope_header(
         .max(1)
         .saturating_sub((scope_width + separator_width) as u16)
         .max(8);
-    let provider_selected = provider_selected_index
-        .unwrap_or(0)
-        .min(provider_labels.len().saturating_sub(1));
-    let provider_labels_owned: Vec<String> = provider_labels.to_vec();
-    let provider_row = render_provider_tab_row(
-        &provider_labels_owned,
-        provider_selected,
-        provider_inner,
-        theme,
-        PROVIDER_HEADER_TABS_PER_PAGE,
-    );
+    let provider_row = element! {
+        Text(
+            content: format!("‹ {} ›", provider_labels[provider_selected]),
+            color: theme.text_hint,
+            wrap: TextWrap::NoWrap,
+        )
+    };
 
     element! {
         View(width: inner, flex_direction: FlexDirection::Row, flex_wrap: FlexWrap::NoWrap, flex_shrink: 0f32) {
@@ -409,6 +416,8 @@ pub fn InlineDialogShell<'a>(props: &mut InlineDialogShellProps<'a>, hooks: Hook
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const PROVIDER_HEADER_TABS_PER_PAGE: usize = 4;
 
     #[test]
     fn provider_tab_window_keeps_selection_visible() {

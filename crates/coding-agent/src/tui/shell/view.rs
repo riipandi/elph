@@ -473,26 +473,8 @@ pub(crate) fn build_shell_view(
                 screen_width: screen_width,
                 screen_height: screen_height,
                 view: view,
-                provider_index: Some(model_provider_index),
                 model_index: Some(model_selected_index),
-                filter: Some(model_filter),
-                input_focus: model_input_focus.get(),
                 has_focus: model_selector_has_focus,
-                on_filter_submit: move |_| {
-                    model_input_focus.set(ModelSelectorFocus::List);
-                    if let Some(pending) = pending_model_selector.write().as_mut() {
-                        pending.input_focus = ModelSelectorFocus::List;
-                    }
-                },
-                on_confirm: move |_| {},
-                on_cancel: move |_| {
-                    close_model_selector(
-                        &mut pending_model_selector,
-                        &mut draft,
-                        &mut live_draft,
-                        &mut shell_focus,
-                    );
-                },
             )
         }
         .into()
