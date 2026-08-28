@@ -18,6 +18,7 @@ Keyboard shortcuts
   Esc                Cancel / close dialog
   Tab                Complete slash / cycle agent mode
   Ctrl+P             Cycle scoped models
+  Ctrl+.             Cycle thinking level
   Ctrl+S             Toggle native text-select mode
   Shift+↑/↓          Scroll transcript
   PageUp / PageDown  Scroll transcript (faster)
@@ -33,6 +34,7 @@ Keyboard shortcuts
   /session           Current session info
   /tools             Active tools
   /system-prompt     Compiled system prompt
+  /thinking          Select thinking level
 ";
 
 pub fn changelog_text() -> String {

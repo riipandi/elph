@@ -5,7 +5,7 @@
 
 ## Layout Structure
 
-```
+```text
 ┌──────────────────────────────────────────────────────────────┐
 │  BANNER / HEADER (Welcome, Directory, Model, Stats, Tip)     │
 ├──────────────────────────────────────────────────────────────┤
@@ -22,7 +22,7 @@
 
 ## Expected Layout
 
-```
+```text
 ╭─────────────────────────────────────────────────────────────────╮
 │                                                                 │
 │   ⣿⣿⡟⣿⡟⣿⣿    Welcome to Elph v0.79.1 (update available)         │
@@ -50,7 +50,7 @@ PROJECT_DIR [abcd12345]                      turn: 0 · main [-N +N]      (PROJE
 
 ### Alternatives
 
-```
+```text
 ╭───────────────────────────────────────────────────────────────────────────────╮
 │ PREFIX_SYMBOL                                                                 │
 ╰──────────────────────────────────────────────────────────────── PROJECT_DIR ──╯
@@ -98,7 +98,7 @@ Check order: `!!` → `!` → `/` → default (`>`).
 
 ### Structure
 
-```
+```text
 ╭─────────────────────────── border: blueCol ────────────────────╮
 │  padding(1, 2)                                                 │
 │  [logo]  header (bold, white)                                  │
@@ -142,7 +142,7 @@ Check order: `!!` → `!` → `/` → default (`>`).
 
 ### Structure
 
-```
+```text
 ╭─────────────── border: modeBorderColor(mode) ───────────────────╮
 │ > This is an example prompt                                     │
 │   with multiline support                                        │
@@ -242,7 +242,7 @@ Paste collapse is always applied for long text payloads (no settings toggle).
 
 ### Structure (no border)
 
-```
+```text
 MODEL_NAME · PROVIDER · T: level ◐           $0.00 · 0.0% · 262k
 project_dir [session_id] mode               turn: 0 · branch [+N -N]
 ```
@@ -266,7 +266,7 @@ The footer is painted eagerly from the configured model and project snapshot. Du
 | Segment                                                              | Color                    | Notes                                                                            |
 | -------------------------------------------------------------------- | ------------------------ | -------------------------------------------------------------------------------- |
 | MODEL_NAME                                                           | `ThinkingColor(level)`   | Adapts to thinking level                                                         |
-| `           · PROVIDER                 · T: level                 ◐` | `dimText`                | **◐** when the active model supports image input (`provider.SupportsImageInput`) |
+| `· PROVIDER                 · T: level                 ◐` | `dimText`                | **◐** when the active model supports image input (`provider.SupportsImageInput`) |
 | `$0.00`                                                              | `ContextUsageColor(pct)` | Cost                                                                             |
 | `X%` or `X%                                                          | 262k`or`262k`            | `ContextUsageColor(pct)`                                                         | Token usage (configurable via `footerTokenDisplay`) |
 
@@ -288,7 +288,7 @@ The footer is painted eagerly from the configured model and project snapshot. Du
 
 Soft but readable strata aligned with `elph-ai` (`off` is TUI-only; rest matches provider levels through `max`).
 
-**Ctrl+.** and the footer model segment (`provider/model (level)`) only cycle/show levels supported by the **active model catalog** (`thinkingLevelMap` / `get_supported_thinking_levels`). Unsupported values from settings are clamped when the model changes or on boot. Example: xAI Grok 4.5 → `off` · `low` · `high` · `max` only.
+**Ctrl+.** (cycle), **`/thinking`** (picker), and the footer model segment (`provider/model (level)`) only offer/show levels supported by the **active model catalog** (`thinkingLevelMap` / `get_supported_thinking_levels`). Unsupported values from settings are clamped when the model changes or on boot. Example: xAI Grok 4.5 → `off` · `low` · `high` · `max` only.
 
 | Level   | Color            | Hex       |
 | ------- | ---------------- | --------- |
@@ -393,6 +393,8 @@ When the agent is busy, an activity line shows between the content area and inpu
 
 `Ctrl+L` or `/model` opens a fuzzy overlay. Filter providers with arrow keys; select with Enter. Left/Right (with an empty filter) cycle provider groups. The **Scoped** tab lists models enabled via `/scoped-models` or quick keys in this picker.
 
+Pressing **Enter** on a model applies it, then opens the **thinking level picker** for the newly selected model (same multi-step dialog pattern as `/provider connect`). The picker lists every thinking level in the new model's catalog (`thinkingLevelMap`); `Esc` closes it without changing the level.
+
 Every tab uses the same row layout: `MODEL_ID  PROVIDER  CONTEXT_LENGTH (think|img)` — the provider column stays visible on Provider tabs too, so columns never shift when switching tabs. Fuzzy filtering (and the unfiltered list) only searches the **active tab's category**: All searches every model, Free only free models, Scoped only scoped models, and a Provider tab only that provider's models.
 
 | Key (list focused) | Action                                                                     |
@@ -458,10 +460,10 @@ Persisted per session at `<workDir>/.agents/elph/metadata/<sess_id>/todos.jsonl`
 | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
 | `!cmd`                                                                                                       | Run shell; output can be queued as agent context |
 | `!!cmd`                                                                                                      | Run shell without agent context                  |
-| Output appears in a collapsible detail box labeled `shell_exec(<command>)` with status colors (running /     |
-| success / error / cancelled). Activity view shows `⡿  Running shell_exec(cmd)`. Stream chunks honor terminal |
-| carriage returns (e.g. ping statistics overwriting one line) while preserving newlines between               |
-| separate lines.                                                                                              |
+| Output appears in a collapsible detail box labeled `shell_exec(<command>)` with status colors (running / |  |
+| success / error / cancelled). Activity view shows `⡿  Running shell_exec(cmd)`. Stream chunks honor terminal |  |
+| carriage returns (e.g. ping statistics overwriting one line) while preserving newlines between |  |
+| separate lines. |  |
 
 ## Tool approval and AskUser
 

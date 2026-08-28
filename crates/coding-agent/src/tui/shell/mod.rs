@@ -129,6 +129,11 @@ use crate::tui::system_prompt_dialog::{
     OpenSystemPromptDialogArgs, PendingSystemPromptDialog, close_system_prompt_dialog, open_system_prompt_dialog,
     system_prompt_dialog_chrome,
 };
+use crate::tui::thinking_selector::{
+    OpenThinkingSelectorArgs, PendingThinkingSelector, close_thinking_selector, open_thinking_selector,
+    thinking_selector_confirm_on_enter, thinking_selector_list_nav_delta,
+};
+use crate::tui::thinking_selector_bar::ThinkingSelectorBar;
 use crate::tui::tool_approval::{
     FEEDBACK_DEFAULT_INDEX, PLAN_CONFIRM_DEFAULT_INDEX, PendingMemoryFlush, PendingModeChange, PendingPlanConfirmation,
     PendingToolApproval, PlanChoice, TOOL_APPROVAL_DEFAULT_INDEX, choice_at_index_for, feedback_url_at_index, open_url,
@@ -144,7 +149,7 @@ use crate::tui::transcript::{
     apply_transcript_retention, clear_ephemeral_banner, clear_ephemeral_banner_if_generation, clipboard_notice_banner,
     expire_ephemeral_banner, file_picker_hidden_notice_text, model_set_notice_from_value, model_set_notice_text,
     prompt_copy_banner, prompt_copy_failed_banner, publish_ephemeral_banner, quit_busy_banner, select_mode_off_banner,
-    select_mode_on_banner, theme_mode_banner, toggle_latest_collapsible_detail,
+    select_mode_on_banner, theme_mode_banner, thinking_level_banner, toggle_latest_collapsible_detail,
 };
 use crate::tui::user_question::PendingUserQuestion;
 use crate::tui::user_question::{
@@ -516,6 +521,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let rename_value = hooks.use_state(String::new);
     let pending_item_selector = hooks.use_ref(|| None::<PendingItemSelector>);
     let item_selector_selected = hooks.use_state(|| 0usize);
+    let pending_thinking_selector = hooks.use_ref(|| None::<PendingThinkingSelector>);
+    let thinking_selector_selected = hooks.use_state(|| 0usize);
     let pending_confetti = hooks.use_ref(|| None::<PendingConfetti>);
     let pending_provider_connect = hooks.use_ref(|| None::<PendingProviderConnectDialog>);
     let pending_provider_disconnect = hooks.use_ref(|| None::<PendingProviderDisconnectDialog>);
@@ -743,6 +750,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         pending_rename,
         pending_item_selector,
         item_selector_selected,
+        pending_thinking_selector,
+        thinking_selector_selected,
         pending_scoped_models,
         pending_subagent_output,
         pending_system_prompt,

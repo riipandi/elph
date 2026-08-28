@@ -53,6 +53,7 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
     vec![
         builtin("settings", "Open settings menu"),
         builtin_with_args("model", "Select model"),
+        builtin("thinking", "Select thinking level"),
         builtin("scoped-models", "Enable models for Ctrl+P cycling"),
         builtin("export", "Export session (JSONL)"),
         builtin("import", "Import session JSONL"),
@@ -306,6 +307,8 @@ pub enum SlashDispatch {
     Aside {
         question: String,
     },
+    /// Open the thinking level picker (`/thinking`).
+    Thinking,
     Unimplemented(String),
 }
 
@@ -618,6 +621,7 @@ pub fn slash_palette_submit_on_enter(command_name: &str) -> bool {
         command_name,
         "model"
             | "scoped-models"
+            | "thinking"
             | "tree"
             | "resume"
             | "session"
@@ -653,6 +657,7 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
         "confetti" | "conffety" | "confetty" => Some(SlashDispatch::Confetti { args }),
         "reload" => Some(SlashDispatch::Reload),
         "model" => Some(SlashDispatch::OverlayNeeded(OverlayCommand::Model { filter: args })),
+        "thinking" | "think" => Some(SlashDispatch::Thinking),
         "scoped-models" | "scoped_models" | "scopedmodels" => {
             Some(SlashDispatch::OverlayNeeded(OverlayCommand::ScopedModels))
         }
@@ -973,6 +978,14 @@ mod tests {
         assert_eq!(
             dispatch_slash_command("/resume abc123", None, None, None),
             Some(SlashDispatch::Resume { args: "abc123".into() })
+        );
+        assert_eq!(
+            dispatch_slash_command("/thinking", None, None, None),
+            Some(SlashDispatch::Thinking)
+        );
+        assert_eq!(
+            dispatch_slash_command("/think", None, None, None),
+            Some(SlashDispatch::Thinking)
         );
         assert_eq!(
             dispatch_slash_command("/workers", None, None, None),

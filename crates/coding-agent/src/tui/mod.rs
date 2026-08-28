@@ -42,6 +42,8 @@ mod subagent_display;
 pub(crate) mod subagent_output_dialog;
 mod system_prompt_dialog;
 mod theme;
+mod thinking_selector;
+mod thinking_selector_bar;
 mod tool_approval;
 pub(crate) mod tool_params;
 pub(crate) mod transcript;

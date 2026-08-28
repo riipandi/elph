@@ -63,6 +63,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         mut pending_rename,
         mut pending_item_selector,
         mut item_selector_selected,
+        mut pending_thinking_selector,
+        mut thinking_selector_selected,
         mut pending_scoped_models,
         mut pending_system_prompt,
         mut pending_aside,
@@ -664,6 +666,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         || pending_memory_flush.read().is_some()
         || *pending_feedback.read()
         || pending_item_selector.read().is_some()
+        || pending_thinking_selector.read().is_some()
         || aside_open;
     if modifiers.contains(KeyModifiers::ALT)
         && !modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::META)
@@ -776,6 +779,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
     let model_selector_open = pending_model_selector.read().is_some();
     let scoped_models_open = pending_scoped_models.read().is_some();
     let item_selector_open = pending_item_selector.read().is_some();
+    let thinking_selector_open = pending_thinking_selector.read().is_some();
     let provider_connect_open = pending_provider_connect.read().is_some();
     let mcp_auth_open = pending_mcp_auth.read().is_some();
     let provider_disconnect_open = pending_provider_disconnect.read().is_some();
@@ -790,6 +794,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         || model_selector_open
         || scoped_models_open
         || item_selector_open
+        || thinking_selector_open
         || system_prompt_open
         || rename_open
         || confetti_open
@@ -810,6 +815,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             && pending_user_question.read().is_none()
             && !model_selector_open
             && !scoped_models_open
+            && !item_selector_open
+            && !thinking_selector_open
             && !system_prompt_open
         {
             let len = prompt_queue.read().len();
@@ -1280,6 +1287,83 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             }
         }
 
+        // ── Thinking level selector (/thinking) ────────────────────────
+        if thinking_selector_open
+            && pending_user_question.read().is_none()
+            && !system_prompt_open
+            && !confetti_open
+            && !model_selector_open
+            && !scoped_models_open
+            && !rename_open
+        {
+            if modifiers.is_empty() && code == KeyCode::Esc {
+                close_thinking_selector(
+                    &mut pending_thinking_selector,
+                    &mut draft,
+                    &mut live_draft,
+                    &mut shell_focus,
+                    true,
+                );
+                force_editor_clear.set(true);
+                return;
+            }
+
+            if let Some(delta) = thinking_selector_list_nav_delta(modifiers, code) {
+                if let Some(pending) = pending_thinking_selector.write().as_mut() {
+                    pending.move_delta(delta);
+                    thinking_selector_selected.set(pending.selected);
+                }
+                return;
+            }
+
+            if thinking_selector_confirm_on_enter(modifiers, code) {
+                let Some(level) = pending_thinking_selector
+                    .read()
+                    .as_ref()
+                    .and_then(|p| p.selected_level())
+                else {
+                    return;
+                };
+                close_thinking_selector(
+                    &mut pending_thinking_selector,
+                    &mut draft,
+                    &mut live_draft,
+                    &mut shell_focus,
+                    false,
+                );
+                force_editor_clear.set(true);
+                // Clamp to the active model's catalog map (same guard as Ctrl+. / footer):
+                // unsupported picks (e.g. xhigh on xAI Grok 4.5) collapse to a supported
+                // level instead of reaching the provider API.
+                let clamped = if let Some(session) = agent_session.as_ref() {
+                    level.clamp_for_provider_model(&session.model_provider(), &session.model_id())
+                } else {
+                    level
+                };
+                thinking_level.set(clamped);
+                if let Some(session) = agent_session.as_ref() {
+                    let session = Arc::clone(session);
+                    tokio::spawn(async move {
+                        if let Err(err) = session.set_thinking_level(clamped).await {
+                            log::warn!("failed to set thinking level: {err}");
+                        }
+                    });
+                }
+                let expire_tx = ephemeral_expire.read().tx.clone();
+                show_ephemeral_banner(
+                    &mut ephemeral_banner,
+                    &mut ephemeral_banner_generation,
+                    &expire_tx,
+                    thinking_level_banner(clamped),
+                );
+                return;
+            }
+
+            if !shell_global_shortcut(modifiers, code) {
+                return;
+            }
+        }
+
         if model_selector_open
             && pending_user_question.read().is_none()
             && !system_prompt_open
@@ -1471,7 +1555,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                                 model_set_notice_text(&label),
                             );
                             if let Some(session) = agent {
-                                spawn_runtime_model_switch(session, value, thinking_level.get());
+                                spawn_runtime_model_switch(session, value.clone(), thinking_level.get());
                             }
                         }
                         Err(err) => {
@@ -1482,10 +1566,36 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                                 &mut prompt_history,
                                 TranscriptMessage::text(format!("{err}"), TranscriptStyle::Meta),
                             );
+                            return;
                         }
                     }
+
+                    // Model applied: close the picker, then open the thinking level
+                    // picker filtered to the newly selected model's catalog (same
+                    // multi-step dialog pattern as the provider-connect flow).
+                    close_model_selector(&mut pending_model_selector, &mut draft, &mut live_draft, &mut shell_focus);
+                    let pending = {
+                        let (provider, model_id) = match crate::agent::parse_model_value(&value) {
+                            Ok((p, m)) => (p, m),
+                            Err(_) => (String::new(), String::new()),
+                        };
+                        crate::tui::thinking_selector::PendingThinkingSelector::open_for_model(
+                            &provider,
+                            &model_id,
+                            thinking_level.get(),
+                        )
+                    };
+                    open_thinking_selector(OpenThinkingSelectorArgs {
+                        pending: &mut pending_thinking_selector,
+                        draft: &mut draft,
+                        live_draft: &mut live_draft,
+                        shell_focus: &mut shell_focus,
+                        selected_index: Some(&mut thinking_selector_selected),
+                        pending_selector: pending,
+                    });
+                    force_editor_clear.set(true);
+                    suppress_enter_newline.set(true);
                 }
-                close_model_selector(&mut pending_model_selector, &mut draft, &mut live_draft, &mut shell_focus);
                 return;
             }
 
@@ -3355,6 +3465,36 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             paths: &paths,
                             session_scoped: &session_scoped_items.read(),
                         });
+                    }
+                    SlashOutcome::OpenThinkingSelector => {
+                        // `mut` + write guard: resolve the active model (session or
+                        // footer label) and build model-catalog-limited levels.
+                        let pending = {
+                            let (provider, model_id) = if let Some(session) = agent_session.as_ref() {
+                                (session.model_provider(), session.model_id())
+                            } else {
+                                let label = chrome_stats.read().model_label.clone();
+                                match crate::agent::parse_model_value(&label) {
+                                    Ok((p, m)) => (p, m),
+                                    Err(_) => (String::new(), String::new()),
+                                }
+                            };
+                            crate::tui::thinking_selector::PendingThinkingSelector::open_for_model(
+                                &provider,
+                                &model_id,
+                                thinking_level.get(),
+                            )
+                        };
+                        open_thinking_selector(OpenThinkingSelectorArgs {
+                            pending: &mut pending_thinking_selector,
+                            draft: &mut draft,
+                            live_draft: &mut live_draft,
+                            shell_focus: &mut shell_focus,
+                            selected_index: Some(&mut thinking_selector_selected),
+                            pending_selector: pending,
+                        });
+                        force_editor_clear.set(true);
+                        suppress_enter_newline.set(true);
                     }
                     SlashOutcome::OpenSystemPromptDialog { text } => {
                         open_system_prompt_dialog(OpenSystemPromptDialogArgs {

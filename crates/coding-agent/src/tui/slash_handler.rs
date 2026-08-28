@@ -93,6 +93,9 @@ pub enum SlashOutcome {
         filter: String,
     },
     OpenScopedModels,
+    /// Open the thinking level picker (`/thinking`). The picker shows the full
+    /// level list; model-specific availability is resolved when the dialog opens.
+    OpenThinkingSelector,
     OpenSystemPromptDialog {
         text: String,
     },
@@ -427,6 +430,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             let initial = session_title_for_rename(ctx.agent_session.as_ref()).unwrap_or_default();
             SlashOutcome::OpenRenameDialog { initial }
         }
+        SlashDispatch::Thinking => SlashOutcome::OpenThinkingSelector,
         SlashDispatch::Confetti { args } => SlashOutcome::PlayConfetti {
             mode: confetti_mode_from_slash_args(confetti_mode_from_args(&args)),
         },
@@ -707,6 +711,7 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
             | SlashOutcome::BackgroundTaskQuiet
             | SlashOutcome::OpenModelSelector { .. }
             | SlashOutcome::OpenScopedModels
+            | SlashOutcome::OpenThinkingSelector
             | SlashOutcome::OpenSystemPromptDialog { .. }
             | SlashOutcome::OpenViewPlanDialog { .. }
             | SlashOutcome::OpenToolsDialog { .. }
@@ -958,6 +963,21 @@ mod tests {
             cwd: None,
         });
         assert!(matches!(outcome, SlashOutcome::OpenScopedModels));
+    }
+
+    #[test]
+    fn thinking_slash_opens_selector() {
+        let outcome = handle_slash_submit(SlashContext {
+            input: "/thinking",
+            extensions: None,
+            prompt_templates: None,
+            skills: None,
+            agent_session: None,
+            extension_host: None,
+            paths: None,
+            cwd: None,
+        });
+        assert!(matches!(outcome, SlashOutcome::OpenThinkingSelector));
     }
 
     #[test]

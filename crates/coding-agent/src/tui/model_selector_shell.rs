@@ -13,6 +13,15 @@ use crate::tui::chrome::ChromeStats;
 use crate::tui::focus::ShellFocus;
 use crate::tui::labels::{model_display_label, model_footer_label};
 use crate::tui::model_selector::{ModelCatalogOptions, ModelSelectorFocus, PendingModelSelector};
+use crate::types::ThinkingLevel;
+
+/// Re-compute of [`ThinkingLevel::cycle_for_model`] from `provider` + `model_id`
+/// (keeps `thinking_selector.rs` decoupled from model catalog internals).
+pub fn thinking_levels_for_model(provider: &str, model_id: &str) -> Vec<ThinkingLevel> {
+    get_builtin_model(provider, model_id)
+        .map(|model| ThinkingLevel::cycle_for_model(&model))
+        .unwrap_or_else(|| vec![ThinkingLevel::Off])
+}
 
 /// Arguments for [`open_model_selector`].
 pub struct OpenModelSelectorArgs<'a> {

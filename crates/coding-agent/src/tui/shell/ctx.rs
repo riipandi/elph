@@ -106,6 +106,8 @@ pub(crate) struct ShellCtx {
     pub(crate) pending_rename: Ref<Option<PendingRenameDialog>>,
     pub(crate) pending_item_selector: Ref<Option<crate::tui::item_selector::PendingItemSelector>>,
     pub(crate) item_selector_selected: State<usize>,
+    pub(crate) pending_thinking_selector: Ref<Option<crate::tui::thinking_selector::PendingThinkingSelector>>,
+    pub(crate) thinking_selector_selected: State<usize>,
     pub(crate) pending_scoped_models: Ref<Option<PendingScopedModels>>,
     pub(crate) pending_subagent_output: Ref<Option<PendingSubagentOutputDialog>>,
     pub(crate) pending_system_prompt: Ref<Option<PendingSystemPromptDialog>>,
