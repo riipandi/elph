@@ -15,8 +15,8 @@ use crate::api::openai_responses_shared::process_responses_stream_event;
 use crate::api::openai_responses_shared::{convert_responses_messages, convert_responses_tools};
 use crate::api::simple_options::build_base_options;
 use crate::models::map_thinking_level_for_api;
-use crate::types::{AssistantMessage, AssistantMessageEvent, Context, Model, ProviderStreams, SimpleStreamOptions};
-use crate::types::{StopReason, StreamOptions};
+use crate::types::{AssistantMessage, AssistantMessageEvent, CacheRetention, Context, Model, ProviderStreams};
+use crate::types::{SimpleStreamOptions, StopReason, StreamOptions};
 use crate::utils::event_stream::AssistantMessageEventStream;
 use crate::utils::provider_env::get_provider_env_value;
 
@@ -219,9 +219,13 @@ fn build_params(
         "model": deployment,
         "input": messages,
         "stream": true,
-        "prompt_cache_key": clamp_openai_prompt_cache_key(options.base.session_id.as_deref()),
         "store": false
     });
+    if CacheRetention::resolve(&options.base) != CacheRetention::None
+        && let Some(key) = clamp_openai_prompt_cache_key(options.base.session_id.as_deref())
+    {
+        params["prompt_cache_key"] = json!(key);
+    }
     if let Some(max) = options.base.max_tokens {
         params["max_output_tokens"] = json!(max.max(OPENAI_RESPONSES_MIN_OUTPUT_TOKENS));
     }

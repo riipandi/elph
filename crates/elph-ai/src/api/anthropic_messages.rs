@@ -14,10 +14,11 @@ use crate::api::transform_messages::transform_messages;
 use crate::models::{calculate_cost, thinking_level_to_str};
 use crate::types::UserContent;
 use crate::types::{AssistantContentBlock, AssistantMessage, AssistantMessageEvent, ContentBlock, Context, Message};
-use crate::types::{Model, ProviderStreams, SimpleStreamOptions, StopReason, StreamOptions, ThinkingLevel};
+use crate::types::{
+    CacheRetention, Model, ProviderStreams, SimpleStreamOptions, StopReason, StreamOptions, ThinkingLevel,
+};
 use crate::utils::event_stream::AssistantMessageEventStream;
 use crate::utils::json_parse::{parse_json_with_repair, parse_streaming_json};
-use crate::utils::provider_env::get_provider_env_value;
 use crate::utils::sanitize_unicode::sanitize_surrogates;
 
 #[derive(Clone, Default)]
@@ -406,6 +407,25 @@ fn update_usage_from_anthropic(output: &mut AssistantMessage, usage: &Value) {
     }
     if let Some(v) = usage.get("cache_creation_input_tokens").and_then(|v| v.as_u64()) {
         output.usage.cache_write = v;
+    } else if let Some(cache_creation) = usage.get("cache_creation").and_then(|v| v.as_object()) {
+        let short = cache_creation
+            .get("ephemeral_5m_input_tokens")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+        let long = cache_creation
+            .get("ephemeral_1h_input_tokens")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+        output.usage.cache_write = short.saturating_add(long);
+        if cache_creation.contains_key("ephemeral_1h_input_tokens") {
+            output.usage.cache_write_1h = Some(long);
+        }
+    }
+    if let Some(v) = usage
+        .pointer("/cache_creation/ephemeral_1h_input_tokens")
+        .and_then(|v| v.as_u64())
+    {
+        output.usage.cache_write_1h = Some(v);
     }
     output.usage.total_tokens =
         output.usage.input + output.usage.output + output.usage.cache_read + output.usage.cache_write;
@@ -447,7 +467,7 @@ fn anthropic_cache_control(model: &Model, retention: crate::types::CacheRetentio
     Some(control)
 }
 
-fn add_cache_control_to_text_content(message: &mut Value, cache_control: &Value) -> bool {
+fn add_cache_control_to_last_cacheable_block(message: &mut Value, cache_control: &Value) -> bool {
     let Some(content) = message.get_mut("content") else {
         return false;
     };
@@ -466,7 +486,11 @@ fn add_cache_control_to_text_content(message: &mut Value, cache_control: &Value)
         return false;
     };
     for part in parts.iter_mut().rev() {
-        if part.get("type").and_then(|v| v.as_str()) == Some("text") {
+        let cacheable = matches!(
+            part.get("type").and_then(|v| v.as_str()),
+            Some("text" | "image" | "tool_result")
+        );
+        if cacheable {
             part["cache_control"] = cache_control.clone();
             return true;
         }
@@ -493,7 +517,9 @@ fn apply_anthropic_payload_cache_control(params: &mut Value, model: &Model, rete
     if let Some(messages) = params.get_mut("messages").and_then(|v| v.as_array_mut()) {
         for message in messages.iter_mut().rev() {
             let role = message.get("role").and_then(|v| v.as_str()).unwrap_or("");
-            if (role == "user" || role == "assistant") && add_cache_control_to_text_content(message, &cache_control) {
+            if (role == "user" || role == "assistant")
+                && add_cache_control_to_last_cacheable_block(message, &cache_control)
+            {
                 break;
             }
         }
@@ -548,7 +574,7 @@ fn build_params(model: &Model, context: &Context, options: &AnthropicOptions) ->
                 json!({ "type": "enabled", "budget_tokens": options.thinking_budget_tokens.unwrap_or(1024) });
         }
     }
-    let cache_retention = resolve_cache_retention(&options.base);
+    let cache_retention = CacheRetention::resolve(&options.base);
     apply_anthropic_payload_cache_control(&mut params, model, cache_retention);
     Ok(params)
 }
@@ -799,15 +825,4 @@ fn map_thinking_level_to_effort(model: &Model, level: ThinkingLevel) -> String {
         ThinkingLevel::Xhigh => "xhigh".to_string(),
         ThinkingLevel::Max => "max".to_string(),
     }
-}
-
-fn resolve_cache_retention(options: &StreamOptions) -> crate::types::CacheRetention {
-    if let Some(r) = options.cache_retention {
-        return r;
-    }
-    let cache_key = options.identity_or_default().env_key("CACHE_RETENTION");
-    if get_provider_env_value(&cache_key, options.env.as_ref()) == Some("long".to_string()) {
-        return crate::types::CacheRetention::Long;
-    }
-    crate::types::CacheRetention::Short
 }

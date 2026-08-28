@@ -10,7 +10,9 @@ use crate::api::simple_options::build_base_options;
 use crate::api::transform_messages::transform_messages;
 use crate::models::{calculate_cost, clamp_thinking_level, thinking_level_to_str};
 use crate::types::{AssistantContentBlock, AssistantMessage, AssistantMessageEvent, ContentBlock, Context, Message};
-use crate::types::{Model, ProviderStreams, SimpleStreamOptions, StopReason, StreamOptions, UserContent};
+use crate::types::{
+    CacheRetention, Model, ProviderStreams, SimpleStreamOptions, StopReason, StreamOptions, UserContent,
+};
 use crate::utils::event_stream::AssistantMessageEventStream;
 use crate::utils::hash::short_hash;
 use crate::utils::json_parse::parse_streaming_json;
@@ -426,7 +428,7 @@ fn build_chat_payload(
     if let Some(effort) = &options.reasoning_effort {
         payload["reasoning_effort"] = json!(effort);
     }
-    if options.base.cache_retention != Some(crate::types::CacheRetention::None)
+    if CacheRetention::resolve(&options.base) != CacheRetention::None
         && let Some(sid) = &options.base.session_id
     {
         payload["prompt_cache_key"] = json!(sid);

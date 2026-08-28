@@ -1,9 +1,17 @@
 # PRD: Provider-managed context caching
 
-**Status:** Proposed  
+**Status:** Implemented
 **Research date:** 2026-08-28  
 **Target crates:** `elph-ai`, `elph-agent`, `coding-agent`  
-**Implementation owner:** Unassigned
+**Implementation owner:** Elph maintainers
+
+The v1 implementation described below is shipped in the current branch. The
+provider live probes remain release/manual checks because cache routing and TTL
+behavior are nondeterministic; deterministic payload and usage tests are the CI
+gate.
+
+For the operational implementation guide, including configuration examples and
+troubleshooting, see [`docs/context-caching.md`](../context-caching.md).
 
 ## Executive decision
 

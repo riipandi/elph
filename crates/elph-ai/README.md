@@ -423,7 +423,7 @@ Per-request `StreamOptions.env` and stored credential `env` maps override proces
 
 | Variable                                   | Effect                                                                                                                        |
 | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| `ELPH_CACHE_RETENTION=long`                | Default prompt cache retention to `long` when `cache_retention` is unset (Anthropic, OpenAI Responses, Bedrock Claude models) |
+| `ELPH_CACHE_RETENTION=none|short|long`     | Default prompt cache retention when `cache_retention` is unset; invalid values use the safe `short` default |
 | `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY` | HTTP(S) proxy for outbound provider requests (see [HTTP and WebSocket Proxies](#http-and-websocket-proxies))                  |
 | `NO_PROXY`                                 | Hostnames/ports to bypass the proxy (`*`, comma-separated, optional `:port` suffix)                                           |
 
@@ -720,8 +720,8 @@ while let Some(event) = events.next().await {
 | `temperature`, `max_tokens`                  | Sampling controls (`max_tokens` is clamped to remaining context)                                                     |
 | `api_key`                                    | Explicit key; overrides provider auth resolution                                                                     |
 | `transport`                                  | Transport hint (`sse`, `websocket`, `websocket-cached`, `auto`) — used by OpenAI Codex when calling the API directly |
-| `cache_retention`                            | Prompt cache retention (`none`, `short`, `long`); defaults from `ELPH_CACHE_RETENTION`                               |
-| `session_id`                                 | Stable session id (Codex WebSocket context reuse, request tracing headers)                                           |
+| `cache_retention`                            | Provider-managed prompt cache retention (`none`, `short`, `long`); explicit values override `ELPH_CACHE_RETENTION` |
+| `session_id`                                 | Opaque stable affinity id for cache routing and Codex WebSocket context reuse; omitted when retention is `none`     |
 | `headers`                                    | Per-request header overrides (`None` removes a model default header)                                                 |
 | `timeout_ms`, `websocket_connect_timeout_ms` | HTTP and Codex WebSocket connect timeouts                                                                            |
 | `max_retries`, `max_retry_delay_ms`          | Retry policy for transient failures                                                                                  |
@@ -732,6 +732,14 @@ while let Some(event) = events.next().await {
 | `signal`                                     | `CancellationToken` for cooperative abort (see [Request Cancellation](#request-cancellation))                        |
 
 Provider-specific option structs (`AnthropicOptions`, `OpenAICompletionsOptions`, `BedrockOptions`, etc.) extend `base: StreamOptions` when you call `elph_ai::api` modules directly.
+
+Prompt caching is provider-managed. `short` uses the provider's normal ephemeral
+cache behavior, while `long` requests the longest supported retention and may
+degrade to `short` for a model or gateway that does not advertise it. `none`
+omits explicit cache controls and affinity; providers that only cache implicitly
+may not expose a way to force a miss. Cache reads and writes are reported in
+`Usage.cache_read`, `Usage.cache_write`, and (for Anthropic one-hour writes)
+`Usage.cache_write_1h`, and are included in `Usage.cost`.
 
 Chat streams parse provider SSE incrementally — events are emitted as chunks arrive rather than buffering the full response body first.
 

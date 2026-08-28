@@ -111,6 +111,42 @@ async fn repairs_malformed_sse_json_and_malformed_streamed_tool_json() {
 }
 
 #[tokio::test]
+async fn accounts_for_anthropic_one_hour_cache_writes() {
+    let model = anthropic_model("https://api.anthropic.com", None);
+    let mut output = empty_output(&model);
+    let stream = AssistantMessageEventStream::new();
+    let buffer = create_sse_buffer(&[
+        (
+            "message_start",
+            &json!({
+                "type": "message_start",
+                "message": {
+                    "id": "msg_cached",
+                    "usage": {
+                        "input_tokens": 10,
+                        "output_tokens": 0,
+                        "cache_creation": {
+                            "ephemeral_5m_input_tokens": 4,
+                            "ephemeral_1h_input_tokens": 6
+                        }
+                    }
+                }
+            })
+            .to_string(),
+        ),
+        ("message_stop", &json!({ "type": "message_stop" }).to_string()),
+    ]);
+
+    process_anthropic_sse_buffer(&buffer, &mut output, &stream, &model)
+        .await
+        .expect("stream");
+
+    assert_eq!(output.usage.cache_write, 10);
+    assert_eq!(output.usage.cache_write_1h, Some(6));
+    assert_eq!(output.usage.total_tokens, 20);
+}
+
+#[tokio::test]
 async fn preserves_refusal_stop_details_from_message_delta() {
     let model = anthropic_model("https://api.anthropic.com", None);
     let mut output = empty_output(&model);

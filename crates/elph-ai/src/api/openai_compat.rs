@@ -1,4 +1,4 @@
-use crate::types::{Model, OpenAICompletionsCompat};
+use crate::types::{Model, OpenAICompletionsCompat, SessionAffinityFormat};
 
 #[derive(Debug, Clone)]
 pub struct ResolvedOpenAICompletionsCompat {
@@ -16,6 +16,7 @@ pub struct ResolvedOpenAICompletionsCompat {
     pub supports_strict_mode: bool,
     pub cache_control_format: Option<String>,
     pub send_session_affinity_headers: bool,
+    pub session_affinity_format: Option<SessionAffinityFormat>,
     pub supports_long_cache_retention: bool,
     pub supports_finish_reason: bool,
     pub supports_thinking_token_budget: bool,
@@ -102,11 +103,10 @@ pub fn detect_compat(model: &Model) -> ResolvedOpenAICompletionsCompat {
     let requires_tool_result_name = is_moonshot_route || provider == "kimi-coding" || base_url.contains("kimi.com");
     let is_openrouter_developer_role_model =
         is_openrouter && (model_id.starts_with("anthropic/") || model_id.starts_with("openai/"));
-    let cache_control_format = if provider == "openrouter" && model_id.starts_with("anthropic/") {
-        Some("anthropic".to_string())
-    } else {
-        None
-    };
+    // Cache wire formats are catalog capabilities. Do not infer them from a
+    // model name because an OpenAI-compatible gateway may reject Anthropic
+    // content blocks even when the routed model is Claude.
+    let cache_control_format = None;
 
     let thinking_format = if is_deepseek {
         "deepseek"
@@ -154,12 +154,13 @@ pub fn detect_compat(model: &Model) -> ResolvedOpenAICompletionsCompat {
             && !is_gateway,
         cache_control_format,
         send_session_affinity_headers: false,
-        supports_long_cache_retention: !(is_together
-            || is_cloudflare_workers_ai
-            || is_cloudflare_ai_gateway
-            || is_nvidia
-            || is_ant_ling
-            || is_gateway),
+        // Unknown endpoints must opt in through catalog compat data before
+        // receiving OpenAI's optional cache-retention field.
+        supports_long_cache_retention: provider == "openai"
+            || provider == "openrouter"
+            || base_url.contains("api.openai.com")
+            || base_url.contains("openrouter.ai"),
+        session_affinity_format: None,
         // Most providers stream `finish_reason`; a few OpenAI-compat servers omit it.
         supports_finish_reason: true,
         // vLLM-style reasoning caps are opt-in via model compat overrides.
@@ -219,6 +220,10 @@ fn merge_compat(
         send_session_affinity_headers: overrides
             .send_session_affinity_headers
             .unwrap_or(detected.send_session_affinity_headers),
+        session_affinity_format: overrides
+            .session_affinity_format
+            .clone()
+            .or_else(|| detected.session_affinity_format.clone()),
         supports_long_cache_retention: overrides
             .supports_long_cache_retention
             .unwrap_or(detected.supports_long_cache_retention),

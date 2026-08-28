@@ -266,4 +266,32 @@ mod tests {
             Some("yes")
         );
     }
+
+    #[test]
+    fn parses_explicit_prompt_cache_mode_capability() {
+        let json = r#"{
+          "m1": {
+            "id": "m1",
+            "name": "GPT",
+            "api": "openai-responses",
+            "provider": "openai",
+            "baseUrl": "https://api.openai.com/v1",
+            "reasoning": false,
+            "input": ["text"],
+            "cost": {"input":1,"output":1,"cacheRead":0,"cacheWrite":0},
+            "contextWindow": 8000,
+            "maxTokens": 1024,
+            "compat": {"supportsExplicitPromptCacheMode": true}
+          }
+        }"#;
+
+        let models = parse_provider_catalog_json(json).expect("parse");
+        assert_eq!(
+            models[0]
+                .openai_responses_compat
+                .as_ref()
+                .and_then(|compat| compat.supports_explicit_prompt_cache_mode),
+            Some(true)
+        );
+    }
 }

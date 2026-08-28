@@ -18,7 +18,7 @@ turn: 1m50s · 3K/2K ↓↑ · 1K/0 ↓↑ cached · anthropic/claude-sonnet-4
 | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `1m50s`                     | Wall-clock of the turn                                                                                                                                                                                                                                |
 | `3K/2K ↓↑`                 | **Sum of `input`/`output` across every API call in the turn** — tool-call iterations (`StopReason::ToolUse`) and the final reply are separate API calls, each with its own usage. `↓` = sent to the API, `↑` = received from it. Tool-call tokens are part of provider `usage`, so they are already included. |
-| `1K/0 ↓↑ cached`           | Sum of `cache_read`/`cache_write` across those calls                                                                                                                                                                                                  |
+| `1K/0 ↓↑ cached`           | Sum of `cache_read`/`cache_write` across those calls; Anthropic one-hour writes are also tracked by `cache_write_1h`                                                                                                                                 |
 | `anthropic/claude-sonnet-4` | `provider_id/model_id` recorded on the turn                                                                                                                                                                                                           |
 
 Because each API call re-sends the whole context as input, the summed `in` can
@@ -94,3 +94,18 @@ Notes:
   already includes the system prompt) to avoid double-counting — see
   [`system-prompt-efficiency.md`](./system-prompt-efficiency.md) and
   `crates/elph-agent/src/compaction/estimation.rs`.
+
+## Prompt-cache usage
+
+Provider adapters normalize cache accounting into `Usage`:
+
+- `input` is uncached input tokens;
+- `cache_read` is provider-reported cached input tokens;
+- `cache_write` is input tokens written to a cache;
+- `cache_write_1h` identifies Anthropic input written with the one-hour TTL.
+
+The normalized `total_tokens` includes input, output, cache reads, and cache
+writes. `Usage.cost` applies the model's cache rates and the Anthropic one-hour
+write premium where the provider reports that tier. Providers differ in whether
+`CacheRetention::None` can disable implicit caching, so a missing cache-write
+field is not proof that a provider performed no internal caching.

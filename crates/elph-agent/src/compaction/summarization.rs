@@ -1,6 +1,9 @@
 //! LLM summarization for compaction.
 
-use elph_ai::{AssistantContentBlock, Context, Message, Model, Models, SimpleStreamOptions, StopReason, ThinkingLevel};
+use elph_ai::{
+    AssistantContentBlock, CacheRetention, Context, Message, Model, Models, SimpleStreamOptions, StopReason,
+    ThinkingLevel,
+};
 use tokio_util::sync::CancellationToken;
 
 use crate::agent::harness::types::{CompactionError, CompactionErrorCode};
@@ -35,6 +38,7 @@ fn build_stream_options(
     let mut options = SimpleStreamOptions::from_stream(elph_ai::StreamOptions::default());
     options.base.max_tokens = Some(max_tokens as u32);
     options.base.signal = signal;
+    options.base.cache_retention = Some(CacheRetention::None);
     if model.reasoning
         && let Some(level) = thinking_level
     {

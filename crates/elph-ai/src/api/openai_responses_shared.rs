@@ -562,15 +562,26 @@ pub fn process_responses_stream_event(
                         .pointer("/input_tokens_details/cached_tokens")
                         .and_then(|v| v.as_u64())
                         .unwrap_or(0);
+                    let cache_write = usage
+                        .pointer("/input_tokens_details/cache_write_tokens")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0);
                     let input = usage.get("input_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
                     let output_tokens = usage.get("output_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
-                    output.usage.input = input.saturating_sub(cached);
+                    output.usage.input = input.saturating_sub(cached).saturating_sub(cache_write);
                     output.usage.output = output_tokens;
                     output.usage.cache_read = cached;
+                    output.usage.cache_write = cache_write;
                     output.usage.reasoning = usage
                         .pointer("/output_tokens_details/reasoning_tokens")
                         .and_then(|v| v.as_u64());
-                    output.usage.total_tokens = usage.get("total_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
+                    output.usage.total_tokens =
+                        usage.get("total_tokens").and_then(|v| v.as_u64()).unwrap_or_else(|| {
+                            output.usage.input
+                                + output.usage.output
+                                + output.usage.cache_read
+                                + output.usage.cache_write
+                        });
                     calculate_cost(model, &mut output.usage);
                     if let Some(opts) = &options
                         && let Some(apply) = &opts.apply_service_tier_pricing

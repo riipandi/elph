@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use elph_ai::{ImageContent, Model, Models, Transport};
+use elph_ai::{CacheRetention, ImageContent, Model, Models, Transport};
 use serde_json::Value;
 
 use crate::runtime::local_env::LocalExecutionEnv;
@@ -56,7 +56,7 @@ pub struct AgentHarnessStreamOptions {
     pub max_retry_delay_ms: Option<u64>,
     pub headers: Option<std::collections::HashMap<String, String>>,
     pub metadata: Option<Value>,
-    pub cache_retention: Option<String>,
+    pub cache_retention: Option<CacheRetention>,
     pub thinking_budgets: Option<elph_ai::ThinkingBudgets>,
 }
 
@@ -73,7 +73,9 @@ pub struct AgentHarnessStreamOptionsPatch {
     pub headers: Option<Option<std::collections::HashMap<String, Option<String>>>>,
     /// `None` = leave unchanged, `Some(None)` = clear all metadata, `Some(Some(map))` = merge/delete keys.
     pub metadata: Option<Option<std::collections::HashMap<String, Option<Value>>>>,
-    pub cache_retention: Option<String>,
+    /// `None` = leave unchanged, `Some(None)` = clear the request policy,
+    /// `Some(Some(v))` = set the request policy.
+    pub cache_retention: Option<Option<CacheRetention>>,
 }
 
 pub fn clone_stream_options(stream_options: &AgentHarnessStreamOptions) -> AgentHarnessStreamOptions {
@@ -84,7 +86,7 @@ pub fn clone_stream_options(stream_options: &AgentHarnessStreamOptions) -> Agent
         max_retry_delay_ms: stream_options.max_retry_delay_ms,
         headers: stream_options.headers.clone(),
         metadata: stream_options.metadata.clone(),
-        cache_retention: stream_options.cache_retention.clone(),
+        cache_retention: stream_options.cache_retention,
         thinking_budgets: stream_options.thinking_budgets.clone(),
     }
 }
@@ -106,8 +108,8 @@ pub fn apply_stream_options_patch(
     if let Some(max_retry_delay_ms) = patch.max_retry_delay_ms {
         result.max_retry_delay_ms = max_retry_delay_ms;
     }
-    if patch.cache_retention.is_some() {
-        result.cache_retention = patch.cache_retention.clone();
+    if let Some(cache_retention) = patch.cache_retention {
+        result.cache_retention = cache_retention;
     }
     if let Some(headers_patch) = &patch.headers {
         result.headers = match headers_patch {

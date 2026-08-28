@@ -145,6 +145,38 @@ async fn finalizes_incomplete_terminal_events_as_length() {
 }
 
 #[tokio::test]
+async fn accounts_for_openai_cache_write_tokens() {
+    let model = responses_model();
+    let mut output = empty_output(&model);
+    let stream = AssistantMessageEventStream::new();
+    let events = vec![json!({
+        "type": "response.completed",
+        "response": {
+            "id": "resp_cached",
+            "status": "completed",
+            "usage": {
+                "input_tokens": 30,
+                "output_tokens": 12,
+                "total_tokens": 42,
+                "input_tokens_details": {
+                    "cached_tokens": 5,
+                    "cache_write_tokens": 3
+                }
+            }
+        }
+    })];
+
+    process_responses_stream(events, &mut output, &stream, &model, None)
+        .await
+        .expect("stream");
+
+    assert_eq!(output.usage.input, 22);
+    assert_eq!(output.usage.cache_read, 5);
+    assert_eq!(output.usage.cache_write, 3);
+    assert_eq!(output.usage.total_tokens, 42);
+}
+
+#[tokio::test]
 async fn rejects_failed_terminal_events_with_provider_error() {
     let model = responses_model();
     let mut output = empty_output(&model);

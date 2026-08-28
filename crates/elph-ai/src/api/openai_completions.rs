@@ -5,7 +5,9 @@ use anyhow::Result;
 use serde_json::Value;
 use serde_json::json;
 
-use crate::api::common::{apply_on_payload, build_http_client_for_target, finish_stream_error};
+use crate::api::common::{
+    apply_on_payload, apply_session_affinity_headers, build_http_client_for_target, finish_stream_error,
+};
 use crate::api::common::{invoke_on_response_from_reqwest, is_request_aborted, merge_model_headers};
 use crate::api::github_copilot_headers::{build_copilot_dynamic_headers, has_copilot_vision_input};
 use crate::api::openai_compat::ResolvedOpenAICompletionsCompat;
@@ -15,10 +17,11 @@ use crate::api::simple_options::build_base_options;
 use crate::api::transform_messages::transform_messages;
 use crate::models::calculate_cost;
 use crate::types::{AssistantContentBlock, AssistantMessage, AssistantMessageEvent, ContentBlock, Context, Message};
-use crate::types::{Model, ProviderStreams, SimpleStreamOptions, StopReason, StreamOptions, UserContent};
+use crate::types::{
+    CacheRetention, Model, ProviderStreams, SimpleStreamOptions, StopReason, StreamOptions, UserContent,
+};
 use crate::utils::event_stream::AssistantMessageEventStream;
 use crate::utils::json_parse::parse_streaming_json;
-use crate::utils::provider_env::get_provider_env_value;
 use crate::utils::sanitize_unicode::sanitize_surrogates;
 
 use super::sse::for_each_sse_json_event;
@@ -98,6 +101,17 @@ async fn run_openai_completions(
     output: &mut AssistantMessage,
 ) -> Result<()> {
     let mut headers = merge_model_headers(model, Some(&options.base));
+    let compat = get_compat(model);
+    apply_session_affinity_headers(
+        &mut headers,
+        options.base.session_id.as_deref(),
+        CacheRetention::resolve(&options.base),
+        if compat.send_session_affinity_headers {
+            compat.session_affinity_format.as_ref()
+        } else {
+            None
+        },
+    );
     if model.provider == "github-copilot" {
         headers.extend(build_copilot_dynamic_headers(
             &context.messages,
@@ -434,7 +448,7 @@ pub fn build_openai_completions_params(
 
 fn build_params(model: &Model, context: &Context, options: &OpenAICompletionsOptions) -> Result<Value> {
     let compat = get_compat(model);
-    let cache_retention = resolve_cache_retention(&options.base);
+    let cache_retention = CacheRetention::resolve(&options.base);
     let mut messages = convert_messages(model, context, &compat);
     let cache_control = get_compat_cache_control(&compat, cache_retention);
     let mut params = json!({
@@ -481,14 +495,18 @@ fn build_params(model: &Model, context: &Context, options: &OpenAICompletionsOpt
         }
     }
     apply_thinking_params(model, options, &compat, &mut params);
-    if cache_retention != crate::types::CacheRetention::None {
-        let use_cache = model.base_url.contains("api.openai.com")
-            || (cache_retention == crate::types::CacheRetention::Long && compat.supports_long_cache_retention);
+    if cache_retention != CacheRetention::None {
+        let use_cache = model.provider == "openai"
+            || model.provider == "openrouter"
+            || model.base_url.contains("api.openai.com")
+            || model.base_url.contains("openrouter.ai")
+            || compat.cache_control_format.is_some()
+            || (cache_retention == CacheRetention::Long && compat.supports_long_cache_retention);
         if use_cache {
             if let Some(key) = clamp_openai_prompt_cache_key(options.base.session_id.as_deref()) {
                 params["prompt_cache_key"] = json!(key);
             }
-            if cache_retention == crate::types::CacheRetention::Long && compat.supports_long_cache_retention {
+            if cache_retention == CacheRetention::Long && compat.supports_long_cache_retention {
                 params["prompt_cache_retention"] = json!("24h");
             }
         }
@@ -993,16 +1011,4 @@ fn thinking_level_value(model: &Model, level: &str) -> Option<String> {
         .as_ref()
         .and_then(|m| m.get(level))
         .and_then(|v| v.clone())
-}
-
-fn resolve_cache_retention(options: &StreamOptions) -> crate::types::CacheRetention {
-    if let Some(r) = options.cache_retention {
-        return r;
-    }
-    let cache_key = options.identity_or_default().env_key("CACHE_RETENTION");
-    if get_provider_env_value(&cache_key, options.env.as_ref()) == Some("long".to_string()) {
-        crate::types::CacheRetention::Long
-    } else {
-        crate::types::CacheRetention::Short
-    }
 }

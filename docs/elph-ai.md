@@ -44,6 +44,17 @@ Set [`ClientIdentity`](../crates/elph-ai/src/types/mod.rs) on `CreateModelsOptio
 
 Default is `product = "elph"`, `env_prefix = "ELPH"`. Elph sets this explicitly when building `Models`.
 
+`StreamOptions.cache_retention` controls provider-managed prompt-prefix caching.
+Use `CacheRetention::None`, `Short`, or `Long`; an explicit request value takes
+precedence over `{PREFIX}_CACHE_RETENTION`, then the default is `Short`.
+`{PREFIX}_CACHE_RETENTION` accepts `none`, `short`, and `long`; invalid values
+fall back to `short` with one process-level warning. `session_id` is used as an
+opaque provider affinity key for cache-enabled requests and is not sent as cache
+affinity when retention is `None`.
+
+See [Context caching](./context-caching.md) for the provider mapping, workload
+policy, usage accounting, and troubleshooting guidance.
+
 OAuth browser callback requires the `oauth-callback` feature.
 
 ## Cargo features

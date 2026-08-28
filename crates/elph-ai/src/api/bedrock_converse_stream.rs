@@ -11,7 +11,6 @@ use serde_json::Value;
 use serde_json::json;
 
 use crate::api::bedrock_shared::BedrockThinkingOptions;
-use crate::api::bedrock_shared::resolve_cache_retention;
 use crate::api::bedrock_shared::{append_cache_point_to_last_user_message, build_additional_model_request_fields};
 use crate::api::bedrock_shared::{build_bedrock_system_blocks, resolve_bedrock_runtime_config};
 use crate::api::common::{apply_on_payload, build_http_client_for_target, finish_stream_error};
@@ -208,11 +207,7 @@ pub fn build_bedrock_converse_body(model: &Model, context: &Context, options: &B
 }
 
 fn build_converse_body(model: &Model, context: &Context, options: &BedrockOptions) -> Result<Value> {
-    let cache_retention = resolve_cache_retention(
-        options.base.cache_retention,
-        options.base.env.as_ref(),
-        options.base.identity.as_ref(),
-    );
+    let cache_retention = crate::types::CacheRetention::resolve(&options.base);
     let mut messages = convert_messages(context, model);
     append_cache_point_to_last_user_message(&mut messages, cache_retention);
     let mut body = json!({

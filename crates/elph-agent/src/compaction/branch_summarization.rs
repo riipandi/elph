@@ -1,6 +1,6 @@
 //! Branch summarization helpers — elph-agent module.
 
-use elph_ai::{Context, Message, Model, Models, SimpleStreamOptions, StopReason};
+use elph_ai::{CacheRetention, Context, Message, Model, Models, SimpleStreamOptions, StopReason};
 use serde_json::Value;
 use tokio_util::sync::CancellationToken;
 
@@ -296,6 +296,7 @@ pub async fn generate_branch_summary(
     let mut stream_options = SimpleStreamOptions::from_stream(elph_ai::StreamOptions::default());
     stream_options.base.max_tokens = Some(2048);
     stream_options.base.signal = options.signal;
+    stream_options.base.cache_retention = Some(CacheRetention::None);
 
     let response = models
         .complete_simple(

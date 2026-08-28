@@ -12,7 +12,7 @@ use serde_json::Value;
 use crate::api::http_proxy::resolve_http_proxy_url_for_target;
 use crate::resilience::ResilienceError;
 use crate::types::{AssistantMessage, AssistantMessageEvent, Model, OnPayloadCallback, OnResponseCallback};
-use crate::types::{ProviderEnv, ProviderResponse, StopReason, StreamOptions};
+use crate::types::{CacheRetention, ProviderEnv, ProviderResponse, SessionAffinityFormat, StopReason, StreamOptions};
 use crate::utils::error_body::{
     error_body_from_response, format_provider_error, http_error_log_snippet, normalize_provider_error,
 };
@@ -106,6 +106,42 @@ pub async fn apply_on_response(callback: Option<&OnResponseCallback>, response: 
 pub fn merge_model_headers(model: &Model, options: Option<&StreamOptions>) -> HashMap<String, String> {
     let base = model.headers.clone().unwrap_or_default();
     merge_provider_headers(&base, options.and_then(|o| o.headers.as_ref()))
+}
+
+/// Add catalog-approved routing affinity without coupling it to prompt text.
+///
+/// `CacheRetention::None` deliberately suppresses these optional headers. A
+/// caller-provided header remains authoritative.
+pub fn apply_session_affinity_headers(
+    headers: &mut HashMap<String, String>,
+    session_id: Option<&str>,
+    retention: CacheRetention,
+    format: Option<&SessionAffinityFormat>,
+) {
+    let Some(session_id) = session_id.filter(|id| !id.is_empty()) else {
+        return;
+    };
+    if retention == CacheRetention::None {
+        return;
+    }
+
+    let format = format.unwrap_or(&SessionAffinityFormat::OpenAI);
+    let entries: &[(&str, &str)] = match format {
+        SessionAffinityFormat::OpenAI => &[
+            ("session_id", session_id),
+            ("x-client-request-id", session_id),
+            ("x-session-affinity", session_id),
+        ],
+        SessionAffinityFormat::OpenAINoSession => {
+            &[("x-client-request-id", session_id), ("x-session-affinity", session_id)]
+        }
+        SessionAffinityFormat::OpenRouter => &[("x-session-id", session_id)],
+    };
+    for (name, value) in entries {
+        headers
+            .entry((*name).to_string())
+            .or_insert_with(|| (*value).to_string());
+    }
 }
 
 pub const REQUEST_ABORTED: &str = "Request aborted";
@@ -487,5 +523,30 @@ mod tests {
         let h = HashMap::new();
         let key = get_client_api_key_for_url("xai", Some(""), &h, Some("https://api.x.ai/v1")).unwrap();
         assert_eq!(key, "");
+    }
+
+    #[test]
+    fn cache_affinity_headers_follow_catalog_format() {
+        let mut headers = HashMap::new();
+        apply_session_affinity_headers(
+            &mut headers,
+            Some("session-1"),
+            CacheRetention::Short,
+            Some(&SessionAffinityFormat::OpenRouter),
+        );
+        assert_eq!(headers.get("x-session-id").map(String::as_str), Some("session-1"));
+        assert!(!headers.contains_key("x-client-request-id"));
+    }
+
+    #[test]
+    fn none_suppresses_cache_affinity_headers() {
+        let mut headers = HashMap::new();
+        apply_session_affinity_headers(
+            &mut headers,
+            Some("session-1"),
+            CacheRetention::None,
+            Some(&SessionAffinityFormat::OpenAI),
+        );
+        assert!(headers.is_empty());
     }
 }
