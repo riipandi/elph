@@ -3,7 +3,6 @@
 //! Releases are built by `.github/workflows/release.yml`. Keep the asset
 //! naming rules here in sync with that workflow and the install scripts.
 
-use std::fmt::Write as _;
 use std::fs;
 use std::io::{Read, Write};
 use std::path::Path;
@@ -15,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tempfile::NamedTempFile;
 
-use super::style::{self, CliStyle, S_OK, S_WARN};
+use super::style::{CliStyle, S_ACCENT, S_MUTED, S_OK, S_WARN};
 use crate::platform::scaffold::VersionFile;
 use crate::platform::{EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths};
 use crate::utils::path::AppPaths;
@@ -176,10 +175,12 @@ async fn run(args: &UpdateArgs, paths: &Paths) -> Result<()> {
         return Ok(());
     }
 
+    print_human_update(&release, &current_tag, args.force_reinstall && !update_available);
     install_release(&client, &release).await?;
     if let Err(error) = record_install(paths, version_file, &release) {
         log::warn!("binary updated but could not update version.json: {error:#}");
     }
+    print_human_updated(&release, &current_tag, args.force_reinstall && !update_available);
     Ok(())
 }
 
@@ -259,7 +260,8 @@ async fn install_release(client: &reqwest::Client, release: &Release) -> Result<
         .as_deref()
         .context("the selected release has no SHA256SUMS asset")?;
 
-    eprintln!("elph: downloading {archive_name}...");
+    let sty = CliStyle::auto_stderr();
+    eprintln!("{}", sty.paint(S_MUTED, format!("  Downloading {archive_name}...")));
     let archive = download(client, archive_url, parent)
         .await
         .with_context(|| format!("download {archive_name}"))?;
@@ -272,10 +274,6 @@ async fn install_release(client: &reqwest::Client, release: &Release) -> Result<
     let mut binary = extract_binary(archive.path(), archive_name, parent)?;
     install_binary(&target, binary.as_file_mut())?;
 
-    #[cfg(windows)]
-    eprintln!("elph: update staged; restart elph to use {}", release.tag);
-    #[cfg(not(windows))]
-    eprintln!("elph: updated {} to {}", target.display(), release.tag);
     Ok(())
 }
 
@@ -496,18 +494,58 @@ fn print_check(args: &UpdateArgs, release: &Release, current: &str, update_avail
 
 fn print_human_check(release: &Release, current: &str, update_available: bool) {
     let sty = CliStyle::auto();
-    let mut out = String::new();
-    style::section(&mut out, sty, "Update");
-    style::kv(&mut out, sty, "Channel", release.version.channel().as_str());
-    style::kv(&mut out, sty, "Current", current.trim_start_matches('v'));
-    style::kv(&mut out, sty, "Latest", release.tag.trim_start_matches('v'));
-    let _ = writeln!(out);
+    let summary = human_check_summary(release, current, update_available);
     if update_available {
-        style::info(&mut out, sty, sty.paint(S_WARN, "An update is available."));
+        println!("{}", sty.paint(S_WARN, summary));
+        println!("  Run `elph update` to install it.");
     } else {
-        style::info(&mut out, sty, sty.paint(S_OK, "Already up to date."));
+        println!("{}", sty.paint(S_OK, summary));
     }
-    print!("{out}");
+}
+
+fn print_human_update(release: &Release, current: &str, reinstall: bool) {
+    let sty = CliStyle::auto();
+    println!("{}", sty.paint(S_ACCENT, human_update_summary(release, current, reinstall)));
+}
+
+fn print_human_updated(release: &Release, current: &str, reinstall: bool) {
+    let sty = CliStyle::auto();
+    println!("{}", sty.paint(S_OK, human_updated_summary(release, current, reinstall)));
+    #[cfg(windows)]
+    println!("  Restart elph to use the new version.");
+}
+
+fn human_check_summary(release: &Release, current: &str, update_available: bool) -> String {
+    let current = current.trim_start_matches('v');
+    let latest = release.tag.trim_start_matches('v');
+    let channel = release.version.channel().as_str();
+    if update_available {
+        format!("Update available — {channel} {current} → {latest}")
+    } else {
+        format!("Already up to date — {channel} {current}")
+    }
+}
+
+fn human_update_summary(release: &Release, current: &str, reinstall: bool) -> String {
+    let current = current.trim_start_matches('v');
+    let latest = release.tag.trim_start_matches('v');
+    let channel = release.version.channel().as_str();
+    if reinstall {
+        format!("Reinstalling — {channel} {current}")
+    } else {
+        format!("Updating — {channel} {current} → {latest}")
+    }
+}
+
+fn human_updated_summary(release: &Release, current: &str, reinstall: bool) -> String {
+    let current = current.trim_start_matches('v');
+    let latest = release.tag.trim_start_matches('v');
+    let channel = release.version.channel().as_str();
+    if reinstall {
+        format!("Reinstalled — {channel} {latest}")
+    } else {
+        format!("Updated — {channel} {current} → {latest}")
+    }
 }
 
 #[cfg(target_os = "linux")]
@@ -572,6 +610,54 @@ mod tests {
         assert_eq!(normalize_tag("1.2.3").expect("valid tag"), "v1.2.3");
         assert_eq!(normalize_tag("v1.2.3-canary").expect("valid tag"), "v1.2.3-canary");
         assert!(normalize_tag("latest").is_err());
+    }
+
+    #[test]
+    fn formats_compact_up_to_date_summary() {
+        let release = Release {
+            tag: "v0.1.3".into(),
+            version: parse_tag("v0.1.3").expect("valid release"),
+            archive_url: None,
+            checksum_url: None,
+        };
+        assert_eq!(
+            human_check_summary(&release, "v0.1.3", false),
+            "Already up to date — stable 0.1.3"
+        );
+    }
+
+    #[test]
+    fn formats_available_update_summary() {
+        let release = Release {
+            tag: "v0.1.4".into(),
+            version: parse_tag("v0.1.4").expect("valid release"),
+            archive_url: None,
+            checksum_url: None,
+        };
+        assert_eq!(
+            human_check_summary(&release, "v0.1.3", true),
+            "Update available — stable 0.1.3 → 0.1.4"
+        );
+    }
+
+    #[test]
+    fn formats_update_action_and_result_summaries() {
+        let release = Release {
+            tag: "v0.1.4".into(),
+            version: parse_tag("v0.1.4").expect("valid release"),
+            archive_url: None,
+            checksum_url: None,
+        };
+        assert_eq!(
+            human_update_summary(&release, "v0.1.3", false),
+            "Updating — stable 0.1.3 → 0.1.4"
+        );
+        assert_eq!(
+            human_updated_summary(&release, "v0.1.3", false),
+            "Updated — stable 0.1.3 → 0.1.4"
+        );
+        assert_eq!(human_update_summary(&release, "v0.1.4", true), "Reinstalling — stable 0.1.4");
+        assert_eq!(human_updated_summary(&release, "v0.1.4", true), "Reinstalled — stable 0.1.4");
     }
 
     #[test]
