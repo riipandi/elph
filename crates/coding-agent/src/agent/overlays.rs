@@ -7,6 +7,7 @@ use elph_ai::{AssistantContentBlock, Message, UserContent};
 use elph_ai::{get_builtin_model, get_builtin_providers};
 use std::collections::HashSet;
 
+use super::session_info_slash::format_session_timestamp;
 use super::session_manager::SessionManager;
 
 pub fn list_model_select_items() -> Vec<SelectItem> {
@@ -32,15 +33,14 @@ pub async fn list_session_select_items(session_manager: &SessionManager) -> Resu
     let items: Vec<SelectItem> = sessions
         .into_iter()
         .map(|meta| {
-            let short_id: String = meta.id.chars().take(8).collect();
-            let label = meta
-                .name
-                .as_deref()
-                .map(str::trim)
-                .filter(|s| !s.is_empty())
-                .map(|n| format!("{n} ({short_id})"))
-                .unwrap_or(short_id);
-            SelectItem::new(meta.id, label).with_description(meta.updated_at)
+            let title = meta.name.as_deref().map(str::trim).filter(|s| !s.is_empty());
+            let timestamp = format_session_timestamp(&meta.updated_at);
+            match title {
+                Some(title) => {
+                    SelectItem::new(meta.id.clone(), title).with_description(format!("{} · {timestamp}", meta.id))
+                }
+                None => SelectItem::new(meta.id.clone(), meta.id.clone()).with_description(timestamp),
+            }
         })
         .collect();
     Ok(items)
