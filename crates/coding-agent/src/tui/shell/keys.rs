@@ -1500,6 +1500,42 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 }
             }
 
+            // Search is rendered as a compact status row (like the Resume
+            // selector), so the shell owns editing while it has focus.
+            if model_input_focus.get() == ModelSelectorFocus::Search {
+                if modifiers.is_empty() && code == KeyCode::Enter {
+                    if let Some(pending) = pending_model_selector.write().as_mut() {
+                        focus_model_selector_list(&mut model_input_focus, pending);
+                    }
+                    return;
+                }
+                if modifiers.is_empty() && code == KeyCode::Backspace {
+                    let mut next = model_filter.read().clone();
+                    if pop_model_filter_char(&mut next) {
+                        model_filter.set(next.clone());
+                        if let Some(pending) = pending_model_selector.write().as_mut() {
+                            sync_pending_filter(pending, &next);
+                            model_selected_index.set(pending.model_index);
+                        }
+                    }
+                    return;
+                }
+                if !modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::META)
+                    && let KeyCode::Char(c) = code
+                    && !c.is_control()
+                    && !matches!(c, '[' | ']' | '+' | '-' | '=' | '_' | '$')
+                {
+                    let mut next = model_filter.read().clone();
+                    next.push(c);
+                    model_filter.set(next.clone());
+                    if let Some(pending) = pending_model_selector.write().as_mut() {
+                        sync_pending_filter(pending, &next);
+                        model_selected_index.set(pending.model_index);
+                    }
+                    return;
+                }
+            }
+
             if model_input_focus.get() == ModelSelectorFocus::List {
                 if modifiers.is_empty()
                     && code == KeyCode::Backspace
@@ -2994,8 +3030,32 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 }
             }
 
-            // Search focus: typing and backspace belong to the Input component (TextInput);
-            // the filter State is synced back into the pending dialog on render.
+            // Search is rendered as a compact status row (like the model selector), so
+            // the shell owns editing while it has focus.
+            if focus == ProviderConnectFocus::Search {
+                if modifiers.is_empty() && code == KeyCode::Backspace {
+                    if let Some(pending) = pending_provider_connect.write().as_mut() {
+                        provider_list_backspace(&mut provider_connect_filter, pending);
+                        provider_connect_selected.set(pending.selected_provider);
+                    }
+                    return;
+                }
+                if !modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::META)
+                    && let KeyCode::Char(c) = code
+                    && !c.is_control()
+                {
+                    if let Some(pending) = pending_provider_connect.write().as_mut() {
+                        apply_provider_filter_seed(
+                            ProviderFilterSeed::Append(c),
+                            &mut provider_connect_filter,
+                            &mut provider_connect_input_focus,
+                            pending,
+                        );
+                        provider_connect_selected.set(pending.selected_provider);
+                    }
+                    return;
+                }
+            }
         }
 
         // ── API key dialog (separate dialog) ─────────────────────
@@ -3086,11 +3146,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 return;
             }
 
-            // Character typing, backspace, paste: owned by DialogUserInputContent → TextInput
-            // (shared `provider_connect_api_key` State). Do not also push/pop here —
-            // that double-applied each keystroke (`ad` → `adad`).
-            // Let all keystrokes through to the Input component. Only Ctrl+C/Ctrl+D
-            // are intercepted by the shell global shortcut handler above.
+            // Unhandled keys are intentionally ignored while the selector is
+            // open. Search editing is handled above when Search has focus.
             return;
         }
 

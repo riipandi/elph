@@ -71,7 +71,8 @@ use crate::tui::model_selector_shell::{
     clamp_thinking_for_model_value, close_model_selector, focus_model_selector_list, model_selector_confirm_on_enter,
     model_selector_filter_seed, model_selector_list_backspace, model_selector_list_nav_delta,
     model_selector_provider_delta, model_selector_sanitize_filter, model_selector_scope_delta,
-    model_selector_scoped_action, open_model_selector, spawn_runtime_model_switch, sync_pending_filter,
+    model_selector_scoped_action, open_model_selector, pop_model_filter_char, spawn_runtime_model_switch,
+    sync_pending_filter,
 };
 use crate::tui::notifier;
 use crate::tui::prompt::PromptChrome;
@@ -83,7 +84,7 @@ use crate::tui::prompt_history::{
 use crate::tui::provider_connect_dialog::{
     OpenProviderApiKeyDialogArgs, OpenProviderConnectDialogArgs, PendingProviderApiKeyDialog,
     PendingProviderConnectDialog, PendingProviderDisconnectDialog, ProviderConnectFocus, ProviderConnectStep,
-    apply_provider_filter_seed, close_provider_api_key_dialog, close_provider_connect_dialog,
+    ProviderFilterSeed, apply_provider_filter_seed, close_provider_api_key_dialog, close_provider_connect_dialog,
     close_provider_disconnect_dialog, focus_provider_list, focus_provider_search, format_provider_name,
     get_provider_options_for_auth_method, open_provider_api_key_dialog, open_provider_connect_dialog,
     open_provider_disconnect_dialog, provider_auth_method_from_index, provider_confirm_on_enter, provider_filter_seed,

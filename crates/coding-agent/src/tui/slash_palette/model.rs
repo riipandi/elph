@@ -180,13 +180,18 @@ pub fn list_height(option_count: usize, screen_height: u16) -> u16 {
     option_count.min(list_viewport_cap(screen_height)).max(1) as u16
 }
 
+/// First visible option while keeping the selection at the viewport edge.
+///
+/// The window stays anchored until the selected option reaches the last visible
+/// row, then advances one option at a time. This keeps keyboard navigation
+/// predictable instead of pinning the selection in the middle of the list.
 pub fn palette_window_start(selected: usize, height: usize, len: usize) -> usize {
     if len == 0 {
         return 0;
     }
     let viewport = height.max(1).min(len);
     let max_start = len.saturating_sub(viewport);
-    selected.saturating_sub(viewport / 2).min(max_start)
+    selected.saturating_sub(viewport.saturating_sub(1)).min(max_start)
 }
 
 pub fn clamp_index(index: usize, len: usize) -> usize {
@@ -388,11 +393,13 @@ mod tests {
     }
 
     #[test]
-    fn palette_window_start_clamps_at_list_tail() {
+    fn palette_window_start_moves_only_at_viewport_edges() {
         let cap = 8;
         assert_eq!(palette_window_start(9, cap, 10), 2);
         assert_eq!(palette_window_start(0, cap, 3), 0);
         assert_eq!(palette_window_start(4, cap, 10), 0);
+        assert_eq!(palette_window_start(7, cap, 10), 0);
+        assert_eq!(palette_window_start(8, cap, 10), 1);
     }
 
     #[test]

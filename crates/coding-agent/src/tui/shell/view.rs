@@ -451,7 +451,7 @@ pub(crate) fn build_shell_view(
         }
     }
     // Sync provider connect filter from State into pending dialog so re-renders
-    // pick up characters typed through the Input component.
+    // keep the filtered list and selection aligned with shell-owned input.
     if let Some(pending) = pending_provider_connect.write().as_mut() {
         let next_filter = provider_connect_filter.read().clone();
         if pending.filter != next_filter {
@@ -473,26 +473,8 @@ pub(crate) fn build_shell_view(
                 screen_width: screen_width,
                 screen_height: screen_height,
                 view: view,
-                provider_index: Some(model_provider_index),
                 model_index: Some(model_selected_index),
-                filter: Some(model_filter),
-                input_focus: model_input_focus.get(),
                 has_focus: model_selector_has_focus,
-                on_filter_submit: move |_| {
-                    model_input_focus.set(ModelSelectorFocus::List);
-                    if let Some(pending) = pending_model_selector.write().as_mut() {
-                        pending.input_focus = ModelSelectorFocus::List;
-                    }
-                },
-                on_confirm: move |_| {},
-                on_cancel: move |_| {
-                    close_model_selector(
-                        &mut pending_model_selector,
-                        &mut draft,
-                        &mut live_draft,
-                        &mut shell_focus,
-                    );
-                },
             )
         }
         .into()

@@ -395,7 +395,11 @@ When the agent is busy, an activity line shows between the content area and inpu
 
 Pressing **Enter** on a model applies it, then opens the **thinking level picker** for the newly selected model (same multi-step dialog pattern as `/provider connect`). The picker lists every thinking level in the new model's catalog (`thinkingLevelMap`); `Esc` closes it without changing the level.
 
-Every tab uses the same row layout: `MODEL_ID  PROVIDER  CONTEXT_LENGTH (think|img)` — the provider column stays visible on Provider tabs too, so columns never shift when switching tabs. Fuzzy filtering (and the unfiltered list) only searches the **active tab's category**: All searches every model, Free only free models, Scoped only scoped models, and a Provider tab only that provider's models.
+Every tab uses the same row layout: `MODEL_ID  PROVIDER  CONTEXT_LENGTH (think|img)` — the provider column stays visible on Provider tabs too, so columns never shift when switching tabs. Fuzzy filtering (and the unfiltered list) only searches the **active tab's category**: All searches every model, Scoped only scoped models, and a Provider tab only that provider's models. The status row keeps the filter query and the number of models available in the active category together.
+
+Scrollable selectors keep the highlighted item at the top or bottom edge of the
+viewport. The window advances only after the selection crosses an edge, rather
+than keeping the highlighted item fixed in the middle.
 
 | Key (list focused) | Action                                                                     |
 | ------------------ | -------------------------------------------------------------------------- |

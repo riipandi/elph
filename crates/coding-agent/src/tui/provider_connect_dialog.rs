@@ -15,7 +15,7 @@ use elph_ai::providers::builtin_providers;
 use elph_tui::components::{DialogChrome, DialogUserInputContent, UiTheme, dialog_max_content_height};
 use iocraft::prelude::*;
 
-use crate::tui::slash_palette::list_viewport_cap;
+use crate::tui::slash_palette::{list_viewport_cap, palette_window_start};
 
 use crate::tui::focus::ShellFocus;
 use crate::tui::inline_dialog::{InlineDialogShell, OPTIONS_LIST_TOP_GAP, inline_body_width};
@@ -618,8 +618,8 @@ pub fn provider_list_backspace(filter: &mut State<String>, pending: &mut Pending
 
 // ── Viewport height (mirrors model_selector_list_viewport_height) ────
 
-/// Fixed rows above the provider ModelOptionList (count label, search bar, paddings).
-pub const PROVIDER_SELECT_LIST_FIXED_ROWS: u16 = 4;
+/// Fixed rows above the provider ModelOptionList (status row and list padding).
+pub const PROVIDER_SELECT_LIST_FIXED_ROWS: u16 = 2;
 
 /// Capped viewport height for the provider ModelOptionList, computed from terminal size.
 pub fn provider_select_list_viewport_height(screen_width: u16, screen_height: u16) -> u16 {
@@ -637,7 +637,17 @@ fn auth_method_footer() -> String {
 }
 
 fn provider_select_footer() -> String {
-    "↑/↓ navigate · Tab focus · / filter · Enter confirm · Esc cancel".to_string()
+    "↑/↓ navigate · Tab focus · Enter confirm · Esc cancel".to_string()
+}
+
+pub fn provider_select_status_label(filter: &str, provider_count: usize) -> String {
+    let filter = if filter.trim().is_empty() {
+        "(type to search)"
+    } else {
+        filter
+    };
+    let provider_word = if provider_count == 1 { "provider" } else { "providers" };
+    format!("Filter provider: {filter} · {provider_count} {provider_word}")
 }
 
 fn oauth_device_code_footer() -> String {
@@ -672,7 +682,6 @@ fn render_select_auth_method_step(
             context_k: 0,
             reasoning: false,
             images: false,
-            is_free: false,
             cost_per_m_input: 0.0,
         })
         .collect();
@@ -777,7 +786,7 @@ fn render_select_provider_step(
     has_focus: bool,
     selected: State<usize>,
     filter: State<String>,
-    input_focus: ProviderConnectFocus,
+    _input_focus: ProviderConnectFocus,
     selected_auth_method: usize,
 ) -> AnyElement<'static> {
     let theme = UiTheme::default();
@@ -799,15 +808,8 @@ fn render_select_provider_step(
         })
         .collect();
 
-    let total_count = providers.len();
     let visible_count = filtered_with_status.len();
-    let count_label = if visible_count < total_count {
-        format!("{} of {} providers", visible_count, total_count)
-    } else {
-        format!("{} providers", total_count)
-    };
 
-    let search_focused = has_focus && input_focus == ProviderConnectFocus::Search;
     let list_height = provider_select_list_viewport_height(screen_width, screen_height);
 
     let w = body_width;
@@ -825,7 +827,6 @@ fn render_select_provider_step(
             context_k: 0,
             reasoning: false,
             images: false,
-            is_free: false,
             cost_per_m_input: 0.0,
         })
         .collect();
@@ -847,29 +848,11 @@ fn render_select_provider_step(
             footer_hint: Some(provider_select_footer()),
         ) {
             View(width: w, flex_direction: FlexDirection::Column, gap: 0, flex_shrink: 0f32) {
-                // ── Count label (mirrors model selector) ──
                 Text(
-                    content: count_label,
+                    content: provider_select_status_label(&filter.read(), visible_count),
                     color: thm.text_muted,
                     wrap: TextWrap::NoWrap,
                 )
-                // ── Search bar ──
-                View(width: w, padding_top: 1, flex_shrink: 0f32) {
-                    DialogUserInputContent(
-                        width: w,
-                        value: Some(filter),
-                        has_focus: search_focused,
-                        theme: Some(thm),
-                        compact: true,
-                        show_prompt: false,
-                        placeholder: "Filter providers…".to_string(),
-                        show_placeholder_when_focused: true,
-                        show_footer_hint: false,
-                        dialog_chrome: true,
-                        on_submit: HandlerMut::default(),
-                        on_cancel: HandlerMut::default(),
-                    )
-                }
                 // ── Provider list ──
                 // `has_focus: false` — the shell key handler owns navigation so the
                 // list never applies its own letter key bindings.
@@ -913,7 +896,6 @@ fn render_oauth_select_step(
             context_k: 0,
             reasoning: false,
             images: false,
-            is_free: false,
             cost_per_m_input: 0.0,
         })
         .collect();
@@ -1216,6 +1198,18 @@ mod tests {
     }
 
     #[test]
+    fn provider_select_status_uses_search_placeholder_and_pluralization() {
+        assert_eq!(
+            provider_select_status_label("", 11),
+            "Filter provider: (type to search) · 11 providers"
+        );
+        assert_eq!(
+            provider_select_status_label("anthropic", 1),
+            "Filter provider: anthropic · 1 provider"
+        );
+    }
+
+    #[test]
     fn auth_method_index_starts_with_account() {
         assert_eq!(provider_auth_method_from_index(0), ProviderAuthMethod::Account);
         assert_eq!(provider_auth_method_from_index(1), ProviderAuthMethod::ApiKey);
@@ -1342,7 +1336,7 @@ pub fn close_provider_disconnect_dialog(
 /// Render the provider disconnect dialog.
 pub fn render_provider_disconnect_dialog(
     screen_width: u16,
-    _screen_height: u16,
+    screen_height: u16,
     has_focus: bool,
     provider_ids: Vec<String>,
     selected_index: usize,
@@ -1366,9 +1360,18 @@ pub fn render_provider_disconnect_dialog(
         "Esc cancel".to_string()
     };
 
-    // Render rows with consistent selection styling
+    let list_height = if has_any {
+        list_viewport_cap(screen_height).min(provider_ids.len())
+    } else {
+        0
+    };
+    let window_start = palette_window_start(selected_index, list_height, provider_ids.len());
+    let window_end = window_start.saturating_add(list_height).min(provider_ids.len());
+
+    // Render only the visible window with consistent selection styling.
     let mut list_text = String::new();
-    for (i, id) in provider_ids.iter().enumerate() {
+    for (offset, id) in provider_ids[window_start..window_end].iter().enumerate() {
+        let i = window_start + offset;
         let selected = i == selected_index;
         let prefix = if selected { "❯ " } else { "  " };
         list_text.push_str(&format!("{}{}\n", prefix, format_provider_name(id)));

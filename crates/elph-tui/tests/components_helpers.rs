@@ -77,12 +77,14 @@ fn select_window_start_empty_list() {
 
 #[test]
 fn select_window_start_clamps_to_end() {
-    assert_eq!(select_window_start(99, 3, 5), 4);
+    assert_eq!(select_window_start(99, 3, 5), 2);
 }
 
 #[test]
-fn select_window_start_centers_selection() {
-    assert_eq!(select_window_start(5, 5, 20), 3);
+fn select_window_start_moves_only_at_viewport_edges() {
+    assert_eq!(select_window_start(4, 5, 20), 0);
+    assert_eq!(select_window_start(5, 5, 20), 1);
+    assert_eq!(select_window_start(19, 5, 20), 15);
 }
 
 #[test]

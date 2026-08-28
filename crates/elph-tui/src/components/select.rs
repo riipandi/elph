@@ -184,12 +184,15 @@ pub fn select_key_delta(code: KeyCode, fast: bool, step: usize) -> Option<isize>
     }
 }
 
-/// First visible row index for a centered selection window (option-index based).
+/// First visible option for a boundary-aware selection window.
 pub fn select_window_start(selected: usize, height: usize, len: usize) -> usize {
     if len == 0 {
         return 0;
     }
-    selected.saturating_sub(height / 2).min(len.saturating_sub(1))
+    let viewport = height.max(1).min(len);
+    selected
+        .saturating_sub(viewport.saturating_sub(1))
+        .min(len.saturating_sub(viewport))
 }
 
 /// First option index to show when viewport is measured in display rows.
@@ -203,18 +206,17 @@ pub fn select_window_start_for_rows(selected: usize, viewport_rows: usize, row_c
         return 0;
     }
     let selected = selected.min(len - 1);
-    let rows_before: usize = row_counts[..selected].iter().sum();
-    let start_row = rows_before
-        .saturating_sub(viewport_rows / 2)
-        .min(total.saturating_sub(viewport_rows));
-    let mut acc = 0usize;
-    for (i, count) in row_counts.iter().enumerate() {
-        if acc >= start_row {
-            return i;
+    let mut start = selected;
+    let mut used_rows = row_counts[selected].max(1);
+    while start > 0 {
+        let preceding_rows = row_counts[start - 1].max(1);
+        if used_rows.saturating_add(preceding_rows) > viewport_rows {
+            break;
         }
-        acc += count;
+        start -= 1;
+        used_rows += preceding_rows;
     }
-    len.saturating_sub(1)
+    start
 }
 
 /// How many display rows are hidden above the current window.
@@ -294,6 +296,13 @@ pub fn SelectList(props: &mut SelectListProps, mut hooks: Hooks) -> impl Into<An
     let index = select_clamped_index(selected.get(), len);
     let row_counts = select_measured_row_counts(&options, show_description, props.width, theme, compact);
     let window_start = select_window_start_for_rows(index, viewport_rows, &row_counts);
+    // The overflow marker consumes one row. Recompute the item window after
+    // scrolling starts so the selected option can still reach the bottom edge.
+    let window_start = if !props.hide_more_overflow && select_hidden_rows_above(window_start, &row_counts) > 0 {
+        select_window_start_for_rows(index, viewport_rows.saturating_sub(1), &row_counts)
+    } else {
+        window_start
+    };
 
     let mut rows: Vec<AnyElement<'static>> = Vec::new();
     let mut used_rows = 0usize;
@@ -499,9 +508,18 @@ mod tests {
     }
 
     #[test]
-    fn window_start_for_rows_centers_selection() {
+    fn window_start_for_rows_moves_only_at_viewport_edges() {
         let counts = vec![1; 20];
-        assert_eq!(select_window_start_for_rows(5, 5, &counts), 3);
+        assert_eq!(select_window_start_for_rows(4, 5, &counts), 0);
+        assert_eq!(select_window_start_for_rows(5, 5, &counts), 1);
+        assert_eq!(select_window_start_for_rows(19, 5, &counts), 15);
+    }
+
+    #[test]
+    fn window_start_for_rows_keeps_variable_height_selection_visible() {
+        let counts = vec![1, 1, 2, 1, 2, 1];
+        assert_eq!(select_window_start_for_rows(3, 4, &counts), 1);
+        assert_eq!(select_window_start_for_rows(4, 4, &counts), 3);
     }
 
     #[test]
