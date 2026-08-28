@@ -18,6 +18,7 @@ pub use branch_summarization::CollectEntriesResult;
 pub use branch_summarization::GenerateBranchSummaryOptions;
 pub use branch_summarization::{collect_entries_for_branch_summary, generate_branch_summary, prepare_branch_entries};
 pub use compact::compact;
+pub(crate) use compact::compact_with_timeout;
 pub use estimation::calculate_context_tokens;
 pub use estimation::estimate_context_tokens;
 pub use estimation::estimate_tokens;

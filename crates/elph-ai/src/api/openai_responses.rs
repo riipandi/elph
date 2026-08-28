@@ -5,7 +5,9 @@ use anyhow::Result;
 use serde_json::Value;
 use serde_json::json;
 
-use crate::api::common::{apply_on_payload, build_http_client_for_target, finish_stream_error};
+use crate::api::common::{
+    apply_on_payload, apply_session_affinity_headers, build_http_client_for_target, finish_stream_error,
+};
 use crate::api::common::{invoke_on_response_from_reqwest, is_request_aborted, merge_model_headers};
 use crate::api::github_copilot_headers::{build_copilot_dynamic_headers, has_copilot_vision_input};
 use crate::api::openai_prompt_cache::clamp_openai_prompt_cache_key;
@@ -14,10 +16,9 @@ use crate::api::openai_responses_shared::{OpenAIResponsesStreamOptions, Response
 use crate::api::openai_responses_shared::{convert_responses_messages, convert_responses_tools};
 use crate::api::simple_options::build_base_options;
 use crate::models::map_thinking_level_for_api;
-use crate::types::{AssistantMessage, AssistantMessageEvent, Context, Model, ProviderStreams, SimpleStreamOptions};
-use crate::types::{StopReason, StreamOptions, Usage};
+use crate::types::{AssistantMessage, AssistantMessageEvent, CacheRetention, Context, Model, ProviderStreams};
+use crate::types::{SimpleStreamOptions, StopReason, StreamOptions, Usage};
 use crate::utils::event_stream::AssistantMessageEventStream;
-use crate::utils::provider_env::get_provider_env_value;
 
 use super::sse::for_each_sse_json_event;
 
@@ -99,6 +100,15 @@ async fn run_openai_responses(
     output: &mut AssistantMessage,
 ) -> Result<()> {
     let mut headers = merge_model_headers(model, Some(&options.base));
+    let compat = model.openai_responses_compat.as_ref();
+    if compat.and_then(|c| c.send_session_id_header).unwrap_or(false) {
+        apply_session_affinity_headers(
+            &mut headers,
+            options.base.session_id.as_deref(),
+            CacheRetention::resolve(&options.base),
+            compat.and_then(|c| c.session_affinity_format.as_ref()),
+        );
+    }
     if model.provider == "github-copilot" {
         headers.extend(build_copilot_dynamic_headers(
             &context.messages,
@@ -197,26 +207,41 @@ fn build_params(
             deferred_tools: Some(deferred_map),
         }),
     );
-    let cache_retention = resolve_cache_retention(&options.base);
+    let cache_retention = CacheRetention::resolve(&options.base);
+    let supports_explicit_mode = model
+        .openai_responses_compat
+        .as_ref()
+        .and_then(|c| c.supports_explicit_prompt_cache_mode)
+        .unwrap_or(false);
     let mut params = json!({
         "model": model.id,
         "input": messages,
         "stream": true,
         "store": false
     });
-    if cache_retention != crate::types::CacheRetention::None {
+    if cache_retention == CacheRetention::None {
+        if supports_explicit_mode {
+            params["prompt_cache_options"] = json!({ "mode": "explicit" });
+        }
+    } else {
         let supports_long = model
             .openai_responses_compat
             .as_ref()
             .and_then(|c| c.supports_long_cache_retention)
-            .unwrap_or(true);
-        let is_openai_host = model.base_url.contains("api.openai.com");
-        let allow_cache = cache_retention != crate::types::CacheRetention::Long || supports_long || !is_openai_host;
+            .unwrap_or(model.provider == "openai" || model.provider == "openrouter");
+        let known_cache_target = supports_explicit_mode
+            || supports_long
+            || model.provider == "openai"
+            || model.provider == "openrouter"
+            || model.base_url.contains("api.openai.com")
+            || model.base_url.contains("openrouter.ai");
+        let allow_cache =
+            known_cache_target && (cache_retention != CacheRetention::Long || supports_long || supports_explicit_mode);
         if allow_cache {
             if let Some(key) = clamp_openai_prompt_cache_key(options.base.session_id.as_deref()) {
                 params["prompt_cache_key"] = json!(key);
             }
-            if cache_retention == crate::types::CacheRetention::Long {
+            if cache_retention == CacheRetention::Long && !supports_explicit_mode {
                 params["prompt_cache_retention"] = json!("24h");
             }
         }
@@ -254,16 +279,4 @@ fn apply_service_tier_pricing(usage: &mut Usage, service_tier: Option<&str>, mod
     usage.cost.cache_read *= multiplier;
     usage.cost.cache_write *= multiplier;
     usage.cost.total = usage.cost.input + usage.cost.output + usage.cost.cache_read + usage.cost.cache_write;
-}
-
-fn resolve_cache_retention(options: &StreamOptions) -> crate::types::CacheRetention {
-    if let Some(r) = options.cache_retention {
-        return r;
-    }
-    let cache_key = options.identity_or_default().env_key("CACHE_RETENTION");
-    if get_provider_env_value(&cache_key, options.env.as_ref()) == Some("long".to_string()) {
-        crate::types::CacheRetention::Long
-    } else {
-        crate::types::CacheRetention::Short
-    }
 }

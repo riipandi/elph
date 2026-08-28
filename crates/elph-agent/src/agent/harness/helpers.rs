@@ -95,6 +95,11 @@ pub(super) fn merge_harness_into_simple(
     {
         simple.base.metadata = Some(map.iter().map(|(k, v)| (k.clone(), v.clone())).collect());
     }
+    // A request-specific value (including `Some(CacheRetention::None)`) wins
+    // over the host-wide harness policy.
+    if simple.base.cache_retention.is_none() {
+        simple.base.cache_retention = harness.cache_retention;
+    }
     simple.base.session_id = Some(session_id.to_string());
     if simple.thinking_budgets.is_none() {
         simple.thinking_budgets = harness.thinking_budgets.clone();
@@ -230,4 +235,43 @@ pub(super) fn now_ms() -> i64 {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis() as i64)
         .unwrap_or(0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use elph_ai::CacheRetention;
+
+    #[test]
+    fn request_retention_wins_over_harness_retention() {
+        let harness = AgentHarnessStreamOptions {
+            cache_retention: Some(CacheRetention::Long),
+            ..Default::default()
+        };
+        let explicit = SimpleStreamOptions {
+            base: elph_ai::StreamOptions {
+                cache_retention: Some(CacheRetention::None),
+                ..Default::default()
+            },
+            reasoning: None,
+            thinking_budgets: None,
+        };
+
+        let merged = merge_harness_into_simple(Some(explicit), &harness, "session");
+
+        assert_eq!(merged.base.cache_retention, Some(CacheRetention::None));
+        assert_eq!(merged.base.session_id.as_deref(), Some("session"));
+    }
+
+    #[test]
+    fn harness_retention_is_forwarded_when_request_is_unset() {
+        let harness = AgentHarnessStreamOptions {
+            cache_retention: Some(CacheRetention::Short),
+            ..Default::default()
+        };
+
+        let merged = merge_harness_into_simple(None, &harness, "session");
+
+        assert_eq!(merged.base.cache_retention, Some(CacheRetention::Short));
+    }
 }

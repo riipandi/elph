@@ -117,16 +117,16 @@ pub fn estimate_context_tokens(messages: &[AgentMessage]) -> ContextUsageEstimat
     }
 }
 
-/// Return whether context usage exceeds the configured compaction threshold.
+/// Return whether context usage reaches the configured compaction threshold.
 pub fn should_compact(context_tokens: u64, context_window: u64, settings: CompactionSettings) -> bool {
-    if !settings.enabled {
+    if !settings.enabled || context_window == 0 {
         return false;
     }
     let threshold = match settings.threshold_pct {
-        Some(pct) => context_window * (pct as u64) / 100,
+        Some(pct) => context_window.saturating_mul(pct as u64) / 100,
         None => context_window.saturating_sub(settings.reserve_tokens),
     };
-    context_tokens > threshold
+    context_tokens >= threshold
 }
 
 /// Combine a message-level context estimate with the compiled system prompt.

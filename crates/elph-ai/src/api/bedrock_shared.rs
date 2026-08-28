@@ -160,22 +160,6 @@ pub fn is_govcloud_bedrock_target(model_id: &str, region: Option<&str>) -> bool 
     id.starts_with("us-gov.") || id.starts_with("arn:aws-us-gov:")
 }
 
-pub fn resolve_cache_retention(
-    cache_retention: Option<CacheRetention>,
-    env: Option<&ProviderEnv>,
-    identity: Option<&crate::types::ClientIdentity>,
-) -> CacheRetention {
-    if let Some(retention) = cache_retention {
-        return retention;
-    }
-    let cache_key = identity.cloned().unwrap_or_default().env_key("CACHE_RETENTION");
-    if get_provider_env_value(&cache_key, env).as_deref() == Some("long") {
-        CacheRetention::Long
-    } else {
-        CacheRetention::Short
-    }
-}
-
 pub fn supports_prompt_caching(model_id: &str, model_name: &str, env: Option<&ProviderEnv>) -> bool {
     let candidates = model_match_candidates(model_id, model_name);
     let has_claude_ref = candidates.iter().any(|s| s.contains("claude"));

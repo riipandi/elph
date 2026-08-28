@@ -1,6 +1,6 @@
 //! Auto session title generation via LLM.
 
-use elph_ai::{Context, Message, Models, SimpleStreamOptions, StopReason};
+use elph_ai::{CacheRetention, Context, Message, Models, SimpleStreamOptions, StopReason};
 
 use super::builtin::session_name::SESSION_NAME_SYSTEM_PROMPT;
 use super::builtin::session_name::{build_session_name_prompt, extract_conversation_for_naming, sanitize_session_name};
@@ -60,6 +60,7 @@ pub async fn generate_session_name_with_prompts(
             Some({
                 let mut options = SimpleStreamOptions::from_stream(elph_ai::StreamOptions::default());
                 options.base.max_tokens = Some(64);
+                options.base.cache_retention = Some(CacheRetention::None);
                 options
             }),
         )

@@ -7,8 +7,9 @@ use crate::agent::harness::types::AgentHarnessErrorCode;
 use crate::agent::harness::types::AgentHarnessOwnEvent;
 use crate::agent::harness::types::AgentHarnessPhase;
 use crate::agent::harness::types::CompactResult;
+use crate::agent::harness::types::CompactionSettings;
 use crate::agent::harness::types::SessionBeforeCompactEvent;
-use crate::compaction::{compact, prepare_compaction};
+use crate::compaction::{compact_with_timeout, prepare_compaction};
 use crate::session::types::{CompactionRetryEvent, HasSessionId, SessionStorage, SessionTreeEntry};
 
 use super::helpers::{compaction_error, module_to_compact_result, session_error};
@@ -40,6 +41,7 @@ where
         }
 
         let thinking = self.shared.thinking_level.lock().await.to_stream_reasoning();
+        let timeout_ms = self.shared.stream_options.lock().await.timeout_ms;
         let max_retries = COMPACTION_MAX_RETRIES;
         let mut last_error = None;
 
@@ -62,11 +64,12 @@ where
                 Some(token) if token.is_cancelled() => {
                     Err(AgentHarnessError::new(AgentHarnessErrorCode::Compaction, "compaction aborted"))
                 }
-                _ => compact(
+                _ => compact_with_timeout(
                     preparation.clone(),
                     &self.shared.models,
                     model,
                     effective_custom_instructions,
+                    timeout_ms,
                     signal.clone(),
                     thinking,
                 )
@@ -147,6 +150,20 @@ where
         custom_instructions: Option<&str>,
         model_override: Option<&elph_ai::Model>,
     ) -> HarnessOpResult<CompactResult> {
+        self.compact_with_settings(custom_instructions, model_override, self.shared.compaction_settings)
+            .await
+    }
+
+    /// Compact session history with per-operation retention settings.
+    ///
+    /// The override affects the compaction boundary and physical pruning for this operation
+    /// only; it does not mutate the harness defaults used by later turns.
+    pub async fn compact_with_settings(
+        &self,
+        custom_instructions: Option<&str>,
+        model_override: Option<&elph_ai::Model>,
+        settings: CompactionSettings,
+    ) -> HarnessOpResult<CompactResult> {
         if self.phase_async().await != AgentHarnessPhase::Idle {
             return Err(AgentHarnessError::new(
                 AgentHarnessErrorCode::Busy,
@@ -158,7 +175,7 @@ where
             .journal_operation_started(crate::session::durability::OperationKind::Compaction)
             .await
             .unwrap_or_else(|_| crate::session::durability::new_id("op"));
-        let result = self.compact_inner(custom_instructions, model_override).await;
+        let result = self.compact_inner(custom_instructions, model_override, settings).await;
         let outcome = if result.is_ok() {
             crate::session::durability::OperationOutcome::Completed
         } else {
@@ -175,6 +192,7 @@ where
         &self,
         custom_instructions: Option<&str>,
         model_override: Option<&elph_ai::Model>,
+        settings: CompactionSettings,
     ) -> HarnessOpResult<CompactResult> {
         let model = match model_override {
             Some(m) => m.clone(),
@@ -188,9 +206,7 @@ where
             .branch(None)
             .await
             .map_err(session_error)?;
-        let Some(preparation) =
-            prepare_compaction(&branch_entries, self.shared.compaction_settings).map_err(compaction_error)?
-        else {
+        let Some(preparation) = prepare_compaction(&branch_entries, settings).map_err(compaction_error)? else {
             return Ok(CompactResult::empty());
         };
 
@@ -265,7 +281,7 @@ where
             .map_err(session_error)?;
 
         // Physical prune: drop tree rows no longer on the active post-compaction branch.
-        if self.shared.compaction_settings.physical_prune {
+        if settings.physical_prune {
             let mut session = self.shared.session.lock().await;
             match session.branch(None).await {
                 Ok(branch) => {

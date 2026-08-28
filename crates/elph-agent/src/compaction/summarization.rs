@@ -1,6 +1,9 @@
 //! LLM summarization for compaction.
 
-use elph_ai::{AssistantContentBlock, Context, Message, Model, Models, SimpleStreamOptions, StopReason, ThinkingLevel};
+use elph_ai::{
+    AssistantContentBlock, CacheRetention, Context, Message, Model, Models, SimpleStreamOptions, StopReason,
+    ThinkingLevel,
+};
 use tokio_util::sync::CancellationToken;
 
 use crate::agent::harness::types::{CompactionError, CompactionErrorCode};
@@ -9,6 +12,8 @@ use crate::messages::default_convert_to_llm;
 use crate::prompt::builtin::compaction::{SUMMARIZATION_PROMPT, SUMMARIZATION_SYSTEM_PROMPT};
 use crate::prompt::builtin::compaction::{TURN_PREFIX_SUMMARIZATION_PROMPT, UPDATE_SUMMARIZATION_PROMPT};
 use crate::types::AgentMessage;
+
+const DEFAULT_COMPACTION_TIMEOUT_MS: u64 = 120_000;
 
 fn now_millis() -> i64 {
     chrono::Utc::now().timestamp_millis()
@@ -29,12 +34,15 @@ fn assistant_text_content(message: &elph_ai::AssistantMessage) -> String {
 fn build_stream_options(
     model: &Model,
     max_tokens: u64,
+    timeout_ms: Option<u64>,
     signal: Option<CancellationToken>,
     thinking_level: Option<ThinkingLevel>,
 ) -> SimpleStreamOptions {
     let mut options = SimpleStreamOptions::from_stream(elph_ai::StreamOptions::default());
     options.base.max_tokens = Some(max_tokens as u32);
+    options.base.timeout_ms = Some(timeout_ms.unwrap_or(DEFAULT_COMPACTION_TIMEOUT_MS));
     options.base.signal = signal;
+    options.base.cache_retention = Some(CacheRetention::None);
     if model.reasoning
         && let Some(level) = thinking_level
     {
@@ -54,6 +62,33 @@ pub async fn generate_summary(
     custom_instructions: Option<&str>,
     previous_summary: Option<&str>,
     thinking_level: Option<ThinkingLevel>,
+) -> std::result::Result<String, CompactionError> {
+    generate_summary_with_timeout(
+        current_messages,
+        models,
+        model,
+        reserve_tokens,
+        signal,
+        custom_instructions,
+        previous_summary,
+        thinking_level,
+        None,
+    )
+    .await
+}
+
+/// Generate or update a conversation summary with a host-provided request timeout.
+#[allow(clippy::too_many_arguments)]
+pub(super) async fn generate_summary_with_timeout(
+    current_messages: &[AgentMessage],
+    models: &Models,
+    model: &Model,
+    reserve_tokens: u64,
+    signal: Option<CancellationToken>,
+    custom_instructions: Option<&str>,
+    previous_summary: Option<&str>,
+    thinking_level: Option<ThinkingLevel>,
+    timeout_ms: Option<u64>,
 ) -> std::result::Result<String, CompactionError> {
     let max_tokens = std::cmp::min(
         (reserve_tokens as f64 * 0.8).floor() as u64,
@@ -97,7 +132,7 @@ pub async fn generate_summary(
                 messages: summarization_messages,
                 tools: None,
             },
-            Some(build_stream_options(model, max_tokens, signal, thinking_level)),
+            Some(build_stream_options(model, max_tokens, timeout_ms, signal, thinking_level)),
         )
         .await;
 
@@ -124,6 +159,7 @@ pub(super) async fn generate_turn_prefix_summary(
     models: &Models,
     model: &Model,
     reserve_tokens: u64,
+    timeout_ms: Option<u64>,
     signal: Option<CancellationToken>,
     thinking_level: Option<ThinkingLevel>,
 ) -> std::result::Result<String, CompactionError> {
@@ -153,7 +189,7 @@ pub(super) async fn generate_turn_prefix_summary(
                 messages: summarization_messages,
                 tools: None,
             },
-            Some(build_stream_options(model, max_tokens, signal, thinking_level)),
+            Some(build_stream_options(model, max_tokens, timeout_ms, signal, thinking_level)),
         )
         .await;
 

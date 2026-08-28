@@ -19,7 +19,7 @@ use crate::api::openai_responses_shared::{convert_responses_messages, convert_re
 use crate::api::simple_options::build_base_options;
 use crate::models::map_thinking_level_for_api;
 use crate::types::{AssistantMessage, AssistantMessageEvent, Context, Message, Model, ProviderStreams};
-use crate::types::{SimpleStreamOptions, StopReason, StreamOptions, Usage};
+use crate::types::{CacheRetention, SimpleStreamOptions, StopReason, StreamOptions, Usage};
 use crate::utils::event_stream::AssistantMessageEventStream;
 
 const DEFAULT_CODEX_BASE_URL: &str = "https://chatgpt.com/backend-api";
@@ -118,7 +118,9 @@ async fn run_codex(
     headers.insert("originator".to_string(), options.base.identity_or_default().product);
     headers.insert("OpenAI-Beta".to_string(), "responses=experimental".to_string());
     headers.insert("accept".to_string(), "text/event-stream".to_string());
-    if let Some(sid) = &options.base.session_id {
+    if CacheRetention::resolve(&options.base) != CacheRetention::None
+        && let Some(sid) = &options.base.session_id
+    {
         headers.insert("session-id".to_string(), sid.clone());
         headers.insert("x-client-request-id".to_string(), sid.clone());
     }
@@ -240,10 +242,14 @@ fn build_request_body(
         "input": messages,
         "text": { "verbosity": options.text_verbosity.clone().unwrap_or_else(|| "low".to_string()) },
         "include": ["reasoning.encrypted_content"],
-        "prompt_cache_key": clamp_openai_prompt_cache_key(options.base.session_id.as_deref()),
         "tool_choice": "auto",
         "parallel_tool_calls": true
     });
+    if CacheRetention::resolve(&options.base) != CacheRetention::None
+        && let Some(key) = clamp_openai_prompt_cache_key(options.base.session_id.as_deref())
+    {
+        body["prompt_cache_key"] = json!(key);
+    }
     if !immediate_tools.is_empty() {
         body["tools"] = json!(convert_responses_tools(&immediate_tools, Some(false)));
     }

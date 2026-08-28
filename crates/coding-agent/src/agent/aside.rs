@@ -7,7 +7,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use elph_agent::messages::default_convert_to_llm;
 use elph_agent::types::AgentMessage;
-use elph_ai::{AssistantContentBlock, Context, Message, SimpleStreamOptions, StopReason, StreamOptions, UserContent};
+use elph_ai::{
+    AssistantContentBlock, CacheRetention, Context, Message, SimpleStreamOptions, StopReason, StreamOptions,
+    UserContent,
+};
 
 use super::events::AgentUiEvent;
 use super::session::CodingAgentSession;
@@ -174,6 +177,7 @@ async fn side_completion(
 
     let mut options = SimpleStreamOptions::from_stream(StreamOptions::default());
     options.base.max_tokens = Some(max_tokens);
+    options.base.cache_retention = Some(CacheRetention::None);
 
     let response = models
         .complete_simple(

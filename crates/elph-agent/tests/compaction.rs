@@ -295,6 +295,26 @@ fn should_compact_respects_settings() {
 }
 
 #[test]
+fn should_compact_triggers_at_percentage_boundary() {
+    let settings = CompactionSettings {
+        threshold_pct: Some(80),
+        ..DEFAULT_COMPACTION_SETTINGS
+    };
+    assert!(!should_compact(79_999, 100_000, settings));
+    assert!(should_compact(80_000, 100_000, settings));
+    assert!(!should_compact(0, 0, settings));
+}
+
+#[test]
+fn should_compact_uses_saturating_percentage_math() {
+    let settings = CompactionSettings {
+        threshold_pct: Some(100),
+        ..DEFAULT_COMPACTION_SETTINGS
+    };
+    assert!(should_compact(u64::MAX, u64::MAX, settings));
+}
+
+#[test]
 fn estimate_tokens_across_supported_message_roles() {
     let usage = Usage {
         input: 10,

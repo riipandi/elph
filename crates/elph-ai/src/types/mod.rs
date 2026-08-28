@@ -39,9 +39,45 @@ pub type ThinkingLevelMap = HashMap<String, Option<String>>;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CacheRetention {
+    /// Do not request provider-controlled cache writes or routing affinity.
     None,
+    /// Use the provider's normal ephemeral prompt-cache behavior.
     Short,
+    /// Request the longest retention supported by the selected provider/model.
     Long,
+}
+
+impl CacheRetention {
+    /// Resolve the effective request policy.
+    ///
+    /// An explicit request value wins over the host environment. Invalid
+    /// environment values intentionally use the safe short-lived default.
+    pub fn resolve(options: &StreamOptions) -> Self {
+        if let Some(retention) = options.cache_retention {
+            return retention;
+        }
+
+        let key = options.identity_or_default().env_key("CACHE_RETENTION");
+        match crate::utils::provider_env::get_provider_env_value(&key, options.env.as_ref())
+            .as_deref()
+            .map(str::trim)
+            .map(|value| value.to_ascii_lowercase())
+            .as_deref()
+        {
+            Some("none") => Self::None,
+            Some("long") => Self::Long,
+            Some("short") | None => Self::Short,
+            Some(value) => {
+                use std::sync::Once;
+
+                static WARNED_INVALID_CACHE_RETENTION: Once = Once::new();
+                WARNED_INVALID_CACHE_RETENTION.call_once(|| {
+                    log::warn!("invalid {key} value {value:?}; expected none, short, or long; using short");
+                });
+                Self::Short
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -115,6 +151,8 @@ pub struct StreamOptions {
     pub max_tokens: Option<u32>,
     pub api_key: Option<String>,
     pub transport: Option<Transport>,
+    /// Explicit prompt-cache policy. `None` leaves resolution to the host
+    /// environment and the provider's short-retention default.
     pub cache_retention: Option<CacheRetention>,
     pub session_id: Option<String>,
     pub headers: Option<ProviderHeaders>,
@@ -581,6 +619,7 @@ pub struct OpenAIResponsesCompat {
     pub send_session_id_header: Option<bool>,
     pub session_affinity_format: Option<SessionAffinityFormat>,
     pub supports_long_cache_retention: Option<bool>,
+    pub supports_explicit_prompt_cache_mode: Option<bool>,
     /// Whether the model supports client-executed tool search for deferred tools.
     pub supports_tool_search: Option<bool>,
     /// Whether the provider supports strict JSON-schema function tools.

@@ -11,7 +11,8 @@ use elph_agent::ToolContext;
 use elph_agent::ToolResultContent;
 use elph_agent::runtime::LocalExecutionEnv;
 use elph_ai::{
-    AssistantContentBlock, ContentBlock, Context, Message, SimpleStreamOptions, StopReason, StreamOptions, UserContent,
+    AssistantContentBlock, CacheRetention, ContentBlock, Context, Message, SimpleStreamOptions, StopReason,
+    StreamOptions, UserContent,
 };
 
 use super::aside::{WORKER_INBOUND_PROMPT_PREFIX, now_millis, snapshot_side_messages};
@@ -67,6 +68,8 @@ pub async fn answer_worker_inbound(
     };
     let mut options = SimpleStreamOptions::from_stream(StreamOptions::default());
     options.base.max_tokens = Some(max_tokens);
+    options.base.cache_retention = Some(CacheRetention::Short);
+    options.base.session_id = Some(session.session_id().to_string());
 
     let dummy_ctx = dummy_tool_context();
     let mut last_text = String::new();

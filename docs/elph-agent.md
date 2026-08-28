@@ -53,3 +53,22 @@ use elph_agent::mcp::{McpConfig, McpToolRegistry, load_or_create_master_key_with
 use elph_agent::session::CANONICAL_SESSION_SCHEMA_SQL;
 use elph_agent::compaction::{estimate_context_tokens, should_compact};
 ```
+
+## Compaction
+
+`CompactionSettings::threshold_pct` triggers automatic compaction when estimated
+context usage reaches the configured percentage, including the exact boundary.
+The host performs the check before a prompt (including the prompt being
+submitted) and after a successful turn. A zero context window disables the
+automatic check because the model does not provide a usable limit.
+When switching to a model with a smaller context window, the host estimates the
+current history first and compacts it while the current model is still active,
+before recording the model change.
+
+`AgentHarness::compact` uses the harness defaults. Hosts that need a one-off
+retention policy can call `AgentHarness::compact_with_settings`; its settings
+apply only to that operation and do not mutate subsequent turns.
+
+Compaction summarization inherits the harness provider timeout. When no timeout
+is configured, it uses a 120-second safety timeout so a stalled provider cannot
+leave the session busy indefinitely.

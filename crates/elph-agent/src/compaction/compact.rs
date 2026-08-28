@@ -8,7 +8,7 @@ use crate::compaction::utils::{compute_file_lists, format_file_operations};
 
 pub use crate::agent::harness::types::CompactionPreparation;
 
-use super::summarization::{generate_summary, generate_turn_prefix_summary};
+use super::summarization::{generate_summary_with_timeout, generate_turn_prefix_summary};
 use super::types::{CompactionDetails, CompactionResult};
 
 /// Generate compaction summary data from prepared session history.
@@ -18,6 +18,20 @@ pub async fn compact(
     models: &Models,
     model: &Model,
     custom_instructions: Option<&str>,
+    signal: Option<CancellationToken>,
+    thinking_level: Option<ThinkingLevel>,
+) -> std::result::Result<CompactionResult, CompactionError> {
+    compact_with_timeout(preparation, models, model, custom_instructions, None, signal, thinking_level).await
+}
+
+/// Generate compaction summary data with a host-provided request timeout.
+#[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.agent.compaction"))]
+pub(crate) async fn compact_with_timeout(
+    preparation: CompactionPreparation,
+    models: &Models,
+    model: &Model,
+    custom_instructions: Option<&str>,
+    timeout_ms: Option<u64>,
     signal: Option<CancellationToken>,
     thinking_level: Option<ThinkingLevel>,
 ) -> std::result::Result<CompactionResult, CompactionError> {
@@ -51,7 +65,7 @@ pub async fn compact(
         let history_result = if messages_to_summarize.is_empty() {
             Ok("No prior history.".to_string())
         } else {
-            generate_summary(
+            generate_summary_with_timeout(
                 &messages_to_summarize,
                 models,
                 model,
@@ -60,6 +74,7 @@ pub async fn compact(
                 custom_instructions,
                 previous_summary.as_deref(),
                 thinking_level,
+                timeout_ms,
             )
             .await
         };
@@ -75,6 +90,7 @@ pub async fn compact(
             models,
             model,
             settings.reserve_tokens,
+            timeout_ms,
             signal,
             thinking_level,
         )
@@ -85,7 +101,7 @@ pub async fn compact(
         };
         format!("{history}\n\n---\n\n**Turn Context (split turn):**\n\n{turn_prefix}")
     } else {
-        match generate_summary(
+        match generate_summary_with_timeout(
             &messages_to_summarize,
             models,
             model,
@@ -94,6 +110,7 @@ pub async fn compact(
             custom_instructions,
             previous_summary.as_deref(),
             thinking_level,
+            timeout_ms,
         )
         .await
         {
