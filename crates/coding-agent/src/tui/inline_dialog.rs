@@ -86,12 +86,13 @@ pub fn provider_tab_row_window(label_widths: &[usize], max_visible: usize, selec
     }
 }
 
-pub fn render_provider_tab_row(
+fn render_provider_tab_row(
     labels: &[String],
     selected_index: usize,
     inner: u16,
     theme: UiTheme,
     max_visible: usize,
+    active_suffix: Option<&str>,
 ) -> AnyElement<'static> {
     let widths: Vec<usize> = labels.iter().map(|label| label.chars().count()).collect();
     let window = provider_tab_row_window(&widths, max_visible, selected_index);
@@ -127,17 +128,46 @@ pub fn render_provider_tab_row(
         }
         let active = *index == selected_index;
         let color = if active { theme.warning } else { theme.text_secondary };
-        segments.push(
-            element! {
-                Text(
-                    content: labels[*index].clone(),
-                    color: color,
-                    weight: if active { Weight::Bold } else { Weight::Normal },
-                    wrap: TextWrap::NoWrap,
-                )
-            }
-            .into(),
-        );
+        let label = &labels[*index];
+        if let Some(suffix) = active_suffix
+            .filter(|_| *index == labels.len().saturating_sub(1))
+            .and_then(|suffix| label.strip_suffix(suffix).map(|prefix| (prefix, suffix)))
+        {
+            segments.push(
+                element! {
+                    Text(
+                        content: suffix.0.to_string(),
+                        color: color,
+                        weight: if active { Weight::Bold } else { Weight::Normal },
+                        wrap: TextWrap::NoWrap,
+                    )
+                }
+                .into(),
+            );
+            segments.push(
+                element! {
+                    Text(
+                        content: suffix.1.to_string(),
+                        color: theme.text_hint,
+                        weight: Weight::Normal,
+                        wrap: TextWrap::NoWrap,
+                    )
+                }
+                .into(),
+            );
+        } else {
+            segments.push(
+                element! {
+                    Text(
+                        content: label.clone(),
+                        color: color,
+                        weight: if active { Weight::Bold } else { Weight::Normal },
+                        wrap: TextWrap::NoWrap,
+                    )
+                }
+                .into(),
+            );
+        }
     }
 
     if window.hidden_right > 0 {
@@ -203,12 +233,16 @@ pub fn render_model_scope_header(
         .map(|label| label.chars().count())
         .collect();
     let scope_width = tab_segment_width(&scope_widths, 0, scope_labels.len());
+    let provider_count_suffix = provider_labels
+        .filter(|labels| !labels.is_empty())
+        .map(|labels| format!(" ({}/{})", provider_selected + 1, labels.len()));
     let scope_row = render_provider_tab_row(
         &displayed_scope_labels,
         scope_tab_index,
         scope_width.max(1) as u16,
         theme,
         scope_labels.len(),
+        provider_count_suffix.as_deref(),
     );
     let Some(provider_labels) = provider_labels.filter(|labels| !labels.is_empty()) else {
         return scope_row;
@@ -220,11 +254,16 @@ pub fn render_model_scope_header(
         .saturating_sub((scope_width + separator_width) as u16)
         .max(8);
     let provider_row = element! {
-        Text(
-            content: format!("‹ {} ›", provider_labels[provider_selected]),
-            color: theme.text_hint,
-            wrap: TextWrap::NoWrap,
-        )
+        View(flex_direction: FlexDirection::Row, flex_wrap: FlexWrap::NoWrap, flex_shrink: 0f32) {
+            Text(content: "‹ ".to_string(), color: theme.text_hint, wrap: TextWrap::NoWrap)
+            Text(
+                content: provider_labels[provider_selected].clone(),
+                color: theme.warning,
+                weight: Weight::Bold,
+                wrap: TextWrap::NoWrap,
+            )
+            Text(content: " ›".to_string(), color: theme.text_hint, wrap: TextWrap::NoWrap)
+        }
     };
 
     element! {

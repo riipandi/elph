@@ -653,9 +653,9 @@ pub fn model_selector_footer_hint(in_provider_scope: bool, sort_order: SortOrder
         SortOrder::CostDesc => " · $ desc",
     };
     let base = if in_provider_scope {
-        "↑/↓ model · ←/→ provider · [ ] scope · + add scoped · − remove · / filter · Enter confirm · Esc".to_string()
+        "↑/↓ model · ←/→ provider · [ ] scope · + add scoped · − remove".to_string()
     } else {
-        "↑/↓ model · [ ] scope · + add scoped · − remove · / filter · Enter confirm · Esc".to_string()
+        "↑/↓ model · [ ] scope · + add scoped · − remove".to_string()
     };
     format!("{}{} · $ sort", base, sort_hint)
 }

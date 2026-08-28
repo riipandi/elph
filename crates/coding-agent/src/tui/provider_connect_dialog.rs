@@ -637,7 +637,7 @@ fn auth_method_footer() -> String {
 }
 
 fn provider_select_footer() -> String {
-    "↑/↓ navigate · Tab focus · / filter · Enter confirm · Esc cancel".to_string()
+    "↑/↓ navigate · Tab focus · Enter confirm · Esc cancel".to_string()
 }
 
 fn oauth_device_code_footer() -> String {
