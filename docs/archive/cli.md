@@ -66,6 +66,10 @@ select stable explicitly. `--check` checks without installing and
 release, and `--force-reinstall` reinstalls the selected release even when it
 matches the installed version.
 
+Human-readable output uses a compact status line; an installation also reports
+the version transition and the platform archive being downloaded. `--json`
+remains machine-readable and is only available with `--check`.
+
 The archive is verified against its matching entry in `SHA256SUMS` before the
 binary is replaced. The installed version and channel check timestamps are
 recorded in `APP_DATA/version.json`.
