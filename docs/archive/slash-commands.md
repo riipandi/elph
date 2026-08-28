@@ -17,6 +17,7 @@ Built-in commands always win over extension and template names.
 | `/help`                     | —             | List all commands                                                                                                                     |
 | `/aside`                    | —             | Side question without interrupting the main turn (tool-free one-shot; inline panel above prompt, Esc dismisses)                    |
 | `/model`                    | —             | Open model selector (optional filter args)                                                                                            |
+| `/thinking`                 | `/think`      | Open thinking level picker (levels supported by the active model)                                                                     |
 | `/goal`                     | `/goals`      | Manage session goals                                                                                                                  |
 | `/exit`                     | `/quit`, `/q` | Quit                                                                                                                                  |
 | `/commit`                   | —             | Generate commit message from staged changes                                                                                           |
@@ -41,7 +42,7 @@ Built-in commands always win over extension and template names.
 
 | Kind | Examples | UX |
 | --- | --- | --- |
-| Interactive (inline selector / editor) | `/model`, `/resume`, `/tree`, `/rename`, tool approval | Focus status zone; ↑↓ / type / Enter / Esc |
+| Interactive (inline selector / editor) | `/model`, `/thinking`, `/resume`, `/tree`, `/rename`, tool approval | Focus status zone; ↑↓ / type / Enter / Esc |
 | Scroll text dialog | `/session`, `/tools`, `/system-prompt`, `/settings` | Read-only report; copy optional |
 | Status line | `/trust`, `/export`, `/fork` | One-shot result in transcript |
 
@@ -122,7 +123,7 @@ Fuzzy palette when input starts with `/`:
 | ----------- | ------------------------------------------------ | ------------------------ |
 | `Tab` / `→` | Complete command name                            | Cycle arg preview        |
 | `↑` / `↓`   | Move selection                                   | Cycle arg preview        |
-| `Enter`     | Run if no args needed; else complete to `/name ` | Run with highlighted arg |
+| `Enter`     | Run if no args needed; else complete to `/name` | Run with highlighted arg |
 
 `@` mentions: fuzzy workspace file paths (skip `.git`, `node_modules`, etc.).
 

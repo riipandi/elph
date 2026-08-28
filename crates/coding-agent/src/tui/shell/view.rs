@@ -80,6 +80,8 @@ pub(crate) fn build_shell_view(
         mut pending_rename,
         mut pending_item_selector,
         mut item_selector_selected,
+        mut pending_thinking_selector,
+        mut thinking_selector_selected,
         mut pending_scoped_models,
         pending_subagent_output,
         mut pending_system_prompt,
@@ -302,6 +304,7 @@ pub(crate) fn build_shell_view(
         .is_some_and(|d| d.title == "Session");
     let rename_open = pending_rename.read().is_some();
     let item_selector_open = pending_item_selector.read().is_some();
+    let thinking_selector_open = pending_thinking_selector.read().is_some();
     let confetti_open = pending_confetti.read().is_some();
     let provider_connect_open = pending_provider_connect.read().is_some();
     let mcp_auth_open = pending_mcp_auth.read().is_some();
@@ -320,6 +323,7 @@ pub(crate) fn build_shell_view(
         || system_prompt_open
         || rename_open
         || item_selector_open
+        || thinking_selector_open
         || confetti_open
         || provider_connect_open
         || mcp_auth_open
@@ -341,6 +345,7 @@ pub(crate) fn build_shell_view(
             || system_prompt_open
             || rename_open
             || item_selector_open
+            || thinking_selector_open
             || confetti_open
             || provider_connect_open
             || mcp_auth_open
@@ -387,7 +392,16 @@ pub(crate) fn build_shell_view(
         && !rename_open
         && !confetti_open
         && !model_selector_open
-        && !scoped_models_open;
+        && !scoped_models_open
+        && !thinking_selector_open;
+    let thinking_selector_has_focus = thinking_selector_open
+        && !user_question_open
+        && !system_prompt_open
+        && !rename_open
+        && !confetti_open
+        && !model_selector_open
+        && !scoped_models_open
+        && !item_selector_open;
     let approval_has_focus = (pending_tool_approval.read().is_some()
         || pending_mode_change.read().is_some()
         || pending_plan_confirmation.read().is_some()
@@ -610,9 +624,40 @@ pub(crate) fn build_shell_view(
     } else {
         None
     };
+    // NOTE: Do **not** call `thinking_selector_selected.set(...)` here during render —
+    // that re-triggers a frame forever and freezes the TUI. Selection is synced
+    // only in `open_thinking_selector` and keyboard handlers.
+    let thinking_selector_overlay = if thinking_selector_open {
+        let pending_snap = pending_thinking_selector.read().clone();
+        Some(
+            element! {
+                ThinkingSelectorBar(
+                    screen_width: screen_width,
+                    screen_height: screen_height,
+                    has_focus: thinking_selector_has_focus,
+                    pending: pending_snap,
+                    selected_index: Some(thinking_selector_selected),
+                    on_cancel: move |_| {
+                        close_thinking_selector(
+                            &mut pending_thinking_selector,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                            true,
+                        );
+                        force_editor_clear.set(true);
+                    },
+                )
+            }
+            .into(),
+        )
+    } else {
+        None
+    };
     // Same slot as slash palette / model picker: above the editor, below the status row.
     let editor_overlay = rename_overlay
         .or(item_selector_overlay)
+        .or(thinking_selector_overlay)
         .or(model_selector_overlay)
         .or(scoped_models_overlay);
     let _confetti_frame = confetti_frame.get();
@@ -1341,6 +1386,8 @@ pub(crate) fn build_shell_view(
                     Some("Select a model above".to_string())
                 } else if scoped_models_open {
                     Some("Edit scoped models above — Ctrl+S save · Esc cancel".to_string())
+                } else if thinking_selector_open {
+                    Some("Choose a thinking level above — ↑↓ · Enter set · Esc cancel".to_string())
                 } else {
                     None
                 },
@@ -1994,6 +2041,22 @@ pub(crate) fn build_shell_view(
                                     items,
                                     preferred_value,
                                     footer_hint,
+                                });
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
+                            SlashOutcome::OpenThinkingSelector { levels } => {
+                                open_thinking_selector(OpenThinkingSelectorArgs {
+                                    pending: &mut pending_thinking_selector,
+                                    draft: &mut draft,
+                                    live_draft: &mut live_draft,
+                                    shell_focus: &mut shell_focus,
+                                    selected_index: Some(&mut thinking_selector_selected),
+                                    levels,
+                                    current: thinking_level.get(),
                                 });
                                 draft.set(String::new());
                                 live_draft.set(String::new());

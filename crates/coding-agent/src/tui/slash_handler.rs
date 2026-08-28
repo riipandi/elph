@@ -93,6 +93,10 @@ pub enum SlashOutcome {
         filter: String,
     },
     OpenScopedModels,
+    /// Open the thinking level picker (`/thinking`).
+    OpenThinkingSelector {
+        levels: Vec<crate::types::ThinkingLevel>,
+    },
     OpenSystemPromptDialog {
         text: String,
     },
@@ -427,6 +431,9 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             let initial = session_title_for_rename(ctx.agent_session.as_ref()).unwrap_or_default();
             SlashOutcome::OpenRenameDialog { initial }
         }
+        SlashDispatch::Thinking => SlashOutcome::OpenThinkingSelector {
+            levels: thinking_level_options(ctx),
+        },
         SlashDispatch::Confetti { args } => SlashOutcome::PlayConfetti {
             mode: confetti_mode_from_slash_args(confetti_mode_from_args(&args)),
         },
@@ -707,6 +714,7 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
             | SlashOutcome::BackgroundTaskQuiet
             | SlashOutcome::OpenModelSelector { .. }
             | SlashOutcome::OpenScopedModels
+            | SlashOutcome::OpenThinkingSelector { .. }
             | SlashOutcome::OpenSystemPromptDialog { .. }
             | SlashOutcome::OpenViewPlanDialog { .. }
             | SlashOutcome::OpenToolsDialog { .. }
@@ -725,6 +733,17 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
             | SlashOutcome::ResumeSession { .. }
             | SlashOutcome::OpenItemSelector { .. }
     )
+}
+
+/// Levels offered by the `/thinking` picker.
+///
+/// Always the full seven-level list in pi order (off · minimal · low · medium ·
+/// high · xhigh · max). The model catalog is not consulted here — the matched
+/// level is clamped to the active model's `thinkingLevelMap` when applied (same
+/// guard as Ctrl+. / footer), so an unsupported pick still collapses safely.
+fn thinking_level_options(_ctx: SlashContext<'_>) -> Vec<crate::types::ThinkingLevel> {
+    use crate::types::ThinkingLevel::*;
+    vec![Off, Minimal, Low, Medium, High, Xhigh, Max]
 }
 
 fn open_resume_item_selector(session: Option<&Arc<crate::agent::CodingAgentSession>>) -> SlashOutcome {
@@ -958,6 +977,27 @@ mod tests {
             cwd: None,
         });
         assert!(matches!(outcome, SlashOutcome::OpenScopedModels));
+    }
+
+    #[test]
+    fn thinking_slash_opens_selector_with_all_levels_in_pi_order() {
+        let outcome = handle_slash_submit(SlashContext {
+            input: "/thinking",
+            extensions: None,
+            prompt_templates: None,
+            skills: None,
+            agent_session: None,
+            extension_host: None,
+            paths: None,
+            cwd: None,
+        });
+        match outcome {
+            SlashOutcome::OpenThinkingSelector { levels } => {
+                use crate::types::ThinkingLevel::*;
+                assert_eq!(levels, vec![Off, Minimal, Low, Medium, High, Xhigh, Max]);
+            }
+            other => panic!("expected OpenThinkingSelector, got {other:?}"),
+        }
     }
 
     #[test]

@@ -34,6 +34,8 @@ pub const FILE_PICKER_HIDDEN_NOTICE_KEY: &str = "transient:file_picker_hidden";
 
 /// Stable key for model selection / Ctrl+P cycle notices in the transcript.
 pub const MODEL_SET_NOTICE_KEY: &str = "transient:model_set";
+/// Stable key after `/thinking` (or the picker) changes the thinking level.
+pub const THINKING_LEVEL_NOTICE_KEY: &str = "transient:thinking_level";
 
 /// How long an agent-mode (or blocked-toggle) banner stays visible.
 pub const AGENT_MODE_NOTICE_TTL: Duration = Duration::from_secs(3);
@@ -129,6 +131,16 @@ pub fn theme_mode_banner(label: &str) -> EphemeralBanner {
     EphemeralBanner {
         key: THEME_MODE_NOTICE_KEY,
         text: format!("Theme: {label}"),
+        kind: EphemeralBannerKind::Notice,
+        expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
+    }
+}
+
+/// Banner after `/thinking` sets a new level.
+pub fn thinking_level_banner(level: crate::types::ThinkingLevel) -> EphemeralBanner {
+    EphemeralBanner {
+        key: THINKING_LEVEL_NOTICE_KEY,
+        text: format!("Thinking level: {}", level.label()),
         kind: EphemeralBannerKind::Notice,
         expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
     }
