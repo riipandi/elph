@@ -290,6 +290,35 @@
             "xhigh": null
         }
     },
+    "deepseek-ai/deepseek-v4-pro-0813": {
+        "api": "openai-completions",
+        "baseUrl": "https://integrate.api.nvidia.com/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "description": "DeepSeek V4 Pro snapshot with million-token context and support for thinking and non-thinking modes",
+        "id": "deepseek-ai/deepseek-v4-pro-0813",
+        "input": ["text"],
+        "knowledgeCutoff": "",
+        "maxTokens": 384000,
+        "name": "DeepSeek V4 Pro 0813",
+        "provider": "nvidia",
+        "reasoning": true,
+        "releaseDate": "",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
     "google/gemma-2-2b-it": {
         "api": "openai-completions",
         "baseUrl": "https://integrate.api.nvidia.com/v1",
@@ -1764,8 +1793,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 2.11,
+            "output": 10.55
         },
         "description": "Nemotron multimodal model for visual reasoning and agentic AI workflows",
         "headers": {
@@ -1873,8 +1902,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 2.11,
+            "output": 10.55
         },
         "description": "Nemotron model for efficient reasoning, coding, and specialized AI agents",
         "headers": {
@@ -1913,8 +1942,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.1,
-            "output": 0.4
+            "input": 2.11,
+            "output": 10.55
         },
         "description": "Nemotron model for efficient reasoning, coding, and specialized AI agents",
         "headers": {
@@ -2308,8 +2337,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 2.11,
+            "output": 10.55
         },
         "description": "Compact Nemotron model for efficient reasoning and deployable AI agents",
         "id": "nvidia/nemotron-mini-4b-instruct",

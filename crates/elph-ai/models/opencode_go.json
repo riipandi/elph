@@ -881,6 +881,33 @@
             "xhigh": "xhigh"
         }
     },
+    "qwen3.8-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/go/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.016,
+            "cacheWrite": 0.2,
+            "input": 0.15,
+            "output": 0.47
+        },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
+        "id": "qwen3.8-flash",
+        "input": ["text", "image", "video"],
+        "maxTokens": 131072,
+        "name": "Qwen3.8 Flash",
+        "provider": "opencode-go",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
     "qwen3.8-max": {
         "api": "openai-completions",
         "baseUrl": "https://opencode.ai/zen/go/v1",

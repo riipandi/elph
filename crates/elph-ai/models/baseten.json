@@ -364,11 +364,11 @@
             "input": 0.15,
             "output": 0.5
         },
-        "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
+        "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
         "id": "zai-org/GLM-5.3-Flash",
-        "input": ["text", "image", "video", "pdf"],
+        "input": ["text", "image"],
         "maxTokens": 131072,
-        "name": "GLM-5.3-Flash",
+        "name": "GLM 5.3 Flash",
         "provider": "baseten",
         "reasoning": true,
         "thinkingLevelMap": {

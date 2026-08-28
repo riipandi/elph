@@ -42,7 +42,7 @@
             "supportsStore": false,
             "thinkingFormat": "deepseek"
         },
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.044,
             "cacheWrite": 0.0,
@@ -164,9 +164,9 @@
         "contextWindow": 202752,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.46,
-            "input": 0.92,
-            "output": 2.976
+            "cacheWrite": 0.45,
+            "input": 0.9,
+            "output": 2.804
         },
         "description": "General GLM flagship for coding, analysis, and tool-heavy engineering workflows",
         "id": "glm-5",
@@ -227,7 +227,7 @@
             "supportsStore": false,
             "thinkingFormat": "deepseek"
         },
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.152432,
             "cacheWrite": 0.0,
@@ -236,7 +236,7 @@
         },
         "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "glm-5.2",
-        "input": ["text", "image"],
+        "input": ["text"],
         "maxTokens": 32768,
         "name": "GLM-5.2",
         "provider": "hyper",
@@ -244,11 +244,11 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
-            "max": "max",
+            "max": null,
             "medium": null,
             "minimal": null,
-            "off": "off",
-            "xhigh": null
+            "off": null,
+            "xhigh": "xhigh"
         }
     },
     "gpt-oss-120b": {
@@ -295,9 +295,9 @@
         "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.272,
-            "input": 0.544,
-            "output": 2.76
+            "cacheWrite": 0.2722,
+            "input": 0.5444,
+            "output": 2.855
         },
         "description": "Earlier Kimi frontier model for long-context agents, coding, and multimodal work",
         "id": "kimi-k2.5",
@@ -425,9 +425,9 @@
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.319,
-            "input": 0.638,
-            "output": 0.768
+            "cacheWrite": 0.3033,
+            "input": 0.6066,
+            "output": 1.0386
         },
         "description": "Popular open Llama workhorse for multilingual chat, coding, and self-hosting",
         "id": "llama-3.3-70b-instruct",
@@ -489,9 +489,9 @@
         "contextWindow": 262100,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.212,
-            "input": 0.424,
-            "output": 1.612
+            "cacheWrite": 0.204,
+            "input": 0.408,
+            "output": 1.512
         },
         "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
         "id": "minimax-m2.7",
@@ -860,7 +860,7 @@
         "cost": {
             "cacheRead": 0.016,
             "cacheWrite": 0.0,
-            "input": 0.16,
+            "input": 0.15,
             "output": 0.47
         },
         "description": "Efficient model for low-latency assistance, extraction, and routine automation",

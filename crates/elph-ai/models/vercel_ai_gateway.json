@@ -2202,8 +2202,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 1049850.306,
-            "output": 1049850.306
+            "input": 1050281.91,
+            "output": 1050281.91
         },
         "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "meta/llama-3.3-70b",
@@ -3526,8 +3526,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
+            "off": null,
+            "xhigh": null
         }
     },
     "openai/gpt-5-mini": {

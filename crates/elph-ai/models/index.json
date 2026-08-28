@@ -67,7 +67,7 @@
     {
         "providerId": "fireworks",
         "rustMod": "fireworks",
-        "count": 23
+        "count": 17
     },
     {
         "providerId": "github-copilot",
@@ -97,7 +97,7 @@
     {
         "providerId": "huggingface",
         "rustMod": "huggingface",
-        "count": 136
+        "count": 133
     },
     {
         "providerId": "hyper",
@@ -107,12 +107,12 @@
     {
         "providerId": "infron",
         "rustMod": "infron",
-        "count": 286
+        "count": 289
     },
     {
         "providerId": "kilo",
         "rustMod": "kilo",
-        "count": 367
+        "count": 368
     },
     {
         "providerId": "kimi-coding",
@@ -147,7 +147,7 @@
     {
         "providerId": "nara-router",
         "rustMod": "nara_router",
-        "count": 53
+        "count": 55
     },
     {
         "providerId": "neuralwatt",
@@ -157,12 +157,12 @@
     {
         "providerId": "nvidia",
         "rustMod": "nvidia",
-        "count": 102
+        "count": 103
     },
     {
         "providerId": "ollama-cloud",
         "rustMod": "ollama_cloud",
-        "count": 20
+        "count": 18
     },
     {
         "providerId": "openai",
@@ -182,7 +182,7 @@
     {
         "providerId": "opencode-go",
         "rustMod": "opencode_go",
-        "count": 31
+        "count": 32
     },
     {
         "providerId": "opengateway",
@@ -192,12 +192,12 @@
     {
         "providerId": "openrouter",
         "rustMod": "openrouter",
-        "count": 416
+        "count": 387
     },
     {
         "providerId": "orca-router",
         "rustMod": "orca_router",
-        "count": 192
+        "count": 191
     },
     {
         "providerId": "qwen-token-plan",
@@ -237,7 +237,7 @@
     {
         "providerId": "wafer",
         "rustMod": "wafer",
-        "count": 5
+        "count": 6
     },
     {
         "providerId": "xai",

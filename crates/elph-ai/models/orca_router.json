@@ -22,11 +22,11 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
+            "max": null,
             "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "anthropic/claude-haiku-4.5": {
@@ -49,7 +49,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
+            "max": null,
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -74,13 +74,13 @@
         "provider": "orca-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": "max",
-            "medium": null,
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "anthropic/claude-opus-4.6": {
@@ -157,11 +157,11 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
+            "max": null,
             "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "anthropic/claude-opus-5": {
@@ -170,7 +170,7 @@
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.5,
-            "cacheWrite": 6.25,
+            "cacheWrite": 10.0,
             "input": 5.0,
             "output": 25.0
         },
@@ -186,34 +186,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": "xhigh"
-        }
-    },
-    "anthropic/claude-sonnet-4.5": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 200000,
-        "cost": {
-            "cacheRead": 0.3,
-            "cacheWrite": 3.75,
-            "input": 3.0,
-            "output": 15.0
-        },
-        "description": "Balanced Claude model for coding, analysis, agent workflows, and cost control",
-        "id": "anthropic/claude-sonnet-4.5",
-        "input": ["text", "image", "pdf"],
-        "maxTokens": 64000,
-        "name": "Claude Sonnet 4.5 (latest)",
-        "provider": "orca-router",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": "max",
+            "max": null,
             "medium": "medium",
             "minimal": null,
             "off": null,
@@ -269,11 +242,11 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
+            "max": null,
             "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "codex-auto-review": {
@@ -306,9 +279,9 @@
     "deepseek/deepseek-chat": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.028,
+            "cacheRead": 0.02,
             "cacheWrite": 0.0,
             "input": 0.14700000000000002,
             "output": 0.295
@@ -335,7 +308,7 @@
     "deepseek/deepseek-reasoner": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.028,
             "cacheWrite": 0.0,
@@ -364,9 +337,9 @@
     "deepseek/deepseek-v4-flash": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.0028,
+            "cacheRead": 0.02,
             "cacheWrite": 0.0,
             "input": 0.14700000000000002,
             "output": 0.295
@@ -395,23 +368,23 @@
         "baseUrl": "https://api.orcarouter.ai/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.016,
+            "cacheRead": 0.02,
             "cacheWrite": 0.0,
             "input": 0.14700000000000002,
             "output": 0.295
         },
-        "description": "Fast DeepSeek model for efficient chat, coding help, and agent loops",
+        "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
         "id": "deepseek/deepseek-v4-flash-0731",
         "input": ["text"],
         "knowledgeCutoff": "2025-05",
-        "maxTokens": 1048576,
+        "maxTokens": 384000,
         "name": "DeepSeek V4 Flash 0731",
         "provider": "orca-router",
         "reasoning": true,
         "releaseDate": "2026-07-31",
         "thinkingLevelMap": {
             "high": "high",
-            "low": null,
+            "low": "low",
             "max": "max",
             "medium": null,
             "minimal": null,
@@ -422,18 +395,18 @@
     "deepseek/deepseek-v4-flash-free": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 200000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 0.0,
             "output": 0.0
         },
-        "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
+        "description": "Fast DeepSeek V4 lane for economical reasoning, coding, and long-context work",
         "id": "deepseek/deepseek-v4-flash-free",
         "input": ["text"],
-        "maxTokens": 128000,
-        "name": "DeepSeek V4 Flash Free",
+        "maxTokens": 384000,
+        "name": "DeepSeek V4 Flash (free)",
         "provider": "orca-router",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -449,9 +422,9 @@
     "deepseek/deepseek-v4-flash-vision-exp": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.0135,
+            "cacheRead": 0.02,
             "cacheWrite": 0.405,
             "input": 0.14700000000000002,
             "output": 0.295
@@ -468,18 +441,18 @@
             "high": "high",
             "low": "low",
             "max": "max",
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "deepseek/deepseek-v4-pro": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.003625,
+            "cacheRead": 0.06,
             "cacheWrite": 0.0,
             "input": 0.442,
             "output": 0.884
@@ -495,7 +468,7 @@
         "releaseDate": "2026-04-24",
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": "max",
             "medium": null,
             "minimal": null,
@@ -508,7 +481,7 @@
         "baseUrl": "https://api.orcarouter.ai/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.044,
+            "cacheRead": 0.06,
             "cacheWrite": 0.0,
             "input": 0.442,
             "output": 0.884
@@ -525,33 +498,6 @@
             "high": "high",
             "low": null,
             "max": "max",
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "fish-audio/s2.1-pro-free": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "description": "Speech generation model for controllable voice, narration, and audio delivery",
-        "id": "fish-audio/s2.1-pro-free",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "S2.1 Pro (Free)",
-        "provider": "orca-router",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
             "medium": null,
             "minimal": null,
             "off": null,
@@ -752,7 +698,7 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
         }
@@ -868,7 +814,7 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
         }
@@ -966,7 +912,7 @@
         "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.15,
-            "cacheWrite": 0.083333,
+            "cacheWrite": 0.08333,
             "input": 1.5,
             "output": 9.0
         },
@@ -1023,7 +969,7 @@
         "baseUrl": "https://api.orcarouter.ai/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.075,
+            "cacheRead": 0.15,
             "cacheWrite": 0.041667,
             "input": 1.5,
             "output": 7.5
@@ -1108,7 +1054,7 @@
         "baseUrl": "https://api.orcarouter.ai/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.15,
+            "cacheRead": 0.1,
             "cacheWrite": 0.0,
             "input": 0.5,
             "output": 3.0
@@ -1127,7 +1073,7 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": "minimal",
+            "minimal": null,
             "off": null,
             "xhigh": null
         }
@@ -1222,7 +1168,7 @@
         "baseUrl": "https://api.orcarouter.ai/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.0075,
             "cacheWrite": 0.0,
             "input": 0.06,
             "output": 0.33
@@ -1250,7 +1196,7 @@
         "baseUrl": "https://api.orcarouter.ai/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.02,
             "cacheWrite": 0.0,
             "input": 0.13,
             "output": 0.38
@@ -1357,7 +1303,7 @@
     "gpt-5.6-luna": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.1,
             "cacheWrite": 0.0,
@@ -1401,10 +1347,10 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
-            "medium": null,
+            "max": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -1413,7 +1359,7 @@
         "baseUrl": "https://api.orcarouter.ai/v1",
         "contextWindow": 500000,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.5,
             "cacheWrite": 0.0,
             "input": 2.0,
             "output": 6.0
@@ -1421,15 +1367,15 @@
         "description": "xAI's Grok model for chat, coding, agentic tools, and lower hallucination risk",
         "id": "grok/grok-4.5",
         "input": ["text", "image"],
-        "maxTokens": 32768,
+        "maxTokens": 500000,
         "name": "Grok 4.5",
         "provider": "orca-router",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
-            "medium": null,
+            "max": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -1448,18 +1394,18 @@
         "description": "xAI's frontier model for long-running agents, coding, knowledge work, and visual projects",
         "id": "grok/grok-4.6",
         "input": ["text", "image"],
-        "maxTokens": 32768,
+        "maxTokens": 500000,
         "name": "Grok 4.6",
         "provider": "orca-router",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
-            "medium": null,
+            "max": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "grok/grok-imagine-image": {
@@ -1502,7 +1448,7 @@
         "description": "Earlier Kimi frontier model for long-context agents, coding, and multimodal work",
         "id": "kimi/kimi-k2.5",
         "input": ["text", "image", "video"],
-        "maxTokens": 262144,
+        "maxTokens": 32768,
         "name": "Kimi K2.5",
         "provider": "orca-router",
         "reasoning": true,
@@ -1529,7 +1475,7 @@
         "description": "Multimodal Kimi workhorse for agent loops, coding tasks, and visual context",
         "id": "kimi/kimi-k2.6",
         "input": ["text", "image", "video"],
-        "maxTokens": 262144,
+        "maxTokens": 32768,
         "name": "Kimi K2.6",
         "provider": "orca-router",
         "reasoning": true,
@@ -1548,7 +1494,7 @@
         "baseUrl": "https://api.orcarouter.ai/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.160835,
+            "cacheRead": 0.19,
             "cacheWrite": 0.0,
             "input": 0.95,
             "output": 4.0
@@ -1556,7 +1502,7 @@
         "description": "Coding-focused Kimi model, stronger on long-horizon repo work with less overthinking",
         "id": "kimi/kimi-k2.7-code",
         "input": ["text", "image", "video"],
-        "maxTokens": 32768,
+        "maxTokens": 262144,
         "name": "Kimi K2.7 Code",
         "provider": "orca-router",
         "reasoning": true,
@@ -1575,7 +1521,7 @@
         "baseUrl": "https://api.orcarouter.ai/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.3,
+            "cacheRead": 0.33,
             "cacheWrite": 0.0,
             "input": 3.0,
             "output": 15.0
@@ -1823,10 +1769,10 @@
             "input": 1.25,
             "output": 4.25
         },
-        "description": "Muse Spark 1.1 is a multimodal reasoning model from Meta, built for agentic tasks. It accepts text, images, video, audio, and PDF documents and returns text, with a 1M-token context...",
+        "description": "Muse Spark is a natively multimodal reasoning model with support for tool-use, visual chain of thought, and multi-agent orchestration.",
         "id": "meta/muse-spark-1.1",
-        "input": ["text", "image", "video", "pdf", "audio"],
-        "maxTokens": 943718,
+        "input": ["text", "image", "pdf", "video"],
+        "maxTokens": 32000,
         "name": "Muse Spark 1.1",
         "provider": "orca-router",
         "reasoning": true,
@@ -1851,10 +1797,10 @@
             "input": 1.25,
             "output": 4.25
         },
-        "description": "Muse Spark 1.2 is a reasoning model from Meta, designed for complex agentic tasks. It accepts text, images, video, audio, and PDF documents, returns text, and offers a 1M-token context...",
+        "description": "Muse Spark 1.2 is a coding-focused update to Muse Spark 1.1 with improvements in code generation, complex debugging, codebase understanding, and end-to-end developer workflows.",
         "id": "meta/muse-spark-1.2",
         "input": ["text", "image", "video", "pdf", "audio"],
-        "maxTokens": 943718,
+        "maxTokens": 131072,
         "name": "Muse Spark 1.2",
         "provider": "orca-router",
         "reasoning": true,
@@ -1909,7 +1855,7 @@
         "description": "Prior MiniMax coding model for agent workflows, office edits, and automation",
         "id": "minimax/minimax-m2.5",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 2048,
         "name": "MiniMax-M2.5",
         "provider": "orca-router",
         "reasoning": true,
@@ -1928,7 +1874,7 @@
         "baseUrl": "https://api.orcarouter.ai/v1",
         "contextWindow": 204800,
         "cost": {
-            "cacheRead": 0.06,
+            "cacheRead": 0.03,
             "cacheWrite": 0.375,
             "input": 0.6,
             "output": 2.4
@@ -1936,7 +1882,7 @@
         "description": "High-speed MiniMax model for low-latency coding and agent workflows",
         "id": "minimax/minimax-m2.5-highspeed",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 2048,
         "name": "MiniMax-M2.5-highspeed",
         "provider": "orca-router",
         "reasoning": true,
@@ -1963,7 +1909,7 @@
         "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
         "id": "minimax/minimax-m2.7",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 2048,
         "name": "MiniMax-M2.7",
         "provider": "orca-router",
         "reasoning": true,
@@ -1990,7 +1936,7 @@
         "description": "Low-latency M2.7 variant for interactive coding plans and agent loops",
         "id": "minimax/minimax-m2.7-highspeed",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 2048,
         "name": "MiniMax-M2.7-highspeed",
         "provider": "orca-router",
         "reasoning": true,
@@ -2007,9 +1953,9 @@
     "minimax/minimax-m3": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 1024000,
+        "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.066,
+            "cacheRead": 0.06,
             "cacheWrite": 0.33,
             "input": 0.3,
             "output": 1.2
@@ -2154,7 +2100,7 @@
         "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "openai/gpt-3.5-turbo-0125",
         "input": ["text"],
-        "maxTokens": 16384,
+        "maxTokens": 4096,
         "name": "GPT-3.5 Turbo 0125",
         "provider": "orca-router",
         "reasoning": false,
@@ -2181,7 +2127,7 @@
         "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "openai/gpt-3.5-turbo-1106",
         "input": ["text"],
-        "maxTokens": 16384,
+        "maxTokens": 4096,
         "name": "GPT-3.5 Turbo 1106",
         "provider": "orca-router",
         "reasoning": false,
@@ -2225,7 +2171,7 @@
     "openai/gpt-4": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 8192,
+        "contextWindow": 8191,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -2545,7 +2491,7 @@
         "id": "openai/gpt-4o-2024-05-13",
         "input": ["text", "image"],
         "knowledgeCutoff": "2023-09",
-        "maxTokens": 4096,
+        "maxTokens": 16384,
         "name": "GPT-4o (2024-05-13)",
         "provider": "orca-router",
         "reasoning": false,
@@ -2779,9 +2725,9 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": null
         }
     },
     "openai/gpt-5-2025-08-07": {
@@ -2825,7 +2771,7 @@
         "id": "openai/gpt-5-chat-latest",
         "input": ["text", "image"],
         "knowledgeCutoff": "2024-09-30",
-        "maxTokens": 128000,
+        "maxTokens": 100000,
         "name": "GPT-5 Chat (latest)",
         "provider": "orca-router",
         "reasoning": true,
@@ -2864,9 +2810,9 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": null
         }
     },
     "openai/gpt-5-mini-2025-08-07": {
@@ -2920,9 +2866,9 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": null
         }
     },
     "openai/gpt-5-nano-2025-08-07": {
@@ -2973,9 +2919,9 @@
         "releaseDate": "2025-10-06",
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -3088,13 +3034,13 @@
             "medium": "medium",
             "minimal": null,
             "off": "off",
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "openai/gpt-5.1-2025-11-13": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.125,
             "cacheWrite": 0.0,
@@ -3104,7 +3050,7 @@
         "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "openai/gpt-5.1-2025-11-13",
         "input": ["text"],
-        "maxTokens": 32768,
+        "maxTokens": 128000,
         "name": "GPT-5.1 (2025-11-13)",
         "provider": "orca-router",
         "reasoning": true,
@@ -3172,8 +3118,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
+            "off": null,
+            "xhigh": null
         }
     },
     "openai/gpt-5.1-codex-mini": {
@@ -3201,8 +3147,8 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
+            "off": null,
+            "xhigh": null
         }
     },
     "openai/gpt-5.2": {
@@ -3281,13 +3227,13 @@
         "reasoning": true,
         "releaseDate": "2025-12-11",
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
+            "off": null,
+            "xhigh": null
         }
     },
     "openai/gpt-5.2-codex": {
@@ -3315,7 +3261,7 @@
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": "off",
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -3340,12 +3286,12 @@
         "releaseDate": "2025-12-11",
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
             "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "openai/gpt-5.2-pro-2025-12-11": {
@@ -3593,12 +3539,12 @@
         "releaseDate": "2026-03-05",
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
             "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "openai/gpt-5.4-pro-2026-03-05": {
@@ -3698,19 +3644,19 @@
         "id": "openai/gpt-5.5-pro",
         "input": ["text", "image", "pdf"],
         "knowledgeCutoff": "2025-12-01",
-        "maxTokens": 128000,
+        "maxTokens": 100000,
         "name": "GPT-5.5 Pro",
         "provider": "orca-router",
         "reasoning": true,
         "releaseDate": "2026-04-23",
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": null,
             "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "openai/gpt-5.5-pro-2026-04-23": {
@@ -3774,8 +3720,8 @@
         "baseUrl": "https://api.orcarouter.ai/v1",
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.25,
-            "cacheWrite": 3.125,
+            "cacheRead": 0.4,
+            "cacheWrite": 5.0,
             "input": 4.0,
             "output": 20.0
         },
@@ -3941,7 +3887,7 @@
     "openai/gpt-oss-120b": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 128000,
+        "contextWindow": 131072,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -3951,16 +3897,16 @@
         "description": "Open GPT reasoning model for self-hosted agents and controllable deployments",
         "id": "openai/gpt-oss-120b",
         "input": ["text"],
-        "maxTokens": 16384,
+        "maxTokens": 32768,
         "name": "GPT OSS 120B",
         "provider": "orca-router",
         "reasoning": true,
         "releaseDate": "2025-08-05",
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -4212,18 +4158,18 @@
     "orcarouter/free": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 200000,
+        "contextWindow": 65536,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 0.0,
             "output": 0.0
         },
-        "description": "",
+        "description": "Built-in router over the free tier that scores each request's difficulty and sends light work to the smaller free model and harder work to the stronger one. Priced at zero and never falls back to a paid model.",
         "id": "orcarouter/free",
         "input": ["text"],
-        "maxTokens": 4096,
-        "name": "orcarouter/free",
+        "maxTokens": 32768,
+        "name": "OrcaRouter Free",
         "provider": "orca-router",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -4246,18 +4192,18 @@
             "input": 0.0,
             "output": 0.0
         },
-        "description": "",
+        "description": "Curated fan-out router that runs Claude Opus 4.8, GPT-5.5 and Gemini 3.1 Pro in parallel on hard requests, then has a Claude Opus 4.8 judge return the strongest single answer verbatim. Easy requests fall through to a cheaper default and bill as one call.",
         "id": "orcarouter/fusion",
-        "input": ["text"],
-        "maxTokens": 4096,
-        "name": "orcarouter/fusion",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "OrcaRouter Fusion",
         "provider": "orca-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -4273,18 +4219,18 @@
             "input": 0.0,
             "output": 0.0
         },
-        "description": "",
+        "description": "Budget Fusion panel that runs Gemini 3.5 Flash, MiniMax M2.7 and GLM 5.1 in parallel on hard requests, then has a Claude Opus 4.8 judge return the strongest single answer verbatim. Cost-sensitive fan-out over a 200K window.",
         "id": "orcarouter/fusion-flash",
         "input": ["text"],
-        "maxTokens": 4096,
-        "name": "orcarouter/fusion-flash",
+        "maxTokens": 128000,
+        "name": "OrcaRouter Fusion Flash",
         "provider": "orca-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -4300,18 +4246,18 @@
             "input": 0.0,
             "output": 0.0
         },
-        "description": "",
+        "description": "Leaner two-model Fusion panel that runs Claude Opus 4.8 and GPT-5.5 in parallel on hard requests, then has a Claude Opus 4.8 judge return the strongest single answer verbatim. Easy requests fall through to a cheaper default and bill as one call.",
         "id": "orcarouter/fusion-mini",
-        "input": ["text"],
-        "maxTokens": 4096,
-        "name": "orcarouter/fusion-mini",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "OrcaRouter Fusion Mini",
         "provider": "orca-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null
@@ -4347,7 +4293,7 @@
     "qwen/qwen3-max-preview": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 256000,
+        "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -4357,7 +4303,7 @@
         "description": "Flagship Qwen model for complex reasoning, coding, and agentic workflows",
         "id": "qwen/qwen3-max-preview",
         "input": ["text"],
-        "maxTokens": 32000,
+        "maxTokens": 65536,
         "name": "Qwen3-Max-Preview",
         "provider": "orca-router",
         "reasoning": false,
@@ -4383,7 +4329,7 @@
         },
         "description": "Qwen vision-language instruct model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3-vl-235b-a22b-instruct",
-        "input": ["text", "image", "video"],
+        "input": ["text", "image"],
         "maxTokens": 32768,
         "name": "Qwen3 VL 235B A22B Instruct",
         "provider": "orca-router",
@@ -4410,8 +4356,8 @@
         },
         "description": "Qwen vision-language thinking model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3-vl-235b-a22b-thinking",
-        "input": ["text", "image", "video"],
-        "maxTokens": 32768,
+        "input": ["text", "image"],
+        "maxTokens": 40960,
         "name": "Qwen3 VL 235B A22B Thinking",
         "provider": "orca-router",
         "reasoning": true,
@@ -4465,7 +4411,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3-vl-8b-thinking",
         "input": ["image", "text"],
-        "maxTokens": 32768,
+        "maxTokens": 40960,
         "name": "Qwen: Qwen3 VL 8B Thinking",
         "provider": "orca-router",
         "reasoning": true,
@@ -4482,7 +4428,7 @@
     "qwen/qwen3.5-122b-a10b": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 262144,
+        "contextWindow": 32768,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -4509,7 +4455,7 @@
     "qwen/qwen3.5-27b": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 262144,
+        "contextWindow": 32768,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -4536,7 +4482,7 @@
     "qwen/qwen3.5-35b-a3b": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 262144,
+        "contextWindow": 32768,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -4563,7 +4509,7 @@
     "qwen/qwen3.5-397b-a17b": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 262144,
+        "contextWindow": 32768,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -4590,7 +4536,7 @@
     "qwen/qwen3.5-flash": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.0058,
             "cacheWrite": 0.0,
@@ -4599,8 +4545,8 @@
         },
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-flash",
-        "input": ["text"],
-        "maxTokens": 250000,
+        "input": ["text", "image", "video"],
+        "maxTokens": 65536,
         "name": "Qwen3.5 Flash",
         "provider": "orca-router",
         "reasoning": true,
@@ -4644,7 +4590,7 @@
     "qwen/qwen3.5-plus": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -4725,7 +4671,7 @@
     "qwen/qwen3.6-flash": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.019,
             "cacheWrite": 0.24,
@@ -4779,7 +4725,7 @@
     "qwen/qwen3.6-plus": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.05,
             "cacheWrite": 0.625,
@@ -4835,8 +4781,8 @@
         "baseUrl": "https://api.orcarouter.ai/v1",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.01,
-            "cacheWrite": 0.04,
+            "cacheRead": 0.006,
+            "cacheWrite": 0.038,
             "input": 0.03,
             "output": 0.13
         },
@@ -4862,15 +4808,15 @@
         "baseUrl": "https://api.orcarouter.ai/v1",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.3,
-            "cacheWrite": 1.88,
+            "cacheRead": 0.25,
+            "cacheWrite": 1.563,
             "input": 1.25,
             "output": 3.75
         },
         "description": "Qwen frontier model tuned for agent frameworks, coding assistants, and long tasks",
         "id": "qwen/qwen3.7-max",
         "input": ["text"],
-        "maxTokens": 65536,
+        "maxTokens": 64000,
         "name": "Qwen3.7 Max",
         "provider": "orca-router",
         "reasoning": true,
@@ -4916,7 +4862,7 @@
         "baseUrl": "https://api.orcarouter.ai/v1",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.0288,
+            "cacheRead": 0.071,
             "cacheWrite": 0.36,
             "input": 0.35,
             "output": 1.42
@@ -4924,7 +4870,7 @@
         "description": "Multimodal Qwen workhorse for long-context agents, visual inputs, and coding",
         "id": "qwen/qwen3.7-plus",
         "input": ["text", "image", "video"],
-        "maxTokens": 64000,
+        "maxTokens": 65536,
         "name": "Qwen3.7 Plus",
         "provider": "orca-router",
         "reasoning": true,
@@ -4941,7 +4887,7 @@
     "qwen/qwen3.8-27b": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.1,
             "cacheWrite": 0.625,
@@ -4975,15 +4921,15 @@
             "input": 0.0,
             "output": 0.0
         },
-        "description": "Qwen3.8-27B is Alibaba's open-weight 27B dense model, released under Apache-2.0 and self-hosted on OrcaRouter's own infrastructure. This deployment is text-in, text-out, with a 64K-token context window (65,536 positions) built on the Qwen3.5 architecture - 64 layers, 5120 hidden size.\n\nDespite its 27B size it posts unusually strong agentic and coding results on Qwen's own model card, including 90.3 on LiveCodeBench v6, 89.2 on GPQA Diamond, and 79.0 on QwenSWEBench - competitive with far larger closed models on several axes. It supports native tool calling, structured outputs, reasoning mode, and the full sampling surface.\n\nBecause the weights are open and we run them ourselves, there is no per-token vendor cost to pass through. That makes Qwen3.8-27B a strong default for high-volume text workloads: coding agents, long-document analysis, structured extraction, and agentic automation.",
+        "description": "Dense 27B vision-language model for coding, agent tasks, and image and video understanding",
         "id": "qwen/qwen3.8-27b-free",
-        "input": ["text"],
-        "maxTokens": 4096,
-        "name": "Qwen: Qwen3.8 27B (free)",
+        "input": ["text", "image", "video"],
+        "maxTokens": 32768,
+        "name": "Qwen3.8 27B (free)",
         "provider": "orca-router",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
+            "high": null,
             "low": "low",
             "max": null,
             "medium": "medium",
@@ -4992,19 +4938,46 @@
             "xhigh": "xhigh"
         }
     },
+    "qwen/qwen3.8-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.orcarouter.ai/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.016,
+            "cacheWrite": 0.2,
+            "input": 0.15,
+            "output": 0.47
+        },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
+        "id": "qwen/qwen3.8-flash",
+        "input": ["text", "image", "video"],
+        "maxTokens": 131072,
+        "name": "Qwen3.8 Flash",
+        "provider": "orca-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
     "qwen/qwen3.8-max": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.23,
-            "cacheWrite": 2.35,
+            "cacheRead": 0.25,
+            "cacheWrite": 2.5,
             "input": 2.0,
             "output": 6.0
         },
         "description": "2.4-trillion-parameter MoE flagship for coding, professional work, multimodal understanding, and long-horizon agentic workflows",
         "id": "qwen/qwen3.8-max",
-        "input": ["text", "image", "video"],
+        "input": ["text", "image", "video", "pdf"],
         "maxTokens": 131072,
         "name": "Qwen3.8 Max",
         "provider": "orca-router",
@@ -5019,38 +4992,12 @@
             "xhigh": "xhigh"
         }
     },
-    "s2.1-pro-free": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "id": "s2.1-pro-free",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "s2.1-pro-free",
-        "provider": "orca-router",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "tencent/hy3": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.04,
+            "cacheRead": 0.059,
             "cacheWrite": 0.16,
             "input": 0.18,
             "output": 0.59
@@ -5058,7 +5005,7 @@
         "description": "Tencent Hy reasoning model for coding, instruction following, and agent tasks",
         "id": "tencent/hy3",
         "input": ["text"],
-        "maxTokens": 262144,
+        "maxTokens": 64000,
         "name": "Hy3",
         "provider": "orca-router",
         "reasoning": true,
@@ -5076,7 +5023,7 @@
     "tencent/hy3-free": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 190000,
+        "contextWindow": 256000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -5087,23 +5034,23 @@
         "id": "tencent/hy3-free",
         "input": ["text"],
         "maxTokens": 64000,
-        "name": "Hy3 Free",
+        "name": "Hy3 (free)",
         "provider": "orca-router",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
             "max": null,
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
     "z-ai/glm-4.5": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 131072,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.11,
             "cacheWrite": 0.0,
@@ -5113,7 +5060,7 @@
         "description": "Hybrid-reasoning GLM release that made the 4.5 line broadly useful",
         "id": "z-ai/glm-4.5",
         "input": ["text"],
-        "maxTokens": 98304,
+        "maxTokens": 96000,
         "name": "GLM-4.5",
         "provider": "orca-router",
         "reasoning": true,
@@ -5130,7 +5077,7 @@
     "z-ai/glm-4.5-air": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 131072,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.03,
             "cacheWrite": 0.0,
@@ -5140,7 +5087,7 @@
         "description": "Lighter GLM-4.5 variant for fast coding assistance and cheaper agents",
         "id": "z-ai/glm-4.5-air",
         "input": ["text"],
-        "maxTokens": 98304,
+        "maxTokens": 96000,
         "name": "GLM-4.5-Air",
         "provider": "orca-router",
         "reasoning": true,
@@ -5157,7 +5104,7 @@
     "z-ai/glm-4.6": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 204800,
+        "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.11,
             "cacheWrite": 0.0,
@@ -5167,7 +5114,7 @@
         "description": "Late GLM-4 workhorse for coding agents, reasoning, and structured tasks",
         "id": "z-ai/glm-4.6",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 128000,
         "name": "GLM-4.6",
         "provider": "orca-router",
         "reasoning": true,
@@ -5184,7 +5131,7 @@
     "z-ai/glm-4.7": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 204800,
+        "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.11,
             "cacheWrite": 0.0,
@@ -5194,7 +5141,7 @@
         "description": "Mature GLM model for dependable coding, reasoning, and structured agent tasks",
         "id": "z-ai/glm-4.7",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 128000,
         "name": "GLM-4.7",
         "provider": "orca-router",
         "reasoning": true,
@@ -5211,9 +5158,9 @@
     "z-ai/glm-5": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 204800,
+        "contextWindow": 200000,
         "cost": {
-            "cacheRead": 0.2,
+            "cacheRead": 0.26,
             "cacheWrite": 0.0,
             "input": 1.0,
             "output": 3.1999999999999997
@@ -5221,7 +5168,7 @@
         "description": "General GLM flagship for coding, analysis, and tool-heavy engineering workflows",
         "id": "z-ai/glm-5",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 128000,
         "name": "GLM-5",
         "provider": "orca-router",
         "reasoning": true,
@@ -5248,7 +5195,7 @@
         "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
         "id": "z-ai/glm-5.1",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 128000,
         "name": "GLM-5.1",
         "provider": "orca-router",
         "reasoning": true,
@@ -5265,17 +5212,17 @@
     "z-ai/glm-5.2": {
         "api": "openai-completions",
         "baseUrl": "https://api.orcarouter.ai/v1",
-        "contextWindow": 202752,
+        "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.15,
+            "cacheRead": 0.26,
             "cacheWrite": 0.0,
             "input": 1.4,
             "output": 4.4
         },
-        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
+        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "z-ai/glm-5.2",
         "input": ["text"],
-        "maxTokens": 202752,
+        "maxTokens": 128000,
         "name": "GLM-5.2",
         "provider": "orca-router",
         "reasoning": true,
@@ -5294,7 +5241,7 @@
         "baseUrl": "https://api.orcarouter.ai/v1",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.3,
+            "cacheRead": 0.234,
             "cacheWrite": 1.2,
             "input": 1.26,
             "output": 3.9600000000000004
@@ -5304,6 +5251,33 @@
         "input": ["text"],
         "maxTokens": 128000,
         "name": "GLM-5.3",
+        "provider": "orca-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "z-ai/glm-5.3-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.orcarouter.ai/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.015,
+            "cacheWrite": 0.075,
+            "input": 0.075,
+            "output": 0.25
+        },
+        "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
+        "id": "z-ai/glm-5.3-flash",
+        "input": ["text", "image", "video"],
+        "maxTokens": 128000,
+        "name": "GLM-5.3-Flash",
         "provider": "orca-router",
         "reasoning": true,
         "thinkingLevelMap": {

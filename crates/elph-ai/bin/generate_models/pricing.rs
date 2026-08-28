@@ -119,6 +119,12 @@ fn fetch_live_provider_data(src: &ProviderSource, base_url: &str) -> LiveProbeRe
         return LiveProbeResult::default();
     };
 
+    parse_live_probe_body(&body)
+}
+
+/// Parse a live `/models` response body into pricing, thinking, context and
+/// max-token maps. Handles OpenAI-compatible, OpenRouter and fallback shapes.
+fn parse_live_probe_body(body: &Value) -> LiveProbeResult {
     let mut pricing = HashMap::new();
     let mut thinking = HashMap::new();
     let mut context = HashMap::new();
@@ -176,12 +182,23 @@ fn fetch_live_provider_data(src: &ProviderSource, base_url: &str) -> LiveProbeRe
 
             // --- Context window & max output tokens ---
             // OpenAI-compatible `/models` responses may expose `context_window`
-            // and `max_output_tokens` (e.g. DataByte). Treat 0 as missing.
+            // and `max_output_tokens` (e.g. DataByte). OpenRouter uses
+            // `context_length` with per-provider `top_provider.max_completion_tokens`.
+            // Treat 0 as missing.
             if let Some(ctx) = entry.get("context_window").and_then(|v| v.as_u64()).filter(|c| *c > 0) {
+                context.insert(mid.clone(), ctx);
+            } else if let Some(ctx) = entry.get("context_length").and_then(|v| v.as_u64()).filter(|c| *c > 0) {
                 context.insert(mid.clone(), ctx);
             }
             if let Some(out) = entry
                 .get("max_output_tokens")
+                .and_then(|v| v.as_u64())
+                .filter(|o| *o > 0)
+            {
+                max_tokens.insert(mid.clone(), out);
+            } else if let Some(out) = entry
+                .get("top_provider")
+                .and_then(|t| t.get("max_completion_tokens"))
                 .and_then(|v| v.as_u64())
                 .filter(|o| *o > 0)
             {
@@ -574,5 +591,30 @@ mod tests {
         };
         assert!(thinking.reasoning);
         assert_eq!(thinking.supported_efforts, vec!["low", "medium", "high"]);
+    }
+
+    #[test]
+    fn live_context_reads_openrouter_context_length_and_max_completion_tokens() {
+        let body = serde_json::json!({
+            "data": [
+                {
+                    "id": "google/gemini-2.5-flash:batch",
+                    "context_length": 1048576,
+                    "pricing": { "prompt": "0.00000015", "completion": "0.00000125" },
+                    "top_provider": { "max_completion_tokens": 65535 }
+                },
+                {
+                    "id": "databyte/m1",
+                    "context_window": 262144,
+                    "max_output_tokens": 65536,
+                    "metadata": { "pricing": { "input_per_million": 1.0, "output_per_million": 2.0 } }
+                }
+            ]
+        });
+        let res = parse_live_probe_body(&body);
+        assert_eq!(res.context.get("google/gemini-2.5-flash:batch"), Some(&1_048_576));
+        assert_eq!(res.max_tokens.get("google/gemini-2.5-flash:batch"), Some(&65_535));
+        assert_eq!(res.context.get("databyte/m1"), Some(&262_144));
+        assert_eq!(res.max_tokens.get("databyte/m1"), Some(&65_536));
     }
 }
