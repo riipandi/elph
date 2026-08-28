@@ -84,7 +84,7 @@ use crate::tui::prompt_history::{
 use crate::tui::provider_connect_dialog::{
     OpenProviderApiKeyDialogArgs, OpenProviderConnectDialogArgs, PendingProviderApiKeyDialog,
     PendingProviderConnectDialog, PendingProviderDisconnectDialog, ProviderConnectFocus, ProviderConnectStep,
-    apply_provider_filter_seed, close_provider_api_key_dialog, close_provider_connect_dialog,
+    ProviderFilterSeed, apply_provider_filter_seed, close_provider_api_key_dialog, close_provider_connect_dialog,
     close_provider_disconnect_dialog, focus_provider_list, focus_provider_search, format_provider_name,
     get_provider_options_for_auth_method, open_provider_api_key_dialog, open_provider_connect_dialog,
     open_provider_disconnect_dialog, provider_auth_method_from_index, provider_confirm_on_enter, provider_filter_seed,

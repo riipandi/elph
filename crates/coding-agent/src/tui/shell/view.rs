@@ -451,7 +451,7 @@ pub(crate) fn build_shell_view(
         }
     }
     // Sync provider connect filter from State into pending dialog so re-renders
-    // pick up characters typed through the Input component.
+    // keep the filtered list and selection aligned with shell-owned input.
     if let Some(pending) = pending_provider_connect.write().as_mut() {
         let next_filter = provider_connect_filter.read().clone();
         if pending.filter != next_filter {

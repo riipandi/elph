@@ -3030,8 +3030,32 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 }
             }
 
-            // Search focus: typing and backspace belong to the Input component (TextInput);
-            // the filter State is synced back into the pending dialog on render.
+            // Search is rendered as a compact status row (like the model selector), so
+            // the shell owns editing while it has focus.
+            if focus == ProviderConnectFocus::Search {
+                if modifiers.is_empty() && code == KeyCode::Backspace {
+                    if let Some(pending) = pending_provider_connect.write().as_mut() {
+                        provider_list_backspace(&mut provider_connect_filter, pending);
+                        provider_connect_selected.set(pending.selected_provider);
+                    }
+                    return;
+                }
+                if !modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::META)
+                    && let KeyCode::Char(c) = code
+                    && !c.is_control()
+                {
+                    if let Some(pending) = pending_provider_connect.write().as_mut() {
+                        apply_provider_filter_seed(
+                            ProviderFilterSeed::Append(c),
+                            &mut provider_connect_filter,
+                            &mut provider_connect_input_focus,
+                            pending,
+                        );
+                        provider_connect_selected.set(pending.selected_provider);
+                    }
+                    return;
+                }
+            }
         }
 
         // ── API key dialog (separate dialog) ─────────────────────

@@ -71,6 +71,10 @@ Inspired by [Kimi Code CLI slash commands](https://moonshotai.github.io/kimi-cod
 | `/provider list`            | List configured providers in the transcript                                      |
 | `/provider update [id]`     | Update model catalogs from the embedded seed (`~/.config/elph/providers/*.json`) |
 
+`/provider connect` opens a provider picker with the active filter and matching provider count shown on one
+status row (`Filter provider: (type to search) · N providers`). Type to filter, use `Tab` to switch between
+the filter and provider list, and press `Enter` to confirm the selected provider.
+
 `/provider update` applies a **non-destructive merge** by default: your existing catalog file is kept and
 only seed models that are missing are added, so custom configuration is preserved. Unparsable files are
 left untouched. Conflicts are resolved automatically (no prompt) in the TUI; the CLI offers an
