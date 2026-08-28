@@ -148,7 +148,19 @@ impl CodingAgentSession {
             policy = policy.with_mcp_registry(reg);
         }
         // Resumed sessions that already have a title should not re-run generation.
+        // Sessions with content but no title are backfilled once on open.
         let already_named = harness.session_name().await.is_some();
+        // Cheap existence check (SELECT 1 … LIMIT 1) — avoids loading every entry
+        // of a possibly large session just to decide whether to backfill a title.
+        let has_entries = session_manager.session_has_entries(&session_id).await.unwrap_or(false);
+        let title_attempts = if already_named {
+            SESSION_TITLE_MAX_ATTEMPTS
+        } else if has_entries {
+            // One attempt is reserved for the open-time backfill below.
+            1
+        } else {
+            0
+        };
         let session = Self {
             harness: harness.clone(),
             session_manager,
@@ -170,17 +182,18 @@ impl CodingAgentSession {
             compaction_model_ref,
             ste_enabled,
             memory_enabled,
-            title_generation_attempts: Arc::new(AtomicU32::new(if already_named {
-                SESSION_TITLE_MAX_ATTEMPTS
-            } else {
-                0
-            })),
+            title_generation_attempts: Arc::new(AtomicU32::new(title_attempts)),
             worker_runtime,
             intercom_replying: Arc::new(AtomicBool::new(false)),
             plan_reentry,
         };
         session.wire_harness(ui_tx).await?;
         session.apply_agent_mode(agent_mode).await?;
+        // Backfill a title for resumed sessions that have content but were never
+        // named (pre-naming sessions, failed attempts, generic-only first turns).
+        if !already_named && has_entries {
+            session.maybe_generate_session_title();
+        }
         Ok(session)
     }
 
@@ -813,7 +826,7 @@ impl CodingAgentSession {
                 log::warn!("MCP re-attach after discovery: {err:#}");
             } else if after > before {
                 let _ = self.ui_tx.send(AgentUiEvent::Status(format!(
-                    "MCP: loaded {} tool(s) on demand",
+                    "MCP: loaded {} tool(s) on demand\n",
                     after - before
                 )));
             }
@@ -1229,40 +1242,6 @@ impl CodingAgentSession {
         self.harness.session_leaf_id().await.map_err(|e| anyhow::anyhow!("{e}"))
     }
 
-    /// Persist a full TUI transcript snapshot so `--resume` restores live card state
-    /// (thinking, tools, durations, expand flags, edit_file diffs, …).
-    ///
-    /// **Deprecated:** This appends to the session tree which is append-only and never
-    /// pruned — snapshots (7-8 MB each) accumulated to 600+ MB over a session. Use
-    /// `save_transcript_snapshot_to_cache` instead, which overwrites the prior snapshot.
-    pub async fn save_transcript_snapshot(&self, messages: &[crate::tui::transcript::TranscriptMessage]) -> Result<()> {
-        use crate::tui::transcript::{TRANSCRIPT_SNAPSHOT_CUSTOM_TYPE, build_snapshot_data};
-        let data = build_snapshot_data(messages);
-        self.harness
-            .append_custom_entry(TRANSCRIPT_SNAPSHOT_CUSTOM_TYPE, Some(data))
-            .await
-            .map_err(|e| anyhow::anyhow!("{e}"))
-    }
-
-    /// Persist the transcript snapshot to the TranscriptCache (overwrite semantics).
-    ///
-    /// This keeps only the latest snapshot per session, eliminating the unbounded
-    /// growth from appending to the session tree. The `db_path` and `session_id`
-    /// identify the per-project store DB (unified store.db).
-    pub async fn save_transcript_snapshot_to_cache(
-        &self,
-        messages: &[crate::tui::transcript::TranscriptMessage],
-        db_path: &std::path::Path,
-        session_id: &str,
-    ) -> Result<()> {
-        use crate::tui::transcript::build_snapshot_data;
-        let data = build_snapshot_data(messages);
-        let json = serde_json::to_string(&data).map_err(|e| anyhow::anyhow!("{e}"))?;
-        let cache = crate::tui::transcript::TranscriptCache::open(db_path, session_id).await?;
-        cache.save_snapshot(&json).await?;
-        Ok(())
-    }
-
     pub async fn resolve_plan(&self, choice: PlanConfirmationChoice) -> Result<()> {
         self.harness
             .resolve_plan_confirmation(choice)
@@ -1405,7 +1384,8 @@ impl CodingAgentSession {
         });
     }
 
-    /// After the first successful user turn, generate and persist a session title in the background.
+    /// After the first successful user turn (or on resume of an unnamed session),
+    /// generate and persist a session title in the background.
     ///
     /// Silent on failure. Bounded retries: a failed or empty attempt does not
     /// permanently skip naming — later turns retry up to [`SESSION_TITLE_MAX_ATTEMPTS`].
@@ -1455,6 +1435,11 @@ async fn generate_and_store_session_title(
     inherit_model: elph_ai::Model,
     title_model_setting: &str,
 ) -> Result<Option<String>> {
+    // A title may have appeared since the attempt counter was read (rename,
+    // another worker, or a concurrent backfill). Never overwrite it.
+    if harness.session_name().await.is_some() {
+        return Ok(None);
+    }
     let branch = harness
         .session_branch_entries()
         .await
@@ -1467,8 +1452,8 @@ async fn generate_and_store_session_title(
 
     let model = resolve_title_model(title_model_setting, &inherit_model);
     let user_prompt = SESSION_TITLE_USER.replace("{{conversation}}", &conversation);
-    // Naming model call first; fall back to the first user message when it fails
-    // or returns a generic placeholder, so sessions always end up named.
+    // Naming model call first; fall back to the first non-generic user message
+    // when it fails or returns a generic placeholder, so sessions end up named.
     let title = elph_agent::prompt::generate_session_name_with_prompts(
         &context.messages,
         models.as_ref(),
@@ -1491,12 +1476,16 @@ async fn generate_and_store_session_title(
 }
 
 /// Deterministic fallback title when the naming model call fails: the first
-/// user message, sanitized and truncated to [`elph_agent::prompt::sanitize_session_name`].
+/// user message that sanitizes to a non-generic title, truncated to
+/// [`elph_agent::prompt::sanitize_session_name`].
 fn fallback_session_title(conversation: &str) -> Option<String> {
-    let first = conversation.split("\n\n").next()?.trim();
-    let text = first.strip_prefix("User:").map(str::trim).unwrap_or(first);
-    let title = elph_agent::prompt::sanitize_session_name(text);
-    if title.is_empty() { None } else { Some(title) }
+    conversation
+        .split("\n\n")
+        .map(|part| part.strip_prefix("User:").map(str::trim).unwrap_or(part.trim()))
+        .find_map(|text| {
+            let title = elph_agent::prompt::sanitize_session_name(text);
+            (!title.is_empty()).then_some(title)
+        })
 }
 
 /// Resolve the session-title model ref, falling back to the session model when
@@ -1587,13 +1576,18 @@ mod tests {
     }
 
     #[test]
-    fn fallback_title_uses_first_user_message() {
+    fn fallback_title_uses_first_non_generic_user_message() {
         let conversation = "User: Fix the login redirect for OAuth flows\n\n[...]\n\nUser: Ship it";
         assert_eq!(
             fallback_session_title(conversation).as_deref(),
             Some("Fix the login redirect for OAuth flows")
         );
-        // Generic first messages produce no fallback (caller retries later).
+        // Generic first messages are skipped in favor of the next non-generic one.
+        assert_eq!(
+            fallback_session_title("User: hi\n\nUser: Add pagination to the table").as_deref(),
+            Some("Add pagination to the table")
+        );
+        // All-generic conversations produce no fallback (caller retries later).
         assert_eq!(fallback_session_title("User: hi"), None);
         assert_eq!(fallback_session_title(""), None);
     }

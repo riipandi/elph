@@ -191,7 +191,9 @@ impl AssistantMarkdownBuffer {
     /// The retained `stable_end`, `stream_complete`, `wrap_width`, and row counts let the
     /// layout path continue to measure correctly; the worker re-parses the document when the
     /// row scrolls back into the parse window (the stable source is still in the message
-    /// content). Used by retention to shed memory from off-screen assistant messages.
+    /// content). Test-only: production retention uses [`Self::without_documents`] to avoid
+    /// deep-cloning a shared buffer.
+    #[cfg_attr(not(test), allow(dead_code))]
     pub fn drop_cached_documents(&mut self) {
         for part in &mut self.parts {
             part.document = None;

@@ -961,21 +961,6 @@ mod tests {
         assert!(prompt_card_from_session_meta("", "skill", None).is_none());
     }
 
-    #[test]
-    fn snapshot_preserves_skill_and_template_prompt_cards() {
-        use crate::tui::transcript::{build_snapshot_data, messages_from_snapshot_data};
-
-        let skill = prompt_card_from_session_meta("/code-review fix tests", "skill", None).unwrap();
-        let template = prompt_card_from_session_meta("/summarize --short", "template", None).unwrap();
-        let data = build_snapshot_data(&[skill, template]);
-        let restored = messages_from_snapshot_data(&data).expect("parse");
-        assert_eq!(restored.len(), 2);
-        assert_eq!(restored[0].style, TranscriptStyle::SkillPrompt);
-        assert_eq!(restored[0].content, "/code-review fix tests");
-        assert_eq!(restored[1].style, TranscriptStyle::User);
-        assert_eq!(restored[1].content, "/summarize --short");
-    }
-
     /// Resumed edit_file cards start collapsed even though a diff payload is restored.
     ///
     /// Regression: the fallback reconstruction expanded tool cards whenever
