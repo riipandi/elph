@@ -108,7 +108,6 @@ impl ToolCardDetail {
     /// The diff text can be hundreds of KB per edit_file tool (full file content before/after).
     /// For messages beyond the visible/cache window, the embedded DiffView is never rendered,
     /// so the diff text is dead weight. Stripping it sheds ~500 KB per edit_file tool.
-    /// The archived snapshot also strips this text (see `ArchivedTranscriptMessage::from`).
     pub fn strip_diff_text(&mut self) {
         self.old_text = None;
         self.new_text = None;
@@ -306,12 +305,16 @@ impl TranscriptMessage {
             .is_some_and(|key| key.starts_with("transient:"))
     }
 
+    /// Test-only constructor for assistant messages with a markdown buffer.
+    #[cfg_attr(not(test), allow(dead_code))]
     pub fn assistant_markdown(content: impl Into<String>) -> Self {
         let mut message = Self::text(content, TranscriptStyle::Assistant);
         message.markdown = Some(std::sync::Arc::new(AssistantMarkdownBuffer::new()));
         message
     }
 
+    /// Test-only constructor for local slash responses with a markdown buffer.
+    #[cfg_attr(not(test), allow(dead_code))]
     pub fn assistant_slash_markdown(content: impl Into<String>) -> Self {
         let mut message = Self::assistant_markdown(content);
         message.local_slash_response = true;
@@ -559,6 +562,10 @@ impl TranscriptMessage {
     ///
     /// Process-phase cards share a one-line header shape (`● Label · 1.2s`) for measurement;
     /// the TUI paints duration on the right rail, not as an inline suffix.
+    ///
+    /// Test-only convenience: production layout always calls [`Self::layout_text_at`]
+    /// with the real inner width.
+    #[cfg_attr(not(test), allow(dead_code))]
     pub fn layout_text(&self) -> String {
         // No screen context here (tests / sticky placeholders): use a representative width.
         // Layout measurement always calls `layout_text_at` with the real inner width.

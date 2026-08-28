@@ -33,7 +33,7 @@ PRAGMA foreign_keys = ON;
 
 ### Transcript cache
 
-`TranscriptCache` no longer runs `PRAGMA wal_checkpoint(TRUNCATE)` during every open. A truncate checkpoint requires exclusive coordination and is unsuitable as a per-process startup action. Batch writes use the shared write transaction helper instead of an unbounded manual transaction.
+The `TranscriptCache` (SQLite snapshot store) and the legacy tree-append snapshot path were removed — both were dead code with no callers. Transcript persistence now relies solely on the session tree; retention sheds derived markdown caches and tool diff text in-memory instead of writing snapshots.
 
 ## Remaining known design risks
 

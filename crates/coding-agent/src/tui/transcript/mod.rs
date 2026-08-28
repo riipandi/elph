@@ -1,7 +1,6 @@
 //! Scrollable transcript panel with sticky user prompts.
 
 pub(crate) mod archive;
-pub(crate) mod cache;
 mod card;
 pub mod ephemeral;
 mod layout;
@@ -10,10 +9,7 @@ mod panel;
 pub(crate) mod retention;
 mod types;
 
-#[cfg(test)]
-pub use archive::messages_from_snapshot_data;
-pub use archive::{TRANSCRIPT_SNAPSHOT_CUSTOM_TYPE, build_snapshot_data, duration_from_tool_details};
-pub use cache::TranscriptCache;
+pub use archive::duration_from_tool_details;
 pub use ephemeral::{
     AGENT_MODE_NOTICE_TTL, EphemeralBanner, EphemeralBannerGeneration, EphemeralBannerKind,
     FILE_PICKER_HIDDEN_NOTICE_KEY, MODEL_SET_NOTICE_KEY, agent_mode_banner, agent_mode_busy_banner, api_error_banner,

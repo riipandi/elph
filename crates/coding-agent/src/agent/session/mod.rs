@@ -150,7 +150,9 @@ impl CodingAgentSession {
         // Resumed sessions that already have a title should not re-run generation.
         // Sessions with content but no title are backfilled once on open.
         let already_named = harness.session_name().await.is_some();
-        let has_entries = !harness.session_entries().await.is_empty();
+        // Cheap existence check (SELECT 1 … LIMIT 1) — avoids loading every entry
+        // of a possibly large session just to decide whether to backfill a title.
+        let has_entries = session_manager.session_has_entries(&session_id).await.unwrap_or(false);
         let title_attempts = if already_named {
             SESSION_TITLE_MAX_ATTEMPTS
         } else if has_entries {
@@ -824,7 +826,7 @@ impl CodingAgentSession {
                 log::warn!("MCP re-attach after discovery: {err:#}");
             } else if after > before {
                 let _ = self.ui_tx.send(AgentUiEvent::Status(format!(
-                    "MCP: loaded {} tool(s) on demand",
+                    "MCP: loaded {} tool(s) on demand\n",
                     after - before
                 )));
             }
@@ -1238,40 +1240,6 @@ impl CodingAgentSession {
 
     pub async fn leaf_id(&self) -> Result<Option<String>> {
         self.harness.session_leaf_id().await.map_err(|e| anyhow::anyhow!("{e}"))
-    }
-
-    /// Persist a full TUI transcript snapshot so `--resume` restores live card state
-    /// (thinking, tools, durations, expand flags, edit_file diffs, …).
-    ///
-    /// **Deprecated:** This appends to the session tree which is append-only and never
-    /// pruned — snapshots (7-8 MB each) accumulated to 600+ MB over a session. Use
-    /// `save_transcript_snapshot_to_cache` instead, which overwrites the prior snapshot.
-    pub async fn save_transcript_snapshot(&self, messages: &[crate::tui::transcript::TranscriptMessage]) -> Result<()> {
-        use crate::tui::transcript::{TRANSCRIPT_SNAPSHOT_CUSTOM_TYPE, build_snapshot_data};
-        let data = build_snapshot_data(messages);
-        self.harness
-            .append_custom_entry(TRANSCRIPT_SNAPSHOT_CUSTOM_TYPE, Some(data))
-            .await
-            .map_err(|e| anyhow::anyhow!("{e}"))
-    }
-
-    /// Persist the transcript snapshot to the TranscriptCache (overwrite semantics).
-    ///
-    /// This keeps only the latest snapshot per session, eliminating the unbounded
-    /// growth from appending to the session tree. The `db_path` and `session_id`
-    /// identify the per-project store DB (unified store.db).
-    pub async fn save_transcript_snapshot_to_cache(
-        &self,
-        messages: &[crate::tui::transcript::TranscriptMessage],
-        db_path: &std::path::Path,
-        session_id: &str,
-    ) -> Result<()> {
-        use crate::tui::transcript::build_snapshot_data;
-        let data = build_snapshot_data(messages);
-        let json = serde_json::to_string(&data).map_err(|e| anyhow::anyhow!("{e}"))?;
-        let cache = crate::tui::transcript::TranscriptCache::open(db_path, session_id).await?;
-        cache.save_snapshot(&json).await?;
-        Ok(())
     }
 
     pub async fn resolve_plan(&self, choice: PlanConfirmationChoice) -> Result<()> {
