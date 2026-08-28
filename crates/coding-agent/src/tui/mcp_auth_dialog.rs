@@ -9,12 +9,14 @@ use std::time::Instant;
 
 use elph_agent::mcp::{McpOAuthFlowOptions, has_stored_credentials, run_oauth_flow};
 use elph_tui::components::UiTheme;
+use elph_tui::components::select::select_window_start_for_rows;
 use iocraft::prelude::*;
 
 use crate::platform::Paths;
 use crate::tui::focus::ShellFocus;
 use crate::tui::inline_dialog::{InlineDialogShell, inline_body_width};
 use crate::tui::slash_palette::fuzzy::{field_score, max_score};
+use crate::tui::slash_palette::list_viewport_cap;
 use crate::utils::path::AppPaths;
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -315,7 +317,7 @@ pub fn mcp_list_slash_message(paths: &Paths) -> String {
 
 pub fn render_mcp_auth_dialog(
     screen_width: u16,
-    _screen_height: u16,
+    screen_height: u16,
     has_focus: bool,
     selected: usize,
     filter: &str,
@@ -352,7 +354,15 @@ pub fn render_mcp_auth_dialog(
             }
 
             let mut rows = String::new();
-            for (i, opt) in filtered.iter().enumerate() {
+            let selected = selected.min(filtered.len().saturating_sub(1));
+            let viewport_rows = list_viewport_cap(screen_height).max(2);
+            let row_counts = vec![2usize; filtered.len()];
+            let window_start = select_window_start_for_rows(selected, viewport_rows, &row_counts);
+            let mut used_rows = 0usize;
+            for (i, opt) in filtered.iter().enumerate().skip(window_start) {
+                if used_rows.saturating_add(row_counts[i]) > viewport_rows {
+                    break;
+                }
                 let marker = if i == selected { "›" } else { " " };
                 let cred = if opt.has_credentials { "✓" } else { "·" };
                 let oauth = if opt.oauth_required { "oauth" } else { "optional" };
@@ -360,6 +370,7 @@ pub fn render_mcp_auth_dialog(
                     "{marker} {cred} {}  [{}] {oauth}\n    {}\n",
                     opt.name, opt.transport, opt.url
                 ));
+                used_rows += row_counts[i];
             }
             let filter_line = if filter.is_empty() {
                 "Filter: _".to_string()

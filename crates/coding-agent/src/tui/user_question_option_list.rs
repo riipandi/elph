@@ -1,6 +1,7 @@
 //! Ask-user option rows: label on top, dimmed hint or inline answer field underneath.
 
 use elph_tui::components::DialogUserInputContent;
+use elph_tui::components::select::select_window_start_for_rows;
 use elph_tui::components::theme::{UiTheme, dialog_option_desc_style, dialog_option_name_style, dialog_row_surface};
 use elph_tui::list_selection_row_prefix;
 use elph_tui::types::SelectOption;
@@ -162,6 +163,26 @@ pub fn UserQuestionOptionList(
         selected.get().min(option_count - 1)
     };
 
+    let total_rows = option_list_total_rows_with_custom(&options, props.width, custom_row_index, custom_input_active);
+    let viewport = if props.height == 0 || custom_input_active {
+        total_rows.max(1)
+    } else {
+        props.height.min(total_rows).max(1)
+    };
+    let row_heights: Vec<usize> = options
+        .iter()
+        .enumerate()
+        .map(|(i, opt)| {
+            option_row_height(
+                &opt.name,
+                &opt.description,
+                props.width,
+                custom_input_active && custom_row_index == Some(i),
+            ) as usize
+        })
+        .collect();
+    let window_start = select_window_start_for_rows(index, viewport as usize, &row_heights);
+
     let rows: Vec<AnyElement<'static>> = if options.is_empty() {
         vec![
             element! {
@@ -170,93 +191,94 @@ pub fn UserQuestionOptionList(
             .into(),
         ]
     } else {
+        let mut used_rows = 0usize;
         options
             .iter()
             .enumerate()
-            .map(|(i, opt)| {
+            .skip(window_start)
+            .filter_map(|(i, opt)| {
                 let selected_row = i == index;
                 let prefix = list_selection_row_prefix(selected_row);
                 let (name_color, name_weight) = dialog_option_name_style(theme, selected_row);
                 let hint_color = dialog_option_desc_style(theme, selected_row);
                 let inline_input = custom_input_active && custom_row_index == Some(i);
-                let row_height = option_row_height(&opt.name, &opt.description, props.width, inline_input);
+                let row_height = row_heights[i];
+                if used_rows.saturating_add(row_height) > viewport as usize {
+                    return None;
+                }
+                used_rows += row_height;
                 let label_text = format_label_lines(prefix, &opt.name, props.width);
                 let show_hint = !inline_input && !opt.description.trim().is_empty();
                 let hint_text = format_hint_lines(&opt.description, props.width);
                 let row_surface = dialog_row_surface(theme, selected_row);
-                element! {
-                    View(
-                        width: props.width,
-                        height: row_height,
-                        flex_direction: FlexDirection::Column,
-                        align_items: AlignItems::FlexStart,
-                        justify_content: JustifyContent::FlexStart,
-                        gap: 0,
-                        background_color: row_surface,
-                        flex_shrink: 0f32,
-                    ) {
-                        View(width: props.width, flex_shrink: 0f32) {
-                            Text(
-                                content: label_text,
-                                color: name_color,
-                                weight: name_weight,
-                                wrap: TextWrap::NoWrap,
-                            )
+                Some(
+                    element! {
+                        View(
+                            width: props.width,
+                            height: row_height as u16,
+                            flex_direction: FlexDirection::Column,
+                            align_items: AlignItems::FlexStart,
+                            justify_content: JustifyContent::FlexStart,
+                            gap: 0,
+                            background_color: row_surface,
+                            flex_shrink: 0f32,
+                        ) {
+                            View(width: props.width, flex_shrink: 0f32) {
+                                Text(
+                                    content: label_text,
+                                    color: name_color,
+                                    weight: name_weight,
+                                    wrap: TextWrap::NoWrap,
+                                )
+                            }
+                            #(if inline_input {
+                                Some(element! {
+                                    View(
+                                        width: props.width,
+                                        padding_left: ROW_PREFIX_CHARS as u16,
+                                        flex_shrink: 0f32,
+                                    ) {
+                                        DialogUserInputContent(
+                                            width: hint_field_width,
+                                            question: String::new(),
+                                            placeholder: custom_input_placeholder.clone(),
+                                            value: props.custom_answer,
+                                            has_focus: custom_input_focused,
+                                            theme: Some(theme),
+                                            section_gap: Some(0),
+                                            show_prompt: false,
+                                            show_footer_hint: false,
+                                            show_placeholder_when_focused: false,
+                                            dialog_chrome: true,
+                                            compact: true,
+                                            on_submit: props.on_custom_submit.take(),
+                                            on_cancel: props.on_custom_cancel.take(),
+                                        )
+                                    }
+                                })
+                            } else if show_hint {
+                                Some(element! {
+                                    View(
+                                        width: props.width,
+                                        padding_left: ROW_PREFIX_CHARS as u16,
+                                        flex_shrink: 0f32,
+                                    ) {
+                                        Text(
+                                            content: hint_text,
+                                            color: hint_color,
+                                            wrap: TextWrap::NoWrap,
+                                        )
+                                    }
+                                })
+                            } else {
+                                None
+                            })
                         }
-                        #(if inline_input {
-                            Some(element! {
-                                View(
-                                    width: props.width,
-                                    padding_left: ROW_PREFIX_CHARS as u16,
-                                    flex_shrink: 0f32,
-                                ) {
-                                    DialogUserInputContent(
-                                        width: hint_field_width,
-                                        question: String::new(),
-                                        placeholder: custom_input_placeholder.clone(),
-                                        value: props.custom_answer,
-                                        has_focus: custom_input_focused,
-                                        theme: Some(theme),
-                                        section_gap: Some(0),
-                                        show_prompt: false,
-                                        show_footer_hint: false,
-                                        show_placeholder_when_focused: false,
-                                        dialog_chrome: true,
-                                        compact: true,
-                                        on_submit: props.on_custom_submit.take(),
-                                        on_cancel: props.on_custom_cancel.take(),
-                                    )
-                                }
-                            })
-                        } else if show_hint {
-                            Some(element! {
-                                View(
-                                    width: props.width,
-                                    padding_left: ROW_PREFIX_CHARS as u16,
-                                    flex_shrink: 0f32,
-                                ) {
-                                    Text(
-                                        content: hint_text,
-                                        color: hint_color,
-                                        wrap: TextWrap::NoWrap,
-                                    )
-                                }
-                            })
-                        } else {
-                            None
-                        })
                     }
-                }
-                .into()
+                    .into(),
+                )
             })
             .collect()
-    };
-
-    let total_rows = option_list_total_rows_with_custom(&options, props.width, custom_row_index, custom_input_active);
-    let viewport = if props.height == 0 || custom_input_active {
-        total_rows.max(1)
-    } else {
-        props.height.min(total_rows).max(1)
     };
 
     if total_rows > viewport {

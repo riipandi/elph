@@ -8,6 +8,7 @@ use iocraft::prelude::*;
 use crate::tui::chrome::StatusRow;
 use crate::tui::inline_dialog::{InlineDialogShell, OPTIONS_LIST_TOP_GAP, inline_body_width};
 use crate::tui::provider_connect_dialog::{PendingProviderApiKeyDialog, ProviderConnectFocus, ProviderConnectStep};
+use crate::tui::slash_palette::palette_window_start;
 use crate::tui::tool_approval::{
     PendingModeChange, PendingToolApproval, feedback_footer_hint, feedback_select_options, memory_flush_footer_hint,
     memory_flush_select_options, mode_change_footer_hint, mode_change_select_options, tool_approval_footer_hint_for,
@@ -986,11 +987,7 @@ fn render_prompt_queue_dialog(
     const MAX_ITEMS: usize = 5;
     let inner_w = screen_width.saturating_sub(2).max(12);
     let selected = selected.min(items.len().saturating_sub(1));
-    let start = if items.len() <= MAX_ITEMS {
-        0
-    } else {
-        selected.saturating_sub(MAX_ITEMS / 2).min(items.len() - MAX_ITEMS)
-    };
+    let start = palette_window_start(selected, MAX_ITEMS, items.len());
     let end = (start + MAX_ITEMS).min(items.len());
     let rows: Vec<AnyElement<'static>> = items[start..end]
         .iter()

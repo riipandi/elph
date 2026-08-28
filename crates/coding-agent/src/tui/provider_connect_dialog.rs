@@ -15,7 +15,7 @@ use elph_ai::providers::builtin_providers;
 use elph_tui::components::{DialogChrome, DialogUserInputContent, UiTheme, dialog_max_content_height};
 use iocraft::prelude::*;
 
-use crate::tui::slash_palette::list_viewport_cap;
+use crate::tui::slash_palette::{list_viewport_cap, palette_window_start};
 
 use crate::tui::focus::ShellFocus;
 use crate::tui::inline_dialog::{InlineDialogShell, OPTIONS_LIST_TOP_GAP, inline_body_width};
@@ -1336,7 +1336,7 @@ pub fn close_provider_disconnect_dialog(
 /// Render the provider disconnect dialog.
 pub fn render_provider_disconnect_dialog(
     screen_width: u16,
-    _screen_height: u16,
+    screen_height: u16,
     has_focus: bool,
     provider_ids: Vec<String>,
     selected_index: usize,
@@ -1360,9 +1360,18 @@ pub fn render_provider_disconnect_dialog(
         "Esc cancel".to_string()
     };
 
-    // Render rows with consistent selection styling
+    let list_height = if has_any {
+        list_viewport_cap(screen_height).min(provider_ids.len())
+    } else {
+        0
+    };
+    let window_start = palette_window_start(selected_index, list_height, provider_ids.len());
+    let window_end = window_start.saturating_add(list_height).min(provider_ids.len());
+
+    // Render only the visible window with consistent selection styling.
     let mut list_text = String::new();
-    for (i, id) in provider_ids.iter().enumerate() {
+    for (offset, id) in provider_ids[window_start..window_end].iter().enumerate() {
+        let i = window_start + offset;
         let selected = i == selected_index;
         let prefix = if selected { "❯ " } else { "  " };
         list_text.push_str(&format!("{}{}\n", prefix, format_provider_name(id)));
