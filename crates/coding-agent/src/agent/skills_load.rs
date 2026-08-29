@@ -10,7 +10,7 @@ use elph_tui::utils::truncate_with_ellipsis;
 
 use crate::platform::{Paths, Settings};
 
-use super::resource_paths::{dedupe_resource_dirs, resource_dir_identity};
+use super::resource_paths::{dedupe_resource_dirs, resource_path_identity};
 
 /// Max display width for slash palette / `/help` descriptions (skills, templates, builtins).
 pub const MAX_PALETTE_DESCRIPTION_CHARS: usize = 72;
@@ -81,9 +81,12 @@ pub async fn load_workspace_skills(env: &LocalExecutionEnv, paths: &Paths, setti
     let extra = settings.extra_skill_paths();
     let bases = [paths.project_dir().as_path()];
     for (path, label) in skill_dir_entries(paths, paths.project_dir(), settings.include_project_resources(), &extra) {
-        let identity = resource_dir_identity(&path, &bases).to_string_lossy().into_owned();
         let result = load_skills(env, &[path.as_str()]).await;
-        for skill in result.skills {
+        let skills = settings.filter_skills_for_project(result.skills, paths.project_dir());
+        for skill in skills {
+            let identity = resource_path_identity(&skill.file_path, &bases)
+                .to_string_lossy()
+                .into_owned();
             if let Some((previous_id, previous_label)) = source_by_name.get(&skill.name)
                 && previous_id != &identity
             {
@@ -99,7 +102,6 @@ pub async fn load_workspace_skills(env: &LocalExecutionEnv, paths: &Paths, setti
     }
 
     let mut skills: Vec<Skill> = skills_by_name.into_values().collect();
-    skills = settings.filter_skills_for_project(skills, paths.project_dir());
     skills.sort_by(|left, right| left.name.cmp(&right.name));
     conflicts.sort_by(|left, right| left.name.cmp(&right.name));
 
@@ -220,6 +222,58 @@ mod tests {
         assert!(
             loaded.conflicts.is_empty(),
             "relative extra must not conflict with the project dir: {:?}",
+            loaded.conflicts
+        );
+    }
+
+    #[tokio::test]
+    async fn extra_nested_skill_dir_does_not_conflict_with_parent_scan() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let paths = crate::platform::Paths::from_dirs(
+            tmp.path().join("config"),
+            tmp.path().join("data"),
+            tmp.path().join("project"),
+        );
+        let skill_dir = paths.project_dir().join(".agents/skills/demo");
+        std::fs::create_dir_all(&skill_dir).unwrap();
+        std::fs::write(skill_dir.join("SKILL.md"), "---\nname: demo\ndescription: once\n---\nBody\n").unwrap();
+
+        let env = LocalExecutionEnv::new(paths.project_dir());
+        let mut settings = Settings::defaults();
+        settings.resources.skills = vec![".agents/skills/demo".into()];
+        let loaded = load_workspace_skills(&env, &paths, &settings).await;
+
+        assert_eq!(loaded.skills.iter().filter(|skill| skill.name == "demo").count(), 1);
+        assert!(
+            loaded.conflicts.is_empty(),
+            "the same skill file loaded through nested directories must not conflict: {:?}",
+            loaded.conflicts
+        );
+    }
+
+    #[tokio::test]
+    async fn filtered_duplicate_skill_does_not_report_conflict() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let paths = crate::platform::Paths::from_dirs(
+            tmp.path().join("config"),
+            tmp.path().join("data"),
+            tmp.path().join("project"),
+        );
+        for root in [".agents/skills", ".elph/skills"] {
+            let skill_dir = paths.project_dir().join(root).join("demo");
+            std::fs::create_dir_all(&skill_dir).unwrap();
+            std::fs::write(skill_dir.join("SKILL.md"), "---\nname: demo\ndescription: once\n---\nBody\n").unwrap();
+        }
+
+        let env = LocalExecutionEnv::new(paths.project_dir());
+        let mut settings = Settings::defaults();
+        settings.resources.skills = vec!["!.elph/skills".into()];
+        let loaded = load_workspace_skills(&env, &paths, &settings).await;
+
+        assert_eq!(loaded.skills.iter().filter(|skill| skill.name == "demo").count(), 1);
+        assert!(
+            loaded.conflicts.is_empty(),
+            "filtered resources must not conflict: {:?}",
             loaded.conflicts
         );
     }

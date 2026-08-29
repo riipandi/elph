@@ -132,6 +132,10 @@ overwritten). Checksums for newly written files are merged into `bundled/manifes
 
 Skill discovery includes `CONFIG_DIR/bundled/skills` as the lowest-priority directory so
 built-ins (e.g. `create-skill`) appear unless a user/project skill overrides the same name.
+Skill and prompt-template names are resolved in separate namespaces; a skill at
+`~/.agents/skills/identify/SKILL.md` and a template at
+`<project>/.agents/prompts/identify.md` do not conflict. Conflicts are reported
+only when different files of the same resource type share a name.
 
 ### Provider catalogs (`CONFIG_DIR/providers/`)
 

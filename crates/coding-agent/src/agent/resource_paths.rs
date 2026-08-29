@@ -7,8 +7,8 @@
 use std::collections::HashSet;
 use std::path::{Component, Path, PathBuf};
 
-/// Stable key for a resource directory (canonicalize when the path exists).
-pub fn resource_dir_identity(path: impl AsRef<Path>, bases: &[&Path]) -> PathBuf {
+/// Stable key for a resource path (canonicalize when the path exists).
+pub fn resource_path_identity(path: impl AsRef<Path>, bases: &[&Path]) -> PathBuf {
     let path = path.as_ref();
     let candidate = if path.is_absolute() {
         path.to_path_buf()
@@ -18,6 +18,11 @@ pub fn resource_dir_identity(path: impl AsRef<Path>, bases: &[&Path]) -> PathBuf
     candidate
         .canonicalize()
         .unwrap_or_else(|_| normalize_lexically(&candidate))
+}
+
+/// Stable key for a resource directory (canonicalize when the path exists).
+pub fn resource_dir_identity(path: impl AsRef<Path>, bases: &[&Path]) -> PathBuf {
+    resource_path_identity(path, bases)
 }
 
 fn resolve_relative(path: &Path, bases: &[&Path]) -> PathBuf {
@@ -90,6 +95,19 @@ mod tests {
         let c = resource_dir_identity("./.agents/skills", &[tmp.path()]);
         assert_eq!(a, b);
         assert_eq!(b, c);
+    }
+
+    #[test]
+    fn relative_and_absolute_same_existing_file() {
+        let tmp = TempDir::new().unwrap();
+        let file = tmp.path().join(".agents").join("skills").join("SKILL.md");
+        std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+        std::fs::write(&file, "skill").unwrap();
+
+        let absolute = resource_path_identity(&file, &[tmp.path()]);
+        let relative = resource_path_identity(".agents/skills/SKILL.md", &[tmp.path()]);
+
+        assert_eq!(absolute, relative);
     }
 
     #[test]
