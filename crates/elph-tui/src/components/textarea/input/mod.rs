@@ -164,9 +164,9 @@ pub fn handle_textarea_terminal_event(
         };
     }
 
-    if ctx.paste_burst.suppress_raw_keys_until.is_some_and(|t| now < t)
-        && kind != KeyEventKind::Release
+    if kind != KeyEventKind::Release
         && is_paste_echo_key(code, modifiers)
+        && crate::paste::consume_paste_echo_key(ctx.paste_burst, code, modifiers, now)
     {
         return if merged_idle_burst {
             TextareaInputResult::Changed
@@ -242,7 +242,7 @@ fn raw_paste_stream_blocks_submit(burst: &PasteBurstState, in_burst: bool) -> bo
 
 fn is_paste_echo_key(code: KeyCode, modifiers: KeyModifiers) -> bool {
     !modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::META)
-        && matches!(code, KeyCode::Char(_) | KeyCode::Tab)
+        && matches!(code, KeyCode::Char(_) | KeyCode::Tab | KeyCode::Enter)
 }
 
 #[cfg(test)]
@@ -611,6 +611,27 @@ mod tests {
         }
         assert_eq!(state.text, ELPH_PASTE);
         assert_eq!(state.cursor, ELPH_PASTE.len());
+    }
+
+    #[test]
+    fn first_unmatched_key_after_bracketed_paste_is_not_swallowed() {
+        let mut state = TextareaState::default();
+        let mut esc = false;
+        let mut burst = PasteBurstState::default();
+        let mut last = None;
+        let mut on_escape = HandlerMut::default();
+
+        let mut ctx = test_context(&mut esc, &mut burst, &mut last, false, &mut on_escape);
+        ctx.atomic_paste = true;
+        handle_textarea_terminal_event(TerminalEvent::Paste(ELPH_PASTE.into()), &mut state, ctx);
+        let marker = state.text.clone();
+
+        let ctx = test_context(&mut esc, &mut burst, &mut last, false, &mut on_escape);
+        assert_eq!(
+            handle_textarea_terminal_event(key_press(KeyCode::Char(' ')), &mut state, ctx),
+            TextareaInputResult::Changed
+        );
+        assert_eq!(state.text, format!("{marker} "));
     }
 
     #[test]

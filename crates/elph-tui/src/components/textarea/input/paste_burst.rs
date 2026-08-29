@@ -8,8 +8,8 @@ use super::super::state::TextareaState;
 use super::TextareaInputResult;
 use crate::paste::PasteBurstState;
 use crate::paste::{
-    extend_paste_submit_guard, paste_burst_append_key, paste_burst_begin_with_rewind, paste_burst_finish,
-    paste_burst_live_document, paste_burst_reset,
+    arm_paste_echo_guard, extend_paste_submit_guard, paste_burst_append_key, paste_burst_begin_with_rewind,
+    paste_burst_finish, paste_burst_live_document, paste_burst_reset,
 };
 use crate::text_editing::PASTE_SUBMIT_GUARD_WINDOW;
 use crate::text_editing::paste_echo_guard_duration;
@@ -83,7 +83,7 @@ pub(crate) fn handle_bracketed_paste(
     *last_key_at = None;
     let now = Instant::now();
     let echo_guard = paste_echo_guard_duration(data.len());
-    burst.suppress_raw_keys_until = Some(now + echo_guard);
+    arm_paste_echo_guard(burst, data, now, echo_guard);
     // Submit guard stays short — echo replay can last much longer for big pastes.
     extend_paste_submit_guard(burst, now, PASTE_SUBMIT_GUARD_WINDOW);
     TextareaInputResult::Changed

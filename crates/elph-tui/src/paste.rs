@@ -71,6 +71,9 @@ pub struct PasteBurstState {
     pub buffer: String,
     /// Suppress raw key replay until this instant (after bracketed paste).
     pub suppress_raw_keys_until: Option<std::time::Instant>,
+    /// Bracketed-paste payload used to distinguish terminal echo from new user input.
+    pub raw_echo_text: String,
+    pub raw_echo_offset: usize,
     /// Suppress plain-Enter submit until this instant (trailing paste echo).
     pub suppress_submit_until: Option<std::time::Instant>,
 }
@@ -202,6 +205,66 @@ pub fn paste_burst_finish(state: &mut PasteBurstState) -> Option<(String, usize)
 pub fn paste_burst_reset(state: &mut PasteBurstState) {
     let (raw_guard, submit_guard) = take_burst_work(state);
     restore_guards(state, raw_guard, submit_guard);
+}
+
+/// Arm replay protection while retaining the pasted payload for prefix matching.
+pub fn arm_paste_echo_guard(
+    state: &mut PasteBurstState,
+    text: &str,
+    now: std::time::Instant,
+    duration: std::time::Duration,
+) {
+    state.suppress_raw_keys_until = Some(now + duration);
+    state.raw_echo_text = normalize_paste_text(text);
+    state.raw_echo_offset = 0;
+}
+
+/// Consume one key only when it matches the next character replayed by the terminal.
+///
+/// A blanket time-based guard makes the first real key after a large paste disappear.
+/// Prefix matching keeps protection for terminals that echo bracketed paste while allowing
+/// unrelated user input through immediately.
+pub fn consume_paste_echo_key(
+    state: &mut PasteBurstState,
+    code: KeyCode,
+    modifiers: KeyModifiers,
+    now: std::time::Instant,
+) -> bool {
+    if modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::META) {
+        return false;
+    }
+    let key = match code {
+        KeyCode::Char(ch) => ch,
+        KeyCode::Tab => '\t',
+        KeyCode::Enter => '\n',
+        _ => return false,
+    };
+    let Some(deadline) = state.suppress_raw_keys_until else {
+        return false;
+    };
+    if now >= deadline {
+        state.suppress_raw_keys_until = None;
+        state.raw_echo_text.clear();
+        state.raw_echo_offset = 0;
+        return false;
+    }
+    let Some(expected) = state.raw_echo_text[state.raw_echo_offset..].chars().next() else {
+        state.suppress_raw_keys_until = None;
+        return false;
+    };
+    if expected != key {
+        state.suppress_raw_keys_until = None;
+        state.raw_echo_text.clear();
+        state.raw_echo_offset = 0;
+        return false;
+    }
+    state.raw_echo_offset += expected.len_utf8();
+    if state.raw_echo_offset == state.raw_echo_text.len() {
+        state.suppress_raw_keys_until = None;
+        state.raw_echo_text.clear();
+        state.raw_echo_offset = 0;
+    }
+    true
 }
 
 #[cfg(test)]
