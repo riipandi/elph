@@ -1508,12 +1508,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             // Search is rendered as a compact status row (like the Resume
             // selector), so the shell owns editing while it has focus.
             if model_input_focus.get() == ModelSelectorFocus::Search {
-                if modifiers.is_empty() && code == KeyCode::Enter {
-                    if let Some(pending) = pending_model_selector.write().as_mut() {
-                        focus_model_selector_list(&mut model_input_focus, pending);
-                    }
-                    return;
-                }
                 if modifiers.is_empty() && code == KeyCode::Backspace {
                     let mut next = model_filter.read().clone();
                     if pop_model_filter_char(&mut next) {
