@@ -11,6 +11,11 @@ Elph loads hook definitions from:
 1. `CONFIG_DIR/hooks.json`
 2. `<project>/.elph/hooks.json`, only after the project passes the trust gate
 
+When `defaultProjectTrust` is `ask`, interactive TUI startup asks whether to
+trust an untrusted project before opening the datastore or TUI. Selecting No,
+declining the prompt, or starting without a terminal exits without launching
+the project. A positive answer records the project in `CONFIG_DIR/trust.json`.
+
 The home file is loaded first and the project file is appended. Hook IDs must
 be unique across both files. A malformed file is ignored as a unit.
 
@@ -25,10 +30,7 @@ A minimal project example is available at
   "hooks": [
     {
       "id": "audit-tool-calls",
-      "event": "preToolUse",
-      "matcher": {
-        "toolNames": ["write_file", "edit_file"]
-      },
+      "event": "sessionStart",
       "command": "hooks/audit-tool-calls.sh",
       "timeoutMs": 5000,
       "enabled": true
@@ -46,9 +48,8 @@ shell syntax is required.
 The project configuration can reference an executable in
 `PROJECT_DIR/.elph/hooks/`, as shown in the sample. Elph does not automatically
 discover or load every file under that directory; each hook must be declared in
-`hooks.json`. The sample script appends the received JSON payload to
-`.elph/hook-audit.log` and keeps stdout empty, so it observes `preToolUse`
-without changing the tool call.
+`hooks.json`. The sample script appends the received `sessionStart` JSON payload
+to `.elph/hook-audit.log` and keeps stdout empty.
 
 ### Hook fields
 

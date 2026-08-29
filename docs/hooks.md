@@ -22,10 +22,7 @@ A minimal project configuration is available in [`.elph/hooks.json`](../.elph/ho
     "hooks": [
         {
             "id": "audit-tool-calls",
-            "event": "preToolUse",
-            "matcher": {
-                "toolNames": ["write_file", "edit_file"]
-            },
+            "event": "sessionStart",
             "command": "hooks/audit-tool-calls.sh",
             "args": [],
             "timeoutMs": 5000,
@@ -44,9 +41,8 @@ when shell syntax is required.
 The project configuration may reference an executable inside
 `PROJECT_DIR/.elph/hooks/`, as the sample above does. Elph does not scan or
 auto-load every file in that directory: each hook must be declared in
-`hooks.json`. The sample script records the JSON payload in
-`.elph/hook-audit.log` and intentionally writes no stdout, so it observes
-`preToolUse` without changing the tool call.
+`hooks.json`. The sample script records the `sessionStart` JSON payload in
+`.elph/hook-audit.log` and intentionally writes no stdout.
 
 ### Tool names for matchers
 
@@ -151,8 +147,11 @@ as the only control protecting sensitive files.
 ## Trust and reload
 
 Home hooks are user-owned configuration. Project hooks are ignored until the
-project passes Elph's executable-resource trust gate. The doctor output reports
-skipped or malformed project hooks; startup logs a warning and continues.
+project passes Elph's executable-resource trust gate. On interactive TUI startup,
+an untrusted project with `defaultProjectTrust: ask` displays a trust prompt
+before the datastore or TUI opens. Choosing No, declining the prompt, or
+starting without a terminal exits without launching the project. The doctor
+output reports skipped or malformed project hooks.
 
 `/reload` re-reads hook configuration and replaces the active command handlers
 only after the new configuration has been parsed. It also reloads provider
@@ -169,4 +168,3 @@ resource paths.
 - **Hooks** observe or influence lifecycle operations only.
 - Built-in tools, UI, and slash commands are native Elph code. Hooks cannot
   register any of them.
-

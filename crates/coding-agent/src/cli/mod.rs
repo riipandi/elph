@@ -212,6 +212,41 @@ fn command_needs_datastore(cmd: &Commands) -> bool {
     )
 }
 
+fn ensure_project_trust(paths: &crate::platform::Paths) -> Result<(), ExitCode> {
+    let trusted = crate::platform::TrustStore::is_trusted(paths, paths.project_dir()).map_err(|err| {
+        help::cli_error(format!("failed to check project trust: {err:#}"));
+        crate::platform::EXIT_ERROR
+    })?;
+    if trusted {
+        return Ok(());
+    }
+
+    let trust_store = crate::platform::TrustStore::load(paths).map_err(|err| {
+        help::cli_error(format!("failed to load project trust: {err:#}"));
+        crate::platform::EXIT_ERROR
+    })?;
+
+    match trust_store.default_project_trust {
+        crate::platform::DefaultProjectTrust::Always => Ok(()),
+        crate::platform::DefaultProjectTrust::Never => {
+            eprintln!("elph: project is not trusted ({})", paths.project_dir().display());
+            Err(crate::platform::EXIT_PERMISSION_DENIED)
+        }
+        crate::platform::DefaultProjectTrust::Ask => {
+            if !interactive::confirm_project_trust(paths.project_dir()) {
+                eprintln!("elph: project trust declined; exiting");
+                return Err(crate::platform::EXIT_PERMISSION_DENIED);
+            }
+
+            crate::platform::TrustStore::trust_directory(paths, paths.project_dir()).map_err(|err| {
+                help::cli_error(format!("failed to save project trust: {err:#}"));
+                crate::platform::EXIT_ERROR
+            })?;
+            Ok(())
+        }
+    }
+}
+
 /// Best-effort logs directory when full [`Paths::resolve`] fails.
 fn fallback_logs_dir() -> Option<std::path::PathBuf> {
     use std::path::PathBuf;
@@ -276,6 +311,9 @@ pub fn run(cli: &Cli) -> ExitCode {
     };
 
     let Some(cmd) = &cli.command else {
+        if let Err(code) = ensure_project_trust(&paths) {
+            return code;
+        }
         if let Err(code) = init_datastore(&paths) {
             return code;
         }

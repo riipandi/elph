@@ -1,9 +1,9 @@
 {
-    "$schema": "https://elph.space/hooks-schema.json",
+    "$schema": "../schemas/hooks-schema.json",
     "hooks": [
         {
             "id": "audit-tool-calls",
-            "event": "preToolUse",
+            "event": "sessionStart",
             "matcher": {
                 "toolNames": ["write_file", "edit_file"]
             },

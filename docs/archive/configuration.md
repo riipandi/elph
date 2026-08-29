@@ -199,7 +199,7 @@ working directory is the active project directory.
 For project hooks, an executable may live under `<project>/.elph/hooks/` and be
 referenced from `<project>/.elph/hooks.json`. Elph does not scan that directory;
 every executable must be declared as a hook. The sample at
-`.elph/hooks/audit-tool-calls.sh` records `preToolUse` payloads in
+`.elph/hooks/audit-tool-calls.sh` records `sessionStart` payloads in
 `.elph/hook-audit.log` and requires a POSIX-compatible `sh` environment.
 
 Supported events are `sessionStart`, `userPromptSubmit`, `beforeAgent`,
@@ -488,6 +488,12 @@ You are a careful code reviewer. Focus on correctness and security.
 ```
 
 Empty default: `{ "directories": {} }`.
+
+When `defaultProjectTrust` is `ask` (the default), interactive TUI startup asks
+whether the current project should be trusted before opening the datastore or
+TUI. A positive answer records the canonical project path in `directories`;
+declining, non-interactive startup, or `never` exits without launching the
+project. `always` skips this prompt.
 
 ## `version.json`
 

@@ -4,11 +4,18 @@
 //! provider-aware display helpers. Also provides a CLI implementation
 //! of [`AuthLoginCallbacks`] for OAuth flows.
 
-use std::fmt;
+use std::{
+    fmt,
+    io::{IsTerminal, Write},
+    path::Path,
+};
 
 use anstyle::*;
 use elph_ai::auth::{AuthEvent, AuthLoginCallbacks, AuthPrompt, BoxFuture};
-use inquire::{Confirm, Password, PasswordDisplayMode, Select, Text};
+use inquire::{
+    Confirm, Password, PasswordDisplayMode, Select, Text,
+    ui::{Color as InquireColor, RenderConfig, StyleSheet, Styled},
+};
 
 use crate::tui::provider_connect_dialog::{ProviderAuthMethod, ProviderConfigStatus, ProviderOption};
 
@@ -166,6 +173,56 @@ pub fn confirm_memory_flush(memory_count: u32, task_count: u32) -> bool {
         .ok()
         .flatten()
         .unwrap_or(false)
+}
+
+/// Ask whether the user trusts the current project before launching the TUI.
+///
+/// Refuses non-interactive input instead of guessing, because accepting an
+/// untrusted project would allow its executable resources to run.
+pub fn confirm_project_trust(project_dir: &Path) -> bool {
+    if !std::io::stdin().is_terminal() || !std::io::stdout().is_terminal() {
+        return false;
+    }
+
+    let no_color = std::env::var_os("NO_COLOR").is_some();
+    let title = "Do you trust the contents of this project?";
+    let explanation = "Elph CLI requires permission to read, edit, and execute files here.";
+    let warning = "For security, elph should not be run in directories with untrusted content.";
+    let (title, explanation, warning) = if no_color {
+        (title.to_string(), explanation.to_string(), warning.to_string())
+    } else {
+        (
+            format!("{}{}{}", STYLE_ACCENT.render(), title, STYLE_ACCENT.render_reset()),
+            dim(explanation),
+            dim(warning),
+        )
+    };
+    let mut stdout = std::io::stdout();
+    if writeln!(stdout, "{title}\n\n{explanation}\n{warning}").is_err() || stdout.flush().is_err() {
+        return false;
+    }
+
+    let trust_option = format!("1 Yes, trust {}", project_dir.display());
+    let render_config = RenderConfig::default()
+        .with_prompt_prefix(Styled::new(""))
+        .with_answered_prompt_prefix(Styled::new(""))
+        .with_highlighted_option_prefix(Styled::new("❭"));
+    let mut render_config = if no_color {
+        render_config
+    } else {
+        render_config.with_help_message(StyleSheet::new().with_fg(InquireColor::DarkGrey))
+    };
+    render_config.unhighlighted_option_prefix = Styled::new(" ");
+    // Keep a blank frame row between the choices and the navigation hint.
+    let exit_option = "2 No, exit\n \n".to_string();
+    Select::new("", vec![trust_option.clone(), exit_option])
+        .without_filtering()
+        .with_render_config(render_config)
+        .with_help_message("↑/↓ Navigate · enter Confirm")
+        .prompt_skippable()
+        .ok()
+        .flatten()
+        .is_some_and(|choice| choice == trust_option)
 }
 
 // ── OAuth callbacks (CLI) ────────────────────────────────────────────

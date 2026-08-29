@@ -2,7 +2,12 @@
 
 ## Workspace trust
 
-Trusted workspace directories are recorded in `CONFIG_DIR/trust.json`. Use `/trust` in the TUI to mark the current workspace. Project-local hooks under `.elph/hooks.json` load only after trust.
+Trusted workspace directories are recorded in `CONFIG_DIR/trust.json`. On the
+first interactive TUI launch in an untrusted directory, Elph asks whether to
+trust the project before opening the datastore or TUI. Selecting Yes records
+the canonical project path; selecting No exits. You can also use `/trust` in
+the TUI to mark the current workspace. Project-local hooks under
+`.elph/hooks.json` load only after trust.
 
 ## Tool policy
 

@@ -63,7 +63,7 @@ Pi intent (`enabledModels`, resource path arrays, `defaultTools`, `defaultProjec
 - `models.enabled` glob catalog filter; `models.thinkingBudgets` → harness stream options.
 - `resources.skills` / `prompts` and `disabledSkills` / `enableSkillCommands`; hooks use a separate `hooks.json` contract.
 - `tools.default` builtin allowlist (meta tools stay).
-- `trust.defaultProjectTrust` gates **project hooks** only (`ask` ≡ `never` until a prompt UI exists). Project `settings.json` / skills / prompts always merge.
+- `trust.defaultProjectTrust` gates **project hooks** only; interactive TUI startup prompts when it is `ask`. Project `settings.json` / skills / prompts always merge.
 - `shell.path` / `commandPrefix`, `network.httpProxy`, `ui.quietStartup`, `compaction.reserveTokens`.
 - Dropped `migrate_settings_value` and the old settings sidecar.
 

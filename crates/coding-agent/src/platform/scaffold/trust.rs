@@ -31,12 +31,12 @@ impl DefaultProjectTrust {
 /// `defaultProjectTrust` is global-only (project files do not carry this file).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TrustStore {
-    #[serde(default)]
-    pub directories: BTreeMap<String, bool>,
     /// When no directory decision applies: load executable project resources (`always`) or skip (`ask`/`never`).
-    /// `ask` has no prompt UI yet and behaves like `never`.
+    /// Interactive TUI startup asks the user when this is `ask`.
     #[serde(default)]
     pub default_project_trust: DefaultProjectTrust,
+    #[serde(default)]
+    pub directories: BTreeMap<String, bool>,
 }
 
 impl TrustStore {
