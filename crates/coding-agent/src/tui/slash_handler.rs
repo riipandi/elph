@@ -117,6 +117,10 @@ pub enum SlashOutcome {
     OpenProviderListDialog {
         text: String,
     },
+    /// MCP server list viewer (ScrollTextDialog).
+    OpenMcpListDialog {
+        text: String,
+    },
     /// Provider catalog update result viewer (ScrollTextDialog).
     OpenProviderUpdateDialog {
         text: String,
@@ -151,6 +155,10 @@ pub enum SlashOutcome {
     /// Open MCP OAuth dialog (`/mcp auth [name]`).
     OpenMcpAuthDialog {
         server_name: Option<String>,
+    },
+    /// Open the quick MCP add dialog.
+    OpenMcpAddDialog {
+        initial: String,
     },
     /// A background `/transfer` task was dispatched directly. Unlike
     /// [`SlashOutcome::BackgroundTask`], the work's final user-visible text is
@@ -459,6 +467,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             }
         }
         SlashDispatch::McpAuth { server_name } => SlashOutcome::OpenMcpAuthDialog { server_name },
+        SlashDispatch::McpAdd { args } => SlashOutcome::OpenMcpAddDialog { initial: args },
         SlashDispatch::McpLogout { server_name } => {
             let Some(paths) = ctx.paths else {
                 return SlashOutcome::Status("Paths required for /mcp logout.".into());
@@ -477,7 +486,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             let Some(paths) = ctx.paths else {
                 return SlashOutcome::Status("Paths required for /mcp list.".into());
             };
-            SlashOutcome::OpenProviderListDialog {
+            SlashOutcome::OpenMcpListDialog {
                 text: crate::tui::mcp_auth_dialog::mcp_list_slash_message(paths),
             }
         }
@@ -743,8 +752,10 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
             | SlashOutcome::OpenProviderConnectDialog { .. }
             | SlashOutcome::OpenProviderDisconnectDialog { .. }
             | SlashOutcome::OpenProviderListDialog { .. }
+            | SlashOutcome::OpenMcpListDialog { .. }
             | SlashOutcome::OpenProviderUpdateDialog { .. }
             | SlashOutcome::OpenMcpAuthDialog { .. }
+            | SlashOutcome::OpenMcpAddDialog { .. }
             | SlashOutcome::OpenMemoryResultDialog { .. }
             | SlashOutcome::ResumeSession { .. }
             | SlashOutcome::OpenItemSelector { .. }

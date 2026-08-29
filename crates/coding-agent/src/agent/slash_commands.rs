@@ -262,6 +262,10 @@ pub enum SlashDispatch {
     },
     /// List MCP servers in the transcript (`/mcp list`).
     McpList,
+    /// Open the quick MCP server form (`/mcp add [name -- command]`).
+    McpAdd {
+        args: String,
+    },
     /// Resume a foreign coding-agent session (`/transfer claude [ref]`).
     ///
     /// `args` is the raw slash body after `/transfer ` — the first token selects
@@ -411,6 +415,10 @@ const PROVIDER_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
 ];
 
 const MCP_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
+    SlashArgCompletion {
+        value: "add",
+        description: "Add or update an MCP server",
+    },
     SlashArgCompletion {
         value: "auth",
         description: "OAuth login for a remote MCP server",
@@ -715,20 +723,22 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
             let args = args.trim();
             if args.is_empty() || args == "list" || args == "ls" {
                 Some(SlashDispatch::McpList)
-            } else if let Some(rest) = args
-                .strip_prefix("auth")
-                .or_else(|| args.strip_prefix("login"))
-                .or_else(|| args.strip_prefix("connect"))
-            {
-                let rest = rest.trim();
-                let server_name = if rest.is_empty() { None } else { Some(rest.to_string()) };
-                Some(SlashDispatch::McpAuth { server_name })
-            } else if let Some(rest) = args.strip_prefix("logout").or_else(|| args.strip_prefix("disconnect")) {
-                let rest = rest.trim();
-                let server_name = if rest.is_empty() { None } else { Some(rest.to_string()) };
-                Some(SlashDispatch::McpLogout { server_name })
             } else {
-                Some(SlashDispatch::Unimplemented(format!("/mcp {args}")))
+                let (subcommand, rest) = args
+                    .split_once(' ')
+                    .map_or((args, ""), |(cmd, rest)| (cmd, rest.trim()));
+                match subcommand {
+                    "add" => Some(SlashDispatch::McpAdd { args: rest.to_string() }),
+                    "auth" | "login" | "connect" => {
+                        let server_name = (!rest.is_empty()).then(|| rest.to_string());
+                        Some(SlashDispatch::McpAuth { server_name })
+                    }
+                    "logout" | "disconnect" => {
+                        let server_name = (!rest.is_empty()).then(|| rest.to_string());
+                        Some(SlashDispatch::McpLogout { server_name })
+                    }
+                    _ => Some(SlashDispatch::Unimplemented(format!("/mcp {args}"))),
+                }
             }
         }
         "transfer" => Some(SlashDispatch::Transfer { args }),
@@ -846,6 +856,24 @@ mod tests {
                 server_name: Some("figma".to_string())
             })
         );
+    }
+
+    #[test]
+    fn mcp_add_dispatch_preserves_arguments() {
+        assert_eq!(
+            dispatch_slash_command("/mcp add", None, None),
+            Some(SlashDispatch::McpAdd { args: String::new() })
+        );
+        assert_eq!(
+            dispatch_slash_command("/mcp add filesystem -- npx -y server-filesystem /tmp", None, None),
+            Some(SlashDispatch::McpAdd {
+                args: "filesystem -- npx -y server-filesystem /tmp".to_string()
+            })
+        );
+        assert!(matches!(
+            dispatch_slash_command("/mcp authentic", None, None),
+            Some(SlashDispatch::Unimplemented(_))
+        ));
     }
 
     #[test]
@@ -1058,6 +1086,7 @@ mod tests {
         assert!(slash_arg_completions("mcp").is_some());
         assert!(slash_arg_completions("model").is_none());
         let mcp = slash_arg_completions("mcp").unwrap();
+        assert!(mcp.iter().any(|c| c.value == "add"));
         assert!(mcp.iter().any(|c| c.value == "auth"));
         assert!(mcp.iter().any(|c| c.value == "logout"));
         assert!(mcp.iter().any(|c| c.value == "list"));

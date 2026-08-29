@@ -74,6 +74,7 @@ pub(crate) fn build_shell_view(
         mut pending_model_selector,
         mut pending_plan_confirmation,
         mut pending_mcp_auth,
+        mut pending_mcp_add,
         pending_provider_api_key,
         mut pending_provider_connect,
         mut pending_provider_disconnect,
@@ -103,6 +104,8 @@ pub(crate) fn build_shell_view(
         mut prompt_queue,
         prompt_templates,
         mut provider_connect_api_key,
+        mut mcp_add_input,
+        mut mcp_add_field,
         mut provider_connect_filter,
         mut provider_connect_input_focus,
         mut provider_connect_selected,
@@ -787,6 +790,7 @@ pub(crate) fn build_shell_view(
             dialog
         })
         .or_else(|| build_provider_api_key_dialog_kind(pending_provider_api_key.read().as_ref(), approval_has_focus))
+        .or_else(|| build_mcp_add_dialog_kind(pending_mcp_add.read().as_ref(), approval_has_focus))
         .or_else(|| build_mcp_auth_dialog_kind(pending_mcp_auth.read().as_ref(), approval_has_focus))
         .or_else(|| {
             let pending = pending_provider_disconnect.read();
@@ -1302,6 +1306,8 @@ pub(crate) fn build_shell_view(
                         .map(|p| p.oauth_provider_name.clone())
                         .unwrap_or_default(),
                 ),
+                mcp_add_input: Some(mcp_add_input),
+                mcp_add_field: Some(mcp_add_field),
                 queue_count: queue_count,
                 suppress_status_row: aside_open,
                 on_queue_action: on_queue_action_click,
@@ -1881,6 +1887,22 @@ pub(crate) fn build_shell_view(
                                 suppress_enter_newline.set(true);
                                 return;
                             }
+                            SlashOutcome::OpenMcpAddDialog { initial } => {
+                                open_mcp_add_dialog(OpenMcpAddDialogArgs {
+                                    pending: &mut pending_mcp_add,
+                                    input: &mut mcp_add_input,
+                                    draft: &mut draft,
+                                    live_draft: &mut live_draft,
+                                    shell_focus: &mut shell_focus,
+                                    initial,
+                                });
+                                if let Some(pending) = pending_mcp_add.read().as_ref() {
+                                    mcp_add_field.set(pending.field);
+                                }
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
                             SlashOutcome::OpenProviderDisconnectDialog { provider_id } => {
                                 let auth_store_path = paths_snapshot.auth_store_path();
                                 open_provider_disconnect_dialog(
@@ -2017,6 +2039,23 @@ pub(crate) fn build_shell_view(
                                     title: "Configured Providers".to_string(),
                                     text,
                                     width_pct: 55,
+                                    body_height: Some(body_height),
+                                    show_copy: false,
+                                });
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
+                            SlashOutcome::OpenMcpListDialog { text } => {
+                                let body_height = (text.lines().count() as u16).saturating_add(3).clamp(7, 32);
+                                open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                                    pending: &mut pending_system_prompt,
+                                    shell_focus: &mut shell_focus,
+                                    title: "MCP Servers".to_string(),
+                                    text,
+                                    width_pct: 65,
                                     body_height: Some(body_height),
                                     show_copy: false,
                                 });

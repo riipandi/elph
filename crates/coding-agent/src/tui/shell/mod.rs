@@ -62,7 +62,8 @@ use crate::tui::item_selector::{
 use crate::tui::item_selector_bar::ItemSelectorBar;
 use crate::tui::labels::GitFooterInfo;
 use crate::tui::mcp_auth_dialog::{
-    OpenMcpAuthDialogArgs, PendingMcpAuthDialog, open_mcp_auth_dialog, start_mcp_oauth_for_server,
+    OpenMcpAddDialogArgs, OpenMcpAuthDialogArgs, PendingMcpAuthDialog, open_mcp_add_dialog, open_mcp_auth_dialog,
+    start_mcp_oauth_for_server,
 };
 use crate::tui::model_selector::{ModelSelectorFocus, PendingModelSelector};
 use crate::tui::model_selector_bar::{ModelSelectorBar, ModelSelectorView};
@@ -120,10 +121,10 @@ use crate::tui::startup::{
     mark_agent_startup_ready, mcp_server_status_label, spawn_bootstrap_worker,
 };
 use crate::tui::status_dialog::{
-    PromptQueueAction, StatusDialogKind, StatusZone, build_feedback_dialog_kind, build_mcp_auth_dialog_kind,
-    build_memory_flush_dialog_kind, build_mode_change_dialog_kind, build_plan_confirmation_dialog_kind,
-    build_prompt_queue_dialog_kind, build_provider_api_key_dialog_kind, build_provider_connect_dialog_kind,
-    build_status_dialog_kind,
+    PromptQueueAction, StatusDialogKind, StatusZone, build_feedback_dialog_kind, build_mcp_add_dialog_kind,
+    build_mcp_auth_dialog_kind, build_memory_flush_dialog_kind, build_mode_change_dialog_kind,
+    build_plan_confirmation_dialog_kind, build_prompt_queue_dialog_kind, build_provider_api_key_dialog_kind,
+    build_provider_connect_dialog_kind, build_status_dialog_kind,
 };
 use crate::tui::subagent_output_dialog::{PendingSubagentOutputDialog, SubagentOutputDialogOverlay};
 use crate::tui::system_prompt_dialog::{
@@ -533,6 +534,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let pending_provider_disconnect = hooks.use_ref(|| None::<PendingProviderDisconnectDialog>);
     let pending_provider_api_key = hooks.use_ref(|| None::<PendingProviderApiKeyDialog>);
     let pending_mcp_auth = hooks.use_ref(|| None::<PendingMcpAuthDialog>);
+    let pending_mcp_add = hooks.use_ref(|| None::<crate::tui::mcp_auth_dialog::PendingMcpAddDialog>);
+    let mcp_add_input = hooks.use_state(String::new);
+    let mcp_add_field = hooks.use_state(|| crate::tui::mcp_auth_dialog::McpAddField::Name);
     let provider_disconnect_selected = hooks.use_state(|| 0usize);
     let provider_connect_selected = hooks.use_state(|| 0usize);
     let provider_connect_filter = hooks.use_state(String::new);
@@ -746,6 +750,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         pending_provider_api_key,
         pending_mcp_auth,
         pending_mcp_auth_for_tick,
+        pending_mcp_add,
+        mcp_add_input,
+        mcp_add_field,
         pending_provider_connect,
         pending_provider_connect_for_tick,
         pending_provider_disconnect,
