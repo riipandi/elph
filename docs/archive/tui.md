@@ -193,19 +193,44 @@ See [prompt-templates.md](./prompt-templates.md) for format, argument placeholde
 
 ### Image attachments
 
-When the selected model supports vision, **Ctrl+V** / **Cmd+V** pastes a clipboard image into the
-pending turn (up to **4** images). Files are saved under `~/.local/share/elph/attachments/` as
-`paste_<session_suffix>_*.png` and listed below the input while pending.
+When the selected model supports image input, **Ctrl+V** / **Cmd+V** starts an asynchronous
+clipboard-image paste for the pending turn. The prompt stays interactive while the clipboard is
+read and the image is staged under the application's `attachments/` data directory.
 
-| UI element       | Behavior                                                                    |
-| ---------------- | --------------------------------------------------------------------------- |
-| Input suffix     | `[images: paste_….png, …]` on the prompt line                               |
-| Hint row         | Count + shortcuts; bullet list of relative paths                            |
-| Footer **◐**     | Shown when `provider.SupportsImageInput(model.Input)` is true               |
-| Non-vision model | Paste blocked with a system message; switch model via **Ctrl+L** / `/model` |
+Successful pastes insert an atomic `[Image #N]` marker into the prompt and keep the staged
+attachment paired with that marker. The marker is the only image representation shown in the
+textarea. When the caret is inside or immediately after a marker, Elph shows a full-width
+metadata preview dialog above the textarea border. Moving the caret away closes the preview.
 
-On submit, images are sent as `TurnOptions.UserImages` to the provider API. For non-vision models,
-paths are appended to the text prompt so the agent can use **ReadMediaFile** instead.
+| UI element          | Behavior                                                                 |
+| ------------------- | ------------------------------------------------------------------------ |
+| Prompt text         | Atomic `[Image #N]` marker; marker deletion also removes its attachment |
+| Loading status      | Ephemeral `Pasting image…` notification while staging is in progress    |
+| Preview dialog      | Appears only while the caret touches the corresponding image marker    |
+| Footer **◐**        | Indicates that the selected model accepts image input                  |
+| Non-vision model    | Image paste is rejected with an ephemeral warning                       |
+
+On submit, staged files are base64-encoded and sent as image content to the provider API. The
+temporary files are removed when the prompt is submitted or discarded. Attachment names are
+reserved atomically; if a generated name already exists, Elph adds a numeric suffix.
+
+#### Image format limitations
+
+Clipboard images are currently normalized to PNG. JPEG/JPG, Bitmap/DIB, and other raster formats
+can be accepted when the operating-system clipboard backend exposes them as a decodable image,
+but their original format is not preserved. The staged file and model MIME type are always
+`image/png`.
+
+SVG is not handled as a vector attachment. If an application places SVG only on the clipboard as
+text or HTML, Elph may fall back to pasting that text instead of creating an image attachment.
+Animated-image behavior and clipboard formats that are not exposed as raster images depend on the
+operating-system clipboard backend.
+
+There is no application-level four-image limit in the prompt editor. The effective limit is
+determined by the selected provider/model request constraints and available local resources.
+Images can only be submitted while the selected model supports image input; changing to a
+non-vision model while attachments are pending blocks submission until the model is changed back
+or the attachments are removed.
 
 **Remove attachments** (only when the input textarea is empty):
 

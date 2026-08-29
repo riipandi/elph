@@ -8,7 +8,7 @@ Default config: `~/.config/elph/` (`$XDG_CONFIG_HOME/elph`) · Default data: `~/
 
 Override with `ELPH_HOME` (config) and `ELPH_DATA_DIR` (data).
 
-```
+```text
 ~/.config/elph/                              # CONFIG_DIR
 ├── agents/                  # User-managed custom agents (markdown frontmatter)
 ├── bundled/
@@ -89,15 +89,23 @@ On submit, Elph base64-encodes the staged files into `ImageContent` blocks for t
 model request, then removes the temporary files. Removing a marker or submitting
 a local/slash/shell command also removes its staged file. Attachment filenames are
 reserved atomically and receive a suffix if an existing file has the same name.
-Image pastes are rejected with an explanatory dialog when the selected model does
-not support vision/image input. Marker numbers are selected from the current
-prompt state, so an empty prompt starts again at `[Image #1]`.
+Image pastes are rejected with an ephemeral warning when the selected model does
+not support vision/image input. If the clipboard contains text instead, it is
+pasted as text. Marker numbers are selected from the current prompt state, so an
+empty prompt starts again at `[Image #1]`.
+
+Clipboard images are normalized to PNG regardless of their source format. JPEG/JPG,
+Bitmap/DIB, and other raster images work when the platform clipboard exposes them as
+decodable image data, but the original format is not preserved. SVG is not handled as
+a vector attachment; SVG clipboard content that is exposed only as text or HTML may
+fall back to ordinary text paste. The prompt editor has no hard four-image limit;
+provider/model request limits still apply.
 
 ### Storage roles
 
 | Store                  | Path                                      | Contents                                                                                               |
 | ---------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Unified store          | `PROJECT/.elph/store.db`                  | Sessions, goals, agent spawn graph, skill cache, memory, embeddings, transcript cache                  |     |
+| Unified store | `PROJECT/.elph/store.db` | Sessions, goals, agent spawn graph, skill cache, memory, embeddings, transcript cache |
 | Session artifacts      | `APP_DATA/sessions/<SESSION_ID>/`         | `mcp_cache/` (JSONL tool result cache), `terminals/`, `tool_outputs.jsonl`, optional `event_log.jsonl` |
 | Host MCP cache         | `APP_DATA/mcp_cache/`                     | CLI MCP ops when no session is active (JSONL tool result cache)                                        |
 | App / crash / MCP logs | `APP_DATA/logs/`                          | Rolling JSONL, dated crash logs, MCP stderr                                                            |
