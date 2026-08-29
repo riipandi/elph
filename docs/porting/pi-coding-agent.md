@@ -65,7 +65,7 @@ Pi intent (`enabledModels`, resource path arrays, `defaultTools`, `defaultProjec
 - `tools.default` builtin allowlist (meta tools stay).
 - `trust.defaultProjectTrust` gates **project hooks** only (`ask` ≡ `never` until a prompt UI exists). Project `settings.json` / skills / prompts always merge.
 - `shell.path` / `commandPrefix`, `network.httpProxy`, `ui.quietStartup`, `compaction.reserveTokens`.
-- Dropped `migrate_settings_value` and the old extension sidecar.
+- Dropped `migrate_settings_value` and the old settings sidecar.
 
 ### 2026-08-09 — Busy-state queueing: action dispatch, not raw text (Elph delta)
 
@@ -190,7 +190,7 @@ Initial product gap audit: tree compare `packages/coding-agent` vs `crates/codin
 
 ## Architecture mapping
 
-```
+```text
 packages/coding-agent/                 elph/
 ├── main.ts / cli.ts                   ├── main.rs + cli/
 ├── cli/args, session-picker, …        ├── cli/* (subcommands) + default interactive entry
@@ -200,7 +200,7 @@ packages/coding-agent/                 elph/
 ├── core/slash-commands                ├── agent/slash_commands (+ shell/slash)
 ├── core/system-prompt                 ├── agent/system_prompt
 ├── core/tools/*                       ├── (lives in crates/elph-agent/tools)
-├── core/extensions/*                  ├── platform/hooks (native commands)
+├── core/extensions/*                  ├── platform/hooks (native commands; no extension loader)
 ├── core/settings-manager              ├── platform/settings, paths, bootstrap
 ├── core/export-html                   ├── cli/export (stub)
 ├── core/sdk.ts                        ├── lib.rs public modules (not pi-shaped SDK)
@@ -262,7 +262,7 @@ elph built-in **names** largely mirror pi, plus `/provider`, `/help`, `/exit`. D
 - `/goal` — **[Elph delta]** / **[Partial]** in elph (design + goal_slash)
 - `/transfer` — **[Elph delta]** foreign-session resume (Claude + Codex
   implemented; see [transfer.md](../design/transfer.md))
-- Extension commands — **[N/A]** (custom slash commands are intentionally out of scope)
+- Custom slash-command registration — **[N/A]** (prompt templates and skills cover user-invoked workflows)
 - Prompt templates as `/name` — **[Partial]** (planned)
 
 ---
@@ -277,7 +277,7 @@ pi ships a large interactive component set under `modes/interactive/components/`
 - Login / OAuth dialogs — **[Gap]**
 - Theme selector — **[Gap]** (no settings field; fixed dark palette); settings selector — **[Gap]**
 - Diff view — **[Gap]** (planned slash)
-- Extension UI (editor/input/selector) — **[N/A]** (custom UI is intentionally out of scope)
+- Custom UI registration (editor/input/selector) — **[N/A]** (custom UI is intentionally out of scope)
 - Image show / clipboard paste — **[Partial]**
 - Keybinding hints — **[Partial]** (`/hotkeys` stub)
 - Ctrl+X copy last message (Unreleased) — **[Gap]**
@@ -318,7 +318,7 @@ Typical flags: `--model`, `--provider`, `--thinking`, `--continue`/`-c`, `--resu
 - Compaction UX — harness compaction; UX commands stub — **[Partial]**
 - Model registry / scoped models, settings, project trust — **[Partial]**
 - Keybindings — **[Gap]** / incomplete
-- Package manager vs extensions install — **[Partial]** (different model)
+- Package manager / extension installation — **[N/A]** (not part of Elph's current surface; hooks use local JSON plus native commands)
 - Export HTML — **[Gap]**
 - Event bus — harness/agent events — **[Partial]**
 - Output guard / stdout takeover — **[N/A]** (different product model)

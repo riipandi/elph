@@ -24,7 +24,7 @@ No `fs/*` or Client `terminal/*` execution. Auth omitted (`authMethods` empty).
 
 Shared application logic once. Version modules are thin wire adapters only — no harness calls in `v1/` or `v2/` except through `host`.
 
-```
+```text
 crates/coding-agent/src/cli/acp.rs     clap: --stdio, --experimental → AcpMode
 crates/coding-agent/src/platform/acp/
   mod.rs          AcpMode { V1, V2 } + run_agent_stdio(mode)

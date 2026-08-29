@@ -20,13 +20,13 @@ Upstream projects move quickly. Each page records:
 
 1. What upstream has.
 2. What the port has (Elph).
-3. Gaps in either direction — port debt vs intentional product extensions.
+3. Gaps in either direction — port debt vs intentional Elph-only features.
 
 ## Baseline (pi libraries)
 
 Last documented **2026-07-29T19:50:00Z** (pi snapshot). Catalog SSOT note updated **2026-08-01**.
 
-- **Upstream:** https://github.com/earendil-works/pi
+- **Upstream:** <https://github.com/earendil-works/pi>
 - **Local clone (analysis):** `~/.local/share/elph/tmp//pi`
 - **Snapshot commit:** `7aca0d7b3` (_fix(agent): make JSONL decode errors explicit_)
 - **Package version:** `0.84.1` (released 2026-08-07) + **Unreleased** on `main`
@@ -42,7 +42,7 @@ Use these inline in prose (not table cells):
 - **[Parity]** — behavior/API on both sides (shape may differ by language)
 - **[Partial]** — present in the port but incomplete vs mainstream
 - **[Gap]** — in upstream; not yet in the port (port debt)
-- **[Elph delta]** — intentional extension missing upstream
+- **[Elph delta]** — intentional Elph-only feature missing upstream
 - **[N/A]** — platform-specific; do not port 1:1
 
 ### 2026-08-18 — Product settings flatten + file split (coding-agent)
@@ -70,8 +70,7 @@ Do not copy pi’s TypeScript layout or catalog scripts. Agent skill:
     cargo test -p elph-ai --test providers catalog_providers_match_builtin_providers
     ```
 
-    Gateways (Hyper, Kilo, TokenRouter, OpenGateway, Sumopod, …) are **preserved** by the generator; do not use obsolete `--catalog-dir` / pi npm `generate-models` for chat.
-
+   Gateways (Hyper, Kilo, TokenRouter, OpenGateway, Sumopod, …) are **preserved** by the generator; do not use obsolete `--catalog-dir` / pi npm `generate-models` for chat.
 5. **Runtime gaps** (API adapter, auth, stream flag, tool schema, agent loop) → implement in `crates/elph-ai` / `crates/elph-agent` following existing modules — not by importing pi packages.
 6. Append a **Timeline** entry with ISO timestamp + pi commit/version (bullet prose).
 

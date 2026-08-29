@@ -1,8 +1,8 @@
 # AgentHarness lifecycle
 
-`AgentHarness` is the orchestration layer above the low-level agent loop. It owns session persistence, runtime configuration, resource resolution, operation locking, and extension-facing mutation semantics.
+`AgentHarness` is the orchestration layer above the low-level agent loop. It owns session persistence, runtime configuration, resource resolution, operation locking, and host-facing mutation semantics.
 
-This document describes the current direction and implemented behavior in `elph-agent`. Some extension/session-facade details are planned and called out explicitly.
+This document describes the current direction and implemented behavior in `elph-agent`. Some session-facade details are planned and called out explicitly.
 
 ## Ultimate lifecycle goal
 
@@ -17,7 +17,7 @@ The intended rule is:
 - getters return latest harness config, not in-flight snapshots
 - listeners/hooks that call settlement APIs such as `wait_for_idle()` during the active run can deadlock; prefer `abort()` or queue operations from turn-safe points
 
-Provider transport streaming is decoupled from downstream event consumption. The harness can therefore await listeners, extension hooks, persistence, and save-point work without blocking the provider transport reader.
+Provider transport streaming is decoupled from downstream event consumption. The harness can therefore await listeners, configured hooks, persistence, and save-point work without blocking the provider transport reader.
 
 ## Error handling
 
@@ -35,7 +35,7 @@ The harness separates state into four categories.
 
 ### Harness config
 
-Harness config is the latest runtime configuration set by the application or extensions:
+Harness config is the latest runtime configuration set by the application or host integrations:
 
 - model
 - thinking level
@@ -177,7 +177,7 @@ Summary:
 - Observational handlers: `subscribe` (all events)
 - `subscribe` listeners are cloned before invocation to avoid deadlocks when listeners call back into the harness.
 
-Agent-emitted messages are persisted on `message_end` to preserve transcript ordering. Pending extension/session writes flush after those messages at save points.
+Agent-emitted messages are persisted on `message_end` to preserve transcript ordering. Pending session writes flush after those messages at save points.
 
 ## Collaboration mode and plan confirmation
 
@@ -301,7 +301,7 @@ cargo test -p elph-agent --test harness
 
 ### Planned
 
-- Session facade for extension writes with pending-write ordering
+- Session facade for host-initiated writes with pending-write ordering
 - Auto-compaction decision point in harness
 - Retry handling
 - Semi-durable harness recovery (see [durable-harness.md](./durable-harness.md))

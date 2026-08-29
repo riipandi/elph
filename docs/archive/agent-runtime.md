@@ -174,7 +174,7 @@ TUI shows `agent_id` + `agent_path` in subagent status lines.
 
 ### Extensions (WASM)
 
-Pi-compatible extension bundles discovered from `CONFIG_DIR/extensions/` (default `~/.elph/extensions/`) and `<project>/.elph/extensions/`. Slash commands, tools, and selected harness events via wasmi. `/reload` refreshes registry. See [../extensions.md](../extensions.md).
+Pi-compatible extension bundles discovered from `CONFIG_DIR/extensions/` (default `~/.elph/extensions/`) and `<project>/.elph/extensions/`. Slash commands, tools, and selected harness events via wasmi. `/reload` refreshes registry. This historical design was superseded by [native lifecycle hooks](../hooks.md).
 
 ## Thinking levels
 
@@ -270,7 +270,7 @@ Multi-agent tools are injected by `AgentHarness` when `tools-multi-agent` is ena
 
 ## Related
 
-- [extensions.md](./extensions.md) — WASM extension design
+- [hooks.md](../hooks.md) — current native lifecycle hook design
 - [codebase-layout.md](./codebase-layout.md) — `elph` crate modules
 - [tools.md](./tools.md) — catalog and approval
 - [configuration.md](./configuration.md) — settings and paths

@@ -173,7 +173,7 @@ Subcommands: `list`, `add`, `remove`, `doctor`, `auth`, `logout`.
 
 ### `plugin`
 
-Manage WASM extension bundles (wasmi). See [extensions.md](./extensions.md) and [../extensions.md](../extensions.md).
+Manage WASM extension bundles (wasmi). This historical command surface was removed; see the [current native hook design](../hooks.md).
 
 | Subcommand       | Flags             | Design behavior                                   |
 | ---------------- | ----------------- | ------------------------------------------------- |
@@ -233,5 +233,5 @@ Release builds via root `Makefile`. See [development.md](./development.md).
 
 - [configuration.md](./configuration.md)
 - [development.md](./development.md)
-- [extensions.md](./extensions.md)
+- [hooks.md](../hooks.md)
 - [README.md](./README.md)

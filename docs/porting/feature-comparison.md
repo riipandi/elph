@@ -289,5 +289,5 @@ Mapping: `@earendil-works/pi-ai` → `crates/elph-ai`, `@earendil-works/pi-agent
 | **[Partial]**    | Feature exists in the port but is incomplete vs mainstream    |
 | **[Gap P1]**     | User-visible gap — provider or agent loop behavior            |
 | **[Gap P2]**     | Polish, edge cases, optional interop                          |
-| **[Elph delta]** | Intentional extension absent from upstream                    |
+| **[Elph delta]** | Intentional Elph-only feature absent from upstream            |
 | **[N/A]**        | Platform-specific; not a 1:1 port target                      |

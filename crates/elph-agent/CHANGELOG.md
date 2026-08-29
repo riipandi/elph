@@ -3,9 +3,17 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+### Lifecycle hooks
+
+- The former WASM extension host and plugin ABI were removed.
+- Lifecycle hooks are host-native commands configured through
+  `CONFIG_DIR/hooks.json` and the project-local `.elph/hooks.json`.
+
 ## 0.0.28
 
-### Extensions
+### Historical extension implementation
 
 - WASM host is **wasmi** (core module ABI, JSON in linear memory). wasmtime, Cranelift, and the WIT Component Model guest world are removed.
 - Guests export `elph_init` / `elph_on_event` / `elph_execute_command` / `elph_execute_tool` and import `elph::{register_command,register_tool,subscribe,notify,confirm}`.

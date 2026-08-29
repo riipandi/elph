@@ -45,9 +45,10 @@ the six-package graph containing:
 The root `Cargo.toml` uses resolver 2, edition 2024, a large
 `[workspace.dependencies]` table, and a local `[patch.crates-io]` override for
 `iocraft` under `vendor/iocraft`. `crates/control-plane`, `elph-cron`,
-`elph-sandbox`, `elph-extension-pdk`, `ext-hello`, and other explicitly excluded
-packages are not automatically covered by the normal workspace gate; include
-them only when the user asks.
+`elph-sandbox`, and other explicitly excluded packages are not automatically
+covered by the normal workspace gate; include them only when the user asks.
+The former extension packages were removed; do not expect or recreate them
+during a dependency audit.
 
 ## Scope
 

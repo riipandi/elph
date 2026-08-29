@@ -67,15 +67,14 @@ to `rustc` instead of failing the build.
 
 All share the same config/data layout (`CONFIG_DIR` / `APP_DATA`); override with `ELPH_HOME` / `ELPH_DATA_DIR` when testing channels side by side.
 
-## Extension development loop
+## Lifecycle hook development
 
-1. Build guest WASM: see [../extensions.md](../extensions.md) and `crates/ext-hello/README.md`.
-2. Install: `elph extensions install crates/ext-hello --force`
-3. Verify: `elph plugin list`
-4. In TUI: `/say-hello World` or `/reload` after changes.
+The former guest-WASM extension workflow was removed. Current integrations use
+native commands configured in `CONFIG_DIR/hooks.json` or
+`<project>/.elph/hooks.json`; see the [lifecycle hook documentation](../hooks.md).
 
 ## Related
 
-- [extensions.md](./extensions.md)
+- [hooks.md](../hooks.md)
 - [cli.md](./cli.md)
 - [README.md](./README.md)

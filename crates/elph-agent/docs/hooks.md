@@ -206,20 +206,11 @@ The low-level `Agent` class uses `before_tool_call` and `after_tool_call` in `Ag
 | Provider hooks          | `stream_fn` wrapper | `before_provider_request`, `before_provider_payload`, `after_provider_response` |
 | Session lifecycle       | —                   | `session_before_compact`, `session_before_tree`                                 |
 
-Use `Agent` for lightweight, in-memory agents. Use `AgentHarness` when you need session persistence, compaction, tree navigation, skills, and extension hooks.
+Use `Agent` for lightweight, in-memory agents. Use `AgentHarness` when you need session persistence, compaction, tree navigation, skills, and lifecycle hooks.
 
-## Extension loading (planned)
-
-Extension loading can construct a harness and register hooks:
-
-```rust
-// Future pattern
-let harness = AgentHarness::new(options)?;
-harness.on_context(extension_context_handler).await;
-harness.on_tool_call(extension_tool_handler).await;
-```
-
-For reload, handlers would be cleared and re-registered while the harness is idle.
+The harness exposes registration primitives only. The product-level command
+adapter, JSON configuration, trust checks, and reload behavior live in
+`coding-agent`, not in this crate.
 
 ## Error policy
 
