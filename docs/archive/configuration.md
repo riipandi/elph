@@ -83,7 +83,8 @@ Interactive Ctrl/Cmd+V image pastes are written as PNG files in
 `APP_DATA/attachments/` and shown in the prompt as atomic `[Image #N]` markers.
 Clipboard reading and file staging run in the background, so the prompt remains
 responsive while an image is being prepared. A preview dialog shows the image
-dimensions and staged filename when it is ready; `Enter` or `Esc` closes it.
+dimensions and staged filename when the caret touches its `[Image #N]` marker;
+moving the caret away closes it without changing the prompt text.
 On submit, Elph base64-encodes the staged files into `ImageContent` blocks for the
 model request, then removes the temporary files. Removing a marker or submitting
 a local/slash/shell command also removes its staged file. Attachment filenames are

@@ -21,15 +21,6 @@ pub struct ImageAttachment {
     pub height: u32,
 }
 
-/// State shown by the prompt while a clipboard image is being staged.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ImagePasteDialogState {
-    Loading,
-    Preview(ImageAttachment),
-    Unsupported,
-    Failed(String),
-}
-
 /// Probe whether the system clipboard can be opened (no read/write).
 pub fn clipboard_available() -> bool {
     ClipboardContext::new().is_ok()
@@ -168,6 +159,16 @@ pub enum ClipboardNotice {
     Copied { label: String, char_count: usize },
     /// Clipboard write failed.
     Failed { detail: String },
+    /// Clipboard image processing started.
+    ImagePasting,
+    /// Clipboard image was attached to the prompt.
+    ImagePasted { id: usize },
+    /// Clipboard did not contain an image, so its text was pasted.
+    ImagePasteText,
+    /// Clipboard image processing failed.
+    ImagePasteFailed { detail: String },
+    /// The active model cannot accept image input.
+    ImageInputUnsupported,
 }
 
 impl ClipboardNotice {
@@ -191,11 +192,19 @@ impl ClipboardNotice {
             }
             .announcement(),
             Self::Failed { .. } => "Could not copy to clipboard · check clipboard access".into(),
+            Self::ImagePasting => "Pasting image…".into(),
+            Self::ImagePasted { id } => format!("Pasted image #{id}"),
+            Self::ImagePasteText => "Pasted clipboard text".into(),
+            Self::ImagePasteFailed { detail } => format!("Could not paste image · {detail}"),
+            Self::ImageInputUnsupported => "The selected model does not support image input".into(),
         }
     }
 
     pub fn is_error(&self) -> bool {
-        matches!(self, Self::Failed { .. })
+        matches!(
+            self,
+            Self::Failed { .. } | Self::ImagePasteFailed { .. } | Self::ImageInputUnsupported
+        )
     }
 }
 

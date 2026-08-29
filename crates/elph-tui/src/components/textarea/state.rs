@@ -419,6 +419,15 @@ fn image_marker_range_at(text: &str, offset: usize) -> Option<(usize, usize)> {
     None
 }
 
+/// Return the marker range and image id touching a caret offset.
+pub fn image_marker_id_at_cursor(text: &str, cursor: usize) -> Option<(usize, usize, usize)> {
+    let marker =
+        image_marker_range_at(text, cursor).or_else(|| image_marker_range_at(text, cursor.saturating_sub(1)))?;
+    let id_start = marker.0 + "[Image #".len();
+    let id = text[id_start..marker.1 - 1].parse().ok()?;
+    Some((marker.0, marker.1, id))
+}
+
 fn expand_image_marker_range(text: &str, mut start: usize, mut end: usize) -> (usize, usize) {
     let mut cursor = 0;
     while let Some(relative) = text[cursor..].find("[Image #") {
@@ -453,7 +462,7 @@ fn image_marker_start_or_right(text: &str, cursor: usize) -> Option<usize> {
 
 #[cfg(test)]
 mod image_marker_tests {
-    use super::TextareaState;
+    use super::{TextareaState, image_marker_id_at_cursor};
 
     #[test]
     fn image_marker_is_inserted_and_deleted_atomically() {
@@ -475,6 +484,17 @@ mod image_marker_tests {
         assert_eq!(state.cursor, 0);
         state.move_right(80);
         assert_eq!(state.cursor, "[Image #7]".len());
+    }
+
+    #[test]
+    fn image_marker_preview_range_includes_caret_after_marker() {
+        let mut state = TextareaState::from_text("x[Image #7]y".into());
+        state.cursor = 10;
+        assert_eq!(image_marker_id_at_cursor(&state.text, state.cursor), Some((1, 11, 7)));
+        state.cursor = 11;
+        assert_eq!(image_marker_id_at_cursor(&state.text, state.cursor), Some((1, 11, 7)));
+        state.cursor = 12;
+        assert_eq!(image_marker_id_at_cursor(&state.text, state.cursor), None);
     }
 }
 

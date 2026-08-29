@@ -102,7 +102,8 @@ pub use tab_select::{TabSelect, TabSelectProps};
 pub use text::{StyledText, StyledTextProps};
 pub use textarea::{PaletteKeyInput, Textarea, TextareaLayout, TextareaProps};
 pub use textarea::{
-    display_row_count, layout_cursor_for_viewport, layout_textarea, logical_line_count, visible_row_count,
+    display_row_count, image_marker_id_at_cursor, layout_cursor_for_viewport, layout_textarea, logical_line_count,
+    visible_row_count,
 };
 pub use theme::{
     LIST_MARKER_COL, UiTheme, UiThemeProvider, UiThemeProviderProps, list_marker, list_row_desc_style,

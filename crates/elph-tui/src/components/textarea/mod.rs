@@ -15,7 +15,7 @@ pub use layout::{
     compute_viewport_height, display_row_count, layout_cursor_for_viewport, layout_textarea, layout_textarea_measured,
 };
 pub use layout::{logical_line_count, visible_row_count};
-pub use state::TextareaState;
+pub use state::{TextareaState, image_marker_id_at_cursor};
 
 /// Props for [`Textarea`].
 #[derive(Default, Props)]

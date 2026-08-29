@@ -1,7 +1,8 @@
 //! Editor + footer column (bottom chrome).
 
-use elph_tui::InputPrefixKind;
 use elph_tui::PaletteKeyInput;
+use elph_tui::components::UiTheme;
+use elph_tui::{ImageAttachment, InputPrefixKind, image_marker_id_at_cursor};
 use iocraft::prelude::*;
 
 use crate::tui::labels::GitFooterInfo;
@@ -13,6 +14,62 @@ use crate::tui::file_picker::{FilePickerPalette, FilePickerSnapshot};
 use crate::tui::prompt_history::{PromptHistoryPalette, PromptHistorySnapshot};
 use crate::tui::slash_palette::palette_anchor_bottom;
 use crate::tui::slash_palette::{SlashCommandPalette, SlashPaletteSnapshot};
+
+fn render_image_preview_dialog(
+    attachment: &ImageAttachment,
+    width: u16,
+    bottom: u16,
+    theme: UiTheme,
+) -> AnyElement<'static> {
+    let filename = attachment
+        .path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("attachment.png");
+    element! {
+        View(
+            width: width,
+            position: Position::Absolute,
+            left: 0,
+            bottom: bottom,
+            flex_shrink: 0f32,
+            align_items: AlignItems::FlexStart,
+        ) {
+            View(
+                width: width,
+                padding_left: theme.padding_md,
+                padding_right: theme.padding_md,
+                padding_top: theme.padding_sm,
+                padding_bottom: theme.padding_sm,
+                flex_direction: FlexDirection::Column,
+                border_style: BorderStyle::Round,
+                border_color: theme.accent,
+                background_color: theme.surface,
+            ) {
+                Text(
+                    content: format!("Image #{}", attachment.id),
+                    color: theme.accent,
+                    weight: Weight::Bold,
+                    wrap: TextWrap::NoWrap,
+                )
+                Text(
+                    content: format!(
+                        "Format: PNG\nDimensions: {} × {}\nFile: {filename}",
+                        attachment.width, attachment.height
+                    ),
+                    color: theme.text_primary,
+                    wrap: TextWrap::Wrap,
+                )
+                Text(
+                    content: "Move the cursor away to close preview",
+                    color: theme.text_muted,
+                    wrap: TextWrap::NoWrap,
+                )
+            }
+        }
+    }
+    .into()
+}
 
 #[derive(Default, Props)]
 pub struct PromptChromeProps {
@@ -81,6 +138,33 @@ pub fn PromptChrome(props: &mut PromptChromeProps) -> impl Into<AnyElement<'stat
         .or_else(|| props.draft.as_ref().map(|draft| draft.read().clone()))
         .unwrap_or_default();
     let palette_anchor = palette_anchor_bottom(&draft_text, props.screen_width, props.screen_height);
+    let image_preview = if props.has_focus
+        && !props.hide_editor
+        && !props.slash_palette_snapshot.visible
+        && !props.file_picker_snapshot.visible
+        && !props.prompt_history_snapshot.visible
+        && props.editor_overlay.is_none()
+    {
+        let cursor = props
+            .live_cursor
+            .as_ref()
+            .map(|cursor| cursor.get())
+            .unwrap_or(draft_text.len());
+        image_marker_id_at_cursor(&draft_text, cursor).and_then(|(_, _, id)| {
+            props.image_attachments.and_then(|attachments| {
+                attachments
+                    .read()
+                    .iter()
+                    .find(|attachment| attachment.id == id)
+                    .cloned()
+            })
+        })
+    } else {
+        None
+    };
+    let image_preview_view = image_preview.as_ref().map(|attachment| {
+        render_image_preview_dialog(attachment, props.screen_width, palette_anchor, UiTheme::default())
+    });
 
     // Editor + palettes are dropped while an overlay (e.g. `/aside`) owns the bottom
     // band; the footer below always renders. Build the subtree first so we can skip it.
@@ -172,6 +256,7 @@ pub fn PromptChrome(props: &mut PromptChromeProps) -> impl Into<AnyElement<'stat
                         }
                         .into()
                     }))
+                    #(image_preview_view)
                 }
             }
             .into(),

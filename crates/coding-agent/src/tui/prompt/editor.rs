@@ -112,7 +112,6 @@ pub fn Editor(props: &mut EditorProps) -> impl Into<AnyElement<'static>> {
     } else {
         format!(" {border_project} ")
     };
-
     element! {
         View(
             width: props.screen_width,

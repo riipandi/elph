@@ -9,8 +9,8 @@ use super::input::{TextareaInputContext, TextareaInputResult};
 use super::layout::{layout_cursor_for_viewport, layout_metrics_from_wrapped, layout_textarea_measured};
 use super::state::{TextareaState, selection_display_rows};
 use crate::clipboard::{
-    ClipboardNotice, ImageAttachment, ImagePasteDialogState, copy_to_clipboard, read_from_clipboard,
-    remove_image_attachments, save_clipboard_image,
+    ClipboardNotice, ImageAttachment, copy_to_clipboard, read_from_clipboard, remove_image_attachments,
+    save_clipboard_image,
 };
 use crate::components::scroll_bar::VerticalScrollbar;
 use crate::components::theme::resolve_ui_theme;
@@ -233,70 +233,6 @@ enum BackgroundPasteResult {
     Failed(String),
 }
 
-fn render_image_paste_dialog(
-    state: &ImagePasteDialogState,
-    width: u16,
-    theme: crate::components::theme::UiTheme,
-) -> AnyElement<'static> {
-    let (title, body, footer, color) = match state {
-        ImagePasteDialogState::Loading => (
-            "Pasting image".to_string(),
-            "Reading the clipboard and preparing an attachment…".to_string(),
-            "Please wait".to_string(),
-            theme.warning,
-        ),
-        ImagePasteDialogState::Preview(attachment) => (
-            format!("Image #{}", attachment.id),
-            format!(
-                "Preview ready · {}×{}\n{}",
-                attachment.width,
-                attachment.height,
-                attachment
-                    .path
-                    .file_name()
-                    .and_then(|name| name.to_str())
-                    .unwrap_or("attachment.png")
-            ),
-            "Enter/Esc close · image is attached to this prompt".to_string(),
-            theme.success,
-        ),
-        ImagePasteDialogState::Unsupported => (
-            "Image input unavailable".to_string(),
-            "The selected model does not support vision or image input.".to_string(),
-            "Enter/Esc close".to_string(),
-            theme.warning,
-        ),
-        ImagePasteDialogState::Failed(detail) => (
-            "Could not paste image".to_string(),
-            detail.clone(),
-            "Enter/Esc close".to_string(),
-            theme.error,
-        ),
-    };
-    let dialog_width = width.saturating_sub(4).clamp(32, 72);
-    element! {
-        View(
-            position: Position::Absolute,
-            top: 0,
-            left: 1,
-            width: dialog_width,
-            padding_left: theme.padding_md,
-            padding_right: theme.padding_md,
-            padding_top: theme.padding_sm,
-            padding_bottom: theme.padding_sm,
-            flex_direction: FlexDirection::Column,
-            border_style: BorderStyle::Round,
-            border_color: color,
-            background_color: theme.surface,
-        ) {
-            Text(content: title, color: color, weight: Weight::Bold, wrap: TextWrap::NoWrap)
-            Text(content: body, color: theme.text_primary, wrap: TextWrap::Wrap)
-            Text(content: footer, color: theme.text_muted, wrap: TextWrap::Wrap)
-        }
-    }
-    .into()
-}
-
 fn apply_palette_draft_to_editor(ed: &mut TextareaState, external: &str, forced_cursor: Option<usize>) {
     ed.sync_external_with_cursor(external, forced_cursor);
 }
@@ -346,7 +282,6 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
     let mut viewport_cache = hooks.use_ref(|| None::<ViewportRenderCache>);
     let image_paste_result = hooks.use_ref(|| Arc::new(Mutex::new(None::<BackgroundPasteResult>)));
     let image_paste_busy = hooks.use_ref(|| false);
-    let image_paste_dialog = hooks.use_state(|| None::<ImagePasteDialogState>);
     let mut generation = hooks.use_state(|| 0u32);
     let on_submit = props.on_submit.take();
     let on_escape = props.on_escape.take();
@@ -361,7 +296,6 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
     {
         let result_slot = image_paste_result.read().clone();
         let mut image_paste_busy = image_paste_busy;
-        let mut image_paste_dialog = image_paste_dialog;
         let mut editor = editor;
         let mut value = value;
         let mut layout_cache = layout_cache;
@@ -379,9 +313,11 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
                     BackgroundPasteResult::Image(saved) => {
                         let Some(mut attachment_ref) = image_attachments else {
                             remove_image_attachments(&[saved]);
-                            image_paste_dialog.set(Some(ImagePasteDialogState::Failed(
-                                "The prompt is no longer available.".to_string(),
-                            )));
+                            if let Some(mut toast) = clipboard_toast {
+                                toast.set(Some(ClipboardNotice::ImagePasteFailed {
+                                    detail: "the prompt is no longer available".to_string(),
+                                }));
+                            }
                             continue;
                         };
                         let mut attachments = attachment_ref.write();
@@ -403,7 +339,9 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
                         if let Some(mut mirror) = prompt_editor_mirror {
                             mirror.set((ed.text.clone(), ed.cursor));
                         }
-                        image_paste_dialog.set(Some(ImagePasteDialogState::Preview(attachment)));
+                        if let Some(mut toast) = clipboard_toast {
+                            toast.set(Some(ClipboardNotice::ImagePasted { id: next_id }));
+                        }
                         layout_cache.set(None);
                         viewport_cache.set(None);
                         generation.set(generation.get().wrapping_add(1));
@@ -421,15 +359,22 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
                             mirror.set((ed.text.clone(), ed.cursor));
                         }
                         value.set(ed.text.clone());
+                        if let Some(mut toast) = clipboard_toast {
+                            toast.set(Some(ClipboardNotice::ImagePasteText));
+                        }
                         layout_cache.set(None);
                         viewport_cache.set(None);
                         generation.set(generation.get().wrapping_add(1));
                     }
                     BackgroundPasteResult::Unsupported => {
-                        image_paste_dialog.set(Some(ImagePasteDialogState::Unsupported));
+                        if let Some(mut toast) = clipboard_toast {
+                            toast.set(Some(ClipboardNotice::ImageInputUnsupported));
+                        }
                     }
                     BackgroundPasteResult::Failed(detail) => {
-                        image_paste_dialog.set(Some(ImagePasteDialogState::Failed(detail)));
+                        if let Some(mut toast) = clipboard_toast {
+                            toast.set(Some(ClipboardNotice::ImagePasteFailed { detail }));
+                        }
                     }
                 }
             }
@@ -641,7 +586,6 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
         let image_attachment_dir = image_attachment_dir.clone();
         let image_paste_result = image_paste_result.read().clone();
         let mut image_paste_busy = image_paste_busy;
-        let mut image_paste_dialog = image_paste_dialog;
         let input_width = layout.input_width;
         move |event| {
             if !has_focus {
@@ -652,28 +596,6 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
                 let ed = editor.read();
                 if let Some(mut mirror) = prompt_editor_mirror {
                     mirror.set((ed.text.clone(), ed.cursor));
-                }
-            }
-
-            let dialog = image_paste_dialog.read().clone();
-            if let Some(dialog) = dialog {
-                match dialog {
-                    ImagePasteDialogState::Loading => return,
-                    ImagePasteDialogState::Preview(_)
-                    | ImagePasteDialogState::Unsupported
-                    | ImagePasteDialogState::Failed(_) => {
-                        if let TerminalEvent::Key(KeyEvent {
-                            code: KeyCode::Enter | KeyCode::Esc,
-                            kind: KeyEventKind::Press,
-                            modifiers,
-                            ..
-                        }) = event
-                            && modifiers.is_empty()
-                        {
-                            image_paste_dialog.set(None);
-                        }
-                        return;
-                    }
                 }
             }
 
@@ -768,7 +690,9 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
             match result {
                 TextareaInputResult::Submit(draft) => {
                     if !supports_images && image_attachments.is_some_and(|attachments| !attachments.read().is_empty()) {
-                        image_paste_dialog.set(Some(ImagePasteDialogState::Unsupported));
+                        if let Some(mut toast) = clipboard_toast {
+                            toast.set(Some(ClipboardNotice::ImageInputUnsupported));
+                        }
                         return;
                     }
                     sync_live_draft(&draft, editor.read().cursor);
@@ -846,7 +770,9 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
                         return;
                     }
                     image_paste_busy.set(true);
-                    image_paste_dialog.set(Some(ImagePasteDialogState::Loading));
+                    if let Some(mut toast) = clipboard_toast {
+                        toast.set(Some(ClipboardNotice::ImagePasting));
+                    }
                     if let Ok(mut slot) = image_paste_result.lock() {
                         *slot = None;
                     }
@@ -866,7 +792,10 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
                                 return BackgroundPasteResult::Image(image);
                             }
                             match read_from_clipboard() {
-                                Ok(text) => BackgroundPasteResult::Text(text),
+                                Ok(text) if !text.is_empty() => BackgroundPasteResult::Text(text),
+                                Ok(_) => {
+                                    BackgroundPasteResult::Failed("clipboard does not contain an image".to_string())
+                                }
                                 Err(err) => BackgroundPasteResult::Failed(err.to_string()),
                             }
                         })
@@ -892,19 +821,10 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
 
     let theme = resolve_ui_theme(&hooks, props.theme);
     let scrollbar_style = props.scrollbar_style.unwrap_or_else(|| theme.scrollbar_style());
-    let image_paste_dialog_active = image_paste_dialog.read().is_some();
-    let outer_viewport = if image_paste_dialog_active {
-        layout.viewport_height.max(4)
-    } else {
-        layout.viewport_height
-    };
+    let outer_viewport = layout.viewport_height;
     let text_color = props.text_color.unwrap_or_else(|| theme.input_text_color(has_focus));
     let cursor_color = props.cursor_color.unwrap_or_else(|| theme.input_cursor_color());
     let border_inset = if show_border { theme.input_inset() } else { 0 };
-    let image_paste_dialog_view = image_paste_dialog
-        .read()
-        .as_ref()
-        .map(|state| render_image_paste_dialog(state, props.width, theme));
 
     element! {
         View(
@@ -1011,7 +931,6 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
             } else {
                 None
             })
-            #(image_paste_dialog_view)
         }
     }
 }
